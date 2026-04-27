@@ -1,0 +1,22 @@
+/* Drop this into your React app's src/index.css (or replace it entirely).
+   This ensures the dark background and correct base font size apply
+   before the component's injected styles even load. */
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  font-size: 16px;          /* prevents CRA's 14px default from shrinking everything */
+}
+
+html, body, #root {
+  min-height: 100vh;
+  background-color: #0d0f14; /* matches the component's background — no white flash */
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+}
