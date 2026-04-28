@@ -60,6 +60,18 @@ const GLOBAL_CSS = `
   grid-template-columns: repeat(3, 1fr);
 }
 
+.loadout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+}
+
+@media (max-width: 560px) {
+  .loadout-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 .phoenetic {
   color: var(--phoenetic-color, currentColor);
   font-style: italic;
@@ -198,9 +210,11 @@ export const PALETTES = {
 };
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
-const modOf  = s => Math.floor((s - 10) / 2);
-const fmtMod = m => m >= 0 ? `+${m}` : `${m}`; // Used to add the modifier to Ability Scores. Not implemented yet
-const uid    = () => "id" + Date.now() + Math.random().toString(36).slice(2, 7);
+const modOf      = s => Math.floor((s - 10) / 2);
+const fmtMod     = m => m >= 0 ? `+${m}` : `${m}`;
+const uid        = () => "id" + Date.now() + Math.random().toString(36).slice(2, 7);
+// Only accept bare integers like "+2", "-1", "4" — rejects dice notation like "1d8"
+const parseModInt = v => /^[+-]?\d+$/.test(String(v).trim()) ? parseInt(v, 10) : NaN;
 
 const RACE_OPTIONS = [
   "Human", "Elf", "Night Elf", "Wood Elf", "High Elf", "Drow", "Eladrin",
@@ -268,8 +282,14 @@ const BLANK_CHARACTER = {
     { stat: "Intelligence", score: 10, note: "" },
     { stat: "Charisma",     score: 10, note: "" },
   ],
+  hp: 0,
+  hitDice: "",
+  armorType: "",
+  armorTotal: 0,
   spells: [],
   inPlay: [],
+  weapons: [],
+  equipment: [],
   collections: [
     {
       id: uid(),
@@ -286,6 +306,134 @@ const BLANK_CHARACTER = {
     },
   ],
 };
+
+const ARMOR_OPTIONS = [
+  { value: "none",   label: "None",   speed: "Fast"   },
+  { value: "light",  label: "Light",  speed: "Normal" },
+  { value: "full",   label: "Full",   speed: "Slow"   },
+  { value: "shield", label: "Shield", speed: null     },
+];
+
+const MOD_ATTRIBUTES = [
+  "Strength", "Dexterity", "Constitution", "Wisdom", "Intelligence", "Charisma",
+  "Armor", "HP", "Hit Dice", "Attack Bonus", "Damage", "Initiative", "Speed", "Save DC",
+];
+
+// ── Item Editor Modal ─────────────────────────────────────────────────────────
+function ItemEditorModal({ item, pal, onSave, onClose, showType }) {
+  const [name,  setName]  = useState(item?.name  || "");
+  const [desc,  setDesc]  = useState(item?.description || "");
+  const [mods,  setMods]  = useState(item?.mods  || []);
+  const [type,  setType]  = useState(item?.type  || "");
+
+  const inputStyle = {
+    background: pal.surface, border: `1px solid ${pal.border}`,
+    borderRadius: 3, color: pal.text, fontFamily: pal.fontBody,
+    fontSize: 15, padding: "8px 12px", width: "100%", outline: "none",
+  };
+  const lbl = {
+    fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.2em",
+    textTransform: "uppercase", color: pal.textMuted, display: "block", marginBottom: 5,
+  };
+
+  const addMod    = () => setMods(m => [...m, { attribute: MOD_ATTRIBUTES[0], value: "" }]);
+  const removeMod = (i) => setMods(m => m.filter((_, idx) => idx !== i));
+  const updateMod = (i, field, val) => setMods(m => m.map((mod, idx) => idx !== i ? mod : { ...mod, [field]: val }));
+
+  const handleSave = () => {
+    if (!name.trim()) return;
+    onSave({ id: item?.id || uid(), name: name.trim(), description: desc.trim(), mods, ...(showType ? { type: type.trim() } : {}) });
+  };
+
+  return (
+    <div style={{
+      position: "fixed", inset: 0, zIndex: 200,
+      background: "rgba(0,0,0,0.8)", display: "flex",
+      alignItems: "center", justifyContent: "center", padding: 24,
+    }}>
+      <div style={{
+        background: pal.surfaceSolid, border: `1px solid ${pal.border}`,
+        borderRadius: 6, padding: "28px 24px", width: "100%", maxWidth: 480,
+        maxHeight: "90vh", overflowY: "auto",
+      }}>
+        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 20 }}>
+          {item ? "Edit Item" : "New Item"}
+        </div>
+
+        <div style={{ marginBottom: 14, display: "grid", gridTemplateColumns: showType ? "1fr 1fr" : "1fr", gap: 12 }}>
+          <div>
+            <label style={lbl}>Name</label>
+            <input style={inputStyle} value={name} onChange={e => setName(e.target.value)} autoFocus placeholder="e.g. Cloak of Protection…" />
+          </div>
+          {showType && (
+            <div>
+              <label style={lbl}>Type <span style={{ opacity: 0.5, textTransform: "none", fontSize: 11, letterSpacing: 0 }}>(optional)</span></label>
+              <input style={inputStyle} value={type} onChange={e => setType(e.target.value)} placeholder="e.g. Armour, Potion…" />
+            </div>
+          )}
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <label style={lbl}>Description <span style={{ opacity: 0.5, textTransform: "none", fontSize: 11, letterSpacing: 0 }}>(shown on tap)</span></label>
+          <textarea style={{ ...inputStyle, resize: "vertical", minHeight: 80, lineHeight: 1.6 }}
+            value={desc} onChange={e => setDesc(e.target.value)} placeholder="Describe the item…" />
+        </div>
+
+        <div style={{ marginBottom: 20 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+            <label style={{ ...lbl, marginBottom: 0 }}>Modifiers</label>
+            <button onClick={addMod} style={{
+              background: "transparent", border: `1px dashed ${pal.border}`,
+              borderRadius: 3, color: pal.accentBright, fontFamily: pal.fontBody,
+              fontSize: 13, padding: "4px 12px", cursor: "pointer",
+            }}>+ Add Mod</button>
+          </div>
+          {mods.length === 0 && (
+            <div style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted, fontStyle: "italic" }}>No modifiers — click Add Mod to add one.</div>
+          )}
+          {mods.map((mod, i) => (
+            <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8, alignItems: "center" }}>
+              <select
+                value={mod.attribute}
+                onChange={e => updateMod(i, "attribute", e.target.value)}
+                style={{ ...inputStyle, width: "auto", flex: 2, appearance: "none", WebkitAppearance: "none" }}
+              >
+                {MOD_ATTRIBUTES.map(a => <option key={a} value={a}>{a}</option>)}
+              </select>
+              <input
+                style={{ ...inputStyle, flex: 1, textAlign: "center" }}
+                value={mod.value}
+                onChange={e => updateMod(i, "value", e.target.value)}
+                placeholder="+2 / 1d8"
+              />
+              <button onClick={() => removeMod(i)} style={{
+                background: "transparent", border: `1px solid ${pal.border}`,
+                borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontBody,
+                fontSize: 18, width: 34, height: 34, cursor: "pointer", flexShrink: 0,
+              }}>×</button>
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", gap: 10 }}>
+          <button onClick={onClose} style={{
+            ...inputStyle, width: "auto", flex: 1, padding: "9px 16px",
+            cursor: "pointer", textAlign: "center",
+          }}>Cancel</button>
+          <button onClick={handleSave} disabled={!name.trim()} style={{
+            ...inputStyle, flex: 2, padding: "10px 16px", textAlign: "center",
+            background: pal.accentDim, borderColor: pal.accent,
+            color: pal.accentBright, fontFamily: pal.fontUI,
+            letterSpacing: "0.08em", cursor: "pointer",
+            opacity: !name.trim() ? 0.5 : 1,
+          }}>
+            {item ? "Save Changes" : "Add Item"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 // ── Change Password form ──────────────────────────────────────────────────────
 function ChangePasswordForm({ pal, inputStyle, lbl, slug, currentPassword, onSuccess }) {
@@ -380,6 +528,12 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
 
   // Save state
   const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved" | "error"
+
+  // Loadout editing
+  const [editingItem,   setEditingItem]   = useState(null);       // { listType: "weapons"|"equipment", item }
+  const [combatTab,     setCombatTab]     = useState("inplay");   // "loadout" | "inplay"
+  const [expandedItems, setExpandedItems] = useState(new Set());
+  const [hoveredStat,   setHoveredStat]   = useState(null); // stat name while flyout is open
 
   const fileRef       = useRef();
   const importRef     = useRef();
@@ -533,6 +687,20 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
   const updateInPlay = (i, val) => setChar(c => { const a = [...c.inPlay]; a[i] = val; return { ...c, inPlay: a }; });
   const addInPlay    = ()       => setChar(c => ({ ...c, inPlay: [...c.inPlay, ""] }));
   const removeInPlay = (i)      => setChar(c => ({ ...c, inPlay: c.inPlay.filter((_, idx) => idx !== i) }));
+
+  // Weapons
+  const addWeapon    = (item) => setChar(c => ({ ...c, weapons: [...(c.weapons||[]), item] }));
+  const updateWeapon = (id, item) => setChar(c => ({ ...c, weapons: (c.weapons||[]).map(w => w.id === id ? item : w) }));
+  const removeWeapon = (id)  => setChar(c => ({ ...c, weapons: (c.weapons||[]).filter(w => w.id !== id) }));
+
+  // Equipment
+  const addEquipment    = (item) => setChar(c => ({ ...c, equipment: [...(c.equipment||[]), item] }));
+  const updateEquipment = (id, item) => setChar(c => ({ ...c, equipment: (c.equipment||[]).map(e => e.id === id ? item : e) }));
+  const removeEquipment = (id)  => setChar(c => ({ ...c, equipment: (c.equipment||[]).filter(e => e.id !== id) }));
+
+  const toggleExpanded = (id) => setExpandedItems(prev => {
+    const next = new Set(prev); if (next.has(id)) next.delete(id); else next.add(id); return next;
+  });
 
   // Drag & drop sections within a collection
   const onDragStart = (cid, i)    => setDragInfo({ collectionId: cid, fromIdx: i });
@@ -724,6 +892,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
   // ══════════════════════════════════════════════════════════════════════════
   if (mode === "edit") {
     return (
+      <>
       <div style={rootWrap}>
         <div style={{
           position: "fixed", inset: 0, zIndex: 0, pointerEvents: "none",
@@ -902,6 +1071,64 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
             </div>
           </div>
 
+          {/* Hit Points, Hit Dice & Armor */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 20 }}>
+              <div>
+                <label style={lbl}>Hit Points <span style={{ opacity: 0.5, textTransform: "none", fontSize: 12, letterSpacing: 0 }}>(max)</span></label>
+                <input style={inputStyle} type="number" min={0}
+                  value={char.hp ?? ""}
+                  onChange={e => update("hp", parseInt(e.target.value) || 0)}
+                  placeholder="e.g. 38"
+                />
+              </div>
+              <div>
+                <label style={lbl}>Hit Dice</label>
+                <input style={inputStyle}
+                  value={char.hitDice || ""}
+                  onChange={e => update("hitDice", e.target.value)}
+                  placeholder="e.g. 4d10"
+                />
+              </div>
+            </div>
+
+            {/* Armor */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 14, alignItems: "end" }}>
+              <div>
+                <label style={{ ...lbl, marginBottom: 10 }}>Armor & Speed</label>
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  {ARMOR_OPTIONS.map(opt => {
+                    const selected = char.armorType === opt.value;
+                    return (
+                      <button
+                        key={opt.value}
+                        type="button"
+                        onClick={() => update("armorType", selected ? "" : opt.value)}
+                        style={{
+                          background: selected ? pal.accentDim : "transparent",
+                          border: `1px solid ${selected ? pal.accent : pal.border}`,
+                          borderRadius: 3, padding: "8px 16px", cursor: "pointer",
+                          display: "flex", flexDirection: "column", alignItems: "center", gap: 2,
+                        }}
+                      >
+                        <span style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", color: selected ? pal.accentBright : pal.text }}>{opt.label}</span>
+                        {opt.speed && <span style={{ fontFamily: pal.fontBody, fontSize: 11, color: selected ? pal.accent : pal.textMuted, fontStyle: "italic" }}>{opt.speed}</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div style={{ minWidth: 110 }}>
+                <label style={lbl}>Total Armor</label>
+                <input style={inputStyle} type="number" min={0}
+                  value={char.armorTotal ?? ""}
+                  onChange={e => update("armorTotal", parseInt(e.target.value) || 0)}
+                  placeholder="e.g. 16"
+                />
+              </div>
+            </div>
+          </div>
+
           {/* Spells */}
           <div style={{ marginBottom: 32 }}>
             <label style={lbl}>Key Spells & Abilities <span style={{ opacity: 0.5, textTransform: "none", fontSize: 12, letterSpacing: 0 }}>(comma-separated)</span></label>
@@ -924,6 +1151,71 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
             <button onClick={addInPlay} style={{ ...inputStyle, width: "auto", padding: "7px 16px", marginTop: 4, color: pal.accentBright, borderStyle: "dashed" }}>
               + Add Trait
             </button>
+          </div>
+
+          {/* Weapons */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={secHead}>Weapons</div>
+              <button onClick={() => setEditingItem({ listType: "weapons", item: null })} style={{
+                ...inputStyle, width: "auto", padding: "7px 16px", color: pal.accentBright, borderStyle: "dashed",
+              }}>+ Add Weapon</button>
+            </div>
+            {(char.weapons || []).length === 0 && (
+              <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>No weapons added.</div>
+            )}
+            {(char.weapons || []).map(item => (
+              <div key={item.id} style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 4, marginBottom: 8,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontFamily: pal.fontBody, fontSize: 15, color: pal.text }}>{item.name}</div>
+                  {item.mods?.length > 0 && (
+                    <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", color: pal.textMuted, marginTop: 2 }}>
+                      {item.mods.map(m => `${m.attribute} ${m.value}`).join(" · ")}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => setEditingItem({ listType: "weapons", item })} style={{ ...inputStyle, width: "auto", padding: "5px 12px", fontSize: 12, color: pal.accentBright }}>Edit</button>
+                <button onClick={() => removeWeapon(item.id)} style={{ ...inputStyle, width: 34, padding: 0, flexShrink: 0, color: pal.textMuted, fontSize: 20, textAlign: "center" }}>×</button>
+              </div>
+            ))}
+          </div>
+
+          {/* Equipment */}
+          <div style={{ marginBottom: 40 }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={secHead}>Equipment</div>
+              <button onClick={() => setEditingItem({ listType: "equipment", item: null, showType: true })} style={{
+                ...inputStyle, width: "auto", padding: "7px 16px", color: pal.accentBright, borderStyle: "dashed",
+              }}>+ Add Item</button>
+            </div>
+            {(char.equipment || []).length === 0 && (
+              <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>No equipment added.</div>
+            )}
+            {(char.equipment || []).map(item => (
+              <div key={item.id} style={{
+                display: "flex", alignItems: "center", gap: 10, padding: "10px 14px",
+                background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 4, marginBottom: 8,
+              }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
+                    <span style={{ fontFamily: pal.fontBody, fontSize: 15, color: pal.text }}>{item.name}</span>
+                    {item.type && (
+                      <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", color: pal.accent, opacity: 0.7 }}>{item.type}</span>
+                    )}
+                  </div>
+                  {item.mods?.length > 0 && (
+                    <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", color: pal.textMuted, marginTop: 2 }}>
+                      {item.mods.map(m => `${m.attribute} ${m.value}`).join(" · ")}
+                    </div>
+                  )}
+                </div>
+                <button onClick={() => setEditingItem({ listType: "equipment", item, showType: true })} style={{ ...inputStyle, width: "auto", padding: "5px 12px", fontSize: 12, color: pal.accentBright }}>Edit</button>
+                <button onClick={() => removeEquipment(item.id)} style={{ ...inputStyle, width: 34, padding: 0, flexShrink: 0, color: pal.textMuted, fontSize: 20, textAlign: "center" }}>×</button>
+              </div>
+            ))}
           </div>
 
           {/* Change Password */}
@@ -1035,6 +1327,27 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
 
         </div>
       </div>
+
+      {/* Item editor modal (weapons / equipment) */}
+      {editingItem && (
+        <ItemEditorModal
+          item={editingItem.item}
+          pal={pal}
+          showType={editingItem.showType}
+          onSave={(saved) => {
+            if (editingItem.item) {
+              if (editingItem.listType === "weapons") updateWeapon(saved.id, saved);
+              else updateEquipment(saved.id, saved);
+            } else {
+              if (editingItem.listType === "weapons") addWeapon(saved);
+              else addEquipment(saved);
+            }
+            setEditingItem(null);
+          }}
+          onClose={() => setEditingItem(null)}
+        />
+      )}
+      </>
     );
   }
 
@@ -1213,30 +1526,196 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
           <>
             {/* ── Stats block ───────────────────────────────────────────────── */}
             <div style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 4, padding: "28px 30px", marginBottom: 44, isolation: "isolate" }}>
+              {/* HP, Hit Dice & Armor */}
+              {(char.hp || char.hitDice || char.armorType || char.armorTotal > 0) && (() => {
+                const itemBonuses = {};
+                [...(char.weapons||[]), ...(char.equipment||[])].forEach(item => {
+                  (item.mods||[]).forEach(({ attribute, value }) => {
+                    const v = parseModInt(value);
+                    if (!isNaN(v)) itemBonuses[attribute] = (itemBonuses[attribute] || 0) + v;
+                  });
+                });
+                const hpBonus      = itemBonuses["HP"] || 0;
+                const acBonus      = itemBonuses["Armor"] || 0;
+                const effectiveHp  = (char.hp || 0) + hpBonus;
+                const effectiveAc  = (char.armorTotal || 0) + acBonus;
+                const diceParts    = char.hitDice ? (char.hitDice.match(/(\d+|[a-zA-Z]+|[+\-])/g) || []) : [];
+                const armorOpt     = ARMOR_OPTIONS.find(o => o.value === char.armorType);
+                // Push HP/Hit Dice numbers down to align with armor when a type label sits above it
+                const topPad = armorOpt ? 24 : 0;
+                return (
+                  <div style={{ display: "flex", justifyContent: "center", gap: 52, marginBottom: 24, flexWrap: "wrap", alignItems: "flex-start" }}>
+                    {char.hp > 0 && (
+                      <div style={{ textAlign: "center", paddingTop: topPad }}>
+                        <div style={{ fontFamily: pal.fontDisplay, fontSize: 44, color: pal.gem, lineHeight: 1 }}>{effectiveHp}</div>
+                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginTop: 5 }}>Hit Points</div>
+                        {hpBonus !== 0 && (
+                          <div style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.accent, fontStyle: "italic", opacity: 0.8, marginTop: 2 }}>
+                            {char.hp} base {hpBonus > 0 ? "+" : ""}{hpBonus} item
+                          </div>
+                        )}
+                      </div>
+                    )}
+                    {char.hitDice && (
+                      <div style={{ textAlign: "center", paddingTop: topPad }}>
+                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center" }}>
+                          {diceParts.map((part, i) => (
+                            <span key={i} style={{
+                              fontFamily: pal.fontDisplay,
+                              fontSize: /^\d+$/.test(part) ? 44 : 22,
+                              color: pal.accent, lineHeight: 1,
+                            }}>{part}</span>
+                          ))}
+                        </div>
+                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginTop: 5 }}>Hit Dice</div>
+                      </div>
+                    )}
+                    {(armorOpt || char.armorTotal > 0) && (
+                      <div style={{ textAlign: "center" }}>
+                        {armorOpt && (
+                          <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.accent, marginBottom: 5 }}>
+                            {armorOpt.label}{armorOpt.speed ? ` · ${armorOpt.speed}` : ""}
+                          </div>
+                        )}
+                        {char.armorTotal > 0 && (
+                          <>
+                            <div style={{ fontFamily: pal.fontDisplay, fontSize: 44, color: pal.accentBright, lineHeight: 1 }}>{effectiveAc}</div>
+                            {acBonus !== 0 && (
+                              <div style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.accent, fontStyle: "italic", opacity: 0.8, marginTop: 2 }}>
+                                {char.armorTotal} base {acBonus > 0 ? "+" : ""}{acBonus} item
+                              </div>
+                            )}
+                          </>
+                        )}
+                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginTop: 5 }}>
+                          Armor
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <HR color={pal.border} />
+
               <div style={secHead}>Ability Scores · Level {char.level}</div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "12px 8px", marginBottom: 8 }}>
-                {char.stats.map(({ stat, score, note }) => {
-                  const mod = modOf(score);
-                  const col = score >= 14 ? pal.gem : score <= 8 ? pal.gemLow : pal.accent;
-                  return (
-                    <div key={stat} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                      <div style={{
-                        position: "relative",
-                        width: 44, height: 44, borderRadius: "50%",
-                        border: `1px solid ${col}55`, background: `${col}14`,
-                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                      }}>
-                        <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: col, lineHeight: 1 }}>{score}</div>
-                      </div>
-                      <div>
-                        <div style={{ fontFamily: pal.fontUI, fontSize: 14, color: pal.accentBright, letterSpacing: "0.06em" }}>{stat}</div>
-                        <div style={{ fontFamily: pal.fontBody, fontSize: 12, color: pal.textMuted, marginTop: 2 }}>{note}</div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
+              {(() => {
+                // Collect individual item mod sources per attribute (keyed by attribute name)
+                const modSources = {}; // { "Strength": [{ source: "Longsword", value: 2 }, …] }
+                [...(char.weapons||[]), ...(char.equipment||[])].forEach(item => {
+                  (item.mods||[]).forEach(({ attribute, value }) => {
+                    const v = parseModInt(value);
+                    if (!isNaN(v)) {
+                      (modSources[attribute] = modSources[attribute] || []).push({ source: item.name, value: v });
+                    }
+                  });
+                });
+
+                return (
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px 8px", marginBottom: 8 }}>
+                    {char.stats.map(({ stat, score, note }) => {
+                      const baseMod    = modOf(score);
+                      const itemMods   = modSources[stat] || [];
+                      const itemBonus  = itemMods.reduce((s, m) => s + m.value, 0);
+                      const totalMod   = baseMod + itemBonus;
+                      const col        = score >= 14 ? pal.gem : score <= 8 ? pal.gemLow : pal.accent;
+                      // All sources for the flyout
+                      const sources = [
+                        { source: "Modifier", value: baseMod },
+                        ...itemMods,
+                      ];
+                      const showBadge  = totalMod !== 0;
+                      const flyoutOpen = hoveredStat === stat;
+                      const circleHandlers = {
+                        onMouseEnter: () => setHoveredStat(stat),
+                        onMouseLeave: () => setHoveredStat(null),
+                        onClick: e => { e.stopPropagation(); setHoveredStat(hoveredStat === stat ? null : stat); },
+                      };
+                      return (
+                        <div key={stat} style={{ position: "relative", display: "flex", alignItems: "center", gap: 14 }}>
+                          <div style={{ position: "relative", width: 44, height: 44, flexShrink: 0, marginLeft: 8, marginBottom: 6 }}>
+                            {/* Main score circle */}
+                            <div
+                              {...circleHandlers}
+                              style={{
+                                width: 44, height: 44, borderRadius: "50%",
+                                border: `1px solid ${col}55`, background: `${col}14`,
+                                display: "flex", alignItems: "center", justifyContent: "center",
+                                cursor: "pointer",
+                              }}
+                            >
+                              <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: col, lineHeight: 1 }}>{score}</div>
+                            </div>
+                            {/* Modifier badge — hidden when +0 */}
+                            {showBadge && (
+                              <div
+                                {...circleHandlers}
+                                style={{
+                                  position: "absolute", bottom: -6, left: -8,
+                                  width: 26, height: 26, borderRadius: "50%",
+                                  background: col, border: `2px solid ${pal.surfaceSolid}`,
+                                  display: "flex", alignItems: "center", justifyContent: "center",
+                                  cursor: "pointer", zIndex: 2,
+                                }}
+                              >
+                                <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: pal.bg, lineHeight: 1, letterSpacing: "-0.02em" }}>
+                                  {fmtMod(totalMod)}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <div style={{ fontFamily: pal.fontUI, fontSize: 14, color: pal.accentBright, letterSpacing: "0.06em" }}>{stat}</div>
+                            <div style={{ fontFamily: pal.fontBody, fontSize: 12, color: pal.textMuted, marginTop: 2 }}>{note}</div>
+                          </div>
+
+                          {/* Flyout */}
+                          {flyoutOpen && (
+                            <div style={{
+                              position: "absolute", bottom: "calc(100% + 6px)", left: 0,
+                              zIndex: 20, pointerEvents: "none",
+                              background: pal.surfaceSolid, border: `1px solid ${pal.border}`,
+                              borderRadius: 4, padding: "12px 16px", minWidth: 180,
+                              boxShadow: `0 4px 20px rgba(0,0,0,0.45)`,
+                              whiteSpace: "nowrap",
+                            }}>
+                              {/* Stat name + raw score */}
+                              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 20, marginBottom: 10 }}>
+                                <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted }}>
+                                  {stat}
+                                </div>
+                                <div style={{ fontFamily: pal.fontDisplay, fontSize: 22, color: col, lineHeight: 1 }}>
+                                  {score}
+                                </div>
+                              </div>
+                              <div style={{ borderTop: `1px solid ${pal.border}`, marginBottom: 8 }} />
+                              {/* Modifier rows */}
+                              {sources.map((s, i) => (
+                                <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 20, marginBottom: i < sources.length - 1 ? 4 : 0 }}>
+                                  <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textBody }}>{s.source}</span>
+                                  <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: s.value >= 0 ? pal.gem : pal.gemLow }}>{fmtMod(s.value)}</span>
+                                </div>
+                              ))}
+                              {/* Total row — always show */}
+                              {sources.length >= 1 && (
+                                <>
+                                  <div style={{ borderTop: `1px solid ${pal.border}`, margin: "6px 0" }} />
+                                  <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
+                                    <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted, fontStyle: "italic" }}>Total</span>
+                                    <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: col }}>{score + totalMod}</span>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               <HR color={pal.border} />
 
@@ -1252,23 +1731,135 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
                 </div>
               </div>
 
-              {/* In Play */}
-              {(char.inPlay || []).length > 0 && (
+              {/* Loadout / In Play */}
+              {((char.weapons||[]).length > 0 || (char.equipment||[]).length > 0 || (char.inPlay||[]).length > 0) && (
                 <>
                   <HR color={pal.border} />
-                  <div style={secHead}>In Play</div>
-                  <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0 28px" }}>
-                    {char.inPlay.map((item, i) => (
-                      <li key={i} style={{
-                        display: "flex", alignItems: "flex-start", gap: 10,
-                        padding: "7px 0", borderBottom: `1px solid ${pal.border}`,
-                        fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.5, color: pal.textBody,
-                      }}>
-                        <span style={{ color: pal.accentDim, fontSize: 7, marginTop: 5, flexShrink: 0 }}>◆</span>
-                        {item}
-                      </li>
-                    ))}
-                  </ul>
+                  {((char.weapons||[]).length > 0 || (char.equipment||[]).length > 0) ? (
+                    <>
+                      {/* Tab toggles */}
+                      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
+                        {["loadout", "inplay"].map(tab => (
+                          <button key={tab} onClick={() => setCombatTab(tab)} style={{
+                            padding: "4px 14px", fontFamily: pal.fontUI, fontSize: 11,
+                            letterSpacing: "0.15em", textTransform: "uppercase",
+                            background: combatTab === tab ? pal.accentDim : "transparent",
+                            border: `1px solid ${combatTab === tab ? pal.accent : pal.border}`,
+                            borderRadius: 2, color: combatTab === tab ? pal.accentBright : pal.textMuted,
+                            cursor: "pointer",
+                          }}>
+                            {tab === "loadout" ? "Loadout" : "In Play"}
+                          </button>
+                        ))}
+                      </div>
+
+                      {combatTab === "loadout" ? (
+                        <div className="loadout-grid">
+                          {/* Weapons column */}
+                          {(char.weapons||[]).length > 0 ? (
+                            <div>
+                              <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 10 }}>Weapons</div>
+                              {char.weapons.map(item => {
+                                const expanded = expandedItems.has(item.id);
+                                return (
+                                  <div key={item.id} onClick={() => item.description && toggleExpanded(item.id)} style={{
+                                    padding: "9px 0", borderBottom: `1px solid ${pal.border}`,
+                                    cursor: item.description ? "pointer" : "default",
+                                  }}>
+                                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                                      <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{item.name}</span>
+                                      {item.mods?.length > 0 && (
+                                        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>
+                                          {item.mods.map(m => `${m.attribute} ${m.value}`).join(" · ")}
+                                        </span>
+                                      )}
+                                      {item.description && (
+                                        <span style={{ marginLeft: "auto", color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>
+                                      )}
+                                    </div>
+                                    {expanded && item.description && (
+                                      <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>
+                                        {item.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : <div />}
+                          {/* Equipment column */}
+                          {(char.equipment||[]).length > 0 ? (
+                            <div>
+                              <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 10 }}>Equipment</div>
+                              {char.equipment.map(item => {
+                                const expanded = expandedItems.has(item.id);
+                                return (
+                                  <div key={item.id} onClick={() => item.description && toggleExpanded(item.id)} style={{
+                                    padding: "9px 0", borderBottom: `1px solid ${pal.border}`,
+                                    cursor: item.description ? "pointer" : "default",
+                                  }}>
+                                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                                      <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{item.name}</span>
+                                      {item.type && (
+                                        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", color: pal.accent, opacity: 0.75 }}>{item.type}</span>
+                                      )}
+                                      {item.mods?.length > 0 && (
+                                        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>
+                                          {item.mods.map(m => `${m.attribute} ${m.value}`).join(" · ")}
+                                        </span>
+                                      )}
+                                      {item.description && (
+                                        <span style={{ marginLeft: "auto", color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>
+                                      )}
+                                    </div>
+                                    {expanded && item.description && (
+                                      <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>
+                                        {item.description}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          ) : <div />}
+                        </div>
+                      ) : (
+                        (char.inPlay||[]).length > 0 ? (
+                          <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0 28px" }}>
+                            {char.inPlay.map((item, i) => (
+                              <li key={i} style={{
+                                display: "flex", alignItems: "flex-start", gap: 10,
+                                padding: "7px 0", borderBottom: `1px solid ${pal.border}`,
+                                fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.5, color: pal.textBody,
+                              }}>
+                                <span style={{ color: pal.accentDim, fontSize: 7, marginTop: 5, flexShrink: 0 }}>◆</span>
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>No in-play traits.</div>
+                        )
+                      )}
+                    </>
+                  ) : (
+                    /* No loadout — show In Play directly */
+                    <>
+                      <div style={secHead}>In Play</div>
+                      <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0 28px" }}>
+                        {(char.inPlay||[]).map((item, i) => (
+                          <li key={i} style={{
+                            display: "flex", alignItems: "flex-start", gap: 10,
+                            padding: "7px 0", borderBottom: `1px solid ${pal.border}`,
+                            fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.5, color: pal.textBody,
+                          }}>
+                            <span style={{ color: pal.accentDim, fontSize: 7, marginTop: 5, flexShrink: 0 }}>◆</span>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                 </>
               )}
             </div>
