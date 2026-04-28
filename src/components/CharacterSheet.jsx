@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Link } from "react-router-dom";
+import { verifyPassword as apiVerify, updateCharacter, getPortraitUploadUrl } from "../api";
 
 // ── Global styles ─────────────────────────────────────────────────────────────
 const GLOBAL_CSS = `
@@ -25,6 +27,14 @@ const GLOBAL_CSS = `
   ::-webkit-scrollbar { width: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .dnd-spinner {
+    width: 28px; height: 28px; border-radius: 50%;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    animation: spin 0.7s linear infinite;
+  }
 
   select {
     background: var(--input-bg, rgba(255,255,255,0.05));
@@ -277,8 +287,74 @@ const BLANK_CHARACTER = {
   ],
 };
 
+// ── Change Password form ──────────────────────────────────────────────────────
+function ChangePasswordForm({ pal, inputStyle, lbl, slug, currentPassword, onSuccess }) {
+  const [newPwd,     setNewPwd]     = useState("");
+  const [confirmPwd, setConfirmPwd] = useState("");
+  const [status,     setStatus]     = useState(null); // null | "saving" | "saved" | "error"
+  const [error,      setError]      = useState(null);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (newPwd !== confirmPwd) { setError("Passwords don't match."); return; }
+    setError(null);
+    setStatus("saving");
+    try {
+      await updateCharacter(slug, { newPassword: newPwd }, currentPassword);
+      setStatus("saved");
+      onSuccess(newPwd);
+      setNewPwd("");
+      setConfirmPwd("");
+      setTimeout(() => setStatus(null), 2500);
+    } catch (err) {
+      setError(err.message);
+      setStatus("error");
+      setTimeout(() => setStatus(null), 3000);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <p style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, marginBottom: 16, lineHeight: 1.6 }}>
+        Leave blank to remove the password (sheet becomes publicly editable).
+      </p>
+      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
+        <div>
+          <label style={lbl}>New Password</label>
+          <input type="password" style={inputStyle} value={newPwd}
+            onChange={e => setNewPwd(e.target.value)} placeholder="Leave blank for no password" />
+        </div>
+        <div>
+          <label style={lbl}>Confirm Password</label>
+          <input type="password" style={inputStyle} value={confirmPwd}
+            onChange={e => setConfirmPwd(e.target.value)} placeholder="Repeat new password" />
+        </div>
+      </div>
+      {error && (
+        <div style={{ color: "#c06060", fontFamily: pal.fontBody, fontSize: 14, marginBottom: 10 }}>
+          {error}
+        </div>
+      )}
+      <button type="submit" disabled={status === "saving"} style={{
+        ...inputStyle, width: "auto", padding: "8px 22px",
+        background: status === "saved" ? pal.accentDim : pal.surface,
+        borderColor: status === "saved" ? pal.accent : pal.border,
+        color: status === "saved" ? pal.accentBright : pal.textMuted,
+        cursor: "pointer", opacity: status === "saving" ? 0.6 : 1,
+      }}>
+        {status === "saving" ? "Updating…" : status === "saved" ? "✓ Password Updated" : "Update Password"}
+      </button>
+    </form>
+  );
+}
+
 // ── Main component ────────────────────────────────────────────────────────────
-export default function CharacterSheet({ initialData }) {
+// Props:
+//   initialData  — character object (from API or blank)
+//   slug         — character slug (present for existing characters)
+//   onSave       — async (charData, password) => void  (existing character save)
+//   onCreate     — (charData) => void  (new character flow, triggers password modal upstream)
+export default function CharacterSheet({ initialData, slug, onSave, onCreate }) {
   useGlobalStyles();
 
   const [mode, setMode]     = useState("view");
@@ -292,11 +368,60 @@ export default function CharacterSheet({ initialData }) {
   const [dragInfo, setDragInfo] = useState(null); // { collectionId, fromIdx }
   const [dragOver, setDragOver] = useState(null); // { collectionId, toIdx }
 
+  // Password unlock state (existing characters)
+  const [unlockState,   setUnlockState]   = useState("locked"); // "locked" | "prompting" | "unlocked"
+  const [unlockIntent,  setUnlockIntent]  = useState("view");   // "view" | "edit"
+  const [unlockChecking, setUnlockChecking] = useState(!!slug);  // true while auto-unlock runs on mount
+  const [unlockLoading, setUnlockLoading] = useState(false);    // true while button-triggered check runs
+  const [unlockInput,   setUnlockInput]   = useState("");
+  const [unlockError,   setUnlockError]   = useState(null);
+  const [unlockedPassword, setUnlockedPassword] = useState(null);
+  const [unlockedRole,     setUnlockedRole]      = useState(null);
+
+  // Save state
+  const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved" | "error"
+
   const fileRef       = useRef();
   const importRef     = useRef();
 
   const pal = PALETTES[char.palette] || PALETTES.ember;
   const isVellum = pal.name === "Vellum";
+
+  // Auto-unlock on mount: try DM session or stored character password
+  useEffect(() => {
+    if (!slug) { setUnlockChecking(false); return; }
+
+    const applyUnlock = (password, role) => {
+      setUnlockedPassword(password);
+      setUnlockedRole(role);
+      setUnlockState("unlocked");
+    };
+
+    const tryVerify = async (password, onFail) => {
+      try {
+        const result = await apiVerify(slug, password);
+        if (result.valid) {
+          applyUnlock(password, result.role);
+          if (result.role === "dm") sessionStorage.setItem("dnd_dm_password", password);
+          else sessionStorage.setItem(`dnd_char_${slug}`, password);
+          return true;
+        }
+      } catch {}
+      if (onFail) onFail();
+      return false;
+    };
+
+    const dmPwd   = sessionStorage.getItem("dnd_dm_password");
+    const charPwd = sessionStorage.getItem(`dnd_char_${slug}`);
+
+    const run = dmPwd
+      ? tryVerify(dmPwd, () => sessionStorage.removeItem("dnd_dm_password"))
+      : charPwd !== null
+        ? tryVerify(charPwd, () => sessionStorage.removeItem(`dnd_char_${slug}`))
+        : Promise.resolve(false);
+
+    run.finally(() => setUnlockChecking(false));
+  }, [slug]);
 
   // Sync incoming prop changes (when route changes)
   useEffect(() => {
@@ -430,8 +555,23 @@ export default function CharacterSheet({ initialData }) {
   };
 
   // Portrait
-  const handlePortrait = e => {
+  const handlePortrait = async e => {
     const file = e.target.files[0]; if (!file) return;
+
+    // If we have a slug + password, upload to S3 via presigned URL
+    if (slug && unlockedPassword) {
+      try {
+        const { uploadUrl, portraitUrl } = await getPortraitUploadUrl(slug, unlockedPassword, file.type);
+        await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+        update("portraitUrl", portraitUrl);
+        update("portrait", ""); // clear any old base64
+      } catch {
+        alert("Portrait upload failed. Please try again.");
+      }
+      return;
+    }
+
+    // Fallback: store as base64 (new character, not yet in DB)
     const reader = new FileReader();
     reader.onload = ev => update("portrait", ev.target.result);
     reader.readAsDataURL(file);
@@ -464,6 +604,84 @@ export default function CharacterSheet({ initialData }) {
     };
     reader.readAsText(file);
     e.target.value = "";
+  };
+
+  // ── Password unlock (existing characters) ───────────────────────────────────
+  const handleUnlockSubmit = async (e) => {
+    e.preventDefault();
+    setUnlockError(null);
+    try {
+      const result = await apiVerify(slug, unlockInput);
+      if (result.valid) {
+        setUnlockedPassword(unlockInput);
+        setUnlockedRole(result.role);
+        setUnlockState("unlocked");
+        if (result.role === "dm") sessionStorage.setItem("dnd_dm_password", unlockInput);
+        else sessionStorage.setItem(`dnd_char_${slug}`, unlockInput);
+        if (unlockIntent === "edit") setMode("edit");
+        setUnlockInput("");
+      } else {
+        setUnlockError("Incorrect password.");
+      }
+    } catch {
+      setUnlockError("Could not verify password. Please try again.");
+    }
+  };
+
+  const handleEditClick = async () => {
+    if (!slug) { setMode("edit"); return; }
+    if (unlockState === "unlocked") { setMode("edit"); return; }
+    setUnlockIntent("edit");
+    setUnlockLoading(true);
+    const result = await apiVerify(slug, "").catch(() => ({ valid: false }));
+    setUnlockLoading(false);
+    if (result.valid) {
+      setUnlockedPassword("");
+      setUnlockedRole(result.role);
+      setUnlockState("unlocked");
+      if (result.role === "dm") sessionStorage.setItem("dnd_dm_password", "");
+      else sessionStorage.setItem(`dnd_char_${slug}`, "");
+      setMode("edit");
+    } else {
+      setUnlockState("prompting");
+    }
+  };
+
+  const handleViewUnlock = async () => {
+    setUnlockIntent("view");
+    setUnlockLoading(true);
+    const result = await apiVerify(slug, "").catch(() => ({ valid: false }));
+    setUnlockLoading(false);
+    if (result.valid) {
+      setUnlockedPassword("");
+      setUnlockedRole(result.role);
+      setUnlockState("unlocked");
+      if (result.role === "dm") sessionStorage.setItem("dnd_dm_password", "");
+      else sessionStorage.setItem(`dnd_char_${slug}`, "");
+    } else {
+      setUnlockState("prompting");
+    }
+  };
+
+  const handleCancelUnlock = () => {
+    setUnlockState("locked");
+    setUnlockInput("");
+    setUnlockError(null);
+  };
+
+  // ── Save ─────────────────────────────────────────────────────────────────────
+  const handleSave = async () => {
+    if (!onSave) return;
+    setSaveStatus("saving");
+    try {
+      await onSave(char, unlockedPassword);
+      setSaveStatus("saved");
+      setTimeout(() => setSaveStatus(null), 2500);
+    } catch (err) {
+      setSaveStatus("error");
+      alert(`Save failed: ${err.message}`);
+      setTimeout(() => setSaveStatus(null), 3000);
+    }
   };
 
   // ── Style helpers ────────────────────────────────────────────────────────────
@@ -529,12 +747,39 @@ export default function CharacterSheet({ initialData }) {
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <input ref={importRef} type="file" accept=".json" onChange={importJSON} style={{ display: "none" }} />
-              <button onClick={() => importRef.current.click()} style={{ ...inputStyle, width: "auto", padding: "8px 16px", fontSize: 14 }}>
-                Import JSON
-              </button>
+              {!slug && (
+                <button onClick={() => importRef.current.click()} style={{ ...inputStyle, width: "auto", padding: "8px 16px", fontSize: 14 }}>
+                  Import JSON
+                </button>
+              )}
               <button onClick={exportJSON} style={{ ...inputStyle, width: "auto", padding: "8px 16px", fontSize: 14 }}>
                 Export JSON
               </button>
+              {slug && onSave && (
+                <button
+                  onClick={handleSave}
+                  disabled={saveStatus === "saving"}
+                  style={{
+                    ...inputStyle, width: "auto", padding: "9px 22px",
+                    background: saveStatus === "saved" ? pal.accentDim : pal.surface,
+                    borderColor: saveStatus === "saved" ? pal.accent : pal.border,
+                    color: saveStatus === "saved" ? pal.accentBright : pal.textMuted,
+                    fontFamily: pal.fontUI, fontSize: 14, letterSpacing: "0.08em",
+                    opacity: saveStatus === "saving" ? 0.6 : 1,
+                  }}
+                >
+                  {saveStatus === "saving" ? "Saving…" : saveStatus === "saved" ? "✓ Saved" : saveStatus === "error" ? "Error" : "Save"}
+                </button>
+              )}
+              {!slug && onCreate && (
+                <button onClick={() => onCreate(char)} style={{
+                  ...inputStyle, width: "auto", padding: "9px 22px",
+                  background: pal.accentDim, borderColor: pal.accent,
+                  color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 14, letterSpacing: "0.08em",
+                }}>
+                  Create Character →
+                </button>
+              )}
               <button onClick={() => setMode("view")} style={{
                 ...inputStyle, width: "auto", padding: "9px 22px",
                 background: pal.accentDim, borderColor: pal.accent,
@@ -568,8 +813,8 @@ export default function CharacterSheet({ initialData }) {
           <div style={{ marginBottom: 20 }}>
             <div style={secHead}>Portrait Image</div>
             <div style={{ display: "flex", gap: 18, alignItems: "flex-start" }}>
-              {char.portrait && (
-                <img src={char.portrait} alt="portrait" style={{
+              {(char.portraitUrl || char.portrait) && (
+                <img src={char.portraitUrl || char.portrait} alt="portrait" style={{
                   width: 90, height: 90, objectFit: "cover",
                   borderRadius: 4, border: `1px solid ${pal.border}`, flexShrink: 0,
                 }} />
@@ -577,10 +822,10 @@ export default function CharacterSheet({ initialData }) {
               <div style={{ display: "flex", gap: 10, flexWrap: "wrap", alignItems: "center" }}>
                 <input ref={fileRef} type="file" accept="image/*" onChange={handlePortrait} style={{ display: "none" }} />
                 <button onClick={() => fileRef.current.click()} style={{ ...inputStyle, width: "auto", padding: "8px 18px" }}>
-                  {char.portrait ? "Change Image" : "Upload Image"}
+                  {(char.portraitUrl || char.portrait) ? "Change Image" : "Upload Image"}
                 </button>
-                {char.portrait && (
-                  <button onClick={() => update("portrait", "")} style={{ ...inputStyle, width: "auto", padding: "8px 16px", color: pal.textMuted }}>
+                {(char.portraitUrl || char.portrait) && (
+                  <button onClick={() => { update("portrait", ""); update("portraitUrl", ""); }} style={{ ...inputStyle, width: "auto", padding: "8px 16px", color: pal.textMuted }}>
                     Remove
                   </button>
                 )}
@@ -680,6 +925,19 @@ export default function CharacterSheet({ initialData }) {
               + Add Trait
             </button>
           </div>
+
+          {/* Change Password */}
+          {slug && (
+            <div style={{ marginBottom: 40, borderTop: `1px solid ${pal.border}`, paddingTop: 32 }}>
+              <div style={secHead}>Change Password</div>
+              <ChangePasswordForm pal={pal} inputStyle={inputStyle} lbl={lbl}
+                slug={slug} currentPassword={unlockedPassword}
+                onSuccess={(newPwd) => {
+                  setUnlockedPassword(newPwd);
+                }}
+              />
+            </div>
+          )}
 
           {/* Collections */}
           <div style={{ borderTop: `1px solid ${pal.border}`, paddingTop: 32 }}>
@@ -802,23 +1060,93 @@ export default function CharacterSheet({ initialData }) {
 
       <div style={{ position: "relative", zIndex: 1, maxWidth: 840, margin: "0 auto", padding: "30px 28px 100px" }}>
 
-        {/* Edit + Export buttons */}
-        <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginBottom: 40 }}>
-          <button onClick={exportJSON} style={{
-            background: "transparent", border: `1px solid ${pal.border}`, color: pal.textMuted,
+        {/* Top bar: back link + edit/export buttons */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, marginBottom: 40 }}>
+          <Link to="/" style={{
             fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.18em",
-            textTransform: "uppercase", padding: "5px 14px", borderRadius: 2, cursor: "pointer",
+            textTransform: "uppercase", color: pal.textMuted, textDecoration: "none",
           }}>
-            Export JSON
-          </button>
-          <button onClick={() => setMode("edit")} style={{
-            background: "transparent", border: `1px solid ${pal.border}`, color: pal.textMuted,
-            fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.18em",
-            textTransform: "uppercase", padding: "5px 14px", borderRadius: 2, cursor: "pointer",
-          }}>
-            Edit Character
-          </button>
+            ← All Characters
+          </Link>
+          <div style={{ display: "flex", gap: 8 }}>
+            <button onClick={exportJSON} style={{
+              background: "transparent", border: `1px solid ${pal.border}`, color: pal.textMuted,
+              fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.18em",
+              textTransform: "uppercase", padding: "5px 14px", borderRadius: 2, cursor: "pointer",
+            }}>
+              Export JSON
+            </button>
+            <button onClick={handleEditClick} disabled={unlockLoading || unlockChecking} style={{
+              background: "transparent", border: `1px solid ${pal.border}`, color: pal.textMuted,
+              fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.18em",
+              textTransform: "uppercase", padding: "5px 14px", borderRadius: 2, cursor: "pointer",
+              display: "flex", alignItems: "center", gap: 6, opacity: unlockLoading ? 0.6 : 1,
+            }}>
+              {unlockLoading
+                ? <><div className="dnd-spinner" style={{ width: 12, height: 12, borderTopColor: pal.textMuted }} /> Checking…</>
+                : unlockState === "unlocked" ? "Edit Character" : "🔒 Edit Character"
+              }
+            </button>
+          </div>
         </div>
+
+        {/* Password unlock prompt */}
+        {unlockState === "prompting" && (
+          <div style={{
+            position: "fixed", inset: 0, zIndex: 100,
+            background: "rgba(0,0,0,0.75)", display: "flex",
+            alignItems: "center", justifyContent: "center", padding: 24,
+          }}>
+            <div style={{
+              background: pal.surfaceSolid, border: `1px solid ${pal.border}`,
+              borderRadius: 6, padding: "32px 28px", width: "100%", maxWidth: 360,
+            }}>
+              <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 8 }}>
+                Unlock to Edit
+              </div>
+              <div style={{ fontFamily: pal.fontDisplay, fontSize: 20, color: pal.text, marginBottom: 20 }}>
+                {char.name}
+              </div>
+              <form onSubmit={handleUnlockSubmit}>
+                <input
+                  type="password"
+                  autoFocus
+                  placeholder="Enter character password…"
+                  value={unlockInput}
+                  onChange={e => setUnlockInput(e.target.value)}
+                  style={{
+                    background: pal.surface, border: `1px solid ${pal.border}`,
+                    borderRadius: 3, color: pal.text, fontFamily: pal.fontBody,
+                    fontSize: 16, padding: "9px 13px", width: "100%", outline: "none",
+                    marginBottom: 8,
+                  }}
+                />
+                {unlockError && (
+                  <div style={{ color: "#c06060", fontFamily: pal.fontBody, fontSize: 14, marginBottom: 12 }}>
+                    {unlockError}
+                  </div>
+                )}
+                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+                  <button type="button" onClick={handleCancelUnlock} style={{
+                    background: "transparent", border: `1px solid ${pal.border}`,
+                    borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontBody,
+                    fontSize: 14, padding: "8px 16px", cursor: "pointer", flex: 1,
+                  }}>
+                    Cancel
+                  </button>
+                  <button type="submit" style={{
+                    background: pal.accentDim, border: `1px solid ${pal.accent}`,
+                    borderRadius: 3, color: pal.accentBright, fontFamily: pal.fontUI,
+                    fontSize: 14, letterSpacing: "0.08em", padding: "9px 18px",
+                    cursor: "pointer", flex: 2,
+                  }}>
+                    Unlock
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* ── Header ──────────────────────────────────────────────────────── */}
         <header style={{ textAlign: "center", marginBottom: 52, paddingBottom: 40, borderBottom: `1px solid ${pal.border}` }}>
@@ -865,9 +1193,9 @@ export default function CharacterSheet({ initialData }) {
         </header>
 
         {/* ── Portrait ────────────────────────────────────────────────────── */}
-        {char.portrait && (
+        {(char.portraitUrl || char.portrait) && (
           <div style={{ width: "calc(100% + 56px)", marginLeft: -28, marginRight: -28, marginBottom: 44, overflow: "hidden", borderRadius: 4 }}>
-            <img src={char.portrait} alt={char.name} style={{ width: "100%", display: "block" }} />
+            <img src={char.portraitUrl || char.portrait} alt={char.name} style={{ width: "100%", display: "block" }} />
             {char.tagline && (
               <p style={{
                 margin: 0, padding: "14px 28px 10px",
@@ -880,137 +1208,158 @@ export default function CharacterSheet({ initialData }) {
           </div>
         )}
 
-        {/* ── Stats block ─────────────────────────────────────────────────── */}
-        <div style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 4, padding: "28px 30px", marginBottom: 44, isolation: "isolate" }}>
-          <div style={secHead}>Ability Scores · Level {char.level}</div>
+        {/* ── Private content (requires unlock) ───────────────────────────── */}
+        {unlockState === "unlocked" ? (
+          <>
+            {/* ── Stats block ───────────────────────────────────────────────── */}
+            <div style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 4, padding: "28px 30px", marginBottom: 44, isolation: "isolate" }}>
+              <div style={secHead}>Ability Scores · Level {char.level}</div>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "12px 8px", marginBottom: 8 }}>
-            {char.stats.map(({ stat, score, note }) => {
-              const mod = modOf(score); //used to calculate the modifier for ability scores. Not yet implemented
-              const col = score >= 14 ? pal.gem : score <= 8 ? pal.gemLow : pal.accent;
-              return (
-                <div key={stat} style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{
-                    position: "relative",
-                    width: 44, height: 44, borderRadius: "50%",
-                    border: `1px solid ${col}55`, background: `${col}14`,
-                    display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
-                  }}>
-                    <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: col, lineHeight: 1 }}>{score}</div>
-                   {/* Style for use with Ability mod scores. Not Yet Implemented
-                    <div style={{
-                      position: "absolute",
-                      right: -8, bottom: -8,
-                      width: 26, height: 26, borderRadius: "50%",
-                      border: `1px solid ${col}55`, background: pal.surfaceSolid,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      fontFamily: pal.fontUI, fontSize: 16, color: col, lineHeight: 1,
-                    }}>
-                      {fmtMod(mod)}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(170px, 1fr))", gap: "12px 8px", marginBottom: 8 }}>
+                {char.stats.map(({ stat, score, note }) => {
+                  const mod = modOf(score);
+                  const col = score >= 14 ? pal.gem : score <= 8 ? pal.gemLow : pal.accent;
+                  return (
+                    <div key={stat} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                      <div style={{
+                        position: "relative",
+                        width: 44, height: 44, borderRadius: "50%",
+                        border: `1px solid ${col}55`, background: `${col}14`,
+                        display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0,
+                      }}>
+                        <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: col, lineHeight: 1 }}>{score}</div>
+                      </div>
+                      <div>
+                        <div style={{ fontFamily: pal.fontUI, fontSize: 14, color: pal.accentBright, letterSpacing: "0.06em" }}>{stat}</div>
+                        <div style={{ fontFamily: pal.fontBody, fontSize: 12, color: pal.textMuted, marginTop: 2 }}>{note}</div>
+                      </div>
                     </div>
-                    */}
-                  </div>
-                  <div>
-                    <div style={{ fontFamily: pal.fontUI, fontSize: 14, color: pal.accentBright, letterSpacing: "0.06em" }}>{stat}</div>
-                    <div style={{ fontFamily: pal.fontBody, fontSize: 12, color: pal.textMuted, marginTop: 2 }}>{note}</div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+                  );
+                })}
+              </div>
 
-          <HR color={pal.border} />
-
-          {/* Spells */}
-          <div style={{ marginBottom: 4 }}>
-            <div style={secHead}>Key Spells & Abilities</div>
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-              {(char.spells || []).map(spell => (
-                <span key={spell} style={{ fontFamily: pal.fontUI, fontSize: 16, letterSpacing: "0.08em", padding: "4px 13px", border: `1px solid ${pal.border}`, borderRadius: 2, color: pal.accent }}>
-                  {spell}
-                </span>
-              ))}
-            </div>
-          </div>
-
-          {/* In Play */}
-          {(char.inPlay || []).length > 0 && (
-            <>
               <HR color={pal.border} />
-              <div style={secHead}>In Play</div>
-              <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0 28px" }}>
-                {char.inPlay.map((item, i) => (
-                  <li key={i} style={{
-                    display: "flex", alignItems: "flex-start", gap: 10,
-                    padding: "7px 0", borderBottom: `1px solid ${pal.border}`,
-                    fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.5, color: pal.textBody,
-                  }}>
-                    <span style={{ color: pal.accentDim, fontSize: 7, marginTop: 5, flexShrink: 0 }}>◆</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
 
-        {/* ── Navigation ──────────────────────────────────────────────────── */}
-        <div style={{ marginBottom: 36 }}>
-          {char.collections.map(col => {
-            if (!col.sections.length) return null;
-            return (
-              <div key={col.id} style={{ marginBottom: 10 }}>
-                <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.22em", color: pal.accentDim, textTransform: "uppercase", textAlign: "center", marginBottom: 8 }}>
-                  {col.label}
-                </div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
-                  {col.sections.map(s => {
-                    const isActive = active?.collectionId === col.id && active?.sectionId === s.id;
-                    return (
-                      <button key={s.id} onClick={() => setActive({ collectionId: col.id, sectionId: s.id })} style={navBtn(isActive)}>
-                        {s.title}
-                      </button>
-                    );
-                  })}
+              {/* Spells */}
+              <div style={{ marginBottom: 4 }}>
+                <div style={secHead}>Key Spells & Abilities</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {(char.spells || []).map(spell => (
+                    <span key={spell} style={{ fontFamily: pal.fontUI, fontSize: 16, letterSpacing: "0.08em", padding: "4px 13px", border: `1px solid ${pal.border}`, borderRadius: 2, color: pal.accent }}>
+                      {spell}
+                    </span>
+                  ))}
                 </div>
               </div>
-            );
-          })}
-        </div>
 
-        {/* ── Active section content ───────────────────────────────────────── */}
-        {activeSec && (
-          <div>
-            <h2 style={{
-              fontFamily: pal.fontDisplay, fontWeight: 400, fontSize: 14,
-              letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accent, marginBottom: 28,
-            }}>
-              {activeSec.title}
-            </h2>
+              {/* In Play */}
+              {(char.inPlay || []).length > 0 && (
+                <>
+                  <HR color={pal.border} />
+                  <div style={secHead}>In Play</div>
+                  <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0 28px" }}>
+                    {char.inPlay.map((item, i) => (
+                      <li key={i} style={{
+                        display: "flex", alignItems: "flex-start", gap: 10,
+                        padding: "7px 0", borderBottom: `1px solid ${pal.border}`,
+                        fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.5, color: pal.textBody,
+                      }}>
+                        <span style={{ color: pal.accentDim, fontSize: 7, marginTop: 5, flexShrink: 0 }}>◆</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
 
-            {activeSec.type === "list" ? (
-              <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
-                {(activeSec.items || []).map((item, i) => (
-                  <li key={i} style={{
-                    display: "flex", alignItems: "flex-start", gap: 12,
-                    padding: "10px 0", borderBottom: `1px solid ${pal.border}`,
-                    fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.6, color: pal.textBody,
-                  }}>
-                    <span style={{ color: pal.accent, marginTop: 5, fontSize: 10, flexShrink: 0 }}>◆</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            ) : (
+            {/* ── Navigation ────────────────────────────────────────────────── */}
+            <div style={{ marginBottom: 36 }}>
+              {char.collections.map(col => {
+                if (!col.sections.length) return null;
+                return (
+                  <div key={col.id} style={{ marginBottom: 10 }}>
+                    <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.22em", color: pal.accentDim, textTransform: "uppercase", textAlign: "center", marginBottom: 8 }}>
+                      {col.label}
+                    </div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center" }}>
+                      {col.sections.map(s => {
+                        const isActive = active?.collectionId === col.id && active?.sectionId === s.id;
+                        return (
+                          <button key={s.id} onClick={() => setActive({ collectionId: col.id, sectionId: s.id })} style={navBtn(isActive)}>
+                            {s.title}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* ── Active section content ─────────────────────────────────────── */}
+            {activeSec && (
               <div>
-                {(activeSec.content || "").split("\n\n").filter(Boolean).map((para, i) => (
-                  <p key={i} style={{ fontFamily: pal.fontBody, fontSize: 18, lineHeight: 1.9, color: pal.textBody, marginBottom: 22, textAlign: "justify" }}>
-                    {renderInline(para.trim())}
-                  </p>
-                ))}
+                <h2 style={{
+                  fontFamily: pal.fontDisplay, fontWeight: 400, fontSize: 14,
+                  letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accent, marginBottom: 28,
+                }}>
+                  {activeSec.title}
+                </h2>
+
+                {activeSec.type === "list" ? (
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {(activeSec.items || []).map((item, i) => (
+                      <li key={i} style={{
+                        display: "flex", alignItems: "flex-start", gap: 12,
+                        padding: "10px 0", borderBottom: `1px solid ${pal.border}`,
+                        fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.6, color: pal.textBody,
+                      }}>
+                        <span style={{ color: pal.accent, marginTop: 5, fontSize: 10, flexShrink: 0 }}>◆</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <div>
+                    {(activeSec.content || "").split("\n\n").filter(Boolean).map((para, i) => (
+                      <p key={i} style={{ fontFamily: pal.fontBody, fontSize: 18, lineHeight: 1.9, color: pal.textBody, marginBottom: 22, textAlign: "justify" }}>
+                        {renderInline(para.trim())}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
-          </div>
+          </>
+        ) : (
+          /* ── Locked state: spinner while checking, then prompt ───────────── */
+          slug && (
+            <div style={{
+              textAlign: "center", padding: "40px 0 20px",
+              borderTop: `1px solid ${pal.border}`,
+            }}>
+              {unlockChecking || unlockLoading ? (
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", gap: 10, color: pal.textMuted }}>
+                  <div className="dnd-spinner" style={{ borderTopColor: pal.textMuted }} />
+                </div>
+              ) : (
+                <>
+                  <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 16 }}>
+                    Full sheet is private
+                  </div>
+                  <button onClick={handleViewUnlock} style={{
+                    background: "transparent", border: `1px solid ${pal.border}`,
+                    borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI,
+                    fontSize: 12, letterSpacing: "0.15em", textTransform: "uppercase",
+                    padding: "8px 20px", cursor: "pointer",
+                  }}>
+                    🔒 Unlock with password
+                  </button>
+                </>
+              )}
+            </div>
+          )
         )}
 
         {/* ── Footer ──────────────────────────────────────────────────────── */}

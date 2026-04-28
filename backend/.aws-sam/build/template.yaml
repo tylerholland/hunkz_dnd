@@ -1,0 +1,225 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: DnD Character Builder backend
+Parameters:
+  DmPasswordHash:
+    Type: String
+    NoEcho: true
+    Description: bcrypt hash of the DM master password (stored in SSM at /dnd/dm-password-hash)
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 15
+    MemorySize: 256
+    CodeUri: ./
+    Environment:
+      Variables:
+        TABLE_NAME:
+          Ref: CharactersTable
+        PORTRAITS_BUCKET:
+          Ref: PortraitsBucket
+        DM_PASSWORD_HASH:
+          Ref: DmPasswordHash
+Resources:
+  CharactersApi:
+    Type: AWS::Serverless::HttpApi
+    Properties:
+      CorsConfiguration:
+        AllowOrigins:
+        - '*'
+        AllowHeaders:
+        - Content-Type
+        - x-character-password
+        AllowMethods:
+        - GET
+        - POST
+        - PUT
+        - DELETE
+        - OPTIONS
+  CharactersTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: dnd-characters
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+      - AttributeName: slug
+        AttributeType: S
+      KeySchema:
+      - AttributeName: slug
+        KeyType: HASH
+  PortraitsBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: hunkz-dnd-portraits
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: false
+        BlockPublicPolicy: false
+        IgnorePublicAcls: false
+        RestrictPublicBuckets: false
+      CorsConfiguration:
+        CorsRules:
+        - AllowedOrigins:
+          - '*'
+          AllowedMethods:
+          - GET
+          - PUT
+          AllowedHeaders:
+          - '*'
+          MaxAge: 3000
+  PortraitsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket:
+        Ref: PortraitsBucket
+      PolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+        - Effect: Allow
+          Principal: '*'
+          Action: s3:GetObject
+          Resource:
+            Fn::Sub: ${PortraitsBucket.Arn}/portraits/*
+  ListFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/list.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: CharactersApi
+            Path: /characters
+            Method: GET
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: ListFunction
+    Metadata:
+      SamResourceId: ListFunction
+  GetFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/get.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: CharactersApi
+            Path: /characters/{slug}
+            Method: GET
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: GetFunction
+    Metadata:
+      SamResourceId: GetFunction
+  CreateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/create.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: CharactersApi
+            Path: /characters
+            Method: POST
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: CreateFunction
+    Metadata:
+      SamResourceId: CreateFunction
+  UpdateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/update.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: CharactersApi
+            Path: /characters/{slug}
+            Method: PUT
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: UpdateFunction
+    Metadata:
+      SamResourceId: UpdateFunction
+  DeleteFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/delete.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: CharactersApi
+            Path: /characters/{slug}
+            Method: DELETE
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: DeleteFunction
+    Metadata:
+      SamResourceId: DeleteFunction
+  VerifyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/verify.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: CharactersApi
+            Path: /characters/{slug}/verify
+            Method: POST
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: VerifyFunction
+    Metadata:
+      SamResourceId: VerifyFunction
+  PortraitUrlFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/portrait.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            ApiId:
+              Ref: CharactersApi
+            Path: /characters/{slug}/portrait-url
+            Method: POST
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: CharactersTable
+      - S3WritePolicy:
+          BucketName:
+            Ref: PortraitsBucket
+      CodeUri: PortraitUrlFunction
+    Metadata:
+      SamResourceId: PortraitUrlFunction
+Outputs:
+  ApiUrl:
+    Description: HTTP API endpoint URL
+    Value:
+      Fn::Sub: https://${CharactersApi}.execute-api.${AWS::Region}.amazonaws.com
+  PortraitsBucketName:
+    Value:
+      Ref: PortraitsBucket

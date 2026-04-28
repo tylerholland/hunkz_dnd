@@ -1,0 +1,15 @@
+version = 0.1
+
+[default]
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.deploy.parameters]
+stack_name = "dnd-character-builder"
+region = "us-west-1"
+confirm_changeset = true
+capabilities = "CAPABILITY_IAM"
+resolve_s3 = true
+# DmPasswordHash is intentionally omitted here so it's always prompted
+# (sensitive value — do not save to this file)
