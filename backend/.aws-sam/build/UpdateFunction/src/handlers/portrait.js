@@ -22,7 +22,7 @@ exports.handler = async (event) => {
   if (!auth.valid) return forbidden();
 
   const ext = contentType.split("/")[1].replace("jpeg", "jpg");
-  const key = `portraits/${slug}.${ext}`;
+  const key = `portraits/${slug}-${Date.now()}.${ext}`;
 
   const uploadUrl = await getSignedUrl(
     s3,

@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>D&D Character App — Current State (Annotated)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* Ocean palette */
+    :root {
+      --bg: #0d0f14;
+      --surface: rgba(18,32,48,0.55);
+      --surface-solid: #111e2c;
+      --border: rgba(100,130,160,0.18);
+      --border-visible: rgba(100,130,160,0.35);
+      --accent: #6a8fa8;
+      --accent-bright: #a0c0d0;
+      --accent-dim: #1e3a4e;
+      --text: #c8bfaf;
+      --text-body: #b0a898;
+      --text-muted: #3a5a6a;
+      --glow1: rgba(20,45,80,0.4);
+      --glow2: rgba(15,35,60,0.3);
+      --gem: #8ab4c8;
+      --gem-low: #2a3a4a;
+      --font-display: 'Cinzel', 'Palatino Linotype', Georgia, serif;
+      --font-body: 'Crimson Text', 'Palatino Linotype', Georgia, serif;
+      --font-ui: 'IM Fell English', Georgia, serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+                  var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      padding: 0 0 80px;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Legend bar ── */
+    .legend {
+      background: #1a1200;
+      border-bottom: 2px solid #b8860b;
+      padding: 20px 32px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .legend h1 {
+      font-family: var(--font-display);
+      font-size: 15px;
+      color: #e8c840;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+    .legend-items {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px 24px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      color: #c8a820;
+    }
+    .legend-badge {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #b8860b;
+      border: 2px solid #e8c840;
+      color: #1a1200;
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+
+    /* ── Section headings ── */
+    .section-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      padding: 0 32px;
+      padding-top: 40px;
+    }
+
+    /* ── Screen wrapper ── */
+    .screen {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 48px 32px 60px;
+    }
+
+    .screen-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 32px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid var(--border-visible);
+    }
+
+    /* ── UI primitives ── */
+    label.field-label {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    input, textarea, select {
+      background: var(--surface);
+      border: 1px solid var(--border-visible);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      padding: 9px 13px;
+      width: 100%;
+      outline: none;
+    }
+
+    input::placeholder, textarea::placeholder {
+      color: var(--text-muted);
+      opacity: 0.7;
+    }
+
+    .btn-primary {
+      background: rgba(18,58,78,0.5);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      padding: 9px 20px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid var(--border-visible);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      padding: 9px 18px;
+      cursor: pointer;
+    }
+
+    .field-group {
+      margin-bottom: 18px;
+    }
+
+    hr.divider {
+      border: none;
+      border-top: 1px solid var(--border-visible);
+      margin: 22px 0;
+    }
+
+    /* ── Password modal ── */
+    .modal-overlay {
+      background: rgba(0,0,0,0.6);
+      border-radius: 8px;
+      padding: 6px;
+      margin: 0 auto;
+      max-width: 480px;
+    }
+    .modal-panel {
+      background: var(--surface-solid);
+      border: 1px solid var(--border-visible);
+      border-radius: 6px;
+      padding: 36px 32px;
+    }
+    .modal-eyebrow {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+    .modal-body-text {
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+
+    /* ── Callout annotations ── */
+    .callout-wrap {
+      position: relative;
+    }
+    .callout-highlight {
+      outline: 2px dashed #b8860b;
+      outline-offset: 4px;
+      border-radius: 4px;
+    }
+    .callout-badge {
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: #b8860b;
+      border: 2px solid #e8c840;
+      color: #1a1200;
+      font-family: var(--font-display);
+      font-size: 12px;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      top: -12px;
+      right: -10px;
+    }
+    .callout-box {
+      background: rgba(184,134,11,0.12);
+      border: 1px solid rgba(184,134,11,0.5);
+      border-radius: 4px;
+      padding: 10px 14px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      color: #c8a820;
+      margin-top: 8px;
+      line-height: 1.5;
+    }
+    .callout-box strong {
+      color: #e8c840;
+    }
+
+    /* ── Character sheet view ── */
+    .sheet-header {
+      display: flex;
+      gap: 24px;
+      align-items: flex-start;
+      margin-bottom: 28px;
+    }
+    .portrait-placeholder {
+      width: 120px;
+      height: 150px;
+      background: var(--surface);
+      border: 1px dashed var(--border-visible);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .portrait-placeholder span {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 8px;
+      letter-spacing: 0.1em;
+    }
+    .char-name {
+      font-family: var(--font-display);
+      font-size: 32px;
+      color: var(--text);
+      line-height: 1.1;
+      margin-bottom: 4px;
+    }
+    .char-meta {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .stat-row {
+      display: flex;
+      gap: 20px;
+      margin-bottom: 28px;
+      flex-wrap: wrap;
+    }
+    .stat-block {
+      background: var(--surface);
+      border: 1px solid var(--border-visible);
+      border-radius: 4px;
+      padding: 14px 20px;
+      text-align: center;
+      min-width: 80px;
+    }
+    .stat-number {
+      font-family: var(--font-display);
+      font-size: 28px;
+      color: var(--gem);
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-label {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .ability-grid {
+      display: grid;
+      grid-template-columns: repeat(6, 1fr);
+      gap: 12px;
+      margin-bottom: 28px;
+    }
+    .ability-circle-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .ability-circle {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      border: 2px solid var(--border-visible);
+      background: var(--surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ability-score {
+      font-family: var(--font-display);
+      font-size: 28px;
+      color: var(--gem);
+    }
+    .ability-label {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    /* ── Spell chips ── */
+    .spell-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .spell-chip {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      padding: 4px 10px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: var(--accent-bright);
+    }
+
+    /* ── Edit section card ── */
+    .edit-section {
+      background: var(--surface);
+      border: 1px solid var(--border-visible);
+      border-radius: 5px;
+      padding: 20px 22px;
+      margin-bottom: 20px;
+    }
+    .edit-section-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      color: var(--accent-bright);
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-visible);
+    }
+
+    .page-divider {
+      border: none;
+      border-top: 2px solid rgba(100,130,160,0.12);
+      margin: 48px 0;
+    }
+
+    .two-col {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- ── Legend ── -->
+  <div class="legend">
+    <h1>Current State — Annotated UX Issues</h1>
+    <div class="legend-items">
+      <div class="legend-item">
+        <div class="legend-badge">1</div>
+        No required field indicators in new character creation
+      </div>
+      <div class="legend-item">
+        <div class="legend-badge">2</div>
+        No password strength guidance or expectation-setting
+      </div>
+      <div class="legend-item">
+        <div class="legend-badge">3</div>
+        Portrait Tagline invisible when no portrait is uploaded (confirmed bug)
+      </div>
+      <div class="legend-item">
+        <div class="legend-badge">4</div>
+        Spell entry: comma-separated format is unclear and ambiguous
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SCREEN 1 — Character Creation (build step: edit form)
+       ══════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-title">Screen 1 of 3 — Character Sheet Edit Mode (New Character Build Step)</div>
+
+    <!-- Portrait + Tagline section -->
+    <div class="edit-section">
+      <div class="edit-section-title">Portrait</div>
+
+      <!-- Portrait upload row -->
+      <div class="field-group">
+        <label class="field-label">Portrait Image</label>
+        <div style="display:flex; gap:14px; align-items:center;">
+          <button class="btn-secondary" style="width:auto; padding:8px 18px;">Upload Image</button>
+        </div>
+      </div>
+
+      <!-- Portrait Tagline — Issue 3 callout -->
+      <div class="callout-wrap" style="margin-top:4px;">
+        <div class="callout-highlight field-group">
+          <label class="field-label">
+            Portrait Tagline
+            <span style="opacity:0.5; text-transform:none; font-size:12px; letter-spacing:0;">&nbsp;(shown beneath portrait image)</span>
+          </label>
+          <input type="text" placeholder="A short italicised line shown beneath the portrait…" />
+        </div>
+        <div class="callout-badge">3</div>
+      </div>
+      <div class="callout-box">
+        <strong>Issue 3:</strong> The tagline field is fully editable here, but in view mode the entire tagline element is wrapped in <code>{(portraitUrl || portrait) && (...)}</code> — meaning if the user fills in this field but hasn't uploaded a portrait, the tagline is silently invisible on the sheet. The label hint "(shown beneath portrait image)" hints at this but doesn't warn that the tagline won't appear at all without an image.
+      </div>
+    </div>
+
+    <!-- Identity fields — Issue 1 callout -->
+    <div class="edit-section">
+      <div class="edit-section-title">Identity</div>
+
+      <div class="callout-wrap">
+        <div class="callout-highlight">
+          <div class="two-col">
+            <div class="field-group">
+              <label class="field-label">Character Name</label>
+              <input type="text" placeholder="Character Name" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">Alias / Epithet</label>
+              <input type="text" placeholder="Alias / Epithet" />
+            </div>
+            <div class="field-group">
+              <label class="field-label">Race</label>
+              <select><option value="">Race</option><option>Human</option><option>Elf</option><option>Dwarf</option></select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Class</label>
+              <select><option value="">Class</option><option>Fighter</option><option>Wizard</option><option>Rogue</option></select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Alignment</label>
+              <select><option value="">Alignment</option><option>Lawful Good</option><option>Chaotic Neutral</option></select>
+            </div>
+            <div class="field-group">
+              <label class="field-label">Level</label>
+              <input type="number" value="1" min="1" max="20" />
+            </div>
+          </div>
+        </div>
+        <div class="callout-badge">1</div>
+      </div>
+      <div class="callout-box">
+        <strong>Issue 1:</strong> No field is visually distinguished as required. "Character Name" is the only field that blocks saving (the <code>handleCreate</code> guard checks <code>!charData.name</code>) but it looks identical to optional fields like Alias, Alignment, or Origin. Users discover the requirement only when they click "Save Character" and hit an alert dialog — a disruptive, after-the-fact error pattern.
+      </div>
+    </div>
+
+    <!-- Spells section — Issue 4 callout -->
+    <div class="edit-section">
+      <div class="edit-section-title">Combat & Spells</div>
+
+      <div class="two-col" style="margin-bottom:18px;">
+        <div class="field-group">
+          <label class="field-label">Hit Points <span style="opacity:0.5; text-transform:none; font-size:12px; letter-spacing:0;">(max)</span></label>
+          <input type="number" placeholder="e.g. 38" />
+        </div>
+        <div class="field-group">
+          <label class="field-label">Hit Dice</label>
+          <input type="text" placeholder="e.g. 4d10" />
+        </div>
+      </div>
+
+      <div class="callout-wrap">
+        <div class="callout-highlight field-group">
+          <label class="field-label">
+            Key Spells &amp; Abilities
+            <span style="opacity:0.5; text-transform:none; font-size:12px; letter-spacing:0;">&nbsp;(comma-separated)</span>
+          </label>
+          <input type="text" placeholder="Hunter's Mark, Misty Step, Pass Without Trace…" />
+        </div>
+        <div class="callout-badge">4</div>
+      </div>
+      <div class="callout-box">
+        <strong>Issue 4:</strong> The label says "comma-separated" but doesn't explain that each item becomes a separate tagged chip on the character sheet. Users familiar with comma use in prose (e.g., spell descriptions) may not realize commas are the functional separator. Spell names could also hypothetically contain commas. The input gives no preview of how the chips will render, so the format and outcome are both opaque.
+      </div>
+    </div>
+
+    <!-- "Save Character" button that triggers Step 2 -->
+    <div style="text-align:right; margin-top:8px;">
+      <button class="btn-primary" style="width:auto; padding:10px 28px;">Save Character →</button>
+    </div>
+  </div>
+
+  <hr class="page-divider" style="max-width:900px; margin:0 auto 0;" />
+
+  <!-- ══════════════════════════════════════════════════════════
+       SCREEN 2 — Password Modal (Step 2 of character creation)
+       ══════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-title">Screen 2 of 3 — Password Modal (Triggered After "Save Character")</div>
+
+    <div class="modal-overlay">
+      <div class="modal-panel">
+        <div class="modal-eyebrow">Create Character</div>
+        <div class="modal-title">Lirien Dawnwhisper</div>
+        <div class="modal-body-text">
+          Set a password to protect this character. You'll need it to edit the sheet.
+        </div>
+
+        <!-- Password field — Issue 2 callout -->
+        <div class="callout-wrap">
+          <div class="callout-highlight">
+            <div class="field-group">
+              <label class="field-label">Password</label>
+              <input type="password" placeholder="" />
+            </div>
+            <div class="field-group" style="margin-bottom:0;">
+              <label class="field-label">Confirm Password</label>
+              <input type="password" placeholder="" />
+            </div>
+          </div>
+          <div class="callout-badge">2</div>
+        </div>
+        <div class="callout-box" style="margin-bottom:20px;">
+          <strong>Issue 2:</strong> No helper text, no length guidance, no hint about requirements. Is "a" a valid password? Is there a minimum? Will it be bcrypt-hashed or stored in plain text? The introductory sentence says "you'll need it to edit the sheet" but says nothing about what makes a valid password. A user who types a single character and confirms it will succeed — which may be intentional, but is not communicated.
+        </div>
+
+        <div style="display:flex; gap:10px; margin-top:4px;">
+          <button class="btn-secondary">← Back</button>
+          <button class="btn-primary" style="flex:1;">Create Character</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="page-divider" style="max-width:900px; margin:0 auto 0;" />
+
+  <!-- ══════════════════════════════════════════════════════════
+       SCREEN 3 — Character Sheet View Mode (no portrait uploaded)
+       ══════════════════════════════════════════════════════════ -->
+  <div class="screen">
+    <div class="screen-title">Screen 3 of 3 — Character Sheet View Mode (No Portrait Uploaded)</div>
+
+    <!-- Header -->
+    <div class="sheet-header">
+      <div class="portrait-placeholder">
+        <span>No portrait uploaded</span>
+      </div>
+      <div>
+        <div class="char-name">Lirien Dawnwhisper</div>
+        <div class="char-meta">Elf · Ranger · Level 5</div>
+        <!-- Issue 3: tagline should appear here but doesn't -->
+        <div class="callout-wrap" style="margin-top:8px; margin-bottom:8px;">
+          <div class="callout-highlight" style="padding:10px 14px; border-radius:4px;">
+            <span style="font-family:var(--font-body); font-size:15px; color:var(--text-muted); font-style:italic; opacity:0.5;">
+              [Portrait Tagline field is empty here — the tagline "Swift as shadow, silent as snow" was entered during creation but is not rendered because no portrait was uploaded]
+            </span>
+          </div>
+          <div class="callout-badge">3</div>
+        </div>
+        <div class="callout-box" style="margin-top:4px;">
+          <strong>Issue 3 (view mode):</strong> The tagline "Swift as shadow, silent as snow" was entered in the tagline field during creation. In the source code, the entire tagline block is inside <code>{(portraitUrl || portrait) &amp;&amp; (...)}</code> — so it is completely absent from the DOM when no portrait is present. The user has no way to know their tagline is invisible unless they also upload a portrait.
+        </div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Combat stats -->
+    <div class="stat-row">
+      <div class="stat-block">
+        <div class="stat-number">38</div>
+        <div class="stat-label">Hit Points</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number" style="font-size:18px;">5d10</div>
+        <div class="stat-label">Hit Dice</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number" style="font-size:18px;">Light</div>
+        <div class="stat-label">Armor Type</div>
+      </div>
+      <div class="stat-block">
+        <div class="stat-number">15</div>
+        <div class="stat-label">Total Armor</div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Ability scores -->
+    <div class="ability-grid">
+      <div class="ability-circle-wrap">
+        <div class="ability-circle"><span class="ability-score">14</span></div>
+        <div class="ability-label">Str</div>
+      </div>
+      <div class="ability-circle-wrap">
+        <div class="ability-circle"><span class="ability-score">18</span></div>
+        <div class="ability-label">Dex</div>
+      </div>
+      <div class="ability-circle-wrap">
+        <div class="ability-circle"><span class="ability-score">13</span></div>
+        <div class="ability-label">Con</div>
+      </div>
+      <div class="ability-circle-wrap">
+        <div class="ability-circle"><span class="ability-score">12</span></div>
+        <div class="ability-label">Int</div>
+      </div>
+      <div class="ability-circle-wrap">
+        <div class="ability-circle"><span class="ability-score">16</span></div>
+        <div class="ability-label">Wis</div>
+      </div>
+      <div class="ability-circle-wrap">
+        <div class="ability-circle"><span class="ability-score">10</span></div>
+        <div class="ability-label">Cha</div>
+      </div>
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Spells (shown as chips) — Issue 4 view callout -->
+    <div class="callout-wrap" style="margin-bottom:28px;">
+      <div class="callout-highlight" style="padding:14px;">
+        <div style="font-family:var(--font-ui); font-size:11px; letter-spacing:0.3em; text-transform:uppercase; color:var(--text-muted); margin-bottom:10px;">Key Spells &amp; Abilities</div>
+        <div class="spell-chips">
+          <div class="spell-chip">Hunter's Mark</div>
+          <div class="spell-chip">Misty Step</div>
+          <div class="spell-chip">Pass Without Trace</div>
+          <div class="spell-chip">Cure Wounds</div>
+        </div>
+      </div>
+      <div class="callout-badge">4</div>
+    </div>
+    <div class="callout-box">
+      <strong>Issue 4 (view mode):</strong> These chips are the result of the comma-split — each comma-separated token becomes one chip. But in edit mode, the input is a plain text field with no visual preview of this transformation. A user who typed "Hunter's Mark, Misty Step" expecting a free-text list doesn't know their input became individual chips until they save and return to view mode.
+    </div>
+  </div>
+
+</body>
+</html>

@@ -1,6 +1,18 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { verifyPassword as apiVerify, updateCharacter, getPortraitUploadUrl } from "../api";
+import { verifyPassword as apiVerify, updateCharacter, getPortraitUploadUrl, patchSession } from "../api";
+import DiceRoller from "./DiceRoller";
+
+// ── Utilities ─────────────────────────────────────────────────────────────────
+function debounce(fn, ms) {
+  let timer;
+  function debounced(...args) {
+    clearTimeout(timer);
+    timer = setTimeout(() => fn.apply(this, args), ms);
+  }
+  debounced.cancel = () => clearTimeout(timer);
+  return debounced;
+}
 
 // ── Global styles ─────────────────────────────────────────────────────────────
 const GLOBAL_CSS = `
@@ -282,11 +294,18 @@ const BLANK_CHARACTER = {
     { stat: "Intelligence", score: 10, note: "" },
     { stat: "Charisma",     score: 10, note: "" },
   ],
-  hp: 0,
+  hpMax: 0,
+  hpCurrent: 0,
+  tempHP: 0,
   hitDice: "",
   armorType: "",
   armorTotal: 0,
   spells: [],
+  spellSlots: [],
+  conditions: [],
+  exhaustionLevel: 0,
+  concentration: { active: false, spell: "" },
+  inspiration: false,
   inPlay: [],
   weapons: [],
   equipment: [],
@@ -307,6 +326,29 @@ const BLANK_CHARACTER = {
   ],
 };
 
+const LIVE_SESSION_FIELDS = [
+  "hpCurrent",
+  "tempHP",
+  "spellSlots",
+  "conditions",
+  "exhaustionLevel",
+  "concentration",
+  "inspiration",
+  "weapons",
+  "equipment",
+];
+
+function cloneLiveValue(value) {
+  return value && typeof value === "object"
+    ? JSON.parse(JSON.stringify(value))
+    : value;
+}
+
+function liveValuesEqual(a, b) {
+  if (a === undefined && b === undefined) return true;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
 const ARMOR_OPTIONS = [
   { value: "none",   label: "None",   speed: "Fast"   },
   { value: "light",  label: "Light",  speed: "Normal" },
@@ -318,6 +360,14 @@ const MOD_ATTRIBUTES = [
   "Strength", "Dexterity", "Constitution", "Wisdom", "Intelligence", "Charisma",
   "Armor", "HP", "Hit Dice", "Attack Bonus", "Damage", "Initiative", "Speed", "Save DC",
 ];
+
+const CONDITIONS = [
+  "Blinded", "Charmed", "Deafened", "Frightened", "Grappled",
+  "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned",
+  "Prone", "Restrained", "Stunned", "Unconscious",
+];
+
+const SPELL_LEVEL_LABELS = ["1st","2nd","3rd","4th","5th","6th","7th","8th","9th"];
 
 // ── Item Editor Modal ─────────────────────────────────────────────────────────
 function ItemEditorModal({ item, pal, onSave, onClose, showType }) {
@@ -404,7 +454,8 @@ function ItemEditorModal({ item, pal, onSave, onClose, showType }) {
                 style={{ ...inputStyle, flex: 1, textAlign: "center" }}
                 value={mod.value}
                 onChange={e => updateMod(i, "value", e.target.value)}
-                placeholder="+2 / 1d8"
+                placeholder={mod.attribute === "Attack Bonus" ? "total (mod+prof+magic)" : mod.attribute === "Damage" ? "e.g. 1d8+3" : "+2"}
+                title={mod.attribute === "Attack Bonus" ? "Enter the total attack bonus: ability modifier + proficiency bonus + any magic item bonus (e.g. STR +3, proficiency +2, magic +1 = enter +6)" : undefined}
               />
               <button onClick={() => removeMod(i)} style={{
                 background: "transparent", border: `1px solid ${pal.border}`,
@@ -502,7 +553,9 @@ function ChangePasswordForm({ pal, inputStyle, lbl, slug, currentPassword, onSuc
 //   slug         — character slug (present for existing characters)
 //   onSave       — async (charData, password) => void  (existing character save)
 //   onCreate     — (charData) => void  (new character flow, triggers password modal upstream)
-export default function CharacterSheet({ initialData, slug, onSave, onCreate }) {
+//   onDelete     — async (password) => void  (existing character delete)
+//   onSessionSync — () => void  (request authoritative background refresh after live writes)
+export default function CharacterSheet({ initialData, slug, onSave, onCreate, onDelete, onSessionSync }) {
   useGlobalStyles();
 
   const [mode, setMode]     = useState("view");
@@ -528,18 +581,92 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
 
   // Save state
   const [saveStatus, setSaveStatus] = useState(null); // null | "saving" | "saved" | "error"
+  const [deleteConfirm, setDeleteConfirm] = useState(false);
+  const [deleteInput, setDeleteInput] = useState("");
+  const [deleteStatus, setDeleteStatus] = useState(null); // null | "deleting" | "error"
+  const [menuOpen, setMenuOpen] = useState(false);
 
   // Loadout editing
   const [editingItem,   setEditingItem]   = useState(null);       // { listType: "weapons"|"equipment", item }
-  const [combatTab,     setCombatTab]     = useState("inplay");   // "loadout" | "inplay"
+  const [combatTab,     setCombatTab]     = useState(() => {
+    if (slug) {
+      const stored = sessionStorage.getItem(`dnd_tab_${slug}`);
+      if (stored === "loadout" || stored === "persona" || stored === "combat") return stored;
+    }
+    return "combat";
+  });
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [hoveredStat,   setHoveredStat]   = useState(null); // stat name while flyout is open
 
+  const [hpEditMode, setHpEditMode] = useState(false);
+  const [concSpellInput, setConcSpellInput] = useState("");
+
   const fileRef       = useRef();
   const importRef     = useRef();
+  const charRef       = useRef(initialData || BLANK_CHARACTER);
+  const currentSlugRef = useRef(initialData?.slug || slug || null);
+  const sessionExpectedRef = useRef(new Map());
+
+  // ── Optimistic session refs (HP delta debounce) ────────────────────────────
+  const hpPendingDelta   = useRef(0);
+  const hpFlushRef       = useRef(null);
+  const hpServerRef      = useRef(initialData?.hpCurrent ?? initialData?.hp ?? 0);
+  const hpMaxRef         = useRef(initialData?.hpMax ?? initialData?.hp ?? 0);
+  const hpFlushInFlightRef = useRef(false);
+
+  // ── Optimistic session refs (exhaustion delta debounce) ───────────────────
+  const exhPendingDelta  = useRef(0);
+  const exhFlushRef      = useRef(null);
+  const exhServerRef     = useRef(initialData?.exhaustionLevel ?? 0);
+  const exhFlushInFlightRef = useRef(false);
+
+  // ── Optimistic session refs (tempHP debounce) ─────────────────────────────
+  const tempHpFlushRef   = useRef(null);
+  const tempHpServerRef  = useRef(initialData?.tempHP ?? 0);
+  const tempHpFlushInFlightRef = useRef(false);
 
   const pal = PALETTES[char.palette] || PALETTES.ember;
   const isVellum = pal.name === "Vellum";
+
+  useEffect(() => {
+    charRef.current = char;
+  }, [char]);
+
+  const markSessionExpected = useCallback((fields) => {
+    Object.entries(fields).forEach(([field, value]) => {
+      sessionExpectedRef.current.set(field, cloneLiveValue(value));
+    });
+  }, []);
+
+  const clearSessionExpected = useCallback((fields) => {
+    fields.forEach((field) => sessionExpectedRef.current.delete(field));
+  }, []);
+
+  const requestSessionSync = useCallback(() => {
+    onSessionSync?.();
+  }, [onSessionSync]);
+
+  const applySessionPatch = useCallback((fields, revertFields = null) => {
+    if (!slug) return Promise.resolve();
+
+    const fieldNames = Object.keys(fields);
+    markSessionExpected(fields);
+
+    return patchSession(slug, fields, null)
+      .then(() => {
+        if (Object.prototype.hasOwnProperty.call(fields, "hpCurrent")) hpServerRef.current = fields.hpCurrent;
+        if (Object.prototype.hasOwnProperty.call(fields, "exhaustionLevel")) exhServerRef.current = fields.exhaustionLevel;
+        if (Object.prototype.hasOwnProperty.call(fields, "tempHP")) tempHpServerRef.current = fields.tempHP;
+        requestSessionSync();
+      })
+      .catch((err) => {
+        clearSessionExpected(fieldNames);
+        if (revertFields) {
+          setChar((current) => ({ ...current, ...revertFields }));
+        }
+        throw err;
+      });
+  }, [clearSessionExpected, markSessionExpected, requestSessionSync, slug]);
 
   // Auto-unlock on mount: try DM session or stored character password
   useEffect(() => {
@@ -577,14 +704,58 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
     run.finally(() => setUnlockChecking(false));
   }, [slug]);
 
-  // Sync incoming prop changes (when route changes)
+  // Sync incoming prop changes.
+  // In view mode, merge server updates while preserving optimistic live-session fields
+  // until polling confirms the expected value.
   useEffect(() => {
-    if (initialData) {
+    if (!initialData) return;
+
+    const incomingSlug = initialData.slug || slug || null;
+    if (currentSlugRef.current !== incomingSlug) {
+      currentSlugRef.current = incomingSlug;
+      sessionExpectedRef.current.clear();
       setChar(initialData);
+      charRef.current = initialData;
+      hpServerRef.current = initialData.hpCurrent ?? initialData.hp ?? 0;
+      hpMaxRef.current = initialData.hpMax ?? initialData.hp ?? 0;
+      tempHpServerRef.current = initialData.tempHP ?? 0;
+      exhServerRef.current = initialData.exhaustionLevel ?? 0;
       const first = initialData.collections?.[0]?.sections?.[0];
       setActive(first ? { collectionId: initialData.collections[0].id, sectionId: first.id } : null);
+      return;
     }
-  }, [initialData]);
+
+    if (mode === "edit") return;
+
+    setChar((prev) => {
+      const next = { ...prev, ...initialData };
+      for (const field of LIVE_SESSION_FIELDS) {
+        const expected = sessionExpectedRef.current.get(field);
+        const incoming = initialData[field];
+        if (expected !== undefined) {
+          if (liveValuesEqual(incoming, expected)) {
+            sessionExpectedRef.current.delete(field);
+            next[field] = incoming;
+          } else {
+            next[field] = prev[field];
+          }
+        } else {
+          next[field] = incoming;
+        }
+      }
+      return next;
+    });
+
+    if (!sessionExpectedRef.current.has("hpCurrent")) {
+      hpServerRef.current = initialData.hpCurrent ?? initialData.hp ?? 0;
+    }
+    if (!sessionExpectedRef.current.has("tempHP")) {
+      tempHpServerRef.current = initialData.tempHP ?? 0;
+    }
+    if (!sessionExpectedRef.current.has("exhaustionLevel")) {
+      exhServerRef.current = initialData.exhaustionLevel ?? 0;
+    }
+  }, [initialData, mode, slug]);
 
   // Ensure active tab stays valid when collections change
   useEffect(() => {
@@ -595,6 +766,12 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
       setActive(first ? { collectionId: char.collections[0].id, sectionId: first.id } : null);
     }
   }, [char.collections]);
+
+  // ── Tab persistence ─────────────────────────────────────────────────────────
+  const setTab = (tab) => {
+    setCombatTab(tab);
+    if (slug) sessionStorage.setItem(`dnd_tab_${slug}`, tab);
+  };
 
   // ── Updaters ────────────────────────────────────────────────────────────────
   const update     = (field, val) => setChar(c => ({ ...c, [field]: val }));
@@ -733,6 +910,8 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
         await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
         update("portraitUrl", portraitUrl);
         update("portrait", ""); // clear any old base64
+        // Persist portraitUrl immediately — don't wait for the Save button
+        updateCharacter(slug, { portraitUrl, portrait: "" }, unlockedPassword).catch(() => {});
       } catch {
         alert("Portrait upload failed. Please try again.");
       }
@@ -787,6 +966,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
         if (result.role === "dm") sessionStorage.setItem("dnd_dm_password", unlockInput);
         else sessionStorage.setItem(`dnd_char_${slug}`, unlockInput);
         if (unlockIntent === "edit") setMode("edit");
+        if (unlockIntent === "delete") setDeleteConfirm(true);
         setUnlockInput("");
       } else {
         setUnlockError("Incorrect password.");
@@ -852,6 +1032,163 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
     }
   };
 
+  const deletePhrase = char.name ? `DELETE ${char.name}${char.charClass ? ` ${char.charClass}` : ""}` : "";
+  const handleDeleteRequest = () => {
+    if (!onDelete) return;
+    if (unlockState !== "unlocked") {
+      setUnlockIntent("delete");
+      setUnlockState("prompting");
+      return;
+    }
+    setDeleteConfirm(true);
+  };
+
+  const handleDelete = async () => {
+    if (!onDelete || deleteInput !== deletePhrase) return;
+    setDeleteStatus("deleting");
+    try {
+      await onDelete(unlockedPassword);
+    } catch (err) {
+      setDeleteStatus("error");
+      alert(`Delete failed: ${err.message}`);
+      setTimeout(() => setDeleteStatus(null), 3000);
+    }
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm(false);
+    setDeleteInput("");
+    setDeleteStatus(null);
+  };
+
+  // ── HP derived values (used in both stats block and Combat tab) ─────────────
+  const _itemBonuses = {};
+  [...(char.weapons||[]), ...(char.equipment||[])].forEach(item => {
+    (item.mods||[]).forEach(({ attribute, value }) => {
+      const v = parseModInt(value);
+      if (!isNaN(v)) _itemBonuses[attribute] = (_itemBonuses[attribute] || 0) + v;
+    });
+  });
+  const hpBonus    = _itemBonuses["HP"] || 0;
+  const hpMax      = (char.hpMax ?? char.hp ?? 0) + hpBonus;
+  const hpCurrent  = char.hpCurrent ?? char.hp ?? 0;
+  const tempHP     = char.tempHP ?? 0;
+  const hpPct      = hpMax > 0 ? hpCurrent / hpMax : 0;
+  const hpBarColor = hpPct > 0.5 ? pal.gem : hpPct > 0.2 ? "#c8a030" : "#c06060";
+  const isActiveTurn = !!char.isActiveTurn;
+
+  useEffect(() => {
+    hpMaxRef.current = hpMax;
+  }, [hpMax]);
+
+  // ── Debounced flush functions (stable across renders) ─────────────────────
+  useEffect(() => {
+    hpFlushRef.current?.cancel?.();
+    hpFlushRef.current = debounce(async () => {
+      if (!slug || hpFlushInFlightRef.current) return;
+
+      const targetHp = Math.max(0, Math.min(hpMaxRef.current, charRef.current.hpCurrent ?? charRef.current.hp ?? 0));
+      const previousServerHp = hpServerRef.current ?? 0;
+
+      if (targetHp === previousServerHp) {
+        hpPendingDelta.current = 0;
+        return;
+      }
+
+      hpPendingDelta.current = 0;
+      hpFlushInFlightRef.current = true;
+      markSessionExpected({ hpCurrent: targetHp });
+
+      try {
+        await patchSession(slug, { hpCurrent: targetHp }, null);
+        hpServerRef.current = targetHp;
+        requestSessionSync();
+      } catch {
+        clearSessionExpected(["hpCurrent"]);
+        hpServerRef.current = previousServerHp;
+        setChar((current) => ({ ...current, hpCurrent: previousServerHp }));
+      } finally {
+        hpFlushInFlightRef.current = false;
+        const currentHp = Math.max(0, Math.min(hpMaxRef.current, charRef.current.hpCurrent ?? charRef.current.hp ?? 0));
+        if (hpPendingDelta.current !== 0 || currentHp !== hpServerRef.current) {
+          hpFlushRef.current?.();
+        }
+      }
+    }, 300);
+
+    return () => hpFlushRef.current?.cancel?.();
+  }, [clearSessionExpected, markSessionExpected, requestSessionSync, slug]);
+
+  useEffect(() => {
+    exhFlushRef.current?.cancel?.();
+    exhFlushRef.current = debounce(async () => {
+      if (!slug || exhFlushInFlightRef.current) return;
+
+      const targetExhaustion = Math.max(0, Math.min(6, charRef.current.exhaustionLevel || 0));
+      const previousServerExhaustion = exhServerRef.current ?? 0;
+
+      if (targetExhaustion === previousServerExhaustion) {
+        exhPendingDelta.current = 0;
+        return;
+      }
+
+      exhPendingDelta.current = 0;
+      exhFlushInFlightRef.current = true;
+      markSessionExpected({ exhaustionLevel: targetExhaustion });
+
+      try {
+        await patchSession(slug, { exhaustionLevel: targetExhaustion }, null);
+        exhServerRef.current = targetExhaustion;
+        requestSessionSync();
+      } catch {
+        clearSessionExpected(["exhaustionLevel"]);
+        exhServerRef.current = previousServerExhaustion;
+        setChar((current) => ({ ...current, exhaustionLevel: previousServerExhaustion }));
+      } finally {
+        exhFlushInFlightRef.current = false;
+        const currentExhaustion = Math.max(0, Math.min(6, charRef.current.exhaustionLevel || 0));
+        if (exhPendingDelta.current !== 0 || currentExhaustion !== exhServerRef.current) {
+          exhFlushRef.current?.();
+        }
+      }
+    }, 300);
+
+    return () => exhFlushRef.current?.cancel?.();
+  }, [clearSessionExpected, markSessionExpected, requestSessionSync, slug]);
+
+  useEffect(() => {
+    tempHpFlushRef.current?.cancel?.();
+    tempHpFlushRef.current = debounce(async () => {
+      if (!slug || tempHpFlushInFlightRef.current) return;
+
+      const targetTempHp = Math.max(0, charRef.current.tempHP ?? 0);
+      const previousServerTempHp = tempHpServerRef.current ?? 0;
+
+      if (targetTempHp === previousServerTempHp) return;
+
+      tempHpFlushInFlightRef.current = true;
+      markSessionExpected({ tempHP: targetTempHp });
+
+      try {
+        await patchSession(slug, { tempHP: targetTempHp }, null);
+        tempHpServerRef.current = targetTempHp;
+        requestSessionSync();
+      } catch {
+        clearSessionExpected(["tempHP"]);
+        tempHpServerRef.current = previousServerTempHp;
+        setChar((current) => ({ ...current, tempHP: previousServerTempHp }));
+      } finally {
+        tempHpFlushInFlightRef.current = false;
+        const currentTempHp = Math.max(0, charRef.current.tempHP ?? 0);
+        if (currentTempHp !== tempHpServerRef.current) {
+          tempHpFlushRef.current?.();
+        }
+      }
+    }, 300);
+
+    return () => tempHpFlushRef.current?.cancel?.();
+  }, [clearSessionExpected, markSessionExpected, requestSessionSync, slug]);
+
   // ── Style helpers ────────────────────────────────────────────────────────────
   const inputBg = pal.surface;
   const inputStyle = {
@@ -916,14 +1253,6 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
             </div>
             <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
               <input ref={importRef} type="file" accept=".json" onChange={importJSON} style={{ display: "none" }} />
-              {!slug && (
-                <button onClick={() => importRef.current.click()} style={{ ...inputStyle, width: "auto", padding: "8px 16px", fontSize: 14 }}>
-                  Import JSON
-                </button>
-              )}
-              <button onClick={exportJSON} style={{ ...inputStyle, width: "auto", padding: "8px 16px", fontSize: 14 }}>
-                Export JSON
-              </button>
               {slug && onSave && (
                 <button
                   onClick={handleSave}
@@ -949,6 +1278,39 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
                   Create Character →
                 </button>
               )}
+              <div style={{ position: "relative", display: "inline-block" }}>
+                <button onClick={() => setMenuOpen(!menuOpen)} style={{
+                  ...inputStyle, width: "auto", padding: "9px 12px", fontSize: 16,
+                  background: menuOpen ? pal.surfaceDim : "transparent",
+                }}>
+                  ⋯
+                </button>
+                {menuOpen && (
+                  <div style={{
+                    position: "absolute", top: "100%", right: 0, background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 4, padding: 8, zIndex: 10, minWidth: 200, boxShadow: "0 4px 12px rgba(0,0,0,0.3)"
+                  }}>
+                    <button onClick={() => { exportJSON(); setMenuOpen(false); }} style={{
+                      width: "100%", textAlign: "left", padding: "8px 12px", background: "transparent", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 14, cursor: "pointer", borderRadius: 2
+                    }}>
+                      Export JSON
+                    </button>
+                    {!slug && (
+                      <button onClick={() => { importRef.current.click(); setMenuOpen(false); }} style={{
+                        width: "100%", textAlign: "left", padding: "8px 12px", background: "transparent", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 14, cursor: "pointer", borderRadius: 2
+                      }}>
+                        Import JSON
+                      </button>
+                    )}
+                    {slug && onDelete && (
+                      <button onClick={() => { handleDeleteRequest(); setMenuOpen(false); }} style={{
+                        width: "100%", textAlign: "left", padding: "8px 12px", background: "transparent", border: "none", color: "#f2b7b7", fontFamily: pal.fontUI, fontSize: 14, cursor: "pointer", borderRadius: 2
+                      }}>
+                        Delete Character
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
               <button onClick={() => setMode("view")} style={{
                 ...inputStyle, width: "auto", padding: "9px 22px",
                 background: pal.accentDim, borderColor: pal.accent,
@@ -958,6 +1320,52 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
               </button>
             </div>
           </div>
+
+          {deleteConfirm && (
+            <div style={{
+              background: "rgba(192,80,80,0.14)",
+              border: `1px solid rgba(192,80,80,0.55)`, borderRadius: 6,
+              padding: "22px 24px", marginBottom: 24,
+            }}>
+              <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 10 }}>
+                PERMANENT DELETE
+              </div>
+              <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: "#f2c6c6", marginBottom: 12 }}>
+                Danger zone
+              </div>
+              <p style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.text, lineHeight: 1.7, marginBottom: 16 }}>
+                This action cannot be undone. To delete this character, type the exact phrase shown below and then confirm.
+              </p>
+              <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.08em", textTransform: "uppercase", color: "#f5d7d7", marginBottom: 8 }}>
+                Confirmation phrase
+              </div>
+              <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: "#ffe8e8", background: "rgba(255,255,255,0.05)", border: `1px solid rgba(255,255,255,0.12)`, borderRadius: 4, padding: "10px 14px", marginBottom: 16 }}>
+                {deletePhrase || "DELETE this character"}
+              </div>
+              <input
+                value={deleteInput}
+                onChange={e => setDeleteInput(e.target.value)}
+                placeholder={deletePhrase}
+                style={{ ...inputStyle, width: "100%", marginBottom: 16, background: pal.surfaceSolid }}
+              />
+              <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+                <button onClick={cancelDelete} type="button" style={{
+                  ...inputStyle, width: "auto", padding: "9px 18px", background: pal.surface,
+                  borderColor: pal.border, color: pal.textMuted,
+                }}>
+                  Cancel
+                </button>
+                <button onClick={handleDelete} type="button" disabled={deleteInput !== deletePhrase || deleteStatus === "deleting"} style={{
+                  ...inputStyle, flex: 1, padding: "9px 18px", background: deleteInput === deletePhrase ? "#b04a4a" : pal.surface,
+                  borderColor: deleteInput === deletePhrase ? "#c06060" : pal.border,
+                  color: deleteInput === deletePhrase ? "#fff" : pal.textMuted,
+                  cursor: deleteInput === deletePhrase ? "pointer" : "not-allowed",
+                }}>
+                  {deleteStatus === "deleting" ? "Deleting…" : "Delete Character"}
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Palette */}
           <div style={{ marginBottom: 32 }}>
@@ -1077,8 +1485,8 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
               <div>
                 <label style={lbl}>Hit Points <span style={{ opacity: 0.5, textTransform: "none", fontSize: 12, letterSpacing: 0 }}>(max)</span></label>
                 <input style={inputStyle} type="number" min={0}
-                  value={char.hp ?? ""}
-                  onChange={e => update("hp", parseInt(e.target.value) || 0)}
+                  value={char.hpMax ?? char.hp ?? ""}
+                  onChange={e => update("hpMax", parseInt(e.target.value) || 0)}
                   placeholder="e.g. 38"
                 />
               </div>
@@ -1093,7 +1501,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
             </div>
 
             {/* Armor */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 14, alignItems: "end" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 14, alignItems: "start" }}>
               <div>
                 <label style={{ ...lbl, marginBottom: 10 }}>Armor & Speed</label>
                 <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -1129,6 +1537,57 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
             </div>
           </div>
 
+          {/* Spell Slots */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={secHead}>Spell Slots</div>
+            <div style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted, marginBottom: 14, fontStyle: "italic" }}>
+              Configure max slots per level. Leave at 0 to hide.
+            </div>
+            {SPELL_LEVEL_LABELS.map((label, i) => {
+              const level = i + 1;
+              const slot = (char.spellSlots || []).find(s => s.level === level) || { level, max: 0, used: 0, isPactMagic: false };
+              const updateSlot = (field, val) => {
+                const slots = [...(char.spellSlots || [])];
+                const idx = slots.findIndex(s => s.level === level);
+                if (idx >= 0) {
+                  slots[idx] = { ...slots[idx], [field]: val };
+                } else {
+                  slots.push({ level, max: 0, used: 0, isPactMagic: false, [field]: val });
+                }
+                // Remove levels that are 0 max to keep the array clean (unless we're editing it)
+                update("spellSlots", slots.filter(s => s.max > 0 || s.level === level));
+              };
+              // Only show levels where max > 0, plus the next empty row
+              const hasSlot = slot.max > 0;
+              const prevSlot = i === 0 ? null : (char.spellSlots || []).find(s => s.level === i);
+              const showRow = hasSlot || (i === 0) || (prevSlot && prevSlot.max > 0);
+              if (!showRow) return null;
+              return (
+                <div key={level} style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 10 }}>
+                  <div style={{ fontFamily: pal.fontUI, fontSize: 13, letterSpacing: "0.12em", color: pal.textMuted, minWidth: 34, textTransform: "uppercase" }}>{label}</div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <label style={{ ...lbl, marginBottom: 0, fontSize: 11 }}>Max</label>
+                    <input
+                      type="number" min={0} max={9}
+                      style={{ ...inputStyle, width: 70, textAlign: "center" }}
+                      value={slot.max}
+                      onChange={e => updateSlot("max", parseInt(e.target.value) || 0)}
+                    />
+                  </div>
+                  <label style={{ display: "flex", alignItems: "center", gap: 6, cursor: "pointer", fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted }}>
+                    <input
+                      type="checkbox"
+                      checked={slot.isPactMagic || false}
+                      onChange={e => updateSlot("isPactMagic", e.target.checked)}
+                      style={{ accentColor: pal.accent }}
+                    />
+                    Pact Magic
+                  </label>
+                </div>
+              );
+            })}
+          </div>
+
           {/* Spells */}
           <div style={{ marginBottom: 32 }}>
             <label style={lbl}>Key Spells & Abilities <span style={{ opacity: 0.5, textTransform: "none", fontSize: 12, letterSpacing: 0 }}>(comma-separated)</span></label>
@@ -1139,9 +1598,9 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
             />
           </div>
 
-          {/* In Play */}
+          {/* Persona Traits */}
           <div style={{ marginBottom: 40 }}>
-            <div style={secHead}>In Play Traits</div>
+            <div style={secHead}>Persona Traits</div>
             {(char.inPlay || []).map((item, i) => (
               <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}>
                 <input style={inputStyle} value={item} onChange={e => updateInPlay(i, e.target.value)} placeholder="A trait, ability, or behavioural note…" />
@@ -1327,26 +1786,6 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
 
         </div>
       </div>
-
-      {/* Item editor modal (weapons / equipment) */}
-      {editingItem && (
-        <ItemEditorModal
-          item={editingItem.item}
-          pal={pal}
-          showType={editingItem.showType}
-          onSave={(saved) => {
-            if (editingItem.item) {
-              if (editingItem.listType === "weapons") updateWeapon(saved.id, saved);
-              else updateEquipment(saved.id, saved);
-            } else {
-              if (editingItem.listType === "weapons") addWeapon(saved);
-              else addEquipment(saved);
-            }
-            setEditingItem(null);
-          }}
-          onClose={() => setEditingItem(null)}
-        />
-      )}
       </>
     );
   }
@@ -1415,7 +1854,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
               borderRadius: 6, padding: "32px 28px", width: "100%", maxWidth: 360,
             }}>
               <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 8 }}>
-                Unlock to Edit
+                {unlockIntent === "delete" ? "Unlock to Delete" : "Unlock to Edit"}
               </div>
               <div style={{ fontFamily: pal.fontDisplay, fontSize: 20, color: pal.text, marginBottom: 20 }}>
                 {char.name}
@@ -1492,7 +1931,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
             {[
               ["Race",       char.race],
               ["Class",      char.charClass],
-              char.subclass ? ["Subclass", char.subclass] : null,              
+              char.subclass ? ["Subclass", char.subclass] : null,
               ["Alignment",  char.alignment],
               ["Background", char.background],
               ["Origin",     char.origin],
@@ -1503,6 +1942,31 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
               </div>
             ))}
           </div>
+
+          {/* Active conditions compact chips */}
+          {(char.conditions || []).length > 0 && (
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 16 }}>
+              {char.conditions.map(cond => (
+                <span key={cond} style={{
+                  fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em",
+                  padding: "3px 10px", borderRadius: 12,
+                  border: `1px solid ${pal.accent}`, color: pal.accentBright,
+                }}>
+                  {cond}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {/* Concentration indicator */}
+          {char.concentration?.active && (
+            <div style={{
+              marginTop: 14, fontFamily: pal.fontUI, fontSize: 13,
+              color: pal.accentBright, letterSpacing: "0.06em",
+            }}>
+              ◈ Concentrating: {char.concentration.spell}
+            </div>
+          )}
         </header>
 
         {/* ── Portrait ────────────────────────────────────────────────────── */}
@@ -1527,31 +1991,45 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
             {/* ── Stats block ───────────────────────────────────────────────── */}
             <div style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 4, padding: "28px 30px", marginBottom: 44, isolation: "isolate" }}>
               {/* HP, Hit Dice & Armor */}
-              {(char.hp || char.hitDice || char.armorType || char.armorTotal > 0) && (() => {
-                const itemBonuses = {};
-                [...(char.weapons||[]), ...(char.equipment||[])].forEach(item => {
-                  (item.mods||[]).forEach(({ attribute, value }) => {
-                    const v = parseModInt(value);
-                    if (!isNaN(v)) itemBonuses[attribute] = (itemBonuses[attribute] || 0) + v;
-                  });
-                });
-                const hpBonus      = itemBonuses["HP"] || 0;
-                const acBonus      = itemBonuses["Armor"] || 0;
-                const effectiveHp  = (char.hp || 0) + hpBonus;
+              {((char.hpMax ?? char.hp ?? 0) > 0 || char.hitDice || char.armorType || char.armorTotal > 0) && (() => {
+                const acBonus      = _itemBonuses["Armor"] || 0;
                 const effectiveAc  = (char.armorTotal || 0) + acBonus;
                 const diceParts    = char.hitDice ? (char.hitDice.match(/(\d+|[a-zA-Z]+|[+\-])/g) || []) : [];
                 const armorOpt     = ARMOR_OPTIONS.find(o => o.value === char.armorType);
-                // Push HP/Hit Dice numbers down to align with armor when a type label sits above it
                 const topPad = armorOpt ? 24 : 0;
+
                 return (
                   <div style={{ display: "flex", justifyContent: "center", gap: 52, marginBottom: 24, flexWrap: "wrap", alignItems: "flex-start" }}>
-                    {char.hp > 0 && (
+                    {(char.hpMax ?? char.hp ?? 0) > 0 && (
                       <div style={{ textAlign: "center", paddingTop: topPad }}>
-                        <div style={{ fontFamily: pal.fontDisplay, fontSize: 44, color: pal.gem, lineHeight: 1 }}>{effectiveHp}</div>
+                        {/* current / max display — read-only reference; controls live in Combat tab */}
+                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4 }}>
+                          <span style={{ fontFamily: pal.fontDisplay, fontSize: 44, color: pal.gem, lineHeight: 1 }}>
+                            {hpCurrent}
+                          </span>
+                          <span style={{ fontFamily: pal.fontDisplay, fontSize: 22, color: pal.textMuted, lineHeight: 1 }}>/</span>
+                          <span style={{ fontFamily: pal.fontDisplay, fontSize: 30, color: pal.accent, lineHeight: 1 }}>{hpMax}</span>
+                        </div>
+                        {/* temp HP badge */}
+                        {tempHP > 0 && (
+                          <div style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.accentBright, letterSpacing: "0.08em", marginTop: 2 }}>
+                            +{tempHP} temp
+                          </div>
+                        )}
+                        {/* HP bar */}
+                        {hpMax > 0 && (
+                          <div style={{ width: "100%", height: 4, borderRadius: 2, background: pal.border, marginTop: 6, overflow: "hidden", minWidth: 80 }}>
+                            <div style={{
+                              width: `${Math.max(0, Math.min(100, hpPct * 100))}%`,
+                              height: "100%", borderRadius: 2,
+                              background: hpBarColor, transition: "width 0.25s, background-color 0.25s",
+                            }} />
+                          </div>
+                        )}
                         <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginTop: 5 }}>Hit Points</div>
                         {hpBonus !== 0 && (
                           <div style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.accent, fontStyle: "italic", opacity: 0.8, marginTop: 2 }}>
-                            {char.hp} base {hpBonus > 0 ? "+" : ""}{hpBonus} item
+                            {char.hpMax ?? char.hp} base {hpBonus > 0 ? "+" : ""}{hpBonus} item
                           </div>
                         )}
                       </div>
@@ -1613,18 +2091,15 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
                 });
 
                 return (
-                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px 8px", marginBottom: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: "12px 8px", marginBottom: 8, justifyContent: "center" }}>
                     {char.stats.map(({ stat, score, note }) => {
                       const baseMod    = modOf(score);
                       const itemMods   = modSources[stat] || [];
                       const itemBonus  = itemMods.reduce((s, m) => s + m.value, 0);
                       const totalMod   = baseMod + itemBonus;
                       const col        = score >= 14 ? pal.gem : score <= 8 ? pal.gemLow : pal.accent;
-                      // All sources for the flyout
-                      const sources = [
-                        { source: "Modifier", value: baseMod },
-                        ...itemMods,
-                      ];
+                      // Flyout sources: only item contributions (score + baseMod shown separately at top)
+                      const sources   = itemMods;
                       const showBadge  = totalMod !== 0;
                       const flyoutOpen = hoveredStat === stat;
                       const circleHandlers = {
@@ -1691,23 +2166,24 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
                                 </div>
                               </div>
                               <div style={{ borderTop: `1px solid ${pal.border}`, marginBottom: 8 }} />
-                              {/* Modifier rows */}
+                              {/* Base modifier row (calculated, not stored data) */}
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 20, marginBottom: sources.length > 0 ? 4 : 0 }}>
+                                <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted, fontStyle: "italic" }}>Score modifier</span>
+                                <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: baseMod >= 0 ? pal.gem : pal.gemLow }}>{fmtMod(baseMod)}</span>
+                              </div>
+                              {/* Item mod rows */}
                               {sources.map((s, i) => (
                                 <div key={i} style={{ display: "flex", justifyContent: "space-between", gap: 20, marginBottom: i < sources.length - 1 ? 4 : 0 }}>
                                   <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textBody }}>{s.source}</span>
                                   <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: s.value >= 0 ? pal.gem : pal.gemLow }}>{fmtMod(s.value)}</span>
                                 </div>
                               ))}
-                              {/* Total row — always show */}
-                              {sources.length >= 1 && (
-                                <>
-                                  <div style={{ borderTop: `1px solid ${pal.border}`, margin: "6px 0" }} />
-                                  <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
-                                    <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted, fontStyle: "italic" }}>Total</span>
-                                    <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: col }}>{score + totalMod}</span>
-                                  </div>
-                                </>
-                              )}
+                              {/* Total: score + all contributions */}
+                              <div style={{ borderTop: `1px solid ${pal.border}`, margin: "6px 0" }} />
+                              <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
+                                <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted, fontStyle: "italic" }}>Total</span>
+                                <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: col }}>{score + totalMod}</span>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -1731,136 +2207,752 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
                 </div>
               </div>
 
-              {/* Loadout / In Play */}
-              {((char.weapons||[]).length > 0 || (char.equipment||[]).length > 0 || (char.inPlay||[]).length > 0) && (
-                <>
-                  <HR color={pal.border} />
-                  {((char.weapons||[]).length > 0 || (char.equipment||[]).length > 0) ? (
-                    <>
-                      {/* Tab toggles */}
-                      <div style={{ display: "flex", gap: 8, marginBottom: 18 }}>
-                        {["loadout", "inplay"].map(tab => (
-                          <button key={tab} onClick={() => setCombatTab(tab)} style={{
-                            padding: "4px 14px", fontFamily: pal.fontUI, fontSize: 11,
-                            letterSpacing: "0.15em", textTransform: "uppercase",
-                            background: combatTab === tab ? pal.accentDim : "transparent",
-                            border: `1px solid ${combatTab === tab ? pal.accent : pal.border}`,
-                            borderRadius: 2, color: combatTab === tab ? pal.accentBright : pal.textMuted,
-                            cursor: "pointer",
-                          }}>
-                            {tab === "loadout" ? "Loadout" : "In Play"}
-                          </button>
-                        ))}
-                      </div>
+              {/* ── Three-tab strip: Inventory | Persona | Combat ─────────── */}
+              <HR color={pal.border} />
+              <div style={{
+                display: "flex", margin: "0 -30px 24px",
+              }}>
+                {[
+                  {
+                    key: "loadout",
+                    label: "Inventory",
+                    icon: (active) => (
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="3" y1="3" x2="17" y2="17" stroke={active ? pal.accentBright : pal.textMuted} strokeWidth="2" strokeLinecap="round"/>
+                        <line x1="17" y1="3" x2="3" y2="17" stroke={active ? pal.accentBright : pal.textMuted} strokeWidth="2" strokeLinecap="round"/>
+                        <rect x="2" y="1" width="3" height="5" rx="1" fill={active ? pal.accentBright : pal.textMuted} transform="rotate(45 3 3)"/>
+                        <rect x="15" y="1" width="3" height="5" rx="1" fill={active ? pal.accentBright : pal.textMuted} transform="rotate(-45 17 3)"/>
+                      </svg>
+                    ),
+                  },
+                  {
+                    key: "persona",
+                    label: "Persona",
+                    icon: (active) => (
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M4 5 Q4 2 10 2 Q16 2 16 5 L16 11 Q16 16 10 17 Q7 17 5.5 15" stroke={active ? pal.accentBright : pal.textMuted} strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+                        <path d="M4 5 L4 11 Q4 14 5.5 15" stroke={active ? pal.accentBright : pal.textMuted} strokeWidth="1.6" fill="none" strokeLinecap="round"/>
+                        <circle cx="7.5" cy="8" r="1.2" fill={active ? pal.accentBright : pal.textMuted}/>
+                        <circle cx="12.5" cy="8" r="1.2" fill={active ? pal.accentBright : pal.textMuted}/>
+                        <path d="M7.5 12 Q10 13.5 12.5 12" stroke={active ? pal.accentBright : pal.textMuted} strokeWidth="1.4" fill="none" strokeLinecap="round"/>
+                      </svg>
+                    ),
+                  },
+                  {
+                    key: "combat",
+                    label: "Combat",
+                    icon: (active) => (
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M10 2 L17 5 L17 10 Q17 15 10 18 Q3 15 3 10 L3 5 Z" stroke={active ? pal.accentBright : pal.textMuted} strokeWidth="1.6" fill="none" strokeLinejoin="round"/>
+                        <path d="M10 6 L10 13 M7 9.5 L13 9.5" stroke={active ? pal.accentBright : pal.textMuted} strokeWidth="1.4" strokeLinecap="round"/>
+                      </svg>
+                    ),
+                  },
+                ].map((tab, idx, arr) => {
+                  const isActive = combatTab === tab.key;
+                  return (
+                    <button
+                      key={tab.key}
+                      onClick={() => setTab(tab.key)}
+                      style={{
+                        flex: 1,
+                        display: "flex", flexDirection: "column",
+                        alignItems: "center", justifyContent: "center",
+                        gap: 6, height: 64,
+                        fontFamily: pal.fontUI, fontSize: 13,
+                        letterSpacing: "0.2em", textTransform: "uppercase",
+                        cursor: "pointer",
+                        background: isActive ? pal.accentDim : "transparent",
+                        border: `1px solid ${isActive ? pal.accent : pal.border}`,
+                        borderRight: idx < arr.length - 1 ? "none" : `1px solid ${isActive ? pal.accent : pal.border}`,
+                        color: isActive ? pal.accentBright : pal.textMuted,
+                        transition: "border-color 0.15s, background 0.15s, color 0.15s",
+                      }}
+                    >
+                      {tab.icon(isActive)}
+                      {tab.label}
+                    </button>
+                  );
+                })}
+              </div>
 
-                      {combatTab === "loadout" ? (
-                        <div className="loadout-grid">
-                          {/* Weapons column */}
-                          {(char.weapons||[]).length > 0 ? (
-                            <div>
-                              <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 10 }}>Weapons</div>
-                              {char.weapons.map(item => {
-                                const expanded = expandedItems.has(item.id);
-                                return (
-                                  <div key={item.id} onClick={() => item.description && toggleExpanded(item.id)} style={{
-                                    padding: "9px 0", borderBottom: `1px solid ${pal.border}`,
-                                    cursor: item.description ? "pointer" : "default",
-                                  }}>
-                                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                                      <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{item.name}</span>
-                                      {item.mods?.length > 0 && (
-                                        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>
-                                          {item.mods.map(m => `${m.attribute} ${m.value}`).join(" · ")}
-                                        </span>
-                                      )}
-                                      {item.description && (
-                                        <span style={{ marginLeft: "auto", color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>
-                                      )}
-                                    </div>
-                                    {expanded && item.description && (
-                                      <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>
-                                        {item.description}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
+              {/* ── Inventory tab ──────────────────────────────────────────── */}
+              {combatTab === "loadout" && (
+                <>
+                  <div className="loadout-grid">
+                    {/* Weapons column */}
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim }}>Weapons</div>
+                        {onSave && <button onClick={() => setEditingItem({ listType: "weapons", item: null })} style={{ ...inputStyle, width: "auto", padding: "5px 12px", fontSize: 12 }}>+ Add Weapon</button>}
+                      </div>
+                      {(char.weapons||[]).length > 0 ? (
+                        char.weapons.map(item => {
+                          const expanded = expandedItems.has(item.id);
+                          return (
+                            <div key={item.id} onClick={() => item.description && toggleExpanded(item.id)} style={{
+                              padding: "9px 0", borderBottom: `1px solid ${pal.border}`,
+                              cursor: item.description ? "pointer" : "default",
+                            }}>
+                              <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                                <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{item.name}</span>
+                                {item.mods?.length > 0 && (
+                                  <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>
+                                    {item.mods.map(m => `${m.attribute} ${m.value}`).join(" · ")}
+                                  </span>
+                                )}
+                                {item.description && (
+                                  <span style={{ marginLeft: "auto", color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>
+                                )}
+                              </div>
+                              {expanded && item.description && (
+                                <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>
+                                  {item.description}
+                                </div>
+                              )}
                             </div>
-                          ) : <div />}
-                          {/* Equipment column */}
-                          {(char.equipment||[]).length > 0 ? (
-                            <div>
-                              <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 10 }}>Equipment</div>
-                              {char.equipment.map(item => {
-                                const expanded = expandedItems.has(item.id);
-                                return (
-                                  <div key={item.id} onClick={() => item.description && toggleExpanded(item.id)} style={{
-                                    padding: "9px 0", borderBottom: `1px solid ${pal.border}`,
-                                    cursor: item.description ? "pointer" : "default",
-                                  }}>
-                                    <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                                      <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{item.name}</span>
-                                      {item.type && (
-                                        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", color: pal.accent, opacity: 0.75 }}>{item.type}</span>
-                                      )}
-                                      {item.mods?.length > 0 && (
-                                        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>
-                                          {item.mods.map(m => `${m.attribute} ${m.value}`).join(" · ")}
-                                        </span>
-                                      )}
-                                      {item.description && (
-                                        <span style={{ marginLeft: "auto", color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>
-                                      )}
-                                    </div>
-                                    {expanded && item.description && (
-                                      <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>
-                                        {item.description}
-                                      </div>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          ) : <div />}
-                        </div>
+                          );
+                        })
                       ) : (
-                        (char.inPlay||[]).length > 0 ? (
-                          <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0 28px" }}>
-                            {char.inPlay.map((item, i) => (
-                              <li key={i} style={{
-                                display: "flex", alignItems: "flex-start", gap: 10,
-                                padding: "7px 0", borderBottom: `1px solid ${pal.border}`,
-                                fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.5, color: pal.textBody,
-                              }}>
-                                <span style={{ color: pal.accentDim, fontSize: 7, marginTop: 5, flexShrink: 0 }}>◆</span>
-                                {item}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>No in-play traits.</div>
-                        )
+                        <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>No weapons.</div>
                       )}
-                    </>
+                    </div>
+                    {/* Equipment column */}
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim }}>Equipment</div>
+                        {onSave && <button onClick={() => setEditingItem({ listType: "equipment", item: null, showType: true })} style={{ ...inputStyle, width: "auto", padding: "5px 12px", fontSize: 12 }}>+ Add Item</button>}
+                      </div>
+                      {(char.equipment||[]).length > 0 ? (
+                        char.equipment.map(item => {
+                          const expanded = expandedItems.has(item.id);
+                          return (
+                            <div key={item.id} onClick={() => item.description && toggleExpanded(item.id)} style={{
+                              padding: "9px 0", borderBottom: `1px solid ${pal.border}`,
+                              cursor: item.description ? "pointer" : "default",
+                            }}>
+                              <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                                <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{item.name}</span>
+                                {item.type && (
+                                  <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", color: pal.accent, opacity: 0.75 }}>{item.type}</span>
+                                )}
+                                {item.mods?.length > 0 && (
+                                  <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>
+                                    {item.mods.map(m => `${m.attribute} ${m.value}`).join(" · ")}
+                                  </span>
+                                )}
+                                {item.description && (
+                                  <span style={{ marginLeft: "auto", color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>
+                                )}
+                              </div>
+                              {expanded && item.description && (
+                                <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>
+                                  {item.description}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      ) : (
+                        <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>No equipment.</div>
+                      )}
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* ── Persona tab ────────────────────────────────────────────── */}
+              {combatTab === "persona" && (
+                <>
+                  {(char.inPlay||[]).length > 0 ? (
+                    <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0 28px" }}>
+                      {char.inPlay.map((item, i) => (
+                        <li key={i} style={{
+                          display: "flex", alignItems: "flex-start", gap: 10,
+                          padding: "7px 0", borderBottom: `1px solid ${pal.border}`,
+                          fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.5, color: pal.textBody,
+                        }}>
+                          <span style={{ color: pal.accentDim, fontSize: 7, marginTop: 5, flexShrink: 0 }}>◆</span>
+                          {item}
+                        </li>
+                      ))}
+                    </ul>
                   ) : (
-                    /* No loadout — show In Play directly */
-                    <>
-                      <div style={secHead}>In Play</div>
-                      <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0 28px" }}>
-                        {(char.inPlay||[]).map((item, i) => (
-                          <li key={i} style={{
-                            display: "flex", alignItems: "flex-start", gap: 10,
-                            padding: "7px 0", borderBottom: `1px solid ${pal.border}`,
-                            fontFamily: pal.fontBody, fontSize: 16, lineHeight: 1.5, color: pal.textBody,
-                          }}>
-                            <span style={{ color: pal.accentDim, fontSize: 7, marginTop: 5, flexShrink: 0 }}>◆</span>
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </>
+                    <div style={{ fontFamily: pal.fontBody, fontSize: 15, color: pal.textMuted, fontStyle: "italic" }}>
+                      No persona traits yet. Add them in edit mode under Persona Traits.
+                    </div>
                   )}
                 </>
+              )}
+
+              {/* ── Combat tab ─────────────────────────────────────────────── */}
+              {combatTab === "combat" && (
+                <div style={{
+                  border: isActiveTurn ? `1px solid ${pal.accent}` : "1px solid transparent",
+                  borderRadius: 8,
+                  padding: isActiveTurn ? "14px 14px 10px" : 0,
+                  background: isActiveTurn ? `${pal.accent}10` : "transparent",
+                  boxShadow: isActiveTurn ? `0 0 0 1px ${pal.accent}22, 0 0 18px ${pal.accent}22` : "none",
+                  transition: "border-color 0.18s, box-shadow 0.18s, background 0.18s",
+                }}>
+                  {isActiveTurn && (
+                    <div style={{
+                      marginBottom: 16,
+                      padding: "10px 14px",
+                      borderRadius: 5,
+                      background: pal.accentDim,
+                      border: `1px solid ${pal.accent}`,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 12,
+                    }}>
+                      <div>
+                        <div style={{
+                          fontFamily: pal.fontUI,
+                          fontSize: 11,
+                          letterSpacing: "0.26em",
+                          textTransform: "uppercase",
+                          color: pal.accentBright,
+                          marginBottom: 2,
+                        }}>Your Turn</div>
+                        <div style={{
+                          fontFamily: pal.fontBody,
+                          fontSize: 14,
+                          color: pal.textBody,
+                        }}>You are the active combatant in initiative.</div>
+                      </div>
+                      <div style={{
+                        width: 10,
+                        height: 10,
+                        borderRadius: "50%",
+                        background: pal.accentBright,
+                        boxShadow: `0 0 10px ${pal.accentBright}`,
+                        flexShrink: 0,
+                      }} />
+                    </div>
+                  )}
+                  {/* Concentration banner */}
+                  {char.concentration?.active && (
+                    <div style={{
+                      background: `rgba(${pal.name === "Vellum" ? "140,110,70" : "160,104,64"},0.10)`,
+                      border: `1px solid ${pal.accent}`,
+                      borderRadius: 4, padding: "11px 16px", marginBottom: 18,
+                      display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                        <div style={{
+                          width: 9, height: 9, borderRadius: "50%",
+                          background: pal.accentBright,
+                          boxShadow: `0 0 6px ${pal.accentBright}`,
+                          flexShrink: 0,
+                        }} />
+                        <div>
+                          <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.26em", textTransform: "uppercase", color: pal.textMuted, display: "block", marginBottom: 1 }}>Concentrating on</span>
+                          <span style={{ fontFamily: pal.fontDisplay, fontSize: 15, color: pal.accentBright }}>{char.concentration.spell}</span>
+                        </div>
+                      </div>
+                      {slug && (
+                        <button
+                          onClick={() => {
+                            const prev = char.concentration;
+                            const conc = { active: false, spell: "" };
+                            setChar(c => ({ ...c, concentration: conc }));
+                            applySessionPatch({ concentration: conc }, { concentration: prev }).catch(() => {});
+                          }}
+                          style={{
+                            background: "transparent", border: `1px solid ${pal.border}`,
+                            borderRadius: 3, color: pal.textMuted,
+                            fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.15em",
+                            textTransform: "uppercase", padding: "5px 12px", cursor: "pointer",
+                            whiteSpace: "nowrap",
+                          }}
+                        >Drop Concentration</button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Concentration set input (when not active) */}
+                  {slug && !char.concentration?.active && (
+                    <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
+                      <input
+                        type="text"
+                        placeholder="Spell name…"
+                        value={concSpellInput}
+                        onChange={e => setConcSpellInput(e.target.value)}
+                        style={{
+                          background: pal.surface, border: `1px solid ${pal.border}`,
+                          borderRadius: 3, color: pal.text, fontFamily: pal.fontBody,
+                          fontSize: 14, padding: "6px 10px", outline: "none", flex: 1,
+                        }}
+                        onKeyDown={e => {
+                          if (e.key === "Enter" && concSpellInput.trim()) {
+                            const prev = char.concentration;
+                            const conc = { active: true, spell: concSpellInput.trim() };
+                            setChar(c => ({ ...c, concentration: conc }));
+                            applySessionPatch({ concentration: conc }, { concentration: prev }).catch(() => {});
+                            setConcSpellInput("");
+                          }
+                        }}
+                      />
+                      <button
+                        onClick={() => {
+                          if (!concSpellInput.trim()) return;
+                          const prev = char.concentration;
+                          const conc = { active: true, spell: concSpellInput.trim() };
+                          setChar(c => ({ ...c, concentration: conc }));
+                          applySessionPatch({ concentration: conc }, { concentration: prev }).catch(() => {});
+                          setConcSpellInput("");
+                        }}
+                        style={{
+                          background: pal.accentDim, border: `1px solid ${pal.accent}`,
+                          borderRadius: 3, color: pal.accentBright,
+                          fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em",
+                          textTransform: "uppercase", padding: "6px 12px", cursor: "pointer",
+                          opacity: concSpellInput.trim() ? 1 : 0.5,
+                        }}
+                      >Set Concentration</button>
+                    </div>
+                  )}
+
+                  {/* HP tracker */}
+                  {(hpMax > 0) && (
+                    <div style={{
+                      background: pal.surface, border: `1px solid ${pal.border}`,
+                      borderRadius: 4, padding: "16px 18px", marginBottom: 18,
+                    }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+                        {/* − button */}
+                        {slug && (
+                          <button
+                            onClick={() => {
+                              const delta = -1;
+                              const newVal = Math.max(0, hpCurrent + delta);
+                              if (newVal === hpCurrent) return;
+                              hpPendingDelta.current += delta;
+                              markSessionExpected({ hpCurrent: newVal });
+                              setChar(c => ({ ...c, hpCurrent: newVal }));
+                              hpFlushRef.current?.();
+                            }}
+                            style={{
+                              width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+                              background: pal.accentDim, border: `1px solid ${pal.accent}`,
+                              color: pal.accentBright, fontFamily: pal.fontDisplay,
+                              fontSize: 24, lineHeight: 1, cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}
+                          >−</button>
+                        )}
+                        {/* current / max with tap-to-edit */}
+                        <div style={{ flex: 1, textAlign: "center" }}>
+                          <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4 }}>
+                            {hpEditMode ? (
+                              <input
+                                type="number"
+                                autoFocus
+                                defaultValue={hpCurrent}
+                                style={{
+                                  fontFamily: pal.fontDisplay, fontSize: 40, color: pal.gem, lineHeight: 1,
+                                  background: pal.surface, border: `1px solid ${pal.accent}`, borderRadius: 3,
+                                  width: 80, textAlign: "center", outline: "none", padding: "0 4px",
+                                }}
+                                onBlur={e => {
+                                  const val = Math.max(0, Math.min(hpMax, parseInt(e.target.value) || 0));
+                                  const prev = hpCurrent;
+                                  setChar(c => ({ ...c, hpCurrent: val }));
+                                  applySessionPatch({ hpCurrent: val }, { hpCurrent: prev }).catch(() => {});
+                                  setHpEditMode(false);
+                                }}
+                                onKeyDown={e => {
+                                  if (e.key === "Enter") e.target.blur();
+                                  if (e.key === "Escape") setHpEditMode(false);
+                                }}
+                              />
+                            ) : (
+                              <span
+                                onClick={() => slug && setHpEditMode(true)}
+                                title={slug ? "Tap to set HP directly" : undefined}
+                                style={{ fontFamily: pal.fontDisplay, fontSize: 48, color: pal.gem, lineHeight: 1, cursor: slug ? "pointer" : "default" }}
+                              >{hpCurrent}</span>
+                            )}
+                            <span style={{ fontFamily: pal.fontDisplay, fontSize: 24, color: pal.textMuted, lineHeight: 1 }}>/</span>
+                            <span style={{ fontFamily: pal.fontDisplay, fontSize: 32, color: pal.accent, lineHeight: 1 }}>{hpMax}</span>
+                          </div>
+                          <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginTop: 3 }}>Hit Points</div>
+                          {tempHP > 0 && (
+                            <div style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.accentBright, letterSpacing: "0.08em", marginTop: 2 }}>+{tempHP} temp</div>
+                          )}
+                        </div>
+                        {/* + button */}
+                        {slug && (
+                          <button
+                            onClick={() => {
+                              const delta = 1;
+                              const newVal = Math.min(hpMax, hpCurrent + delta);
+                              if (newVal === hpCurrent) return;
+                              hpPendingDelta.current += delta;
+                              markSessionExpected({ hpCurrent: newVal });
+                              setChar(c => ({ ...c, hpCurrent: newVal }));
+                              hpFlushRef.current?.();
+                            }}
+                            style={{
+                              width: 44, height: 44, borderRadius: "50%", flexShrink: 0,
+                              background: pal.accentDim, border: `1px solid ${pal.accent}`,
+                              color: pal.accentBright, fontFamily: pal.fontDisplay,
+                              fontSize: 24, lineHeight: 1, cursor: "pointer",
+                              display: "flex", alignItems: "center", justifyContent: "center",
+                            }}
+                          >+</button>
+                        )}
+                      </div>
+                      {/* HP bar */}
+                      <div style={{ width: "100%", height: 5, borderRadius: 3, background: pal.border, marginTop: 12, overflow: "hidden" }}>
+                        <div style={{
+                          width: `${Math.max(0, Math.min(100, hpPct * 100))}%`,
+                          height: "100%", borderRadius: 3,
+                          background: hpBarColor, transition: "width 0.25s, background-color 0.25s",
+                        }} />
+                      </div>
+                      {/* Temp HP row */}
+                      {slug && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+                          <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, flexShrink: 0 }}>Temp HP</span>
+                          <input
+                            type="number"
+                            min={0}
+                            value={tempHP}
+                            onChange={e => {
+                              const val = Math.max(0, parseInt(e.target.value) || 0);
+                              setChar(c => ({ ...c, tempHP: val }));
+                              markSessionExpected({ tempHP: val });
+                              tempHpFlushRef.current?.();
+                            }}
+                            style={{
+                              background: pal.surface, border: `1px solid ${pal.border}`,
+                              borderRadius: 3, color: pal.text, fontFamily: pal.fontBody,
+                              fontSize: 14, padding: "4px 8px", outline: "none", width: 72,
+                              textAlign: "center",
+                            }}
+                          />
+                        </div>
+                      )}
+                      {/* Death saves at 0 HP */}
+                      {hpCurrent === 0 && hpMax > 0 && (
+                        <div style={{ marginTop: 14, borderTop: `1px solid ${pal.border}`, paddingTop: 12 }}>
+                          <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 8, textAlign: "center" }}>Death Saves</div>
+                          <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 6 }}>
+                            <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.1em", color: pal.gem, textTransform: "uppercase", minWidth: 54, textAlign: "right" }}>Success</span>
+                            {[0,1,2].map(n => <div key={n} style={{ width: 16, height: 16, borderRadius: "50%", border: `1px solid ${pal.gem}`, background: "transparent" }} />)}
+                          </div>
+                          <div style={{ display: "flex", gap: 8, justifyContent: "center" }}>
+                            <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.1em", color: "#c06060", textTransform: "uppercase", minWidth: 54, textAlign: "right" }}>Failure</span>
+                            {[0,1,2].map(n => <div key={n} style={{ width: 16, height: 16, borderRadius: "50%", border: "1px solid #c06060", background: "transparent" }} />)}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Inspiration toggle */}
+                  <button
+                    onClick={() => {
+                      if (!slug) return;
+                      const newVal = !char.inspiration;
+                      setChar(c => ({ ...c, inspiration: newVal }));
+                      applySessionPatch({ inspiration: newVal }, { inspiration: !newVal }).catch(() => {});
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 14,
+                      padding: "12px 16px", width: "100%", textAlign: "left",
+                      background: char.inspiration ? `${pal.gem}18` : "transparent",
+                      border: `1px solid ${char.inspiration ? pal.gem : pal.border}`,
+                      borderRadius: 4, marginBottom: 18, cursor: slug ? "pointer" : "default",
+                      transition: "background 0.15s, border-color 0.15s",
+                    }}
+                  >
+                    <div style={{
+                      width: 22, height: 22, borderRadius: "50%",
+                      background: char.inspiration ? pal.gem : "transparent",
+                      border: `2px solid ${char.inspiration ? pal.gem : pal.border}`,
+                      boxShadow: char.inspiration ? `0 0 8px ${pal.gem}88, 0 0 18px ${pal.gem}33` : "none",
+                      flexShrink: 0, transition: "all 0.18s",
+                    }} />
+                    <span style={{
+                      fontFamily: pal.fontUI, fontSize: 13, letterSpacing: "0.22em",
+                      textTransform: "uppercase",
+                      color: char.inspiration ? pal.accentBright : pal.textMuted,
+                    }}>Inspiration</span>
+                    {char.inspiration && (
+                      <span style={{
+                        marginLeft: "auto", fontFamily: pal.fontUI, fontSize: 11,
+                        letterSpacing: "0.14em", textTransform: "uppercase", color: pal.gem,
+                        background: `${pal.gem}1a`, border: `1px solid ${pal.gem}55`,
+                        borderRadius: 10, padding: "2px 10px",
+                      }}>Active</span>
+                    )}
+                  </button>
+
+                  <div style={{ borderTop: `1px solid ${pal.border}`, margin: "4px 0 20px" }} />
+
+                  {/* Condition grid */}
+                  <div style={{ marginBottom: 20 }}>
+                    <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 10 }}>Conditions</div>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
+                      {CONDITIONS.map(cond => {
+                        const isActive = (char.conditions || []).includes(cond);
+                        return (
+                          <button
+                            key={cond}
+                            onClick={() => {
+                              if (!slug) return;
+                              const prevConds = char.conditions || [];
+                              const newConds = isActive
+                                ? prevConds.filter(c => c !== cond)
+                                : [...prevConds, cond];
+                              setChar(c => ({ ...c, conditions: newConds }));
+                              applySessionPatch({ conditions: newConds }, { conditions: prevConds }).catch(() => {});
+                            }}
+                            style={{
+                              fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.08em",
+                              padding: "4px 12px", borderRadius: 12,
+                              background: isActive ? pal.gem : "transparent",
+                              border: `1px solid ${isActive ? pal.accent : pal.border}`,
+                              color: isActive ? pal.bg : pal.textMuted,
+                              cursor: slug ? "pointer" : "default",
+                              transition: "all 0.15s",
+                            }}
+                          >{cond}</button>
+                        );
+                      })}
+                    </div>
+
+                    {/* Exhaustion counter */}
+                    {slug && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+                        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", color: pal.textMuted }}>Exhaustion</span>
+                        <button
+                          onClick={() => {
+                            const delta = -1;
+                            const newVal = Math.max(0, (char.exhaustionLevel || 0) + delta);
+                            if (newVal === (char.exhaustionLevel || 0)) return;
+                            exhPendingDelta.current += delta;
+                            markSessionExpected({ exhaustionLevel: newVal });
+                            setChar(c => ({ ...c, exhaustionLevel: newVal }));
+                            exhFlushRef.current?.();
+                          }}
+                          style={{
+                            width: 26, height: 26, borderRadius: "50%",
+                            background: "transparent", border: `1px solid ${pal.border}`,
+                            color: pal.textMuted, cursor: "pointer", fontSize: 16,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >−</button>
+                        <span style={{ fontFamily: pal.fontDisplay, fontSize: 20, color: (char.exhaustionLevel || 0) > 0 ? pal.gem : pal.textMuted, minWidth: 20, textAlign: "center" }}>
+                          {char.exhaustionLevel || 0}
+                        </span>
+                        <button
+                          onClick={() => {
+                            const delta = 1;
+                            const newVal = Math.min(6, (char.exhaustionLevel || 0) + delta);
+                            if (newVal === (char.exhaustionLevel || 0)) return;
+                            exhPendingDelta.current += delta;
+                            markSessionExpected({ exhaustionLevel: newVal });
+                            setChar(c => ({ ...c, exhaustionLevel: newVal }));
+                            exhFlushRef.current?.();
+                          }}
+                          style={{
+                            width: 26, height: 26, borderRadius: "50%",
+                            background: "transparent", border: `1px solid ${pal.border}`,
+                            color: pal.textMuted, cursor: "pointer", fontSize: 16,
+                            display: "flex", alignItems: "center", justifyContent: "center",
+                          }}
+                        >+</button>
+                      </div>
+                    )}
+
+                    {/* Clear all conditions */}
+                    {slug && ((char.conditions || []).length > 0 || (char.exhaustionLevel || 0) > 0) && (
+                      <button
+                        onClick={() => {
+                          const prevConds = char.conditions || [];
+                          const prevExh = char.exhaustionLevel || 0;
+                          setChar(c => ({ ...c, conditions: [], exhaustionLevel: 0 }));
+                          applySessionPatch(
+                            { conditions: [], exhaustionLevel: 0 },
+                            { conditions: prevConds, exhaustionLevel: prevExh }
+                          ).catch(() => {});
+                        }}
+                        style={{
+                          background: "transparent", border: `1px solid ${pal.border}`,
+                          borderRadius: 3, color: pal.textMuted,
+                          fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em",
+                          textTransform: "uppercase", padding: "5px 14px", cursor: "pointer",
+                        }}
+                      >Clear All Conditions</button>
+                    )}
+                  </div>
+
+                  {/* Spell Slots */}
+                  {(() => {
+                    const activeSlots = (char.spellSlots || []).filter(s => s.max > 0);
+                    if (activeSlots.length === 0) return null;
+                    return (
+                      <>
+                        <div style={{ borderTop: `1px solid ${pal.border}`, margin: "4px 0 20px" }} />
+                        <div>
+                          <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 12 }}>Spell Slots</div>
+                          {activeSlots.map(slot => (
+                            <div key={slot.level} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+                              <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: pal.textMuted, minWidth: 32 }}>
+                                {SPELL_LEVEL_LABELS[slot.level - 1]}
+                              </div>
+                              <div style={{ display: "flex", gap: 2, flexWrap: "wrap" }}>
+                                {Array.from({ length: slot.max }, (_, i) => {
+                                  const isUsed = i < (slot.used || 0);
+                                  return (
+                                    <div
+                                      key={i}
+                                      onClick={() => {
+                                        if (!slug) return;
+                                        const prevSlots = char.spellSlots || [];
+                                        const newUsed = isUsed ? Math.max(0, slot.used - 1) : Math.min(slot.max, (slot.used || 0) + 1);
+                                        const newSlots = prevSlots.map(s =>
+                                          s.level === slot.level ? { ...s, used: newUsed } : s
+                                        );
+                                        setChar(c => ({ ...c, spellSlots: newSlots }));
+                                        applySessionPatch({ spellSlots: newSlots }, { spellSlots: prevSlots }).catch(() => {});
+                                      }}
+                                      style={{
+                                        width: 20, height: 20, borderRadius: "50%",
+                                        background: isUsed ? pal.accentDim : pal.gem,
+                                        border: `1px solid ${isUsed ? pal.border : pal.accent}`,
+                                        cursor: slug ? "pointer" : "default",
+                                        padding: 6, boxSizing: "content-box",
+                                        transition: "background 0.15s",
+                                        flexShrink: 0,
+                                      }}
+                                    />
+                                  );
+                                })}
+                              </div>
+                              {slot.isPactMagic && (
+                                <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.1em", color: pal.accent, textTransform: "uppercase" }}>Pact</span>
+                              )}
+                            </div>
+                          ))}
+                          {slug && (
+                            <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm("Long rest — reset all spell slots?")) {
+                                    const prevSlots = char.spellSlots || [];
+                                    const newSlots = prevSlots.map(s => ({ ...s, used: 0 }));
+                                    setChar(c => ({ ...c, spellSlots: newSlots }));
+                                    applySessionPatch({ spellSlots: newSlots }, { spellSlots: prevSlots }).catch(() => {});
+                                  }
+                                }}
+                                style={{
+                                  background: pal.accentDim, border: `1px solid ${pal.accent}`,
+                                  borderRadius: 3, color: pal.accentBright,
+                                  fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em",
+                                  textTransform: "uppercase", padding: "5px 12px", cursor: "pointer",
+                                }}
+                              >Long Rest</button>
+                              <button
+                                onClick={() => {
+                                  if (window.confirm("Short rest — reset Pact Magic slots?")) {
+                                    const prevSlots = char.spellSlots || [];
+                                    const newSlots = prevSlots.map(s => s.isPactMagic ? { ...s, used: 0 } : s);
+                                    setChar(c => ({ ...c, spellSlots: newSlots }));
+                                    applySessionPatch({ spellSlots: newSlots }, { spellSlots: prevSlots }).catch(() => {});
+                                  }
+                                }}
+                                style={{
+                                  background: "transparent", border: `1px solid ${pal.border}`,
+                                  borderRadius: 3, color: pal.textMuted,
+                                  fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em",
+                                  textTransform: "uppercase", padding: "5px 12px", cursor: "pointer",
+                                }}
+                              >Short Rest</button>
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    );
+                  })()}
+
+                  {/* Weapons quick-reference */}
+                  {(char.weapons||[]).length > 0 && (
+                    <>
+                      <div style={{ borderTop: `1px solid ${pal.border}`, margin: "20px 0" }} />
+                      <div>
+                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 12 }}>Weapons</div>
+                        {char.weapons.map(item => {
+                          const expanded = expandedItems.has(item.id + "-combat");
+                          const attackMod = item.mods?.find(m => m.attribute === "Attack Bonus");
+                          const damageMod = item.mods?.find(m => m.attribute === "Damage");
+                          return (
+                            <div key={item.id} style={{
+                              background: pal.surface, border: `1px solid ${pal.border}`,
+                              borderRadius: 4, marginBottom: 6, overflow: "hidden",
+                              transition: "border-color 0.15s",
+                            }}>
+                              <div
+                                onClick={() => {
+                                  const next = new Set(expandedItems);
+                                  const key = item.id + "-combat";
+                                  if (next.has(key)) next.delete(key); else next.add(key);
+                                  setExpandedItems(next);
+                                }}
+                                style={{ display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", cursor: "pointer", userSelect: "none" }}
+                              >
+                                <span style={{ fontFamily: pal.fontBody, fontSize: 15, color: pal.text, flex: 1 }}>{item.name}</span>
+                                {attackMod && (
+                                  <span style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.08em", color: pal.textMuted, whiteSpace: "nowrap" }}>
+                                    To-hit <span style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.accentBright }}>{attackMod.value}</span>
+                                  </span>
+                                )}
+                                {damageMod && (
+                                  <span style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.08em", color: pal.textMuted, whiteSpace: "nowrap", marginLeft: 4 }}>
+                                    Dmg <span style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.accentBright }}>{damageMod.value}</span>
+                                  </span>
+                                )}
+                                <span style={{ color: pal.textMuted, fontSize: 11, flexShrink: 0 }}>{expanded ? "▼" : "▶"}</span>
+                              </div>
+                              {expanded && item.description && (
+                                <div style={{
+                                  padding: "10px 14px 12px", fontFamily: pal.fontBody,
+                                  fontSize: 14, fontStyle: "italic", color: pal.textBody,
+                                  borderTop: `1px solid ${pal.border}`, lineHeight: 1.55,
+                                }}>
+                                  {item.description}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </>
+                  )}
+
+                  {/* Empty state if no session data configured */}
+                  {!(char.hpMax ?? char.hp ?? 0) && !(char.spellSlots||[]).length && !(char.weapons||[]).length && (
+                    <div style={{
+                      fontFamily: pal.fontBody, fontSize: 15, color: pal.textMuted,
+                      fontStyle: "italic", textAlign: "center", padding: "20px 0",
+                    }}>
+                      Set up your character stats in edit mode to use in-session tracking.
+                    </div>
+                  )}
+
+                  {/* Dice roller */}
+                  <DiceRoller
+                    weapons={char.weapons || []}
+                    stats={char.stats || []}
+                    pal={pal}
+                    slug={slug}
+                  />
+                </div>
               )}
             </div>
 
@@ -1963,6 +3055,45 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate }) 
             <>{char.name}{char.nameAlt ? ` · ${char.nameAlt}` : ""}{" · "}{char.race} {char.charClass}{char.level ? ` · Level ${char.level}` : ""}</>
           )}
         </footer>
+
+        {/* Item editor modal (weapons / equipment) */}
+        {editingItem && (
+          <ItemEditorModal
+            item={editingItem.item}
+            pal={pal}
+            showType={editingItem.showType}
+            onSave={(saved) => {
+              let updatedChar = char;
+              if (editingItem.item) {
+                if (editingItem.listType === "weapons") {
+                  updateWeapon(saved.id, saved);
+                  updatedChar = { ...char, weapons: (char.weapons||[]).map(w => w.id === saved.id ? saved : w) };
+                } else {
+                  updateEquipment(saved.id, saved);
+                  updatedChar = { ...char, equipment: (char.equipment||[]).map(e => e.id === saved.id ? saved : e) };
+                }
+              } else {
+                if (editingItem.listType === "weapons") {
+                  addWeapon(saved);
+                  updatedChar = { ...char, weapons: [...(char.weapons||[]), saved] };
+                } else {
+                  addEquipment(saved);
+                  updatedChar = { ...char, equipment: [...(char.equipment||[]), saved] };
+                }
+              }
+              if (mode === "view" && slug) {
+                applySessionPatch(
+                  { [editingItem.listType]: updatedChar[editingItem.listType] },
+                  { [editingItem.listType]: char[editingItem.listType] }
+                ).catch(() => {});
+              } else if (mode === "view") {
+                onSave(updatedChar);
+              }
+              setEditingItem(null);
+            }}
+            onClose={() => setEditingItem(null)}
+          />
+        )}
 
       </div>
     </div>

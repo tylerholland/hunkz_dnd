@@ -30,10 +30,12 @@ Resources:
         AllowHeaders:
         - Content-Type
         - x-character-password
+        - x-session-token
         AllowMethods:
         - GET
         - POST
         - PUT
+        - PATCH
         - DELETE
         - OPTIONS
   CharactersTable:
@@ -215,6 +217,108 @@ Resources:
       CodeUri: PortraitUrlFunction
     Metadata:
       SamResourceId: PortraitUrlFunction
+  SessionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/session.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /characters/{slug}/session
+            Method: patch
+            ApiId:
+              Ref: CharactersApi
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: SessionFunction
+    Metadata:
+      SamResourceId: SessionFunction
+  DmPartyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/dmParty.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /dm/party
+            Method: get
+            ApiId:
+              Ref: CharactersApi
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: DmPartyFunction
+    Metadata:
+      SamResourceId: DmPartyFunction
+  InitiativeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/initiative.handler
+      Events:
+        GetApi:
+          Type: HttpApi
+          Properties:
+            Path: /initiative
+            Method: get
+            ApiId:
+              Ref: CharactersApi
+        PutApi:
+          Type: HttpApi
+          Properties:
+            Path: /initiative
+            Method: put
+            ApiId:
+              Ref: CharactersApi
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: InitiativeFunction
+    Metadata:
+      SamResourceId: InitiativeFunction
+  GetNpcCombatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getNpcCombat.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /npc-combat
+            Method: get
+            ApiId:
+              Ref: CharactersApi
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: GetNpcCombatFunction
+    Metadata:
+      SamResourceId: GetNpcCombatFunction
+  PutNpcCombatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/putNpcCombat.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /npc-combat
+            Method: put
+            ApiId:
+              Ref: CharactersApi
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: CharactersTable
+      CodeUri: PutNpcCombatFunction
+    Metadata:
+      SamResourceId: PutNpcCombatFunction
 Outputs:
   ApiUrl:
     Description: HTTP API endpoint URL

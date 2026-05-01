@@ -1,0 +1,2065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NPC Combat Tracker — DM Dashboard Prototype</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Ocean palette (dashboard chrome) ── */
+    :root {
+      --bg: #0d0f14;
+      --surface: rgba(18,32,48,0.6);
+      --surface-solid: #111e2c;
+      --border: rgba(100,130,160,0.18);
+      --border-vis: rgba(100,130,160,0.32);
+      --accent: #6a8fa8;
+      --accent-bright: #a0c0d0;
+      --accent-dim: #1e3a4e;
+      --text: #c8bfaf;
+      --text-body: #b0a898;
+      --text-muted: #3a5a6a;
+      --glow1: rgba(20,45,80,0.4);
+      --glow2: rgba(15,35,60,0.3);
+      --gem: #8ab4c8;
+      --font-display: 'Cinzel', Georgia, serif;
+      --font-body: 'Crimson Text', Georgia, serif;
+      --font-ui: 'IM Fell English', Georgia, serif;
+
+      /* Character palettes */
+      --ember-accent: #a06840;
+      --ember-bright: #c89060;
+      --ember-gem: #c8904c;
+      --ember-border: rgba(160,104,64,0.35);
+      --ember-surface: rgba(40,22,12,0.6);
+
+      --ocean-accent: #6a8fa8;
+      --ocean-bright: #a0c0d0;
+      --ocean-gem: #8ab4c8;
+      --ocean-border: rgba(100,130,160,0.35);
+      --ocean-surface: rgba(18,32,48,0.6);
+
+      --forest-accent: #5a8a60;
+      --forest-bright: #88b888;
+      --forest-gem: #78b878;
+      --forest-border: rgba(90,138,96,0.35);
+      --forest-surface: rgba(14,26,18,0.6);
+
+      /* NPC neutral treatment */
+      --npc-accent: #7a7060;
+      --npc-bright: #b0a080;
+      --npc-surface: rgba(30,26,20,0.6);
+      --npc-border: rgba(120,110,90,0.3);
+      --npc-gem: #a09080;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Annotation banner ── */
+    .annotation-bar {
+      background: rgba(10,30,10,0.92);
+      border-bottom: 1px solid rgba(60,120,60,0.4);
+      padding: 11px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+    }
+    .annotation-bar p {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      color: #77bb77;
+      letter-spacing: 0.04em;
+    }
+    .annotation-bar strong { color: #aaddaa; }
+
+    .callout-note {
+      background: rgba(30,80,30,0.85);
+      border: 1px solid rgba(80,160,80,0.5);
+      border-radius: 4px;
+      color: #88cc88;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px 0;
+      display: block;
+    }
+    .callout-note::before { content: "↳ "; opacity: 0.7; }
+
+    .callout-new {
+      background: rgba(20,50,80,0.9);
+      border: 1px solid rgba(80,140,200,0.5);
+      border-radius: 4px;
+      color: #80c8f0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px 0;
+      display: block;
+    }
+    .callout-new::before { content: "★ NEW: "; opacity: 0.8; color: #a0d8f0; }
+
+    /* ── Dashboard top bar ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border-vis);
+      position: sticky;
+      top: 37px;
+      z-index: 100;
+      background: rgba(13,15,20,0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .topbar-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      color: var(--accent-bright);
+    }
+    .topbar-subtitle {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .topbar-spacer { flex: 1; }
+    .topbar-btn {
+      background: rgba(18,32,48,0.5);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      padding: 7px 14px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .topbar-btn:hover { background: rgba(106,143,168,0.25); }
+    .topbar-btn.secondary {
+      background: transparent;
+      border-color: var(--border-vis);
+      color: var(--text-muted);
+    }
+    .topbar-btn.secondary:hover { border-color: var(--accent); color: var(--accent-bright); }
+    .topbar-btn.end-combat {
+      border-color: rgba(160,80,60,0.6);
+      color: #c89080;
+      background: rgba(40,16,10,0.5);
+    }
+    .topbar-btn.end-combat:hover {
+      background: rgba(160,80,60,0.18);
+      border-color: rgba(192,96,80,0.8);
+      color: #e0a898;
+    }
+
+    /* ── Dashboard layout: 3 columns ── */
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr 320px 300px;
+      gap: 0;
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 24px;
+      align-items: start;
+    }
+    @media (max-width: 1100px) {
+      .dashboard-layout {
+        grid-template-columns: 1fr 300px;
+      }
+      .npc-column {
+        grid-column: 1 / -1;
+        border-left: none !important;
+        border-top: 1px solid var(--border);
+        padding-left: 0 !important;
+        padding-top: 20px;
+        margin-top: 20px;
+      }
+    }
+    @media (max-width: 700px) {
+      .dashboard-layout {
+        grid-template-columns: 1fr;
+      }
+      .initiative-column, .npc-column {
+        border-left: none !important;
+        border-top: 1px solid var(--border);
+        padding-left: 0 !important;
+        padding-top: 20px;
+        margin-top: 20px;
+      }
+    }
+
+    /* ── Party column ── */
+    .party-column {
+      padding-right: 20px;
+    }
+    @media (max-width: 700px) {
+      .party-column { padding-right: 0; }
+    }
+
+    .section-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Character card (PC) ── */
+    .char-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 12px;
+      overflow: visible;
+      position: relative;
+      transition: border-color 0.15s;
+    }
+    .char-card:hover { border-color: var(--accent); }
+    .char-card::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 6px 0 0 6px;
+    }
+    .char-card.ember::before { background: var(--ember-accent); }
+    .char-card.ocean::before { background: var(--ocean-accent); }
+    .char-card.forest::before { background: var(--forest-accent); }
+
+    .card-main {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      padding: 14px 14px 10px 18px;
+      align-items: start;
+    }
+
+    .portrait {
+      width: 52px; height: 52px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display);
+      font-size: 20px;
+      flex-shrink: 0;
+      border: 2px solid;
+    }
+    .portrait.ember { background: var(--ember-surface); border-color: var(--ember-accent); color: var(--ember-gem); }
+    .portrait.ocean { background: var(--ocean-surface); border-color: var(--ocean-accent); color: var(--ocean-gem); }
+    .portrait.forest { background: var(--forest-surface); border-color: var(--forest-accent); color: var(--forest-gem); }
+
+    .card-name { font-family: var(--font-display); font-size: 17px; letter-spacing: 0.06em; margin-bottom: 3px; }
+    .card-name.ember { color: var(--ember-bright); }
+    .card-name.ocean { color: var(--ocean-bright); }
+    .card-name.forest { color: var(--forest-bright); }
+
+    .card-meta {
+      font-family: var(--font-ui);
+      font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--text-muted); margin-bottom: 8px;
+    }
+
+    .hp-inline { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; }
+    .hp-nums { display: flex; align-items: baseline; gap: 3px; }
+    .hp-cur { font-family: var(--font-display); font-size: 22px; line-height: 1; }
+    .hp-cur.ember { color: var(--ember-gem); }
+    .hp-cur.ocean { color: var(--ocean-gem); }
+    .hp-cur.forest { color: var(--forest-gem); }
+    .hp-cur.npc { color: var(--npc-gem); }
+    .hp-cur.danger { color: #c06060; }
+    .hp-sep-sm { font-family: var(--font-display); font-size: 14px; color: var(--text-muted); }
+    .hp-max-sm { font-family: var(--font-display); font-size: 14px; color: var(--text-muted); }
+
+    .hp-stepper-row { display: flex; align-items: center; gap: 0; margin-bottom: 8px; position: relative; }
+    .hp-step-btn {
+      width: 26px; height: 16px;
+      border-radius: 3px; border: 1px solid var(--border-vis);
+      background: transparent; color: var(--text-muted);
+      font-family: var(--font-display); font-size: 14px; line-height: 1;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; padding: 0;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      user-select: none;
+    }
+    .hp-step-btn:hover { border-color: var(--accent); color: var(--accent-bright); background: rgba(106,143,168,0.14); }
+
+    .hp-bar-wrap { flex: 1; padding: 0 5px; position: relative; }
+    .hp-bar-track { height: 6px; border-radius: 3px; overflow: hidden; }
+    .hp-bar-track.ember { background: rgba(58,34,16,0.8); }
+    .hp-bar-track.ocean { background: rgba(24,42,58,0.8); }
+    .hp-bar-track.forest { background: rgba(18,38,22,0.8); }
+    .hp-bar-track.npc { background: rgba(30,26,20,0.8); }
+    .hp-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; }
+
+    .card-quick-actions {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 0 4px; border-top: 1px solid var(--border);
+    }
+    .cqa-btn {
+      flex: 1; background: transparent; border: 1px solid var(--border-vis); border-radius: 3px;
+      color: var(--text-muted); font-family: var(--font-ui);
+      font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 5px 0; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      display: flex; align-items: center; justify-content: center; gap: 5px;
+    }
+    .cqa-btn:hover { border-color: var(--accent); color: var(--accent-bright); background: rgba(106,143,168,0.1); }
+    .cqa-btn.dmg:hover { border-color: rgba(192,96,96,0.5); color: #d08080; background: rgba(192,96,96,0.08); }
+    .cqa-btn.heal:hover { border-color: rgba(80,160,80,0.5); color: #88c888; background: rgba(80,160,80,0.08); }
+    .cqa-btn.more { flex: 0 0 30px; font-size: 14px; letter-spacing: 0; color: var(--text-muted); }
+    .cqa-btn.more:hover { border-color: var(--accent); color: var(--accent-bright); background: rgba(106,143,168,0.1); }
+
+    .card-conditions { display: flex; flex-wrap: wrap; gap: 5px; padding-top: 2px; padding-bottom: 4px; }
+    .card-cond {
+      font-family: var(--font-ui); font-size: 10px;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 10px; cursor: pointer;
+      transition: filter 0.12s;
+    }
+    .card-cond:hover { filter: brightness(1.2); }
+    .card-cond.poisoned { background: rgba(80,160,80,0.15); border: 1px solid rgba(80,160,80,0.4); color: #88c888; }
+    .card-cond.prone { background: rgba(200,144,64,0.14); border: 1px solid rgba(200,144,64,0.38); color: var(--ember-bright); }
+    .card-cond.restrained { background: rgba(140,80,180,0.14); border: 1px solid rgba(140,80,180,0.38); color: #c098e0; }
+    .card-cond.frightened { background: rgba(200,80,80,0.13); border: 1px solid rgba(200,80,80,0.36); color: #d08080; }
+
+    .card-right {
+      display: flex; flex-direction: column; align-items: flex-end; gap: 8px;
+    }
+    .ac-badge {
+      background: var(--surface); border: 1px solid var(--border-vis);
+      border-radius: 4px; padding: 5px 10px; text-align: center; min-width: 46px;
+    }
+    .ac-num { font-family: var(--font-display); font-size: 20px; line-height: 1; color: var(--gem); }
+    .ac-lbl { font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-muted); }
+    .card-sheet-link {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.14em;
+      text-transform: uppercase; color: var(--text-muted); text-decoration: none;
+      padding: 3px 0; transition: color 0.15s; white-space: nowrap;
+    }
+    .card-sheet-link:hover { color: var(--accent-bright); }
+
+    .danger-border { border-color: rgba(192,96,96,0.45) !important; }
+    .danger-border::before { background: #c06060 !important; }
+
+    /* ── Active-turn glow on PC cards ── */
+    @keyframes turnGlow {
+      0%, 100% { box-shadow: 0 0 0 1px var(--turn-color, var(--accent)), 0 0 10px 2px var(--turn-glow, rgba(106,143,168,0.25)); }
+      50%       { box-shadow: 0 0 0 1px var(--turn-color, var(--accent)), 0 0 18px 5px var(--turn-glow, rgba(106,143,168,0.4)); }
+    }
+    .char-card.active-turn {
+      animation: turnGlow 2.2s ease-in-out infinite;
+    }
+    .char-card.ember.active-turn {
+      --turn-color: var(--ember-accent);
+      --turn-glow: rgba(160,104,64,0.35);
+    }
+    .char-card.ocean.active-turn {
+      --turn-color: var(--ocean-accent);
+      --turn-glow: rgba(106,143,168,0.35);
+    }
+    .char-card.forest.active-turn {
+      --turn-color: var(--forest-accent);
+      --turn-glow: rgba(90,138,96,0.35);
+    }
+
+    /* ── Active-turn glow on NPC cards ── */
+    .npc-card.active-turn {
+      animation: turnGlow 2.2s ease-in-out infinite;
+      --turn-color: var(--npc-accent);
+      --turn-glow: rgba(122,112,96,0.35);
+    }
+    .npc-card.bloodied.active-turn {
+      --turn-color: #b07030;
+      --turn-glow: rgba(176,112,48,0.35);
+    }
+    .npc-card.dead.active-turn {
+      animation: none;
+    }
+
+    .rest-row { display: flex; gap: 8px; margin-top: 6px; }
+    .rest-party-btn {
+      flex: 1; background: transparent; border: 1px solid var(--border-vis);
+      border-radius: 4px; color: var(--text-muted); font-family: var(--font-ui);
+      font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+      padding: 8px 0; cursor: pointer; text-align: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .rest-party-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+    /* ── HP delta animation ── */
+    @keyframes hpDelta {
+      0%   { opacity: 1; transform: translateY(0); }
+      70%  { opacity: 1; transform: translateY(-16px); }
+      100% { opacity: 0; transform: translateY(-22px); }
+    }
+    .hp-delta {
+      position: absolute; right: 5px; top: -4px;
+      font-family: var(--font-display); font-size: 13px;
+      pointer-events: none;
+      animation: hpDelta 0.7s ease-out forwards;
+    }
+    .hp-delta.neg { color: #d08080; }
+    .hp-delta.pos { color: #88c888; }
+
+    /* ══════════════════════════════════════════
+       NPC COLUMN
+    ══════════════════════════════════════════ */
+    .npc-column {
+      border-left: 1px solid var(--border);
+      padding-left: 20px;
+      padding-right: 20px;
+    }
+
+    .npc-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .npc-section-title {
+      font-family: var(--font-ui);
+      font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .npc-header-actions { display: flex; gap: 8px; align-items: center; }
+    .npc-end-btn {
+      background: transparent;
+      border: 1px solid rgba(160,80,60,0.45);
+      border-radius: 3px;
+      color: #c08070;
+      font-family: var(--font-ui);
+      font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 4px 10px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+    }
+    .npc-end-btn:hover { background: rgba(160,80,60,0.15); border-color: rgba(192,96,80,0.7); color: #e0a090; }
+
+    /* ── NPC card ── */
+    .npc-card {
+      background: var(--npc-surface);
+      border: 1px solid var(--npc-border);
+      border-radius: 5px;
+      margin-bottom: 10px;
+      position: relative;
+      transition: border-color 0.15s;
+    }
+    .npc-card:hover { border-color: var(--npc-accent); }
+
+    /* Bloodied state */
+    .npc-card.bloodied {
+      border-color: rgba(180,100,40,0.5);
+    }
+    .npc-card.bloodied .npc-card-inner::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0; width: 3px;
+      border-radius: 5px 0 0 5px;
+      background: linear-gradient(180deg, #c07030, #a05020);
+    }
+
+    /* Dead state */
+    .npc-card.dead {
+      border-color: rgba(192,60,60,0.4);
+      opacity: 0.75;
+    }
+    .npc-card.dead .npc-card-inner::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0; width: 3px;
+      border-radius: 5px 0 0 5px;
+      background: #8c3030;
+    }
+
+    .npc-card-inner { position: relative; padding: 12px 12px 0 14px; }
+
+    .npc-card-top {
+      display: flex; align-items: flex-start; justify-content: space-between; gap: 8px;
+      margin-bottom: 6px;
+    }
+    .npc-name-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .npc-name {
+      font-family: var(--font-display);
+      font-size: 15px; letter-spacing: 0.05em;
+      color: var(--npc-bright);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .npc-card.dead .npc-name { color: var(--text-muted); text-decoration: line-through; }
+
+    .npc-status-badge {
+      font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.18em;
+      text-transform: uppercase; padding: 2px 7px; border-radius: 8px;
+      flex-shrink: 0;
+    }
+    .npc-status-badge.bloodied-badge {
+      background: rgba(180,100,40,0.18); border: 1px solid rgba(180,100,40,0.45);
+      color: #d09050;
+    }
+    .npc-status-badge.dead-badge {
+      background: rgba(192,60,60,0.14); border: 1px solid rgba(192,60,60,0.4);
+      color: #c06060;
+    }
+
+    .npc-remove-btn {
+      background: transparent; border: none;
+      color: var(--text-muted); font-size: 14px; cursor: pointer;
+      padding: 2px 4px; border-radius: 3px; line-height: 1;
+      transition: color 0.12s, background 0.12s; flex-shrink: 0;
+    }
+    .npc-remove-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+
+    /* HP row on NPC card */
+    .npc-hp-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .npc-hp-nums { display: flex; align-items: baseline; gap: 2px; }
+    .npc-hp-cur {
+      font-family: var(--font-display); font-size: 20px; line-height: 1;
+      color: var(--npc-gem); transition: color 0.2s;
+    }
+    .npc-card.bloodied .npc-hp-cur { color: #c07830; }
+    .npc-card.dead .npc-hp-cur { color: #c06060; }
+    .npc-hp-sep { font-family: var(--font-display); font-size: 12px; color: var(--text-muted); }
+    .npc-hp-max { font-family: var(--font-display); font-size: 12px; color: var(--text-muted); }
+
+    .npc-stepper-row { display: flex; align-items: center; gap: 0; margin-bottom: 8px; position: relative; }
+    .npc-step-btn {
+      width: 26px; height: 16px; border-radius: 3px;
+      border: 1px solid var(--npc-border); background: transparent;
+      color: var(--text-muted); font-family: var(--font-display);
+      font-size: 14px; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; padding: 0;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      user-select: none;
+    }
+    .npc-step-btn:hover { border-color: var(--npc-accent); color: var(--npc-bright); background: rgba(122,112,96,0.18); }
+
+    .npc-bar-wrap { flex: 1; padding: 0 5px; }
+    .npc-bar-track { height: 5px; border-radius: 3px; overflow: hidden; background: rgba(40,34,24,0.8); }
+    .npc-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; background: linear-gradient(90deg, var(--npc-accent) 0%, var(--npc-bright) 100%); }
+
+    .npc-conditions { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; min-height: 4px; }
+
+    .npc-quick-actions {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 0 8px; border-top: 1px solid var(--npc-border);
+    }
+    .nqa-btn {
+      flex: 1; background: transparent; border: 1px solid var(--npc-border);
+      border-radius: 3px; color: var(--text-muted);
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.14em;
+      text-transform: uppercase; padding: 5px 0; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .nqa-btn:hover { border-color: var(--npc-accent); color: var(--npc-bright); background: rgba(122,112,96,0.12); }
+    .nqa-btn.dmg:hover { border-color: rgba(192,96,96,0.5); color: #d08080; background: rgba(192,96,96,0.08); }
+    .nqa-btn.heal:hover { border-color: rgba(80,160,80,0.5); color: #88c888; background: rgba(80,160,80,0.08); }
+    .nqa-btn.cond:hover { border-color: rgba(140,110,180,0.5); color: #c098e0; background: rgba(140,110,180,0.08); }
+
+    /* Add NPC form */
+    .add-npc-form {
+      background: rgba(30,26,20,0.4);
+      border: 1px dashed rgba(120,110,90,0.35);
+      border-radius: 5px;
+      padding: 14px;
+      margin-top: 4px;
+    }
+    .add-npc-title {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.28em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 10px;
+    }
+    .add-npc-fields { display: flex; gap: 8px; margin-bottom: 10px; }
+    .npc-text-input {
+      flex: 1; background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border); border-radius: 3px;
+      color: var(--text); font-family: var(--font-body); font-size: 14px;
+      padding: 7px 10px; outline: none;
+      transition: border-color 0.15s;
+    }
+    .npc-text-input:focus { border-color: var(--npc-accent); }
+    .npc-num-input {
+      width: 72px; background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border); border-radius: 3px;
+      color: var(--text); font-family: var(--font-display); font-size: 15px;
+      padding: 7px 8px; outline: none; text-align: center;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+    .npc-num-input::-webkit-outer-spin-button,
+    .npc-num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .npc-num-input:focus { border-color: var(--npc-accent); }
+    .add-npc-btn {
+      width: 100%;
+      background: rgba(122,112,96,0.15);
+      border: 1px solid var(--npc-accent);
+      border-radius: 3px; color: var(--npc-bright);
+      font-family: var(--font-ui); font-size: 12px; letter-spacing: 0.16em;
+      text-transform: uppercase; padding: 8px 0; cursor: pointer;
+      transition: background 0.15s;
+    }
+    .add-npc-btn:hover { background: rgba(122,112,96,0.28); }
+
+    /* Quick-add row (for adding multiple of same type) */
+    .multi-add-row {
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 10px;
+    }
+    .multi-add-label {
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.14em;
+      color: var(--text-muted); white-space: nowrap;
+    }
+    .multi-count-input {
+      width: 44px; background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border); border-radius: 3px;
+      color: var(--text); font-family: var(--font-display); font-size: 14px;
+      padding: 4px 6px; outline: none; text-align: center;
+      -moz-appearance: textfield;
+    }
+    .multi-count-input::-webkit-outer-spin-button,
+    .multi-count-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .multi-count-hint {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.08em;
+      color: var(--text-muted); font-style: italic;
+    }
+
+    /* ══════════════════════════════════════════
+       INITIATIVE COLUMN
+    ══════════════════════════════════════════ */
+    .initiative-column {
+      border-left: 1px solid var(--border);
+      padding-left: 20px;
+    }
+    @media (max-width: 700px) {
+      .initiative-column { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 20px; margin-top: 20px; }
+    }
+
+    .init-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .init-title { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); }
+    .init-clear-btn {
+      background: transparent; border: none; color: var(--text-muted);
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em;
+      cursor: pointer; padding: 3px 0; transition: color 0.15s;
+    }
+    .init-clear-btn:hover { color: #c06060; }
+
+    .next-turn-btn {
+      background: rgba(18,32,48,0.5); border: 1px solid var(--accent);
+      border-radius: 4px; color: var(--accent-bright);
+      font-family: var(--font-ui); font-size: 12px; letter-spacing: 0.2em;
+      text-transform: uppercase; padding: 9px 0; width: 100%;
+      cursor: pointer; margin-bottom: 10px; transition: background 0.15s;
+    }
+    .next-turn-btn:hover { background: rgba(106,143,168,0.22); }
+
+    .init-list { list-style: none; margin-bottom: 14px; }
+    .init-entry {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 10px; border-radius: 4px; margin-bottom: 3px;
+      background: var(--surface); border: 1px solid var(--border);
+      transition: border-color 0.15s; cursor: default;
+    }
+    .init-entry.current-turn {
+      border-color: var(--accent);
+      background: rgba(106,143,168,0.12);
+    }
+    /* NPC entries are tappable to promote */
+    .init-entry.npc-entry { cursor: pointer; }
+    .init-entry.npc-entry:hover { border-color: var(--npc-accent); background: rgba(122,112,96,0.1); }
+    /* Already-promoted NPC entries */
+    .init-entry.npc-tracked {
+      border-color: rgba(122,112,96,0.4);
+      background: rgba(30,26,20,0.5);
+    }
+    .init-entry.npc-tracked:hover { border-color: var(--npc-bright); }
+
+    .init-num { font-family: var(--font-display); font-size: 18px; color: var(--gem); width: 26px; text-align: center; flex-shrink: 0; }
+    .init-entry.current-turn .init-num { color: var(--accent-bright); }
+    .init-name { font-family: var(--font-body); font-size: 15px; color: var(--text); flex: 1; min-width: 0; }
+    .init-entry.current-turn .init-name { color: var(--accent-bright); font-weight: 600; }
+
+    .init-npc-tag {
+      font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.18em;
+      text-transform: uppercase; color: var(--text-muted);
+      background: rgba(100,130,160,0.1); border: 1px solid var(--border);
+      border-radius: 8px; padding: 1px 6px; flex-shrink: 0;
+    }
+    .current-marker { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.1em; color: var(--accent-bright); white-space: nowrap; }
+    .init-remove-btn {
+      background: transparent; border: none; color: var(--text-muted);
+      font-size: 14px; cursor: pointer; padding: 2px 4px;
+      border-radius: 3px; transition: color 0.12s, background 0.12s; line-height: 1; flex-shrink: 0;
+    }
+    .init-remove-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+
+    /* HP status dot on initiative entry (for tracked NPCs) */
+    .init-hp-dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      flex-shrink: 0; transition: background 0.3s;
+    }
+    .init-hp-dot.alive { background: #5a9060; box-shadow: 0 0 4px rgba(90,144,96,0.6); }
+    .init-hp-dot.bloodied { background: #b07030; box-shadow: 0 0 4px rgba(176,112,48,0.6); }
+    .init-hp-dot.dead { background: #8c3030; box-shadow: 0 0 3px rgba(140,48,48,0.5); }
+
+    /* Promote-to-NPC inline form (appears within init entry) */
+    .promote-form {
+      display: none;
+      padding: 8px 10px 10px;
+      border-top: 1px solid var(--border);
+      background: rgba(30,26,20,0.5);
+      border-radius: 0 0 4px 4px;
+    }
+    .promote-form.open { display: block; }
+    .promote-form-label {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--text-muted); display: block;
+      margin-bottom: 6px;
+    }
+    .promote-form-row { display: flex; gap: 6px; align-items: center; }
+    .promote-input {
+      flex: 1; background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border); border-radius: 3px;
+      color: var(--text); font-family: var(--font-display); font-size: 16px;
+      padding: 6px 8px; outline: none; text-align: center;
+      -moz-appearance: textfield;
+    }
+    .promote-input::-webkit-outer-spin-button,
+    .promote-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .promote-input:focus { border-color: var(--npc-accent); }
+    .promote-confirm-btn {
+      background: rgba(122,112,96,0.2); border: 1px solid var(--npc-accent);
+      border-radius: 3px; color: var(--npc-bright);
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.14em;
+      padding: 6px 12px; cursor: pointer; white-space: nowrap;
+      transition: background 0.12s;
+    }
+    .promote-confirm-btn:hover { background: rgba(122,112,96,0.35); }
+    .promote-cancel-btn {
+      background: transparent; border: none; color: var(--text-muted);
+      font-family: var(--font-ui); font-size: 10px; cursor: pointer;
+      padding: 4px 6px; transition: color 0.12s;
+    }
+    .promote-cancel-btn:hover { color: var(--text); }
+    .promote-hint {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.06em;
+      color: var(--text-muted); margin-top: 5px; font-style: italic;
+    }
+
+    .add-combatant { display: flex; gap: 6px; margin-top: 8px; }
+    .init-input {
+      flex: 1; background: var(--surface); border: 1px solid var(--border-vis);
+      border-radius: 3px; color: var(--text); font-family: var(--font-body);
+      font-size: 14px; padding: 7px 10px; outline: none;
+    }
+    .init-num-input {
+      width: 50px; background: var(--surface); border: 1px solid var(--border-vis);
+      border-radius: 3px; color: var(--text); font-family: var(--font-display);
+      font-size: 15px; padding: 7px 6px; outline: none; text-align: center;
+    }
+    .init-add-btn {
+      background: transparent; border: 1px solid var(--border-vis); border-radius: 3px;
+      color: var(--accent-bright); font-family: var(--font-ui); font-size: 13px;
+      padding: 7px 12px; cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .init-add-btn:hover { border-color: var(--accent); background: rgba(106,143,168,0.15); }
+
+    /* ══════════════════════════════════════════
+       DM DICE ROLLER (partial — "Apply to…" row)
+    ══════════════════════════════════════════ */
+    .dice-roller-section {
+      margin-top: 24px;
+      border-top: 1px solid var(--border);
+      padding-top: 16px;
+    }
+    .dice-roller-header {
+      display: flex; align-items: center; justify-content: space-between;
+      cursor: pointer; user-select: none; margin-bottom: 14px;
+    }
+    .dice-roller-title {
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.3em;
+      text-transform: uppercase; color: var(--text-muted);
+    }
+    .dice-roller-toggle { color: var(--text-muted); font-size: 12px; }
+
+    .dice-roller-body { }
+
+    .dice-preview {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 4px; padding: 10px 14px; margin-bottom: 14px;
+      font-family: var(--font-ui); font-size: 12px;
+      letter-spacing: 0.1em; color: var(--text-muted);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .dice-result {
+      font-family: var(--font-display); font-size: 22px;
+      color: var(--gem); letter-spacing: 0.08em;
+    }
+    .dice-expr { color: var(--text-muted); font-style: italic; }
+
+    .apply-to-label {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.24em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+    }
+    .apply-to-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+    .apply-pill {
+      background: transparent; border-radius: 3px;
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.1em;
+      padding: 5px 12px; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      border: 1px solid;
+    }
+    /* PC pills use character palette accent colors */
+    .apply-pill.ember { border-color: var(--ember-border); color: var(--ember-bright); }
+    .apply-pill.ember:hover { background: rgba(160,104,64,0.18); border-color: var(--ember-accent); }
+    .apply-pill.ocean { border-color: var(--ocean-border); color: var(--ocean-bright); }
+    .apply-pill.ocean:hover { background: rgba(100,130,160,0.18); border-color: var(--ocean-accent); }
+    .apply-pill.forest { border-color: var(--forest-border); color: var(--forest-bright); }
+    .apply-pill.forest:hover { background: rgba(90,138,96,0.18); border-color: var(--forest-accent); }
+    /* NPC pills are neutral — no palette accent */
+    .apply-pill.npc { border-color: var(--npc-border); color: var(--npc-gem); }
+    .apply-pill.npc:hover { background: rgba(122,112,96,0.18); border-color: var(--npc-accent); color: var(--npc-bright); }
+    .apply-pill.npc.dead { border-color: rgba(100,80,70,0.2); color: var(--text-muted); opacity: 0.5; cursor: not-allowed; }
+
+    /* ══════════════════════════════════════════
+       MODALS
+    ══════════════════════════════════════════ */
+    .modal-overlay {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,0.72); z-index: 400;
+      align-items: center; justify-content: center;
+    }
+    .modal-overlay.open { display: flex; }
+    .modal-panel {
+      background: var(--surface-solid); border: 1px solid var(--border-vis);
+      border-radius: 6px; width: 320px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6); overflow: hidden;
+    }
+    .modal-panel.wide { width: 380px; }
+    .modal-header {
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .modal-title { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.1em; color: var(--accent-bright); }
+    .modal-title.dmg { color: #d08080; }
+    .modal-title.heal { color: #88c888; }
+    .modal-title.warn { color: #d09050; }
+    .modal-close {
+      background: transparent; border: none; color: var(--text-muted);
+      font-size: 18px; cursor: pointer; line-height: 1; padding: 0;
+      transition: color 0.12s;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 18px 18px 6px; }
+    .modal-char-context {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.2em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px;
+    }
+
+    .amount-stepper-row { display: flex; align-items: center; gap: 0; margin-bottom: 12px; }
+    .amt-step-btn {
+      width: 40px; height: 52px; border: 1px solid var(--border-vis);
+      background: rgba(18,32,48,0.4); color: var(--text-muted);
+      font-family: var(--font-display); font-size: 20px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      user-select: none; flex-shrink: 0;
+    }
+    .amt-step-btn:first-child { border-radius: 3px 0 0 3px; }
+    .amt-step-btn:last-child { border-radius: 0 3px 3px 0; }
+    .amt-step-btn:hover { background: rgba(106,143,168,0.18); border-color: var(--accent); color: var(--accent-bright); }
+    #npc-dmg-modal .amt-step-btn:hover { background: rgba(192,96,96,0.14); border-color: rgba(192,96,96,0.5); color: #d08080; }
+    #npc-heal-modal .amt-step-btn:hover { background: rgba(80,160,80,0.12); border-color: rgba(80,160,80,0.45); color: #88c888; }
+    #dmg-modal .amt-step-btn:hover { background: rgba(192,96,96,0.14); border-color: rgba(192,96,96,0.5); color: #d08080; }
+    #heal-modal .amt-step-btn:hover { background: rgba(80,160,80,0.12); border-color: rgba(80,160,80,0.45); color: #88c888; }
+
+    .amt-input {
+      flex: 1; border: 1px solid var(--border-vis);
+      border-left: none; border-right: none; border-radius: 0;
+      background: var(--surface); color: var(--text);
+      font-family: var(--font-display); font-size: 30px;
+      text-align: center; height: 52px; outline: none; min-width: 0;
+      -moz-appearance: textfield;
+    }
+    .amt-input::-webkit-outer-spin-button, .amt-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .amt-input:focus { border-color: var(--accent); background: rgba(18,32,48,0.8); }
+    #npc-dmg-modal .amt-input:focus { border-color: rgba(192,96,96,0.5); }
+    #npc-heal-modal .amt-input:focus { border-color: rgba(80,160,80,0.45); }
+    #dmg-modal .amt-input:focus { border-color: rgba(192,96,96,0.5); }
+    #heal-modal .amt-input:focus { border-color: rgba(80,160,80,0.45); }
+
+    .preset-row { display: flex; gap: 5px; margin-bottom: 16px; }
+    .preset-btn {
+      flex: 1; background: transparent; border: 1px solid var(--border);
+      border-radius: 3px; color: var(--text-muted);
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.1em;
+      padding: 5px 0; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s; text-align: center;
+    }
+    .preset-btn:hover { border-color: var(--accent); color: var(--accent-bright); background: rgba(106,143,168,0.1); }
+    #npc-dmg-modal .preset-btn:hover { border-color: rgba(192,96,96,0.45); color: #d08080; background: rgba(192,96,96,0.08); }
+    #npc-heal-modal .preset-btn:hover { border-color: rgba(80,160,80,0.4); color: #88c888; background: rgba(80,160,80,0.07); }
+    #dmg-modal .preset-btn:hover { border-color: rgba(192,96,96,0.45); color: #d08080; background: rgba(192,96,96,0.08); }
+    #heal-modal .preset-btn:hover { border-color: rgba(80,160,80,0.4); color: #88c888; background: rgba(80,160,80,0.07); }
+
+    .modal-confirm-btn {
+      width: 100%; background: rgba(18,32,48,0.6);
+      border: 1px solid var(--accent); border-radius: 3px; color: var(--accent-bright);
+      font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.16em;
+      text-transform: uppercase; padding: 11px 0; cursor: pointer;
+      transition: background 0.15s; margin-bottom: 10px;
+    }
+    .modal-confirm-btn:hover { background: rgba(106,143,168,0.2); }
+    .modal-confirm-btn.dmg { border-color: rgba(192,96,96,0.55); color: #d08080; }
+    .modal-confirm-btn.dmg:hover { background: rgba(192,96,96,0.14); }
+    .modal-confirm-btn.heal { border-color: rgba(80,160,80,0.5); color: #88c888; }
+    .modal-confirm-btn.heal:hover { background: rgba(80,160,80,0.1); }
+    .modal-confirm-btn.warn { border-color: rgba(192,96,80,0.6); color: #d09070; }
+    .modal-confirm-btn.warn:hover { background: rgba(192,96,80,0.14); }
+
+    .modal-footer { padding: 0 18px 14px; }
+
+    /* Condition picker in modal */
+    .cond-grid {
+      display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px;
+    }
+    .cond-toggle {
+      background: transparent; border: 1px solid var(--border);
+      border-radius: 10px; color: var(--text-muted);
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.12em;
+      text-transform: uppercase; padding: 3px 10px; cursor: pointer;
+      transition: all 0.15s;
+    }
+    .cond-toggle:hover { border-color: var(--accent); color: var(--accent-bright); }
+    .cond-toggle.active {
+      border-color: var(--accent);
+      background: rgba(106,143,168,0.16);
+      color: var(--accent-bright);
+    }
+
+    /* End combat confirmation */
+    .confirm-body { padding: 18px; }
+    .confirm-msg {
+      font-family: var(--font-body); font-size: 16px; color: var(--text);
+      line-height: 1.6; margin-bottom: 6px;
+    }
+    .confirm-sub {
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.1em;
+      color: var(--text-muted); margin-bottom: 18px; line-height: 1.5;
+    }
+    .confirm-btn-row { display: flex; gap: 8px; }
+    .confirm-cancel-btn {
+      flex: 1; background: transparent; border: 1px solid var(--border-vis);
+      border-radius: 3px; color: var(--text-muted); font-family: var(--font-ui);
+      font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 10px 0; cursor: pointer; transition: border-color 0.12s, color 0.12s;
+    }
+    .confirm-cancel-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
+    .confirm-destroy-btn {
+      flex: 2; background: rgba(140,40,40,0.2); border: 1px solid rgba(192,80,80,0.5);
+      border-radius: 3px; color: #d08080; font-family: var(--font-ui);
+      font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 10px 0; cursor: pointer; transition: background 0.12s;
+    }
+    .confirm-destroy-btn:hover { background: rgba(192,80,80,0.28); }
+
+    /* Quick-action popover */
+    .popover-wrap { position: relative; }
+    .quick-popover {
+      display: none; position: absolute; right: 0; top: 34px; z-index: 200;
+      background: var(--surface-solid); border: 1px solid var(--border-vis);
+      border-radius: 5px; min-width: 200px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5); overflow: hidden;
+    }
+    .quick-popover.open { display: block; }
+    .popover-header {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.24em;
+      text-transform: uppercase; color: var(--text-muted);
+      padding: 9px 14px 8px; border-bottom: 1px solid var(--border);
+    }
+    .popover-action {
+      display: flex; align-items: center; gap: 10px;
+      padding: 10px 14px; font-family: var(--font-ui); font-size: 13px;
+      letter-spacing: 0.08em; color: var(--text); cursor: pointer;
+      border-bottom: 1px solid var(--border); transition: background 0.12s;
+    }
+    .popover-action:last-child { border-bottom: none; }
+    .popover-action:hover { background: rgba(106,143,168,0.12); }
+    .popover-action .pa-icon { width: 18px; text-align: center; color: var(--accent-bright); font-size: 15px; }
+    .popover-action.destructive { color: #c06060; }
+    .popover-action.destructive .pa-icon { color: #c06060; }
+
+    /* Apply-to confirmation toast */
+    .apply-toast {
+      position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%);
+      background: var(--surface-solid); border: 1px solid var(--npc-accent);
+      border-radius: 4px; padding: 10px 18px;
+      font-family: var(--font-ui); font-size: 12px; letter-spacing: 0.1em;
+      color: var(--npc-bright); z-index: 500;
+      animation: toastIn 0.2s ease-out, toastOut 0.3s ease-in 1.8s forwards;
+      pointer-events: none;
+    }
+    @keyframes toastIn { from { opacity: 0; transform: translateX(-50%) translateY(8px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+    @keyframes toastOut { to { opacity: 0; transform: translateX(-50%) translateY(8px); } }
+
+  </style>
+</head>
+<body>
+
+<!-- Annotation banner -->
+<div class="annotation-bar">
+  <p><strong>Prototype: NPC Combat Tracker</strong> — New feature integrated into DM Dashboard. Click NPC initiative entries to promote them. Use ⚔ / ✦ buttons on NPC cards. Try "Apply to…" in the dice roller. Click "End Combat" in the toolbar.</p>
+</div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">DM Dashboard</div>
+    <div class="topbar-subtitle">Session in progress · 3 players · 4 NPCs</div>
+  </div>
+  <div class="topbar-spacer"></div>
+  <button class="topbar-btn secondary">◑ Short Rest</button>
+  <button class="topbar-btn">⏾ Long Rest</button>
+  <button class="topbar-btn end-combat" onclick="openEndCombat()">✕ End Combat</button>
+</div>
+
+<!-- Dashboard layout -->
+<div class="dashboard-layout">
+
+  <!-- LEFT: Party cards -->
+  <div class="party-column">
+
+    <div class="section-label">Party</div>
+
+    <!-- Card: Aragorn -->
+    <div class="char-card ember" id="card-aragorn">
+      <div class="card-main">
+        <div class="portrait ember">A</div>
+        <div class="card-info" style="min-width:0;">
+          <div class="card-name ember">Aragorn</div>
+          <div class="card-meta">Human · Ranger · Lvl 8</div>
+          <div class="hp-inline">
+            <div class="hp-nums">
+              <span class="hp-cur ember" id="aragorn-hp">28</span>
+              <span class="hp-sep-sm">/</span>
+              <span class="hp-max-sm">45</span>
+            </div>
+          </div>
+          <div class="hp-stepper-row">
+            <button class="hp-step-btn minus" onclick="stepHP('aragorn',-1)">−</button>
+            <div class="hp-bar-wrap">
+              <div class="hp-bar-track ember">
+                <div class="hp-bar-fill" id="aragorn-bar" style="width:62%;background:linear-gradient(90deg,var(--ember-accent),var(--ember-bright))"></div>
+              </div>
+            </div>
+            <button class="hp-step-btn plus" onclick="stepHP('aragorn',1)">+</button>
+          </div>
+          <div class="card-quick-actions">
+            <button class="cqa-btn dmg" onclick="openPCModal('dmg','aragorn','Aragorn')">⚔ Damage</button>
+            <button class="cqa-btn heal" onclick="openPCModal('heal','aragorn','Aragorn')">✦ Heal</button>
+            <button class="cqa-btn more popover-wrap" onclick="togglePopover('pop-aragorn',this)" title="More actions">⋯
+              <div class="quick-popover" id="pop-aragorn">
+                <div class="popover-header">Aragorn</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">◈</span> Add Condition</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⬡</span> Set Temp HP</div>
+              </div>
+            </button>
+          </div>
+        </div>
+        <div class="card-right">
+          <div class="ac-badge"><div class="ac-num">16</div><div class="ac-lbl">AC</div></div>
+          <a href="#" class="card-sheet-link">↗ Sheet</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Eoghan (low HP) -->
+    <div class="char-card ocean danger-border" id="card-eoghan">
+      <div class="card-main">
+        <div class="portrait ocean">E</div>
+        <div class="card-info" style="min-width:0;">
+          <div class="card-name ocean">Eoghan</div>
+          <div class="card-meta">Half-Elf · Cleric · Lvl 8</div>
+          <div class="hp-inline">
+            <div class="hp-nums">
+              <span class="hp-cur danger" id="eoghan-hp">13</span>
+              <span class="hp-sep-sm">/</span>
+              <span class="hp-max-sm">44</span>
+            </div>
+          </div>
+          <div class="hp-stepper-row">
+            <button class="hp-step-btn minus" onclick="stepHP('eoghan',-1)">−</button>
+            <div class="hp-bar-wrap">
+              <div class="hp-bar-track ocean">
+                <div class="hp-bar-fill" id="eoghan-bar" style="width:30%;background:linear-gradient(90deg,#a06020,#d08030)"></div>
+              </div>
+            </div>
+            <button class="hp-step-btn plus" onclick="stepHP('eoghan',1)">+</button>
+          </div>
+          <div class="card-quick-actions">
+            <button class="cqa-btn dmg" onclick="openPCModal('dmg','eoghan','Eoghan')">⚔ Damage</button>
+            <button class="cqa-btn heal" onclick="openPCModal('heal','eoghan','Eoghan')">✦ Heal</button>
+            <button class="cqa-btn more popover-wrap" onclick="togglePopover('pop-eoghan',this)" title="More actions">⋯
+              <div class="quick-popover" id="pop-eoghan">
+                <div class="popover-header">Eoghan</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">◈</span> Add Condition</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⬡</span> Set Temp HP</div>
+              </div>
+            </button>
+          </div>
+        </div>
+        <div class="card-right">
+          <div class="ac-badge"><div class="ac-num">14</div><div class="ac-lbl">AC</div></div>
+          <a href="#" class="card-sheet-link">↗ Sheet</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Aesop -->
+    <div class="char-card forest" id="card-aesop">
+      <div class="card-main">
+        <div class="portrait forest">Æ</div>
+        <div class="card-info" style="min-width:0;">
+          <div class="card-name forest">Aesop</div>
+          <div class="card-meta">Gnome · Wizard · Lvl 8</div>
+          <div class="hp-inline">
+            <div class="hp-nums">
+              <span class="hp-cur forest" id="aesop-hp">33</span>
+              <span class="hp-sep-sm">/</span>
+              <span class="hp-max-sm">44</span>
+            </div>
+          </div>
+          <div class="hp-stepper-row">
+            <button class="hp-step-btn minus" onclick="stepHP('aesop',-1)">−</button>
+            <div class="hp-bar-wrap">
+              <div class="hp-bar-track forest">
+                <div class="hp-bar-fill" id="aesop-bar" style="width:75%;background:linear-gradient(90deg,var(--forest-accent),var(--forest-bright))"></div>
+              </div>
+            </div>
+            <button class="hp-step-btn plus" onclick="stepHP('aesop',1)">+</button>
+          </div>
+          <div class="card-conditions">
+            <span class="card-cond restrained" onclick="this.remove()">Restrained ×</span>
+          </div>
+          <div class="card-quick-actions">
+            <button class="cqa-btn dmg" onclick="openPCModal('dmg','aesop','Aesop')">⚔ Damage</button>
+            <button class="cqa-btn heal" onclick="openPCModal('heal','aesop','Aesop')">✦ Heal</button>
+            <button class="cqa-btn more popover-wrap" onclick="togglePopover('pop-aesop',this)" title="More actions">⋯
+              <div class="quick-popover" id="pop-aesop">
+                <div class="popover-header">Aesop</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">◈</span> Add Condition</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⬡</span> Set Temp HP</div>
+              </div>
+            </button>
+          </div>
+        </div>
+        <div class="card-right">
+          <div class="ac-badge"><div class="ac-num">13</div><div class="ac-lbl">AC</div></div>
+          <a href="#" class="card-sheet-link">↗ Sheet</a>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:16px;">
+      <div class="section-label">Party-Wide Actions</div>
+      <div class="rest-row">
+        <button class="rest-party-btn">◑ Short Rest</button>
+        <button class="rest-party-btn">⏾ Long Rest</button>
+      </div>
+    </div>
+
+    <!-- DM Dice Roller (partial — showing Apply to… row) -->
+    <div class="dice-roller-section">
+      <div class="dice-roller-header" onclick="toggleDiceRoller()">
+        <span class="dice-roller-title">DM Dice Roller</span>
+        <span class="dice-roller-toggle" id="dice-toggle">▼</span>
+      </div>
+      <div class="dice-roller-body" id="dice-body">
+        <div class="dice-preview">
+          <span class="dice-expr">Last roll: 3d6+2</span>
+          <span class="dice-result">14</span>
+        </div>
+        <div class="apply-to-label">Apply 14 damage to…</div>
+        <div class="apply-to-row" id="apply-to-row">
+          <button class="apply-pill ember" onclick="showApplyToast('Aragorn',14)">Aragorn</button>
+          <button class="apply-pill ocean" onclick="showApplyToast('Eoghan',14)">Eoghan</button>
+          <button class="apply-pill forest" onclick="showApplyToast('Aesop',14)">Aesop</button>
+          <!-- NPC pills injected by JS when NPCs are tracked -->
+        </div>
+        <span class="callout-new" style="margin-top:4px;">NPC pills appear here once you track NPCs. Dead NPCs are grayed out and non-interactive.</span>
+      </div>
+    </div>
+
+  </div><!-- /party-column -->
+
+  <!-- MIDDLE: NPC tracker -->
+  <div class="npc-column">
+    <div class="npc-section-header">
+      <span class="npc-section-title">Enemies</span>
+      <div class="npc-header-actions">
+        <button class="npc-end-btn" onclick="openEndCombat()">✕ End Combat</button>
+      </div>
+    </div>
+
+    <span class="callout-new">NPC cards live in a dedicated middle column — visually separate from party cards, no palette theming, no portraits. They share the HP stepper and Damage/Heal modal patterns exactly.</span>
+
+    <!-- NPC cards rendered by JS -->
+    <div id="npc-cards-container"></div>
+
+    <!-- Add NPC form -->
+    <div class="add-npc-form">
+      <div class="add-npc-title">Add Enemy</div>
+      <div class="multi-add-row">
+        <span class="multi-add-label">Qty</span>
+        <input class="multi-count-input" type="number" id="npc-qty" value="1" min="1" max="8" />
+        <span class="multi-count-hint">Multiple adds auto-suffixes: "Goblin A", "Goblin B"…</span>
+      </div>
+      <div class="add-npc-fields">
+        <input class="npc-text-input" type="text" id="npc-name-input" placeholder="Name…" />
+        <input class="npc-num-input" type="number" id="npc-hp-input" placeholder="HP" min="1" />
+      </div>
+      <button class="add-npc-btn" onclick="addNPC()">+ Add to Combat</button>
+    </div>
+
+    <span class="callout-note">Enter qty > 1 with the same name to auto-create "Goblin A", "Goblin B", etc. Promoted initiative entries skip this form entirely.</span>
+
+  </div><!-- /npc-column -->
+
+  <!-- RIGHT: Initiative tracker -->
+  <div class="initiative-column">
+    <div class="init-header">
+      <span class="init-title">Initiative</span>
+      <button class="init-clear-btn">Clear ×</button>
+    </div>
+
+    <span class="callout-new">NPC entries (italic) are tappable. Tap to expand a "Set HP" form and promote the entry to a tracked NPC card. Once promoted, the entry shows a colored HP dot.</span>
+
+    <button class="next-turn-btn" onclick="nextTurn()">▶ Next Turn</button>
+
+    <ul class="init-list" id="init-list"></ul>
+
+    <div class="section-label" style="margin-top:16px; margin-bottom:8px;">Add Combatant</div>
+    <div class="add-combatant">
+      <input class="init-input" type="text" id="init-name-input" placeholder="Name…" />
+      <input class="init-num-input" type="number" id="init-num-input-el" placeholder="Init" />
+      <button class="init-add-btn" onclick="addInitEntry()">Add</button>
+    </div>
+    <span class="callout-note">Adding an NPC here creates an initiative entry only. Tap the entry to also start tracking HP.</span>
+  </div><!-- /initiative-column -->
+
+</div><!-- /dashboard-layout -->
+
+
+<!-- ── NPC Damage Modal ── -->
+<div class="modal-overlay" id="npc-dmg-modal" onclick="handleOverlay(event,'npc-dmg-modal')">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <span class="modal-title dmg" id="npc-dmg-title">⚔ Damage — Goblin A</span>
+      <button class="modal-close" onclick="closeModal('npc-dmg-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-char-context" id="npc-dmg-ctx">HP: 12 / 12</div>
+      <div class="amount-stepper-row">
+        <button class="amt-step-btn" onclick="adjustAmt('npc-dmg',-1)">−</button>
+        <input class="amt-input" id="npc-dmg-amt" type="number" min="0" value="0"
+               onkeydown="if(event.key==='Enter')applyNPCDmg(); if(event.key==='Escape')closeModal('npc-dmg-modal')" />
+        <button class="amt-step-btn" onclick="adjustAmt('npc-dmg',1)">+</button>
+      </div>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="setAmt('npc-dmg',3)">3</button>
+        <button class="preset-btn" onclick="setAmt('npc-dmg',5)">5</button>
+        <button class="preset-btn" onclick="setAmt('npc-dmg',8)">8</button>
+        <button class="preset-btn" onclick="setAmt('npc-dmg',10)">10</button>
+        <button class="preset-btn" onclick="setAmt('npc-dmg',15)">15</button>
+        <button class="preset-btn" onclick="setAmt('npc-dmg',20)">20</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-confirm-btn dmg" onclick="applyNPCDmg()">Apply Damage</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── NPC Heal Modal ── -->
+<div class="modal-overlay" id="npc-heal-modal" onclick="handleOverlay(event,'npc-heal-modal')">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <span class="modal-title heal" id="npc-heal-title">✦ Heal — Goblin A</span>
+      <button class="modal-close" onclick="closeModal('npc-heal-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-char-context" id="npc-heal-ctx">HP: 6 / 12</div>
+      <div class="amount-stepper-row">
+        <button class="amt-step-btn" onclick="adjustAmt('npc-heal',-1)">−</button>
+        <input class="amt-input" id="npc-heal-amt" type="number" min="0" value="0"
+               onkeydown="if(event.key==='Enter')applyNPCHeal(); if(event.key==='Escape')closeModal('npc-heal-modal')" />
+        <button class="amt-step-btn" onclick="adjustAmt('npc-heal',1)">+</button>
+      </div>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="setAmt('npc-heal',3)">3</button>
+        <button class="preset-btn" onclick="setAmt('npc-heal',5)">5</button>
+        <button class="preset-btn" onclick="setAmt('npc-heal',8)">8</button>
+        <button class="preset-btn" onclick="setAmt('npc-heal',10)">10</button>
+        <button class="preset-btn" onclick="setAmt('npc-heal',15)">15</button>
+        <button class="preset-btn" onclick="setAmt('npc-heal',20)">20</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-confirm-btn heal" onclick="applyNPCHeal()">Apply Healing</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── NPC Condition Modal ── -->
+<div class="modal-overlay" id="npc-cond-modal" onclick="handleOverlay(event,'npc-cond-modal')">
+  <div class="modal-panel wide">
+    <div class="modal-header">
+      <span class="modal-title" id="npc-cond-title">Conditions — Goblin A</span>
+      <button class="modal-close" onclick="closeModal('npc-cond-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="cond-grid" id="npc-cond-grid"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-confirm-btn" onclick="applyNPCConditions()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PC Damage Modal ── -->
+<div class="modal-overlay" id="dmg-modal" onclick="handleOverlay(event,'dmg-modal')">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <span class="modal-title dmg" id="dmg-modal-title">⚔ Damage</span>
+      <button class="modal-close" onclick="closeModal('dmg-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-char-context" id="dmg-ctx"></div>
+      <div class="amount-stepper-row">
+        <button class="amt-step-btn" onclick="adjustAmt('dmg',-1)">−</button>
+        <input class="amt-input" id="dmg-amt" type="number" min="0" value="0"
+               onkeydown="if(event.key==='Enter')applyPCDmg(); if(event.key==='Escape')closeModal('dmg-modal')" />
+        <button class="amt-step-btn" onclick="adjustAmt('dmg',1)">+</button>
+      </div>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="setAmt('dmg',3)">3</button>
+        <button class="preset-btn" onclick="setAmt('dmg',5)">5</button>
+        <button class="preset-btn" onclick="setAmt('dmg',8)">8</button>
+        <button class="preset-btn" onclick="setAmt('dmg',10)">10</button>
+        <button class="preset-btn" onclick="setAmt('dmg',15)">15</button>
+        <button class="preset-btn" onclick="setAmt('dmg',20)">20</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-confirm-btn dmg" onclick="applyPCDmg()">Apply Damage</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── PC Heal Modal ── -->
+<div class="modal-overlay" id="heal-modal" onclick="handleOverlay(event,'heal-modal')">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <span class="modal-title heal" id="heal-modal-title">✦ Heal</span>
+      <button class="modal-close" onclick="closeModal('heal-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-char-context" id="heal-ctx"></div>
+      <div class="amount-stepper-row">
+        <button class="amt-step-btn" onclick="adjustAmt('heal',-1)">−</button>
+        <input class="amt-input" id="heal-amt" type="number" min="0" value="0"
+               onkeydown="if(event.key==='Enter')applyPCHeal(); if(event.key==='Escape')closeModal('heal-modal')" />
+        <button class="amt-step-btn" onclick="adjustAmt('heal',1)">+</button>
+      </div>
+      <div class="preset-row">
+        <button class="preset-btn" onclick="setAmt('heal',3)">3</button>
+        <button class="preset-btn" onclick="setAmt('heal',5)">5</button>
+        <button class="preset-btn" onclick="setAmt('heal',8)">8</button>
+        <button class="preset-btn" onclick="setAmt('heal',10)">10</button>
+        <button class="preset-btn" onclick="setAmt('heal',15)">15</button>
+        <button class="preset-btn" onclick="setAmt('heal',20)">20</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-confirm-btn heal" onclick="applyPCHeal()">Apply Healing</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── End Combat Confirmation ── -->
+<div class="modal-overlay" id="end-combat-modal" onclick="handleOverlay(event,'end-combat-modal')">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <span class="modal-title warn">✕ End Combat</span>
+      <button class="modal-close" onclick="closeModal('end-combat-modal')">×</button>
+    </div>
+    <div class="confirm-body">
+      <div class="confirm-msg">End combat and clear all NPC tracking?</div>
+      <div class="confirm-sub" id="end-combat-count">This will remove all NPC cards. Initiative tracker is unaffected — clear it separately.</div>
+      <div class="confirm-btn-row">
+        <button class="confirm-cancel-btn" onclick="closeModal('end-combat-modal')">Cancel</button>
+        <button class="confirm-destroy-btn" onclick="endCombat()">End Combat</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════
+   STATE
+═══════════════════════════════════════════════ */
+const CONDITIONS = ['Blinded','Charmed','Deafened','Exhausted','Frightened','Grappled',
+                    'Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone',
+                    'Restrained','Stunned','Unconscious'];
+
+const pcState = {
+  aragorn: { hp: 28, max: 45, palette: 'ember' },
+  eoghan:  { hp: 13, max: 44, palette: 'ocean' },
+  aesop:   { hp: 33, max: 44, palette: 'forest' },
+};
+
+// NPCs: array of { id, name, hpCurrent, hpMax, conditions[], initiativeEntryId? }
+let npcs = [
+  { id: 'npc-1', name: 'Goblin Archer', hpCurrent: 12, hpMax: 12, conditions: [], initiativeEntryId: 'ie-1' },
+  { id: 'npc-2', name: 'Bandit Captain', hpCurrent: 65, hpMax: 65, conditions: ['Frightened'], initiativeEntryId: 'ie-5' },
+];
+
+// Initiative entries
+let initEntries = [
+  { id: 'ie-1', name: 'Goblin Archer',   initiative: 22, isNPC: true,  npcId: 'npc-1', cardId: null },
+  { id: 'ie-2', name: 'Aragorn',         initiative: 19, isNPC: false, npcId: null,    cardId: 'card-aragorn' },
+  { id: 'ie-3', name: 'Eoghan',          initiative: 14, isNPC: false, npcId: null,    cardId: 'card-eoghan' },
+  { id: 'ie-4', name: 'Aesop',           initiative: 11, isNPC: false, npcId: null,    cardId: 'card-aesop' },
+  { id: 'ie-5', name: 'Bandit Captain',  initiative: 8,  isNPC: true,  npcId: 'npc-2', cardId: null },
+  { id: 'ie-6', name: 'Goblin Scout',    initiative: 6,  isNPC: true,  npcId: null,    cardId: null },
+];
+let currentTurnIdx = 1; // Aragorn's turn
+
+// Modal context
+let activeNPCId = null;
+let activePCSlug = null;
+let pendingConditions = [];
+let npcIdCounter = 100;
+
+/* ═══════════════════════════════════════════════
+   RENDER: NPC CARDS
+═══════════════════════════════════════════════ */
+function renderNPCCards() {
+  const container = document.getElementById('npc-cards-container');
+  if (npcs.length === 0) {
+    container.innerHTML = '<div style="font-family:var(--font-ui);font-size:11px;letter-spacing:0.14em;color:var(--text-muted);padding:12px 0 16px;text-align:center;">No enemies tracked yet.<br>Add below or tap an NPC in initiative.</div>';
+  } else {
+    container.innerHTML = npcs.map(npc => buildNPCCardHTML(npc)).join('');
+  }
+  renderApplyToRow();
+  // Re-apply active-turn glow after innerHTML replacement
+  if (typeof updateActiveTurnCards === 'function') updateActiveTurnCards();
+}
+
+function npcStatus(npc) {
+  if (npc.hpCurrent <= 0) return 'dead';
+  if (npc.hpCurrent < npc.hpMax / 2) return 'bloodied';
+  return 'alive';
+}
+
+function buildNPCCardHTML(npc) {
+  const status = npcStatus(npc);
+  const pct = Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100));
+  const statusBadge = status === 'bloodied'
+    ? '<span class="npc-status-badge bloodied-badge">Bloodied</span>'
+    : status === 'dead'
+    ? '<span class="npc-status-badge dead-badge">Down</span>'
+    : '';
+
+  let barBg = 'linear-gradient(90deg, var(--npc-accent), var(--npc-bright))';
+  if (status === 'bloodied') barBg = 'linear-gradient(90deg, #8c4010, #c07030)';
+  if (status === 'dead')     barBg = 'linear-gradient(90deg, #6c2020, #c06060)';
+
+  const condHtml = npc.conditions.length > 0
+    ? npc.conditions.map(c =>
+        `<span class="card-cond" style="background:rgba(140,110,180,0.13);border:1px solid rgba(140,110,180,0.35);color:#b898d8;cursor:pointer;"
+               onclick="removeNPCCondition('${npc.id}','${c}')">${c} ×</span>`
+      ).join('')
+    : '';
+
+  return `
+    <div class="npc-card ${status}" id="npc-card-${npc.id}">
+      <div class="npc-card-inner">
+        <div class="npc-card-top">
+          <div class="npc-name-row">
+            <span class="npc-name">${npc.name}</span>
+            ${statusBadge}
+          </div>
+          <button class="npc-remove-btn" onclick="removeNPC('${npc.id}')" title="Remove">×</button>
+        </div>
+        <div class="npc-hp-row">
+          <div class="npc-hp-nums">
+            <span class="npc-hp-cur" id="npc-hp-${npc.id}">${npc.hpCurrent}</span>
+            <span class="npc-hp-sep">/</span>
+            <span class="npc-hp-max">${npc.hpMax}</span>
+          </div>
+        </div>
+        <div class="npc-stepper-row" id="npc-stepper-${npc.id}">
+          <button class="npc-step-btn" onclick="stepNPCHP('${npc.id}',-1)">−</button>
+          <div class="npc-bar-wrap">
+            <div class="npc-bar-track">
+              <div class="npc-bar-fill" id="npc-bar-${npc.id}" style="width:${pct}%;background:${barBg}"></div>
+            </div>
+          </div>
+          <button class="npc-step-btn" onclick="stepNPCHP('${npc.id}',1)">+</button>
+        </div>
+        ${condHtml ? `<div class="npc-conditions">${condHtml}</div>` : ''}
+      </div>
+      <div class="npc-quick-actions">
+        <button class="nqa-btn dmg" onclick="openNPCModal('dmg','${npc.id}')">⚔ Damage</button>
+        <button class="nqa-btn heal" onclick="openNPCModal('heal','${npc.id}')">✦ Heal</button>
+        <button class="nqa-btn cond" onclick="openNPCCondModal('${npc.id}')">◈ Conditions</button>
+      </div>
+    </div>
+  `;
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER: INITIATIVE LIST
+═══════════════════════════════════════════════ */
+function updateActiveTurnCards() {
+  // Clear all existing active-turn glows
+  document.querySelectorAll('.char-card.active-turn, .npc-card.active-turn')
+    .forEach(el => el.classList.remove('active-turn'));
+
+  const current = initEntries[currentTurnIdx];
+  if (!current) return;
+
+  // PC card
+  if (current.cardId) {
+    const card = document.getElementById(current.cardId);
+    if (card) card.classList.add('active-turn');
+  }
+
+  // NPC card (via npcId)
+  if (current.isNPC && current.npcId) {
+    const npcCard = document.getElementById('npc-card-' + current.npcId);
+    if (npcCard) npcCard.classList.add('active-turn');
+  }
+}
+
+function renderInitList() {
+  const list = document.getElementById('init-list');
+  list.innerHTML = initEntries.map((entry, idx) => {
+    const isCurrent = idx === currentTurnIdx;
+    const trackedNPC = entry.isNPC && entry.npcId ? npcs.find(n => n.id === entry.npcId) : null;
+    const status = trackedNPC ? npcStatus(trackedNPC) : null;
+
+    let dotHtml = '';
+    if (trackedNPC) {
+      dotHtml = `<span class="init-hp-dot ${status}" title="${trackedNPC.hpCurrent}/${trackedNPC.hpMax} HP"></span>`;
+    }
+
+    let npcTagHtml = '';
+    if (entry.isNPC && !trackedNPC) {
+      npcTagHtml = `<span class="init-npc-tag" title="Tap to track HP">NPC</span>`;
+    }
+
+    let entryClass = 'init-entry';
+    if (isCurrent) entryClass += ' current-turn';
+    if (entry.isNPC && !trackedNPC) entryClass += ' npc-entry';
+    if (entry.isNPC && trackedNPC) entryClass += ' npc-tracked';
+
+    const clickHandler = entry.isNPC && !trackedNPC
+      ? `onclick="togglePromoteForm('${entry.id}')"`
+      : '';
+
+    const promoteForm = entry.isNPC && !trackedNPC ? `
+      <div class="promote-form" id="promote-${entry.id}">
+        <label class="promote-form-label">Set max HP to track this enemy</label>
+        <div class="promote-form-row">
+          <input class="promote-input" type="number" id="promote-hp-${entry.id}"
+                 placeholder="HP" min="1"
+                 onkeydown="if(event.key==='Enter')promoteInitEntry('${entry.id}'); event.stopPropagation();"
+                 onclick="event.stopPropagation()" />
+          <button class="promote-confirm-btn" onclick="event.stopPropagation(); promoteInitEntry('${entry.id}')">Track HP</button>
+          <button class="promote-cancel-btn" onclick="event.stopPropagation(); togglePromoteForm('${entry.id}')">Cancel</button>
+        </div>
+        <div class="promote-hint">Creates an NPC card linked to this entry.</div>
+      </div>
+    ` : '';
+
+    const nameStyle = entry.isNPC ? 'font-style:italic;' : '';
+
+    return `
+      <li style="margin-bottom:3px;">
+        <div class="${entryClass}" ${clickHandler}>
+          <span class="init-num">${entry.initiative}</span>
+          <span class="init-name" style="${nameStyle}">${entry.name}</span>
+          ${dotHtml}
+          ${npcTagHtml}
+          ${isCurrent ? '<span class="current-marker">◀ Now</span>' : ''}
+          <button class="init-remove-btn" onclick="event.stopPropagation(); removeInitEntry('${entry.id}')" title="Remove">×</button>
+        </div>
+        ${promoteForm}
+      </li>
+    `;
+  }).join('');
+  updateActiveTurnCards();
+}
+
+/* ═══════════════════════════════════════════════
+   RENDER: APPLY-TO ROW (dice roller)
+═══════════════════════════════════════════════ */
+function renderApplyToRow() {
+  const row = document.getElementById('apply-to-row');
+  const pcPills = `
+    <button class="apply-pill ember" onclick="showApplyToast('Aragorn',14)">Aragorn</button>
+    <button class="apply-pill ocean" onclick="showApplyToast('Eoghan',14)">Eoghan</button>
+    <button class="apply-pill forest" onclick="showApplyToast('Aesop',14)">Aesop</button>
+  `;
+  const npcPills = npcs.map(npc => {
+    const dead = npc.hpCurrent <= 0;
+    return `<button class="apply-pill npc ${dead ? 'dead' : ''}"
+                    onclick="${dead ? '' : `showApplyToast('${npc.name}',14)`}"
+                    title="${npc.hpCurrent}/${npc.hpMax} HP">${npc.name}</button>`;
+  }).join('');
+  row.innerHTML = pcPills + npcPills;
+}
+
+/* ═══════════════════════════════════════════════
+   NPC: ADD / REMOVE
+═══════════════════════════════════════════════ */
+function addNPC() {
+  const nameInput = document.getElementById('npc-name-input');
+  const hpInput   = document.getElementById('npc-hp-input');
+  const qtyInput  = document.getElementById('npc-qty');
+
+  const baseName = nameInput.value.trim();
+  const hp       = parseInt(hpInput.value, 10);
+  const qty      = Math.max(1, Math.min(8, parseInt(qtyInput.value, 10) || 1));
+
+  if (!baseName || isNaN(hp) || hp < 1) {
+    hpInput.focus();
+    hpInput.style.borderColor = 'rgba(192,96,96,0.7)';
+    setTimeout(() => hpInput.style.borderColor = '', 1200);
+    return;
+  }
+
+  const LETTERS = 'ABCDEFGH';
+  for (let i = 0; i < qty; i++) {
+    const name = qty > 1 ? `${baseName} ${LETTERS[i]}` : baseName;
+    const id = 'npc-' + (++npcIdCounter);
+    npcs.push({ id, name, hpCurrent: hp, hpMax: hp, conditions: [], initiativeEntryId: null });
+  }
+
+  nameInput.value = '';
+  hpInput.value = '';
+  qtyInput.value = '1';
+
+  renderNPCCards();
+  renderInitList();
+}
+
+function removeNPC(id) {
+  npcs = npcs.filter(n => n.id !== id);
+  // Unlink any initiative entry
+  initEntries.forEach(e => { if (e.npcId === id) e.npcId = null; });
+  renderNPCCards();
+  renderInitList();
+}
+
+/* ═══════════════════════════════════════════════
+   NPC: HP STEP
+═══════════════════════════════════════════════ */
+function stepNPCHP(id, delta) {
+  const npc = npcs.find(n => n.id === id);
+  if (!npc) return;
+  npc.hpCurrent = Math.max(-99, npc.hpCurrent + delta);
+
+  // Optimistic partial re-render for speed
+  const card = document.getElementById('npc-card-' + id);
+  if (card) {
+    const newStatus = npcStatus(npc);
+    card.className = `npc-card ${newStatus}`;
+
+    const hpEl = document.getElementById('npc-hp-' + id);
+    if (hpEl) hpEl.textContent = npc.hpCurrent;
+
+    const pct = Math.max(0, Math.min(100, (npc.hpCurrent / npc.hpMax) * 100));
+    const barEl = document.getElementById('npc-bar-' + id);
+    if (barEl) {
+      barEl.style.width = pct + '%';
+      if (newStatus === 'dead')     barEl.style.background = 'linear-gradient(90deg,#6c2020,#c06060)';
+      else if (newStatus === 'bloodied') barEl.style.background = 'linear-gradient(90deg,#8c4010,#c07030)';
+      else barEl.style.background = 'linear-gradient(90deg,var(--npc-accent),var(--npc-bright))';
+    }
+
+    // Re-render whole card to update status badge & name style
+    renderNPCCards();
+    renderInitList();
+  }
+
+  // Delta float
+  const stepRow = document.getElementById('npc-stepper-' + id);
+  if (stepRow) {
+    const dot = document.createElement('span');
+    dot.className = 'hp-delta ' + (delta < 0 ? 'neg' : 'pos');
+    dot.textContent = (delta > 0 ? '+' : '') + delta;
+    stepRow.style.position = 'relative';
+    stepRow.appendChild(dot);
+    setTimeout(() => dot.remove(), 750);
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   INITIATIVE: PROMOTE
+═══════════════════════════════════════════════ */
+function togglePromoteForm(entryId) {
+  const form = document.getElementById('promote-' + entryId);
+  if (!form) return;
+  const isOpen = form.classList.contains('open');
+  // Close all
+  document.querySelectorAll('.promote-form.open').forEach(f => f.classList.remove('open'));
+  if (!isOpen) {
+    form.classList.add('open');
+    setTimeout(() => document.getElementById('promote-hp-' + entryId)?.focus(), 50);
+  }
+}
+
+function promoteInitEntry(entryId) {
+  const entry = initEntries.find(e => e.id === entryId);
+  if (!entry) return;
+  const hpInput = document.getElementById('promote-hp-' + entryId);
+  const hp = parseInt(hpInput?.value, 10);
+  if (isNaN(hp) || hp < 1) {
+    if (hpInput) { hpInput.style.borderColor = 'rgba(192,96,96,0.7)'; setTimeout(() => hpInput.style.borderColor = '', 1200); }
+    return;
+  }
+
+  const id = 'npc-' + (++npcIdCounter);
+  npcs.push({ id, name: entry.name, hpCurrent: hp, hpMax: hp, conditions: [], initiativeEntryId: entryId });
+  entry.npcId = id;
+
+  renderNPCCards();
+  renderInitList();
+}
+
+function nextTurn() {
+  currentTurnIdx = (currentTurnIdx + 1) % initEntries.length;
+  renderInitList();
+}
+
+function removeInitEntry(id) {
+  const entry = initEntries.find(e => e.id === id);
+  if (entry?.npcId) {
+    // Unlink NPC but keep card
+    const npc = npcs.find(n => n.id === entry.npcId);
+    if (npc) npc.initiativeEntryId = null;
+  }
+  initEntries = initEntries.filter(e => e.id !== id);
+  if (currentTurnIdx >= initEntries.length) currentTurnIdx = 0;
+  renderInitList();
+}
+
+function addInitEntry() {
+  const nameEl = document.getElementById('init-name-input');
+  const numEl  = document.getElementById('init-num-input-el');
+  const name   = nameEl.value.trim();
+  const init   = parseInt(numEl.value, 10);
+  if (!name || isNaN(init)) return;
+
+  const id = 'ie-' + Date.now();
+  // Guess isNPC: if name doesn't match a PC
+  const pcNames = ['Aragorn','Eoghan','Aesop'];
+  const isNPC = !pcNames.includes(name);
+  initEntries.push({ id, name, initiative: init, isNPC, npcId: null });
+  initEntries.sort((a, b) => b.initiative - a.initiative);
+  nameEl.value = '';
+  numEl.value = '';
+  renderInitList();
+}
+
+/* ═══════════════════════════════════════════════
+   NPC MODALS
+═══════════════════════════════════════════════ */
+function openNPCModal(type, npcId) {
+  activeNPCId = npcId;
+  const npc = npcs.find(n => n.id === npcId);
+  if (!npc) return;
+  closeAllPopovers();
+  if (type === 'dmg') {
+    document.getElementById('npc-dmg-title').textContent = '⚔ Damage — ' + npc.name;
+    document.getElementById('npc-dmg-ctx').textContent = 'HP: ' + npc.hpCurrent + ' / ' + npc.hpMax;
+    document.getElementById('npc-dmg-amt').value = 0;
+    document.getElementById('npc-dmg-modal').classList.add('open');
+    setTimeout(() => document.getElementById('npc-dmg-amt').focus(), 80);
+  } else {
+    document.getElementById('npc-heal-title').textContent = '✦ Heal — ' + npc.name;
+    document.getElementById('npc-heal-ctx').textContent = 'HP: ' + npc.hpCurrent + ' / ' + npc.hpMax;
+    document.getElementById('npc-heal-amt').value = 0;
+    document.getElementById('npc-heal-modal').classList.add('open');
+    setTimeout(() => document.getElementById('npc-heal-amt').focus(), 80);
+  }
+}
+
+function applyNPCDmg() {
+  const amt = Math.max(0, parseInt(document.getElementById('npc-dmg-amt').value, 10) || 0);
+  closeModal('npc-dmg-modal');
+  if (!activeNPCId || amt === 0) return;
+  const npc = npcs.find(n => n.id === activeNPCId);
+  if (!npc) return;
+  npc.hpCurrent = npc.hpCurrent - amt;
+  renderNPCCards();
+  renderInitList();
+}
+
+function applyNPCHeal() {
+  const amt = Math.max(0, parseInt(document.getElementById('npc-heal-amt').value, 10) || 0);
+  closeModal('npc-heal-modal');
+  if (!activeNPCId || amt === 0) return;
+  const npc = npcs.find(n => n.id === activeNPCId);
+  if (!npc) return;
+  npc.hpCurrent = Math.min(npc.hpMax, npc.hpCurrent + amt);
+  renderNPCCards();
+  renderInitList();
+}
+
+function openNPCCondModal(npcId) {
+  activeNPCId = npcId;
+  const npc = npcs.find(n => n.id === npcId);
+  if (!npc) return;
+  pendingConditions = [...npc.conditions];
+
+  document.getElementById('npc-cond-title').textContent = 'Conditions — ' + npc.name;
+  const grid = document.getElementById('npc-cond-grid');
+  grid.innerHTML = CONDITIONS.map(c => {
+    const active = pendingConditions.includes(c);
+    return `<button class="cond-toggle ${active ? 'active' : ''}" onclick="toggleCondition(this,'${c}')">${c}</button>`;
+  }).join('');
+
+  document.getElementById('npc-cond-modal').classList.add('open');
+}
+
+function toggleCondition(btn, cond) {
+  if (pendingConditions.includes(cond)) {
+    pendingConditions = pendingConditions.filter(c => c !== cond);
+    btn.classList.remove('active');
+  } else {
+    pendingConditions.push(cond);
+    btn.classList.add('active');
+  }
+}
+
+function applyNPCConditions() {
+  closeModal('npc-cond-modal');
+  if (!activeNPCId) return;
+  const npc = npcs.find(n => n.id === activeNPCId);
+  if (!npc) return;
+  npc.conditions = [...pendingConditions];
+  renderNPCCards();
+}
+
+function removeNPCCondition(npcId, cond) {
+  const npc = npcs.find(n => n.id === npcId);
+  if (!npc) return;
+  npc.conditions = npc.conditions.filter(c => c !== cond);
+  renderNPCCards();
+}
+
+/* ═══════════════════════════════════════════════
+   PC MODALS
+═══════════════════════════════════════════════ */
+function openPCModal(type, slug, label) {
+  activePCSlug = slug;
+  const c = pcState[slug];
+  closeAllPopovers();
+  if (type === 'dmg') {
+    document.getElementById('dmg-modal-title').textContent = '⚔ Damage — ' + label;
+    document.getElementById('dmg-ctx').textContent = 'HP: ' + c.hp + ' / ' + c.max;
+    document.getElementById('dmg-amt').value = 0;
+    document.getElementById('dmg-modal').classList.add('open');
+    setTimeout(() => document.getElementById('dmg-amt').focus(), 80);
+  } else {
+    document.getElementById('heal-modal-title').textContent = '✦ Heal — ' + label;
+    document.getElementById('heal-ctx').textContent = 'HP: ' + c.hp + ' / ' + c.max;
+    document.getElementById('heal-amt').value = 0;
+    document.getElementById('heal-modal').classList.add('open');
+    setTimeout(() => document.getElementById('heal-amt').focus(), 80);
+  }
+}
+
+function applyPCDmg() {
+  const amt = Math.max(0, parseInt(document.getElementById('dmg-amt').value, 10) || 0);
+  closeModal('dmg-modal');
+  if (!activePCSlug || amt === 0) return;
+  const c = pcState[activePCSlug];
+  c.hp = Math.max(0, c.hp - amt);
+  renderPC(activePCSlug);
+}
+
+function applyPCHeal() {
+  const amt = Math.max(0, parseInt(document.getElementById('heal-amt').value, 10) || 0);
+  closeModal('heal-modal');
+  if (!activePCSlug || amt === 0) return;
+  const c = pcState[activePCSlug];
+  c.hp = Math.min(c.max, c.hp + amt);
+  renderPC(activePCSlug);
+}
+
+function stepHP(slug, delta) {
+  const c = pcState[slug];
+  c.hp = Math.max(0, Math.min(c.max, c.hp + delta));
+  renderPC(slug);
+  const stepRow = document.querySelector('#card-' + slug + ' .hp-stepper-row');
+  if (stepRow) {
+    const dot = document.createElement('span');
+    dot.className = 'hp-delta ' + (delta < 0 ? 'neg' : 'pos');
+    dot.textContent = (delta > 0 ? '+' : '') + delta;
+    stepRow.appendChild(dot);
+    setTimeout(() => dot.remove(), 750);
+  }
+}
+
+function renderPC(slug) {
+  const c = pcState[slug];
+  const pct = Math.max(0, Math.min(100, (c.hp / c.max) * 100));
+  const hpEl = document.getElementById(slug + '-hp');
+  const barEl = document.getElementById(slug + '-bar');
+  const card  = document.getElementById('card-' + slug);
+  if (hpEl) {
+    hpEl.textContent = c.hp;
+    hpEl.className = 'hp-cur ' + (pct < 20 ? 'danger' : c.palette);
+  }
+  if (barEl) {
+    barEl.style.width = pct + '%';
+    if (pct > 50)      barEl.style.background = `linear-gradient(90deg,var(--${c.palette}-accent),var(--${c.palette}-bright))`;
+    else if (pct > 20) barEl.style.background = 'linear-gradient(90deg,#a06020,#d08030)';
+    else               barEl.style.background = 'linear-gradient(90deg,#8c3030,#c06060)';
+  }
+  if (card) {
+    if (pct < 20) card.classList.add('danger-border');
+    else card.classList.remove('danger-border');
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   END COMBAT
+═══════════════════════════════════════════════ */
+function openEndCombat() {
+  const count = npcs.length;
+  document.getElementById('end-combat-count').textContent =
+    count === 0
+      ? 'No NPCs are currently tracked. Initiative tracker is unaffected.'
+      : `This will remove ${count} NPC card${count !== 1 ? 's' : ''}. Initiative tracker is unaffected — clear it separately.`;
+  document.getElementById('end-combat-modal').classList.add('open');
+}
+
+function endCombat() {
+  // Unlink all initiative entries
+  initEntries.forEach(e => e.npcId = null);
+  npcs = [];
+  closeModal('end-combat-modal');
+  renderNPCCards();
+  renderInitList();
+}
+
+/* ═══════════════════════════════════════════════
+   MODAL / POPOVER UTILITIES
+═══════════════════════════════════════════════ */
+function openModal(id) { document.getElementById(id)?.classList.add('open'); }
+function closeModal(id) { document.getElementById(id)?.classList.remove('open'); }
+function handleOverlay(e, id) { if (e.target === document.getElementById(id)) closeModal(id); }
+
+function adjustAmt(prefix, delta) {
+  const el = document.getElementById(prefix + '-amt');
+  if (!el) return;
+  el.value = Math.max(0, (parseInt(el.value, 10) || 0) + delta);
+}
+function setAmt(prefix, val) {
+  const el = document.getElementById(prefix + '-amt');
+  if (el) el.value = val;
+}
+
+function togglePopover(id, btn) {
+  const pop = document.getElementById(id);
+  if (!pop) return;
+  const wasOpen = pop.classList.contains('open');
+  closeAllPopovers();
+  if (!wasOpen) pop.classList.add('open');
+}
+function closeAllPopovers() {
+  document.querySelectorAll('.quick-popover.open').forEach(p => p.classList.remove('open'));
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('.cqa-btn.more') && !e.target.closest('.quick-popover')) closeAllPopovers();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') {
+    ['npc-dmg-modal','npc-heal-modal','npc-cond-modal','dmg-modal','heal-modal','end-combat-modal']
+      .forEach(closeModal);
+    closeAllPopovers();
+    document.querySelectorAll('.promote-form.open').forEach(f => f.classList.remove('open'));
+  }
+});
+
+/* ═══════════════════════════════════════════════
+   DICE ROLLER TOGGLE
+═══════════════════════════════════════════════ */
+let diceOpen = true;
+function toggleDiceRoller() {
+  diceOpen = !diceOpen;
+  document.getElementById('dice-body').style.display = diceOpen ? 'block' : 'none';
+  document.getElementById('dice-toggle').textContent = diceOpen ? '▼' : '▶';
+}
+
+/* ═══════════════════════════════════════════════
+   APPLY-TO TOAST
+═══════════════════════════════════════════════ */
+function showApplyToast(name, amt) {
+  const existing = document.querySelector('.apply-toast');
+  if (existing) existing.remove();
+  const toast = document.createElement('div');
+  toast.className = 'apply-toast';
+  toast.textContent = `Opening Damage modal for ${name} — pre-filled with ${amt}`;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2200);
+  // In the real app this would open the damage modal pre-filled
+  if (pcState[name.toLowerCase()]) {
+    openPCModal('dmg', name.toLowerCase(), name);
+    document.getElementById('dmg-amt').value = amt;
+  } else {
+    const npc = npcs.find(n => n.name === name);
+    if (npc) {
+      openNPCModal('dmg', npc.id);
+      document.getElementById('npc-dmg-amt').value = amt;
+    }
+  }
+}
+
+/* ═══════════════════════════════════════════════
+   INITIAL RENDER
+═══════════════════════════════════════════════ */
+renderNPCCards();
+renderInitList();
+</script>
+
+</body>
+</html>

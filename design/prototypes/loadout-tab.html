@@ -1,0 +1,994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aragorn — Character Sheet · Inventory</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── Ember palette variables ── */
+:root {
+  --bg: #120d0a;
+  --surface: rgba(30,18,12,0.72);
+  --surface-solid: #1e120c;
+  --border: rgba(160,104,64,0.22);
+  --accent: #a06840;
+  --accent-bright: #c89060;
+  --accent-dim: rgba(160,104,64,0.14);
+  --text: #d4c4b0;
+  --text-body: #bfad98;
+  --text-muted: #6a4830;
+  --gem: #c8904c;
+  --gem-low: #5a3820;
+  --glow1: rgba(160,104,64,0.13);
+  --glow2: rgba(100,60,20,0.12);
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Crimson Text', serif;
+  --font-ui: 'IM Fell English', serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ── Top bar ── */
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 32px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(18,13,10,0.6);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+.top-bar a { color: var(--text-muted); text-decoration: none; }
+.top-bar a:hover { color: var(--accent-bright); }
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding: 5px 13px;
+  cursor: pointer;
+}
+.btn-primary {
+  background: rgba(18,58,78,0.5);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--accent-bright);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 8px 18px;
+  cursor: pointer;
+}
+.top-bar-actions { display: flex; gap: 8px; align-items: center; }
+
+/* ── Sheet content ── */
+.sheet {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 32px 80px;
+}
+
+/* ── Header ── */
+.class-line {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  text-align: center;
+}
+.char-name {
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 5vw, 2.8rem);
+  font-weight: 400;
+  color: var(--text);
+  text-align: center;
+  line-height: 1.15;
+  margin-bottom: 6px;
+}
+.char-nickname {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--text-muted);
+  text-align: center;
+  margin-bottom: 4px;
+  opacity: 0.85;
+}
+.char-pronunciation {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+/* ── Character details grid ── */
+.character-details-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px 24px;
+  margin-bottom: 44px;
+  padding: 22px 26px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+@media (max-width: 600px) {
+  .character-details-grid { grid-template-columns: repeat(2, 1fr); }
+}
+.detail-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 3px;
+}
+.detail-value {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text);
+}
+
+/* ── Portrait ── */
+.portrait-wrap {
+  width: calc(100% + 56px);
+  margin-left: -28px;
+  margin-right: -28px;
+  margin-bottom: 44px;
+  overflow: hidden;
+  border-radius: 4px;
+  position: relative;
+}
+.portrait-svg-wrap {
+  width: 100%;
+  height: 340px;
+  background: linear-gradient(180deg, rgba(30,18,12,0.4) 0%, rgba(18,13,10,0.95) 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+}
+.portrait-svg-wrap::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 30%, rgba(160,104,64,0.18) 0%, transparent 65%);
+}
+.portrait-silhouette { position: relative; z-index: 1; opacity: 0.55; }
+.portrait-tagline {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--accent);
+  text-align: center;
+  line-height: 1.7;
+  padding: 14px 28px 10px;
+}
+
+/* ── Stats block ── */
+.stats-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 28px 30px;
+  margin-bottom: 44px;
+  isolation: isolate;
+}
+
+/* HP row */
+.hp-row {
+  display: flex;
+  gap: 52px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.hp-stat { text-align: center; }
+.hp-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  display: block;
+}
+.hp-number {
+  font-family: var(--font-display);
+  font-size: 44px;
+  color: var(--gem);
+  line-height: 1;
+}
+.hp-number-armor {
+  font-family: var(--font-display);
+  font-size: 44px;
+  color: var(--accent-bright);
+  line-height: 1;
+}
+.hp-dice { font-family: var(--font-display); line-height: 1; }
+.hp-dice .big { font-size: 44px; }
+.hp-dice .small { font-size: 22px; }
+.armor-type-label {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--accent);
+  display: block;
+  margin-top: 4px;
+}
+
+/* Ability scores */
+.ability-scores-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 18px;
+}
+.ability-scores-grid {
+  display: flex;
+  gap: 28px;
+  flex-wrap: wrap;
+  margin-bottom: 28px;
+  justify-content: center;
+}
+.ability-score {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+}
+.stat-circle {
+  width: 66px;
+  height: 66px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  cursor: pointer;
+  transition: border-color 0.18s;
+}
+.stat-circle:hover { border-color: var(--accent); }
+.stat-circle.gem-color { border-color: rgba(200,144,76,0.4); }
+.stat-number {
+  font-family: var(--font-display);
+  font-size: 28px;
+  color: var(--gem);
+  line-height: 1;
+}
+.stat-number.normal { color: var(--accent); }
+.stat-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-body);
+}
+.mod-badge {
+  position: absolute;
+  bottom: -6px;
+  left: -8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--gem);
+  border: 2px solid var(--surface-solid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: #120d0a;
+  font-weight: 500;
+  z-index: 2;
+}
+
+/* Spells */
+.spells-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+.spells-row { display: flex; flex-wrap: wrap; gap: 8px; }
+.spell-pill {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  padding: 4px 13px;
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  color: var(--accent);
+  display: inline-block;
+}
+
+/* ── Tab strip ── */
+.tab-strip {
+  display: flex;
+  gap: 0;
+  margin-top: 40px;
+  margin-bottom: 24px;
+  margin-left: -30px;
+  margin-right: -30px;
+}
+.tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 64px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  border-right: none;
+  background: transparent;
+  color: var(--text-muted);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.tab-btn:last-child { border-right: 1px solid var(--border); }
+.tab-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.tab-btn.active + .tab-btn { border-left-color: var(--accent); }
+.tab-icon { display: block; flex-shrink: 0; }
+
+/* ── Inventory two-column grid ── */
+.loadout-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+}
+@media (max-width: 560px) {
+  .loadout-grid { grid-template-columns: 1fr; }
+}
+
+/* Column headings */
+.loadout-col-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  display: block;
+}
+
+/* ── Item rows ── */
+.item-row {
+  border-bottom: 1px solid var(--border);
+}
+.item-row:last-child { border-bottom: none; }
+
+.item-row-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 0;
+  cursor: pointer;
+}
+
+/* Drag handle */
+.drag-handle {
+  flex-shrink: 0;
+  cursor: grab;
+  opacity: 0.45;
+}
+
+.item-name {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text);
+  flex: 1;
+  min-width: 0;
+}
+
+.item-type-tag {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--accent);
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* Mod chips */
+.mod-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.mod-chip {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 2px 7px;
+  white-space: nowrap;
+}
+
+/* Expand arrow */
+.expand-arrow {
+  font-size: 11px;
+  color: var(--text-muted);
+  flex-shrink: 0;
+  user-select: none;
+}
+
+/* Expanded content */
+.item-expanded {
+  padding-left: 22px;
+  padding-bottom: 13px;
+}
+.item-description {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text-body);
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+/* ── Collections nav (same as persona) ── */
+.section-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+.collections-area { margin-top: 8px; }
+.collection-group { margin-bottom: 22px; }
+.collection-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+  display: block;
+}
+.section-btns { display: flex; flex-wrap: wrap; gap: 6px; }
+.section-btn {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 5px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+}
+.section-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.section-content-area { margin-top: 28px; }
+.section-content-title {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 16px;
+}
+.section-prose {
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.9;
+  text-align: justify;
+  color: var(--text-body);
+}
+.section-prose p { margin-bottom: 1.4em; }
+.section-prose p:last-child { margin-bottom: 0; }
+em.phoenetic { font-style: italic; opacity: 0.85; }
+
+/* ── Footer ── */
+.sheet-footer {
+  text-align: center;
+  margin-top: 60px;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* ── Annotation callouts ── */
+.callout {
+  position: absolute;
+  background: rgba(40,100,60,0.92);
+  border: 1px solid rgba(80,180,110,0.6);
+  border-radius: 5px;
+  color: #b8f0c8;
+  font-family: 'IM Fell English', serif;
+  font-size: 11px;
+  line-height: 1.5;
+  padding: 7px 11px;
+  z-index: 100;
+  pointer-events: none;
+  max-width: 230px;
+  white-space: normal;
+}
+.callout::before {
+  content: '';
+  position: absolute;
+  width: 8px;
+  height: 8px;
+  background: rgba(40,100,60,0.92);
+  border-left: 1px solid rgba(80,180,110,0.6);
+  border-bottom: 1px solid rgba(80,180,110,0.6);
+}
+.callout.above { bottom: calc(100% + 8px); left: 0; }
+.callout.above::before { bottom: -5px; left: 14px; transform: rotate(-45deg); }
+.callout.right { left: calc(100% + 12px); top: 0; }
+.callout.right::before { left: -5px; top: 10px; transform: rotate(45deg); }
+.callout.below { top: calc(100% + 8px); left: 0; }
+.callout.below::before { top: -5px; left: 14px; transform: rotate(135deg); }
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <a href="#">← All Characters</a>
+  <div class="top-bar-actions">
+    <button class="btn-ghost">Export JSON</button>
+    <button class="btn-primary">Edit Character</button>
+  </div>
+</div>
+
+<div class="sheet">
+
+  <!-- Header -->
+  <div class="class-line">Ranger · Dúnedain Strider</div>
+  <h1 class="char-name">Aragorn</h1>
+  <div class="char-nickname">"Strider"</div>
+  <div class="char-pronunciation">Ah-RA-gorn</div>
+
+  <div class="character-details-grid">
+    <div class="detail-cell">
+      <span class="detail-label">Race</span>
+      <span class="detail-value">Dúnedain</span>
+    </div>
+    <div class="detail-cell">
+      <span class="detail-label">Class</span>
+      <span class="detail-value">Ranger</span>
+    </div>
+    <div class="detail-cell">
+      <span class="detail-label">Subclass</span>
+      <span class="detail-value">Hunter</span>
+    </div>
+    <div class="detail-cell">
+      <span class="detail-label">Alignment</span>
+      <span class="detail-value">Lawful Good</span>
+    </div>
+    <div class="detail-cell">
+      <span class="detail-label">Background</span>
+      <span class="detail-value">Outlander</span>
+    </div>
+    <div class="detail-cell">
+      <span class="detail-label">Origin</span>
+      <span class="detail-value">The Angle, Eriador</span>
+    </div>
+  </div>
+
+  <!-- Portrait -->
+  <div class="portrait-wrap">
+    <div class="portrait-svg-wrap">
+      <svg class="portrait-silhouette" width="160" height="280" viewBox="0 0 160 280" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M30 280 L20 140 Q40 100 80 95 Q120 100 140 140 L130 280 Z" fill="#a06840" opacity="0.35"/>
+        <rect x="52" y="110" width="56" height="70" rx="6" fill="#c89060" opacity="0.25"/>
+        <ellipse cx="80" cy="72" rx="28" ry="32" fill="#c8904c" opacity="0.35"/>
+        <path d="M52 72 Q60 40 80 35 Q100 40 108 72 Q100 60 80 58 Q60 60 52 72Z" fill="#a06840" opacity="0.4"/>
+        <circle cx="80" cy="128" r="5" fill="#c89060" opacity="0.7"/>
+        <rect x="108" y="150" width="6" height="28" rx="2" fill="#c89060" opacity="0.5"/>
+        <rect x="103" y="152" width="16" height="5" rx="2" fill="#c89060" opacity="0.5"/>
+      </svg>
+    </div>
+    <div class="portrait-tagline">
+      "All that is gold does not glitter — not all those who wander are lost."
+    </div>
+  </div>
+
+  <!-- Stats block -->
+  <div class="stats-block">
+
+    <!-- HP / Hit Dice / Armor row -->
+    <div class="hp-row">
+      <div class="hp-stat">
+        <span class="hp-label">Hit Points</span>
+        <span class="hp-number">78</span>
+      </div>
+      <div class="hp-stat">
+        <span class="hp-label">Hit Dice</span>
+        <div class="hp-dice">
+          <span class="big">8</span><span class="small">d</span><span class="big">10</span>
+        </div>
+      </div>
+      <div class="hp-stat">
+        <span class="hp-label">Armor</span>
+        <span class="hp-number-armor">17</span>
+        <span class="armor-type-label" style="margin-top:4px;">Full · Slow</span>
+      </div>
+    </div>
+
+    <!-- Ability scores -->
+    <div class="ability-scores-label">Ability Scores · Level 8</div>
+    <div class="ability-scores-grid">
+      <div class="ability-score">
+        <div class="stat-circle gem-color">
+          <span class="stat-number">18</span>
+          <span class="mod-badge">+5</span>
+        </div>
+        <span class="stat-label">Str</span>
+      </div>
+      <div class="ability-score">
+        <div class="stat-circle gem-color">
+          <span class="stat-number">16</span>
+          <span class="mod-badge">+3</span>
+        </div>
+        <span class="stat-label">Dex</span>
+      </div>
+      <div class="ability-score">
+        <div class="stat-circle" style="border-color: rgba(160,104,64,0.3);">
+          <span class="stat-number normal">14</span>
+          <span class="mod-badge">+2</span>
+        </div>
+        <span class="stat-label">Con</span>
+      </div>
+      <div class="ability-score">
+        <div class="stat-circle" style="border-color: rgba(160,104,64,0.3);">
+          <span class="stat-number normal">14</span>
+          <span class="mod-badge">+2</span>
+        </div>
+        <span class="stat-label">Wis</span>
+      </div>
+      <div class="ability-score">
+        <div class="stat-circle" style="border-color: rgba(160,104,64,0.2);">
+          <span class="stat-number normal">12</span>
+          <span class="mod-badge">+1</span>
+        </div>
+        <span class="stat-label">Int</span>
+      </div>
+      <div class="ability-score">
+        <div class="stat-circle gem-color">
+          <span class="stat-number">16</span>
+          <span class="mod-badge">+3</span>
+        </div>
+        <span class="stat-label">Cha</span>
+      </div>
+    </div>
+
+    <!-- Key Spells & Abilities -->
+    <div class="spells-label">Key Spells &amp; Abilities</div>
+    <div class="spells-row">
+      <span class="spell-pill">Hunter's Mark</span>
+      <span class="spell-pill">Favored Enemy</span>
+      <span class="spell-pill">Natural Explorer</span>
+      <span class="spell-pill">Colossus Slayer</span>
+      <span class="spell-pill">Goodberry</span>
+      <span class="spell-pill">Pass Without Trace</span>
+    </div>
+
+    <!-- Tab strip -->
+    <div class="tab-strip">
+      <button class="tab-btn active">
+        <!-- Inventory: crossed swords -->
+        <svg class="tab-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <line x1="3" y1="3" x2="17" y2="17" stroke="var(--accent-bright)" stroke-width="2" stroke-linecap="round"/>
+          <line x1="17" y1="3" x2="3" y2="17" stroke="var(--accent-bright)" stroke-width="2" stroke-linecap="round"/>
+          <rect x="2" y="1" width="3" height="5" rx="1" fill="var(--accent-bright)" transform="rotate(45 3 3)"/>
+          <rect x="15" y="1" width="3" height="5" rx="1" fill="var(--accent-bright)" transform="rotate(-45 17 3)"/>
+        </svg>
+        Inventory
+      </button>
+      <button class="tab-btn">
+        <!-- Persona: theatrical mask -->
+        <svg class="tab-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M4 5 Q4 2 10 2 Q16 2 16 5 L16 11 Q16 16 10 17 Q7 17 5.5 15" stroke="var(--text-muted)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <path d="M4 5 L4 11 Q4 14 5.5 15" stroke="var(--text-muted)" stroke-width="1.6" fill="none" stroke-linecap="round"/>
+          <circle cx="7.5" cy="8" r="1.2" fill="var(--text-muted)"/>
+          <circle cx="12.5" cy="8" r="1.2" fill="var(--text-muted)"/>
+          <path d="M7.5 12 Q10 13.5 12.5 12" stroke="var(--text-muted)" stroke-width="1.4" fill="none" stroke-linecap="round"/>
+        </svg>
+        Persona
+      </button>
+      <button class="tab-btn">
+        <!-- Combat: shield -->
+        <svg class="tab-icon" width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 2 L17 5 L17 10 Q17 15 10 18 Q3 15 3 10 L3 5 Z" stroke="var(--text-muted)" stroke-width="1.6" fill="none" stroke-linejoin="round"/>
+          <path d="M10 6 L10 13 M7 9.5 L13 9.5" stroke="var(--text-muted)" stroke-width="1.4" stroke-linecap="round"/>
+        </svg>
+        Combat
+      </button>
+    </div>
+
+    <!-- Inventory two-column grid -->
+    <div style="position:relative;">
+
+      <!-- Annotation 1: two-column layout -->
+      <div class="callout" style="position:absolute; top:-4px; right:0; max-width:220px;">
+        Two-column .loadout-grid — collapses to single column at 560px. Weapons left, Equipment right. (Inventory tab)
+      </div>
+
+      <div class="loadout-grid" style="margin-top:8px;">
+
+        <!-- ── WEAPONS column ── -->
+        <div>
+          <span class="loadout-col-label">Weapons</span>
+
+          <!-- Weapon 1: Andúril — COLLAPSED -->
+          <div class="item-row">
+            <div class="item-row-header">
+              <!-- Drag handle -->
+              <svg class="drag-handle" width="12" height="18" viewBox="0 0 12 18" fill="#6a4830">
+                <circle cx="4" cy="3" r="1.4"/>
+                <circle cx="8" cy="3" r="1.4"/>
+                <circle cx="4" cy="9" r="1.4"/>
+                <circle cx="8" cy="9" r="1.4"/>
+                <circle cx="4" cy="15" r="1.4"/>
+                <circle cx="8" cy="15" r="1.4"/>
+              </svg>
+              <span class="item-name">Andúril, Flame of the West</span>
+              <div class="mod-chips">
+                <span class="mod-chip">STR +3</span>
+                <span class="mod-chip">DMG +2</span>
+              </div>
+              <span class="expand-arrow">▼</span>
+            </div>
+          </div>
+
+          <!-- Weapon 2: Ranger's Longbow — EXPANDED -->
+          <div class="item-row" style="position:relative;">
+            <div class="item-row-header" style="padding-bottom:4px;">
+              <svg class="drag-handle" width="12" height="18" viewBox="0 0 12 18" fill="#6a4830">
+                <circle cx="4" cy="3" r="1.4"/>
+                <circle cx="8" cy="3" r="1.4"/>
+                <circle cx="4" cy="9" r="1.4"/>
+                <circle cx="8" cy="9" r="1.4"/>
+                <circle cx="4" cy="15" r="1.4"/>
+                <circle cx="8" cy="15" r="1.4"/>
+              </svg>
+              <span class="item-name">Ranger's Longbow</span>
+              <div class="mod-chips">
+                <span class="mod-chip">DEX +2</span>
+                <span class="mod-chip">ATK +1</span>
+              </div>
+              <span class="expand-arrow">▲</span>
+            </div>
+            <!-- Expanded description -->
+            <div class="item-expanded" style="position:relative;">
+              <!-- Annotation 2 on expanded weapon -->
+              <div class="callout right" style="top: 0; left: calc(100% + 14px); max-width:210px;">
+                Expanded state: description in italic Crimson Text + mod chips repeated below.
+              </div>
+              <div class="item-description">
+                A yew longbow strung with sinew, carved from wood of the Prancing Pony's stock and re-strung in Rivendell. Favoured for long shots at moving targets across open moorland. Deals 1d8+DEX piercing damage; range 150/600 ft.
+              </div>
+              <div class="mod-chips">
+                <span class="mod-chip">DEX +2</span>
+                <span class="mod-chip">ATK +1</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Weapon 3: Ranger's Shortsword — COLLAPSED -->
+          <div class="item-row">
+            <div class="item-row-header">
+              <svg class="drag-handle" width="12" height="18" viewBox="0 0 12 18" fill="#6a4830">
+                <circle cx="4" cy="3" r="1.4"/>
+                <circle cx="8" cy="3" r="1.4"/>
+                <circle cx="4" cy="9" r="1.4"/>
+                <circle cx="8" cy="9" r="1.4"/>
+                <circle cx="4" cy="15" r="1.4"/>
+                <circle cx="8" cy="15" r="1.4"/>
+              </svg>
+              <span class="item-name">Hunting Knife</span>
+              <div class="mod-chips">
+                <span class="mod-chip">DEX +1</span>
+              </div>
+              <span class="expand-arrow">▼</span>
+            </div>
+          </div>
+
+        </div><!-- /weapons col -->
+
+        <!-- ── EQUIPMENT column ── -->
+        <div>
+          <span class="loadout-col-label">Equipment</span>
+
+          <!-- Equipment 1: Cloak of Elvenkind — COLLAPSED, type: Armor -->
+          <div class="item-row">
+            <div class="item-row-header">
+              <svg class="drag-handle" width="12" height="18" viewBox="0 0 12 18" fill="#6a4830">
+                <circle cx="4" cy="3" r="1.4"/>
+                <circle cx="8" cy="3" r="1.4"/>
+                <circle cx="4" cy="9" r="1.4"/>
+                <circle cx="8" cy="9" r="1.4"/>
+                <circle cx="4" cy="15" r="1.4"/>
+                <circle cx="8" cy="15" r="1.4"/>
+              </svg>
+              <span class="item-name">Cloak of Elvenkind</span>
+              <span class="item-type-tag">Armor</span>
+              <div class="mod-chips">
+                <span class="mod-chip">AC +1</span>
+              </div>
+              <span class="expand-arrow">▼</span>
+            </div>
+          </div>
+
+          <!-- Equipment 2: Boots of Striding — EXPANDED, type: Tool -->
+          <div class="item-row" style="position:relative;">
+            <div class="item-row-header" style="padding-bottom:4px;">
+              <svg class="drag-handle" width="12" height="18" viewBox="0 0 12 18" fill="#6a4830">
+                <circle cx="4" cy="3" r="1.4"/>
+                <circle cx="8" cy="3" r="1.4"/>
+                <circle cx="4" cy="9" r="1.4"/>
+                <circle cx="8" cy="9" r="1.4"/>
+                <circle cx="4" cy="15" r="1.4"/>
+                <circle cx="8" cy="15" r="1.4"/>
+              </svg>
+              <span class="item-name">Boots of Striding and Springing</span>
+              <span class="item-type-tag">Tool</span>
+              <div class="mod-chips">
+                <span class="mod-chip">SPD +10</span>
+                <span class="mod-chip">INIT +1</span>
+              </div>
+              <span class="expand-arrow">▲</span>
+            </div>
+            <div class="item-expanded">
+              <div class="item-description">
+                Soft leather boots worked with Dúnedain trail-runes. Speed increases by 10 ft. and jump distance is tripled while worn. Confer +1 Initiative from the wearer's instinctive ground-reading. Do not hinder stealth.
+              </div>
+              <div class="mod-chips">
+                <span class="mod-chip">SPD +10</span>
+                <span class="mod-chip">INIT +1</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Equipment 3: Ring of Barahir — COLLAPSED, no type -->
+          <div class="item-row">
+            <div class="item-row-header">
+              <svg class="drag-handle" width="12" height="18" viewBox="0 0 12 18" fill="#6a4830">
+                <circle cx="4" cy="3" r="1.4"/>
+                <circle cx="8" cy="3" r="1.4"/>
+                <circle cx="4" cy="9" r="1.4"/>
+                <circle cx="8" cy="9" r="1.4"/>
+                <circle cx="4" cy="15" r="1.4"/>
+                <circle cx="8" cy="15" r="1.4"/>
+              </svg>
+              <span class="item-name">Ring of Barahir</span>
+              <div class="mod-chips">
+                <span class="mod-chip">CHA +2</span>
+                <span class="mod-chip">SAVE DC +1</span>
+              </div>
+              <span class="expand-arrow">▼</span>
+            </div>
+          </div>
+
+          <!-- Equipment 4: Athelas Pouch — COLLAPSED, type: Tool -->
+          <div class="item-row">
+            <div class="item-row-header">
+              <svg class="drag-handle" width="12" height="18" viewBox="0 0 12 18" fill="#6a4830">
+                <circle cx="4" cy="3" r="1.4"/>
+                <circle cx="8" cy="3" r="1.4"/>
+                <circle cx="4" cy="9" r="1.4"/>
+                <circle cx="8" cy="9" r="1.4"/>
+                <circle cx="4" cy="15" r="1.4"/>
+                <circle cx="8" cy="15" r="1.4"/>
+              </svg>
+              <span class="item-name">Athelas Pouch</span>
+              <span class="item-type-tag">Tool</span>
+              <div class="mod-chips">
+                <span class="mod-chip">HP +6</span>
+              </div>
+              <span class="expand-arrow">▼</span>
+            </div>
+          </div>
+
+        </div><!-- /equipment col -->
+
+      </div><!-- /loadout-grid -->
+
+      <!-- Annotation 3: type tag -->
+      <div class="callout" style="position:absolute; bottom:-36px; left:50%; transform:translateX(-50%); max-width:260px; text-align:center;">
+        Type tag (e.g., "Armor", "Tool") is optional — only shown on equipment rows where set. Mod chips use IM Fell English 11px uppercase.
+      </div>
+
+    </div><!-- /relative wrap -->
+
+  </div><!-- /stats-block -->
+
+  <!-- Spacer for annotation overflow -->
+  <div style="height:48px;"></div>
+
+  <!-- Collections nav -->
+  <div class="collections-area">
+
+    <div class="collection-group">
+      <span class="collection-label">Character</span>
+      <div class="section-btns">
+        <button class="section-btn active">About</button>
+        <button class="section-btn">Appearance</button>
+      </div>
+    </div>
+
+    <div class="collection-group">
+      <span class="collection-label">History</span>
+      <div class="section-btns">
+        <button class="section-btn">Childhood</button>
+        <button class="section-btn">The Wandering Years</button>
+        <button class="section-btn">Rivendell</button>
+      </div>
+    </div>
+
+    <div class="section-content-area">
+      <div class="section-content-title">About</div>
+      <div class="section-prose">
+        <p>
+          Aragorn, son of Arathorn, walks the world under many names — <em class="phoenetic">Strider</em> to the folk of Bree, <em class="phoenetic">Thorongil</em> to those who knew him in Gondor, and to the Rangers of the North he is simply the Chieftain. He has spent four decades earning the trust of those he protects, never asking for their faith in return, only their patience.
+        </p>
+        <p>
+          He carries little he does not need. His gear is worn smooth by years of wilderness travel, each piece chosen for function over appearance. He sleeps lightly and wakes early, a habit built across countless nights watching the Greenway for worse things than ill-tempered travelers.
+        </p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Footer -->
+  <div class="sheet-footer">
+    Aragorn · "Strider" · Dúnedain Ranger · Level 8
+  </div>
+
+</div><!-- /sheet -->
+</body>
+</html>

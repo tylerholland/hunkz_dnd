@@ -46,3 +46,48 @@ export const getPortraitUploadUrl = (slug, password, contentType) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password, contentType }),
   });
+
+export const getDmParty = (dmPassword) =>
+  request("/dm/party", {
+    headers: { "x-character-password": dmPassword },
+  });
+
+export const patchSession = (slug, fields, password) =>
+  request(`/characters/${slug}/session`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      ...(password ? { "x-character-password": password } : {}),
+    },
+    body: JSON.stringify(fields),
+  });
+
+export const getInitiative = (dmPassword) =>
+  request("/initiative", {
+    headers: { "x-character-password": dmPassword },
+  });
+
+export const putInitiative = (dmPassword, data) =>
+  request("/initiative", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-character-password": dmPassword,
+    },
+    body: JSON.stringify(data),
+  });
+
+export const getNpcCombat = (dmPassword) =>
+  request("/npc-combat", {
+    headers: { "x-character-password": dmPassword },
+  });
+
+export const putNpcCombat = (dmPassword, data) =>
+  request("/npc-combat", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-character-password": dmPassword,
+    },
+    body: JSON.stringify(data),
+  });

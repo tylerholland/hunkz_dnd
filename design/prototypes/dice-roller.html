@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Aragorn — Dice Roller · Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── Ember palette ── */
+:root {
+  --bg: #120d0a;
+  --surface: rgba(30,18,12,0.85);
+  --surface-solid: #1a1008;
+  --border: #3a2818;
+  --border-vis: rgba(160,104,64,0.30);
+  --accent: #a06840;
+  --accent-bright: #c89060;
+  --accent-dim: rgba(160,104,64,0.18);
+  --text: #d4c4b0;
+  --text-body: #c4aa90;
+  --text-muted: #6a4830;
+  --gem: #c8904c;
+  --gem-low: #3a2010;
+  --glow1: rgba(160,104,64,0.12);
+  --glow2: rgba(80,40,20,0.15);
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Crimson Text', serif;
+  --font-ui: 'IM Fell English', serif;
+
+  /* roll state colors */
+  --crit-color: #ffd060;
+  --crit-glow: rgba(255,200,40,0.45);
+  --fumble-color: #c06060;
+  --fumble-glow: rgba(192,60,60,0.45);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ── Layout ── */
+.page { max-width: 680px; margin: 0 auto; padding: 32px 20px 120px; }
+
+.top-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 13px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(18,13,10,0.7);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.top-bar .char-name { font-family: var(--font-display); font-size: 14px; color: var(--accent-bright); letter-spacing: 0.08em; }
+
+.section-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+}
+
+hr.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 20px 0;
+}
+
+/* ── Tab strip ── */
+.tab-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+}
+.tab-btn {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 5px 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.tab-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+
+/* ── Surface panel ── */
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 20px 22px;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+/* ── Ability scores ── */
+.ability-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.ability-circle {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  position: relative;
+}
+.ability-circle:hover .stat-ring { border-color: var(--accent); transform: scale(1.05); }
+.stat-ring {
+  width: 62px;
+  height: 62px;
+  border-radius: 50%;
+  border: 2px solid var(--border-vis);
+  background: var(--surface);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  transition: border-color 0.18s, transform 0.12s;
+  position: relative;
+}
+.stat-score {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--gem);
+  line-height: 1;
+}
+.stat-mod-badge {
+  position: absolute;
+  bottom: -7px;
+  left: -7px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--gem-low);
+  border: 2px solid var(--surface-solid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: var(--gem);
+}
+.stat-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.stat-roll-hint {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.ability-circle:hover .stat-roll-hint { opacity: 1; }
+
+/* ── Weapons ── */
+.weapon-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+.weapon-row:last-child { border-bottom: none; padding-bottom: 0; }
+.weapon-name {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text);
+}
+.weapon-stat {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text-body);
+  min-width: 44px;
+  text-align: center;
+}
+.roll-btn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  padding: 5px 11px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.roll-btn-atk {
+  background: rgba(18,58,78,0.45);
+  border: 1px solid var(--accent);
+  color: var(--accent-bright);
+}
+.roll-btn-atk:hover {
+  background: rgba(18,58,78,0.7);
+  box-shadow: 0 0 8px rgba(160,104,64,0.3);
+}
+.roll-btn-dmg {
+  background: rgba(40,20,10,0.5);
+  border: 1px solid var(--border-vis);
+  color: var(--text-muted);
+}
+.roll-btn-dmg:hover {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.roll-btn:active { transform: scale(0.95); }
+
+/* ── Adv/Dis toggle ── */
+.adv-dis-strip {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-bottom: 14px;
+}
+.adv-dis-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+.adv-btn {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.adv-btn.active-adv {
+  border-color: #5a9a60;
+  background: rgba(60,130,60,0.18);
+  color: #88c888;
+}
+.adv-btn.active-dis {
+  border-color: #9a5a5a;
+  background: rgba(130,60,60,0.18);
+  color: #c88888;
+}
+
+/* ── Dice picker ── */
+.dice-picker {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+.die-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 6px 4px;
+  border-radius: 4px;
+  transition: background 0.15s;
+}
+.die-btn:hover { background: var(--accent-dim); }
+.die-btn.selected .die-svg-wrap { filter: drop-shadow(0 0 6px var(--accent)); }
+.die-btn.selected .die-face { stroke: var(--accent-bright); fill: rgba(160,104,64,0.2); }
+.die-btn.selected .die-face-label { fill: var(--accent-bright); }
+.die-label {
+  font-family: var(--font-display);
+  font-size: 10px;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+.die-btn.selected .die-label { color: var(--accent-bright); }
+
+.die-face { stroke: var(--border-vis); fill: rgba(30,18,12,0.7); stroke-width: 1.5; }
+.die-face-label { fill: var(--text-body); font-family: 'Cinzel', serif; }
+
+/* count selector */
+.count-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+.count-label { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted); }
+.count-stepper {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.count-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--accent-bright);
+  font-family: var(--font-display);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.13s;
+}
+.count-btn:hover { border-color: var(--accent); background: var(--accent-dim); }
+.count-num {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--gem);
+  min-width: 24px;
+  text-align: center;
+}
+
+/* ── Combo roll builder ── */
+.combo-builder {
+  margin-bottom: 14px;
+}
+
+/* Pending expression display */
+.pending-expr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 4px;
+  min-height: 32px;
+  margin-bottom: 10px;
+}
+.pending-expr-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 6px;
+}
+.pending-chip {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--accent-bright);
+  background: var(--accent-dim);
+  border: 1px solid var(--accent);
+  border-radius: 2px;
+  padding: 2px 8px;
+}
+.pending-chip-sep {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--text-muted);
+}
+.pending-empty {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* Combo action row */
+.combo-actions {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.combo-btn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  padding: 4px 12px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--text-muted);
+  transition: all 0.15s;
+}
+.combo-btn:hover { border-color: var(--accent); color: var(--accent-bright); background: var(--accent-dim); }
+.combo-btn:active { transform: scale(0.95); }
+.combo-btn.add-die-btn {
+  border-color: var(--accent);
+  color: var(--accent-bright);
+  background: rgba(160,104,64,0.10);
+}
+.combo-btn.add-die-btn:hover { background: var(--accent-dim); }
+
+/* Modifier input row */
+.modifier-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.modifier-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.modifier-input {
+  width: 72px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  color: var(--gem);
+  font-family: var(--font-display);
+  font-size: 18px;
+  text-align: center;
+  padding: 2px 6px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.modifier-input:focus { border-color: var(--accent); }
+/* Hide spinners */
+.modifier-input::-webkit-inner-spin-button,
+.modifier-input::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+.modifier-input[type=number] { -moz-appearance: textfield; }
+
+/* ── Free-form expression input ── */
+.expr-row {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+  margin-bottom: 16px;
+}
+.expr-input {
+  flex: 1;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  letter-spacing: 0.06em;
+  padding: 7px 12px;
+  outline: none;
+  transition: border-color 0.15s;
+  min-width: 0;
+}
+.expr-input:focus { border-color: var(--accent); }
+.expr-input::placeholder { color: var(--text-muted); font-size: 12px; letter-spacing: 0.1em; }
+.expr-roll-btn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  padding: 7px 14px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: var(--accent-dim);
+  color: var(--accent-bright);
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.expr-roll-btn:hover { background: rgba(160,104,64,0.28); box-shadow: 0 0 8px rgba(160,104,64,0.2); }
+.expr-roll-btn:active { transform: scale(0.97); }
+.expr-error {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--fumble-color);
+  text-align: center;
+  min-height: 14px;
+  margin-top: -10px;
+  margin-bottom: 8px;
+}
+
+/* big roll button */
+.big-roll-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  letter-spacing: 0.12em;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--accent);
+  background: rgba(18,58,78,0.4);
+  color: var(--accent-bright);
+  transition: all 0.15s;
+  text-transform: uppercase;
+}
+.big-roll-btn:hover {
+  background: rgba(18,58,78,0.65);
+  box-shadow: 0 0 16px rgba(160,104,64,0.25);
+}
+.big-roll-btn:active { transform: scale(0.98); }
+
+/* ── Dice animation stage ── */
+.roll-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 130px;
+  padding: 10px 0;
+  position: relative;
+}
+
+/* Multi-die stage: shows several die canvases side-by-side */
+.multi-die-stage {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+.die-group-block {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.die-group-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.die-canvas {
+  position: relative;
+  width: 100px;
+  height: 100px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.die-canvas.small {
+  width: 70px;
+  height: 70px;
+}
+.die-canvas.small .die-anim-svg {
+  width: 70px;
+  height: 70px;
+}
+.die-canvas.small .die-result-num {
+  font-size: 26px;
+}
+.die-anim-svg {
+  position: absolute;
+  top: 0; left: 0;
+  width: 100px;
+  height: 100px;
+}
+
+/* The animated number inside the die */
+.die-result-num {
+  position: relative;
+  z-index: 2;
+  font-family: var(--font-display);
+  font-size: 38px;
+  color: var(--gem);
+  user-select: none;
+  transition: color 0.3s;
+  text-shadow: 0 0 12px rgba(200,144,76,0.5);
+}
+.die-result-num.is-crit {
+  color: var(--crit-color);
+  text-shadow: 0 0 20px var(--crit-glow), 0 0 40px var(--crit-glow);
+  animation: critPulse 0.7s ease-out;
+}
+.die-result-num.is-fumble {
+  color: var(--fumble-color);
+  text-shadow: 0 0 20px var(--fumble-glow), 0 0 40px var(--fumble-glow);
+  animation: fumbleShake 0.5s ease-out;
+}
+.die-result-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  margin-top: 6px;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+.die-result-label.visible { opacity: 1; }
+.die-result-label.crit-label { color: var(--crit-color); }
+.die-result-label.fumble-label { color: var(--fumble-color); }
+.die-result-label.normal-label { color: var(--text-muted); }
+
+/* result breakdown chips */
+.result-breakdown {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 24px;
+}
+.chip {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--text-body);
+  background: rgba(30,18,12,0.7);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 2px 8px;
+}
+.chip.used { border-color: var(--accent); color: var(--accent-bright); }
+.chip.discarded { opacity: 0.38; text-decoration: line-through; }
+.chip-plus { color: var(--text-muted); font-family: var(--font-display); font-size: 14px; }
+.chip.total {
+  background: var(--accent-dim);
+  border-color: var(--accent-bright);
+  color: var(--accent-bright);
+  font-size: 15px;
+  padding: 3px 12px;
+}
+/* Group chip: labeled die group in multi-roll breakdown */
+.chip-group {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+}
+.chip-group-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.chip-group-val {
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--text-body);
+  background: rgba(30,18,12,0.7);
+  border: 1px solid var(--border);
+  border-radius: 2px;
+  padding: 1px 8px;
+  white-space: nowrap;
+}
+.chip-group-val.highlight { border-color: var(--accent); color: var(--accent-bright); }
+
+@keyframes critPulse {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.35); }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+@keyframes fumbleShake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-6px) rotate(-3deg); }
+  40%  { transform: translateX(6px) rotate(3deg); }
+  60%  { transform: translateX(-4px) rotate(-2deg); }
+  80%  { transform: translateX(4px) rotate(2deg); }
+  100% { transform: translateX(0); }
+}
+@keyframes spinIn {
+  0%   { transform: rotate(0deg) scale(0.6); opacity: 0.4; }
+  60%  { transform: rotate(380deg) scale(1.08); opacity: 1; }
+  80%  { transform: rotate(355deg) scale(0.97); }
+  100% { transform: rotate(360deg) scale(1); opacity: 1; }
+}
+@keyframes landGlow {
+  0%   { filter: drop-shadow(0 0 0px rgba(200,144,76,0)); }
+  40%  { filter: drop-shadow(0 0 18px rgba(200,144,76,0.7)); }
+  100% { filter: drop-shadow(0 0 6px rgba(200,144,76,0.2)); }
+}
+@keyframes critLandGlow {
+  0%   { filter: drop-shadow(0 0 0px rgba(255,200,40,0)); }
+  35%  { filter: drop-shadow(0 0 28px rgba(255,200,40,0.9)); }
+  100% { filter: drop-shadow(0 0 10px rgba(255,200,40,0.4)); }
+}
+@keyframes fumbleLandGlow {
+  0%   { filter: drop-shadow(0 0 0px rgba(192,60,60,0)); }
+  35%  { filter: drop-shadow(0 0 28px rgba(192,60,60,0.9)); }
+  100% { filter: drop-shadow(0 0 10px rgba(192,60,60,0.3)); }
+}
+@keyframes numCycle {
+  0%   { opacity: 0.5; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes revealNum {
+  0%   { transform: scale(0.5) translateY(8px); opacity: 0; }
+  70%  { transform: scale(1.15) translateY(-2px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+.die-anim-svg.rolling { animation: spinIn 1.0s cubic-bezier(0.3,0,0.2,1) forwards; }
+.die-anim-svg.landed-normal { animation: landGlow 1.2s ease-out forwards; }
+.die-anim-svg.landed-crit { animation: critLandGlow 1.4s ease-out forwards; }
+.die-anim-svg.landed-fumble { animation: fumbleLandGlow 1.2s ease-out forwards; }
+.die-result-num.reveal { animation: revealNum 0.4s cubic-bezier(0.2,0,0.1,1) forwards; }
+
+/* staggered reveal for multi-die groups */
+@keyframes groupReveal {
+  0%   { opacity: 0; transform: scale(0.7) translateY(6px); }
+  70%  { opacity: 1; transform: scale(1.08) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+.die-group-block { opacity: 0; }
+.die-group-block.revealed { animation: groupReveal 0.38s cubic-bezier(0.2,0,0.1,1) forwards; }
+
+/* ── Roll History ── */
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+}
+.history-entry {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+  opacity: 1;
+  transition: opacity 0.4s;
+}
+.history-entry:last-child { border-bottom: none; }
+.history-entry.fading { opacity: 0.45; }
+.history-entry.very-fading { opacity: 0.22; }
+.hist-die {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  min-width: 52px;
+}
+.hist-label {
+  flex: 1;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-body);
+  font-style: italic;
+}
+.hist-result {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--gem);
+  min-width: 32px;
+  text-align: right;
+}
+.hist-result.hist-crit { color: var(--crit-color); text-shadow: 0 0 6px rgba(255,200,40,0.4); }
+.hist-result.hist-fumble { color: var(--fumble-color); }
+.hist-tag {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+  border: 1px solid;
+}
+.hist-tag.crit { color: var(--crit-color); border-color: rgba(255,200,40,0.4); background: rgba(255,200,40,0.08); }
+.hist-tag.fumble { color: var(--fumble-color); border-color: rgba(192,60,60,0.4); background: rgba(192,60,60,0.08); }
+
+/* ── Section collapse toggle ── */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  user-select: none;
+  margin-bottom: 16px;
+}
+.section-header:hover .section-chevron { color: var(--accent-bright); }
+.section-chevron {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-muted);
+  transition: transform 0.2s, color 0.15s;
+}
+.section-chevron.open { transform: rotate(180deg); }
+
+/* ── Responsive ── */
+@media (max-width: 480px) {
+  .page { padding: 20px 12px 120px; }
+  .ability-row { gap: 6px; }
+  .stat-ring { width: 54px; height: 54px; }
+  .stat-score { font-size: 19px; }
+  .dice-picker { gap: 6px; }
+}
+</style>
+</head>
+<body>
+
+<!-- Top bar -->
+<div class="top-bar">
+  <div class="char-name">Aragorn</div>
+  <div style="display:flex;gap:8px;align-items:center;">
+    <span style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.18em;">RANGER · LVL 8</span>
+  </div>
+</div>
+
+<div class="page">
+
+  <!-- Tab strip (Combat active) -->
+  <div class="tab-strip">
+    <button class="tab-btn" onclick="setTab('loadout',this)">⚔ Loadout</button>
+    <button class="tab-btn" onclick="setTab('persona',this)">🎭 Persona</button>
+    <button class="tab-btn active" onclick="setTab('combat',this)">🛡 Combat</button>
+  </div>
+
+  <!-- ── COMBAT TAB ── -->
+  <div id="tab-combat">
+
+    <!-- HP banner (condensed, for context) -->
+    <div class="panel" style="display:flex;align-items:center;justify-content:space-between;padding:14px 22px;">
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <span style="font-family:var(--font-display);font-size:38px;color:var(--gem);line-height:1;">62</span>
+        <span style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--text-muted);margin-top:3px;">HP</span>
+      </div>
+      <div style="font-family:var(--font-ui);font-size:11px;letter-spacing:0.14em;color:var(--text-muted);">AC 16 &nbsp;·&nbsp; SPD 30ft</div>
+      <div style="display:flex;flex-direction:column;align-items:center;">
+        <span style="font-family:var(--font-display);font-size:22px;color:var(--accent-bright);line-height:1;">8d10</span>
+        <span style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.22em;text-transform:uppercase;color:var(--text-muted);margin-top:3px;">Hit Dice</span>
+      </div>
+    </div>
+
+    <!-- Ability scores — clickable to roll -->
+    <div class="panel">
+      <div class="section-label">Ability Scores — tap to roll check</div>
+      <div class="ability-row">
+        <div class="ability-circle" onclick="rollAbility('STR',3)" title="Roll STR check">
+          <div class="stat-ring">
+            <span class="stat-score">16</span>
+            <div class="stat-mod-badge">+3</div>
+          </div>
+          <span class="stat-label">STR</span>
+          <span class="stat-roll-hint">roll</span>
+        </div>
+        <div class="ability-circle" onclick="rollAbility('DEX',2)" title="Roll DEX check">
+          <div class="stat-ring">
+            <span class="stat-score">14</span>
+            <div class="stat-mod-badge">+2</div>
+          </div>
+          <span class="stat-label">DEX</span>
+          <span class="stat-roll-hint">roll</span>
+        </div>
+        <div class="ability-circle" onclick="rollAbility('CON',2)" title="Roll CON check">
+          <div class="stat-ring">
+            <span class="stat-score">14</span>
+            <div class="stat-mod-badge">+2</div>
+          </div>
+          <span class="stat-label">CON</span>
+          <span class="stat-roll-hint">roll</span>
+        </div>
+        <div class="ability-circle" onclick="rollAbility('WIS',0)" title="Roll WIS check">
+          <div class="stat-ring">
+            <span class="stat-score">10</span>
+          </div>
+          <span class="stat-label">WIS</span>
+          <span class="stat-roll-hint">roll</span>
+        </div>
+        <div class="ability-circle" onclick="rollAbility('INT',1)" title="Roll INT check">
+          <div class="stat-ring">
+            <span class="stat-score">12</span>
+            <div class="stat-mod-badge">+1</div>
+          </div>
+          <span class="stat-label">INT</span>
+          <span class="stat-roll-hint">roll</span>
+        </div>
+        <div class="ability-circle" onclick="rollAbility('CHA',-1)" title="Roll CHA check">
+          <div class="stat-ring">
+            <span class="stat-score">8</span>
+            <div class="stat-mod-badge" style="color:#c06060;background:rgba(60,20,20,0.7);">−1</div>
+          </div>
+          <span class="stat-label">CHA</span>
+          <span class="stat-roll-hint">roll</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Weapons -->
+    <div class="panel">
+      <div class="section-label">Weapons</div>
+
+      <!-- Adv/dis toggle -->
+      <div class="adv-dis-strip">
+        <span class="adv-dis-label">d20 mode</span>
+        <button class="adv-btn" id="btn-normal" onclick="setAdvMode('normal')" style="border-color:var(--accent);background:var(--accent-dim);color:var(--accent-bright);">Normal</button>
+        <button class="adv-btn" id="btn-adv" onclick="setAdvMode('advantage')">Advantage</button>
+        <button class="adv-btn" id="btn-dis" onclick="setAdvMode('disadvantage')">Disadv.</button>
+      </div>
+
+      <!-- Longsword row — standard 1d8+3 -->
+      <div class="weapon-row">
+        <span class="weapon-name">Longsword</span>
+        <span class="weapon-stat">+5</span>
+        <button class="roll-btn roll-btn-atk" onclick="rollWeaponAttack('Longsword', 5)">ATK d20</button>
+        <span class="weapon-stat" style="color:var(--text-muted);font-size:13px;">1d8+3</span>
+        <button class="roll-btn roll-btn-dmg" onclick="rollWeaponDamageExpr('Longsword dmg','1d8+3')">DMG</button>
+      </div>
+      <!-- Smite Longsword row — 1d8+2d8 (same die type, multi-group) -->
+      <div class="weapon-row">
+        <span class="weapon-name" style="font-size:13px;">Smite Longsword</span>
+        <span class="weapon-stat">+5</span>
+        <button class="roll-btn roll-btn-atk" onclick="rollWeaponAttack('Smite Longsword', 5)">ATK d20</button>
+        <span class="weapon-stat" style="color:var(--text-muted);font-size:12px;">1d8+2d8</span>
+        <button class="roll-btn roll-btn-dmg" onclick="rollWeaponDamageExpr('Smite Longsword dmg','1d8+2d8')">DMG</button>
+      </div>
+      <!-- Blade Flourish Rapier — 1d8+1d6+4 (mixed types) -->
+      <div class="weapon-row">
+        <span class="weapon-name" style="font-size:13px;">Blade Flourish Rapier</span>
+        <span class="weapon-stat">+6</span>
+        <button class="roll-btn roll-btn-atk" onclick="rollWeaponAttack('Blade Flourish Rapier', 6)">ATK d20</button>
+        <span class="weapon-stat" style="color:var(--text-muted);font-size:12px;">1d8+1d6+4</span>
+        <button class="roll-btn roll-btn-dmg" onclick="rollWeaponDamageExpr('Blade Flourish Rapier dmg','1d8+1d6+4')">DMG</button>
+      </div>
+      <!-- Dagger row -->
+      <div class="weapon-row">
+        <span class="weapon-name">Dagger</span>
+        <span class="weapon-stat">+5</span>
+        <button class="roll-btn roll-btn-atk" onclick="rollWeaponAttack('Dagger', 5)">ATK d20</button>
+        <span class="weapon-stat" style="color:var(--text-muted);font-size:13px;">1d4+3</span>
+        <button class="roll-btn roll-btn-dmg" onclick="rollWeaponDamageExpr('Dagger dmg','1d4+3')">DMG</button>
+      </div>
+      <!-- Longbow row -->
+      <div class="weapon-row">
+        <span class="weapon-name">Longbow</span>
+        <span class="weapon-stat">+6</span>
+        <button class="roll-btn roll-btn-atk" onclick="rollWeaponAttack('Longbow', 6)">ATK d20</button>
+        <span class="weapon-stat" style="color:var(--text-muted);font-size:13px;">1d8+3</span>
+        <button class="roll-btn roll-btn-dmg" onclick="rollWeaponDamageExpr('Longbow dmg','1d8+3')">DMG</button>
+      </div>
+    </div>
+
+    <!-- ── DICE SECTION (collapsible) ── -->
+    <div class="panel" id="dice-section">
+      <div class="section-header" onclick="toggleDiceSection()">
+        <div class="section-label" style="margin-bottom:0;">Dice Roller</div>
+        <span class="section-chevron open" id="dice-chevron">▼</span>
+      </div>
+
+      <div id="dice-section-body">
+        <!-- Roll stage (die animation lives here) -->
+        <div class="roll-stage" id="roll-stage">
+          <!-- Single-die view (default) -->
+          <div id="single-die-view">
+            <div class="die-canvas" id="die-canvas">
+              <svg class="die-anim-svg" id="die-anim-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <!-- d20 icosahedron face (default) -->
+                <polygon class="die-face" id="die-poly" points="50,8 92,35 92,65 50,92 8,65 8,35" />
+                <text class="die-face-label" id="die-face-text" x="50" y="56" text-anchor="middle" font-size="11" font-weight="500" opacity="0.5">d20</text>
+              </svg>
+              <span class="die-result-num" id="die-result-num">—</span>
+            </div>
+          </div>
+          <!-- Multi-die view (shown during combo rolls) -->
+          <div id="multi-die-view" style="display:none;">
+            <div class="multi-die-stage" id="multi-die-stage"></div>
+          </div>
+
+          <div class="die-result-label normal-label" id="die-result-label"></div>
+          <div class="result-breakdown" id="result-breakdown"></div>
+        </div>
+
+        <hr class="divider" style="margin:10px 0 18px;">
+
+        <!-- Dice picker -->
+        <div class="section-label" style="text-align:center;">Free Roll</div>
+        <div class="dice-picker" id="dice-picker">
+          <!-- d4 -->
+          <button class="die-btn" data-sides="4" onclick="selectDie(this,4)">
+            <div class="die-svg-wrap">
+              <svg width="44" height="44" viewBox="0 0 60 60"><polygon class="die-face" points="30,6 56,52 4,52"/><text class="die-face-label" x="30" y="44" text-anchor="middle" font-size="13" font-weight="500">4</text></svg>
+            </div>
+            <span class="die-label">d4</span>
+          </button>
+          <!-- d6 -->
+          <button class="die-btn" data-sides="6" onclick="selectDie(this,6)">
+            <div class="die-svg-wrap">
+              <svg width="44" height="44" viewBox="0 0 60 60"><rect class="die-face" x="8" y="8" width="44" height="44" rx="6"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="13" font-weight="500">6</text></svg>
+            </div>
+            <span class="die-label">d6</span>
+          </button>
+          <!-- d8 -->
+          <button class="die-btn" data-sides="8" onclick="selectDie(this,8)">
+            <div class="die-svg-wrap">
+              <svg width="44" height="44" viewBox="0 0 60 60"><polygon class="die-face" points="30,5 55,30 30,55 5,30"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="13" font-weight="500">8</text></svg>
+            </div>
+            <span class="die-label">d8</span>
+          </button>
+          <!-- d10 -->
+          <button class="die-btn" data-sides="10" onclick="selectDie(this,10)">
+            <div class="die-svg-wrap">
+              <svg width="44" height="44" viewBox="0 0 60 60"><polygon class="die-face" points="30,5 55,22 48,52 12,52 5,22"/><text class="die-face-label" x="30" y="36" text-anchor="middle" font-size="12" font-weight="500">10</text></svg>
+            </div>
+            <span class="die-label">d10</span>
+          </button>
+          <!-- d12 -->
+          <button class="die-btn" data-sides="12" onclick="selectDie(this,12)">
+            <div class="die-svg-wrap">
+              <svg width="44" height="44" viewBox="0 0 60 60"><polygon class="die-face" points="30,4 42,10 52,22 52,38 42,50 30,56 18,50 8,38 8,22 18,10"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="12" font-weight="500">12</text></svg>
+            </div>
+            <span class="die-label">d12</span>
+          </button>
+          <!-- d20 -->
+          <button class="die-btn selected" data-sides="20" onclick="selectDie(this,20)">
+            <div class="die-svg-wrap">
+              <svg width="44" height="44" viewBox="0 0 60 60"><polygon class="die-face" points="30,4 56,22 56,42 30,56 4,42 4,22"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="12" font-weight="500">20</text></svg>
+            </div>
+            <span class="die-label">d20</span>
+          </button>
+          <!-- d100 -->
+          <button class="die-btn" data-sides="100" onclick="selectDie(this,100)">
+            <div class="die-svg-wrap">
+              <svg width="44" height="44" viewBox="0 0 60 60"><circle class="die-face" cx="30" cy="30" r="25"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="11" font-weight="500">100</text></svg>
+            </div>
+            <span class="die-label">d100</span>
+          </button>
+        </div>
+
+        <!-- Count stepper -->
+        <div class="count-row">
+          <span class="count-label">Count</span>
+          <div class="count-stepper">
+            <button class="count-btn" onclick="adjustCount(-1)">−</button>
+            <span class="count-num" id="count-num">1</span>
+            <button class="count-btn" onclick="adjustCount(1)">+</button>
+          </div>
+        </div>
+
+        <!-- ── Combo roll builder ── -->
+        <div class="combo-builder">
+          <!-- Pending expression display -->
+          <div class="pending-expr" id="pending-expr">
+            <span class="pending-empty" id="pending-empty-msg">Select a die and count, then roll or add another die</span>
+          </div>
+
+          <!-- Add die / clear row -->
+          <div class="combo-actions" id="combo-actions">
+            <button class="combo-btn add-die-btn" onclick="addDieToCombo()" id="add-die-btn">+ Add to Roll</button>
+            <button class="combo-btn" onclick="clearCombo()" id="clear-combo-btn" style="display:none;">✕ Clear</button>
+          </div>
+
+          <!-- Flat modifier -->
+          <div class="modifier-row">
+            <span class="modifier-label">+ Modifier</span>
+            <input type="number" class="modifier-input" id="flat-modifier" value="0" min="-99" max="99" onchange="onModifierChange()" oninput="onModifierChange()" />
+          </div>
+        </div>
+
+        <!-- Big roll button -->
+        <button class="big-roll-btn" id="free-roll-btn" onclick="rollFree()">Roll 1d20</button>
+
+        <hr class="divider" style="margin:18px 0 14px;">
+
+        <!-- ── Free-form expression input ── -->
+        <div class="section-label" style="text-align:center;">Expression Roll</div>
+        <div class="expr-row">
+          <input type="text" class="expr-input" id="expr-input" placeholder="e.g. 2d6 + 1d4 + 3" autocomplete="off" spellcheck="false"
+            onkeydown="if(event.key==='Enter') rollExpression()" />
+          <button class="expr-roll-btn" onclick="rollExpression()">Roll</button>
+        </div>
+        <div class="expr-error" id="expr-error"></div>
+
+        <hr class="divider" style="margin:4px 0 14px;">
+
+        <!-- Roll history -->
+        <div class="section-label">Recent Rolls</div>
+        <div class="history-list" id="history-list">
+          <!-- pre-populated entries -->
+          <div class="history-entry very-fading">
+            <span class="hist-die">d20</span>
+            <span class="hist-label">STR check</span>
+            <span class="hist-result">14</span>
+          </div>
+          <div class="history-entry fading">
+            <span class="hist-die">1d8+3</span>
+            <span class="hist-label">Longsword dmg</span>
+            <span class="hist-result">9</span>
+          </div>
+          <div class="history-entry">
+            <span class="hist-die">d20+6</span>
+            <span class="hist-label">Longbow atk</span>
+            <span class="hist-result hist-crit">20</span>
+            <span class="hist-tag crit">crit!</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end combat tab -->
+
+  <!-- Note about other tabs -->
+  <div id="tab-loadout" style="display:none;" class="panel" style="text-align:center;padding:40px;">
+    <div style="color:var(--text-muted);font-family:var(--font-ui);font-size:12px;letter-spacing:0.2em;text-align:center;padding:32px 0;">LOADOUT TAB — NOT IN SCOPE FOR THIS PROTOTYPE</div>
+  </div>
+  <div id="tab-persona" style="display:none;" class="panel">
+    <div style="color:var(--text-muted);font-family:var(--font-ui);font-size:12px;letter-spacing:0.2em;text-align:center;padding:32px 0;">PERSONA TAB — NOT IN SCOPE FOR THIS PROTOTYPE</div>
+  </div>
+
+</div><!-- end page -->
+
+<script>
+/* ── State ── */
+let advMode = 'normal';
+let selectedDie = 20;
+let dieCount = 1;
+let isRolling = false;
+const MAX_HISTORY = 5;
+
+/*
+  Combo roll state.
+  comboGroups: Array<{ sides: number, count: number }>
+  comboFlat is read live from #flat-modifier on roll.
+*/
+let comboGroups = [];
+
+/* ── Tab switcher ── */
+function setTab(name, btn) {
+  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  ['combat','loadout','persona'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.style.display = t === name ? 'block' : 'none';
+  });
+}
+
+/* ── Advantage / disadvantage ── */
+function setAdvMode(mode) {
+  advMode = mode;
+  const btns = { normal: 'btn-normal', advantage: 'btn-adv', disadvantage: 'btn-dis' };
+  Object.keys(btns).forEach(k => {
+    const b = document.getElementById(btns[k]);
+    if (k === mode) {
+      b.style.borderColor = k === 'advantage' ? '#5a9a60' : k === 'disadvantage' ? '#9a5a5a' : 'var(--accent)';
+      b.style.background = k === 'advantage' ? 'rgba(60,130,60,0.18)' : k === 'disadvantage' ? 'rgba(130,60,60,0.18)' : 'var(--accent-dim)';
+      b.style.color = k === 'advantage' ? '#88c888' : k === 'disadvantage' ? '#c88888' : 'var(--accent-bright)';
+    } else {
+      b.style.borderColor = 'var(--border)';
+      b.style.background = 'transparent';
+      b.style.color = 'var(--text-muted)';
+    }
+  });
+}
+
+/* ── Dice picker selection ── */
+function selectDie(btn, sides) {
+  document.querySelectorAll('.die-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedDie = sides;
+  updateFreeRollLabel();
+}
+
+function adjustCount(delta) {
+  dieCount = Math.max(1, Math.min(10, dieCount + delta));
+  document.getElementById('count-num').textContent = dieCount;
+  updateFreeRollLabel();
+}
+
+function updateFreeRollLabel() {
+  if (comboGroups.length === 0) {
+    document.getElementById('free-roll-btn').textContent = `Roll ${dieCount}d${selectedDie}`;
+  } else {
+    const expr = buildComboExprString(comboGroups, 0);
+    const preview = `${dieCount}d${selectedDie}`;
+    document.getElementById('free-roll-btn').textContent = `Roll ${expr} + ${preview}…`;
+  }
+}
+
+/* ── Combo builder ── */
+function buildComboExprString(groups, flat) {
+  let parts = groups.map(g => `${g.count}d${g.sides}`);
+  if (flat && flat !== 0) parts.push(flat > 0 ? `+${flat}` : `${flat}`);
+  return parts.join(' + ');
+}
+
+function renderPendingExpr() {
+  const flat = parseInt(document.getElementById('flat-modifier').value, 10) || 0;
+  const exprEl = document.getElementById('pending-expr');
+  const emptyMsg = document.getElementById('pending-empty-msg');
+  const clearBtn = document.getElementById('clear-combo-btn');
+
+  if (comboGroups.length === 0 && flat === 0) {
+    // Show empty hint
+    exprEl.innerHTML = '';
+    const span = document.createElement('span');
+    span.className = 'pending-empty';
+    span.id = 'pending-empty-msg';
+    span.textContent = 'Select a die and count, then roll or add another die';
+    exprEl.appendChild(span);
+    clearBtn.style.display = 'none';
+    updateFreeRollLabel();
+    return;
+  }
+
+  clearBtn.style.display = '';
+  exprEl.innerHTML = '';
+
+  const allParts = comboGroups.map(g => `${g.count}d${g.sides}`);
+  if (flat !== 0) allParts.push(flat > 0 ? `+${flat}` : String(flat));
+
+  allParts.forEach((part, i) => {
+    const chip = document.createElement('span');
+    chip.className = 'pending-chip';
+    chip.textContent = part;
+    exprEl.appendChild(chip);
+    if (i < allParts.length - 1) {
+      const sep = document.createElement('span');
+      sep.className = 'pending-chip-sep';
+      sep.textContent = '+';
+      exprEl.appendChild(sep);
+    }
+  });
+
+  // Update big roll button
+  const rollExpr = buildComboExprString(comboGroups, flat);
+  document.getElementById('free-roll-btn').textContent = `Roll ${rollExpr || `${dieCount}d${selectedDie}`}`;
+}
+
+function addDieToCombo() {
+  // Merge into existing group if same sides, else push new group
+  const existing = comboGroups.find(g => g.sides === selectedDie);
+  if (existing) {
+    existing.count = Math.min(existing.count + dieCount, 20);
+  } else {
+    comboGroups.push({ sides: selectedDie, count: dieCount });
+  }
+  renderPendingExpr();
+}
+
+function clearCombo() {
+  comboGroups = [];
+  document.getElementById('flat-modifier').value = 0;
+  renderPendingExpr();
+  document.getElementById('free-roll-btn').textContent = `Roll ${dieCount}d${selectedDie}`;
+}
+
+function onModifierChange() {
+  renderPendingExpr();
+}
+
+/* ── Expression parser ── */
+/*
+  Parses strings like "2d6+1d4+3", "1d8 + 2d8", "d20+5", "3" etc.
+  Returns { groups: [{sides, count}], flat } or null on error.
+*/
+function parseExpression(str) {
+  const raw = str.replace(/\s+/g, '').toLowerCase();
+  if (!raw) return null;
+
+  // Split on '+' but keep sign; handle leading '-' flat modifier
+  // Strategy: tokenise on '+' (only positive terms supported for dice; flat can be negative via direct '-N' term)
+  const tokens = raw.split('+').map(t => t.trim()).filter(Boolean);
+  if (tokens.length === 0) return null;
+
+  const groups = [];
+  let flat = 0;
+
+  for (const token of tokens) {
+    const diceMatch = token.match(/^(\d*)d(\d+)$/);
+    if (diceMatch) {
+      const count = diceMatch[1] === '' ? 1 : parseInt(diceMatch[1], 10);
+      const sides = parseInt(diceMatch[2], 10);
+      if (isNaN(count) || isNaN(sides) || sides < 2 || count < 1 || count > 30) return null;
+      // Merge same-sides groups
+      const ex = groups.find(g => g.sides === sides);
+      if (ex) ex.count += count;
+      else groups.push({ sides, count });
+    } else {
+      const n = parseInt(token, 10);
+      if (isNaN(n)) return null;
+      flat += n;
+    }
+  }
+
+  if (groups.length === 0 && flat === 0) return null;
+  return { groups, flat };
+}
+
+/* ── SVG shapes by die type ── */
+const dieSVGShapes = {
+  4:   `<polygon class="die-face" id="die-poly" points="50,8 92,84 8,84"/>`,
+  6:   `<rect class="die-face" id="die-poly" x="10" y="10" width="80" height="80" rx="10"/>`,
+  8:   `<polygon class="die-face" id="die-poly" points="50,8 92,50 50,92 8,50"/>`,
+  10:  `<polygon class="die-face" id="die-poly" points="50,8 90,34 82,80 18,80 10,34"/>`,
+  12:  `<polygon class="die-face" id="die-poly" points="50,6 66,14 80,28 80,72 66,86 50,94 34,86 20,72 20,28 34,14"/>`,
+  20:  `<polygon class="die-face" id="die-poly" points="50,8 92,35 92,65 50,92 8,65 8,35"/>`,
+  100: `<circle class="die-face" id="die-poly" cx="50" cy="50" r="42"/>`
+};
+
+const dieSVGShapesSmall = {
+  4:   `<polygon class="die-face" points="35,8 62,57 8,57"/>`,
+  6:   `<rect class="die-face" x="8" y="8" width="54" height="54" rx="8"/>`,
+  8:   `<polygon class="die-face" points="35,6 62,35 35,64 8,35"/>`,
+  10:  `<polygon class="die-face" points="35,6 60,22 54,58 16,58 10,22"/>`,
+  12:  `<polygon class="die-face" points="35,5 46,11 56,22 56,48 46,59 35,65 24,59 14,48 14,22 24,11"/>`,
+  20:  `<polygon class="die-face" points="35,6 62,24 62,46 35,64 8,46 8,24"/>`,
+  100: `<circle class="die-face" cx="35" cy="35" r="28"/>`
+};
+
+function getSVGForDie(sides, small) {
+  if (small) {
+    return dieSVGShapesSmall[sides] || dieSVGShapesSmall[20];
+  }
+  return dieSVGShapes[sides] || dieSVGShapes[20];
+}
+
+function setDieSVGShape(sides) {
+  const svg = document.getElementById('die-anim-svg');
+  const textContent = sides === 100 ? '%' : `d${sides}`;
+  svg.innerHTML = (dieSVGShapes[sides] || dieSVGShapes[20]) +
+    `<text class="die-face-label" id="die-face-text" x="50" y="56" text-anchor="middle" font-size="11" font-weight="500" opacity="0.5">${textContent}</text>`;
+}
+
+/* Build a small SVG string for a die face (used in multi-die view) */
+function buildSmallDieSVG(sides) {
+  const shape = dieSVGShapesSmall[sides] || dieSVGShapesSmall[20];
+  const label = sides === 100 ? '%' : `d${sides}`;
+  return `<svg class="die-anim-svg" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">
+    ${shape}
+    <text class="die-face-label" x="35" y="40" text-anchor="middle" font-size="10" font-weight="500" opacity="0.5">${label}</text>
+  </svg>`;
+}
+
+/* ── Core roll engine ── */
+function rollD(sides) {
+  return Math.floor(Math.random() * sides) + 1;
+}
+
+/* Single-die-type roll (original behaviour, used for ability checks, single-group free rolls) */
+function resolveRoll(sides, modifier, label, diceCount = 1) {
+  if (isRolling) return;
+  isRolling = true;
+
+  showSingleDieView();
+  setDieSVGShape(sides);
+
+  const svg = document.getElementById('die-anim-svg');
+  const numEl = document.getElementById('die-result-num');
+  const labelEl = document.getElementById('die-result-label');
+  const breakdownEl = document.getElementById('result-breakdown');
+
+  svg.className = 'die-anim-svg';
+  numEl.className = 'die-result-num';
+  labelEl.className = 'die-result-label';
+  labelEl.textContent = '';
+  breakdownEl.innerHTML = '';
+  numEl.textContent = '?';
+
+  svg.classList.add('rolling');
+
+  const rolls = [];
+  for (let i = 0; i < diceCount; i++) rolls.push(rollD(sides));
+  const total = rolls.reduce((a, b) => a + b, 0) + (modifier || 0);
+
+  let cycleInterval = setInterval(() => {
+    numEl.textContent = rollD(sides);
+    numEl.style.animation = 'none';
+    numEl.offsetHeight;
+    numEl.style.animation = 'numCycle 0.08s ease-out';
+  }, 90);
+
+  setTimeout(() => {
+    clearInterval(cycleInterval);
+
+    const isCrit = sides === 20 && diceCount === 1 && rolls[0] === 20;
+    const isFumble = sides === 20 && diceCount === 1 && rolls[0] === 1;
+
+    svg.classList.remove('rolling');
+    if (isCrit) svg.classList.add('landed-crit');
+    else if (isFumble) svg.classList.add('landed-fumble');
+    else svg.classList.add('landed-normal');
+
+    numEl.textContent = total;
+    numEl.classList.add('reveal');
+    if (isCrit) numEl.classList.add('is-crit');
+    else if (isFumble) numEl.classList.add('is-fumble');
+
+    if (isCrit) {
+      labelEl.textContent = '✦ CRITICAL HIT ✦';
+      labelEl.classList.add('crit-label', 'visible');
+    } else if (isFumble) {
+      labelEl.textContent = '✕ FUMBLE ✕';
+      labelEl.classList.add('fumble-label', 'visible');
+    } else if (label) {
+      labelEl.textContent = label;
+      labelEl.classList.add('normal-label', 'visible');
+    }
+
+    if (rolls.length > 1 || modifier) {
+      rolls.forEach((r, i) => {
+        const chip = document.createElement('span');
+        chip.className = 'chip';
+        chip.textContent = r;
+        breakdownEl.appendChild(chip);
+        if (i < rolls.length - 1 || modifier) {
+          const plus = document.createElement('span');
+          plus.className = 'chip-plus';
+          plus.textContent = '+';
+          breakdownEl.appendChild(plus);
+        }
+      });
+      if (modifier) {
+        const modChip = document.createElement('span');
+        modChip.className = 'chip';
+        modChip.textContent = modifier > 0 ? `+${modifier}` : modifier;
+        breakdownEl.appendChild(modChip);
+      }
+      const eq = document.createElement('span');
+      eq.className = 'chip-plus';
+      eq.textContent = '=';
+      breakdownEl.appendChild(eq);
+      const totalChip = document.createElement('span');
+      totalChip.className = 'chip total';
+      totalChip.textContent = total;
+      breakdownEl.appendChild(totalChip);
+    }
+
+    addHistory({
+      dieLabel: diceCount > 1 ? `${diceCount}d${sides}` : (modifier ? `d${sides}${modifier>0?'+':''}${modifier}` : `d${sides}`),
+      label: label || `Free ${diceCount}d${sides}`,
+      result: total,
+      isCrit,
+      isFumble
+    });
+
+    isRolling = false;
+  }, 1050);
+}
+
+/* Multi-group combo roll — shows staggered dice animations */
+function resolveComboRoll(groups, flat, label) {
+  if (isRolling) return;
+  if (groups.length === 0) return;
+
+  // Single group with no flat — fall through to single die view
+  if (groups.length === 1 && !flat) {
+    resolveRoll(groups[0].sides, 0, label, groups[0].count);
+    return;
+  }
+  if (groups.length === 1 && flat) {
+    resolveRoll(groups[0].sides, flat, label, groups[0].count);
+    return;
+  }
+
+  isRolling = true;
+  showMultiDieView();
+
+  const labelEl = document.getElementById('die-result-label');
+  const breakdownEl = document.getElementById('result-breakdown');
+  const stageEl = document.getElementById('multi-die-stage');
+
+  labelEl.className = 'die-result-label';
+  labelEl.textContent = '';
+  breakdownEl.innerHTML = '';
+  stageEl.innerHTML = '';
+
+  // Roll all dice up-front
+  const groupResults = groups.map(g => {
+    const rolls = [];
+    for (let i = 0; i < g.count; i++) rolls.push(rollD(g.sides));
+    return { sides: g.sides, count: g.count, rolls, subtotal: rolls.reduce((a,b) => a+b, 0) };
+  });
+  const grandTotal = groupResults.reduce((s, g) => s + g.subtotal, 0) + (flat || 0);
+
+  // Build die blocks (hidden initially)
+  groups.forEach((g, gi) => {
+    const block = document.createElement('div');
+    block.className = 'die-group-block';
+    block.id = `die-group-${gi}`;
+
+    const lbl = document.createElement('div');
+    lbl.className = 'die-group-label';
+    lbl.textContent = `${g.count}d${g.sides}`;
+    block.appendChild(lbl);
+
+    const canvas = document.createElement('div');
+    canvas.className = 'die-canvas small';
+
+    const svgWrap = document.createElement('div');
+    svgWrap.style.cssText = 'position:absolute;top:0;left:0;width:70px;height:70px;';
+    svgWrap.innerHTML = buildSmallDieSVG(g.sides);
+    const svgEl = svgWrap.querySelector('svg');
+    svgEl.id = `multi-svg-${gi}`;
+
+    const numEl = document.createElement('span');
+    numEl.className = 'die-result-num';
+    numEl.id = `multi-num-${gi}`;
+    numEl.textContent = '?';
+
+    canvas.appendChild(svgWrap);
+    canvas.appendChild(numEl);
+    block.appendChild(canvas);
+    stageEl.appendChild(block);
+  });
+
+  // Optional flat modifier block
+  if (flat) {
+    const sep = document.createElement('span');
+    sep.style.cssText = 'font-family:var(--font-display);font-size:22px;color:var(--text-muted);align-self:center;';
+    sep.textContent = flat > 0 ? `+${flat}` : String(flat);
+    stageEl.appendChild(sep);
+  }
+
+  // Stagger: each group lands 280ms after the previous
+  const STAGGER = 280;
+  const SPIN_DUR = 900;
+
+  groups.forEach((g, gi) => {
+    const svgEl = document.getElementById(`multi-svg-${gi}`);
+    const numEl = document.getElementById(`multi-num-${gi}`);
+    const block = document.getElementById(`die-group-${gi}`);
+    const result = groupResults[gi];
+
+    // Start spin on a slight stagger so they don't all land simultaneously
+    setTimeout(() => {
+      block.classList.add('revealed');
+      svgEl.classList.add('rolling');
+
+      let cycleInterval = setInterval(() => {
+        numEl.textContent = rollD(g.sides);
+        numEl.style.animation = 'none';
+        numEl.offsetHeight;
+        numEl.style.animation = 'numCycle 0.08s ease-out';
+      }, 90);
+
+      setTimeout(() => {
+        clearInterval(cycleInterval);
+        svgEl.classList.remove('rolling');
+        svgEl.classList.add('landed-normal');
+        numEl.textContent = result.subtotal;
+        numEl.classList.add('reveal');
+
+        // After last group lands, show breakdown
+        if (gi === groups.length - 1) {
+          setTimeout(() => {
+            showComboBreakdown(groupResults, flat, grandTotal);
+            if (label) {
+              labelEl.textContent = label;
+              labelEl.classList.add('normal-label', 'visible');
+            }
+            const exprLabel = groups.map(g => `${g.count}d${g.sides}`).join('+') + (flat ? (flat > 0 ? `+${flat}` : flat) : '');
+            addHistory({ dieLabel: exprLabel, label: label || 'Combo roll', result: grandTotal, isCrit: false, isFumble: false });
+            isRolling = false;
+          }, 300);
+        }
+      }, SPIN_DUR);
+    }, gi * STAGGER);
+  });
+}
+
+function showComboBreakdown(groupResults, flat, grandTotal) {
+  const breakdownEl = document.getElementById('result-breakdown');
+  breakdownEl.innerHTML = '';
+
+  groupResults.forEach((gr, i) => {
+    // Group chip: label + individual rolls
+    const groupWrap = document.createElement('div');
+    groupWrap.className = 'chip-group';
+
+    const glbl = document.createElement('div');
+    glbl.className = 'chip-group-label';
+    glbl.textContent = `${gr.count}d${gr.sides}`;
+    groupWrap.appendChild(glbl);
+
+    const gval = document.createElement('div');
+    gval.className = 'chip-group-val';
+    gval.textContent = gr.rolls.length > 1 ? `[${gr.rolls.join(', ')}] = ${gr.subtotal}` : `${gr.subtotal}`;
+    groupWrap.appendChild(gval);
+    breakdownEl.appendChild(groupWrap);
+
+    if (i < groupResults.length - 1 || flat) {
+      const plus = document.createElement('span');
+      plus.className = 'chip-plus';
+      plus.style.alignSelf = 'center';
+      plus.textContent = '+';
+      breakdownEl.appendChild(plus);
+    }
+  });
+
+  if (flat) {
+    const flatChip = document.createElement('div');
+    flatChip.className = 'chip-group';
+    const fl = document.createElement('div');
+    fl.className = 'chip-group-label';
+    fl.textContent = 'flat';
+    const fv = document.createElement('div');
+    fv.className = 'chip-group-val';
+    fv.textContent = flat > 0 ? `+${flat}` : String(flat);
+    flatChip.appendChild(fl);
+    flatChip.appendChild(fv);
+    breakdownEl.appendChild(flatChip);
+  }
+
+  const eq = document.createElement('span');
+  eq.className = 'chip-plus';
+  eq.style.alignSelf = 'center';
+  eq.textContent = '=';
+  breakdownEl.appendChild(eq);
+
+  const totalChip = document.createElement('span');
+  totalChip.className = 'chip total';
+  totalChip.style.alignSelf = 'center';
+  totalChip.textContent = grandTotal;
+  breakdownEl.appendChild(totalChip);
+}
+
+function showSingleDieView() {
+  document.getElementById('single-die-view').style.display = '';
+  document.getElementById('multi-die-view').style.display = 'none';
+}
+
+function showMultiDieView() {
+  document.getElementById('single-die-view').style.display = 'none';
+  document.getElementById('multi-die-view').style.display = '';
+}
+
+/* ── Advantage / disadvantage d20 resolver ── */
+function resolveD20WithMode(bonus, label) {
+  if (isRolling) return;
+  isRolling = true;
+
+  showSingleDieView();
+  setDieSVGShape(20);
+  const svg = document.getElementById('die-anim-svg');
+  const numEl = document.getElementById('die-result-num');
+  const labelEl = document.getElementById('die-result-label');
+  const breakdownEl = document.getElementById('result-breakdown');
+
+  svg.className = 'die-anim-svg';
+  numEl.className = 'die-result-num';
+  labelEl.className = 'die-result-label';
+  labelEl.textContent = '';
+  breakdownEl.innerHTML = '';
+  numEl.textContent = '?';
+  svg.classList.add('rolling');
+
+  const r1 = rollD(20);
+  const r2 = rollD(20);
+
+  let cycleInterval = setInterval(() => {
+    numEl.textContent = rollD(20);
+    numEl.style.animation = 'none'; numEl.offsetHeight;
+    numEl.style.animation = 'numCycle 0.08s ease-out';
+  }, 90);
+
+  setTimeout(() => {
+    clearInterval(cycleInterval);
+
+    let kept, discarded;
+    if (advMode === 'advantage') {
+      kept = Math.max(r1, r2);
+      discarded = Math.min(r1, r2);
+    } else if (advMode === 'disadvantage') {
+      kept = Math.min(r1, r2);
+      discarded = Math.max(r1, r2);
+    } else {
+      kept = r1;
+      discarded = null;
+    }
+
+    const total = kept + (bonus || 0);
+    const isCrit = kept === 20;
+    const isFumble = kept === 1;
+
+    svg.classList.remove('rolling');
+    if (isCrit) svg.classList.add('landed-crit');
+    else if (isFumble) svg.classList.add('landed-fumble');
+    else svg.classList.add('landed-normal');
+
+    numEl.textContent = total;
+    numEl.classList.add('reveal');
+    if (isCrit) numEl.classList.add('is-crit');
+    else if (isFumble) numEl.classList.add('is-fumble');
+
+    if (isCrit) {
+      labelEl.textContent = '✦ CRITICAL HIT ✦';
+      labelEl.classList.add('crit-label', 'visible');
+    } else if (isFumble) {
+      labelEl.textContent = '✕ FUMBLE ✕';
+      labelEl.classList.add('fumble-label', 'visible');
+    } else if (label) {
+      labelEl.textContent = label;
+      labelEl.classList.add('normal-label', 'visible');
+    }
+
+    if (advMode !== 'normal' && discarded !== null) {
+      const k = document.createElement('span');
+      k.className = 'chip used';
+      k.textContent = kept;
+      k.title = 'kept';
+      breakdownEl.appendChild(k);
+
+      const d = document.createElement('span');
+      d.className = 'chip discarded';
+      d.textContent = discarded;
+      d.title = 'discarded';
+      breakdownEl.appendChild(d);
+
+      if (bonus) {
+        const pl = document.createElement('span'); pl.className = 'chip-plus'; pl.textContent = '+';
+        breakdownEl.appendChild(pl);
+        const mc = document.createElement('span'); mc.className = 'chip'; mc.textContent = bonus > 0 ? `+${bonus}` : bonus;
+        breakdownEl.appendChild(mc);
+      }
+
+      const eq = document.createElement('span'); eq.className = 'chip-plus'; eq.textContent = '=';
+      breakdownEl.appendChild(eq);
+      const tc = document.createElement('span'); tc.className = 'chip total'; tc.textContent = total;
+      breakdownEl.appendChild(tc);
+    } else if (bonus) {
+      const rc = document.createElement('span'); rc.className = 'chip used'; rc.textContent = kept;
+      breakdownEl.appendChild(rc);
+      const pl = document.createElement('span'); pl.className = 'chip-plus'; pl.textContent = '+';
+      breakdownEl.appendChild(pl);
+      const mc = document.createElement('span'); mc.className = 'chip'; mc.textContent = bonus > 0 ? `+${bonus}` : bonus;
+      breakdownEl.appendChild(mc);
+      const eq = document.createElement('span'); eq.className = 'chip-plus'; eq.textContent = '=';
+      breakdownEl.appendChild(eq);
+      const tc = document.createElement('span'); tc.className = 'chip total'; tc.textContent = total;
+      breakdownEl.appendChild(tc);
+    }
+
+    const modeTag = advMode === 'normal' ? '' : (advMode === 'advantage' ? ' (adv)' : ' (dis)');
+    addHistory({
+      dieLabel: `d20${bonus >= 0 ? '+' : ''}${bonus}`,
+      label: label + modeTag,
+      result: total,
+      isCrit,
+      isFumble
+    });
+
+    isRolling = false;
+  }, 1050);
+}
+
+/* ── Roll handlers ── */
+function rollWeaponAttack(name, bonus) {
+  resolveD20WithMode(bonus, `${name} attack`);
+  ensureDiceSectionOpen();
+}
+
+/* Parse a damage expression string and fire a combo roll */
+function rollWeaponDamageExpr(label, exprStr) {
+  const parsed = parseExpression(exprStr);
+  if (!parsed) return;
+  ensureDiceSectionOpen();
+  if (parsed.groups.length === 0) return;
+  resolveComboRoll(parsed.groups, parsed.flat, label);
+}
+
+function rollAbility(stat, mod) {
+  resolveD20WithMode(mod, `${stat} check`);
+  ensureDiceSectionOpen();
+}
+
+/* Free roll button — uses combo groups if any are queued, otherwise single die */
+function rollFree() {
+  const flat = parseInt(document.getElementById('flat-modifier').value, 10) || 0;
+
+  if (comboGroups.length > 0) {
+    // Include the currently-selected die as final group if desired,
+    // but "Roll" fires whatever is in comboGroups + flat.
+    resolveComboRoll(comboGroups, flat, 'Combo roll');
+    clearCombo();
+  } else {
+    // Plain single or multi-count roll
+    if (dieCount === 1 && !flat) {
+      resolveRoll(selectedDie, 0, `Free d${selectedDie}`, 1);
+    } else if (dieCount > 1 && !flat) {
+      resolveRoll(selectedDie, 0, `${dieCount}d${selectedDie}`, dieCount);
+    } else {
+      resolveComboRoll([{ sides: selectedDie, count: dieCount }], flat, `${dieCount}d${selectedDie}${flat>0?'+'+flat:flat<0?flat:''}`);
+    }
+  }
+}
+
+/* Free-form expression input */
+function rollExpression() {
+  const raw = document.getElementById('expr-input').value.trim();
+  const errEl = document.getElementById('expr-error');
+  errEl.textContent = '';
+
+  if (!raw) { errEl.textContent = 'Enter an expression first, e.g. 2d6+1d4+3'; return; }
+
+  const parsed = parseExpression(raw);
+  if (!parsed) {
+    errEl.textContent = 'Could not parse — use NdX or N terms, e.g. 2d6+1d4+3';
+    return;
+  }
+
+  ensureDiceSectionOpen();
+
+  if (parsed.groups.length === 0 && parsed.flat !== 0) {
+    // Pure flat number — show it directly
+    resolveRoll(4, parsed.flat - 1, `Expression: ${raw}`, 0); // cheat: 0-die roll
+    return;
+  }
+
+  resolveComboRoll(parsed.groups, parsed.flat, `Expr: ${raw}`);
+}
+
+/* ── History ── */
+function addHistory(entry) {
+  const list = document.getElementById('history-list');
+
+  const el = document.createElement('div');
+  el.className = 'history-entry';
+  el.innerHTML = `
+    <span class="hist-die">${entry.dieLabel}</span>
+    <span class="hist-label">${entry.label}</span>
+    <span class="hist-result${entry.isCrit ? ' hist-crit' : entry.isFumble ? ' hist-fumble' : ''}">${entry.result}</span>
+    ${entry.isCrit ? '<span class="hist-tag crit">crit!</span>' : ''}
+    ${entry.isFumble ? '<span class="hist-tag fumble">fumble</span>' : ''}
+  `;
+
+  list.insertBefore(el, list.firstChild);
+
+  const entries = list.querySelectorAll('.history-entry');
+  entries.forEach((e, i) => {
+    e.classList.remove('fading', 'very-fading');
+    if (i === entries.length - 2) e.classList.add('fading');
+    if (i >= entries.length - 3 && i < entries.length - 2) e.classList.add('very-fading');
+  });
+
+  while (list.children.length > MAX_HISTORY) {
+    list.removeChild(list.lastChild);
+  }
+}
+
+/* ── Section collapse ── */
+let diceSectionOpen = true;
+function toggleDiceSection() {
+  diceSectionOpen = !diceSectionOpen;
+  const body = document.getElementById('dice-section-body');
+  const chevron = document.getElementById('dice-chevron');
+  body.style.display = diceSectionOpen ? 'block' : 'none';
+  chevron.classList.toggle('open', diceSectionOpen);
+}
+
+function ensureDiceSectionOpen() {
+  if (!diceSectionOpen) {
+    diceSectionOpen = true;
+    document.getElementById('dice-section-body').style.display = 'block';
+    document.getElementById('dice-chevron').classList.add('open');
+  }
+  setTimeout(() => {
+    document.getElementById('roll-stage').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 100);
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DM Dashboard — Dice Roller Integration</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Ocean palette (dashboard chrome) ── */
+    :root {
+      --bg: #0d0f14;
+      --surface: rgba(18,32,48,0.6);
+      --surface-solid: #111e2c;
+      --border: rgba(100,130,160,0.18);
+      --border-vis: rgba(100,130,160,0.32);
+      --accent: #6a8fa8;
+      --accent-bright: #a0c0d0;
+      --accent-dim: #1e3a4e;
+      --text: #c8bfaf;
+      --text-body: #b0a898;
+      --text-muted: #3a5a6a;
+      --gem: #8ab4c8;
+      --font-display: 'Cinzel', Georgia, serif;
+      --font-body: 'Crimson Text', Georgia, serif;
+      --font-ui: 'IM Fell English', Georgia, serif;
+
+      /* Ember palette for the roller panel interior */
+      --roller-bg: rgba(30,18,12,0.92);
+      --roller-surface: rgba(30,18,12,0.85);
+      --roller-border: rgba(160,104,64,0.25);
+      --roller-border-vis: rgba(160,104,64,0.42);
+      --roller-accent: #a06840;
+      --roller-accent-bright: #c89060;
+      --roller-accent-dim: rgba(160,104,64,0.18);
+      --roller-text: #d4c4b0;
+      --roller-text-body: #c4aa90;
+      --roller-text-muted: #6a4830;
+      --roller-gem: #c8904c;
+      --crit-color: #ffd060;
+      --crit-glow: rgba(255,200,40,0.45);
+      --fumble-color: #c06060;
+      --fumble-glow: rgba(192,60,60,0.45);
+
+      /* Character palette accents */
+      --ember-accent: #a06840;
+      --ember-bright: #c89060;
+      --ember-gem: #c8904c;
+      --ember-surface: rgba(40,22,12,0.7);
+      --ocean-accent: #6a8fa8;
+      --ocean-bright: #a0c0d0;
+      --ocean-gem: #8ab4c8;
+      --forest-accent: #5a8a60;
+      --forest-bright: #88b888;
+      --forest-gem: #78b878;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(20,45,80,0.4) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, rgba(15,35,60,0.3) 0%, transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Annotation styles ── */
+    .callout-note {
+      background: rgba(30,80,30,0.85);
+      border: 1px solid rgba(80,160,80,0.5);
+      border-radius: 4px;
+      color: #88cc88;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px 0;
+      display: block;
+    }
+    .callout-note::before { content: "↳ REUSED: "; opacity: 0.7; color: #aaddaa; }
+    .callout-new {
+      background: rgba(20,50,80,0.9);
+      border: 1px solid rgba(80,140,200,0.5);
+      border-radius: 4px;
+      color: #80c8f0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px 0;
+      display: block;
+    }
+    .callout-new::before { content: "★ DM-ONLY: "; opacity: 0.8; color: #a0d8f0; }
+
+    /* ── Annotation banner ── */
+    .annotation-bar {
+      background: rgba(10,30,10,0.92);
+      border-bottom: 1px solid rgba(60,120,60,0.4);
+      padding: 11px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+    }
+    .annotation-bar p {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      color: #77bb77;
+      letter-spacing: 0.04em;
+    }
+    .annotation-bar strong { color: #aaddaa; }
+
+    /* ── Dashboard top bar ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border-vis);
+      position: sticky;
+      top: 37px;
+      z-index: 100;
+      background: rgba(13,15,20,0.95);
+      backdrop-filter: blur(8px);
+    }
+    .topbar-title { font-family: var(--font-display); font-size: 18px; letter-spacing: 0.12em; color: var(--accent-bright); }
+    .topbar-subtitle { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-muted); }
+    .topbar-spacer { flex: 1; }
+    .topbar-btn {
+      background: rgba(18,32,48,0.5); border: 1px solid var(--accent); border-radius: 3px;
+      color: var(--accent-bright); font-family: var(--font-ui); font-size: 12px;
+      letter-spacing: 0.14em; padding: 7px 16px; cursor: pointer; transition: background 0.15s;
+    }
+    .topbar-btn:hover { background: rgba(106,143,168,0.25); }
+    .topbar-btn.secondary { background: transparent; border-color: var(--border-vis); color: var(--text-muted); }
+    .topbar-btn.secondary:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+    /* ── Dashboard layout ── */
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 0;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+      align-items: start;
+    }
+    @media (max-width: 900px) { .dashboard-layout { grid-template-columns: 1fr; } }
+
+    .party-column { padding-right: 20px; }
+    @media (max-width: 900px) { .party-column { padding-right: 0; } }
+
+    .section-label {
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.3em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 14px;
+    }
+
+    /* ── Character card (condensed) ── */
+    .char-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 6px; margin-bottom: 10px; position: relative; transition: border-color 0.15s;
+    }
+    .char-card::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0;
+      width: 3px; border-radius: 6px 0 0 6px;
+    }
+    .char-card.ember::before { background: var(--ember-accent); }
+    .char-card.ocean::before { background: var(--ocean-accent); }
+    .char-card.forest::before { background: var(--forest-accent); }
+
+    .card-main {
+      display: grid; grid-template-columns: auto 1fr auto;
+      gap: 12px; padding: 12px 12px 10px 16px; align-items: start;
+    }
+    .portrait {
+      width: 44px; height: 44px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 17px; flex-shrink: 0; border: 2px solid;
+    }
+    .portrait.ember { background: var(--ember-surface); border-color: var(--ember-accent); color: var(--ember-gem); }
+    .portrait.ocean { background: rgba(18,32,48,0.6); border-color: var(--ocean-accent); color: var(--ocean-gem); }
+    .portrait.forest { background: rgba(14,26,18,0.6); border-color: var(--forest-accent); color: var(--forest-gem); }
+
+    .card-name { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.06em; margin-bottom: 2px; }
+    .card-name.ember { color: var(--ember-bright); }
+    .card-name.ocean { color: var(--ocean-bright); }
+    .card-name.forest { color: var(--forest-bright); }
+    .card-meta { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+
+    .hp-inline { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+    .hp-cur { font-family: var(--font-display); font-size: 19px; line-height: 1; }
+    .hp-cur.ember { color: var(--ember-gem); }
+    .hp-cur.ocean { color: var(--ocean-gem); }
+    .hp-cur.forest { color: var(--forest-gem); }
+    .hp-sep-sm { font-family: var(--font-display); font-size: 12px; color: var(--text-muted); }
+    .hp-max-sm { font-family: var(--font-display); font-size: 12px; color: var(--text-muted); }
+
+    .hp-bar-track { height: 4px; border-radius: 2px; overflow: hidden; background: rgba(24,42,58,0.8); }
+    .hp-bar-fill { height: 100%; border-radius: 2px; }
+    .hp-bar-fill.ember { background: linear-gradient(90deg, var(--ember-accent), var(--ember-bright)); width: 62%; }
+    .hp-bar-fill.ocean { background: linear-gradient(90deg, #a06020, #d08030); width: 30%; }
+    .hp-bar-fill.forest { background: linear-gradient(90deg, var(--forest-accent), var(--forest-bright)); width: 75%; }
+
+    .card-right { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; }
+    .ac-badge { background: var(--surface); border: 1px solid var(--border-vis); border-radius: 4px; padding: 4px 8px; text-align: center; min-width: 40px; }
+    .ac-num { font-family: var(--font-display); font-size: 17px; line-height: 1; color: var(--gem); }
+    .ac-lbl { font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--text-muted); }
+    .card-sheet-link { font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-muted); text-decoration: none; transition: color 0.15s; }
+    .card-sheet-link:hover { color: var(--accent-bright); }
+
+    /* ── Right column ── */
+    .initiative-column { border-left: 1px solid var(--border); padding-left: 20px; }
+    @media (max-width: 900px) { .initiative-column { border-left: none; border-top: 1px solid var(--border); padding-left: 0; padding-top: 20px; margin-top: 20px; } }
+
+    .init-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+    .init-title { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--text-muted); }
+    .init-clear-btn { background: transparent; border: none; color: var(--text-muted); font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em; cursor: pointer; transition: color 0.15s; }
+    .init-clear-btn:hover { color: #c06060; }
+    .init-list { list-style: none; margin-bottom: 14px; }
+    .init-entry { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border-radius: 4px; margin-bottom: 3px; background: var(--surface); border: 1px solid var(--border); }
+    .init-entry.current-turn { border-color: var(--accent); background: rgba(106,143,168,0.12); }
+    .init-num { font-family: var(--font-display); font-size: 18px; color: var(--gem); width: 28px; text-align: center; flex-shrink: 0; }
+    .init-entry.current-turn .init-num { color: var(--accent-bright); }
+    .init-name { font-family: var(--font-body); font-size: 15px; color: var(--text); flex: 1; }
+    .init-entry.current-turn .init-name { color: var(--accent-bright); font-weight: 600; }
+    .init-npc-tag { font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--text-muted); background: rgba(100,130,160,0.1); border: 1px solid var(--border); border-radius: 8px; padding: 1px 6px; }
+    .current-marker { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.1em; color: var(--accent-bright); white-space: nowrap; }
+    .init-remove-btn { background: transparent; border: none; color: var(--text-muted); font-size: 14px; cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: color 0.12s, background 0.12s; line-height: 1; }
+    .init-remove-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+    .next-turn-btn { background: rgba(18,32,48,0.5); border: 1px solid var(--accent); border-radius: 4px; color: var(--accent-bright); font-family: var(--font-ui); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; padding: 9px 0; width: 100%; cursor: pointer; margin-bottom: 10px; transition: background 0.15s; }
+    .next-turn-btn:hover { background: rgba(106,143,168,0.22); }
+
+    /* ════════════════════════════════════════════════════════
+       DM DICE ROLLER PANEL
+       Ember palette applied to interior — visually distinct
+       from Ocean dashboard chrome, same design language.
+       Collapsible; anchored below party cards in left column.
+    ════════════════════════════════════════════════════════ */
+
+    .dice-panel {
+      background: var(--roller-bg);
+      border: 1px solid var(--roller-border-vis);
+      border-radius: 6px;
+      margin-top: 20px;
+      overflow: hidden;
+    }
+
+    .dice-panel-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 16px; cursor: pointer; user-select: none;
+      border-bottom: 1px solid transparent;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .dice-panel-header:hover { background: rgba(160,104,64,0.07); }
+    .dice-panel-header.open { border-bottom-color: var(--roller-border); }
+
+    .dice-panel-title-group { display: flex; align-items: center; gap: 10px; }
+    .dice-panel-icon { font-size: 15px; opacity: 0.65; }
+    .dice-panel-title { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.1em; color: var(--roller-accent-bright); }
+    .dice-panel-subtitle { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--roller-text-muted); }
+    .dice-chevron { font-family: var(--font-ui); font-size: 11px; color: var(--roller-text-muted); transition: transform 0.2s, color 0.15s; }
+    .dice-chevron.open { transform: rotate(180deg); }
+    .dice-panel-header:hover .dice-chevron { color: var(--roller-accent-bright); }
+
+    .dice-panel-body { padding: 16px 18px 20px; display: none; }
+    .dice-panel-body.open { display: block; }
+
+    /* ── Roll stage (REUSED — identical to DiceRoller.jsx) ── */
+    .roll-stage {
+      display: flex; flex-direction: column; align-items: center;
+      justify-content: center; min-height: 120px; padding: 8px 0; position: relative;
+    }
+    .multi-die-stage { display: flex; gap: 8px; align-items: center; justify-content: center; flex-wrap: wrap; }
+    .die-group-block { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .die-group-label { font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--roller-text-muted); }
+    .die-canvas { position: relative; width: 90px; height: 90px; display: flex; align-items: center; justify-content: center; }
+    .die-canvas.small { width: 65px; height: 65px; }
+    .die-canvas.small .die-anim-svg { width: 65px; height: 65px; }
+    .die-canvas.small .die-result-num { font-size: 22px; }
+    .die-anim-svg { position: absolute; top: 0; left: 0; width: 90px; height: 90px; }
+    .die-face { stroke: var(--roller-border-vis); fill: rgba(30,18,12,0.7); stroke-width: 1.5; }
+    .die-face-label { fill: var(--roller-text-body); font-family: 'Cinzel', serif; }
+    .die-result-num {
+      position: relative; z-index: 2; font-family: var(--font-display); font-size: 34px;
+      color: var(--roller-gem); user-select: none; text-shadow: 0 0 12px rgba(200,144,76,0.5);
+    }
+    .die-result-num.is-crit { color: var(--crit-color); text-shadow: 0 0 20px var(--crit-glow), 0 0 40px var(--crit-glow); animation: critPulse 0.7s ease-out; }
+    .die-result-num.is-fumble { color: var(--fumble-color); text-shadow: 0 0 20px var(--fumble-glow), 0 0 40px var(--fumble-glow); animation: fumbleShake 0.5s ease-out; }
+    .die-result-label { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; margin-top: 5px; opacity: 0; transition: opacity 0.3s; }
+    .die-result-label.visible { opacity: 1; }
+    .die-result-label.crit-label { color: var(--crit-color); }
+    .die-result-label.fumble-label { color: var(--fumble-color); }
+    .die-result-label.normal-label { color: var(--roller-text-muted); }
+
+    .result-breakdown { display: flex; gap: 5px; align-items: center; margin-top: 8px; flex-wrap: wrap; justify-content: center; min-height: 22px; }
+    .chip { font-family: var(--font-display); font-size: 12px; color: var(--roller-text-body); background: rgba(30,18,12,0.7); border: 1px solid var(--roller-border); border-radius: 2px; padding: 2px 7px; }
+    .chip.used { border-color: var(--roller-accent); color: var(--roller-accent-bright); }
+    .chip.discarded { opacity: 0.38; text-decoration: line-through; }
+    .chip-plus { color: var(--roller-text-muted); font-family: var(--font-display); font-size: 13px; }
+    .chip.total { background: var(--roller-accent-dim); border-color: var(--roller-accent-bright); color: var(--roller-accent-bright); font-size: 14px; padding: 2px 11px; }
+    .chip-group { display: flex; flex-direction: column; align-items: center; gap: 1px; }
+    .chip-group-label { font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--roller-text-muted); }
+    .chip-group-val { font-family: var(--font-display); font-size: 12px; color: var(--roller-text-body); background: rgba(30,18,12,0.7); border: 1px solid var(--roller-border); border-radius: 2px; padding: 1px 7px; white-space: nowrap; }
+
+    /* ── ×N multi-roll result rows (DM-ONLY) ── */
+    .multi-roll-results {
+      display: none; flex-direction: column; gap: 4px;
+      width: 100%; padding: 8px 0 4px;
+    }
+    .multi-roll-results.visible { display: flex; }
+    .roll-result-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 10px; border-radius: 3px;
+      background: rgba(30,18,12,0.5); border: 1px solid var(--roller-border);
+      transition: border-color 0.15s; opacity: 0; transform: translateY(5px);
+    }
+    .roll-result-row.revealed { animation: rowReveal 0.3s ease-out forwards; }
+    .roll-result-row.selected-for-apply { border-color: var(--roller-accent-bright); background: rgba(160,104,64,0.14); }
+    .rr-label { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.12em; color: var(--roller-text-muted); min-width: 40px; }
+    .rr-value { font-family: var(--font-display); font-size: 19px; color: var(--roller-gem); min-width: 28px; }
+    .rr-value.is-crit { color: var(--crit-color); text-shadow: 0 0 8px var(--crit-glow); }
+    .rr-value.is-fumble { color: var(--fumble-color); }
+    .rr-tag { font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; padding: 1px 5px; border-radius: 2px; border: 1px solid; }
+    .rr-tag.crit { color: var(--crit-color); border-color: rgba(255,200,40,0.4); background: rgba(255,200,40,0.08); }
+    .rr-tag.fumble { color: var(--fumble-color); border-color: rgba(192,60,60,0.4); background: rgba(192,60,60,0.08); }
+    .rr-breakdown { font-family: var(--font-body); font-size: 12px; color: var(--roller-text-muted); flex: 1; text-align: right; font-style: italic; }
+
+    /* ── Apply-to row (DM-ONLY) ── */
+    .apply-to-row {
+      display: none; flex-direction: column; gap: 6px;
+      padding: 10px 0 4px; border-top: 1px solid var(--roller-border); margin-top: 8px;
+    }
+    .apply-to-row.visible { display: flex; }
+    .apply-to-label { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--roller-text-muted); }
+    .apply-to-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+    .apply-pill {
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.1em;
+      padding: 4px 14px; border-radius: 10px; border: 1px solid;
+      background: transparent; cursor: pointer; transition: background 0.15s, filter 0.15s;
+    }
+    .apply-pill.ember { border-color: var(--ember-accent); color: var(--ember-bright); }
+    .apply-pill.ember:hover { background: var(--ember-surface); filter: brightness(1.15); }
+    .apply-pill.ocean { border-color: var(--ocean-accent); color: var(--ocean-bright); }
+    .apply-pill.ocean:hover { background: rgba(18,32,48,0.6); filter: brightness(1.15); }
+    .apply-pill.forest { border-color: var(--forest-accent); color: var(--forest-bright); }
+    .apply-pill.forest:hover { background: rgba(14,26,18,0.6); filter: brightness(1.15); }
+    .apply-pill:active { transform: scale(0.95); }
+    .apply-confirm { font-family: var(--font-body); font-size: 13px; font-style: italic; color: #88c888; min-height: 18px; padding: 2px 0; }
+
+    hr.roller-divider { border: none; border-top: 1px solid var(--roller-border); margin: 14px 0; }
+
+    /* ── Adv/dis strip (REUSED visually) ── */
+    .adv-dis-strip { display: flex; gap: 6px; align-items: center; margin-bottom: 14px; }
+    .adv-dis-label { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--roller-text-muted); margin-right: 4px; }
+    .adv-btn { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.12em; padding: 3px 10px; border-radius: 3px; cursor: pointer; border: 1px solid var(--roller-border); background: transparent; color: var(--roller-text-muted); transition: all 0.15s; }
+    .adv-btn.active-normal { border-color: var(--roller-accent); background: var(--roller-accent-dim); color: var(--roller-accent-bright); }
+    .adv-btn.active-adv { border-color: #5a9a60; background: rgba(60,130,60,0.18); color: #88c888; }
+    .adv-btn.active-dis { border-color: #9a5a5a; background: rgba(130,60,60,0.18); color: #c88888; }
+
+    /* ── ×N repeat control (DM-ONLY) ── */
+    .roll-action-row { display: flex; gap: 10px; align-items: stretch; }
+    .repeat-control {
+      display: flex; align-items: center; gap: 0;
+      border: 1px solid var(--roller-border-vis); border-radius: 3px; overflow: hidden; flex-shrink: 0;
+    }
+    .repeat-label {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
+      color: var(--roller-text-muted); padding: 0 8px; background: rgba(30,18,12,0.5);
+      border-right: 1px solid var(--roller-border); display: flex; align-items: center;
+      white-space: nowrap; user-select: none;
+    }
+    .repeat-btn {
+      width: 24px; height: 100%; min-height: 34px; background: transparent; border: none;
+      color: var(--roller-accent-bright); font-family: var(--font-display); font-size: 14px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background 0.12s;
+    }
+    .repeat-btn:hover { background: var(--roller-accent-dim); }
+    .repeat-count { font-family: var(--font-display); font-size: 17px; color: var(--roller-gem); min-width: 22px; text-align: center; padding: 0 2px; user-select: none; }
+    .big-roll-btn {
+      flex: 1; padding: 9px 12px; font-family: var(--font-display); font-size: 15px;
+      letter-spacing: 0.12em; border-radius: 3px; cursor: pointer;
+      border: 1px solid var(--roller-accent); background: rgba(18,58,78,0.4);
+      color: var(--roller-accent-bright); transition: all 0.15s; text-transform: uppercase;
+    }
+    .big-roll-btn:hover { background: rgba(18,58,78,0.65); box-shadow: 0 0 16px rgba(160,104,64,0.25); }
+    .big-roll-btn:active { transform: scale(0.98); }
+
+    /* ── Dice picker (REUSED) ── */
+    .dice-picker { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-bottom: 14px; }
+    .die-btn { display: flex; flex-direction: column; align-items: center; gap: 4px; cursor: pointer; background: transparent; border: none; padding: 5px 3px; border-radius: 4px; transition: background 0.15s; }
+    .die-btn:hover { background: var(--roller-accent-dim); }
+    .die-btn.selected .die-svg-wrap { filter: drop-shadow(0 0 6px var(--roller-accent)); }
+    .die-btn.selected .die-face { stroke: var(--roller-accent-bright); fill: rgba(160,104,64,0.2); }
+    .die-btn.selected .die-face-label { fill: var(--roller-accent-bright); }
+    .die-label { font-family: var(--font-display); font-size: 9px; color: var(--roller-text-muted); letter-spacing: 0.05em; }
+    .die-btn.selected .die-label { color: var(--roller-accent-bright); }
+
+    .count-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 12px; }
+    .count-label { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--roller-text-muted); }
+    .count-stepper { display: flex; align-items: center; gap: 10px; }
+    .count-btn { width: 24px; height: 24px; border-radius: 50%; border: 1px solid var(--roller-border-vis); background: transparent; color: var(--roller-accent-bright); font-family: var(--font-display); font-size: 14px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.13s; }
+    .count-btn:hover { border-color: var(--roller-accent); background: var(--roller-accent-dim); }
+    .count-num { font-family: var(--font-display); font-size: 20px; color: var(--roller-gem); min-width: 22px; text-align: center; }
+
+    .pending-expr { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px; min-height: 28px; margin-bottom: 10px; }
+    .pending-empty { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.16em; color: var(--roller-text-muted); font-style: italic; }
+    .pending-chip { font-family: var(--font-display); font-size: 12px; color: var(--roller-accent-bright); background: var(--roller-accent-dim); border: 1px solid var(--roller-accent); border-radius: 2px; padding: 2px 7px; }
+    .pending-chip-sep { font-family: var(--font-display); font-size: 13px; color: var(--roller-text-muted); }
+
+    .combo-actions { display: flex; gap: 8px; justify-content: center; align-items: center; flex-wrap: wrap; margin-bottom: 10px; }
+    .combo-btn { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em; padding: 4px 11px; border-radius: 3px; cursor: pointer; border: 1px solid var(--roller-border-vis); background: transparent; color: var(--roller-text-muted); transition: all 0.15s; }
+    .combo-btn:hover { border-color: var(--roller-accent); color: var(--roller-accent-bright); background: var(--roller-accent-dim); }
+    .combo-btn.add-die-btn { border-color: var(--roller-accent); color: var(--roller-accent-bright); background: rgba(160,104,64,0.10); }
+
+    .modifier-row { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; }
+    .modifier-label { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--roller-text-muted); }
+    .modifier-input { width: 64px; background: var(--roller-bg); border: 1px solid var(--roller-border-vis); border-radius: 3px; color: var(--roller-gem); font-family: var(--font-display); font-size: 17px; text-align: center; padding: 2px 5px; outline: none; transition: border-color 0.15s; }
+    .modifier-input:focus { border-color: var(--roller-accent); }
+    .modifier-input::-webkit-inner-spin-button, .modifier-input::-webkit-outer-spin-button { -webkit-appearance: none; }
+    .modifier-input[type=number] { -moz-appearance: textfield; }
+
+    .expr-row { display: flex; gap: 8px; align-items: stretch; margin-bottom: 14px; }
+    .expr-input { flex: 1; background: var(--roller-bg); border: 1px solid var(--roller-border-vis); border-radius: 3px; color: var(--roller-text); font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.06em; padding: 7px 10px; outline: none; transition: border-color 0.15s; min-width: 0; }
+    .expr-input:focus { border-color: var(--roller-accent); }
+    .expr-input::placeholder { color: var(--roller-text-muted); font-size: 11px; letter-spacing: 0.1em; }
+    .expr-roll-btn { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em; padding: 7px 12px; border-radius: 3px; cursor: pointer; border: 1px solid var(--roller-accent); background: var(--roller-accent-dim); color: var(--roller-accent-bright); transition: all 0.15s; white-space: nowrap; }
+    .expr-roll-btn:hover { background: rgba(160,104,64,0.28); }
+    .expr-error { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.14em; color: var(--fumble-color); text-align: center; min-height: 14px; margin-top: -8px; margin-bottom: 6px; }
+
+    /* Roll history (REUSED — 8 entries) */
+    .history-list { display: flex; flex-direction: column; gap: 0; }
+    .history-entry { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--roller-border); opacity: 1; }
+    .history-entry:last-child { border-bottom: none; }
+    .history-entry.fading { opacity: 0.45; }
+    .history-entry.very-fading { opacity: 0.22; }
+    .history-entry.hidden-hist { display: none; }
+    .hist-die { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--roller-text-muted); min-width: 48px; }
+    .hist-label { flex: 1; font-family: var(--font-body); font-size: 13px; color: var(--roller-text-body); font-style: italic; }
+    .hist-result { font-family: var(--font-display); font-size: 18px; color: var(--roller-gem); min-width: 28px; text-align: right; }
+    .hist-result.hist-crit { color: var(--crit-color); text-shadow: 0 0 6px rgba(255,200,40,0.4); }
+    .hist-result.hist-fumble { color: var(--fumble-color); }
+    .hist-tag { font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; padding: 2px 5px; border-radius: 2px; border: 1px solid; }
+    .hist-tag.crit { color: var(--crit-color); border-color: rgba(255,200,40,0.4); background: rgba(255,200,40,0.08); }
+    .hist-tag.fumble { color: var(--fumble-color); border-color: rgba(192,60,60,0.4); background: rgba(192,60,60,0.08); }
+
+    /* ── Animations (REUSED) ── */
+    @keyframes critPulse { 0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(1.2)}100%{transform:scale(1)} }
+    @keyframes fumbleShake { 0%{transform:translateX(0)}20%{transform:translateX(-6px) rotate(-3deg)}40%{transform:translateX(6px) rotate(3deg)}60%{transform:translateX(-4px) rotate(-2deg)}80%{transform:translateX(4px) rotate(2deg)}100%{transform:translateX(0)} }
+    @keyframes spinIn { 0%{transform:rotate(0deg) scale(0.6);opacity:0.4}60%{transform:rotate(380deg) scale(1.08);opacity:1}80%{transform:rotate(355deg) scale(0.97)}100%{transform:rotate(360deg) scale(1);opacity:1} }
+    @keyframes landGlow { 0%{filter:drop-shadow(0 0 0px rgba(200,144,76,0))}40%{filter:drop-shadow(0 0 18px rgba(200,144,76,0.7))}100%{filter:drop-shadow(0 0 6px rgba(200,144,76,0.2))} }
+    @keyframes critLandGlow { 0%{filter:drop-shadow(0 0 0px rgba(255,200,40,0))}35%{filter:drop-shadow(0 0 28px rgba(255,200,40,0.9))}100%{filter:drop-shadow(0 0 10px rgba(255,200,40,0.4))} }
+    @keyframes fumbleLandGlow { 0%{filter:drop-shadow(0 0 0px rgba(192,60,60,0))}35%{filter:drop-shadow(0 0 28px rgba(192,60,60,0.9))}100%{filter:drop-shadow(0 0 10px rgba(192,60,60,0.3))} }
+    @keyframes numCycle { 0%{opacity:0.5;transform:translateY(4px)}100%{opacity:1;transform:translateY(0)} }
+    @keyframes revealNum { 0%{transform:scale(0.5) translateY(8px);opacity:0}70%{transform:scale(1.15) translateY(-2px);opacity:1}100%{transform:scale(1) translateY(0);opacity:1} }
+    @keyframes groupReveal { 0%{opacity:0;transform:scale(0.7) translateY(6px)}70%{opacity:1;transform:scale(1.08) translateY(-1px)}100%{opacity:1;transform:scale(1) translateY(0)} }
+    @keyframes rowReveal { 0%{opacity:0;transform:translateY(5px)}100%{opacity:1;transform:translateY(0)} }
+
+    .die-anim-svg.rolling { animation: spinIn 1.0s cubic-bezier(0.3,0,0.2,1) forwards; }
+    .die-anim-svg.landed-normal { animation: landGlow 1.2s ease-out forwards; }
+    .die-anim-svg.landed-crit { animation: critLandGlow 1.4s ease-out forwards; }
+    .die-anim-svg.landed-fumble { animation: fumbleLandGlow 1.2s ease-out forwards; }
+    .die-result-num.reveal { animation: revealNum 0.4s cubic-bezier(0.2,0,0.1,1) forwards; }
+    .die-group-block { opacity: 0; }
+    .die-group-block.revealed { animation: groupReveal 0.38s cubic-bezier(0.2,0,0.1,1) forwards; }
+
+    /* ── Damage modal (pre-filled from Apply-to) ── */
+    .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.72); z-index: 400; align-items: center; justify-content: center; }
+    .modal-overlay.open { display: flex; }
+    .modal-panel { background: var(--surface-solid); border: 1px solid var(--border-vis); border-radius: 6px; width: 320px; box-shadow: 0 16px 48px rgba(0,0,0,0.6); overflow: hidden; }
+    .modal-header { padding: 14px 18px 12px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+    .modal-title { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.1em; color: #d08080; }
+    .modal-close { background: transparent; border: none; color: var(--text-muted); font-size: 18px; cursor: pointer; line-height: 1; padding: 0; transition: color 0.12s; }
+    .modal-close:hover { color: var(--text); }
+    .modal-body { padding: 16px 18px 8px; }
+    .modal-char-context { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px; }
+    .modal-prefill-note { font-family: var(--font-body); font-size: 13px; font-style: italic; color: #88c888; margin-bottom: 12px; }
+    .amt-input { width: 100%; border: 1px solid rgba(192,96,96,0.4); border-radius: 3px; background: var(--surface); color: var(--text); font-family: var(--font-display); font-size: 38px; text-align: center; height: 62px; outline: none; -moz-appearance: textfield; }
+    .amt-input::-webkit-outer-spin-button, .amt-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .amt-input:focus { border-color: rgba(192,96,96,0.6); }
+    .modal-footer { padding: 8px 18px 14px; }
+    .modal-confirm-btn { width: 100%; background: rgba(192,96,96,0.12); border: 1px solid rgba(192,96,96,0.55); border-radius: 3px; color: #d08080; font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase; padding: 11px 0; cursor: pointer; transition: background 0.15s; }
+    .modal-confirm-btn:hover { background: rgba(192,96,96,0.22); }
+
+    @media (max-width: 680px) {
+      .dice-picker { gap: 5px; }
+      .die-btn { padding: 4px 2px; }
+      .adv-dis-strip { flex-wrap: wrap; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Annotation banner -->
+<div class="annotation-bar">
+  <p>
+    <strong>Prototype: DM Dice Roller Integration</strong> —
+    Ember roller panel embedded below party cards in the left column.
+    <strong style="color:#aaddaa;">Green = reused from DiceRoller.jsx unchanged.</strong>
+    <strong style="color:#a0d8f0;">Blue = DM-only additions.</strong>
+    Try: set ×N count, pick a die, click Roll. After a damage-only roll (d6/d8/etc.), the "Apply to…" row appears.
+  </p>
+</div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">DM Dashboard</div>
+    <div class="topbar-subtitle">Session in progress · 3 players</div>
+  </div>
+  <div class="topbar-spacer"></div>
+  <button class="topbar-btn secondary">◑ Short Rest</button>
+  <button class="topbar-btn">⏾ Long Rest</button>
+</div>
+
+<!-- Dashboard layout -->
+<div class="dashboard-layout">
+
+  <!-- LEFT: Party cards + dice roller -->
+  <div class="party-column">
+
+    <div class="section-label">Party</div>
+    <span class="callout-note">Party cards are the primary surface. Full card interactions (inline HP steppers, Damage/Heal buttons, condition chips) are shown in dm-dashboard.html — condensed here to focus on the dice roller integration.</span>
+
+    <!-- Card: Aragorn -->
+    <div class="char-card ember">
+      <div class="card-main">
+        <div class="portrait ember">A</div>
+        <div>
+          <div class="card-name ember">Aragorn</div>
+          <div class="card-meta">Human · Ranger · Lvl 8</div>
+          <div class="hp-inline"><span class="hp-cur ember">28</span><span class="hp-sep-sm">/</span><span class="hp-max-sm">45</span></div>
+          <div class="hp-bar-track"><div class="hp-bar-fill ember"></div></div>
+        </div>
+        <div class="card-right">
+          <div class="ac-badge"><div class="ac-num">16</div><div class="ac-lbl">AC</div></div>
+          <a href="#" class="card-sheet-link">↗ Sheet</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Eoghan -->
+    <div class="char-card ocean">
+      <div class="card-main">
+        <div class="portrait ocean">E</div>
+        <div>
+          <div class="card-name ocean">Eoghan</div>
+          <div class="card-meta">Half-Elf · Cleric · Lvl 8</div>
+          <div class="hp-inline"><span class="hp-cur ocean">13</span><span class="hp-sep-sm">/</span><span class="hp-max-sm">44</span></div>
+          <div class="hp-bar-track"><div class="hp-bar-fill ocean"></div></div>
+        </div>
+        <div class="card-right">
+          <div class="ac-badge"><div class="ac-num">14</div><div class="ac-lbl">AC</div></div>
+          <a href="#" class="card-sheet-link">↗ Sheet</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- Card: Aesop -->
+    <div class="char-card forest">
+      <div class="card-main">
+        <div class="portrait forest">Æ</div>
+        <div>
+          <div class="card-name forest">Aesop</div>
+          <div class="card-meta">Gnome · Wizard · Lvl 8</div>
+          <div class="hp-inline"><span class="hp-cur forest">33</span><span class="hp-sep-sm">/</span><span class="hp-max-sm">44</span></div>
+          <div class="hp-bar-track"><div class="hp-bar-fill forest"></div></div>
+        </div>
+        <div class="card-right">
+          <div class="ac-badge"><div class="ac-num">13</div><div class="ac-lbl">AC</div></div>
+          <a href="#" class="card-sheet-link">↗ Sheet</a>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════════════════════════════════
+         DM DICE ROLLER — collapsible panel
+         Below party cards, left column
+    ════════════════════════════════════ -->
+    <div class="dice-panel" id="dm-dice-panel">
+
+      <div class="dice-panel-header open" id="dice-panel-header" onclick="toggleDicePanel()">
+        <div class="dice-panel-title-group">
+          <span class="dice-panel-icon">⬡</span>
+          <div>
+            <div class="dice-panel-title">Dice Roller</div>
+            <div class="dice-panel-subtitle">Free roll · Expression · ×N group</div>
+          </div>
+        </div>
+        <span class="dice-chevron open" id="dice-chevron">▼</span>
+      </div>
+
+      <div class="dice-panel-body open" id="dice-panel-body">
+
+        <!-- Roll stage (REUSED) -->
+        <div class="roll-stage" id="roll-stage">
+          <div id="single-die-view">
+            <div class="die-canvas" id="die-canvas">
+              <svg class="die-anim-svg" id="die-anim-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <polygon class="die-face" id="die-poly" points="50,8 92,35 92,65 50,92 8,65 8,35" />
+                <text class="die-face-label" id="die-face-text" x="50" y="56" text-anchor="middle" font-size="11" font-weight="500" opacity="0.5">d20</text>
+              </svg>
+              <span class="die-result-num" id="die-result-num">—</span>
+            </div>
+          </div>
+          <div id="multi-die-view" style="display:none;">
+            <div class="multi-die-stage" id="multi-die-stage"></div>
+          </div>
+          <div class="die-result-label normal-label" id="die-result-label"></div>
+          <div class="result-breakdown" id="result-breakdown"></div>
+        </div>
+        <span class="callout-note">Roll stage: single-die and multi-group animations, crit/fumble glow, result breakdown chips — identical to DiceRoller.jsx. No changes to markup or animation code.</span>
+
+        <!-- ×N result rows (DM-ONLY) -->
+        <div class="multi-roll-results" id="multi-roll-results"></div>
+
+        <!-- Apply-to row (DM-ONLY) -->
+        <div class="apply-to-row" id="apply-to-row">
+          <span class="apply-to-label">Apply to…</span>
+          <div class="apply-to-pills">
+            <button class="apply-pill ember" onclick="applyDamage('Aragorn')">Aragorn</button>
+            <button class="apply-pill ocean" onclick="applyDamage('Eoghan')">Eoghan</button>
+            <button class="apply-pill forest" onclick="applyDamage('Aesop')">Aesop</button>
+          </div>
+          <div class="apply-confirm" id="apply-confirm"></div>
+        </div>
+        <span class="callout-new" id="apply-callout" style="display:none;">Apply to...: appears only after a non-d20 roll (damage). Palette-colored pill per party member. Tapping pre-fills the Deal Damage modal — DM still confirms. Disappears when a new roll starts.</span>
+
+        <hr class="roller-divider">
+
+        <!-- Adv/dis strip (REUSED visuals, DM-ONLY auto-reset behavior) -->
+        <div class="adv-dis-strip">
+          <span class="adv-dis-label">d20 mode</span>
+          <button class="adv-btn active-normal" id="btn-normal" onclick="setAdvMode('normal')">Normal</button>
+          <button class="adv-btn" id="btn-adv" onclick="setAdvMode('advantage')">Adv.</button>
+          <button class="adv-btn" id="btn-dis" onclick="setAdvMode('disadvantage')">Disadv.</button>
+        </div>
+        <span class="callout-note">Adv/dis strip: identical three-button design and visual states (green/red active).</span>
+        <span class="callout-new">Auto-reset to Normal after every roll. The DM switches creature types constantly — sticky mode causes wrong rolls.</span>
+
+        <!-- Dice picker (REUSED) -->
+        <div class="section-label" style="text-align:center; font-size:10px; margin-bottom:10px;">Free Roll</div>
+        <div class="dice-picker" id="dice-picker">
+          <button class="die-btn" data-sides="4" onclick="selectDie(this,4)"><div class="die-svg-wrap"><svg width="38" height="38" viewBox="0 0 60 60"><polygon class="die-face" points="30,6 56,52 4,52"/><text class="die-face-label" x="30" y="44" text-anchor="middle" font-size="13" font-weight="500">4</text></svg></div><span class="die-label">d4</span></button>
+          <button class="die-btn" data-sides="6" onclick="selectDie(this,6)"><div class="die-svg-wrap"><svg width="38" height="38" viewBox="0 0 60 60"><rect class="die-face" x="8" y="8" width="44" height="44" rx="6"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="13" font-weight="500">6</text></svg></div><span class="die-label">d6</span></button>
+          <button class="die-btn" data-sides="8" onclick="selectDie(this,8)"><div class="die-svg-wrap"><svg width="38" height="38" viewBox="0 0 60 60"><polygon class="die-face" points="30,5 55,30 30,55 5,30"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="13" font-weight="500">8</text></svg></div><span class="die-label">d8</span></button>
+          <button class="die-btn" data-sides="10" onclick="selectDie(this,10)"><div class="die-svg-wrap"><svg width="38" height="38" viewBox="0 0 60 60"><polygon class="die-face" points="30,5 55,22 48,52 12,52 5,22"/><text class="die-face-label" x="30" y="36" text-anchor="middle" font-size="12" font-weight="500">10</text></svg></div><span class="die-label">d10</span></button>
+          <button class="die-btn" data-sides="12" onclick="selectDie(this,12)"><div class="die-svg-wrap"><svg width="38" height="38" viewBox="0 0 60 60"><polygon class="die-face" points="30,4 42,10 52,22 52,38 42,50 30,56 18,50 8,38 8,22 18,10"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="12" font-weight="500">12</text></svg></div><span class="die-label">d12</span></button>
+          <button class="die-btn selected" data-sides="20" onclick="selectDie(this,20)"><div class="die-svg-wrap"><svg width="38" height="38" viewBox="0 0 60 60"><polygon class="die-face" points="30,4 56,22 56,42 30,56 4,42 4,22"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="12" font-weight="500">20</text></svg></div><span class="die-label">d20</span></button>
+          <button class="die-btn" data-sides="100" onclick="selectDie(this,100)"><div class="die-svg-wrap"><svg width="38" height="38" viewBox="0 0 60 60"><circle class="die-face" cx="30" cy="30" r="25"/><text class="die-face-label" x="30" y="35" text-anchor="middle" font-size="11" font-weight="500">%</text></svg></div><span class="die-label">d%</span></button>
+        </div>
+        <span class="callout-note">Die picker (d4–d100): same SVG shapes, same selection glow, re-mapped to ember palette variables.</span>
+
+        <!-- Count stepper (REUSED) -->
+        <div class="count-row">
+          <span class="count-label">Count</span>
+          <div class="count-stepper">
+            <button class="count-btn" onclick="adjustCount(-1)">−</button>
+            <span class="count-num" id="count-num">1</span>
+            <button class="count-btn" onclick="adjustCount(1)">+</button>
+          </div>
+        </div>
+        <span class="callout-note">Count stepper (1–10): identical circular +/− buttons.</span>
+
+        <!-- Combo builder (REUSED) -->
+        <div class="pending-expr" id="pending-expr">
+          <span class="pending-empty">Select a die and count, or type an expression below</span>
+        </div>
+        <div class="combo-actions">
+          <button class="combo-btn add-die-btn" onclick="addDieToCombo()">+ Add to Roll</button>
+          <button class="combo-btn" onclick="clearCombo()" id="clear-combo-btn" style="display:none;">✕ Clear</button>
+        </div>
+        <div class="modifier-row">
+          <span class="modifier-label">+ Modifier</span>
+          <input type="number" class="modifier-input" id="flat-modifier" value="0" min="-99" max="99" onchange="renderPendingExpr()" oninput="renderPendingExpr()" />
+        </div>
+        <span class="callout-note">Combo builder: "+ Add to Roll", clear button, pending expression chips, flat modifier input — all identical to player roller.</span>
+
+        <!-- ×N control + Roll button -->
+        <div class="roll-action-row" style="margin-bottom:4px;">
+          <div class="repeat-control" title="Roll N times independently (×1 = normal roll)">
+            <span class="repeat-label">×</span>
+            <button class="repeat-btn" onclick="adjustRepeat(-1)">−</button>
+            <span class="repeat-count" id="repeat-count">1</span>
+            <button class="repeat-btn" onclick="adjustRepeat(1)">+</button>
+          </div>
+          <button class="big-roll-btn" id="free-roll-btn" onclick="rollFree()">Roll 1d20</button>
+        </div>
+        <span class="callout-new">×N repeat control: flanks the Roll button. Range 1–8. At ×1 the roll is identical to the player roller. At ×2–8 the roll executes N times independently, showing N labeled result rows (Roll 1, Roll 2 …) with staggered reveal. No sum — each result is discrete. Crit/fumble tagged per row when a d20 is involved.</span>
+
+        <hr class="roller-divider">
+
+        <!-- Expression input (REUSED) -->
+        <div class="section-label" style="text-align:center; font-size:10px; margin-bottom:10px;">Expression Roll</div>
+        <div class="expr-row">
+          <input type="text" class="expr-input" id="expr-input" placeholder="e.g. 2d6+3 or 1d20+5" autocomplete="off" spellcheck="false" onkeydown="if(event.key==='Enter') rollExpression()" />
+          <button class="expr-roll-btn" onclick="rollExpression()">Roll</button>
+        </div>
+        <div class="expr-error" id="expr-error"></div>
+        <span class="callout-note">Expression input: freeform parser, Enter key trigger — identical to DiceRoller.jsx. The ×N repeat control above also applies to expression rolls.</span>
+
+        <hr class="roller-divider">
+
+        <!-- History (REUSED — 8 entries vs player's 5) -->
+        <div class="section-label" style="font-size:10px; margin-bottom:10px;">Recent Rolls</div>
+        <div class="history-list" id="history-list">
+          <div class="history-entry very-fading">
+            <span class="hist-die">d20+3</span>
+            <span class="hist-label">Goblin atk</span>
+            <span class="hist-result">11</span>
+          </div>
+          <div class="history-entry fading">
+            <span class="hist-die">2d6+2</span>
+            <span class="hist-label">Goblin dmg ×3</span>
+            <span class="hist-result">9</span>
+          </div>
+          <div class="history-entry">
+            <span class="hist-die">d20+5</span>
+            <span class="hist-label">Bandit atk</span>
+            <span class="hist-result hist-crit">20</span>
+            <span class="hist-tag crit">crit!</span>
+          </div>
+        </div>
+        <span class="callout-note" style="margin-top:8px;">Roll history: same row layout, crit/fumble tags. 8 entries (vs. player's 5) — DM rolls far more per combat turn. Fade: entries 1–2 full, 3–4 fading (45%), 5–6 very fading (22%), 7–8 hidden in DOM.</span>
+
+      </div><!-- /dice-panel-body -->
+    </div><!-- /dice-panel -->
+
+    <span class="callout-new" style="margin-top:8px;">Panel placement: bottom of the left (party) column. Party cards stay primary. Collapsed by default; state persisted as <code style="font-size:10px;">sessionStorage.dnd_dm_dice_open</code>. On mobile (&lt;900px single column), panel appears after party cards and before initiative tracker.</span>
+
+  </div><!-- /party-column -->
+
+  <!-- RIGHT: Initiative tracker (unchanged) -->
+  <div class="initiative-column">
+    <div class="init-header">
+      <span class="init-title">Initiative Order</span>
+      <button class="init-clear-btn">Clear ×</button>
+    </div>
+    <button class="next-turn-btn">▶ Next Turn</button>
+    <ul class="init-list">
+      <li class="init-entry"><span class="init-num">22</span><span class="init-name">Goblin Archer</span><span class="init-npc-tag">NPC</span><button class="init-remove-btn">×</button></li>
+      <li class="init-entry current-turn"><span class="init-num">19</span><span class="init-name">Aragorn</span><span class="current-marker">◀ Now</span><button class="init-remove-btn">×</button></li>
+      <li class="init-entry"><span class="init-num">14</span><span class="init-name">Eoghan</span><button class="init-remove-btn">×</button></li>
+      <li class="init-entry"><span class="init-num">11</span><span class="init-name">Aesop</span><button class="init-remove-btn">×</button></li>
+      <li class="init-entry"><span class="init-num">8</span><span class="init-name">Bandit Captain</span><span class="init-npc-tag">NPC</span><button class="init-remove-btn">×</button></li>
+    </ul>
+    <div class="section-label" style="margin-top:16px; margin-bottom:8px;">Add Combatant</div>
+    <div style="display:flex; gap:6px;">
+      <input style="flex:1;background:var(--surface);border:1px solid var(--border-vis);border-radius:3px;color:var(--text);font-family:var(--font-body);font-size:14px;padding:7px 10px;outline:none;" type="text" placeholder="Name…" />
+      <input style="width:50px;background:var(--surface);border:1px solid var(--border-vis);border-radius:3px;color:var(--text);font-family:var(--font-display);font-size:15px;padding:7px 6px;outline:none;text-align:center;" type="number" placeholder="Init" />
+      <button style="background:transparent;border:1px solid var(--border-vis);border-radius:3px;color:var(--accent-bright);font-family:var(--font-ui);font-size:13px;padding:7px 12px;cursor:pointer;" onclick="this.style.background='rgba(106,143,168,0.15)'">Add</button>
+    </div>
+    <span class="callout-note" style="margin-top:14px;">Initiative tracker: entirely unchanged. The dice panel is left-column only — right column is unaffected.</span>
+  </div>
+
+</div><!-- /dashboard-layout -->
+
+<!-- Deal Damage modal (pre-filled from Apply-to) -->
+<div class="modal-overlay" id="dmg-modal" onclick="if(event.target===this)closeModal()">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <span class="modal-title" id="modal-title">⚔ Deal Damage — Aragorn</span>
+      <button class="modal-close" onclick="closeModal()">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-char-context" id="modal-context">HP: 28 / 45</div>
+      <div class="modal-prefill-note">Pre-filled from dice roller — verify and confirm.</div>
+      <input class="amt-input" id="dmg-amount" type="number" min="0" max="999" value="0" />
+    </div>
+    <div class="modal-footer">
+      <button class="modal-confirm-btn" onclick="closeModal()">Apply Damage</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ═══════════════════════════════════════════════════════════
+   DM Dice Roller — prototype JS
+   Core roll engine: REUSED from dice-roller.html / DiceRoller.jsx
+   DM-only additions clearly labeled.
+═══════════════════════════════════════════════════════════ */
+
+let advMode = 'normal';
+let selectedDie = 20;
+let dieCount = 1;
+let isRolling = false;
+let repeatCount = 1;          // DM-ONLY
+let lastRollTotal = 0;        // DM-ONLY
+const MAX_HISTORY = 8;        // DM-ONLY (player = 5)
+let comboGroups = [];
+
+/* ── Panel toggle (DM-ONLY — persisted to sessionStorage in real impl) ── */
+let panelOpen = true;
+function toggleDicePanel() {
+  panelOpen = !panelOpen;
+  document.getElementById('dice-panel-body').classList.toggle('open', panelOpen);
+  document.getElementById('dice-chevron').classList.toggle('open', panelOpen);
+  document.getElementById('dice-panel-header').classList.toggle('open', panelOpen);
+}
+
+/* ── ×N repeat stepper (DM-ONLY) ── */
+function adjustRepeat(delta) {
+  repeatCount = Math.max(1, Math.min(8, repeatCount + delta));
+  document.getElementById('repeat-count').textContent = repeatCount;
+  updateRollBtnLabel();
+}
+
+/* ── Die picker (REUSED) ── */
+function selectDie(btn, sides) {
+  document.querySelectorAll('.die-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedDie = sides;
+  updateRollBtnLabel();
+}
+function adjustCount(delta) {
+  dieCount = Math.max(1, Math.min(10, dieCount + delta));
+  document.getElementById('count-num').textContent = dieCount;
+  updateRollBtnLabel();
+}
+function updateRollBtnLabel() {
+  const base = comboGroups.length > 0
+    ? comboGroups.map(g => `${g.count}d${g.sides}`).join('+') + ` + ${dieCount}d${selectedDie}`
+    : `${dieCount}d${selectedDie}`;
+  const rpt = repeatCount > 1 ? ` ×${repeatCount}` : '';
+  document.getElementById('free-roll-btn').textContent = `Roll ${base}${rpt}`;
+}
+
+/* ── Combo builder (REUSED) ── */
+function buildComboExprString(groups, flat) {
+  let parts = groups.map(g => `${g.count}d${g.sides}`);
+  if (flat) parts.push(flat > 0 ? `+${flat}` : String(flat));
+  return parts.join(' + ');
+}
+function renderPendingExpr() {
+  const flat = parseInt(document.getElementById('flat-modifier').value, 10) || 0;
+  const exprEl = document.getElementById('pending-expr');
+  const clearBtn = document.getElementById('clear-combo-btn');
+  if (comboGroups.length === 0 && flat === 0) {
+    exprEl.innerHTML = '<span class="pending-empty">Select a die and count, or type an expression below</span>';
+    clearBtn.style.display = 'none';
+    updateRollBtnLabel();
+    return;
+  }
+  clearBtn.style.display = '';
+  exprEl.innerHTML = '';
+  const allParts = comboGroups.map(g => `${g.count}d${g.sides}`);
+  if (flat !== 0) allParts.push(flat > 0 ? `+${flat}` : String(flat));
+  allParts.forEach((part, i) => {
+    const chip = document.createElement('span'); chip.className = 'pending-chip'; chip.textContent = part; exprEl.appendChild(chip);
+    if (i < allParts.length - 1) { const sep = document.createElement('span'); sep.className = 'pending-chip-sep'; sep.textContent = '+'; exprEl.appendChild(sep); }
+  });
+  updateRollBtnLabel();
+}
+function addDieToCombo() {
+  const ex = comboGroups.find(g => g.sides === selectedDie);
+  if (ex) ex.count = Math.min(ex.count + dieCount, 20);
+  else comboGroups.push({ sides: selectedDie, count: dieCount });
+  renderPendingExpr();
+}
+function clearCombo() { comboGroups = []; document.getElementById('flat-modifier').value = 0; renderPendingExpr(); updateRollBtnLabel(); }
+
+/* ── Expression parser (REUSED) ── */
+function parseExpression(str) {
+  const raw = str.replace(/\s+/g, '').toLowerCase();
+  if (!raw) return null;
+  const tokens = raw.split('+').map(t => t.trim()).filter(Boolean);
+  if (!tokens.length) return null;
+  const groups = []; let flat = 0;
+  for (const token of tokens) {
+    const m = token.match(/^(\d*)d(\d+)$/);
+    if (m) {
+      const count = m[1] === '' ? 1 : parseInt(m[1], 10);
+      const sides = parseInt(m[2], 10);
+      if (isNaN(count)||isNaN(sides)||sides<2||count<1||count>30) return null;
+      const ex = groups.find(g => g.sides === sides);
+      if (ex) ex.count += count; else groups.push({ sides, count });
+    } else { const n = parseInt(token,10); if (isNaN(n)) return null; flat += n; }
+  }
+  if (groups.length === 0 && flat === 0) return null;
+  return { groups, flat };
+}
+
+/* ── SVG shapes (REUSED) ── */
+const dieSVGShapes = {
+  4:`<polygon class="die-face" id="die-poly" points="50,8 92,84 8,84"/>`,
+  6:`<rect class="die-face" id="die-poly" x="10" y="10" width="80" height="80" rx="10"/>`,
+  8:`<polygon class="die-face" id="die-poly" points="50,8 92,50 50,92 8,50"/>`,
+  10:`<polygon class="die-face" id="die-poly" points="50,8 90,34 82,80 18,80 10,34"/>`,
+  12:`<polygon class="die-face" id="die-poly" points="50,6 66,14 80,28 80,72 66,86 50,94 34,86 20,72 20,28 34,14"/>`,
+  20:`<polygon class="die-face" id="die-poly" points="50,8 92,35 92,65 50,92 8,65 8,35"/>`,
+  100:`<circle class="die-face" id="die-poly" cx="50" cy="50" r="42"/>`
+};
+const dieSVGSmall = {
+  4:`<polygon class="die-face" points="35,8 62,57 8,57"/>`,
+  6:`<rect class="die-face" x="8" y="8" width="54" height="54" rx="8"/>`,
+  8:`<polygon class="die-face" points="35,6 62,35 35,64 8,35"/>`,
+  10:`<polygon class="die-face" points="35,6 60,22 54,58 16,58 10,22"/>`,
+  12:`<polygon class="die-face" points="35,5 46,11 56,22 56,48 46,59 35,65 24,59 14,48 14,22 24,11"/>`,
+  20:`<polygon class="die-face" points="35,6 62,24 62,46 35,64 8,46 8,24"/>`,
+  100:`<circle class="die-face" cx="35" cy="35" r="28"/>`
+};
+function setDieSVGShape(sides) {
+  const svg = document.getElementById('die-anim-svg');
+  const t = sides === 100 ? '%' : `d${sides}`;
+  svg.innerHTML = (dieSVGShapes[sides]||dieSVGShapes[20]) + `<text class="die-face-label" id="die-face-text" x="50" y="56" text-anchor="middle" font-size="11" font-weight="500" opacity="0.5">${t}</text>`;
+}
+function buildSmallDieSVG(sides) {
+  const t = sides === 100 ? '%' : `d${sides}`;
+  return `<svg class="die-anim-svg" viewBox="0 0 70 70" xmlns="http://www.w3.org/2000/svg">${dieSVGSmall[sides]||dieSVGSmall[20]}<text class="die-face-label" x="35" y="40" text-anchor="middle" font-size="10" font-weight="500" opacity="0.5">${t}</text></svg>`;
+}
+
+/* ── Core roll (REUSED) ── */
+function rollD(sides) { return Math.floor(Math.random() * sides) + 1; }
+
+/* ── DM-ONLY: damage roll detection ── */
+function isDamageRoll(groups) { return groups.length > 0 && groups.every(g => g.sides !== 20); }
+
+/* ── DM-ONLY: Apply-to row ── */
+function showApplyToRow(total) {
+  lastRollTotal = total;
+  document.getElementById('apply-to-row').classList.add('visible');
+  document.getElementById('apply-confirm').textContent = '';
+  document.getElementById('apply-callout').style.display = 'block';
+}
+function hideApplyToRow() {
+  document.getElementById('apply-to-row').classList.remove('visible');
+  document.getElementById('apply-callout').style.display = 'none';
+}
+function applyDamage(charName) {
+  document.getElementById('modal-title').textContent = `⚔ Deal Damage — ${charName}`;
+  document.getElementById('modal-context').textContent = `Rolled damage: ${lastRollTotal}`;
+  document.getElementById('dmg-amount').value = lastRollTotal;
+  document.getElementById('dmg-modal').classList.add('open');
+  document.getElementById('apply-confirm').textContent = `Damage modal opened for ${charName}…`;
+  setTimeout(() => document.getElementById('dmg-amount').focus(), 50);
+}
+function closeModal() { document.getElementById('dmg-modal').classList.remove('open'); }
+
+/* ── DM-ONLY: ×N result rows ── */
+function showMultiRollResults(results, groups) {
+  const el = document.getElementById('multi-roll-results');
+  el.innerHTML = ''; el.classList.add('visible');
+
+  results.forEach((r, i) => {
+    const row = document.createElement('div');
+    row.className = 'roll-result-row';
+    row.id = `rr-${i}`;
+
+    const lbl = document.createElement('span'); lbl.className = 'rr-label'; lbl.textContent = `Roll ${i+1}`; row.appendChild(lbl);
+    const val = document.createElement('span'); val.className = 'rr-value'; val.textContent = r.total;
+    if (r.isCrit) val.classList.add('is-crit');
+    if (r.isFumble) val.classList.add('is-fumble');
+    row.appendChild(val);
+
+    if (r.isCrit) { const t = document.createElement('span'); t.className = 'rr-tag crit'; t.textContent = '✦ crit'; row.appendChild(t); }
+    else if (r.isFumble) { const t = document.createElement('span'); t.className = 'rr-tag fumble'; t.textContent = '✕ fumble'; row.appendChild(t); }
+
+    if (r.breakdown) { const bd = document.createElement('span'); bd.className = 'rr-breakdown'; bd.textContent = r.breakdown; row.appendChild(bd); }
+
+    // Tapping a damage result selects it for Apply-to
+    if (isDamageRoll(groups)) {
+      row.title = 'Tap to select this result for Apply to…';
+      row.style.cursor = 'pointer';
+      row.addEventListener('click', () => {
+        document.querySelectorAll('.roll-result-row').forEach(rr => rr.classList.remove('selected-for-apply'));
+        row.classList.add('selected-for-apply');
+        lastRollTotal = r.total;
+        showApplyToRow(r.total);
+      });
+    }
+    el.appendChild(row);
+    setTimeout(() => row.classList.add('revealed'), 60 + i * 110);
+  });
+
+  // Auto-select first result for damage rolls
+  if (isDamageRoll(groups) && results.length > 0) {
+    setTimeout(() => {
+      const first = document.getElementById('rr-0');
+      if (first) first.classList.add('selected-for-apply');
+      showApplyToRow(results[0].total);
+    }, 80 + results.length * 110 + 150);
+  }
+}
+
+/* ── DM-ONLY: adv/dis auto-reset ── */
+function resetAdvMode() { setAdvMode('normal'); }
+
+/* ── Adv/dis (REUSED visuals) ── */
+function setAdvMode(mode) {
+  advMode = mode;
+  const map = { normal:'btn-normal', advantage:'btn-adv', disadvantage:'btn-dis' };
+  Object.keys(map).forEach(k => {
+    const b = document.getElementById(map[k]);
+    b.className = 'adv-btn';
+    if (k === mode) b.classList.add(k==='advantage'?'active-adv':k==='disadvantage'?'active-dis':'active-normal');
+  });
+}
+
+/* ── Helpers ── */
+function showSingleDieView() { document.getElementById('single-die-view').style.display=''; document.getElementById('multi-die-view').style.display='none'; }
+function showMultiDieView() { document.getElementById('single-die-view').style.display='none'; document.getElementById('multi-die-view').style.display=''; }
+
+function clearResultArea() {
+  document.getElementById('multi-roll-results').innerHTML = '';
+  document.getElementById('multi-roll-results').classList.remove('visible');
+  hideApplyToRow();
+  document.getElementById('die-result-label').className = 'die-result-label';
+  document.getElementById('die-result-label').textContent = '';
+  document.getElementById('result-breakdown').innerHTML = '';
+}
+
+/* ── Single die roll (REUSED) ── */
+function resolveRoll(sides, modifier, label, diceCount) {
+  if (isRolling) return;
+  isRolling = true;
+  showSingleDieView();
+  setDieSVGShape(sides);
+  clearResultArea();
+
+  const svg = document.getElementById('die-anim-svg');
+  const numEl = document.getElementById('die-result-num');
+  const labelEl = document.getElementById('die-result-label');
+  const breakdownEl = document.getElementById('result-breakdown');
+
+  svg.className = 'die-anim-svg rolling';
+  numEl.className = 'die-result-num'; numEl.textContent = '?';
+
+  const rolls = []; for (let i=0;i<diceCount;i++) rolls.push(rollD(sides));
+  const total = rolls.reduce((a,b)=>a+b,0) + (modifier||0);
+
+  let ci = setInterval(() => { numEl.textContent=rollD(sides); numEl.style.animation='none'; numEl.offsetHeight; numEl.style.animation='numCycle 0.08s ease-out'; }, 90);
+
+  setTimeout(() => {
+    clearInterval(ci);
+    const isCrit = sides===20 && diceCount===1 && rolls[0]===20;
+    const isFumble = sides===20 && diceCount===1 && rolls[0]===1;
+
+    svg.classList.remove('rolling');
+    svg.classList.add(isCrit?'landed-crit':isFumble?'landed-fumble':'landed-normal');
+    numEl.textContent = total; numEl.classList.add('reveal');
+    if (isCrit) numEl.classList.add('is-crit'); else if (isFumble) numEl.classList.add('is-fumble');
+
+    if (isCrit) { labelEl.textContent='✦ CRITICAL HIT ✦'; labelEl.classList.add('crit-label','visible'); }
+    else if (isFumble) { labelEl.textContent='✕ FUMBLE ✕'; labelEl.classList.add('fumble-label','visible'); }
+    else if (label) { labelEl.textContent=label; labelEl.classList.add('normal-label','visible'); }
+
+    if (rolls.length>1||modifier) {
+      rolls.forEach((r,i) => {
+        const c=document.createElement('span'); c.className='chip'; c.textContent=r; breakdownEl.appendChild(c);
+        if (i<rolls.length-1||modifier) { const p=document.createElement('span'); p.className='chip-plus'; p.textContent='+'; breakdownEl.appendChild(p); }
+      });
+      if (modifier) { const mc=document.createElement('span'); mc.className='chip'; mc.textContent=modifier>0?`+${modifier}`:modifier; breakdownEl.appendChild(mc); }
+      const eq=document.createElement('span'); eq.className='chip-plus'; eq.textContent='='; breakdownEl.appendChild(eq);
+      const tc=document.createElement('span'); tc.className='chip total'; tc.textContent=total; breakdownEl.appendChild(tc);
+    }
+    const exprLbl = diceCount>1?`${diceCount}d${sides}`:(modifier?`d${sides}${modifier>0?'+':''}${modifier}`:`d${sides}`);
+    addHistory({ dieLabel:exprLbl, label:label||'Free roll', result:total, isCrit, isFumble });
+
+    if (sides !== 20) showApplyToRow(total); // DM-ONLY
+    isRolling = false;
+    setTimeout(resetAdvMode, 300); // DM-ONLY
+  }, 1050);
+}
+
+/* ── Multi-group combo roll (REUSED) ── */
+function resolveComboRoll(groups, flat, label) {
+  if (isRolling) return;
+  if (!groups.length) return;
+  if (groups.length===1&&!flat) { resolveRoll(groups[0].sides,0,label,groups[0].count); return; }
+  if (groups.length===1&&flat) { resolveRoll(groups[0].sides,flat,label,groups[0].count); return; }
+
+  isRolling = true;
+  showMultiDieView();
+  clearResultArea();
+
+  const labelEl = document.getElementById('die-result-label');
+  const breakdownEl = document.getElementById('result-breakdown');
+  const stageEl = document.getElementById('multi-die-stage');
+  labelEl.className = 'die-result-label'; labelEl.textContent = ''; breakdownEl.innerHTML = ''; stageEl.innerHTML = '';
+
+  const groupResults = groups.map(g => { const rolls=[]; for(let i=0;i<g.count;i++) rolls.push(rollD(g.sides)); return {sides:g.sides,count:g.count,rolls,subtotal:rolls.reduce((a,b)=>a+b,0)}; });
+  const grandTotal = groupResults.reduce((s,g)=>s+g.subtotal,0) + (flat||0);
+
+  groups.forEach((g, gi) => {
+    const block=document.createElement('div'); block.className='die-group-block'; block.id=`die-group-${gi}`;
+    const lbl=document.createElement('div'); lbl.className='die-group-label'; lbl.textContent=`${g.count}d${g.sides}`; block.appendChild(lbl);
+    const canvas=document.createElement('div'); canvas.className='die-canvas small';
+    const sw=document.createElement('div'); sw.style.cssText='position:absolute;top:0;left:0;width:65px;height:65px;'; sw.innerHTML=buildSmallDieSVG(g.sides);
+    const se=sw.querySelector('svg'); se.id=`multi-svg-${gi}`;
+    const ne=document.createElement('span'); ne.className='die-result-num'; ne.id=`multi-num-${gi}`; ne.textContent='?';
+    canvas.appendChild(sw); canvas.appendChild(ne); block.appendChild(canvas); stageEl.appendChild(block);
+  });
+  if (flat) { const sep=document.createElement('span'); sep.style.cssText='font-family:var(--font-display);font-size:20px;color:var(--roller-text-muted);align-self:center;'; sep.textContent=flat>0?`+${flat}`:String(flat); stageEl.appendChild(sep); }
+
+  const STAGGER=260, SPIN=880;
+  groups.forEach((g, gi) => {
+    const se=document.getElementById(`multi-svg-${gi}`), ne=document.getElementById(`multi-num-${gi}`), block=document.getElementById(`die-group-${gi}`), result=groupResults[gi];
+    setTimeout(() => {
+      block.classList.add('revealed'); se.classList.add('rolling');
+      let ci=setInterval(()=>{ ne.textContent=rollD(g.sides); ne.style.animation='none'; ne.offsetHeight; ne.style.animation='numCycle 0.08s ease-out'; }, 90);
+      setTimeout(() => {
+        clearInterval(ci); se.classList.remove('rolling'); se.classList.add('landed-normal');
+        ne.textContent=result.subtotal; ne.classList.add('reveal');
+        if (gi===groups.length-1) {
+          setTimeout(() => {
+            showComboBreakdown(groupResults, flat, grandTotal);
+            if (label) { labelEl.textContent=label; labelEl.classList.add('normal-label','visible'); }
+            const exprLbl = groups.map(g=>`${g.count}d${g.sides}`).join('+')+(flat?(flat>0?`+${flat}`:flat):'');
+            addHistory({ dieLabel:exprLbl, label:label||'Combo', result:grandTotal, isCrit:false, isFumble:false });
+            if (isDamageRoll(groups)) showApplyToRow(grandTotal); // DM-ONLY
+            isRolling=false;
+            setTimeout(resetAdvMode,300); // DM-ONLY
+          }, 300);
+        }
+      }, SPIN);
+    }, gi*STAGGER);
+  });
+}
+
+function showComboBreakdown(groupResults, flat, grandTotal) {
+  const el = document.getElementById('result-breakdown'); el.innerHTML='';
+  groupResults.forEach((gr,i) => {
+    const gw=document.createElement('div'); gw.className='chip-group';
+    const gl=document.createElement('div'); gl.className='chip-group-label'; gl.textContent=`${gr.count}d${gr.sides}`;
+    const gv=document.createElement('div'); gv.className='chip-group-val'; gv.textContent=gr.rolls.length>1?`[${gr.rolls.join(', ')}] = ${gr.subtotal}`:`${gr.subtotal}`;
+    gw.appendChild(gl); gw.appendChild(gv); el.appendChild(gw);
+    if (i<groupResults.length-1||flat) { const p=document.createElement('span'); p.className='chip-plus'; p.style.alignSelf='center'; p.textContent='+'; el.appendChild(p); }
+  });
+  if (flat) {
+    const fw=document.createElement('div'); fw.className='chip-group';
+    const fl=document.createElement('div'); fl.className='chip-group-label'; fl.textContent='flat';
+    const fv=document.createElement('div'); fv.className='chip-group-val'; fv.textContent=flat>0?`+${flat}`:String(flat);
+    fw.appendChild(fl); fw.appendChild(fv); el.appendChild(fw);
+  }
+  const eq=document.createElement('span'); eq.className='chip-plus'; eq.style.alignSelf='center'; eq.textContent='='; el.appendChild(eq);
+  const tc=document.createElement('span'); tc.className='chip total'; tc.style.alignSelf='center'; tc.textContent=grandTotal; el.appendChild(tc);
+}
+
+/* ── Adv d20 roll (REUSED) ── */
+function resolveD20WithMode(bonus, label) {
+  if (isRolling) return;
+  isRolling = true;
+  showSingleDieView(); setDieSVGShape(20); clearResultArea();
+  const svg=document.getElementById('die-anim-svg'), numEl=document.getElementById('die-result-num'), labelEl=document.getElementById('die-result-label'), breakdownEl=document.getElementById('result-breakdown');
+  svg.className='die-anim-svg rolling'; numEl.className='die-result-num'; numEl.textContent='?';
+  const r1=rollD(20), r2=rollD(20);
+  let ci=setInterval(()=>{ numEl.textContent=rollD(20); numEl.style.animation='none'; numEl.offsetHeight; numEl.style.animation='numCycle 0.08s ease-out'; },90);
+  setTimeout(() => {
+    clearInterval(ci);
+    let kept, discarded;
+    if (advMode==='advantage') { kept=Math.max(r1,r2); discarded=Math.min(r1,r2); }
+    else if (advMode==='disadvantage') { kept=Math.min(r1,r2); discarded=Math.max(r1,r2); }
+    else { kept=r1; discarded=null; }
+    const total=kept+(bonus||0), isCrit=kept===20, isFumble=kept===1;
+    svg.classList.remove('rolling'); svg.classList.add(isCrit?'landed-crit':isFumble?'landed-fumble':'landed-normal');
+    numEl.textContent=total; numEl.classList.add('reveal');
+    if (isCrit) numEl.classList.add('is-crit'); else if (isFumble) numEl.classList.add('is-fumble');
+    if (isCrit) { labelEl.textContent='✦ CRITICAL HIT ✦'; labelEl.classList.add('crit-label','visible'); }
+    else if (isFumble) { labelEl.textContent='✕ FUMBLE ✕'; labelEl.classList.add('fumble-label','visible'); }
+    else if (label) { labelEl.textContent=label; labelEl.classList.add('normal-label','visible'); }
+    if (advMode!=='normal'&&discarded!==null) {
+      const k=document.createElement('span'); k.className='chip used'; k.textContent=kept; breakdownEl.appendChild(k);
+      const d=document.createElement('span'); d.className='chip discarded'; d.textContent=discarded; breakdownEl.appendChild(d);
+      if (bonus) { const pl=document.createElement('span'); pl.className='chip-plus'; pl.textContent='+'; breakdownEl.appendChild(pl); const mc=document.createElement('span'); mc.className='chip'; mc.textContent=bonus>0?`+${bonus}`:bonus; breakdownEl.appendChild(mc); }
+      const eq=document.createElement('span'); eq.className='chip-plus'; eq.textContent='='; breakdownEl.appendChild(eq);
+      const tc=document.createElement('span'); tc.className='chip total'; tc.textContent=total; breakdownEl.appendChild(tc);
+    } else if (bonus) {
+      const rc=document.createElement('span'); rc.className='chip used'; rc.textContent=kept; breakdownEl.appendChild(rc);
+      const pl=document.createElement('span'); pl.className='chip-plus'; pl.textContent='+'; breakdownEl.appendChild(pl);
+      const mc=document.createElement('span'); mc.className='chip'; mc.textContent=bonus>0?`+${bonus}`:bonus; breakdownEl.appendChild(mc);
+      const eq=document.createElement('span'); eq.className='chip-plus'; eq.textContent='='; breakdownEl.appendChild(eq);
+      const tc=document.createElement('span'); tc.className='chip total'; tc.textContent=total; breakdownEl.appendChild(tc);
+    }
+    const modeTag = advMode==='normal'?'':(advMode==='advantage'?' (adv)':' (dis)');
+    addHistory({ dieLabel:`d20${bonus>=0?'+':''}${bonus}`, label:label+modeTag, result:total, isCrit, isFumble });
+    isRolling=false;
+    setTimeout(resetAdvMode,300); // DM-ONLY
+  }, 1050);
+}
+
+/* ── DM-ONLY: ×N repeat roll ── */
+function resolveRepeatRoll(groups, flat, label, n) {
+  if (isRolling) return;
+  isRolling = true;
+  showSingleDieView();
+  if (groups.length===1) setDieSVGShape(groups[0].sides);
+  clearResultArea();
+
+  const svg=document.getElementById('die-anim-svg'), numEl=document.getElementById('die-result-num'), labelEl=document.getElementById('die-result-label');
+  svg.className='die-anim-svg rolling'; numEl.className='die-result-num'; numEl.textContent='?';
+
+  // Roll all N results up-front
+  const results = [];
+  for (let i=0;i<n;i++) {
+    const gRes = groups.map(g => { const rolls=[]; for(let j=0;j<g.count;j++) rolls.push(rollD(g.sides)); return {sides:g.sides,count:g.count,rolls,subtotal:rolls.reduce((a,b)=>a+b,0)}; });
+    const total = gRes.reduce((s,g)=>s+g.subtotal,0) + (flat||0);
+    const isCrit = groups.some(g=>g.sides===20) && gRes.some(g=>g.sides===20&&g.rolls.includes(20));
+    const isFumble = groups.some(g=>g.sides===20) && gRes.filter(g=>g.sides===20).every(g=>g.rolls.every(r=>r===1));
+    const breakdown = gRes.map(g=>g.rolls.length>1?`[${g.rolls.join(',')}]=${g.subtotal}`:`${g.subtotal}`).join('+')+(flat?(flat>0?`+${flat}`:flat):'');
+    results.push({ total, isCrit, isFumble, breakdown });
+  }
+
+  let ci=setInterval(()=>{ numEl.textContent=rollD(groups[0]?groups[0].sides:6); numEl.style.animation='none'; numEl.offsetHeight; numEl.style.animation='numCycle 0.08s ease-out'; },90);
+
+  setTimeout(() => {
+    clearInterval(ci);
+    svg.classList.remove('rolling'); svg.classList.add('landed-normal');
+    numEl.textContent=results[0].total; numEl.classList.add('reveal');
+    if (results[0].isCrit) { numEl.classList.add('is-crit'); labelEl.textContent='✦ CRITICAL HIT ✦'; labelEl.classList.add('crit-label','visible'); }
+    else if (results[0].isFumble) { numEl.classList.add('is-fumble'); labelEl.textContent='✕ FUMBLE ✕'; labelEl.classList.add('fumble-label','visible'); }
+    else { labelEl.textContent=`Roll 1 of ${n}`; labelEl.classList.add('normal-label','visible'); }
+
+    const exprLbl = groups.map(g=>`${g.count}d${g.sides}`).join('+')+(flat?(flat>0?`+${flat}`:flat):'');
+    addHistory({ dieLabel:exprLbl, label:`${label} ×${n}`, result:results[0].total, isCrit:results[0].isCrit, isFumble:results[0].isFumble });
+    showMultiRollResults(results, groups);
+
+    isRolling=false;
+    setTimeout(resetAdvMode,300); // DM-ONLY
+  }, 1050);
+}
+
+/* ── Free roll button ── */
+function rollFree() {
+  const flat = parseInt(document.getElementById('flat-modifier').value,10)||0;
+  const groups = comboGroups.length>0 ? comboGroups : [{ sides:selectedDie, count:dieCount }];
+  const label = groups.map(g=>`${g.count}d${g.sides}`).join('+')+(flat?(flat>0?`+${flat}`:flat):'');
+
+  if (repeatCount > 1) { // DM-ONLY path
+    resolveRepeatRoll(groups, flat, label, repeatCount);
+  } else if (comboGroups.length > 0) {
+    resolveComboRoll(comboGroups, flat, label);
+    clearCombo();
+  } else if (dieCount===1 && !flat && selectedDie===20) {
+    resolveD20WithMode(0, `Free d20`);
+  } else {
+    resolveComboRoll(groups, flat, label);
+  }
+}
+
+/* ── Expression roll ── */
+function rollExpression() {
+  const raw = document.getElementById('expr-input').value.trim();
+  const errEl = document.getElementById('expr-error');
+  errEl.textContent = '';
+  if (!raw) { errEl.textContent='Enter an expression, e.g. 2d6+3'; return; }
+  const parsed = parseExpression(raw);
+  if (!parsed) { errEl.textContent='Could not parse — use NdX terms, e.g. 2d6+1d4+3'; return; }
+  if (!parsed.groups.length) { errEl.textContent='Need dice terms to roll'; return; }
+
+  const label = raw;
+  if (repeatCount > 1) { // DM-ONLY path
+    resolveRepeatRoll(parsed.groups, parsed.flat, label, repeatCount);
+  } else {
+    resolveComboRoll(parsed.groups, parsed.flat, `Expr: ${raw}`);
+  }
+}
+
+/* ── History (REUSED pattern, DM-ONLY 8-entry cap) ── */
+function addHistory(entry) {
+  const list = document.getElementById('history-list');
+  const el = document.createElement('div');
+  el.className = 'history-entry';
+  el.innerHTML = `
+    <span class="hist-die">${entry.dieLabel}</span>
+    <span class="hist-label">${entry.label}</span>
+    <span class="hist-result${entry.isCrit?' hist-crit':entry.isFumble?' hist-fumble':''}">${entry.result}</span>
+    ${entry.isCrit?'<span class="hist-tag crit">crit!</span>':''}
+    ${entry.isFumble?'<span class="hist-tag fumble">fumble</span>':''}
+  `;
+  list.insertBefore(el, list.firstChild);
+  [...list.querySelectorAll('.history-entry')].forEach((e,i) => {
+    e.classList.remove('fading','very-fading','hidden-hist');
+    if (i===2||i===3) e.classList.add('fading');
+    else if (i===4||i===5) e.classList.add('very-fading');
+    else if (i>=6) e.classList.add('hidden-hist');
+  });
+  while (list.children.length > MAX_HISTORY) list.removeChild(list.lastChild);
+}
+
+document.addEventListener('keydown', e => { if (e.key==='Escape') closeModal(); });
+</script>
+</body>
+</html>

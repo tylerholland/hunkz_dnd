@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DM Dashboard — Session View</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Ocean palette (dashboard chrome) ── */
+    :root {
+      --bg: #0d0f14;
+      --surface: rgba(18,32,48,0.6);
+      --surface-solid: #111e2c;
+      --border: rgba(100,130,160,0.18);
+      --border-vis: rgba(100,130,160,0.32);
+      --accent: #6a8fa8;
+      --accent-bright: #a0c0d0;
+      --accent-dim: #1e3a4e;
+      --text: #c8bfaf;
+      --text-body: #b0a898;
+      --text-muted: #3a5a6a;
+      --glow1: rgba(20,45,80,0.4);
+      --glow2: rgba(15,35,60,0.3);
+      --gem: #8ab4c8;
+      --font-display: 'Cinzel', Georgia, serif;
+      --font-body: 'Crimson Text', Georgia, serif;
+      --font-ui: 'IM Fell English', Georgia, serif;
+
+      /* Character palettes — accent and gem values */
+      --ember-accent: #a06840;
+      --ember-bright: #c89060;
+      --ember-gem: #c8904c;
+      --ember-border: rgba(160,104,64,0.35);
+      --ember-surface: rgba(40,22,12,0.6);
+
+      --ocean-accent: #6a8fa8;
+      --ocean-bright: #a0c0d0;
+      --ocean-gem: #8ab4c8;
+      --ocean-border: rgba(100,130,160,0.35);
+      --ocean-surface: rgba(18,32,48,0.6);
+
+      --forest-accent: #5a8a60;
+      --forest-bright: #88b888;
+      --forest-gem: #78b878;
+      --forest-border: rgba(90,138,96,0.35);
+      --forest-surface: rgba(14,26,18,0.6);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Callout notes ── */
+    .callout-note {
+      background: rgba(30,80,30,0.85);
+      border: 1px solid rgba(80,160,80,0.5);
+      border-radius: 4px;
+      color: #88cc88;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px 0;
+      display: block;
+    }
+    .callout-note::before { content: "↳ "; opacity: 0.7; }
+
+    /* NEW: improvement callout variant */
+    .callout-new {
+      background: rgba(20,50,80,0.9);
+      border: 1px solid rgba(80,140,200,0.5);
+      border-radius: 4px;
+      color: #80c8f0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px 0;
+      display: block;
+    }
+    .callout-new::before { content: "★ NEW: "; opacity: 0.8; color: #a0d8f0; }
+
+    /* ── Annotation banner ── */
+    .annotation-bar {
+      background: rgba(10,30,10,0.92);
+      border-bottom: 1px solid rgba(60,120,60,0.4);
+      padding: 11px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+    }
+    .annotation-bar p {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      color: #77bb77;
+      letter-spacing: 0.04em;
+    }
+    .annotation-bar strong { color: #aaddaa; }
+
+    /* ── Dashboard top bar ── */
+    .topbar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 14px 24px;
+      border-bottom: 1px solid var(--border-vis);
+      position: sticky;
+      top: 37px;
+      z-index: 100;
+      background: rgba(13,15,20,0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    .topbar-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      color: var(--accent-bright);
+    }
+    .topbar-subtitle {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .topbar-spacer { flex: 1; }
+    .topbar-btn {
+      background: rgba(18,32,48,0.5);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      padding: 7px 16px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .topbar-btn:hover { background: rgba(106,143,168,0.25); }
+    .topbar-btn.secondary {
+      background: transparent;
+      border-color: var(--border-vis);
+      color: var(--text-muted);
+    }
+    .topbar-btn.secondary:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+    /* ── Dashboard layout ── */
+    .dashboard-layout {
+      display: grid;
+      grid-template-columns: 1fr 300px;
+      gap: 0;
+      max-width: 1280px;
+      margin: 0 auto;
+      padding: 24px;
+      align-items: start;
+    }
+    @media (max-width: 900px) {
+      .dashboard-layout {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* ── Left column: party cards ── */
+    .party-column {
+      padding-right: 20px;
+    }
+    @media (max-width: 900px) {
+      .party-column { padding-right: 0; }
+    }
+
+    .section-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    /* ── Character card ── */
+    .char-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      margin-bottom: 12px;
+      overflow: visible;
+      position: relative;
+      transition: border-color 0.15s;
+    }
+    .char-card:hover { border-color: var(--accent); }
+
+    /* Palette accent stripe on left */
+    .char-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 3px;
+      border-radius: 6px 0 0 6px;
+    }
+    .char-card.ember::before { background: var(--ember-accent); }
+    .char-card.ocean::before { background: var(--ocean-accent); }
+    .char-card.forest::before { background: var(--forest-accent); }
+
+    .card-main {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 14px;
+      padding: 14px 14px 10px 18px;
+      align-items: start;
+    }
+
+    /* Portrait */
+    .portrait {
+      width: 52px;
+      height: 52px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 20px;
+      flex-shrink: 0;
+      border: 2px solid;
+    }
+    .portrait.ember {
+      background: var(--ember-surface);
+      border-color: var(--ember-accent);
+      color: var(--ember-gem);
+    }
+    .portrait.ocean {
+      background: var(--ocean-surface);
+      border-color: var(--ocean-accent);
+      color: var(--ocean-gem);
+    }
+    .portrait.forest {
+      background: var(--forest-surface);
+      border-color: var(--forest-accent);
+      color: var(--forest-gem);
+    }
+
+    /* Card info */
+    .card-info {}
+    .card-name {
+      font-family: var(--font-display);
+      font-size: 17px;
+      letter-spacing: 0.06em;
+      margin-bottom: 3px;
+    }
+    .card-name.ember { color: var(--ember-bright); }
+    .card-name.ocean { color: var(--ocean-bright); }
+    .card-name.forest { color: var(--forest-bright); }
+
+    .card-meta {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    /* HP display within card */
+    .hp-inline {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+    .hp-nums {
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+    }
+    .hp-cur {
+      font-family: var(--font-display);
+      font-size: 22px;
+      line-height: 1;
+    }
+    .hp-cur.ember { color: var(--ember-gem); }
+    .hp-cur.ocean { color: var(--ocean-gem); }
+    .hp-cur.forest { color: var(--forest-gem); }
+    .hp-cur.danger { color: #c06060; }
+    .hp-sep-sm {
+      font-family: var(--font-display);
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .hp-max-sm {
+      font-family: var(--font-display);
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+    .temp-badge-sm {
+      background: rgba(100,160,200,0.15);
+      border: 1px solid rgba(100,160,200,0.35);
+      border-radius: 8px;
+      padding: 1px 7px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      color: #8ab4c8;
+    }
+
+    /* ─────────────────────────────────────────────
+       IMPROVEMENT 1: Inline HP stepper
+       Strip of − / HP bar / + directly on the card.
+       Always visible, no menu needed.
+    ───────────────────────────────────────────── */
+    .hp-stepper-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 8px;
+    }
+    .hp-step-btn {
+      width: 26px;
+      height: 16px;
+      border-radius: 3px;
+      border: 1px solid var(--border-vis);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      font-size: 14px;
+      line-height: 1;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      padding: 0;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      user-select: none;
+    }
+    .hp-step-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-bright);
+      background: rgba(106,143,168,0.14);
+    }
+    .hp-step-btn:active {
+      background: rgba(106,143,168,0.28);
+    }
+    /* Danger cards get red minus button */
+    .char-card.danger-border .hp-step-btn.minus:hover {
+      border-color: rgba(192,96,96,0.6);
+      color: #c06060;
+      background: rgba(192,96,96,0.12);
+    }
+
+    .hp-bar-wrap {
+      flex: 1;
+      padding: 0 5px;
+      position: relative;
+      cursor: default;
+    }
+    .hp-bar-track {
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .hp-bar-track.ember { background: rgba(58,34,16,0.8); }
+    .hp-bar-track.ocean { background: rgba(24,42,58,0.8); }
+    .hp-bar-track.forest { background: rgba(18,38,22,0.8); }
+    .hp-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+    .hp-bar-fill.ember-healthy {
+      background: linear-gradient(90deg, var(--ember-accent) 0%, var(--ember-bright) 100%);
+      width: 62%;
+    }
+    .hp-bar-fill.ocean-warning {
+      background: linear-gradient(90deg, #a06020 0%, #d08030 100%);
+      width: 30%;
+    }
+    .hp-bar-fill.forest-healthy {
+      background: linear-gradient(90deg, var(--forest-accent) 0%, var(--forest-bright) 100%);
+      width: 75%;
+    }
+
+    /* ─────────────────────────────────────────────
+       IMPROVEMENT 3: Inline quick-action buttons
+       Damage and Heal visible directly below HP bar.
+       One tap reaches the action — no popover needed
+       for the two most common cases.
+       Full menu "⋯" still opens the popover for
+       the less-common actions.
+    ───────────────────────────────────────────── */
+    .card-quick-actions {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 6px 0 4px;
+      border-top: 1px solid var(--border);
+    }
+    .cqa-btn {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 5px 0;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 5px;
+    }
+    .cqa-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-bright);
+      background: rgba(106,143,168,0.1);
+    }
+    .cqa-btn.dmg:hover {
+      border-color: rgba(192,96,96,0.5);
+      color: #d08080;
+      background: rgba(192,96,96,0.08);
+    }
+    .cqa-btn.heal:hover {
+      border-color: rgba(80,160,80,0.5);
+      color: #88c888;
+      background: rgba(80,160,80,0.08);
+    }
+    /* The "⋯" overflow button — less prominent */
+    .cqa-btn.more {
+      flex: 0 0 30px;
+      font-size: 14px;
+      letter-spacing: 0;
+      color: var(--text-muted);
+    }
+    .cqa-btn.more:hover {
+      border-color: var(--accent);
+      color: var(--accent-bright);
+      background: rgba(106,143,168,0.1);
+    }
+
+    /* Condition chips on card */
+    .card-conditions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      padding-top: 2px;
+      padding-bottom: 4px;
+    }
+    .card-cond {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      padding: 2px 8px;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: filter 0.12s;
+    }
+    .card-cond:hover { filter: brightness(1.2); }
+    .card-cond.poisoned {
+      background: rgba(80,160,80,0.15);
+      border: 1px solid rgba(80,160,80,0.4);
+      color: #88c888;
+    }
+    .card-cond.prone {
+      background: rgba(200,144,64,0.14);
+      border: 1px solid rgba(200,144,64,0.38);
+      color: var(--ember-bright);
+    }
+
+    /* Concentration indicator */
+    .conc-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      color: var(--accent-bright);
+    }
+    .conc-dot-sm {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-bright);
+      box-shadow: 0 0 5px var(--accent-bright);
+      flex-shrink: 0;
+      animation: pulseDot 2.5s ease-in-out infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.4; }
+    }
+
+    /* Inspiration indicator */
+    .insp-indicator {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--ember-gem);
+      box-shadow: 0 0 6px rgba(200,144,76,0.6);
+      flex-shrink: 0;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: 3px;
+    }
+
+    /* Card right column: AC + action btn */
+    .card-right {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 8px;
+    }
+    .ac-badge {
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 4px;
+      padding: 5px 10px;
+      text-align: center;
+      min-width: 46px;
+    }
+    .ac-num {
+      font-family: var(--font-display);
+      font-size: 20px;
+      line-height: 1;
+      color: var(--gem);
+    }
+    .ac-lbl {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* Sheet link */
+    .card-sheet-link {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-decoration: none;
+      padding: 3px 0;
+      transition: color 0.15s;
+      white-space: nowrap;
+    }
+    .card-sheet-link:hover { color: var(--accent-bright); }
+
+    /* ─────────────────────────────────────────────
+       ACTION MODALS (Deal Damage / Heal)
+       Appear as centered overlays. Contain both
+       a stepper and a direct type-in input so the
+       DM can use whichever is faster.
+    ───────────────────────────────────────────── */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.72);
+      z-index: 400;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.open {
+      display: flex;
+    }
+    .modal-panel {
+      background: var(--surface-solid);
+      border: 1px solid var(--border-vis);
+      border-radius: 6px;
+      width: 320px;
+      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 14px 18px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      letter-spacing: 0.1em;
+      color: var(--accent-bright);
+    }
+    .modal-title.dmg { color: #d08080; }
+    .modal-title.heal { color: #88c888; }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 18px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 0;
+      transition: color 0.12s;
+    }
+    .modal-close:hover { color: var(--text); }
+    .modal-body {
+      padding: 18px 18px 6px;
+    }
+    .modal-char-context {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 14px;
+    }
+
+    /* ─────────────────────────────────────────────
+       IMPROVEMENT 2: Stepper + type-in in the modal
+       The DM can tap +/− to build the value OR type
+       directly. Long-press on ± increments by 5
+       (shown in prototype via separate ±5 buttons).
+    ───────────────────────────────────────────── */
+    .amount-stepper-row {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      margin-bottom: 12px;
+    }
+    .amt-step-btn {
+      width: 40px;
+      height: 52px;
+      border: 1px solid var(--border-vis);
+      background: rgba(18,32,48,0.4);
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      font-size: 20px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      user-select: none;
+      flex-shrink: 0;
+    }
+    .amt-step-btn:first-child {
+      border-radius: 3px 0 0 3px;
+    }
+    .amt-step-btn:last-child {
+      border-radius: 0 3px 3px 0;
+    }
+    .amt-step-btn:hover {
+      background: rgba(106,143,168,0.18);
+      border-color: var(--accent);
+      color: var(--accent-bright);
+    }
+    .amt-step-btn:active {
+      background: rgba(106,143,168,0.32);
+    }
+    #dmg-modal .amt-step-btn:hover {
+      background: rgba(192,96,96,0.14);
+      border-color: rgba(192,96,96,0.5);
+      color: #d08080;
+    }
+    #heal-modal .amt-step-btn:hover {
+      background: rgba(80,160,80,0.12);
+      border-color: rgba(80,160,80,0.45);
+      color: #88c888;
+    }
+
+    .amt-input {
+      flex: 1;
+      border: 1px solid var(--border-vis);
+      border-left: none;
+      border-right: none;
+      border-radius: 0;
+      background: var(--surface);
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 30px;
+      text-align: center;
+      height: 52px;
+      outline: none;
+      min-width: 0;
+      -moz-appearance: textfield;
+    }
+    .amt-input::-webkit-outer-spin-button,
+    .amt-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .amt-input:focus {
+      border-color: var(--accent);
+      background: rgba(18,32,48,0.8);
+    }
+    #dmg-modal .amt-input:focus { border-color: rgba(192,96,96,0.5); }
+    #heal-modal .amt-input:focus { border-color: rgba(80,160,80,0.45); }
+
+    /* Jump buttons: +5 / +10 preset values */
+    .preset-row {
+      display: flex;
+      gap: 5px;
+      margin-bottom: 16px;
+    }
+    .preset-btn {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      padding: 5px 0;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      text-align: center;
+    }
+    .preset-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-bright);
+      background: rgba(106,143,168,0.1);
+    }
+    #dmg-modal .preset-btn:hover {
+      border-color: rgba(192,96,96,0.45);
+      color: #d08080;
+      background: rgba(192,96,96,0.08);
+    }
+    #heal-modal .preset-btn:hover {
+      border-color: rgba(80,160,80,0.4);
+      color: #88c888;
+      background: rgba(80,160,80,0.07);
+    }
+
+    .modal-confirm-btn {
+      width: 100%;
+      background: rgba(18,32,48,0.6);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 11px 0;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 10px;
+    }
+    .modal-confirm-btn:hover { background: rgba(106,143,168,0.2); }
+    .modal-confirm-btn.dmg {
+      border-color: rgba(192,96,96,0.55);
+      color: #d08080;
+    }
+    .modal-confirm-btn.dmg:hover { background: rgba(192,96,96,0.14); }
+    .modal-confirm-btn.heal {
+      border-color: rgba(80,160,80,0.5);
+      color: #88c888;
+    }
+    .modal-confirm-btn.heal:hover { background: rgba(80,160,80,0.1); }
+
+    .modal-footer {
+      padding: 0 18px 14px;
+    }
+
+    /* ── Quick-action popover (full menu) ── */
+    .popover-wrap {
+      position: relative;
+    }
+    .quick-popover {
+      display: none;
+      position: absolute;
+      right: 0;
+      top: 34px;
+      z-index: 200;
+      background: var(--surface-solid);
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      min-width: 210px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+      overflow: hidden;
+    }
+    .quick-popover.open { display: block; }
+
+    .popover-header {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 9px 14px 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    .popover-action {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      color: var(--text);
+      cursor: pointer;
+      border-bottom: 1px solid var(--border);
+      transition: background 0.12s;
+    }
+    .popover-action:last-child { border-bottom: none; }
+    .popover-action:hover { background: rgba(106,143,168,0.12); }
+    .popover-action .pa-icon {
+      width: 18px;
+      text-align: center;
+      color: var(--accent-bright);
+      font-size: 15px;
+    }
+    .popover-action.destructive { color: #c06060; }
+    .popover-action.destructive .pa-icon { color: #c06060; }
+
+    /* ── Right column: initiative tracker ── */
+    .initiative-column {
+      border-left: 1px solid var(--border);
+      padding-left: 20px;
+    }
+    @media (max-width: 900px) {
+      .initiative-column {
+        border-left: none;
+        border-top: 1px solid var(--border);
+        padding-left: 0;
+        padding-top: 20px;
+        margin-top: 20px;
+      }
+    }
+
+    .init-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+    .init-title {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .init-clear-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      padding: 3px 0;
+      transition: color 0.15s;
+    }
+    .init-clear-btn:hover { color: #c06060; }
+
+    .init-list {
+      list-style: none;
+      margin-bottom: 14px;
+    }
+    .init-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 4px;
+      margin-bottom: 3px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      transition: border-color 0.15s;
+    }
+    .init-entry.current-turn {
+      border-color: var(--accent);
+      background: rgba(106,143,168,0.12);
+    }
+    .init-num {
+      font-family: var(--font-display);
+      font-size: 18px;
+      color: var(--gem);
+      width: 28px;
+      text-align: center;
+      flex-shrink: 0;
+    }
+    .init-entry.current-turn .init-num { color: var(--accent-bright); }
+    .init-name {
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--text);
+      flex: 1;
+    }
+    .init-entry.current-turn .init-name { color: var(--accent-bright); font-weight: 600; }
+    .init-npc-tag {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: rgba(100,130,160,0.1);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 1px 6px;
+    }
+    .current-marker {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--accent-bright);
+      white-space: nowrap;
+    }
+    .init-remove-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+      transition: color 0.12s, background 0.12s;
+      line-height: 1;
+    }
+    .init-remove-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+
+    .next-turn-btn {
+      background: rgba(18,32,48,0.5);
+      border: 1px solid var(--accent);
+      border-radius: 4px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      padding: 9px 0;
+      width: 100%;
+      cursor: pointer;
+      margin-bottom: 10px;
+      transition: background 0.15s;
+    }
+    .next-turn-btn:hover { background: rgba(106,143,168,0.22); }
+
+    /* Add combatant */
+    .add-combatant {
+      display: flex;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .init-input {
+      flex: 1;
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      padding: 7px 10px;
+      outline: none;
+    }
+    .init-num-input {
+      width: 50px;
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 15px;
+      padding: 7px 6px;
+      outline: none;
+      text-align: center;
+    }
+    .init-add-btn {
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      padding: 7px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .init-add-btn:hover { border-color: var(--accent); background: rgba(106,143,168,0.15); }
+
+    /* ── Danger highlight ── */
+    .danger-border {
+      border-color: rgba(192,96,96,0.45) !important;
+    }
+    .danger-border::before {
+      background: #c06060 !important;
+    }
+
+    /* ── Party-wide rest row ── */
+    .rest-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 6px;
+    }
+    .rest-party-btn {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 8px 0;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .rest-party-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+    /* ── HP delta feedback ── */
+    @keyframes hpDelta {
+      0%   { opacity: 1; transform: translateY(0); }
+      70%  { opacity: 1; transform: translateY(-16px); }
+      100% { opacity: 0; transform: translateY(-22px); }
+    }
+    .hp-delta {
+      position: absolute;
+      right: 5px;
+      top: -4px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      pointer-events: none;
+      animation: hpDelta 0.7s ease-out forwards;
+    }
+    .hp-delta.neg { color: #d08080; }
+    .hp-delta.pos { color: #88c888; }
+  </style>
+</head>
+<body>
+
+<!-- Annotation banner -->
+<div class="annotation-bar">
+  <p><strong>Prototype: DM Dashboard v2</strong> — Three improvements: <strong>(1)</strong> Inline HP steppers on each card &nbsp;·&nbsp; <strong>(2)</strong> Stepper + type-in in the Deal Damage / Heal modals &nbsp;·&nbsp; <strong>(3)</strong> Damage and Heal buttons always visible on card; full menu via ⋯. Click the buttons to see interactions.</p>
+</div>
+
+<!-- Top bar -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">DM Dashboard</div>
+    <div class="topbar-subtitle">Session in progress · 3 players</div>
+  </div>
+  <div class="topbar-spacer"></div>
+
+  <span class="callout-note" style="margin:0 12px 0 0;">Party-wide rest controls in toolbar — apply long/short rest to all characters at once</span>
+
+  <button class="topbar-btn secondary">◑ Short Rest</button>
+  <button class="topbar-btn">⏾ Long Rest</button>
+</div>
+
+<!-- Dashboard layout -->
+<div class="dashboard-layout">
+
+  <!-- LEFT: Party cards -->
+  <div class="party-column">
+
+    <div class="section-label">Party</div>
+
+    <span class="callout-note">Each card uses its character's palette for the accent stripe, portrait border, name color, and HP bar — providing instant visual identification. Dashboard chrome stays neutral Ocean palette.</span>
+
+    <!-- ══ Card 1: Aragorn (ember, ~62% HP, concentrating, inspiration) ══ -->
+    <div class="char-card ember" id="card-aragorn">
+      <div class="card-main">
+
+        <div class="portrait ember">A</div>
+
+        <div class="card-info" style="min-width:0;">
+          <div class="card-name ember">Aragorn</div>
+          <div class="card-meta">Human · Ranger · Lvl 8</div>
+
+          <!-- HP numbers row -->
+          <div class="hp-inline">
+            <div class="hp-nums">
+              <span class="hp-cur ember" id="aragorn-hp">28</span>
+              <span class="hp-sep-sm">/</span>
+              <span class="hp-max-sm">45</span>
+            </div>
+            <span class="temp-badge-sm">+8 temp</span>
+          </div>
+
+          <!-- IMPROVEMENT 1: Inline HP stepper bar -->
+          <div class="hp-stepper-row" style="position:relative;">
+            <button class="hp-step-btn minus" onclick="stepHP('aragorn', -1)" title="Deal 1 damage (hold for −5)">−</button>
+            <div class="hp-bar-wrap">
+              <div class="hp-bar-track ember">
+                <div class="hp-bar-fill ember-healthy" id="aragorn-bar"></div>
+              </div>
+            </div>
+            <button class="hp-step-btn plus" onclick="stepHP('aragorn', 1)" title="Heal 1 HP (hold for +5)">+</button>
+          </div>
+
+          <!-- Conditions + indicators -->
+          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:2px;">
+            <div class="conc-indicator">
+              <div class="conc-dot-sm"></div>
+              Fly
+            </div>
+            <div style="display:flex; align-items:center; gap:4px; font-family:var(--font-ui); font-size:10px; letter-spacing:0.1em; color:var(--ember-gem);">
+              <div class="insp-indicator"></div>
+              Inspired
+            </div>
+          </div>
+
+          <!-- IMPROVEMENT 3: Inline quick-action buttons -->
+          <div class="card-quick-actions">
+            <button class="cqa-btn dmg" onclick="openModal('dmg','Aragorn')">⚔ Damage</button>
+            <button class="cqa-btn heal" onclick="openModal('heal','Aragorn')">✦ Heal</button>
+            <button class="cqa-btn more popover-wrap" onclick="togglePopover('popover-aragorn', this)" title="More actions">⋯
+              <div class="quick-popover" id="popover-aragorn">
+                <div class="popover-header">Aragorn — More Actions</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">◈</span> Add Condition</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⬡</span> Set Temp HP</div>
+                <div class="popover-action destructive" onclick="closeAllPopovers()"><span class="pa-icon">○</span> Drop Concentration</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: AC + sheet link -->
+        <div class="card-right">
+          <div class="ac-badge">
+            <div class="ac-num">16</div>
+            <div class="ac-lbl">AC</div>
+          </div>
+          <a href="#" class="card-sheet-link">↗ Sheet</a>
+        </div>
+
+      </div>
+    </div>
+
+    <span class="callout-new">Improvement 1: The − / + buttons flank the HP bar directly on the card. One tap adjusts by 1; hold for 5 (simulated here as single taps). No menu needed for quick damage/heal tweaks.</span>
+    <span class="callout-new">Improvement 3: "Damage" and "Heal" buttons are always visible below the HP bar. Tapping them opens the amount modal. "⋯" opens a smaller popover for the less-common actions (Add Condition, Temp HP, Drop Concentration).</span>
+
+    <!-- ══ Card 2: Eoghan (ocean, ~30% HP — danger) ══ -->
+    <div class="char-card ocean danger-border" id="card-eoghan">
+      <div class="card-main">
+
+        <div class="portrait ocean">E</div>
+
+        <div class="card-info" style="min-width:0;">
+          <div class="card-name ocean">Eoghan</div>
+          <div class="card-meta">Half-Elf · Cleric · Lvl 8</div>
+
+          <!-- HP numbers row — danger -->
+          <div class="hp-inline">
+            <div class="hp-nums">
+              <span class="hp-cur danger" id="eoghan-hp">13</span>
+              <span class="hp-sep-sm">/</span>
+              <span class="hp-max-sm">44</span>
+            </div>
+          </div>
+
+          <!-- IMPROVEMENT 1: Inline HP stepper bar -->
+          <div class="hp-stepper-row" style="position:relative;">
+            <button class="hp-step-btn minus" onclick="stepHP('eoghan', -1)" title="Deal 1 damage">−</button>
+            <div class="hp-bar-wrap">
+              <div class="hp-bar-track ocean">
+                <div class="hp-bar-fill ocean-warning" id="eoghan-bar"></div>
+              </div>
+            </div>
+            <button class="hp-step-btn plus" onclick="stepHP('eoghan', 1)" title="Heal 1 HP">+</button>
+          </div>
+
+          <div class="card-conditions">
+            <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.14em; color:var(--text-muted);">No conditions</span>
+          </div>
+
+          <!-- IMPROVEMENT 3: Inline quick-action buttons -->
+          <div class="card-quick-actions">
+            <button class="cqa-btn dmg" onclick="openModal('dmg','Eoghan')">⚔ Damage</button>
+            <button class="cqa-btn heal" onclick="openModal('heal','Eoghan')">✦ Heal</button>
+            <button class="cqa-btn more popover-wrap" onclick="togglePopover('popover-eoghan', this)" title="More actions">⋯
+              <div class="quick-popover" id="popover-eoghan">
+                <div class="popover-header">Eoghan — More Actions</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">◈</span> Add Condition</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⬡</span> Set Temp HP</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⏾</span> Short Rest</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">☾</span> Long Rest</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <!-- Right: AC + sheet link -->
+        <div class="card-right">
+          <div class="ac-badge">
+            <div class="ac-num">14</div>
+            <div class="ac-lbl">AC</div>
+          </div>
+          <a href="#" class="card-sheet-link">↗ Sheet</a>
+        </div>
+
+      </div>
+    </div>
+
+    <span class="callout-note">Eoghan at 30% HP — card border turns danger red, HP bar shifts to amber, HP number in #c06060. The inline Damage / Heal buttons are still visible and tappable even in danger state.</span>
+
+    <!-- ══ Card 3: Aesop (forest, ~75% HP, Poisoned condition) ══ -->
+    <div class="char-card forest" id="card-aesop">
+      <div class="card-main">
+
+        <div class="portrait forest">Æ</div>
+
+        <div class="card-info" style="min-width:0;">
+          <div class="card-name forest">Aesop</div>
+          <div class="card-meta">Gnome · Wizard · Lvl 8</div>
+
+          <!-- HP numbers row -->
+          <div class="hp-inline">
+            <div class="hp-nums">
+              <span class="hp-cur forest" id="aesop-hp">33</span>
+              <span class="hp-sep-sm">/</span>
+              <span class="hp-max-sm">44</span>
+            </div>
+          </div>
+
+          <!-- IMPROVEMENT 1: Inline HP stepper bar -->
+          <div class="hp-stepper-row" style="position:relative;">
+            <button class="hp-step-btn minus" onclick="stepHP('aesop', -1)" title="Deal 1 damage">−</button>
+            <div class="hp-bar-wrap">
+              <div class="hp-bar-track forest">
+                <div class="hp-bar-fill forest-healthy" id="aesop-bar"></div>
+              </div>
+            </div>
+            <button class="hp-step-btn plus" onclick="stepHP('aesop', 1)" title="Heal 1 HP">+</button>
+          </div>
+
+          <div class="card-conditions">
+            <span class="card-cond poisoned" onclick="this.remove()">Poisoned ×</span>
+          </div>
+
+          <!-- IMPROVEMENT 3: Inline quick-action buttons -->
+          <div class="card-quick-actions">
+            <button class="cqa-btn dmg" onclick="openModal('dmg','Aesop')">⚔ Damage</button>
+            <button class="cqa-btn heal" onclick="openModal('heal','Aesop')">✦ Heal</button>
+            <button class="cqa-btn more popover-wrap" onclick="togglePopover('popover-aesop', this)" title="More actions">⋯
+              <div class="quick-popover" id="popover-aesop">
+                <div class="popover-header">Aesop — More Actions</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">◈</span> Add Condition</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⬡</span> Set Temp HP</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⏾</span> Short Rest</div>
+                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">☾</span> Long Rest</div>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div class="card-right">
+          <div class="ac-badge">
+            <div class="ac-num">13</div>
+            <div class="ac-lbl">AC</div>
+          </div>
+          <a href="#" class="card-sheet-link">↗ Sheet</a>
+        </div>
+
+      </div>
+    </div>
+
+    <span class="callout-note">Condition chip directly tappable — clicking Poisoned × removes the condition inline. Forest palette stripe immediately distinguishes Aesop from the other two cards above.</span>
+
+    <!-- Party-wide rest -->
+    <div style="margin-top:16px;">
+      <div class="section-label">Party-Wide Actions</div>
+      <div class="rest-row">
+        <button class="rest-party-btn">◑ Short Rest — Reset Pact Magic</button>
+        <button class="rest-party-btn">⏾ Long Rest — Reset All Slots + HP</button>
+      </div>
+    </div>
+    <span class="callout-note">Party-wide rest buttons also appear in the top toolbar for quicker access on desktop. Both trigger a confirmation dialog listing exactly what will reset before applying.</span>
+
+  </div><!-- /party-column -->
+
+  <!-- RIGHT: Initiative tracker -->
+  <div class="initiative-column">
+
+    <div class="init-header">
+      <span class="init-title">Initiative Order</span>
+      <button class="init-clear-btn">Clear ×</button>
+    </div>
+
+    <span class="callout-note">Initiative sorted highest-first. Current turn highlighted in Ocean accent. "Next Turn" advances the marker.</span>
+
+    <button class="next-turn-btn">▶ Next Turn</button>
+
+    <ul class="init-list">
+      <li class="init-entry">
+        <span class="init-num">22</span>
+        <span class="init-name">Goblin Archer</span>
+        <span class="init-npc-tag">NPC</span>
+        <button class="init-remove-btn" title="Remove">×</button>
+      </li>
+      <li class="init-entry current-turn">
+        <span class="init-num">19</span>
+        <span class="init-name">Aragorn</span>
+        <span class="current-marker">◀ Now</span>
+        <button class="init-remove-btn" title="Remove">×</button>
+      </li>
+      <li class="init-entry">
+        <span class="init-num">14</span>
+        <span class="init-name">Eoghan</span>
+        <button class="init-remove-btn" title="Remove">×</button>
+      </li>
+      <li class="init-entry">
+        <span class="init-num">11</span>
+        <span class="init-name">Aesop</span>
+        <button class="init-remove-btn" title="Remove">×</button>
+      </li>
+      <li class="init-entry">
+        <span class="init-num">8</span>
+        <span class="init-name">Bandit Captain</span>
+        <span class="init-npc-tag">NPC</span>
+        <button class="init-remove-btn" title="Remove">×</button>
+      </li>
+    </ul>
+
+    <div class="section-label" style="margin-top:16px; margin-bottom:8px;">Add Combatant</div>
+    <div class="add-combatant">
+      <input class="init-input" type="text" placeholder="Name…" value="" />
+      <input class="init-num-input" type="number" placeholder="Init" value="" />
+      <button class="init-add-btn">Add</button>
+    </div>
+
+    <span class="callout-note">DM enters the name and initiative value for each combatant. NPC entries have no connection to character data.</span>
+
+  </div><!-- /initiative-column -->
+
+</div><!-- /dashboard-layout -->
+
+
+<!-- ══════════════════════════════════════════════════
+     IMPROVEMENT 2: Deal Damage modal
+     Stepper + direct input + preset jump buttons
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="dmg-modal" onclick="handleOverlayClick(event,'dmg-modal')">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <span class="modal-title dmg" id="dmg-modal-title">⚔ Deal Damage — Eoghan</span>
+      <button class="modal-close" onclick="closeModal('dmg-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-char-context" id="dmg-char-context">HP: 13 / 44 &nbsp;·&nbsp; No temp HP</div>
+
+      <span class="callout-new" style="margin-top:0;">Improvement 2: Tap − / + to build the value one step at a time. Or type directly into the field. Preset buttons jump to common values. Both paths work — whichever is faster at the table.</span>
+
+      <!-- IMPROVEMENT 2: Stepper + type-in -->
+      <div class="amount-stepper-row">
+        <button class="amt-step-btn" onclick="adjustAmt('dmg', -1)">−</button>
+        <input class="amt-input" id="dmg-amt" type="number" min="0" max="999" value="0"
+               oninput="clampAmt('dmg')" onkeydown="modalKeydown(event,'dmg-modal')" />
+        <button class="amt-step-btn" onclick="adjustAmt('dmg', 1)">+</button>
+      </div>
+
+      <!-- Preset jump values -->
+      <div class="preset-row">
+        <button class="preset-btn" onclick="setAmt('dmg', 3)">+3</button>
+        <button class="preset-btn" onclick="setAmt('dmg', 5)">+5</button>
+        <button class="preset-btn" onclick="setAmt('dmg', 8)">+8</button>
+        <button class="preset-btn" onclick="setAmt('dmg', 10)">+10</button>
+        <button class="preset-btn" onclick="setAmt('dmg', 15)">+15</button>
+        <button class="preset-btn" onclick="setAmt('dmg', 20)">+20</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-confirm-btn dmg" onclick="applyDmg()">Apply Damage</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     IMPROVEMENT 2: Heal modal
+     Same stepper + type-in pattern, green accent
+═══════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="heal-modal" onclick="handleOverlayClick(event,'heal-modal')">
+  <div class="modal-panel">
+    <div class="modal-header">
+      <span class="modal-title heal" id="heal-modal-title">✦ Heal — Eoghan</span>
+      <button class="modal-close" onclick="closeModal('heal-modal')">×</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-char-context" id="heal-char-context">HP: 13 / 44</div>
+
+      <!-- IMPROVEMENT 2: Stepper + type-in -->
+      <div class="amount-stepper-row">
+        <button class="amt-step-btn" onclick="adjustAmt('heal', -1)">−</button>
+        <input class="amt-input" id="heal-amt" type="number" min="0" max="999" value="0"
+               oninput="clampAmt('heal')" onkeydown="modalKeydown(event,'heal-modal')" />
+        <button class="amt-step-btn" onclick="adjustAmt('heal', 1)">+</button>
+      </div>
+
+      <!-- Preset jump values -->
+      <div class="preset-row">
+        <button class="preset-btn" onclick="setAmt('heal', 3)">+3</button>
+        <button class="preset-btn" onclick="setAmt('heal', 5)">+5</button>
+        <button class="preset-btn" onclick="setAmt('heal', 8)">+8</button>
+        <button class="preset-btn" onclick="setAmt('heal', 10)">+10</button>
+        <button class="preset-btn" onclick="setAmt('heal', 15)">+15</button>
+        <button class="preset-btn" onclick="setAmt('heal', 20)">+20</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="modal-confirm-btn heal" onclick="applyHeal()">Apply Healing</button>
+    </div>
+  </div>
+</div>
+
+
+<script>
+  /* ── Character state ── */
+  const chars = {
+    aragorn: { hp: 28, max: 45, temp: 8,  palette: 'ember',  barClass: 'ember-healthy',  dangerClass: '' },
+    eoghan:  { hp: 13, max: 44, temp: 0,  palette: 'ocean',  barClass: 'ocean-warning',  dangerClass: 'danger' },
+    aesop:   { hp: 33, max: 44, temp: 0,  palette: 'forest', barClass: 'forest-healthy', dangerClass: '' },
+  };
+
+  let currentModalChar = 'eoghan';
+
+  /* ── Render HP for a character ── */
+  function renderHP(slug) {
+    const c = chars[slug];
+    const hpEl   = document.getElementById(slug + '-hp');
+    const barEl  = document.getElementById(slug + '-bar');
+    const card   = document.getElementById('card-' + slug);
+    const pct    = Math.max(0, Math.min(100, (c.hp / c.max) * 100));
+
+    hpEl.textContent = c.hp;
+
+    // Danger color on HP number
+    hpEl.className = 'hp-cur ' + (pct < 20 ? 'danger' : c.palette);
+
+    // Bar color by health bracket
+    let barFill;
+    if (pct > 50)      barFill = c.palette + '-healthy';
+    else if (pct > 20) barFill = c.palette + '-warning';
+    else               barFill = 'danger-bar';
+
+    barEl.style.width = pct + '%';
+
+    // Keep bar colors correct — swap class
+    barEl.className = 'hp-bar-fill';
+    if (pct > 50) {
+      barEl.style.background = slug === 'aragorn'
+        ? 'linear-gradient(90deg, var(--ember-accent) 0%, var(--ember-bright) 100%)'
+        : slug === 'eoghan'
+        ? 'linear-gradient(90deg, var(--ocean-accent) 0%, var(--ocean-bright) 100%)'
+        : 'linear-gradient(90deg, var(--forest-accent) 0%, var(--forest-bright) 100%)';
+    } else if (pct > 20) {
+      barEl.style.background = 'linear-gradient(90deg, #a06020 0%, #d08030 100%)';
+    } else {
+      barEl.style.background = 'linear-gradient(90deg, #8c3030 0%, #c06060 100%)';
+    }
+
+    // Card danger border
+    if (pct < 20) {
+      card.classList.add('danger-border');
+    } else {
+      card.classList.remove('danger-border');
+    }
+  }
+
+  /* ── Inline HP stepper (Improvement 1) ── */
+  function stepHP(slug, delta) {
+    const c = chars[slug];
+    c.hp = Math.max(0, Math.min(c.max, c.hp + delta));
+    renderHP(slug);
+
+    // Brief floating delta indicator
+    const stepRow = document.querySelector('#card-' + slug + ' .hp-stepper-row');
+    const dot = document.createElement('span');
+    dot.className = 'hp-delta ' + (delta < 0 ? 'neg' : 'pos');
+    dot.textContent = (delta > 0 ? '+' : '') + delta;
+    stepRow.style.position = 'relative';
+    stepRow.appendChild(dot);
+    setTimeout(() => dot.remove(), 750);
+  }
+
+  /* ── Hold-to-repeat for stepper buttons ── */
+  let holdTimer = null;
+  let holdInterval = null;
+  document.querySelectorAll('.hp-step-btn').forEach(btn => {
+    btn.addEventListener('mousedown', e => {
+      holdTimer = setTimeout(() => {
+        holdInterval = setInterval(() => btn.click(), 80);
+      }, 500);
+    });
+    ['mouseup','mouseleave'].forEach(ev =>
+      btn.addEventListener(ev, () => {
+        clearTimeout(holdTimer);
+        clearInterval(holdInterval);
+      })
+    );
+  });
+
+  /* ── Modal helpers ── */
+  function openModal(type, charLabel) {
+    // Determine slug
+    const slug = charLabel.toLowerCase() === 'aragorn' ? 'aragorn'
+               : charLabel.toLowerCase() === 'eoghan'  ? 'eoghan'
+               : 'aesop';
+    currentModalChar = slug;
+    const c = chars[slug];
+
+    if (type === 'dmg') {
+      document.getElementById('dmg-modal-title').textContent = '⚔ Deal Damage — ' + charLabel;
+      document.getElementById('dmg-char-context').textContent =
+        'HP: ' + c.hp + ' / ' + c.max + (c.temp ? '  ·  +' + c.temp + ' temp' : '');
+      document.getElementById('dmg-amt').value = 0;
+      document.getElementById('dmg-modal').classList.add('open');
+      document.getElementById('dmg-amt').focus();
+    } else {
+      document.getElementById('heal-modal-title').textContent = '✦ Heal — ' + charLabel;
+      document.getElementById('heal-char-context').textContent =
+        'HP: ' + c.hp + ' / ' + c.max;
+      document.getElementById('heal-amt').value = 0;
+      document.getElementById('heal-modal').classList.add('open');
+      document.getElementById('heal-amt').focus();
+    }
+
+    closeAllPopovers();
+  }
+
+  function closeModal(id) {
+    document.getElementById(id).classList.remove('open');
+  }
+
+  function handleOverlayClick(e, id) {
+    if (e.target === document.getElementById(id)) closeModal(id);
+  }
+
+  function modalKeydown(e, modalId) {
+    if (e.key === 'Enter') {
+      if (modalId === 'dmg-modal') applyDmg();
+      else applyHeal();
+    }
+    if (e.key === 'Escape') closeModal(modalId);
+  }
+
+  /* ── Amount stepper (Improvement 2) ── */
+  function adjustAmt(type, delta) {
+    const el = document.getElementById(type + '-amt');
+    const val = parseInt(el.value, 10) || 0;
+    el.value = Math.max(0, val + delta);
+  }
+
+  function setAmt(type, val) {
+    document.getElementById(type + '-amt').value = val;
+  }
+
+  function clampAmt(type) {
+    const el = document.getElementById(type + '-amt');
+    const v = parseInt(el.value, 10);
+    if (isNaN(v) || v < 0) el.value = 0;
+    if (v > 999) el.value = 999;
+  }
+
+  /* ── Hold-to-repeat on modal steppers ── */
+  document.querySelectorAll('.amt-step-btn').forEach(btn => {
+    btn.addEventListener('mousedown', () => {
+      holdTimer = setTimeout(() => {
+        holdInterval = setInterval(() => btn.click(), 80);
+      }, 500);
+    });
+    ['mouseup','mouseleave'].forEach(ev =>
+      btn.addEventListener(ev, () => {
+        clearTimeout(holdTimer);
+        clearInterval(holdInterval);
+      })
+    );
+  });
+
+  /* ── Apply damage / heal ── */
+  function applyDmg() {
+    const amt = Math.max(0, parseInt(document.getElementById('dmg-amt').value, 10) || 0);
+    if (amt === 0) { closeModal('dmg-modal'); return; }
+    const c = chars[currentModalChar];
+    c.hp = Math.max(0, c.hp - amt);
+    renderHP(currentModalChar);
+    closeModal('dmg-modal');
+  }
+
+  function applyHeal() {
+    const amt = Math.max(0, parseInt(document.getElementById('heal-amt').value, 10) || 0);
+    if (amt === 0) { closeModal('heal-modal'); return; }
+    const c = chars[currentModalChar];
+    c.hp = Math.min(c.max, c.hp + amt);
+    renderHP(currentModalChar);
+    closeModal('heal-modal');
+  }
+
+  /* ── Popover toggle (Improvement 3 — "⋯" button) ── */
+  function togglePopover(id, btn) {
+    const pop = document.getElementById(id);
+    const wasOpen = pop.classList.contains('open');
+    closeAllPopovers();
+    if (!wasOpen) pop.classList.add('open');
+  }
+
+  function closeAllPopovers() {
+    document.querySelectorAll('.quick-popover.open').forEach(p => p.classList.remove('open'));
+  }
+
+  // Close popovers on outside click
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.cqa-btn.more') && !e.target.closest('.quick-popover')) {
+      closeAllPopovers();
+    }
+  });
+
+  // ESC closes modals and popovers
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      closeModal('dmg-modal');
+      closeModal('heal-modal');
+      closeAllPopovers();
+    }
+  });
+</script>
+
+</body>
+</html>

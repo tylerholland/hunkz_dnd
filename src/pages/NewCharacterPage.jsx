@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CharacterSheet, { PALETTES } from "../components/CharacterSheet";
-import { createCharacter } from "../api";
+import { createCharacter, getPortraitUploadUrl, updateCharacter } from "../api";
 
 export default function NewCharacterPage() {
   const navigate = useNavigate();
@@ -23,8 +23,36 @@ export default function NewCharacterPage() {
     if (password !== confirm) { setError("Passwords don't match."); return; }
     setError(null);
     setSaving(true);
+
+    const portraitDataUrl = pending?.portrait;
+    const createPayload = { ...pending };
+    delete createPayload.portrait;
+
     try {
-      const { slug } = await createCharacter(pending, password);
+      const { slug } = await createCharacter(createPayload, password);
+
+      if (portraitDataUrl && portraitDataUrl.startsWith("data:image/")) {
+        try {
+          const match = portraitDataUrl.match(/^data:(image\/[^;]+);base64,(.+)$/);
+          if (match) {
+            const [, contentType, base64] = match;
+            const bytes = Uint8Array.from(atob(base64), c => c.charCodeAt(0));
+            const blob = new Blob([bytes], { type: contentType });
+
+            const { uploadUrl, portraitUrl } = await getPortraitUploadUrl(slug, password, contentType);
+            await fetch(uploadUrl, {
+              method: "PUT",
+              body: blob,
+              headers: { "Content-Type": contentType },
+            });
+            await updateCharacter(slug, { portraitUrl }, password);
+          }
+        } catch (uploadError) {
+          alert("Character created, but portrait upload failed. You can add the image again from the edit screen.");
+          console.error("Portrait upload failed:", uploadError);
+        }
+      }
+
       navigate(`/characters/${slug}`);
     } catch (err) {
       setError(err.message);

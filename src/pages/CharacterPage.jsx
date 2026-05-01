@@ -1,13 +1,20 @@
-import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import CharacterSheet, { PALETTES } from "../components/CharacterSheet";
-import { getCharacter, updateCharacter } from "../api";
+import { getCharacter, updateCharacter, deleteCharacter } from "../api";
+
+const ACTIVE_POLL_MS = 1000;
+const BACKGROUND_POLL_MS = 5000;
 
 export default function CharacterPage() {
+  const navigate = useNavigate();
   const { slug } = useParams();
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
+  const requestSeqRef = useRef(0);
+  const activeRequestCountRef = useRef(0);
+  const sessionSyncTimerRef = useRef(null);
 
   // Read cached palette for this slug so the spinner matches on return visits
   const cachedPalette = sessionStorage.getItem(`dnd_palette_${slug}`);
@@ -16,22 +23,98 @@ export default function CharacterPage() {
   const spinnerBg      = pal ? `${pal.accent}22` : "rgba(255,255,255,0.08)";
   const spinnerPageBg  = pal ? pal.bg            : "#0d0f14";
 
-  useEffect(() => {
-    setLoading(true);
-    setError(null);
-    getCharacter(slug)
-      .then(d => {
-        setData(d);
-        if (d?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.palette);
-      })
-      .catch(() => setError("not_found"))
-      .finally(() => setLoading(false));
+  const fetchCharacter = useCallback(async ({ background = false, force = false } = {}) => {
+    if (!slug) return;
+    if (background && activeRequestCountRef.current > 0 && !force) return;
+
+    const requestId = ++requestSeqRef.current;
+    activeRequestCountRef.current += 1;
+    if (!background) {
+      setLoading(true);
+      setError(null);
+    }
+
+    try {
+      const d = await getCharacter(slug);
+      if (!Array.isArray(d?.collections)) {
+        throw new Error("Invalid character payload");
+      }
+      if (requestId !== requestSeqRef.current) return;
+      setData(d);
+      if (d?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.palette);
+      setError(null);
+    } catch {
+      if (requestId !== requestSeqRef.current) return;
+      setError("not_found");
+    } finally {
+      activeRequestCountRef.current = Math.max(0, activeRequestCountRef.current - 1);
+      if (!background && requestId === requestSeqRef.current) {
+        setLoading(false);
+      }
+    }
   }, [slug]);
+
+  const queueSessionSync = useCallback((delay = 75) => {
+    clearTimeout(sessionSyncTimerRef.current);
+    sessionSyncTimerRef.current = setTimeout(() => {
+      fetchCharacter({ background: true, force: true });
+    }, delay);
+  }, [fetchCharacter]);
+
+  useEffect(() => {
+    fetchCharacter();
+  }, [fetchCharacter]);
+
+  useEffect(() => {
+    if (!slug) return;
+    let timeoutId = null;
+    let stopped = false;
+
+    const getDelay = () =>
+      document.visibilityState === "visible" && document.hasFocus()
+        ? ACTIVE_POLL_MS
+        : BACKGROUND_POLL_MS;
+
+    const scheduleNext = () => {
+      if (stopped) return;
+      timeoutId = setTimeout(async () => {
+        await fetchCharacter({ background: true });
+        scheduleNext();
+      }, getDelay());
+    };
+
+    const reschedule = () => {
+      clearTimeout(timeoutId);
+      scheduleNext();
+    };
+
+    scheduleNext();
+    document.addEventListener("visibilitychange", reschedule);
+    window.addEventListener("focus", reschedule);
+    window.addEventListener("blur", reschedule);
+
+    return () => {
+      stopped = true;
+      clearTimeout(timeoutId);
+      document.removeEventListener("visibilitychange", reschedule);
+      window.removeEventListener("focus", reschedule);
+      window.removeEventListener("blur", reschedule);
+    };
+  }, [fetchCharacter, slug]);
+
+  useEffect(() => () => clearTimeout(sessionSyncTimerRef.current), []);
 
   const handleSave = async (charData, password) => {
     await updateCharacter(slug, charData, password);
     setData(charData);
     if (charData?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, charData.palette);
+  };
+
+  const handleDelete = async (password) => {
+    await deleteCharacter(slug, password);
+    sessionStorage.removeItem(`dnd_char_${slug}`);
+    sessionStorage.removeItem(`dnd_palette_${slug}`);
+    navigate("/");
   };
 
   if (loading) {
@@ -63,7 +146,15 @@ export default function CharacterPage() {
     );
   }
 
-  return <CharacterSheet initialData={data} slug={slug} onSave={handleSave} />;
+  return (
+    <CharacterSheet
+      initialData={data}
+      slug={slug}
+      onSave={handleSave}
+      onDelete={handleDelete}
+      onSessionSync={queueSessionSync}
+    />
+  );
 }
 
 const centeredStyle = {

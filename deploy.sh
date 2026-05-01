@@ -42,6 +42,13 @@ echo "► Syncing frontend to s3://$FRONTEND_BUCKET..."
 aws s3 sync dist/ "s3://$FRONTEND_BUCKET" --delete --region "$REGION"
 
 echo ""
+echo "► Ensuring S3 website SPA fallback..."
+aws s3 website "s3://$FRONTEND_BUCKET" \
+  --index-document index.html \
+  --error-document index.html \
+  --region "$REGION"
+
+echo ""
 echo "=== Deploy complete! ==="
 echo "  Frontend: http://$FRONTEND_BUCKET.s3-website-$REGION.amazonaws.com"
 echo "  API:      $API_URL"

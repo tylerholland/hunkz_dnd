@@ -7,6 +7,6 @@ architecture = "x86_64"
 handler = "src/handlers/list.handler"
 manifest_hash = "f68e5c736207dccfeb4f8bf8d5a8edb0"
 packagetype = "Zip"
-functions = ["ListFunction", "GetFunction", "CreateFunction", "UpdateFunction", "DeleteFunction", "VerifyFunction", "PortraitUrlFunction"]
+functions = ["ListFunction", "GetFunction", "CreateFunction", "UpdateFunction", "DeleteFunction", "VerifyFunction", "PortraitUrlFunction", "SessionFunction", "DmPartyFunction", "InitiativeFunction", "GetNpcCombatFunction", "PutNpcCombatFunction"]
 
 [layer_build_definitions]

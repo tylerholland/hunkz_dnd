@@ -32,10 +32,12 @@ Resources:
         AllowHeaders:
           - Content-Type
           - x-character-password
+          - x-session-token
         AllowMethods:
           - GET
           - POST
           - PUT
+          - PATCH
           - DELETE
           - OPTIONS
 
@@ -188,6 +190,87 @@ Resources:
             TableName: !Ref CharactersTable
         - S3WritePolicy:
             BucketName: !Ref PortraitsBucket
+
+  SessionFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/session.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /characters/{slug}/session
+            Method: patch
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
+  DmPartyFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/dmParty.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /dm/party
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
+  InitiativeFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/initiative.handler
+      Events:
+        GetApi:
+          Type: HttpApi
+          Properties:
+            Path: /initiative
+            Method: get
+            ApiId: !Ref CharactersApi
+        PutApi:
+          Type: HttpApi
+          Properties:
+            Path: /initiative
+            Method: put
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
+  GetNpcCombatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getNpcCombat.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /npc-combat
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
+  PutNpcCombatFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/putNpcCombat.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /npc-combat
+            Method: put
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
 
 Outputs:
   ApiUrl:

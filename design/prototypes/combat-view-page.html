@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Combat Page — Aragorn (/combat)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Ember palette ── */
+    :root {
+      --bg: #120d0a;
+      --surface: rgba(40,22,12,0.6);
+      --surface-solid: #1e1208;
+      --border: rgba(160,104,64,0.18);
+      --border-vis: rgba(160,104,64,0.35);
+      --accent: #a06840;
+      --accent-bright: #c89060;
+      --accent-dim: #3a1e0c;
+      --text: #d4c4b0;
+      --text-body: #bca898;
+      --text-muted: #6a4830;
+      --glow1: rgba(80,40,16,0.45);
+      --glow2: rgba(60,28,10,0.35);
+      --gem: #c8904c;
+      --gem-low: #3a2210;
+      --font-display: 'Cinzel', Georgia, serif;
+      --font-body: 'Crimson Text', Georgia, serif;
+      --font-ui: 'IM Fell English', Georgia, serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+    }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 55%),
+        radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 50%),
+        var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      /* Full scroll for phone content */
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Design callout notes ── */
+    .callout-note {
+      background: rgba(30,80,30,0.85);
+      border: 1px solid rgba(80,160,80,0.5);
+      border-radius: 4px;
+      color: #88cc88;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px 0;
+      display: block;
+    }
+    .callout-note::before { content: "↳ "; opacity: 0.7; }
+
+    /* ── Annotation banner ── */
+    .annotation-bar {
+      background: rgba(10,30,10,0.92);
+      border-bottom: 1px solid rgba(60,120,60,0.4);
+      padding: 11px 16px;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+    }
+    .annotation-bar p {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      color: #77bb77;
+      letter-spacing: 0.04em;
+    }
+    .annotation-bar strong { color: #aaddaa; }
+
+    /* ── Sticky compact header ── */
+    .sticky-header {
+      position: sticky;
+      top: 37px; /* below annotation bar */
+      z-index: 200;
+      background: rgba(18,13,10,0.94);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      border-bottom: 1px solid var(--border-vis);
+      padding: 10px 16px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .back-link {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      text-decoration: none;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      transition: color 0.15s;
+      white-space: nowrap;
+    }
+    .back-link:hover { color: var(--accent-bright); }
+    .header-portrait {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-size: 14px;
+      color: var(--gem);
+      flex-shrink: 0;
+    }
+    .header-name {
+      font-family: var(--font-display);
+      font-size: 17px;
+      color: var(--accent-bright);
+      letter-spacing: 0.06em;
+    }
+    .header-meta {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .header-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .header-ac {
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 4px;
+      padding: 4px 10px;
+      text-align: center;
+    }
+    .header-ac-num {
+      font-family: var(--font-display);
+      font-size: 18px;
+      color: var(--gem);
+      line-height: 1;
+    }
+    .header-ac-label {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* ── Active conditions mini-strip in header ── */
+    .header-conditions {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .header-cond-chip {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 10px;
+      border: 1px solid;
+    }
+    .header-cond-chip.poisoned {
+      color: #88c888;
+      border-color: rgba(80,160,80,0.45);
+      background: rgba(80,160,80,0.1);
+    }
+    .header-cond-chip.prone {
+      color: var(--accent-bright);
+      border-color: rgba(200,144,64,0.4);
+      background: rgba(200,144,64,0.1);
+    }
+
+    /* ── Main content ── */
+    .combat-content {
+      max-width: 540px;
+      margin: 0 auto;
+      padding: 16px 16px 100px;
+    }
+
+    /* ── Section divider ── */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 16px 0;
+    }
+
+    /* ── Concentration banner ── */
+    .concentration-banner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(160,104,64,0.12);
+      border: 1px solid rgba(200,144,96,0.45);
+      border-radius: 6px;
+      padding: 14px 16px;
+      margin-bottom: 14px;
+      animation: pulseGlow 2.8s ease-in-out infinite;
+    }
+    @keyframes pulseGlow {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(200,144,96,0.0); }
+      50%       { box-shadow: 0 0 16px 3px rgba(200,144,96,0.18); }
+    }
+    .conc-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--accent-bright);
+      box-shadow: 0 0 8px var(--accent-bright);
+      flex-shrink: 0;
+      animation: pulseDot 2.8s ease-in-out infinite;
+    }
+    @keyframes pulseDot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: 0.45; }
+    }
+    .conc-text { flex: 1; }
+    .conc-label {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+    .conc-spell {
+      font-family: var(--font-display);
+      font-size: 17px;
+      color: var(--accent-bright);
+    }
+    .drop-btn {
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 4px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      /* Large tap target */
+      min-height: 40px;
+      display: flex;
+      align-items: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .drop-btn:hover { border-color: var(--accent); color: var(--text); }
+
+    /* ── HP block — phone-optimized ── */
+    .hp-block {
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 6px;
+      padding: 20px 18px 16px;
+      margin-bottom: 14px;
+    }
+    .hp-top-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .hp-label-sm {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .temp-badge {
+      background: rgba(100,160,200,0.15);
+      border: 1px solid rgba(100,160,200,0.4);
+      border-radius: 10px;
+      padding: 2px 9px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.08em;
+      color: #8ab4c8;
+    }
+    /* Big central HP display */
+    .hp-center {
+      display: flex;
+      align-items: baseline;
+      justify-content: center;
+      gap: 4px;
+      margin: 8px 0 14px;
+    }
+    .hp-big {
+      font-family: var(--font-display);
+      font-size: 64px;
+      line-height: 1;
+      color: var(--gem);
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+    .hp-big:hover { color: var(--accent-bright); }
+    .hp-of {
+      font-family: var(--font-display);
+      font-size: 26px;
+      color: var(--text-muted);
+    }
+    .hp-max-big {
+      font-family: var(--font-display);
+      font-size: 26px;
+      color: var(--text-muted);
+    }
+    /* HP bar */
+    .hp-bar-track {
+      height: 8px;
+      background: var(--gem-low);
+      border-radius: 5px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .hp-bar-fill {
+      height: 100%;
+      border-radius: 5px;
+      background: linear-gradient(90deg, var(--accent) 0%, var(--accent-bright) 100%);
+      width: 62%;
+      transition: width 0.3s ease;
+    }
+    /* Phone-sized stepper row */
+    .hp-stepper-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .stepper-btn-lg {
+      height: 56px;
+      border-radius: 5px;
+      border: 1px solid var(--border-vis);
+      background: var(--surface);
+      font-family: var(--font-display);
+      font-size: 28px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .stepper-btn-lg.minus {
+      color: #c06060;
+      border-color: rgba(192,96,96,0.3);
+    }
+    .stepper-btn-lg.minus:hover {
+      background: rgba(192,96,96,0.15);
+      border-color: #c06060;
+    }
+    .stepper-btn-lg.plus {
+      color: var(--accent-bright);
+    }
+    .stepper-btn-lg.plus:hover {
+      background: rgba(160,104,64,0.2);
+      border-color: var(--accent);
+    }
+
+    /* ── Inspiration — phone large toggle ── */
+    .inspiration-toggle {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px 18px;
+      background: rgba(200,144,76,0.1);
+      border: 1px solid rgba(200,144,76,0.52);
+      border-radius: 6px;
+      margin-bottom: 14px;
+      cursor: pointer;
+      min-height: 60px;
+      transition: background 0.15s;
+    }
+    .inspiration-toggle:hover { background: rgba(200,144,76,0.17); }
+    .insp-gem {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--gem);
+      box-shadow: 0 0 10px rgba(200,144,76,0.7), 0 0 24px rgba(200,144,76,0.2);
+      flex-shrink: 0;
+    }
+    .insp-label {
+      font-family: var(--font-ui);
+      font-size: 15px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent-bright);
+      flex: 1;
+    }
+    .insp-status {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      background: rgba(200,144,76,0.14);
+      border: 1px solid rgba(200,144,76,0.38);
+      border-radius: 10px;
+      padding: 4px 12px;
+      color: var(--gem);
+    }
+
+    /* ── Conditions ── */
+    .section-hdr {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .section-title {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .add-btn-round {
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      border: 1px solid var(--border-vis);
+      background: transparent;
+      color: var(--accent-bright);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.15s, background 0.15s;
+    }
+    .add-btn-round:hover { border-color: var(--accent); background: rgba(160,104,64,0.15); }
+    .conditions-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .cond-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 12px 8px 14px;
+      border-radius: 20px;
+      font-family: var(--font-ui);
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      min-height: 38px; /* phone tap target */
+      transition: filter 0.12s;
+    }
+    .cond-chip.poisoned {
+      background: rgba(80,160,80,0.18);
+      border: 1px solid rgba(80,160,80,0.45);
+      color: #88c888;
+    }
+    .cond-chip.prone {
+      background: rgba(200,144,64,0.16);
+      border: 1px solid rgba(200,144,64,0.4);
+      color: var(--accent-bright);
+    }
+    .cond-chip .x { opacity: 0.55; font-size: 16px; line-height: 1; }
+    .cond-chip:hover { filter: brightness(1.15); }
+    .all-conditions-btn {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 6px 0;
+      transition: color 0.15s;
+    }
+    .all-conditions-btn:hover { color: var(--accent-bright); }
+
+    /* ── Spell slots ── */
+    .spell-slot-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .spell-slot-row:last-child { border-bottom: none; }
+    .slot-level {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      width: 36px;
+      flex-shrink: 0;
+    }
+    .slot-bubbles {
+      display: flex;
+      gap: 8px;
+      flex: 1;
+    }
+    .bubble {
+      /* Larger bubbles for phone — 34px tap target */
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid var(--border-vis);
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, transform 0.1s;
+      flex-shrink: 0;
+    }
+    .bubble:active { transform: scale(0.9); }
+    .bubble:hover { border-color: var(--accent); transform: scale(1.1); }
+    .bubble.used {
+      background: var(--gem);
+      border-color: var(--gem);
+      box-shadow: 0 0 6px rgba(200,144,76,0.45);
+    }
+    .slot-remain {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      white-space: nowrap;
+      min-width: 36px;
+      text-align: right;
+    }
+    .rest-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 14px;
+    }
+    .rest-btn {
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 12px 0;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      text-align: center;
+      min-height: 46px;
+    }
+    .rest-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+    /* ── Weapons ── */
+    .weapon-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      margin-bottom: 8px;
+      overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .weapon-card:hover { border-color: var(--accent); }
+    .weapon-hdr {
+      display: grid;
+      grid-template-columns: 1fr auto auto auto;
+      align-items: center;
+      gap: 14px;
+      padding: 14px 14px;
+      cursor: pointer;
+      min-height: 52px; /* phone tap target */
+    }
+    .weapon-nm {
+      font-family: var(--font-body);
+      font-size: 17px;
+      color: var(--text);
+    }
+    .weapon-stat-val {
+      text-align: right;
+    }
+    .weapon-stat-val .lbl {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+    }
+    .weapon-stat-val .val {
+      font-family: var(--font-display);
+      font-size: 15px;
+      color: var(--accent-bright);
+    }
+    .expand-ico {
+      color: var(--text-muted);
+      font-size: 12px;
+      transition: transform 0.15s;
+    }
+    .weapon-card.open .expand-ico { transform: rotate(90deg); }
+    .weapon-desc {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text-body);
+      padding: 0 14px 14px;
+      border-top: 1px solid var(--border);
+      line-height: 1.55;
+    }
+    .weapon-desc p { padding-top: 10px; }
+
+    /* ── Floating "Back to Sheet" for mobile ── */
+    /* Already handled by sticky header back-link */
+  </style>
+</head>
+<body>
+
+<!-- Annotation banner -->
+<div class="annotation-bar">
+  <p><strong>Prototype: Combat Page (Dedicated Page Approach)</strong> — Ember palette (Aragorn) at /characters/aragorn/combat. Phone-optimized: sticky compact header, larger tap targets, single-column vertical layout. Compare with combat-view-tab.html.</p>
+</div>
+
+<!-- Sticky compact header -->
+<div class="sticky-header">
+  <a href="#" class="back-link">← Sheet</a>
+  <div class="header-portrait">A</div>
+  <div>
+    <div class="header-name">Aragorn</div>
+    <div class="header-meta">Ranger · Lvl 8</div>
+  </div>
+  <div class="header-conditions">
+    <span class="header-cond-chip poisoned">Poisoned</span>
+    <span class="header-cond-chip prone">Prone</span>
+  </div>
+  <div class="header-right">
+    <div class="header-ac">
+      <div class="header-ac-num">16</div>
+      <div class="header-ac-label">AC</div>
+    </div>
+  </div>
+</div>
+
+<span class="callout-note" style="margin:10px 16px 0; display:block; max-width:540px; margin-left:auto; margin-right:auto;">Sticky header stays anchored while you scroll. Compact portrait + name confirms whose sheet this is. Active condition chips give at-a-glance status without scrolling. "← Sheet" returns to the full character sheet. AC visible at all times for quick DM questions.</span>
+
+<!-- Main combat content — phone width -->
+<div class="combat-content">
+
+  <!-- Concentration banner -->
+  <div class="concentration-banner">
+    <div class="conc-dot"></div>
+    <div class="conc-text">
+      <div class="conc-label">Concentrating on</div>
+      <div class="conc-spell">Fly</div>
+    </div>
+    <button class="drop-btn">Drop</button>
+  </div>
+  <span class="callout-note">Full-width pulsing banner at top of content. On a phone this is the first thing you see below the header — impossible to miss mid-session. Abbreviated "Drop" label fits phone widths without wrapping.</span>
+
+  <!-- HP block -->
+  <div class="hp-block">
+    <div class="hp-top-row">
+      <span class="hp-label-sm">Hit Points</span>
+      <span class="temp-badge">+8 temp HP</span>
+    </div>
+    <div class="hp-center">
+      <div class="hp-big" title="Tap to edit">28</div>
+      <div class="hp-of">/</div>
+      <div class="hp-max-big">45</div>
+    </div>
+    <div class="hp-bar-track">
+      <div class="hp-bar-fill"></div>
+    </div>
+    <div class="hp-stepper-row">
+      <button class="stepper-btn-lg minus">−</button>
+      <button class="stepper-btn-lg plus">+</button>
+    </div>
+  </div>
+  <span class="callout-note">HP numbers displayed at 64px — easily readable in a dim room or from across a table. Two-column stepper layout fills the phone width, creating large thumb-friendly targets (56px tall). Tapping the number opens a direct-entry input for large damage values.</span>
+
+  <!-- Inspiration -->
+  <div class="inspiration-toggle">
+    <div class="insp-gem"></div>
+    <span class="insp-label">Inspiration</span>
+    <span class="insp-status">Active</span>
+  </div>
+  <span class="callout-note">Full-width toggle row (60px tall) — easy to tap one-handed. Glowing gem is the visual anchor; its warm light distinguishes inspiration from the cooler condition chips below.</span>
+
+  <hr class="divider" />
+
+  <!-- Conditions -->
+  <div>
+    <div class="section-hdr">
+      <span class="section-title">Active Conditions</span>
+      <button class="add-btn-round">+</button>
+    </div>
+    <div class="conditions-row">
+      <div class="cond-chip poisoned">Poisoned <span class="x">×</span></div>
+      <div class="cond-chip prone">Prone <span class="x">×</span></div>
+    </div>
+    <button class="all-conditions-btn">▸ All 14 conditions</button>
+  </div>
+  <span class="callout-note">Chips are 38px tall — comfortable thumb tap. × target merges into the chip body on mobile (no separate tiny hit area). "All 14 conditions" is a lazy-expanded grid, keeping the default view uncluttered.</span>
+
+  <hr class="divider" />
+
+  <!-- Spell slots -->
+  <div>
+    <div class="section-hdr">
+      <span class="section-title">Spell Slots</span>
+    </div>
+
+    <div class="spell-slot-row">
+      <span class="slot-level">1st</span>
+      <div class="slot-bubbles">
+        <div class="bubble used"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+      </div>
+      <span class="slot-remain">3 / 4</span>
+    </div>
+
+    <div class="spell-slot-row">
+      <span class="slot-level">2nd</span>
+      <div class="slot-bubbles">
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+        <div class="bubble"></div>
+      </div>
+      <span class="slot-remain">3 / 3</span>
+    </div>
+
+    <div class="spell-slot-row">
+      <span class="slot-level">3rd</span>
+      <div class="slot-bubbles">
+        <div class="bubble used"></div>
+        <div class="bubble"></div>
+      </div>
+      <span class="slot-remain">1 / 2</span>
+    </div>
+
+    <div class="rest-row">
+      <button class="rest-btn">⏾ Long Rest</button>
+      <button class="rest-btn">◑ Short Rest</button>
+    </div>
+  </div>
+  <span class="callout-note">Bubbles sized at 34px — larger than the 28px minimum from the story. Rest buttons are full-width-half columns, big enough for a thumb tap. Layout aligns naturally with one-handed scrolling.</span>
+
+  <hr class="divider" />
+
+  <!-- Weapons -->
+  <div>
+    <div class="section-hdr">
+      <span class="section-title">Weapons</span>
+    </div>
+    <span class="callout-note">Read-only quick-ref. Each row is 52px tall — phone-safe tap target. Stats (to-hit, damage) are stacked vertically as labeled values for easy scanning.</span>
+
+    <!-- Weapon 1: collapsed -->
+    <div class="weapon-card">
+      <div class="weapon-hdr">
+        <span class="weapon-nm">Andúril</span>
+        <div class="weapon-stat-val">
+          <span class="lbl">To-hit</span>
+          <span class="val">+7</span>
+        </div>
+        <div class="weapon-stat-val">
+          <span class="lbl">Damage</span>
+          <span class="val">1d8+4</span>
+        </div>
+        <span class="expand-ico">▶</span>
+      </div>
+    </div>
+
+    <!-- Weapon 2: expanded -->
+    <div class="weapon-card open">
+      <div class="weapon-hdr">
+        <span class="weapon-nm">Longbow</span>
+        <div class="weapon-stat-val">
+          <span class="lbl">To-hit</span>
+          <span class="val">+8</span>
+        </div>
+        <div class="weapon-stat-val">
+          <span class="lbl">Damage</span>
+          <span class="val">1d8+5</span>
+        </div>
+        <span class="expand-ico">▶</span>
+      </div>
+      <div class="weapon-desc">
+        <p>Ranged, 150/600 ft. Proficiency + Dex modifier. Advantage on targets unaware of your position.</p>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /combat-content -->
+
+</body>
+</html>

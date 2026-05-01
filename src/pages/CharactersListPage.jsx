@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, Link } from "react-router-dom";
 import { listCharacters, verifyPassword } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 
@@ -50,49 +50,89 @@ export default function CharactersListPage() {
   return (
     <div style={{
       minHeight: "100vh", background: "#0d0f14", color: "#c8bfaf",
-      fontFamily: "'Crimson Text', Georgia, serif", padding: "48px 32px 80px",
+      fontFamily: "'Crimson Text', Georgia, serif", padding: "0 32px 80px",
     }}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
 
-        {/* Header */}
-        <div style={{ textAlign: "center", marginBottom: 56, position: "relative" }}>
+        {/* Top nav */}
+        <div style={{
+          padding: "18px 0 16px",
+          marginBottom: 32,
+          borderBottom: "1px solid rgba(100,130,160,0.2)",
+        }}>
           <div style={{
-            fontFamily: "'IM Fell English', Georgia, serif",
-            fontSize: 11, letterSpacing: "0.35em", textTransform: "uppercase",
-            color: "#3a5a6a", marginBottom: 16,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            gap: 12,
+            marginBottom: 10,
           }}>
-            The Company
-          </div>
-          <h1 style={{
-            fontFamily: "'Cinzel', Georgia, serif", fontWeight: 400,
-            fontSize: "clamp(1.6rem, 4vw, 2.4rem)", color: "#c8bfaf",
-            letterSpacing: "0.04em", margin: 0,
-          }}>
-            Characters
-          </h1>
+            <div style={{
+              fontFamily: "'Cinzel', Georgia, serif",
+              fontWeight: 400,
+              fontSize: "clamp(1.4rem, 4vw, 2rem)",
+              color: "#c8bfaf",
+              letterSpacing: "0.04em",
+            }}>
+              Character Library
+            </div>
 
-          {/* DM login/logout */}
-          <div style={{ position: "absolute", top: 0, right: 0 }}>
             {dmActive ? (
-              <button onClick={handleDmLogout} style={{
-                background: "transparent", border: "1px solid rgba(100,130,160,0.3)",
-                borderRadius: 3, color: "#6a8fa8", fontFamily: "'IM Fell English', Georgia, serif",
-                fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
-                padding: "5px 12px", cursor: "pointer",
+              <span style={{
+                background: "rgba(18,58,78,0.22)",
+                border: "1px solid rgba(106,143,168,0.4)",
+                borderRadius: 999,
+                color: "#a0c0d0",
+                fontFamily: "'IM Fell English', Georgia, serif",
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                padding: "5px 12px",
+                whiteSpace: "nowrap",
               }}>
-                DM ✓ · End Session
-              </button>
+                DM ✓
+              </span>
             ) : (
               <button onClick={() => setDmPrompt(true)} style={{
                 background: "transparent", border: "1px solid rgba(100,130,160,0.2)",
                 borderRadius: 3, color: "#3a5a6a", fontFamily: "'IM Fell English', Georgia, serif",
                 fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
                 padding: "5px 12px", cursor: "pointer",
+                whiteSpace: "nowrap",
               }}>
                 DM Login
               </button>
             )}
           </div>
+
+          {dmActive && (
+            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+              <Link
+                to="/dm"
+                style={{
+                  background: "transparent", border: "1px solid rgba(100,130,160,0.3)",
+                  borderRadius: 3, color: "#6a8fa8", fontFamily: "'IM Fell English', Georgia, serif",
+                  fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
+                  padding: "5px 12px", textDecoration: "none", display: "inline-block",
+                }}
+              >
+                Campaign
+              </Link>
+              <button onClick={handleDmLogout} style={{
+                background: "transparent", border: "1px solid rgba(192,96,96,0.4)",
+                borderRadius: 3, color: "#c06060", fontFamily: "'IM Fell English', Georgia, serif",
+                fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
+                padding: "5px 12px", cursor: "pointer",
+              }}>
+                End Session
+              </button>
+            </div>
+          )}
+          {!dmActive && (
+            <div style={{ fontFamily: "'IM Fell English', Georgia, serif", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "#3a5a6a" }}>
+              View and manage your party roster
+            </div>
+          )}
         </div>
 
         {/* DM password modal */}
