@@ -131,8 +131,8 @@ const STAT_SHORT = { Strength: "STR", Dexterity: "DEX", Constitution: "CON", Wis
 // ── DiceRoller component ───────────────────────────────────────────────────────
 export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
   const [isOpen, setIsOpen] = useState(() => {
-    if (!slug) return false;
-    return sessionStorage.getItem(`dnd_dice_open_${slug}`) === "true";
+    if (!slug) return true;
+    return sessionStorage.getItem(`dnd_dice_open_${slug}`) !== "false";
   });
 
   const [advMode, setAdvMode] = useState("normal");

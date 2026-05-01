@@ -92,7 +92,7 @@ function buildExprLabel(groups, flat) {
 export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage, onApplyNpcDamage }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
-    sessionStorage.getItem("dnd_dice_dm_open") === "true"
+    sessionStorage.getItem("dnd_dice_dm_open") !== "false"
   );
 
   // Roll configuration
