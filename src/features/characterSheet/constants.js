@@ -1,0 +1,125 @@
+export const modOf = (s) => Math.floor((s - 10) / 2);
+export const fmtMod = (m) => m >= 0 ? `+${m}` : `${m}`;
+export const uid = () => "id" + Date.now() + Math.random().toString(36).slice(2, 7);
+export const parseModInt = (v) => /^[+-]?\d+$/.test(String(v).trim()) ? parseInt(v, 10) : NaN;
+
+export const RACE_OPTIONS = [
+  "Human", "Elf", "Night Elf", "Wood Elf", "High Elf", "Drow", "Eladrin",
+  "Dwarf", "Halfling", "Half-Elf", "Half-Orc", "Gnome", "Tiefling", "Dragonborn",
+  "Aasimar", "Genasi", "Goliath", "Firbolg", "Kenku", "Tabaxi", "Tortle",
+  "Triton", "Yuan-ti Pureblood", "Bugbear", "Goblin", "Hobgoblin", "Lizardfolk", "Orc",
+];
+
+export const CLASS_OPTIONS = [
+  "Barbarian", "Bard", "Cleric", "Druid", "Fighter", "Monk", "Paladin",
+  "Ranger", "Rogue", "Sorcerer", "Warlock", "Wizard", "Artificer",
+];
+
+export const ALIGNMENT_OPTIONS = [
+  "Lawful Good", "Neutral Good", "Chaotic Good",
+  "Lawful Neutral", "True Neutral", "Chaotic Neutral",
+  "Lawful Evil", "Neutral Evil", "Chaotic Evil",
+];
+
+export const BACKGROUND_OPTIONS = [
+  "Acolyte", "Charlatan", "Criminal", "Entertainer", "Folk Hero", "Guild Artisan",
+  "Hermit", "Noble", "Outlander", "Sage", "Sailor", "Soldier", "Urchin",
+  "Investigator", "Pirate", "Urban Bounty Hunter",
+];
+
+export const SUBCLASS_OPTIONS = {
+  Barbarian: ["Berserker", "Totem Warrior", "Ancestral Guardian", "Storm Herald", "Zealot", "Wild Magic", "Beast"],
+  Bard: ["College of Lore", "College of Valor", "College of Glamour", "College of Swords", "College of Whispers", "College of Eloquence", "College of Creation", "College of Spirits"],
+  Cleric: ["Life", "Light", "Nature", "Tempest", "Trickery", "War", "Knowledge", "Grave", "Order", "Peace", "Forge", "Twilight"],
+  Druid: ["Circle of the Land", "Circle of the Moon", "Circle of Dreams", "Circle of the Shepherd", "Circle of Spores", "Circle of Stars", "Circle of Wildfire"],
+  Fighter: ["Champion", "Battle Master", "Eldritch Knight", "Purple Dragon Knight", "Samurai", "Cavalier", "Echo Knight", "Arcane Archer", "Psi Warrior"],
+  Monk: ["Way of the Open Hand", "Way of Shadow", "Way of the Four Elements", "Way of the Kensei", "Way of the Drunken Master", "Way of the Sun Soul", "Way of the Astral Self"],
+  Paladin: ["Oath of Devotion", "Oath of the Ancients", "Oath of Vengeance", "Oathbreaker", "Oath of Conquest", "Oath of Redemption", "Oath of the Crown", "Oath of the Watchers"],
+  Ranger: ["Hunter", "Beast Master", "Gloom Stalker", "Horizon Walker", "Monster Slayer", "Swarmkeeper", "Fey Wanderer", "Drakewarden"],
+  Rogue: ["Thief", "Assassin", "Arcane Trickster", "Swashbuckler", "Mastermind", "Scout", "Soulknife", "Phantom"],
+  Sorcerer: ["Draconic Bloodline", "Wild Magic", "Divine Soul", "Storm Sorcery", "Shadow Sorcerer", "Aberrant Mind", "Clockwork Soul"],
+  Warlock: ["Archfey", "Fiend", "Great Old One", "Celestial", "Hexblade", "Fathomless", "Genie", "Undead", "Seeker"],
+  Wizard: ["Abjuration", "Conjuration", "Divination", "Enchantment", "Evocation", "Illusion", "Necromancy", "Transmutation", "War Magic", "Bladesinging", "Chronurgy", "Graviturgy"],
+  Artificer: ["Alchemist", "Artillerist", "Battle Smith", "Armorer"],
+};
+
+export const ALL_SUBCLASS_OPTIONS = [...new Set(Object.values(SUBCLASS_OPTIONS).flat())];
+
+export const BLANK_CHARACTER = {
+  name: "", nameAlt: "", pronunciation: "",
+  race: "", charClass: "", subclass: "",
+  alignment: "", background: "", origin: "",
+  level: 1, portrait: "", tagline: "", palette: "ember",
+  stats: [
+    { stat: "Strength", score: 10, note: "" },
+    { stat: "Dexterity", score: 10, note: "" },
+    { stat: "Constitution", score: 10, note: "" },
+    { stat: "Wisdom", score: 10, note: "" },
+    { stat: "Intelligence", score: 10, note: "" },
+    { stat: "Charisma", score: 10, note: "" },
+  ],
+  hpMax: 0,
+  hpCurrent: 0,
+  tempHP: 0,
+  hitDice: "",
+  armorType: "",
+  armorTotal: 0,
+  spells: [],
+  skills: [],
+  specialAbilities: [],
+  spellSlots: [],
+  conditions: [],
+  exhaustionLevel: 0,
+  concentration: { active: false, spell: "" },
+  inspiration: false,
+  inPlay: [],
+  weapons: [],
+  equipment: [],
+  collections: [
+    {
+      id: uid(),
+      label: "Character",
+      sections: [
+        { id: uid(), title: "About", type: "prose", content: "" },
+        { id: uid(), title: "Appearance", type: "prose", content: "" },
+      ],
+    },
+    {
+      id: uid(),
+      label: "History",
+      sections: [],
+    },
+  ],
+};
+
+export const LIVE_SESSION_FIELDS = [
+  "hpCurrent",
+  "tempHP",
+  "spellSlots",
+  "conditions",
+  "exhaustionLevel",
+  "concentration",
+  "inspiration",
+  "weapons",
+  "equipment",
+];
+
+export const ARMOR_OPTIONS = [
+  { value: "none", label: "None", speed: "Fast" },
+  { value: "light", label: "Light", speed: "Normal" },
+  { value: "full", label: "Full", speed: "Slow" },
+  { value: "shield", label: "Shield", speed: null },
+];
+
+export const MOD_ATTRIBUTES = [
+  "Strength", "Dexterity", "Constitution", "Wisdom", "Intelligence", "Charisma",
+  "Armor", "HP", "Hit Dice", "Attack Bonus", "Damage", "Initiative", "Speed", "Save DC",
+];
+
+export const CONDITIONS = [
+  "Blinded", "Charmed", "Deafened", "Frightened", "Grappled",
+  "Incapacitated", "Invisible", "Paralyzed", "Petrified", "Poisoned",
+  "Prone", "Restrained", "Stunned", "Unconscious",
+];
+
+export const SPELL_LEVEL_LABELS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];

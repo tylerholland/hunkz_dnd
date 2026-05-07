@@ -2,16 +2,15 @@ const { GetCommand } = require("@aws-sdk/lib-dynamodb");
 const { db, TABLE } = require("../lib/db");
 const { ok, notFound } = require("../lib/response");
 const { isReservedCharacterSlug } = require("../lib/specialItems");
-
-const INITIATIVE_SLUG = "initiative";
+const { getInitiativeState } = require("../lib/specialRecords");
 
 exports.handler = async (event) => {
   const { slug } = event.pathParameters;
   if (isReservedCharacterSlug(slug)) return notFound();
 
-  const [result, initiativeResult] = await Promise.all([
+  const [result, initiative] = await Promise.all([
     db.send(new GetCommand({ TableName: TABLE, Key: { slug } })),
-    db.send(new GetCommand({ TableName: TABLE, Key: { slug: INITIATIVE_SLUG } })),
+    getInitiativeState(),
   ]);
   if (!result.Item) return notFound();
 
@@ -27,9 +26,9 @@ exports.handler = async (event) => {
     character.tempHP = 0;
   }
 
-  const initiativeEntries = initiativeResult.Item?.entries ?? [];
+  const initiativeEntries = initiative.entries ?? [];
   const sortedEntries = [...initiativeEntries].sort((a, b) => (b.initiative ?? 0) - (a.initiative ?? 0));
-  const activeTurnIndex = initiativeResult.Item?.activeTurnIndex ?? 0;
+  const activeTurnIndex = initiative.activeTurnIndex ?? 0;
   const activeEntry = sortedEntries[activeTurnIndex] || null;
   character.isActiveTurn = activeEntry?.slug === slug;
 

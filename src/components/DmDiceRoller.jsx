@@ -1,5 +1,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { parseDiceExpr, rollDie, DieShape } from "./DiceRoller";
+import { RollHistoryRow } from "./RollHistoryList";
+import { PALETTES } from "../features/characterSheet/theme";
+import { buildLocalRollHistoryEntry, extractRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const ALL_SIDES = [4, 6, 8, 10, 12, 20, 100];
@@ -89,7 +92,7 @@ function buildExprLabel(groups, flat) {
 }
 
 // ── DmDiceRoller ───────────────────────────────────────────────────────────────
-export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage, onApplyNpcDamage }) {
+export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage, onApplyNpcDamage, remoteHistory = [] }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
     sessionStorage.getItem("dnd_dice_dm_open") !== "false"
@@ -182,7 +185,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
         results,
         timestamp: Date.now(),
       };
-      setHistory(prev => [histEntry, ...prev].slice(0, 10));
+      setHistory(prev => [histEntry, ...prev].slice(0, 12));
     }, 600);
   }, [isRolling, advMode, repeatCount, exprInput, comboDice, comboMod, dieCount, selectedSides]);
 
@@ -240,6 +243,40 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
 
   // Selected result for apply-to
   const selectedResult = rollResults ? rollResults[Math.min(applyTarget, rollResults.length - 1)] : null;
+  const combinedHistory = [
+    ...history.map((entry) => {
+      if (entry.repeatCount === 1) {
+        return {
+          ...buildLocalRollHistoryEntry({
+            id: entry.id,
+            label: `Free Roll${entry.modeTag}`,
+            result: {
+              ...entry.results[0],
+              exprLabel: entry.exprLabel,
+            },
+            timestamp: entry.timestamp,
+          }),
+          source: "dm-standard",
+          sortTime: entry.timestamp || 0,
+        };
+      }
+
+      return {
+        ...entry,
+        source: "dm-multi",
+        sortTime: entry.timestamp || 0,
+      };
+    }),
+    ...remoteHistory.map((entry) => ({
+      ...entry,
+      label: normalizeRollActionLabel(entry.label),
+      rollValues: Array.isArray(entry.rollValues) && entry.rollValues.length > 0
+        ? entry.rollValues
+        : extractRollValues(entry),
+      source: "character",
+      sortTime: Date.parse(entry.createdAt || "") || 0,
+    })),
+  ].sort((a, b) => b.sortTime - a.sortTime);
 
   return (
     <>
@@ -559,34 +596,58 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
             <hr style={divider} />
 
             {/* ── History ── */}
-            {history.length > 0 && (
+            {combinedHistory.length > 0 && (
               <>
                 <div style={subLabel}>History</div>
                 <div>
-                  {history.map((entry, i) => {
-                    const opacities = [1.0, 1.0, 0.45, 0.45, 0.22, 0.22, 0.1, 0.1, 0, 0];
+                  {combinedHistory.map((entry, i) => {
+                    const opacities = [1.0, 1.0, 0.65, 0.65, 0.45, 0.45, 0.3, 0.3, 0.18, 0.18, 0.1, 0.1];
                     const opacity = opacities[i] ?? 0;
                     if (opacity === 0) return null;
 
-                    const totals = entry.results.map(r => r.total);
-                    const summary = entry.repeatCount > 1
-                      ? totals.join(", ")
-                      : String(totals[0]);
-                    const hasCrit = entry.results.some(r => r.isCrit);
-                    const hasFumble = entry.results.some(r => r.isFumble);
+                    const isStandardRow = entry.source === "character" || entry.source === "dm-standard";
+                    const palette = entry.source === "character"
+                      ? (PALETTES[entry.paletteKey] || PALETTES.ember)
+                      : null;
+
+                    if (isStandardRow) {
+                      return (
+                        <RollHistoryRow
+                          key={entry.id}
+                          pal={pal}
+                          entry={{
+                            ...entry,
+                            nameColor: palette?.accent,
+                            totalAccentColor: palette?.accent,
+                          }}
+                          opacity={opacity}
+                          showDivider={i < combinedHistory.length - 1}
+                        />
+                      );
+                    }
+
+                    const totals = entry.results.map((result) => result.total);
+                    const hasCrit = entry.results.some((result) => result.isCrit);
+                    const hasFumble = entry.results.some((result) => result.isFumble);
+                    const summary = totals.join(", ");
 
                     return (
-                      <div key={entry.id} style={{
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "6px 0", borderBottom: i < history.length - 1 ? `1px solid ${pal.border}` : "none",
-                        opacity, transition: "opacity 0.4s",
-                      }}>
+                      <div
+                        key={entry.id}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 8,
+                          padding: "6px 0",
+                          borderBottom: i < combinedHistory.length - 1 ? `1px solid ${pal.border}` : "none",
+                          opacity,
+                          transition: "opacity 0.4s",
+                        }}
+                      >
                         <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: pal.textMuted, minWidth: 44 }}>
                           {entry.exprLabel}
                         </span>
-                        {entry.repeatCount > 1 && (
-                          <span style={{ fontFamily: pal.fontUI, fontSize: 9, color: pal.textMuted }}>×{entry.repeatCount}</span>
-                        )}
+                        <span style={{ fontFamily: pal.fontUI, fontSize: 9, color: pal.textMuted }}>×{entry.repeatCount}</span>
                         <span style={{ flex: 1, fontFamily: pal.fontDisplay, fontSize: 13, color: pal.textBody, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                           {summary}
                         </span>

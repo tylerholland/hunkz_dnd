@@ -1,0 +1,15 @@
+node_modules/
+dist/
+.DS_Store
+.obsidian/workspace.json
+
+# Vite / Vitest caches
+.vite/
+coverage/
+
+# SAM build output
+backend/.aws-sam/
+
+# Local env files
+.env.local
+.env.*.local

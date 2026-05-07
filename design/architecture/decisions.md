@@ -18,13 +18,24 @@
 
 ---
 
-## ADR-002 · Monolithic CharacterSheet.jsx
+## ADR-002 · Feature-sliced screen modules
 
-**Decision**: All character sheet UI — view mode, edit mode, sub-components, modals, constants — lives in one file (`src/components/CharacterSheet.jsx`).
+**Decision**: Large screens are split by feature slice once they become difficult to reason about as single files. The page/container file keeps orchestration state and API wiring; rendering and feature-local helpers move into `src/features/<feature>/`.
 
-**Rationale**: The app has one primary screen. A single file means zero prop-drilling across files, trivial co-location of related logic, and fast navigation. The cost (file length) is low given the tooling.
+**Current shape**:
 
-**Revisit when**: The file exceeds ~2500 lines and distinct sub-features (e.g., a DM dashboard, a dice roller) are large enough to be genuinely independent. Split by feature, not by component type.
+- `src/components/CharacterSheet.jsx` is the character-sheet container and sync orchestrator.
+- `src/features/characterSheet/CharacterSheetViewMode.jsx` owns the unlocked/view rendering.
+- `src/features/characterSheet/CharacterSheetEditMode.jsx` owns the edit/create rendering.
+- `src/features/characterSheet/` also holds character-sheet-specific constants, theme helpers, primitives, and modal/forms.
+- `src/pages/DmDashboardPage.jsx` is the DM campaign container.
+- `src/features/dmDashboard/` holds dashboard slices such as the party card, initiative tracker, NPC combat section, login prompt, confirm dialog, and dashboard shared helpers.
+
+**Rationale**: The earlier monolithic approach was fast while the app was small, but once `CharacterSheet.jsx` and `DmDashboardPage.jsx` crossed the practical review threshold, changes became more error-prone and expensive in both human and LLM context. Feature-sliced files keep related behavior together without exploding the project into many tiny generic components.
+
+**Constraint**: Split by feature/domain behavior, not by arbitrary component taxonomy. Avoid "components/", "hooks/", and "utils/" sprawl inside a feature unless the separation is doing real work.
+
+**Revisit when**: A single feature directory becomes too dense or duplicated patterns clearly want promotion into shared modules. The next step is shared primitives only where at least two screens genuinely use the same behavior, not proactive abstraction.
 
 ---
 
@@ -129,6 +140,8 @@ Both pages use a self-scheduling `setTimeout` loop rather than a fixed `setInter
 
 **Implementation detail**: Polling is implemented in the frontend page components, not in the backend. Each page tracks outstanding requests and skips background polls while a fetch is already in flight, unless a forced sync is explicitly requested. This avoids overlapping request storms and stale-response races.
 
+**Code location note**: The shared polling and optimistic-sync primitives live in `src/lib/liveSync.js`. Feature-specific orchestration still lives in the page/container files, but new realtime behavior should start from the shared utilities rather than re-implementing debounce, polling cadence, or immediate-refetch timers ad hoc.
+
 **Authoritative sync model**:
 
 - The server remains the source of truth for all session fields.
@@ -149,3 +162,76 @@ Both pages use a self-scheduling `setTimeout` loop rather than a fixed `setInter
 **Operational note**: This is intentionally conservative architecture. A future model or agent working in this codebase should prefer preserving the polling + optimistic-write contract unless there is an explicit decision to introduce push infrastructure. Changes to polling cadence, write coalescing, or incoming merge logic can easily create subtle race conditions between the DM dashboard and character page.
 
 **Revisit when**: Player count exceeds ~20 concurrent sessions, polling traffic becomes material, or the product expands to a public SaaS model where sub-second push latency is a product requirement. At that point, AppSync subscriptions or an API Gateway WebSocket API can replace polling, but only with explicit connection-subscription design and a retained server-authoritative reconciliation path.
+
+---
+
+## Feature Index
+
+This is a navigation aid for humans and future agents. It mirrors the feature language in `design/app-overview.md` and points to the primary code locations for each area.
+
+### Character Library
+
+- Page: `src/pages/CharactersListPage.jsx`
+- Character summary fetch: `src/pages/CharactersListPage.jsx`
+- Frontend guard against malformed/internal rows: `src/pages/CharactersListPage.jsx`
+- Regression spec: `src/pages/CharactersListPage.test.jsx`
+
+### Character Sheet
+
+- Container / sync orchestration: `src/components/CharacterSheet.jsx`
+- Container sync spec: `src/components/CharacterSheet.test.jsx`
+- View mode render: `src/features/characterSheet/CharacterSheetViewMode.jsx`
+- View mode turn-state spec: `src/features/characterSheet/CharacterSheetViewMode.test.jsx`
+- Edit mode render: `src/features/characterSheet/CharacterSheetEditMode.jsx`
+- Theme + global sheet styles: `src/features/characterSheet/theme.jsx`
+- Sheet constants and blank model: `src/features/characterSheet/constants.js`
+- Shared sheet primitives: `src/features/characterSheet/CharacterSheetPrimitives.jsx`
+- Item editor modal: `src/features/characterSheet/ItemEditorModal.jsx`
+- Password change form: `src/features/characterSheet/ChangePasswordForm.jsx`
+- Dice roller used on character sheets: `src/components/DiceRoller.jsx`
+- Shared roll event formatting: `src/lib/rollHistory.js`
+
+### Character Detail Pages
+
+- Existing character route and polling: `src/pages/CharacterPage.jsx`
+- New character flow: `src/pages/NewCharacterPage.jsx`
+- Character route regression spec: `src/pages/CharacterPage.test.jsx`
+
+### Shared Realtime Utilities
+
+- Adaptive polling, queued background refresh, debounce, optimistic live-field merge, and shared numeric flush hook: `src/lib/liveSync.js`
+
+### DM Campaign
+
+- Container / polling / orchestration: `src/pages/DmDashboardPage.jsx`
+- Shared dashboard helpers, responsive CSS, polling constants: `src/features/dmDashboard/dashboardShared.js`
+- DM auth prompt: `src/features/dmDashboard/DmLoginPrompt.jsx`
+- DM auth prompt spec: `src/features/dmDashboard/DmLoginPrompt.test.jsx`
+- Player party card slice: `src/features/dmDashboard/CharacterCard.jsx`
+- Initiative tracker: `src/features/dmDashboard/InitiativeTracker.jsx`
+- NPC combat section: `src/features/dmDashboard/NpcCombatSection.jsx`
+- NPC active-turn spec: `src/features/dmDashboard/NpcCombatSection.test.jsx`
+- Shared confirm dialog: `src/features/dmDashboard/ConfirmDialog.jsx`
+- Dice roller used on the DM campaign page: `src/components/DmDiceRoller.jsx`
+- DM dice roller spec: `src/components/DmDiceRoller.test.jsx`
+
+### Backend Character APIs
+
+- Public character list: `backend/src/handlers/list.js`
+- Public character fetch: `backend/src/handlers/get.js`
+- Character create/update/delete: `backend/src/handlers/create.js`, `backend/src/handlers/update.js`, `backend/src/handlers/delete.js`
+- Password verify: `backend/src/handlers/verify.js`
+- Portrait presign/upload helper: `backend/src/handlers/portrait.js`
+- Live session patch endpoint: `backend/src/handlers/session.js`
+
+### Backend DM / Realtime Support
+
+- DM party aggregate: `backend/src/handlers/dmParty.js`
+- Initiative read/write: `backend/src/handlers/initiative.js`
+- NPC combat read/write: `backend/src/handlers/getNpcCombat.js`, `backend/src/handlers/putNpcCombat.js`
+- Character roll event ingest: `backend/src/handlers/postCharacterRoll.js`
+- DM roll history fetch: `backend/src/handlers/getRollHistory.js`
+- Reserved internal record definitions and public filters: `backend/src/lib/specialItems.js`
+- Shared initiative / NPC combat / roll-history record facade: `backend/src/lib/specialRecords.js`
+- Shared auth/db/response helpers: `backend/src/lib/auth.js`, `backend/src/lib/db.js`, `backend/src/lib/response.js`
+- Backend reserved-record specs: `backend/src/lib/specialItems.test.cjs`, `backend/src/lib/specialRecords.test.cjs`, `backend/src/handlers/list.test.cjs`, `backend/src/handlers/get.test.cjs`

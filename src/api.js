@@ -1,10 +1,32 @@
 const BASE = import.meta.env.VITE_API_URL;
+const OPTIONAL_ENDPOINT_SUPPORT = {
+  rollHistory: null,
+  characterRolls: null,
+};
 
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, options);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || "Request failed"), { status: res.status });
   return data;
+}
+
+async function requestOptional(path, options, supportKey, fallbackValue) {
+  if (OPTIONAL_ENDPOINT_SUPPORT[supportKey] === false) {
+    return typeof fallbackValue === "function" ? fallbackValue() : fallbackValue;
+  }
+
+  try {
+    const data = await request(path, options);
+    OPTIONAL_ENDPOINT_SUPPORT[supportKey] = true;
+    return data;
+  } catch (err) {
+    if (err?.status === 404 || err instanceof TypeError) {
+      OPTIONAL_ENDPOINT_SUPPORT[supportKey] = false;
+      return typeof fallbackValue === "function" ? fallbackValue() : fallbackValue;
+    }
+    throw err;
+  }
 }
 
 export const listCharacters = () =>
@@ -39,6 +61,13 @@ export const verifyPassword = (slug, password) =>
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),
   });
+
+export const postCharacterRoll = (slug, payload) =>
+  requestOptional(`/characters/${slug}/rolls`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  }, "characterRolls", { success: false, unsupported: true });
 
 export const getPortraitUploadUrl = (slug, password, contentType) =>
   request(`/characters/${slug}/portrait-url`, {
@@ -91,3 +120,8 @@ export const putNpcCombat = (dmPassword, data) =>
     },
     body: JSON.stringify(data),
   });
+
+export const getRollHistory = (dmPassword) =>
+  requestOptional("/roll-history", {
+    headers: { "x-character-password": dmPassword },
+  }, "rollHistory", { rolls: [], unsupported: true });

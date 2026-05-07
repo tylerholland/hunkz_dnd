@@ -1,4 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import { postCharacterRoll } from "../api";
+import RollHistoryList from "./RollHistoryList";
+import { buildCharacterRollPayload, buildDiceExprLabel, buildLocalRollHistoryEntry } from "../lib/rollHistory";
+import { PALETTES } from "../features/characterSheet/theme";
 
 // ── Dice roller CSS keyframes ──────────────────────────────────────────────────
 const DICE_CSS = `
@@ -220,18 +224,28 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
         groups: rolledGroups, flat, total, isCrit, isFumble,
         label, advKept, advDiscarded, isMultiGroup,
       };
+      resultObj.exprLabel = buildDiceExprLabel(groups, flat);
 
       setRollState({ rolling: false, result: resultObj });
 
-      const exprLabel = groups.map(g => `${g.count}d${g.sides}`).join("+") +
-        (flat ? (flat > 0 ? `+${flat}` : `${flat}`) : "");
       const modeTag = isD20Attack && advMode !== "normal"
         ? (advMode === "advantage" ? " (adv)" : " (dis)") : "";
 
       setHistory(prev => [
-        { id: Date.now(), dieExpr: exprLabel, label: label + modeTag, total, isCrit, isFumble },
+        buildLocalRollHistoryEntry({
+          id: Date.now(),
+          label: label + modeTag,
+          result: resultObj,
+        }),
         ...prev,
       ].slice(0, 5));
+
+      if (slug) {
+        postCharacterRoll(slug, buildCharacterRollPayload({
+          label: label + modeTag,
+          result: resultObj,
+        })).catch(() => {});
+      }
     }, resolveTime);
   }, [rollState.rolling, advMode, ensureOpen]);
 
@@ -252,7 +266,7 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
   const rollAbility = (stat) => {
     const mod = getAbilityMod(stat);
     const short = STAT_SHORT[stat.name] || stat.name.slice(0, 3).toUpperCase();
-    executeRoll({ groups: [{ count: 1, sides: 20 }], flat: mod, label: `${short} check`, isD20Attack: true });
+    executeRoll({ groups: [{ count: 1, sides: 20 }], flat: mod, label: `${stat.name} Check`, isD20Attack: true });
   };
 
   const rollFree = () => {
@@ -269,7 +283,7 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
     } else {
       groups = [{ count: dieCount, sides: selectedSides }]; flat = comboMod;
     }
-    executeRoll({ groups, flat, label: "Free roll", isD20Attack: false });
+    executeRoll({ groups, flat, label: "Free Roll", isD20Attack: false });
   };
 
   const rollExpr = () => {
@@ -279,7 +293,7 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
       setExprError("Could not parse — use NdX or N terms, e.g. 2d6+1d4+3"); return;
     }
     setExprError("");
-    executeRoll({ groups: parsed.groups, flat: parsed.flat, label: `Expr: ${exprInput.trim()}`, isD20Attack: false });
+    executeRoll({ groups: parsed.groups, flat: parsed.flat, label: "Free Roll", isD20Attack: false });
   };
 
   // ── Combo builder ────────────────────────────────────────────────────────────
@@ -327,6 +341,7 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
     textTransform: "uppercase", color: pal.textMuted, marginBottom: 10,
   };
   const divider = { border: "none", borderTop: `1px solid ${pal.border}`, margin: "14px 0" };
+  const primaryRollBg = pal === PALETTES.vellum ? pal.accentDim : "rgba(18,58,78,0.4)";
   const rollBtnStyle = (variant) => ({
     fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.10em",
     padding: "4px 10px", borderRadius: 3, cursor: rolling ? "not-allowed" : "pointer",
@@ -729,7 +744,7 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
                 fontFamily: pal.fontDisplay, fontSize: 15, letterSpacing: "0.12em",
                 borderRadius: 4, cursor: rolling ? "not-allowed" : "pointer",
                 border: `1px solid ${pal.accent}`,
-                background: "rgba(18,58,78,0.4)",
+                background: primaryRollBg,
                 color: pal.accentBright, transition: "all 0.15s",
                 textTransform: "uppercase", opacity: rolling ? 0.45 : 1, marginBottom: 16,
               }}
@@ -775,39 +790,12 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
             {history.length > 0 && (
               <>
                 <hr style={divider} />
-                <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 10 }}>Recent Rolls</div>
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {history.map((entry, i) => {
-                    const opacities = [1.0, 0.45, 0.22, 0, 0];
-                    const opacity = opacities[i] ?? 0;
-                    if (opacity === 0) return null;
-                    return (
-                      <div key={entry.id} style={{
-                        display: "flex", alignItems: "center", gap: 10,
-                        padding: "7px 0", borderBottom: i < history.length - 1 ? `1px solid ${pal.border}` : "none",
-                        opacity, transition: "opacity 0.4s",
-                      }}>
-                        <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.12em", textTransform: "uppercase", color: pal.textMuted, minWidth: 52 }}>
-                          {entry.dieExpr}
-                        </span>
-                        <span style={{ flex: 1, fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, fontStyle: "italic" }}>
-                          {entry.label}
-                        </span>
-                        <span style={{
-                          fontFamily: pal.fontDisplay, fontSize: 20, minWidth: 32, textAlign: "right",
-                          color: entry.isCrit ? "#ffd060" : entry.isFumble ? "#c06060" : pal.gem,
-                          textShadow: entry.isCrit ? "0 0 6px rgba(255,200,40,0.4)" : "none",
-                        }}>{entry.total}</span>
-                        {entry.isCrit && (
-                          <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", padding: "2px 6px", borderRadius: 2, color: "#ffd060", border: "1px solid rgba(255,200,40,0.4)", background: "rgba(255,200,40,0.08)" }}>crit!</span>
-                        )}
-                        {entry.isFumble && (
-                          <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", padding: "2px 6px", borderRadius: 2, color: "#c06060", border: "1px solid rgba(192,60,60,0.4)", background: "rgba(192,60,60,0.08)" }}>fumble</span>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
+                <RollHistoryList
+                  pal={pal}
+                  title="Recent Rolls"
+                  entries={history}
+                  opacities={[1.0, 0.45, 0.22, 0, 0]}
+                />
               </>
             )}
 

@@ -2,7 +2,7 @@ const { ScanCommand } = require("@aws-sdk/lib-dynamodb");
 const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden } = require("../lib/response");
-const { isReservedCharacterSlug } = require("../lib/specialItems");
+const { filterPublicCharacterItems } = require("../lib/specialItems");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -14,7 +14,7 @@ exports.handler = async (event) => {
   const result = await db.send(new ScanCommand({
     TableName: TABLE,
     ProjectionExpression:
-      "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, #l, race, charClass",
+      "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities",
     ExpressionAttributeNames: {
       "#n": "name",
       "#c": "conditions",
@@ -23,8 +23,7 @@ exports.handler = async (event) => {
     },
   }));
 
-  // Filter out special sentinel items
-  const items = (result.Items || []).filter((item) => !isReservedCharacterSlug(item.slug));
+  const items = filterPublicCharacterItems(result.Items || []);
 
   return ok(items);
 };

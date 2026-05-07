@@ -3,6 +3,17 @@ import { useNavigate, Link } from "react-router-dom";
 import { listCharacters, verifyPassword } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 
+const RESERVED_CHARACTER_SLUGS = new Set(["initiative", "npc-combat"]);
+
+function isRenderableCharacterSummary(entry) {
+  if (!entry || typeof entry !== "object") return false;
+  const slug = typeof entry.slug === "string" ? entry.slug.trim() : "";
+  const name = typeof entry.name === "string" ? entry.name.trim() : "";
+  if (!slug || !name) return false;
+  if (RESERVED_CHARACTER_SLUGS.has(slug)) return false;
+  return true;
+}
+
 export default function CharactersListPage() {
   const [characters,  setCharacters]  = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -46,6 +57,7 @@ export default function CharactersListPage() {
   };
 
   const pal = PALETTES.ember;
+  const visibleCharacters = characters.filter(isRenderableCharacterSummary);
 
   return (
     <div style={{
@@ -203,7 +215,7 @@ export default function CharactersListPage() {
             gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
             gap: 20, marginBottom: 32,
           }}>
-            {characters.map(c => {
+            {visibleCharacters.map(c => {
               const p = PALETTES[c.palette] || PALETTES.ember;
               return (
                 <button

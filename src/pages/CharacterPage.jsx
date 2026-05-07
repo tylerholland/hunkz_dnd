@@ -2,9 +2,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CharacterSheet, { PALETTES } from "../components/CharacterSheet";
 import { getCharacter, updateCharacter, deleteCharacter } from "../api";
-
-const ACTIVE_POLL_MS = 1000;
-const BACKGROUND_POLL_MS = 5000;
+import { useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
 
 export default function CharacterPage() {
   const navigate = useNavigate();
@@ -14,7 +12,6 @@ export default function CharacterPage() {
   const [error,   setError]   = useState(null);
   const requestSeqRef = useRef(0);
   const activeRequestCountRef = useRef(0);
-  const sessionSyncTimerRef = useRef(null);
 
   // Read cached palette for this slug so the spinner matches on return visits
   const cachedPalette = sessionStorage.getItem(`dnd_palette_${slug}`);
@@ -54,55 +51,16 @@ export default function CharacterPage() {
     }
   }, [slug]);
 
-  const queueSessionSync = useCallback((delay = 75) => {
-    clearTimeout(sessionSyncTimerRef.current);
-    sessionSyncTimerRef.current = setTimeout(() => {
-      fetchCharacter({ background: true, force: true });
-    }, delay);
-  }, [fetchCharacter]);
+  const queueSessionSync = useQueuedRefresh(fetchCharacter);
 
   useEffect(() => {
     fetchCharacter();
   }, [fetchCharacter]);
 
-  useEffect(() => {
-    if (!slug) return;
-    let timeoutId = null;
-    let stopped = false;
-
-    const getDelay = () =>
-      document.visibilityState === "visible" && document.hasFocus()
-        ? ACTIVE_POLL_MS
-        : BACKGROUND_POLL_MS;
-
-    const scheduleNext = () => {
-      if (stopped) return;
-      timeoutId = setTimeout(async () => {
-        await fetchCharacter({ background: true });
-        scheduleNext();
-      }, getDelay());
-    };
-
-    const reschedule = () => {
-      clearTimeout(timeoutId);
-      scheduleNext();
-    };
-
-    scheduleNext();
-    document.addEventListener("visibilitychange", reschedule);
-    window.addEventListener("focus", reschedule);
-    window.addEventListener("blur", reschedule);
-
-    return () => {
-      stopped = true;
-      clearTimeout(timeoutId);
-      document.removeEventListener("visibilitychange", reschedule);
-      window.removeEventListener("focus", reschedule);
-      window.removeEventListener("blur", reschedule);
-    };
-  }, [fetchCharacter, slug]);
-
-  useEffect(() => () => clearTimeout(sessionSyncTimerRef.current), []);
+  useAdaptivePolling({
+    enabled: !!slug,
+    poll: fetchCharacter,
+  });
 
   const handleSave = async (charData, password) => {
     await updateCharacter(slug, charData, password);

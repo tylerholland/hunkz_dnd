@@ -1,9 +1,6 @@
-const { PutCommand } = require("@aws-sdk/lib-dynamodb");
-const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
-
-const NPC_COMBAT_SLUG = "npc-combat";
+const { saveNpcCombatState } = require("../lib/specialRecords");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -13,10 +10,7 @@ exports.handler = async (event) => {
   const body = JSON.parse(event.body || "{}");
   if (!Array.isArray(body.npcs)) return badRequest("npcs must be an array");
 
-  await db.send(new PutCommand({
-    TableName: TABLE,
-    Item: { slug: NPC_COMBAT_SLUG, npcs: body.npcs, updatedAt: new Date().toISOString() },
-  }));
+  await saveNpcCombatState({ npcs: body.npcs });
 
   return ok({ success: true });
 };

@@ -89,9 +89,10 @@ All content below the header is gated. When locked: shows a "Full sheet is priva
        - **Weapon roll buttons**: one row per weapon that has an Attack Bonus or Damage mod; ATK button rolls 1d20 + attack bonus (respects adv/dis, triggers crit/fumble); DMG button parses the damage expression (`parseDiceExpr`) and rolls all dice groups
        - **Ability check circles**: six tappable stat circles (STR/DEX/CON/WIS/INT/CHA); each rolls 1d20 + computed ability modifier (same formula as rest of sheet); respects adv/dis
        - **Free dice picker**: 7 SVG die buttons (d4, d6, d8, d10, d12, d20, d100); count stepper 1–10; single-click selects primary die, double-click adds one to combo; "+ Add Die" adds current count+type to the pending combo expression; flat modifier input; big "Roll" button
-       - **Expression text input**: accepts freeform expressions like `2d6+1d4+3`; overrides picker on roll when non-empty; Enter key triggers roll
-       - **Result display**: single-die or multi-group layout; CSS-only spin animation (1050ms); staggered group reveal for combos; gold crit / red fumble number glow + label; advantage/disadvantage shows both d20 results with discarded value struck through
-       - **Roll history**: last 5 rolls (most recent at top); fade: 100% / 45% / 22% / hidden / hidden; session-only (not persisted)
+     - **Expression text input**: accepts freeform expressions like `2d6+1d4+3`; overrides picker on roll when non-empty; Enter key triggers roll
+      - **Result display**: single-die or multi-group layout; CSS-only spin animation (1050ms); staggered group reveal for combos; gold crit / red fumble number glow + label; advantage/disadvantage shows both d20 results with discarded value struck through
+      - **Roll history**: last 5 rolls (most recent at top); fade: 100% / 45% / 22% / hidden / hidden; session-only (not persisted)
+      - **DM live roll broadcast**: after a player roll resolves, the sheet posts a compact event to a shared backend roll-history record (`/characters/{slug}/rolls`). On the next DM poll, that roll appears in the DM Campaign dice history with the character's name colored in that character's palette accent
 
 ##### Collections / Persona sections
 
@@ -302,10 +303,11 @@ A dedicated DM session-management view accessible at `/dm`.
 - **×N repeat**: stepper 1–8; executes N independent rolls in one 600ms animation pass; results displayed as a labeled selectable list ("Roll 1 · 17", "Roll 2 · 9 ✦ CRIT"); crit/fumble detected per row
 - **"Apply to…" shortcut**: appears after any pure damage roll (no d20 in expression); one pill button per party member; tapping a pill opens that character's Deal Damage quick-action popover pre-filled with the rolled total; DM still confirms inside the popover before `patchSession` fires; for ×N rolls the DM taps a specific result row to select it, then sees the Apply-to pills for that row's total
 - Roll history: last 10 rolls, fading opacity; session-only (not `sessionStorage`)
+- **Shared party roll feed**: character-sheet rolls fetched from `GET /roll-history` are merged into the same history display, sorted by timestamp alongside DM-local rolls. Shared entries render as "`CharacterName` rolled {expr} [{rolls}]: {total}", with the character name tinted to that character's palette accent
 - `QuickActionPopover` contains: Add Condition, Set Temp HP, Drop Concentration (conditional), Short Rest, Long Rest. Short Rest / Long Rest from the popover bubble up as string action tokens (`"shortRest"` / `"longRest"`) through `onUpdate` to the main page which shows the confirm dialog.
 - `CharacterCard` accepts `onRegisterOpen` prop to register an external open-with-damage callback (used by DmDiceRoller "Apply to…"); dashboard holds callbacks in a `Map<slug, fn>` ref
 
-**Polling**: `getDmParty` and `getInitiative` both polled every 2 seconds while mounted (ADR-011). Polling clears on unmount.
+**Polling**: `getDmParty`, `getInitiative`, `getNpcCombat`, and `getRollHistory` are polled adaptively per ADR-011 (`1s` while visible/focused, `5s` while backgrounded). Polling clears on unmount.
 
 **Visual style**: Ocean palette chrome throughout (`#0d0f14` bg, `#6a8fa8` accent). Responsive: stacks to single column below 900px.
 
@@ -314,7 +316,7 @@ A dedicated DM session-management view accessible at `/dm`.
 ## Known gaps (not yet built)
 
 - **Death save tracking**: display-only bubbles shown at 0 HP; write logic not yet implemented (story 06)
-- **No real-time multiplayer / shared state** (planned: 2-second polling per ADR-011; implemented in DM dashboard, not yet in player sheets)
+- **No true push multiplayer transport**: live sync uses adaptive polling plus optimistic writes rather than WebSockets/AppSync. Shared updates appear across player sheets and the DM campaign page, but not via a dedicated push channel
 - **No public vs. private view split** (planned feature per memory/project_goals.md)
 
 ---
