@@ -1,0 +1,1507 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Notes — Design Prototype (Rev 2)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── Ocean palette ─────────────────────────────────────── */
+:root {
+  --bg: #0d0f14;
+  --surface: rgba(30,45,62,0.45);
+  --surfaceSolid: #131c28;
+  --border: #1e3040;
+  --accent: #6a8fa8;
+  --accentBright: #a0c0d0;
+  --accentDim: rgba(106,143,168,0.18);
+  --text: #c8bfaf;
+  --textBody: #a8b0b8;
+  --textMuted: #3a5a6a;
+  --gem: #8ab4c8;
+  --gemLow: #3a5a6a;
+  --glow1: rgba(40,80,120,0.28);
+  --glow2: rgba(20,50,80,0.18);
+  --fontDisplay: 'Cinzel', serif;
+  --fontBody: 'Crimson Text', serif;
+  --fontUI: 'IM Fell English', serif;
+  --error: #c06060;
+  --success: #60a878;
+  /* Per-character palette accents used on cards */
+  --char-ember: #a06840;
+  --char-ocean: #6a8fa8;
+  --char-forest: #5a8a60;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+              radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+              var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--fontBody);
+  font-size: 15px;
+  padding: 40px 24px 100px;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ── Page layout ────────────────────────────────────────── */
+.proto-page-label {
+  font-family: var(--fontUI);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--textMuted);
+  margin-bottom: 4px;
+}
+.section-heading {
+  font-family: var(--fontDisplay);
+  font-size: 18px;
+  color: var(--accentBright);
+  margin-bottom: 20px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+.proto-section {
+  max-width: 1000px;
+  margin: 0 auto 64px;
+}
+.party-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  max-width: 640px;
+}
+.two-col-layout {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  align-items: start;
+}
+@media (max-width: 760px) {
+  .two-col-layout { grid-template-columns: 1fr; }
+}
+
+/* ── Callout annotations ────────────────────────────────── */
+.callout {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 8px;
+  background: rgba(106,143,168,0.10);
+  border: 1px solid rgba(106,143,168,0.35);
+  border-radius: 3px;
+  padding: 7px 11px;
+  font-family: var(--fontUI);
+  font-size: 12px;
+  color: var(--accentBright);
+  letter-spacing: 0.10em;
+  margin-bottom: 10px;
+  line-height: 1.5;
+  width: 100%;
+}
+.callout-num {
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: 50%;
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 600; flex-shrink: 0;
+  margin-top: 1px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   CHARACTER CARD — matches actual DM dashboard card structure
+   ══════════════════════════════════════════════════════════ */
+
+.char-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--card-accent, var(--accent));
+  border-radius: 6px;
+  position: relative;
+  overflow: visible;
+  transition: border-color 0.18s;
+}
+.char-card.active-turn {
+  box-shadow: 0 0 0 1.5px var(--card-accent, var(--accent)),
+              0 0 16px rgba(106,143,168,0.25);
+}
+
+/* Card body (above footer) */
+.char-card-body {
+  padding: 14px 14px 12px 14px;
+}
+
+/* Header row: portrait + name block + AC badge + ⋯ */
+.char-card-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 11px;
+}
+
+.char-portrait {
+  width: 52px; height: 52px;
+  border-radius: 50%;
+  background: var(--accentDim);
+  border: 2px solid var(--card-accent, var(--accent));
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--fontDisplay);
+  font-size: 22px;
+  color: var(--card-accent, var(--gem));
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.char-portrait img { width: 100%; height: 100%; object-fit: cover; }
+
+.char-name-block {
+  flex: 1;
+  min-width: 0;
+}
+.char-name {
+  font-family: var(--fontDisplay);
+  font-size: 16px;
+  color: var(--accentBright);
+  display: block;
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.char-meta {
+  font-family: var(--fontUI);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--textMuted);
+  text-transform: uppercase;
+}
+
+/* AC badge: top-right corner amber square */
+.char-ac-badge {
+  width: 32px; height: 32px;
+  background: rgba(160,104,64,0.20);
+  border: 1px solid #a06840;
+  border-radius: 4px;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--fontDisplay);
+  font-size: 15px;
+  color: #c89060;
+  flex-shrink: 0;
+}
+
+/* ⋯ overflow button */
+.char-overflow-btn {
+  width: 26px; height: 26px;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--textMuted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+  letter-spacing: -1px;
+  line-height: 1;
+}
+.char-overflow-btn:hover { border-color: var(--accent); color: var(--accentBright); }
+
+/* HP row */
+.char-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+.char-hp-num {
+  font-family: var(--fontDisplay);
+  font-size: 22px;
+  color: var(--gem);
+  min-width: 72px;
+  flex-shrink: 0;
+}
+.char-hp-num.low { color: var(--error); }
+.char-hp-stepper-btn {
+  width: 30px; height: 30px;
+  border-radius: 3px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--textMuted);
+  font-family: var(--fontDisplay);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+  line-height: 1;
+}
+.char-hp-stepper-btn:hover { border-color: var(--accent); color: var(--accentBright); }
+.char-hp-bar-track {
+  flex: 1;
+  height: 6px;
+  background: rgba(138,180,200,0.12);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.char-hp-bar-fill {
+  height: 100%;
+  background: var(--gem);
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+/* Condition chips row */
+.char-conditions-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 0;
+  margin-bottom: 0;
+}
+.condition-chip {
+  font-family: var(--fontUI);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: 1px solid var(--accent);
+  color: var(--accentBright);
+  border-radius: 2px;
+  padding: 2px 8px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+.condition-chip:hover { opacity: 0.7; }
+
+/* SHEET link (bottom-right of header area) */
+.char-sheet-link {
+  font-family: var(--fontUI);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--textMuted);
+  text-decoration: none;
+  transition: color 0.15s;
+  white-space: nowrap;
+  align-self: flex-start;
+  margin-top: 2px;
+}
+.char-sheet-link:hover { color: var(--accentBright); }
+
+/* Card footer: Damage + Heal side-by-side */
+.char-card-footer {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid var(--border);
+}
+.char-footer-btn {
+  flex: 1;
+  padding: 9px 0;
+  font-family: var(--fontUI);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+  border: none;
+  background: transparent;
+  transition: background 0.15s, color 0.15s;
+}
+.char-footer-btn.dmg {
+  color: #c06060;
+  background: rgba(192,96,96,0.06);
+  border-right: 1px solid var(--border);
+  border-radius: 0 0 0 5px;
+}
+.char-footer-btn.dmg:hover { background: rgba(192,96,96,0.14); }
+.char-footer-btn.heal {
+  color: var(--success);
+  background: rgba(96,168,120,0.06);
+  border-radius: 0 0 5px 0;
+}
+.char-footer-btn.heal:hover { background: rgba(96,168,120,0.14); }
+
+/*
+  ── NOTES STRIP ───────────────────────────────────────────
+  Design decision: a thin collapsible strip sits BELOW the
+  Damage/Heal footer. The footer buttons are untouched.
+  When collapsed:
+    • No notes  → faint single-line bar with a "✎ + note" prompt
+    • Has notes → bar gets an accent-tinted bg + count badge
+  Tapping anywhere on the bar expands the notes panel.
+  This respects the existing footer real estate entirely.
+*/
+
+.notes-strip {
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 5px 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+}
+
+/* collapsed bar */
+.notes-strip-bar {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 12px;
+}
+.notes-strip-bar:hover { background: rgba(106,143,168,0.07); border-radius: 0 0 5px 5px; }
+
+.notes-strip.has-notes .notes-strip-bar {
+  background: rgba(106,143,168,0.09);
+}
+.notes-strip.open .notes-strip-bar {
+  border-bottom: 1px solid var(--border);
+  border-radius: 0;
+  background: rgba(106,143,168,0.12);
+}
+
+.notes-strip-icon {
+  color: var(--textMuted);
+  opacity: 0.6;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.notes-strip.has-notes .notes-strip-icon,
+.notes-strip.open .notes-strip-icon {
+  color: var(--accent);
+  opacity: 1;
+}
+
+.notes-strip-label {
+  font-family: var(--fontUI);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--textMuted);
+  transition: color 0.15s;
+  flex: 1;
+}
+.notes-strip.has-notes .notes-strip-label,
+.notes-strip.open .notes-strip-label {
+  color: var(--accentBright);
+}
+
+.notes-strip-badge {
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: 10px;
+  padding: 1px 6px;
+  font-size: 11px;
+  font-family: var(--fontDisplay);
+  min-width: 18px;
+  text-align: center;
+  line-height: 16px;
+  display: none;
+}
+.notes-strip.has-notes .notes-strip-badge { display: inline-block; }
+
+.notes-strip-chevron {
+  font-size: 10px;
+  color: var(--textMuted);
+  transition: transform 0.18s, color 0.15s;
+}
+.notes-strip.open .notes-strip-chevron {
+  transform: rotate(180deg);
+  color: var(--accentBright);
+}
+
+/* expanded notes panel */
+.notes-panel {
+  display: none;
+  padding: 10px 12px 12px;
+}
+.notes-strip.open .notes-panel { display: block; }
+
+/* DM notes list */
+.notes-list {
+  list-style: none;
+  margin-bottom: 8px;
+}
+.notes-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+.notes-list li:last-child { border-bottom: none; }
+.note-text {
+  flex: 1;
+  font-family: var(--fontBody);
+  font-size: 14px;
+  color: var(--textBody);
+  line-height: 1.5;
+}
+.note-delete-btn {
+  background: transparent;
+  border: none;
+  color: #c06060;
+  cursor: pointer;
+  font-size: 15px;
+  padding: 0 2px;
+  opacity: 0.45;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+  margin-top: 1px;
+  line-height: 1;
+}
+.note-delete-btn:hover { opacity: 1; }
+
+/* Player shared intel subsection */
+.player-intel-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 8px 0 6px;
+}
+.player-intel-divider-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+.player-intel-label {
+  font-family: var(--fontUI);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--gem);
+  white-space: nowrap;
+  opacity: 0.85;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.player-note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 5px 8px;
+  background: rgba(138,180,200,0.06);
+  border-radius: 3px;
+  border-left: 2px solid var(--gem);
+  margin-bottom: 5px;
+}
+.player-note-text {
+  flex: 1;
+  font-family: var(--fontBody);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--textBody);
+  line-height: 1.5;
+}
+.player-note-author {
+  font-family: var(--fontUI);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--gem);
+  opacity: 0.7;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+/* Add-note inline input */
+.add-note-row {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
+}
+.note-input {
+  flex: 1;
+  background: var(--surfaceSolid);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text);
+  font-family: var(--fontBody);
+  font-size: 14px;
+  padding: 6px 10px;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.note-input:focus { border-color: var(--accent); }
+.note-input::placeholder { color: var(--textMuted); font-style: italic; }
+.note-add-btn {
+  background: rgba(18,58,78,0.5);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--accentBright);
+  font-family: var(--fontUI);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.note-add-btn:hover { background: rgba(106,143,168,0.22); }
+.notes-hint-text {
+  font-family: var(--fontUI);
+  font-size: 10px;
+  color: var(--textMuted);
+  letter-spacing: 0.12em;
+  margin-top: 5px;
+}
+
+/* empty state */
+.empty-state {
+  font-family: var(--fontBody);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--textMuted);
+  padding: 2px 0 6px;
+}
+
+/* ══════════════════════════════════════════════════════════
+   NPC CARD — compact, no portrait, no AC badge
+   ══════════════════════════════════════════════════════════ */
+
+.npc-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: visible;
+  transition: border-color 0.18s;
+}
+.npc-card:hover { border-color: var(--accent); }
+
+.npc-card-body { padding: 12px 12px 10px; }
+
+.npc-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 9px;
+}
+.npc-name {
+  font-family: var(--fontDisplay);
+  font-size: 14px;
+  color: var(--text);
+  flex: 1;
+}
+.npc-remove-btn {
+  background: transparent;
+  border: none;
+  color: var(--textMuted);
+  font-size: 16px;
+  cursor: pointer;
+  padding: 0 3px;
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s;
+}
+.npc-remove-btn:hover { opacity: 1; color: #c06060; }
+
+.npc-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.npc-hp-num {
+  font-family: var(--fontDisplay);
+  font-size: 17px;
+  color: var(--gem);
+  flex-shrink: 0;
+}
+.npc-hp-track {
+  flex: 1;
+  height: 5px;
+  background: rgba(138,180,200,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+}
+.npc-hp-fill {
+  height: 100%;
+  background: var(--gem);
+  border-radius: 2px;
+}
+.npc-stepper-btn {
+  width: 26px; height: 26px;
+  border-radius: 3px;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--textMuted);
+  font-family: var(--fontDisplay);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.npc-stepper-btn:hover { border-color: var(--accent); color: var(--accentBright); }
+
+.npc-actions-row {
+  display: flex;
+  gap: 5px;
+  margin-top: 6px;
+}
+.npc-action-btn {
+  flex: 1;
+  font-family: var(--fontUI);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 5px 0;
+  cursor: pointer;
+  border-radius: 3px;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--textMuted);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.npc-action-btn.dmg { color: #c06060; border-color: rgba(192,96,96,0.35); }
+.npc-action-btn.dmg:hover { background: rgba(192,96,96,0.10); }
+.npc-action-btn.heal { color: var(--success); border-color: rgba(96,168,120,0.35); }
+.npc-action-btn.heal:hover { background: rgba(96,168,120,0.10); }
+.npc-action-btn.cond:hover { border-color: var(--accent); color: var(--accentBright); }
+
+/* NPC notes strip — same pattern as char card but attached to bottom of npc-card */
+.npc-notes-strip {
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 5px 5px;
+  cursor: pointer;
+  transition: background 0.15s;
+  user-select: none;
+}
+
+/* ══════════════════════════════════════════════════════════
+   PLAYER CHARACTER SHEET — Combat tab notes section
+   ══════════════════════════════════════════════════════════ */
+
+.sheet-surface {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 22px 26px;
+  margin-bottom: 20px;
+  max-width: 680px;
+}
+
+.sheet-section-label {
+  font-family: var(--fontUI);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--textMuted);
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.sheet-section-label::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Tab strip */
+.tab-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 22px;
+  max-width: 680px;
+}
+.tab-btn {
+  font-family: var(--fontUI);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 6px 18px;
+  border-radius: 3px;
+  cursor: pointer;
+  border: 1px solid var(--border);
+  background: transparent;
+  color: var(--textMuted);
+  transition: all 0.15s;
+}
+.tab-btn.active {
+  background: var(--accentDim);
+  border-color: var(--accent);
+  color: var(--accentBright);
+}
+.tab-btn:hover:not(.active) { border-color: var(--accent); color: var(--text); }
+
+/* Player notes list */
+.player-notes-list {
+  list-style: none;
+  margin-bottom: 12px;
+}
+.player-note-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+.player-note-row:last-child { border-bottom: none; }
+.player-note-main { flex: 1; }
+.player-note-body {
+  font-family: var(--fontBody);
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.5;
+  margin-bottom: 5px;
+}
+.share-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-family: var(--fontUI);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--textMuted);
+  transition: color 0.15s;
+  user-select: none;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+.share-toggle:hover { color: var(--accentBright); }
+.share-toggle.shared { color: var(--gem); }
+.share-toggle-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid currentColor;
+  display: inline-block;
+  transition: background 0.15s;
+  flex-shrink: 0;
+}
+.share-toggle.shared .share-toggle-dot { background: var(--gem); border-color: var(--gem); }
+
+.player-note-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  padding-top: 1px;
+}
+
+/* ── Section divider ─────────────────────────────────────── */
+hr.divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 28px 0;
+}
+
+/* ── Prototype legend ───────────────────────────────────── */
+.legend {
+  max-width: 1000px;
+  margin: 0 auto 48px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 20px 24px;
+}
+.legend-title {
+  font-family: var(--fontDisplay);
+  font-size: 14px;
+  letter-spacing: 0.14em;
+  color: var(--accentBright);
+  margin-bottom: 14px;
+}
+.legend-items {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 8px 24px;
+}
+.legend-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  font-family: var(--fontBody);
+  font-size: 13px;
+  color: var(--textBody);
+  line-height: 1.5;
+}
+.legend-badge {
+  background: var(--accent);
+  color: var(--bg);
+  border-radius: 50%;
+  width: 18px; height: 18px;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-size: 10px; font-weight: 600; flex-shrink: 0;
+  margin-top: 1px;
+}
+.design-note {
+  background: rgba(138,180,200,0.08);
+  border: 1px solid rgba(138,180,200,0.25);
+  border-left: 3px solid var(--gem);
+  border-radius: 3px;
+  padding: 10px 14px;
+  font-family: var(--fontBody);
+  font-size: 14px;
+  color: var(--textBody);
+  line-height: 1.6;
+  margin-bottom: 20px;
+  max-width: 1000px;
+  margin-left: auto;
+  margin-right: auto;
+}
+.design-note strong {
+  font-family: var(--fontUI);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--gem);
+  display: block;
+  margin-bottom: 5px;
+}
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     ANNOTATIONS LEGEND
+     ════════════════════════════════════════════════════════ -->
+<div class="legend">
+  <div class="legend-title">Rev 2 — Interaction annotations</div>
+  <div class="legend-items">
+    <div class="legend-item">
+      <span class="legend-badge">1</span>
+      <span>Collapsed notes strip sits below the Damage/Heal footer. No notes: faint with pencil icon + "Note" prompt. The Damage/Heal buttons are untouched.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-badge">2</span>
+      <span>When notes exist: strip gets accent-tinted background + count badge. Visual weight communicates "something is here" without rendering text.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-badge">3</span>
+      <span>Tap anywhere on the strip to expand in-place. The card grows downward — no modal. Input auto-focuses so the DM can type immediately.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-badge">4</span>
+      <span>Delete × requires no confirmation. Note fades out. Badge and strip state update instantly.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-badge">5</span>
+      <span>Shared player notes appear inside the same expanded panel, below a gem-colored divider. Read-only, italic, left-border gem accent.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-badge">6</span>
+      <span>Active-turn card glows with character's palette accent — same behavior in real app.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-badge">7</span>
+      <span>Player notes on Combat tab — below weapons quick-ref, above dice roller. Share toggle: empty dot = Private, filled gem dot = Shared with DM.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-badge">8</span>
+      <span>NPC notes use the same strip pattern. "Session only" hint reinforces that notes are discarded when combat ends.</span>
+    </div>
+  </div>
+</div>
+
+<!-- Design decision rationale -->
+<div class="design-note" style="margin-bottom:32px;">
+  <strong>Design decision: notes-as-strip, below footer</strong>
+  The Damage/Heal buttons occupy the card footer entirely — they are the DM's most-used in-combat actions and must stay dominant and uncluttered. Adding a Notes button alongside them would shrink all three buttons below comfortable tap size. Instead, a thin collapsible strip appears as its own distinct row below the footer, similar to how a "drawer" attaches below the card. The strip is always present (discoverable) but visually subordinate (low height, muted style when empty). This satisfies the product owner's "don't clutter the card" constraint while keeping notes in-context and zero extra taps away.
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 1 — DM DASHBOARD: CHARACTER CARDS WITH NOTES
+     ════════════════════════════════════════════════════════ -->
+<div class="proto-section">
+  <div class="proto-page-label">Prototype · Story 11 · Rev 2</div>
+  <div class="section-heading">DM Dashboard — Character Cards with Notes</div>
+
+  <div class="callout" style="margin-bottom:14px;"><span class="callout-num">6</span> Active-turn card (Aragorn, left) shows palette-colored glow border — this is existing behavior. The notes strip is the same on active and inactive cards.</div>
+
+  <div class="two-col-layout" style="max-width:900px;">
+
+    <!-- ── Card A: Aragorn — active turn, notes expanded, shared player note ── -->
+    <div>
+      <div class="callout"><span class="callout-num">2</span> Notes exist — strip shows accent tint + count badge "2"</div>
+      <div class="callout"><span class="callout-num">5</span> Shared player note appears below DM notes inside same panel</div>
+
+      <div class="char-card active-turn" style="--card-accent: #a06840;" id="card-aragorn">
+        <div class="char-card-body">
+          <!-- Header: portrait + name + AC badge + ⋯ + SHEET -->
+          <div class="char-card-header">
+            <div class="char-portrait" style="border-color:#a06840;color:#a06840;">A</div>
+            <div class="char-name-block">
+              <span class="char-name" style="color:#c89060;">Aragorn</span>
+              <span class="char-meta">Human · Ranger · Lvl 8</span>
+            </div>
+            <div class="char-ac-badge">17</div>
+            <button class="char-overflow-btn" title="More actions">⋯</button>
+            <a href="#" class="char-sheet-link">SHEET</a>
+          </div>
+
+          <!-- HP row: − hpCurrent/hpMax [bar] + -->
+          <div class="char-hp-row">
+            <button class="char-hp-stepper-btn">−</button>
+            <span class="char-hp-num">62<span style="font-size:14px;color:var(--textMuted);"> / 72</span></span>
+            <div class="char-hp-bar-track"><div class="char-hp-bar-fill" style="width:86%;background:#a06840;opacity:0.8;"></div></div>
+            <button class="char-hp-stepper-btn">+</button>
+          </div>
+
+          <!-- Condition chips -->
+          <div class="char-conditions-row">
+            <span class="condition-chip" style="border-color:#a06840;color:#c89060;">POISONED</span>
+            <span class="condition-chip" style="border-color:#a06840;color:#c89060;">AWARENESS</span>
+          </div>
+        </div>
+
+        <!-- Footer: Damage | Heal -->
+        <div class="char-card-footer">
+          <button class="char-footer-btn dmg">⚔ Damage</button>
+          <button class="char-footer-btn heal">✦ Heal</button>
+        </div>
+
+        <!-- Notes strip: collapsed bar + expandable panel -->
+        <div class="notes-strip has-notes open" id="strip-aragorn" onclick="toggleStrip('aragorn')">
+          <div class="notes-strip-bar">
+            <!-- pencil / note icon -->
+            <svg class="notes-strip-icon" width="12" height="13" viewBox="0 0 12 13" fill="none">
+              <rect x="1" y="1" width="8" height="10" rx="1" stroke="currentColor" stroke-width="1.1"/>
+              <line x1="3" y1="4" x2="7" y2="4" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="6.5" x2="7" y2="6.5" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="9" x2="5.5" y2="9" stroke="currentColor" stroke-width="1"/>
+              <path d="M9 8.5 L11 6.5 L10.5 6 L8.5 8 Z" fill="currentColor"/>
+            </svg>
+            <span class="notes-strip-label">DM Notes</span>
+            <span class="notes-strip-badge" id="badge-aragorn">2</span>
+            <span class="notes-strip-chevron">▼</span>
+          </div>
+
+          <div class="notes-panel" id="panel-aragorn" onclick="event.stopPropagation()">
+            <ul class="notes-list" id="list-aragorn">
+              <li data-id="n1">
+                <span class="note-text">Mentioned his father died at the Battle of Fornost — revisit for the Gondor arc</span>
+                <button class="note-delete-btn" onclick="deleteNote('aragorn','n1')" title="Delete note">×</button>
+              </li>
+              <li data-id="n2">
+                <span class="note-text">Player wants to find father's sword — plant it in the mountains dungeon</span>
+                <button class="note-delete-btn" onclick="deleteNote('aragorn','n2')" title="Delete note">×</button>
+              </li>
+            </ul>
+
+            <!-- Shared player notes -->
+            <div class="player-intel-divider">
+              <div class="player-intel-divider-line"></div>
+              <span class="player-intel-label">
+                <svg width="9" height="9" viewBox="0 0 9 9" fill="none">
+                  <circle cx="4.5" cy="4.5" r="3.5" stroke="currentColor" stroke-width="1.1"/>
+                  <circle cx="4.5" cy="4.5" r="1.4" fill="currentColor"/>
+                </svg>
+                Player shared
+              </span>
+              <div class="player-intel-divider-line"></div>
+            </div>
+            <div class="player-note-item">
+              <div style="flex:1">
+                <div class="player-note-text">"I want to find my father's sword — it's somewhere in the mountains"</div>
+                <div class="player-note-author">Aragorn's player</div>
+              </div>
+            </div>
+
+            <!-- Add note input -->
+            <div class="add-note-row">
+              <input class="note-input" id="input-aragorn" type="text"
+                placeholder="Add a note… (Enter to save)" maxlength="500"
+                onkeydown="if(event.key==='Enter') addNote('aragorn')" />
+              <button class="note-add-btn" onclick="addNote('aragorn')">+ Add</button>
+            </div>
+            <div class="notes-hint-text">DM-only notes. Player intel shown above when shared.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Card B: Eoghan — no active turn, no notes ── -->
+    <div>
+      <div class="callout"><span class="callout-num">1</span> No notes yet — strip is faint, muted style. Tap to expand and add the first note.</div>
+      <div class="callout"><span class="callout-num">3</span> After adding a note, input stays focused — DM can chain notes without re-clicking.</div>
+
+      <div class="char-card" style="--card-accent: #6a8fa8;" id="card-eoghan">
+        <div class="char-card-body">
+          <div class="char-card-header">
+            <div class="char-portrait">E</div>
+            <div class="char-name-block">
+              <span class="char-name">Eoghan</span>
+              <span class="char-meta">Half-Elf · Rogue · Lvl 8</span>
+            </div>
+            <div class="char-ac-badge">15</div>
+            <button class="char-overflow-btn" title="More actions">⋯</button>
+            <a href="#" class="char-sheet-link">SHEET</a>
+          </div>
+
+          <div class="char-hp-row">
+            <button class="char-hp-stepper-btn">−</button>
+            <span class="char-hp-num">58<span style="font-size:14px;color:var(--textMuted);"> / 58</span></span>
+            <div class="char-hp-bar-track"><div class="char-hp-bar-fill" style="width:100%;"></div></div>
+            <button class="char-hp-stepper-btn">+</button>
+          </div>
+
+          <div class="char-conditions-row">
+            <span style="font-family:var(--fontUI);font-size:11px;color:var(--textMuted);letter-spacing:0.12em;font-style:italic;padding:2px 0;">No active conditions</span>
+          </div>
+        </div>
+
+        <div class="char-card-footer">
+          <button class="char-footer-btn dmg">⚔ Damage</button>
+          <button class="char-footer-btn heal">✦ Heal</button>
+        </div>
+
+        <!-- Notes strip: no notes -->
+        <div class="notes-strip" id="strip-eoghan" onclick="toggleStrip('eoghan')">
+          <div class="notes-strip-bar">
+            <svg class="notes-strip-icon" width="12" height="13" viewBox="0 0 12 13" fill="none">
+              <rect x="1" y="1" width="8" height="10" rx="1" stroke="currentColor" stroke-width="1.1"/>
+              <line x1="3" y1="4" x2="7" y2="4" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="6.5" x2="7" y2="6.5" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="9" x2="5.5" y2="9" stroke="currentColor" stroke-width="1"/>
+            </svg>
+            <span class="notes-strip-label">+ Note</span>
+            <span class="notes-strip-badge" id="badge-eoghan">0</span>
+            <span class="notes-strip-chevron">▼</span>
+          </div>
+
+          <div class="notes-panel" id="panel-eoghan" onclick="event.stopPropagation()">
+            <ul class="notes-list" id="list-eoghan"></ul>
+            <div class="empty-state" id="empty-eoghan">No notes yet.</div>
+            <div class="add-note-row">
+              <input class="note-input" id="input-eoghan" type="text"
+                placeholder="Add a note… (Enter to save)" maxlength="500"
+                onkeydown="if(event.key==='Enter') addNote('eoghan')" />
+              <button class="note-add-btn" onclick="addNote('eoghan')">+ Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Card C: Aesop — low HP, has one note (collapsed) ── -->
+    <div>
+      <div class="callout"><span class="callout-num">2</span> Notes exist but strip is collapsed — count badge visible. Card border shows low-HP red treatment.</div>
+
+      <div class="char-card" style="--card-accent: #5a8a60;border-left-color:#5a8a60;border-color:#c06060;" id="card-aesop">
+        <div class="char-card-body">
+          <div class="char-card-header">
+            <div class="char-portrait" style="border-color:#5a8a60;color:#5a8a60;">S</div>
+            <div class="char-name-block">
+              <span class="char-name" style="color:#88b888;">Aesop</span>
+              <span class="char-meta">Dwarf · Cleric · Lvl 7</span>
+            </div>
+            <div class="char-ac-badge">16</div>
+            <button class="char-overflow-btn" title="More actions">⋯</button>
+            <a href="#" class="char-sheet-link">SHEET</a>
+          </div>
+
+          <div class="char-hp-row">
+            <button class="char-hp-stepper-btn">−</button>
+            <span class="char-hp-num low">8<span style="font-size:14px;color:var(--textMuted);"> / 54</span></span>
+            <div class="char-hp-bar-track"><div class="char-hp-bar-fill" style="width:15%;background:#c06060;"></div></div>
+            <button class="char-hp-stepper-btn">+</button>
+          </div>
+
+          <div class="char-conditions-row">
+            <span class="condition-chip" style="border-color:#5a8a60;color:#88b888;">CONCENTRATING</span>
+          </div>
+        </div>
+
+        <div class="char-card-footer">
+          <button class="char-footer-btn dmg">⚔ Damage</button>
+          <button class="char-footer-btn heal">✦ Heal</button>
+        </div>
+
+        <div class="notes-strip has-notes" id="strip-aesop" onclick="toggleStrip('aesop')">
+          <div class="notes-strip-bar">
+            <svg class="notes-strip-icon" width="12" height="13" viewBox="0 0 12 13" fill="none">
+              <rect x="1" y="1" width="8" height="10" rx="1" stroke="currentColor" stroke-width="1.1"/>
+              <line x1="3" y1="4" x2="7" y2="4" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="6.5" x2="7" y2="6.5" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="9" x2="5.5" y2="9" stroke="currentColor" stroke-width="1"/>
+              <path d="M9 8.5 L11 6.5 L10.5 6 L8.5 8 Z" fill="currentColor"/>
+            </svg>
+            <span class="notes-strip-label">DM Notes</span>
+            <span class="notes-strip-badge" id="badge-aesop">1</span>
+            <span class="notes-strip-chevron">▼</span>
+          </div>
+
+          <div class="notes-panel" id="panel-aesop" onclick="event.stopPropagation()">
+            <ul class="notes-list" id="list-aesop">
+              <li data-id="s1">
+                <span class="note-text">Give him a healing potion from the cart — he'll need it for the boss fight</span>
+                <button class="note-delete-btn" onclick="deleteNote('aesop','s1')" title="Delete note">×</button>
+              </li>
+            </ul>
+            <div class="add-note-row">
+              <input class="note-input" id="input-aesop" type="text"
+                placeholder="Add a note… (Enter to save)" maxlength="500"
+                onkeydown="if(event.key==='Enter') addNote('aesop')" />
+              <button class="note-add-btn" onclick="addNote('aesop')">+ Add</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /two-col-layout -->
+</div>
+
+
+<hr class="divider" style="max-width:1000px;margin:0 auto 48px;">
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 2 — DM DASHBOARD: NPC CARDS WITH NOTES
+     ════════════════════════════════════════════════════════ -->
+<div class="proto-section">
+  <div class="section-heading">DM Dashboard — NPC Cards with Notes</div>
+
+  <div class="callout" style="margin-bottom:14px;"><span class="callout-num">8</span> NPC cards are more compact (no portrait, no AC badge). Same notes-strip pattern. "Session only" hint inside the expanded panel.</div>
+
+  <div class="two-col-layout" style="max-width:640px;">
+
+    <!-- NPC 1: Goblin Sergeant — surrendered, has a note, open -->
+    <div>
+      <div class="npc-card" id="card-goblin">
+        <div class="npc-card-body">
+          <div class="npc-header">
+            <span class="npc-name">Goblin Sergeant</span>
+            <button class="npc-remove-btn" title="Remove NPC">×</button>
+          </div>
+          <div class="npc-hp-row">
+            <button class="npc-stepper-btn">−</button>
+            <span class="npc-hp-num">14<span style="font-size:12px;color:var(--textMuted);"> / 21</span></span>
+            <div class="npc-hp-track"><div class="npc-hp-fill" style="width:67%;"></div></div>
+            <button class="npc-stepper-btn">+</button>
+          </div>
+          <div class="char-conditions-row" style="margin-bottom:8px;">
+            <span class="condition-chip">FRIGHTENED</span>
+          </div>
+          <div class="npc-actions-row">
+            <button class="npc-action-btn dmg">+ DMG</button>
+            <button class="npc-action-btn heal">+ HEAL</button>
+            <button class="npc-action-btn cond">+ COND</button>
+          </div>
+        </div>
+
+        <div class="notes-strip npc-notes-strip has-notes open" id="strip-goblin" onclick="toggleStrip('goblin')">
+          <div class="notes-strip-bar">
+            <svg class="notes-strip-icon" width="12" height="13" viewBox="0 0 12 13" fill="none">
+              <rect x="1" y="1" width="8" height="10" rx="1" stroke="currentColor" stroke-width="1.1"/>
+              <line x1="3" y1="4" x2="7" y2="4" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="6.5" x2="7" y2="6.5" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="9" x2="5.5" y2="9" stroke="currentColor" stroke-width="1"/>
+              <path d="M9 8.5 L11 6.5 L10.5 6 L8.5 8 Z" fill="currentColor"/>
+            </svg>
+            <span class="notes-strip-label">Notes</span>
+            <span class="notes-strip-badge" id="badge-goblin">1</span>
+            <span class="notes-strip-chevron">▼</span>
+          </div>
+          <div class="notes-panel" id="panel-goblin" onclick="event.stopPropagation()">
+            <ul class="notes-list" id="list-goblin">
+              <li data-id="g1">
+                <span class="note-text">Surrendered — offered to lead party to the stronghold</span>
+                <button class="note-delete-btn" onclick="deleteNote('goblin','g1')" title="Delete note">×</button>
+              </li>
+            </ul>
+            <div class="add-note-row">
+              <input class="note-input" id="input-goblin" type="text"
+                placeholder="Combat note… (Enter)" maxlength="500"
+                onkeydown="if(event.key==='Enter') addNote('goblin')" />
+              <button class="note-add-btn" onclick="addNote('goblin')">+ Add</button>
+            </div>
+            <div class="notes-hint-text">Session only — discarded when combat ends</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- NPC 2: Shadow Drake — no notes -->
+    <div>
+      <div class="npc-card" id="card-drake">
+        <div class="npc-card-body">
+          <div class="npc-header">
+            <span class="npc-name">Shadow Drake</span>
+            <button class="npc-remove-btn" title="Remove NPC">×</button>
+          </div>
+          <div class="npc-hp-row">
+            <button class="npc-stepper-btn">−</button>
+            <span class="npc-hp-num">88<span style="font-size:12px;color:var(--textMuted);"> / 120</span></span>
+            <div class="npc-hp-track"><div class="npc-hp-fill" style="width:73%;"></div></div>
+            <button class="npc-stepper-btn">+</button>
+          </div>
+          <div class="char-conditions-row" style="margin-bottom:8px;min-height:0;"></div>
+          <div class="npc-actions-row">
+            <button class="npc-action-btn dmg">+ DMG</button>
+            <button class="npc-action-btn heal">+ HEAL</button>
+            <button class="npc-action-btn cond">+ COND</button>
+          </div>
+        </div>
+
+        <div class="notes-strip npc-notes-strip" id="strip-drake" onclick="toggleStrip('drake')">
+          <div class="notes-strip-bar">
+            <svg class="notes-strip-icon" width="12" height="13" viewBox="0 0 12 13" fill="none">
+              <rect x="1" y="1" width="8" height="10" rx="1" stroke="currentColor" stroke-width="1.1"/>
+              <line x1="3" y1="4" x2="7" y2="4" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="6.5" x2="7" y2="6.5" stroke="currentColor" stroke-width="1"/>
+              <line x1="3" y1="9" x2="5.5" y2="9" stroke="currentColor" stroke-width="1"/>
+            </svg>
+            <span class="notes-strip-label">+ Note</span>
+            <span class="notes-strip-badge" id="badge-drake">0</span>
+            <span class="notes-strip-chevron">▼</span>
+          </div>
+          <div class="notes-panel" id="panel-drake" onclick="event.stopPropagation()">
+            <ul class="notes-list" id="list-drake"></ul>
+            <div class="empty-state" id="empty-drake">No notes yet.</div>
+            <div class="add-note-row">
+              <input class="note-input" id="input-drake" type="text"
+                placeholder="Combat note… (Enter)" maxlength="500"
+                onkeydown="if(event.key==='Enter') addNote('drake')" />
+              <button class="note-add-btn" onclick="addNote('drake')">+ Add</button>
+            </div>
+            <div class="notes-hint-text">Session only — discarded when combat ends</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+
+<hr class="divider" style="max-width:1000px;margin:0 auto 48px;">
+
+
+<!-- ════════════════════════════════════════════════════════
+     SECTION 3 — PLAYER CHARACTER SHEET: COMBAT TAB NOTES
+     ════════════════════════════════════════════════════════ -->
+<div class="proto-section">
+  <div class="section-heading">Character Sheet — Combat Tab: Player Notes</div>
+
+  <div class="callout" style="margin-bottom:10px;"><span class="callout-num">7</span> Session Notes sit below Weapons quick-reference, above the collapsible Dice Roller. Always visible — no extra tap. Players add notes inline; each note shows a share toggle.</div>
+
+  <!-- Tab strip preview -->
+  <div class="tab-strip">
+    <button class="tab-btn">Inventory</button>
+    <button class="tab-btn">Persona</button>
+    <button class="tab-btn active">Combat</button>
+  </div>
+
+  <!-- Weapons quick-ref placeholder -->
+  <div class="sheet-surface" style="margin-bottom:14px;">
+    <div class="sheet-section-label">Weapons</div>
+    <div style="font-family:var(--fontBody);font-size:14px;color:var(--textMuted);font-style:italic;">…weapons quick-reference rows here…</div>
+  </div>
+
+  <!-- Player Notes section -->
+  <div class="sheet-surface" id="player-notes-surface">
+    <div class="sheet-section-label">Session Notes</div>
+
+    <ul class="player-notes-list" id="player-note-list">
+      <li class="player-note-row" data-id="p1">
+        <div class="player-note-main">
+          <div class="player-note-body">"Míriel" — innkeeper's daughter who helped us escape; knows the eastern passage</div>
+          <button class="share-toggle shared" id="share-p1" onclick="toggleShare('p1')" title="Toggle shared with DM">
+            <span class="share-toggle-dot"></span>
+            Shared with DM
+          </button>
+        </div>
+        <div class="player-note-actions">
+          <button class="note-delete-btn" onclick="deletePlayerNote('p1')" title="Delete note">×</button>
+        </div>
+      </li>
+      <li class="player-note-row" data-id="p2">
+        <div class="player-note-main">
+          <div class="player-note-body">The sigil on the crypt door — three serpents eating a crown. Seen it before somewhere.</div>
+          <button class="share-toggle" id="share-p2" onclick="toggleShare('p2')" title="Toggle shared with DM">
+            <span class="share-toggle-dot"></span>
+            Private
+          </button>
+        </div>
+        <div class="player-note-actions">
+          <button class="note-delete-btn" onclick="deletePlayerNote('p2')" title="Delete note">×</button>
+        </div>
+      </li>
+      <li class="player-note-row" data-id="p3">
+        <div class="player-note-main">
+          <div class="player-note-body">Quest: Find the Sword of Ecthelion for Gandalf (reward: lore about Sauron's lieutenants)</div>
+          <button class="share-toggle" id="share-p3" onclick="toggleShare('p3')" title="Toggle shared with DM">
+            <span class="share-toggle-dot"></span>
+            Private
+          </button>
+        </div>
+        <div class="player-note-actions">
+          <button class="note-delete-btn" onclick="deletePlayerNote('p3')" title="Delete note">×</button>
+        </div>
+      </li>
+    </ul>
+
+    <!-- Add new note -->
+    <div class="add-note-row" style="margin-bottom:6px;">
+      <input class="note-input" id="player-note-input" type="text"
+        placeholder="Capture a name, clue, or quest thread… (Enter to add)" maxlength="500"
+        onkeydown="if(event.key==='Enter') addPlayerNote()" />
+      <button class="note-add-btn" onclick="addPlayerNote()">+ Add</button>
+    </div>
+    <div class="notes-hint-text">Private by default. Tap "Private" to share a note with the DM.</div>
+  </div>
+
+  <!-- Dice roller placeholder -->
+  <div class="sheet-surface" style="opacity:0.5;max-width:680px;">
+    <div class="sheet-section-label" style="cursor:pointer;margin-bottom:0;">
+      ▸ Dice Roller
+      <span style="font-family:var(--fontUI);font-size:10px;color:var(--textMuted);margin-left:8px;letter-spacing:0.12em;">(collapsed by default)</span>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ════════════════════════════════════════════════════════
+     VANILLA JS
+     ════════════════════════════════════════════════════════ -->
+<script>
+// ── Toggle notes strip ───────────────────────────────────
+function toggleStrip(cardId) {
+  var strip = document.getElementById('strip-' + cardId);
+  if (!strip) return;
+  var isOpen = strip.classList.contains('open');
+  if (isOpen) {
+    strip.classList.remove('open');
+    // restore collapsed label
+    var label = strip.querySelector('.notes-strip-label');
+    var count = parseInt((document.getElementById('badge-' + cardId) || {}).textContent || '0', 10);
+    if (label && count === 0) label.textContent = '+ Note';
+  } else {
+    strip.classList.add('open');
+    var labelEl = strip.querySelector('.notes-strip-label');
+    if (labelEl) labelEl.textContent = 'DM Notes';
+    var inp = document.getElementById('input-' + cardId);
+    if (inp) setTimeout(function() { inp.focus(); }, 80);
+  }
+}
+
+// ── Add a DM note ────────────────────────────────────────
+function addNote(cardId) {
+  var input = document.getElementById('input-' + cardId);
+  var text = input.value.trim();
+  if (!text) return;
+
+  var list = document.getElementById('list-' + cardId);
+  var emptyEl = document.getElementById('empty-' + cardId);
+  if (emptyEl) emptyEl.style.display = 'none';
+
+  var id = 'note-' + cardId + '-' + Date.now();
+  var li = document.createElement('li');
+  li.setAttribute('data-id', id);
+  li.innerHTML =
+    '<span class="note-text">' + esc(text) + '</span>' +
+    '<button class="note-delete-btn" onclick="deleteNote(\'' + cardId + '\',\'' + id + '\')" title="Delete note">×</button>';
+  list.appendChild(li);
+
+  input.value = '';
+  input.focus();
+  updateBadge(cardId);
+}
+
+// ── Delete a DM note ─────────────────────────────────────
+function deleteNote(cardId, noteId) {
+  var list = document.getElementById('list-' + cardId);
+  var item = list ? list.querySelector('[data-id="' + noteId + '"]') : null;
+  if (item) {
+    item.style.opacity = '0';
+    item.style.transition = 'opacity 0.18s';
+    setTimeout(function() {
+      item.remove();
+      updateBadge(cardId);
+      var emptyEl = document.getElementById('empty-' + cardId);
+      if (emptyEl && list.children.length === 0) emptyEl.style.display = '';
+    }, 180);
+  }
+}
+
+// ── Update badge + strip state ───────────────────────────
+function updateBadge(cardId) {
+  var list = document.getElementById('list-' + cardId);
+  var badge = document.getElementById('badge-' + cardId);
+  var strip = document.getElementById('strip-' + cardId);
+  if (!badge || !list || !strip) return;
+
+  var count = list.children.length;
+  var label = strip.querySelector('.notes-strip-label');
+
+  if (count === 0) {
+    badge.style.display = 'none';
+    strip.classList.remove('has-notes');
+    if (label && !strip.classList.contains('open')) label.textContent = '+ Note';
+  } else {
+    badge.style.display = 'inline-block';
+    badge.textContent = count;
+    strip.classList.add('has-notes');
+    if (label) label.textContent = 'DM Notes';
+  }
+}
+
+// ── Player note: add ─────────────────────────────────────
+function addPlayerNote() {
+  var input = document.getElementById('player-note-input');
+  var text = input.value.trim();
+  if (!text) return;
+
+  var list = document.getElementById('player-note-list');
+  var id = 'p-' + Date.now();
+  var li = document.createElement('li');
+  li.className = 'player-note-row';
+  li.setAttribute('data-id', id);
+  li.innerHTML =
+    '<div class="player-note-main">' +
+      '<div class="player-note-body">' + esc(text) + '</div>' +
+      '<button class="share-toggle" id="share-' + id + '" onclick="toggleShare(\'' + id + '\')" title="Toggle shared with DM">' +
+        '<span class="share-toggle-dot"></span> Private' +
+      '</button>' +
+    '</div>' +
+    '<div class="player-note-actions">' +
+      '<button class="note-delete-btn" onclick="deletePlayerNote(\'' + id + '\')" title="Delete note">×</button>' +
+    '</div>';
+  list.appendChild(li);
+  input.value = '';
+  input.focus();
+}
+
+// ── Player note: delete ──────────────────────────────────
+function deletePlayerNote(noteId) {
+  var item = document.querySelector('[data-id="' + noteId + '"]');
+  if (item) {
+    item.style.opacity = '0';
+    item.style.transition = 'opacity 0.18s';
+    setTimeout(function() { item.remove(); }, 180);
+  }
+}
+
+// ── Player note: share toggle ────────────────────────────
+function toggleShare(noteId) {
+  var btn = document.getElementById('share-' + noteId);
+  if (!btn) return;
+  var isShared = btn.classList.contains('shared');
+  if (isShared) {
+    btn.classList.remove('shared');
+    btn.innerHTML = '<span class="share-toggle-dot"></span> Private';
+  } else {
+    btn.classList.add('shared');
+    btn.innerHTML = '<span class="share-toggle-dot"></span> Shared with DM';
+  }
+}
+
+// ── HTML escape ──────────────────────────────────────────
+function esc(t) {
+  var d = document.createElement('div');
+  d.appendChild(document.createTextNode(t));
+  return d.innerHTML;
+}
+</script>
+
+</body>
+</html>

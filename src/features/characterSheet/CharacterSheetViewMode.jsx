@@ -1,12 +1,363 @@
+import { useState, useRef, useCallback, useEffect } from "react";
+import { useHoldToRepeat } from "../../lib/useHoldToRepeat";
 import { Link } from "react-router-dom";
 import DiceRoller from "../../components/DiceRoller";
 import { InfoBadge } from "./CharacterTalents";
-import ItemEditorModal from "./ItemEditorModal";
+import ItemEditorModal, { itemTypeLabel } from "./ItemEditorModal";
 import { HR } from "./CharacterSheetPrimitives";
-import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, fmtMod, modOf, parseModInt } from "./constants";
+import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, HIT_DIE_BY_CLASS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt } from "./constants";
 import { renderInline } from "./theme";
+import MapViewer from "../maps/MapViewer";
+
+const CONDITION_SEVERITY_COLORS = {
+  Blinded: "#c06060",
+  Paralyzed: "#c06060",
+  Petrified: "#c06060",
+  Poisoned: "#c06060",
+  Stunned: "#c06060",
+  Unconscious: "#c06060",
+  Grappled: "#c09040",
+  Prone: "#c09040",
+  Restrained: "#c09040",
+  Deafened: "#6090c0",
+  Invisible: "#6090c0",
+  Charmed: "#9060b8",
+  Frightened: "#9060b8",
+  Incapacitated: "#9060b8",
+};
+
+function conditionColorFor(name) {
+  return CONDITION_SEVERITY_COLORS[name] || "#c09040";
+}
+
+function formatXpThreshold(value) {
+  if (value >= 1000) return `${Math.round(value / 1000)}k`;
+  return `${value}`;
+}
+
+function gpEquivalent(coin) {
+  const cp = coin?.cp || 0;
+  const sp = coin?.sp || 0;
+  const ep = coin?.ep || 0;
+  const gp = coin?.gp || 0;
+  const pp = coin?.pp || 0;
+  const total = Math.round((cp * 0.01 + sp * 0.1 + ep * 0.5 + gp + pp * 10) * 100) / 100;
+  return Number.isInteger(total) ? `${total}` : total.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
+}
+
+function HitDiceTracker({ char, slug, applySessionPatch, setChar, pal }) {
+  const [showModal, setShowModal] = useState(false);
+  const [modalCount, setModalCount] = useState(1);
+
+  const level = char.level || 1;
+  const dieSize = HIT_DIE_BY_CLASS[char.charClass] || 8;
+  const hdCurrent = char.hitDiceCurrent ?? level;
+  const isFull = hdCurrent >= level;
+  const isLow = !isFull && level > 0 && (hdCurrent / level) <= 0.25;
+  const isEmpty = hdCurrent === 0;
+
+  // Get CON modifier for HP recovery preview
+  const conStat = (char.stats || []).find((s) => s.stat === "Constitution");
+  const conMod = conStat ? Math.floor((conStat.score - 10) / 2) : 0;
+
+  function openModal() {
+    if (isEmpty) return;
+    setModalCount(1);
+    setShowModal(true);
+  }
+
+  async function confirmSpend(n) {
+    const newVal = Math.max(0, hdCurrent - n);
+    setChar((c) => ({ ...c, hitDiceCurrent: newVal }));
+    setShowModal(false);
+    try {
+      await applySessionPatch({ hitDiceCurrent: newVal }, { hitDiceCurrent: hdCurrent });
+    } catch {
+      setChar((c) => ({ ...c, hitDiceCurrent: hdCurrent }));
+    }
+  }
+
+  const countColor = isEmpty ? "#c06060" : (isLow ? "#c06060" : "#c8a040");
+
+  return (
+    <>
+      <style>{`
+        @keyframes hdPipPop { 0%{transform:scale(0.5);opacity:0} 70%{transform:scale(1.15)} 100%{transform:scale(1);opacity:1} }
+      `}</style>
+      <div style={{ marginBottom: 0 }}>
+        {isFull ? (
+          // FULL STATE — compact single line
+          <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "6px 0" }}>
+            <span style={{ color: pal.gem, fontSize: 10, opacity: 0.7, flexShrink: 0 }}>◆</span>
+            <span style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, flex: 1 }}>Hit Dice</span>
+            <span style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: pal.gem, lineHeight: 1 }}>{level}</span>
+            <span style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", color: pal.textMuted, marginLeft: 2 }}>d{dieSize}</span>
+            <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.15em", textTransform: "uppercase", color: pal.gem, opacity: 0.65, border: `1px solid rgba(138,180,200,0.2)`, borderRadius: 2, padding: "1px 6px" }}>Full</span>
+            {slug && (
+              <button onClick={openModal} style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", padding: "3px 10px", cursor: "pointer", flexShrink: 0, opacity: 0.6, transition: "opacity 0.15s, border-color 0.15s, color 0.15s" }} onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }} onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.6"; e.currentTarget.style.borderColor = pal.border; e.currentTarget.style.color = pal.textMuted; }}>Spend</button>
+            )}
+          </div>
+        ) : (
+          // DEPLETED STATE — expanded tracker
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
+              <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.25em", textTransform: "uppercase", color: pal.textMuted, flex: 1 }}>Hit Dice</span>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
+                <span style={{ fontFamily: pal.fontDisplay, fontSize: 28, lineHeight: 1, color: countColor, opacity: isEmpty ? 0.6 : 1 }}>{hdCurrent}</span>
+                <span style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textMuted }}>/</span>
+                <span style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: pal.textMuted, lineHeight: 1 }}>{level}</span>
+                <span style={{ fontFamily: pal.fontUI, fontSize: 13, color: pal.textMuted, letterSpacing: "0.06em", marginLeft: 4 }}>d{dieSize}</span>
+              </div>
+            </div>
+
+            {isLow && !isEmpty && (
+              <div style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(200,160,64,0.15)", border: "1px solid rgba(200,160,64,0.40)", borderRadius: 3, padding: "6px 12px", marginBottom: 10, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: "#c8a040" }}>
+                ◈ {hdCurrent} of {level} Hit Dice remaining
+              </div>
+            )}
+
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 12 }}>
+              {Array.from({ length: level }, (_, i) => {
+                const available = i < hdCurrent;
+                return (
+                  <div key={i} style={{ width: 26, height: 26, borderRadius: 4, border: `1.5px solid ${available ? "rgba(138,180,200,0.4)" : "rgba(106,143,168,0.15)"}`, background: available ? "rgba(138,180,200,0.12)" : "transparent", opacity: available ? 1 : 0.35, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                    {available && <div style={{ width: 8, height: 8, borderRadius: 1, background: pal.gem, opacity: 0.75 }} />}
+                  </div>
+                );
+              })}
+            </div>
+
+            {slug && (
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", opacity: isEmpty ? 0.45 : 1, pointerEvents: isEmpty ? "none" : "auto" }}>
+                <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", color: pal.textMuted, flexShrink: 0 }}>Spend</span>
+                <div style={{ display: "flex", alignItems: "center", border: `1px solid ${pal.border}`, borderRadius: 3, overflow: "hidden" }}>
+                  <button onClick={() => !isEmpty && applyHdDelta(-1)} style={{ background: "transparent", border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 18, width: 32, height: 32, cursor: isEmpty ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.5 }}>−</button>
+                  <span style={{ fontFamily: pal.fontDisplay, fontSize: 16, color: pal.text, minWidth: 28, textAlign: "center", padding: "0 4px", borderLeft: `1px solid ${pal.border}`, borderRight: `1px solid ${pal.border}` }}>1</span>
+                  <button onClick={() => !isEmpty && openModal()} style={{ background: "transparent", border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 18, width: 32, height: 32, cursor: isEmpty ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.5 }}>+</button>
+                </div>
+                {!isEmpty && (
+                  <span style={{ fontFamily: pal.fontBody, fontSize: 13, fontStyle: "italic", color: pal.textMuted, flex: 1 }}>
+                    Roll <span style={{ color: pal.gem, fontStyle: "normal", fontFamily: pal.fontDisplay, fontSize: 14 }}>1d{dieSize}{conMod >= 0 ? `+${conMod}` : conMod}</span>
+                    <span style={{ fontFamily: pal.fontUI, fontSize: 11, color: pal.textMuted, marginLeft: 4 }}>({1 + conMod}–{dieSize + conMod})</span>
+                  </span>
+                )}
+                {isEmpty && <span style={{ fontFamily: pal.fontBody, fontSize: 13, fontStyle: "italic", color: "#c06060" }}>No dice remaining</span>}
+                <button onClick={openModal} style={{ background: "rgba(200,160,64,0.15)", border: "1px solid rgba(200,160,64,0.40)", borderRadius: 3, color: "#c8a040", fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", padding: "7px 16px", cursor: "pointer", transition: "background 0.15s" }} onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(200,160,64,0.22)"; }} onMouseLeave={(e) => { e.currentTarget.style.background = "rgba(200,160,64,0.15)"; }}>Spend</button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Spend Modal */}
+      {showModal && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.75)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 200, padding: 20 }} onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
+          <div style={{ background: pal.surfaceSolid, border: `1px solid ${pal.border}`, borderRadius: 6, padding: "28px 30px", width: "100%", maxWidth: 420 }}>
+            <div style={{ fontFamily: pal.fontDisplay, fontSize: 20, color: pal.text, marginBottom: 4 }}>Spend Hit Dice</div>
+            <div style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 14, color: pal.textMuted, marginBottom: 24 }}>Short Rest — roll and add your CON modifier</div>
+
+            <div style={{ textAlign: "center", marginBottom: 20 }}>
+              <span style={{ fontFamily: pal.fontDisplay, fontSize: 56, color: pal.gem, lineHeight: 1, display: "block" }}>d{dieSize}</span>
+              <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, display: "block", marginTop: 4 }}>{hdCurrent} {hdCurrent === 1 ? "die" : "dice"} available</span>
+            </div>
+
+            <div style={{ display: "flex", alignItems: "center", gap: 12, justifyContent: "center", marginBottom: 18 }}>
+              <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted }}>Dice to spend</span>
+              <div style={{ display: "flex", alignItems: "center", border: `1px solid ${pal.border}`, borderRadius: 3, overflow: "hidden" }}>
+                <button onClick={() => setModalCount((n) => Math.max(1, n - 1))} disabled={modalCount <= 1} style={{ background: "transparent", border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 22, width: 40, height: 40, cursor: modalCount <= 1 ? "default" : "pointer", opacity: modalCount <= 1 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
+                <span style={{ fontFamily: pal.fontDisplay, fontSize: 24, color: pal.text, minWidth: 44, textAlign: "center", padding: "0 6px", borderLeft: `1px solid ${pal.border}`, borderRight: `1px solid ${pal.border}` }}>{modalCount}</span>
+                <button onClick={() => setModalCount((n) => Math.min(hdCurrent, n + 1))} disabled={modalCount >= hdCurrent} style={{ background: "transparent", border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 22, width: 40, height: 40, cursor: modalCount >= hdCurrent ? "default" : "pointer", opacity: modalCount >= hdCurrent ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
+              </div>
+            </div>
+
+            <div style={{ background: `${pal.accent}14`, border: `1px solid ${pal.border}`, borderRadius: 4, padding: "12px 16px", marginBottom: 20, textAlign: "center" }}>
+              <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, display: "block", marginBottom: 6 }}>Expected HP Recovery</span>
+              <span style={{ fontFamily: pal.fontDisplay, fontSize: 26, color: pal.gem, display: "block" }}>{modalCount * (1 + conMod)} – {modalCount * (dieSize + conMod)}</span>
+              <span style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 13, color: pal.textMuted, display: "block", marginTop: 4 }}>{modalCount}d{dieSize} + {modalCount * conMod} (CON mod ×{modalCount})</span>
+            </div>
+
+            <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
+              <button onClick={() => setShowModal(false)} style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", padding: "5px 13px", cursor: "pointer" }}>Cancel</button>
+              <button onClick={() => confirmSpend(modalCount)} style={{ background: "rgba(200,160,64,0.15)", border: "1px solid rgba(200,160,64,0.40)", borderRadius: 3, color: "#c8a040", fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", padding: "7px 16px", cursor: "pointer" }}>Spend {modalCount} {modalCount === 1 ? "Die" : "Dice"}</button>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
+  );
+
+  function applyHdDelta(delta) {
+    const newVal = Math.max(0, hdCurrent + delta);
+    if (newVal === hdCurrent) return;
+    setChar((c) => ({ ...c, hitDiceCurrent: newVal }));
+    applySessionPatch({ hitDiceCurrent: newVal }, { hitDiceCurrent: hdCurrent }).catch(() => {});
+  }
+}
+
+/**
+ * QtyStepperControls — renders [−] qty [+] with hold-to-repeat.
+ * Extracted as a component so it can use the useHoldToRepeat hook.
+ */
+function QtyStepperControls({ qty, onDecrement, onIncrement, onActivity, pal }) {
+  const decHold = useHoldToRepeat(
+    () => { onDecrement(); onActivity(); },
+    500, 100
+  );
+  const incHold = useHoldToRepeat(
+    () => { onIncrement(); onActivity(); },
+    500, 100
+  );
+
+  const btnStyle = {
+    width: 22, height: 22, borderRadius: 3,
+    border: `1px solid ${pal.border}`,
+    background: "transparent",
+    color: pal.accentBright,
+    fontFamily: pal.fontUI,
+    fontSize: 15,
+    cursor: "pointer",
+    display: "flex", alignItems: "center", justifyContent: "center",
+    lineHeight: 1,
+    userSelect: "none",
+    touchAction: "none",
+  };
+
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+      <button
+        style={{ ...btnStyle, opacity: qty <= 0 ? 0.3 : 1, pointerEvents: qty <= 0 ? "none" : "auto" }}
+        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onActivity(); decHold.start(); }}
+        onPointerUp={() => decHold.stop()}
+        onPointerCancel={() => decHold.stop()}
+        title="Decrease"
+      >−</button>
+      <span style={{ fontFamily: pal.fontDisplay, fontSize: 15, color: qty === 0 ? "#c06060" : pal.gem, minWidth: 28, textAlign: "center" }}>{qty}</span>
+      <button
+        style={btnStyle}
+        onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); onActivity(); incHold.start(); }}
+        onPointerUp={() => incHold.stop()}
+        onPointerCancel={() => incHold.stop()}
+        title="Increase"
+      >+</button>
+    </div>
+  );
+}
+
+function SessionNotesSection({ char, setChar, applySessionPatch, pal }) {
+  const [inputVal, setInputVal] = useState("");
+  const notes = char.playerNotes || [];
+
+  function genId() {
+    return Date.now().toString(36) + Math.random().toString(36).slice(2);
+  }
+
+  async function handleAdd() {
+    const text = inputVal.trim();
+    if (!text) return;
+    const newNote = { id: genId(), text, sharedWithDm: false, createdAt: new Date().toISOString() };
+    const prev = notes;
+    const updated = [...notes, newNote];
+    setChar((c) => ({ ...c, playerNotes: updated }));
+    setInputVal("");
+    try {
+      await applySessionPatch({ playerNotes: updated }, { playerNotes: prev });
+    } catch {
+      setChar((c) => ({ ...c, playerNotes: prev }));
+    }
+  }
+
+  async function handleDelete(id) {
+    const prev = notes;
+    const updated = notes.filter((n) => n.id !== id);
+    setChar((c) => ({ ...c, playerNotes: updated }));
+    try {
+      await applySessionPatch({ playerNotes: updated }, { playerNotes: prev });
+    } catch {
+      setChar((c) => ({ ...c, playerNotes: prev }));
+    }
+  }
+
+  async function handleToggleShare(id) {
+    const prev = notes;
+    const updated = notes.map((n) => n.id === id ? { ...n, sharedWithDm: !n.sharedWithDm } : n);
+    setChar((c) => ({ ...c, playerNotes: updated }));
+    try {
+      await applySessionPatch({ playerNotes: updated }, { playerNotes: prev });
+    } catch {
+      setChar((c) => ({ ...c, playerNotes: prev }));
+    }
+  }
+
+  return (
+    <div style={{ marginBottom: 24 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", color: pal.textMuted }}>Session Notes</span>
+        <div style={{ flex: 1, height: 1, background: pal.border }} />
+      </div>
+
+      {notes.length > 0 && (
+        <ul style={{ listStyle: "none", marginBottom: 12 }}>
+          {notes.map((note, idx) => (
+            <li key={note.id} style={{ display: "flex", alignItems: "flex-start", gap: 8, padding: "8px 0", borderBottom: idx < notes.length - 1 ? `1px solid ${pal.border}` : "none" }}>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontFamily: pal.fontBody, fontSize: 15, color: pal.text, lineHeight: 1.5, marginBottom: 5 }}>{note.text}</div>
+                <button
+                  onClick={() => handleToggleShare(note.id)}
+                  style={{ display: "inline-flex", alignItems: "center", gap: 5, cursor: "pointer", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color: note.sharedWithDm ? pal.gem : pal.textMuted, border: "none", background: "transparent", padding: 0, transition: "color 0.15s", userSelect: "none" }}
+                >
+                  <span style={{ width: 10, height: 10, borderRadius: "50%", border: `1.5px solid ${note.sharedWithDm ? pal.gem : pal.textMuted}`, background: note.sharedWithDm ? pal.gem : "transparent", display: "inline-block", transition: "background 0.15s, border-color 0.15s", flexShrink: 0 }} />
+                  {note.sharedWithDm ? "Shared with DM" : "Private"}
+                </button>
+              </div>
+              <button
+                onClick={() => handleDelete(note.id)}
+                style={{ background: "transparent", border: "none", color: "#c06060", cursor: "pointer", fontSize: 16, padding: "0 2px", opacity: 0.45, lineHeight: 1, flexShrink: 0, marginTop: 2, transition: "opacity 0.15s" }}
+                onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.45"; }}
+                title="Delete note"
+              >×</button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      <div style={{ display: "flex", gap: 6, marginBottom: 6 }}>
+        <input
+          type="text"
+          maxLength={500}
+          value={inputVal}
+          onChange={(e) => setInputVal(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+          placeholder="Capture a name, clue, or quest thread… (Enter to add)"
+          style={{ flex: 1, background: pal.surfaceSolid, border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "7px 10px", outline: "none" }}
+          onFocus={(e) => { e.target.style.borderColor = pal.accent; }}
+          onBlur={(e) => { e.target.style.borderColor = pal.border; }}
+        />
+        <button
+          onClick={handleAdd}
+          style={{ background: `rgba(18,58,78,0.5)`, border: `1px solid ${pal.accent}`, borderRadius: 3, color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.08em", padding: "7px 14px", cursor: "pointer", whiteSpace: "nowrap", transition: "background 0.15s" }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = `rgba(106,143,168,0.22)`; }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = `rgba(18,58,78,0.5)`; }}
+        >+ Add</button>
+      </div>
+      <div style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, letterSpacing: "0.12em" }}>Private by default. Tap "Private" to share a note with the DM.</div>
+    </div>
+  );
+}
 
 export default function CharacterSheetViewMode({ ctx }) {
+  const [conditionPickerOpen, setConditionPickerOpen] = useState(false);
+  const [fullCoinExpanded, setFullCoinExpanded] = useState(false);
+  const [xpAwardOpen, setXpAwardOpen] = useState(false);
+  const [xpAwardValue, setXpAwardValue] = useState("100");
+  // Qty stepper: id of the equipment item whose stepper is open, or null
+  const [qtyStepperOpenId, setQtyStepperOpenId] = useState(null);
+  // Attunement over-limit flash: set of item ids currently flashing red
+  const [attunementFlashing, setAttunementFlashing] = useState(new Set());
+  // Drop item confirm: id of item pending drop confirmation, or null
+  const [dropConfirmId, setDropConfirmId] = useState(null);
+  const qtyAutoCloseRef = useRef(null);
+  const qtyDebounceRef = useRef(null);
   const {
     rootWrap,
     pal,
@@ -64,7 +415,67 @@ export default function CharacterSheetViewMode({ ctx }) {
     addWeapon,
     updateEquipment,
     addEquipment,
+    activeMap,
+    activeMapView,
   } = ctx;
+
+  // Close qty stepper when clicking outside the loadout tab
+  useEffect(() => {
+    if (!qtyStepperOpenId) return;
+    function handleDocClick(e) {
+      // Close unless the click is inside a [data-qty-row] element
+      if (!e.target.closest("[data-qty-row]")) {
+        setQtyStepperOpenId(null);
+      }
+    }
+    document.addEventListener("pointerdown", handleDocClick);
+    return () => document.removeEventListener("pointerdown", handleDocClick);
+  }, [qtyStepperOpenId]);
+
+  // Cleanup timers on unmount
+  useEffect(() => {
+    return () => {
+      clearTimeout(qtyAutoCloseRef.current);
+      clearTimeout(qtyDebounceRef.current);
+    };
+  }, []);
+
+  // Derived attunement count across weapons + equipment
+  const attunedCount = [
+    ...(char.weapons || []),
+    ...(char.equipment || []),
+  ].filter((i) => i.attuned).length;
+
+  const skillItems = (char.skills || []).map((skill) => ({ key: skill, label: skill.replace(/\b\w/g, (ch) => ch.toUpperCase()) }));
+  const spellItems = (char.spells || []).map((spell) => ({ key: spell, label: spell }));
+  const abilityItems = (char.specialAbilities || []).map((ability) => ({ key: ability, label: ability.replace(/\b\w/g, (ch) => ch.toUpperCase()) }));
+  const talentGroups = [
+    {
+      label: "Skills",
+      singular: "Skill",
+      items: skillItems,
+      color: pal.accentBright,
+      border: `${pal.accent}66`,
+      bg: `${pal.accent}16`,
+    },
+    {
+      label: "Spells",
+      singular: "Spell",
+      items: spellItems,
+      color: pal.accent,
+      border: pal.border,
+      bg: pal.surface,
+    },
+    {
+      label: "Special Abilities",
+      singular: "Special Ability",
+      items: abilityItems,
+      color: pal.gem,
+      border: `${pal.gem}55`,
+      bg: `${pal.gem}14`,
+    },
+  ];
+  const hasPersonaBadgeContent = talentGroups.some((group) => group.items.length > 0);
 
   return (
     <div style={rootWrap}>
@@ -158,19 +569,6 @@ export default function CharacterSheetViewMode({ ctx }) {
             ))}
           </div>
 
-          {(char.conditions || []).length > 0 && (
-            <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginTop: 16 }}>
-              {char.conditions.map((cond) => (
-                <span key={cond} style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", padding: "3px 10px", borderRadius: 12, border: `1px solid ${pal.accent}`, color: pal.accentBright }}>{cond}</span>
-              ))}
-            </div>
-          )}
-
-          {char.concentration?.active && (
-            <div style={{ marginTop: 14, fontFamily: pal.fontUI, fontSize: 13, color: pal.accentBright, letterSpacing: "0.06em" }}>
-              ◈ Concentrating: {char.concentration.spell}
-            </div>
-          )}
         </header>
 
         {(char.portraitUrl || char.portrait) && (
@@ -187,50 +585,95 @@ export default function CharacterSheetViewMode({ ctx }) {
         {unlockState === "unlocked" ? (
           <>
             <div style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 4, padding: "28px 30px", marginBottom: 44, isolation: "isolate" }}>
-              {((char.hpMax ?? char.hp ?? 0) > 0 || char.hitDice || char.armorType || char.armorTotal > 0) && (() => {
+              {((char.hpMax ?? char.hp ?? 0) > 0 || char.armorType || char.armorTotal > 0) && (() => {
                 const acBonus = _itemBonuses["Armor"] || 0;
                 const effectiveAc = (char.armorTotal || 0) + acBonus;
-                const diceParts = char.hitDice ? (char.hitDice.match(/(\d+|[a-zA-Z]+|[+\-])/g) || []) : [];
                 const armorOpt = ARMOR_OPTIONS.find((option) => option.value === char.armorType);
-                const topPad = armorOpt ? 24 : 0;
+                const armorBreakdown = [
+                  { label: "Base", value: char.armorTotal || 0 },
+                  ...[...(char.weapons || []), ...(char.equipment || [])].filter((item) => item.equipped !== false)
+                    .flatMap((item) => (item.mods || [])
+                      .filter((mod) => mod.attribute === "Armor")
+                      .map((mod) => ({
+                        label: item.name,
+                        value: parseModInt(mod.value) || 0,
+                      })))
+                    .filter((entry) => entry.value !== 0),
+                ];
+                const armorFlyoutOpen = hoveredStat === "armor";
+                const armorHandlers = {
+                  onMouseEnter: () => setHoveredStat("armor"),
+                  onMouseLeave: () => setHoveredStat(null),
+                  onClick: (e) => { e.stopPropagation(); setHoveredStat(hoveredStat === "armor" ? null : "armor"); },
+                };
 
                 return (
                   <div style={{ display: "flex", justifyContent: "center", gap: 52, marginBottom: 24, flexWrap: "wrap", alignItems: "flex-start" }}>
                     {(char.hpMax ?? char.hp ?? 0) > 0 && (
-                      <div style={{ textAlign: "center", paddingTop: topPad }}>
+                      <div style={{ textAlign: "center" }}>
+                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginTop: 4 }}>Hit Points</div>
+                        <div style={{ height: 14 }} />
                         <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center", gap: 4 }}>
                           <span style={{ fontFamily: pal.fontDisplay, fontSize: 44, color: pal.gem, lineHeight: 1 }}>{hpCurrent}</span>
                           <span style={{ fontFamily: pal.fontDisplay, fontSize: 22, color: pal.textMuted, lineHeight: 1 }}>/</span>
                           <span style={{ fontFamily: pal.fontDisplay, fontSize: 30, color: pal.accent, lineHeight: 1 }}>{hpMax}</span>
                         </div>
-                        {tempHP > 0 && <div style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.accentBright, letterSpacing: "0.08em", marginTop: 2 }}>+{tempHP} temp</div>}
-                        {hpMax > 0 && (
-                          <div style={{ width: "100%", height: 4, borderRadius: 2, background: pal.border, marginTop: 6, overflow: "hidden", minWidth: 80 }}>
-                            <div style={{ width: `${Math.max(0, Math.min(100, hpPct * 100))}%`, height: "100%", borderRadius: 2, background: hpBarColor, transition: "width 0.25s, background-color 0.25s" }} />
-                          </div>
-                        )}
-                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginTop: 5 }}>Hit Points</div>
-                        {hpBonus !== 0 && <div style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.accent, fontStyle: "italic", opacity: 0.8, marginTop: 2 }}>{char.hpMax ?? char.hp} base {hpBonus > 0 ? "+" : ""}{hpBonus} item</div>}
-                      </div>
-                    )}
-                    {char.hitDice && (
-                      <div style={{ textAlign: "center", paddingTop: topPad }}>
-                        <div style={{ display: "flex", alignItems: "baseline", justifyContent: "center" }}>
-                          {diceParts.map((part, index) => <span key={index} style={{ fontFamily: pal.fontDisplay, fontSize: /^\d+$/.test(part) ? 44 : 22, color: pal.accent, lineHeight: 1 }}>{part}</span>)}
+                        <div style={{ height: 18, marginTop: 1 }}>
+                          {tempHP > 0 && <div style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.accentBright, letterSpacing: "0.08em" }}>+{tempHP} temp</div>}
                         </div>
-                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginTop: 5 }}>Hit Dice</div>
+                        <div style={{ width: "100%", height: 10, marginTop: 0, display: "flex", alignItems: "center", justifyContent: "center", minWidth: 80 }}>
+                          {hpMax > 0 && (
+                            <div style={{ width: "100%", height: 4, borderRadius: 2, background: pal.border, overflow: "hidden" }}>
+                            <div style={{ width: `${Math.max(0, Math.min(100, hpPct * 100))}%`, height: "100%", borderRadius: 2, background: hpBarColor, transition: "width 0.25s, background-color 0.25s" }} />
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div style={{ height: 15, marginTop: 2 }}>
+                          {hpBonus !== 0 && <div style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.accent, fontStyle: "italic", opacity: 0.8 }}>{char.hpMax ?? char.hp} base {hpBonus > 0 ? "+" : ""}{hpBonus} item</div>}
+                        </div>
                       </div>
                     )}
-                    {(armorOpt || char.armorTotal > 0) && (
-                      <div style={{ textAlign: "center" }}>
-                        {armorOpt && <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.accent, marginBottom: 5 }}>{armorOpt.label}{armorOpt.speed ? ` · ${armorOpt.speed}` : ""}</div>}
-                        {char.armorTotal > 0 && (
+                    {(armorOpt || char.armorTotal > 0 || acBonus > 0) && (
+                      <div style={{ textAlign: "center", position: "relative" }}>
+                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginTop: 4 }}>Armor</div>
+                        <div style={{ height: 14 }} />
+                        {effectiveAc > 0 && (
                           <>
-                            <div style={{ fontFamily: pal.fontDisplay, fontSize: 44, color: pal.accentBright, lineHeight: 1 }}>{effectiveAc}</div>
-                            {acBonus !== 0 && <div style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.accent, fontStyle: "italic", opacity: 0.8, marginTop: 2 }}>{char.armorTotal} base {acBonus > 0 ? "+" : ""}{acBonus} item</div>}
+                            <div {...armorHandlers} style={{ fontFamily: pal.fontDisplay, fontSize: 44, color: pal.accentBright, lineHeight: 1, cursor: "pointer" }}>{effectiveAc}</div>
+                            <div style={{ height: 18, marginTop: 1 }} />
                           </>
                         )}
-                        <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginTop: 5 }}>Armor</div>
+                        {effectiveAc <= 0 && <div style={{ height: 62 }} />}
+                        <div style={{ width: "100%", height: 10, marginTop: 0, display: "flex", alignItems: "center", justifyContent: "center", minWidth: 120 }}>
+                          {armorOpt && (
+                            <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.accent }}>
+                              {armorOpt.label}{armorOpt.speed ? ` · ${armorOpt.speed}` : ""}
+                            </div>
+                          )}
+                        </div>
+                        
+                        <div style={{ height: 15, marginTop: 2 }} />
+                        {armorFlyoutOpen && (
+                          <div style={{ position: "absolute", top: "calc(100% + 8px)", left: "50%", transform: "translateX(-50%)", zIndex: 20, background: pal.surfaceSolid, border: `1px solid ${pal.border}`, borderRadius: 4, padding: "12px 16px", minWidth: 180, boxShadow: "0 4px 20px rgba(0,0,0,0.45)", whiteSpace: "nowrap" }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 20, marginBottom: 10 }}>
+                              <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted }}>Armor Class</div>
+                              <div style={{ fontFamily: pal.fontDisplay, fontSize: 22, color: pal.accentBright, lineHeight: 1 }}>{effectiveAc}</div>
+                            </div>
+                            <div style={{ borderTop: `1px solid ${pal.border}`, marginBottom: 8 }} />
+                            {armorBreakdown.map((entry, index) => (
+                              <div key={`${entry.label}-${index}`} style={{ display: "flex", justifyContent: "space-between", gap: 20, marginBottom: index < armorBreakdown.length - 1 ? 4 : 0 }}>
+                                <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: entry.label === "Base" ? pal.textMuted : pal.textBody, fontStyle: entry.label === "Base" ? "italic" : "normal" }}>{entry.label}</span>
+                                <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: entry.value >= 0 ? pal.gem : pal.gemLow }}>{entry.value >= 0 ? `+${entry.value}` : entry.value}</span>
+                              </div>
+                            ))}
+                            <div style={{ borderTop: `1px solid ${pal.border}`, margin: "6px 0" }} />
+                            <div style={{ display: "flex", justifyContent: "space-between", gap: 20 }}>
+                              <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted, fontStyle: "italic" }}>Total</span>
+                              <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: pal.accentBright }}>{effectiveAc}</span>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
@@ -242,7 +685,7 @@ export default function CharacterSheetViewMode({ ctx }) {
 
               {(() => {
                 const modSources = {};
-                [...(char.weapons || []), ...(char.equipment || [])].forEach((item) => {
+                [...(char.weapons || []), ...(char.equipment || [])].filter((item) => item.equipped !== false).forEach((item) => {
                   (item.mods || []).forEach(({ attribute, value }) => {
                     const parsed = parseModInt(value);
                     if (!isNaN(parsed)) (modSources[attribute] = modSources[attribute] || []).push({ source: item.name, value: parsed });
@@ -314,76 +757,11 @@ export default function CharacterSheetViewMode({ ctx }) {
                 );
               })()}
 
-              <HR color={pal.border} />
-              <div style={{ marginBottom: 4 }}>
-                <div style={secHead}>Skills, Spells & Special Abilities</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-                  {[
-                    {
-                      label: "Skills",
-                      items: (char.skills || []).map((skill) => ({ key: skill, label: skill.replace(/\b\w/g, (ch) => ch.toUpperCase()) })),
-                      color: pal.accentBright,
-                      border: `${pal.accent}66`,
-                      bg: `${pal.accent}16`,
-                    },
-                    {
-                      label: "Spells",
-                      items: (char.spells || []).map((spell) => ({ key: spell, label: spell })),
-                      color: pal.accent,
-                      border: pal.border,
-                      bg: pal.surface,
-                    },
-                    {
-                      label: "Special Abilities",
-                      items: (char.specialAbilities || []).map((ability) => ({ key: ability, label: ability.replace(/\b\w/g, (ch) => ch.toUpperCase()) })),
-                      color: pal.gem,
-                      border: `${pal.gem}55`,
-                      bg: `${pal.gem}14`,
-                    },
-                  ].map((group) => (
-                    <div key={group.label}>
-                      <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 6 }}>
-                        {group.label}
-                      </div>
-                      {group.items.length > 0 ? (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                          {group.items.map((item) => (
-                            <InfoBadge
-                              key={item.key}
-                              pal={pal}
-                              label={item.label}
-                              tooltip={`${group.label.slice(0, -1)}: ${item.label}`}
-                              color={group.color}
-                              background={group.bg}
-                              border={group.border}
-                            />
-                          ))}
-                        </div>
-                      ) : (
-                        <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>
-                          None listed.
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <style>{`@keyframes xpLevelupPulse { 0%,100%{box-shadow:0 0 0 0 rgba(0,0,0,0)} 50%{box-shadow:0 0 8px 2px rgba(138,180,200,0.28)} }`}</style>
 
-              <HR color={pal.border} />
               <div style={{ display: "flex", margin: "0 -30px 24px" }}>
                 {[
-                  {
-                    key: "loadout",
-                    label: "Inventory",
-                    icon: (activeTab) => (
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <line x1="3" y1="3" x2="17" y2="17" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="2" strokeLinecap="round"/>
-                        <line x1="17" y1="3" x2="3" y2="17" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="2" strokeLinecap="round"/>
-                        <rect x="2" y="1" width="3" height="5" rx="1" fill={activeTab ? pal.accentBright : pal.textMuted} transform="rotate(45 3 3)"/>
-                        <rect x="15" y="1" width="3" height="5" rx="1" fill={activeTab ? pal.accentBright : pal.textMuted} transform="rotate(-45 17 3)"/>
-                      </svg>
-                    ),
-                  },
+                  
                   {
                     key: "persona",
                     label: "Persona",
@@ -398,6 +776,30 @@ export default function CharacterSheetViewMode({ ctx }) {
                     ),
                   },
                   {
+                    key: "loadout",
+                    label: "Inventory",
+                    icon: (activeTab) => (
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <line x1="3" y1="3" x2="17" y2="17" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="2" strokeLinecap="round"/>
+                        <line x1="17" y1="3" x2="3" y2="17" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="2" strokeLinecap="round"/>
+                        <rect x="2" y="1" width="3" height="5" rx="1" fill={activeTab ? pal.accentBright : pal.textMuted} transform="rotate(45 3 3)"/>
+                        <rect x="15" y="1" width="3" height="5" rx="1" fill={activeTab ? pal.accentBright : pal.textMuted} transform="rotate(-45 17 3)"/>
+                      </svg>
+                    ),
+                  },   
+                  {
+                    key: "map",
+                    label: "Map",
+                    disabled: !activeMap,
+                    icon: (activeTab) => (
+                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <polygon points="2,4 7,2 13,5 18,3 18,16 13,18 7,15 2,17" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
+                        <line x1="7" y1="2" x2="7" y2="15" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.2"/>
+                        <line x1="13" y1="5" x2="13" y2="18" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.2"/>
+                      </svg>
+                    ),
+                  },               
+                  {
                     key: "combat",
                     label: "Combat",
                     icon: (activeTab) => (
@@ -406,14 +808,15 @@ export default function CharacterSheetViewMode({ ctx }) {
                         <path d="M10 6 L10 13 M7 9.5 L13 9.5" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.4" strokeLinecap="round"/>
                       </svg>
                     ),
-                  },
+                  }                  
                 ].map((tab, index, allTabs) => {
                   const isCurrent = combatTab === tab.key;
+                  const isDisabled = !!tab.disabled;
                   return (
                     <button
                       key={tab.key}
-                      onClick={() => setTab(tab.key)}
-                      style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, height: 64, fontFamily: pal.fontUI, fontSize: 13, letterSpacing: "0.2em", textTransform: "uppercase", cursor: "pointer", background: isCurrent ? pal.accentDim : "transparent", border: `1px solid ${isCurrent ? pal.accent : pal.border}`, borderRight: index < allTabs.length - 1 ? "none" : `1px solid ${isCurrent ? pal.accent : pal.border}`, color: isCurrent ? pal.accentBright : pal.textMuted, transition: "border-color 0.15s, background 0.15s, color 0.15s" }}
+                      onClick={() => !isDisabled && setTab(tab.key)}
+                      style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, height: 64, fontFamily: pal.fontUI, fontSize: 13, letterSpacing: "0.2em", textTransform: "uppercase", cursor: isDisabled ? "not-allowed" : "pointer", background: isCurrent ? pal.accentDim : "transparent", border: `1px solid ${isCurrent ? pal.accent : pal.border}`, borderRight: index < allTabs.length - 1 ? "none" : `1px solid ${isCurrent ? pal.accent : pal.border}`, color: isCurrent ? pal.accentBright : pal.textMuted, transition: "border-color 0.15s, background 0.15s, color 0.15s", opacity: isDisabled ? 0.4 : 1 }}
                     >
                       {tab.icon(isCurrent)}
                       {tab.label}
@@ -423,7 +826,73 @@ export default function CharacterSheetViewMode({ ctx }) {
               </div>
 
               {combatTab === "loadout" && (
+                <>
+                <style>{`
+                  @keyframes attunePulse {
+                    0%, 100% { opacity: 0.75; }
+                    50% { opacity: 1; }
+                  }
+                  @keyframes overLimitFlash {
+                    0%, 100% { box-shadow: 0 0 5px 1px rgba(200,144,76,0.5); }
+                    25%, 75% { box-shadow: 0 0 8px 3px rgba(192,96,96,0.8); }
+                    50% { box-shadow: 0 0 5px 1px rgba(200,144,76,0.5); }
+                  }
+                  .attuned-gem {
+                    animation: attunePulse 2.2s ease-in-out infinite;
+                  }
+                  .attuned-gem.over-limit-flash {
+                    animation: overLimitFlash 0.4s ease-in-out;
+                  }
+                `}</style>
+
+                {/* Attunement Banner */}
+                {(() => {
+                  const isOverLimit = attunedCount > 3;
+                  const isFull = attunedCount === 3;
+                  const isEmpty = attunedCount === 0;
+                  const noteText = isOverLimit
+                    ? "⚠ Over limit"
+                    : isFull
+                    ? "Slots full"
+                    : attunedCount === 2
+                    ? "1 slot remaining"
+                    : attunedCount === 1
+                    ? "2 slots remaining"
+                    : "3 slots free";
+                  return (
+                    <div style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      paddingBottom: 12,
+                      borderBottom: `1px solid ${pal.border}`,
+                      marginBottom: 16,
+                      opacity: isEmpty ? 0.45 : 1,
+                    }}>
+                      <span style={{
+                        display: "flex", alignItems: "center", gap: 6,
+                        fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.25em",
+                        textTransform: "uppercase",
+                        color: isOverLimit ? "#c06060" : pal.textMuted,
+                      }}>
+                        <span style={{ color: isOverLimit ? "#c06060" : pal.accentDim }}>◆</span>
+                        Attuned
+                      </span>
+                      <span style={{ display: "flex", alignItems: "baseline", gap: 2, fontFamily: pal.fontDisplay, fontSize: 14 }}>
+                        <span style={{ color: isOverLimit ? "#c06060" : pal.gem }}>{attunedCount}</span>
+                        <span style={{ color: pal.textMuted, margin: "0 1px" }}>/</span>
+                        <span style={{ color: pal.textMuted }}>3</span>
+                      </span>
+                      <span style={{
+                        fontFamily: pal.fontUI, fontSize: 11, fontStyle: "italic",
+                        color: isOverLimit ? "#c06060" : isFull ? pal.accentBright : pal.textMuted,
+                      }}>
+                        · {noteText}
+                      </span>
+                    </div>
+                  );
+                })()}
+
                 <div className="loadout-grid">
+                  {/* WEAPONS COLUMN */}
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim }}>Weapons</div>
@@ -432,14 +901,104 @@ export default function CharacterSheetViewMode({ ctx }) {
                     {(char.weapons || []).length > 0 ? (
                       char.weapons.map((item) => {
                         const expanded = expandedItems.has(item.id);
+                        const needsAttune = item.requiresAttunement;
+                        const isAttuned = item.attuned;
+                        const isFlashing = attunementFlashing.has(item.id);
+                        const isEquipped = item.equipped !== false;
+                        const nameColor = (!needsAttune || isAttuned) ? (isEquipped ? pal.text : pal.textMuted) : pal.textBody;
+                        const isDropConfirming = dropConfirmId === item.id;
+
+                        function toggleAttunement(e) {
+                          e.stopPropagation();
+                          const prevWeapons = char.weapons;
+                          const newAttuned = !isAttuned;
+                          // Check over-limit flash
+                          if (newAttuned && attunedCount >= 3) {
+                            setAttunementFlashing((s) => new Set([...s, item.id]));
+                            setTimeout(() => {
+                              setAttunementFlashing((s) => { const n = new Set(s); n.delete(item.id); return n; });
+                            }, 400);
+                          }
+                          const updated = char.weapons.map((w) => w.id === item.id ? { ...w, attuned: newAttuned } : w);
+                          setChar((c) => ({ ...c, weapons: updated }));
+                          applySessionPatch({ weapons: updated }, { weapons: prevWeapons }).catch(() => {});
+                        }
+
+                        function toggleEquipped(e) {
+                          e.stopPropagation();
+                          const prevWeapons = char.weapons;
+                          const updated = char.weapons.map((w) => w.id === item.id ? { ...w, equipped: !isEquipped } : w);
+                          setChar((c) => ({ ...c, weapons: updated }));
+                          applySessionPatch({ weapons: updated }, { weapons: prevWeapons }).catch(() => {});
+                        }
+
+                        function confirmDrop(e) {
+                          e.stopPropagation();
+                          const prevWeapons = char.weapons;
+                          const updated = char.weapons.filter((w) => w.id !== item.id);
+                          setChar((c) => ({ ...c, weapons: updated }));
+                          setDropConfirmId(null);
+                          applySessionPatch({ weapons: updated }, { weapons: prevWeapons }).catch(() => {});
+                        }
+
                         return (
-                          <div key={item.id} onClick={() => item.description && toggleExpanded(item.id)} style={{ padding: "9px 0", borderBottom: `1px solid ${pal.border}`, cursor: item.description ? "pointer" : "default" }}>
-                            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                              <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{item.name}</span>
-                              {item.mods?.length > 0 && <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>{item.mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</span>}
-                              {item.description && <span style={{ marginLeft: "auto", color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>}
+                          <div key={item.id} onClick={() => toggleExpanded(item.id)} style={{ padding: "9px 0", borderBottom: `1px solid ${pal.border}`, cursor: "pointer" }}>
+                            <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "nowrap" }}>
+                              {/* Equipped toggle badge */}
+                              <span
+                                onClick={toggleEquipped}
+                                title={isEquipped ? "Equipped — tap to unequip" : "Not equipped — tap to equip"}
+                                style={{
+                                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                  width: 14, height: 14, flexShrink: 0,
+                                  padding: 7, margin: -7,
+                                  cursor: "pointer",
+                                  fontSize: 10,
+                                  color: isEquipped ? pal.gem : pal.textMuted,
+                                  opacity: isEquipped ? 1 : 0.45,
+                                }}
+                              >■</span>
+                              <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: nameColor, flex: 1, minWidth: 0 }}>{item.name}</span>
+                              {item.mods?.length > 0 && <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted, flexShrink: 0 }}>{item.mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</span>}
+                              {needsAttune && (
+                                <span
+                                  onClick={toggleAttunement}
+                                  title={isAttuned ? "Attuned — tap to de-attune" : "Requires attunement — tap to attune"}
+                                  style={{
+                                    display: "inline-block",
+                                    width: 10, height: 10,
+                                    borderRadius: "50%",
+                                    flexShrink: 0,
+                                    padding: 9, margin: -9,
+                                    backgroundClip: "content-box",
+                                    cursor: "pointer",
+                                    backgroundColor: isAttuned ? pal.gem : "transparent",
+                                    border: isAttuned ? "none" : `1.5px solid ${pal.textMuted}`,
+                                    boxShadow: isAttuned ? `0 0 5px 1px ${pal.gem}80` : "none",
+                                  }}
+                                  className={isAttuned ? (isFlashing ? "attuned-gem over-limit-flash" : "attuned-gem") : ""}
+                                />
+                              )}
+                              <span style={{ flexShrink: 0, color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>
                             </div>
-                            {expanded && item.description && <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>{item.description}</div>}
+                            {expanded && (
+                              <div>
+                                {item.description && <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>{item.description}</div>}
+                                {/* Drop item */}
+                                {slug && (
+                                  <div style={{ marginTop: 10, display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                                    {isDropConfirming ? (
+                                      <>
+                                        <button onClick={confirmDrop} style={{ background: "transparent", border: `1px solid #c06060`, borderRadius: 3, color: "#c06060", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", padding: "4px 10px", cursor: "pointer" }}>Confirm drop</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setDropConfirmId(null); }} style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", padding: "4px 10px", cursor: "pointer" }}>Cancel</button>
+                                      </>
+                                    ) : (
+                                      <button onClick={(e) => { e.stopPropagation(); setDropConfirmId(item.id); }} style={{ background: "transparent", border: "none", borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", padding: "4px 0", cursor: "pointer" }}>Drop Item</button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })
@@ -448,6 +1007,7 @@ export default function CharacterSheetViewMode({ ctx }) {
                     )}
                   </div>
 
+                  {/* EQUIPMENT COLUMN */}
                   <div>
                     <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
                       <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim }}>Equipment</div>
@@ -456,15 +1016,180 @@ export default function CharacterSheetViewMode({ ctx }) {
                     {(char.equipment || []).length > 0 ? (
                       char.equipment.map((item) => {
                         const expanded = expandedItems.has(item.id);
+                        const needsAttune = item.requiresAttunement;
+                        const isAttuned = item.attuned;
+                        const isFlashing = attunementFlashing.has(item.id);
+                        const hasQty = item.qty != null;
+                        const isDepleted = hasQty && item.qty === 0;
+                        const stepperOpen = qtyStepperOpenId === item.id;
+                        const isEquipped = item.equipped !== false;
+                        const isPotion = item.type === "potion" && hasQty && item.qty > 0;
+                        const isDropConfirming = dropConfirmId === item.id;
+                        const nameColor = isDepleted ? pal.textMuted : (!needsAttune || isAttuned) ? (isEquipped ? pal.text : pal.textMuted) : pal.textBody;
+
+                        function patchEquipmentQty(newQty) {
+                          const prevEquipment = char.equipment;
+                          const updated = char.equipment.map((eq) => eq.id === item.id ? { ...eq, qty: Math.max(0, newQty) } : eq);
+                          setChar((c) => ({ ...c, equipment: updated }));
+                          clearTimeout(qtyDebounceRef.current);
+                          qtyDebounceRef.current = setTimeout(() => {
+                            applySessionPatch({ equipment: updated }, { equipment: prevEquipment }).catch(() => {});
+                          }, 400);
+                        }
+
+                        function openStepper(e) {
+                          e.stopPropagation();
+                          setQtyStepperOpenId(item.id);
+                          resetAutoClose();
+                        }
+
+                        function resetAutoClose() {
+                          clearTimeout(qtyAutoCloseRef.current);
+                          qtyAutoCloseRef.current = setTimeout(() => {
+                            setQtyStepperOpenId(null);
+                          }, 2000);
+                        }
+
+                        function toggleAttunement(e) {
+                          e.stopPropagation();
+                          const prevEquipment = char.equipment;
+                          const newAttuned = !isAttuned;
+                          if (newAttuned && attunedCount >= 3) {
+                            setAttunementFlashing((s) => new Set([...s, item.id]));
+                            setTimeout(() => {
+                              setAttunementFlashing((s) => { const n = new Set(s); n.delete(item.id); return n; });
+                            }, 400);
+                          }
+                          const updated = char.equipment.map((eq) => eq.id === item.id ? { ...eq, attuned: newAttuned } : eq);
+                          setChar((c) => ({ ...c, equipment: updated }));
+                          applySessionPatch({ equipment: updated }, { equipment: prevEquipment }).catch(() => {});
+                        }
+
+                        function toggleEquipped(e) {
+                          e.stopPropagation();
+                          const prevEquipment = char.equipment;
+                          const updated = char.equipment.map((eq) => eq.id === item.id ? { ...eq, equipped: !isEquipped } : eq);
+                          setChar((c) => ({ ...c, equipment: updated }));
+                          applySessionPatch({ equipment: updated }, { equipment: prevEquipment }).catch(() => {});
+                        }
+
+                        function usePotion(e) {
+                          e.stopPropagation();
+                          patchEquipmentQty(item.qty - 1);
+                        }
+
+                        function confirmDrop(e) {
+                          e.stopPropagation();
+                          const prevEquipment = char.equipment;
+                          const updated = char.equipment.filter((eq) => eq.id !== item.id);
+                          setChar((c) => ({ ...c, equipment: updated }));
+                          setDropConfirmId(null);
+                          applySessionPatch({ equipment: updated }, { equipment: prevEquipment }).catch(() => {});
+                        }
+
                         return (
-                          <div key={item.id} onClick={() => item.description && toggleExpanded(item.id)} style={{ padding: "9px 0", borderBottom: `1px solid ${pal.border}`, cursor: item.description ? "pointer" : "default" }}>
-                            <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
-                              <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{item.name}</span>
-                              {item.type && <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", color: pal.accent, opacity: 0.75 }}>{item.type}</span>}
-                              {item.mods?.length > 0 && <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>{item.mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</span>}
-                              {item.description && <span style={{ marginLeft: "auto", color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>}
+                          <div
+                            key={item.id}
+                            data-qty-row={stepperOpen ? "true" : undefined}
+                            onClick={() => !stepperOpen && toggleExpanded(item.id)}
+                            style={{ padding: "9px 0", borderBottom: `1px solid ${pal.border}`, cursor: !stepperOpen ? "pointer" : "default" }}
+                          >
+                            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "nowrap" }}>
+                              {/* Equipped toggle badge */}
+                              <span
+                                onClick={toggleEquipped}
+                                title={isEquipped ? "Equipped — tap to unequip" : "Not equipped — tap to equip"}
+                                style={{
+                                  display: "inline-flex", alignItems: "center", justifyContent: "center",
+                                  width: 14, height: 14, flexShrink: 0,
+                                  padding: 7, margin: -7,
+                                  cursor: "pointer",
+                                  fontSize: 10,
+                                  color: isEquipped ? pal.gem : pal.textMuted,
+                                  opacity: isEquipped ? 1 : 0.45,
+                                }}
+                              >■</span>
+                              {/* Name area — replaced by stepper when open */}
+                              {stepperOpen ? (
+                                <span style={{ fontFamily: pal.fontBody, fontSize: 15, color: nameColor, flexShrink: 0, marginRight: 4 }}>{item.name}</span>
+                              ) : (
+                                <span style={{ fontFamily: pal.fontBody, fontSize: 16, color: nameColor, flex: 1, minWidth: 0 }}>{item.name}</span>
+                              )}
+                              {/* Qty display or stepper */}
+                              {hasQty && !stepperOpen && (
+                                <span
+                                  onClick={openStepper}
+                                  style={{
+                                    fontFamily: pal.fontBody, fontSize: 14,
+                                    color: isDepleted ? "#c06060" : pal.textMuted,
+                                    flexShrink: 0, whiteSpace: "nowrap",
+                                    cursor: "pointer", padding: "0 2px", borderRadius: 2,
+                                  }}
+                                  title="Tap to adjust quantity"
+                                >
+                                  · {item.qty}
+                                </span>
+                              )}
+                              {stepperOpen && (
+                                <QtyStepperControls
+                                  qty={item.qty}
+                                  onDecrement={() => patchEquipmentQty(item.qty - 1)}
+                                  onIncrement={() => patchEquipmentQty(item.qty + 1)}
+                                  onActivity={resetAutoClose}
+                                  pal={pal}
+                                />
+                              )}
+                              {/* Spacer to push type/mods/gem/arrow right when stepper is open */}
+                              {stepperOpen && <span style={{ flex: 1 }} />}
+                              {/* Potion quick-use */}
+                              {!stepperOpen && isPotion && slug && (
+                                <button
+                                  onClick={usePotion}
+                                  title="Use one charge"
+                                  style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.accent, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", padding: "2px 8px", cursor: "pointer", flexShrink: 0 }}
+                                >Use</button>
+                              )}
+                              {!stepperOpen && item.type && <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", color: pal.accent, opacity: 0.75, flexShrink: 0 }}>{itemTypeLabel(item.type)}</span>}
+                              {!stepperOpen && item.mods?.length > 0 && <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted, flexShrink: 0 }}>{item.mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</span>}
+                              {needsAttune && (
+                                <span
+                                  onClick={toggleAttunement}
+                                  title={isAttuned ? "Attuned — tap to de-attune" : "Requires attunement — tap to attune"}
+                                  style={{
+                                    display: "inline-block",
+                                    width: 10, height: 10,
+                                    borderRadius: "50%",
+                                    flexShrink: 0,
+                                    padding: 9, margin: -9,
+                                    backgroundClip: "content-box",
+                                    cursor: "pointer",
+                                    backgroundColor: isAttuned ? pal.gem : "transparent",
+                                    border: isAttuned ? "none" : `1.5px solid ${pal.textMuted}`,
+                                    boxShadow: isAttuned ? `0 0 5px 1px ${pal.gem}80` : "none",
+                                  }}
+                                  className={isAttuned ? (isFlashing ? "attuned-gem over-limit-flash" : "attuned-gem") : ""}
+                                />
+                              )}
+                              <span style={{ flexShrink: 0, color: pal.accentDim, fontSize: 11, fontFamily: pal.fontUI }}>{expanded ? "▲" : "▼"}</span>
                             </div>
-                            {expanded && item.description && <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>{item.description}</div>}
+                            {expanded && (
+                              <div>
+                                {item.description && <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody, marginTop: 6, lineHeight: 1.6, fontStyle: "italic" }}>{item.description}</div>}
+                                {/* Drop item */}
+                                {slug && (
+                                  <div style={{ marginTop: 10, display: "flex", gap: 8 }} onClick={(e) => e.stopPropagation()}>
+                                    {isDropConfirming ? (
+                                      <>
+                                        <button onClick={confirmDrop} style={{ background: "transparent", border: `1px solid #c06060`, borderRadius: 3, color: "#c06060", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", padding: "4px 10px", cursor: "pointer" }}>Confirm drop</button>
+                                        <button onClick={(e) => { e.stopPropagation(); setDropConfirmId(null); }} style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", padding: "4px 10px", cursor: "pointer" }}>Cancel</button>
+                                      </>
+                                    ) : (
+                                      <button onClick={(e) => { e.stopPropagation(); setDropConfirmId(item.id); }} style={{ background: "transparent", border: "none", borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.15em", textTransform: "uppercase", padding: "4px 0", cursor: "pointer" }}>Drop Item</button>
+                                    )}
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })
@@ -473,10 +1198,222 @@ export default function CharacterSheetViewMode({ ctx }) {
                     )}
                   </div>
                 </div>
+
+                {/* Coin Section */}
+                {(() => {
+                  const coinMode = char.coinMode || "gp";
+                  const currentCoin = char.coin || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
+                  const DENOM_LABELS = { cp: "Copper", sp: "Silver", ep: "Electrum", gp: "Gold", pp: "Platinum" };
+                  const DENOM_SHORT = { cp: "CP", sp: "SP", ep: "EP", gp: "GP", pp: "PP" };
+
+                  const patchCoin = (denom, newVal) => {
+                    const clamped = Math.max(0, newVal);
+                    const prev = currentCoin;
+                    const updated = { ...currentCoin, [denom]: clamped };
+                    setChar((c) => ({ ...c, coin: updated }));
+                    applySessionPatch({ coin: updated }, { coin: prev }).catch(() => {});
+                  };
+
+                  return (
+                    <div style={{ borderTop: `1px solid ${pal.border}`, paddingTop: 22, marginTop: 18 }}>
+                      <style>{`
+                        @media (max-width: 560px) {
+                          .coin-full-grid { grid-template-columns: repeat(2, 1fr) !important; }
+                        }
+                      `}</style>
+                      <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 16 }}>Coin</div>
+
+                      {coinMode === "gp" ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+                          {/* GP denomination mark */}
+                          <div style={{ width: 34, height: 34, borderRadius: "50%", background: `rgba(200,160,64,0.1)`, border: `2px solid rgba(200,160,64,0.5)`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                            <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: COIN_COLORS.gp }}>GP</span>
+                          </div>
+                          {/* Stepper + input group */}
+                          <div style={{ display: "flex", alignItems: "stretch", border: `1px solid ${pal.border}`, borderRadius: 4, overflow: "hidden", flexShrink: 0 }}>
+                            <button
+                              onClick={() => patchCoin("gp", (currentCoin.gp || 0) - 1)}
+                              style={{ width: 36, minHeight: 44, background: pal.accentDim, border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 22, cursor: "pointer", lineHeight: 1, padding: 0 }}
+                            >−</button>
+                            <input
+                              type="number"
+                              value={currentCoin.gp || 0}
+                              onChange={(e) => patchCoin("gp", parseInt(e.target.value, 10) || 0)}
+                              style={{ width: 90, textAlign: "center", fontFamily: pal.fontDisplay, fontSize: 26, color: pal.gem, background: pal.surface, border: "none", outline: "none", padding: "0 4px" }}
+                            />
+                            <button
+                              onClick={() => patchCoin("gp", (currentCoin.gp || 0) + 1)}
+                              style={{ width: 36, minHeight: 44, background: pal.accentDim, border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 22, cursor: "pointer", lineHeight: 1, padding: 0 }}
+                            >+</button>
+                          </div>
+                          <span style={{ fontFamily: pal.fontUI, fontSize: 14, letterSpacing: "0.12em", textTransform: "uppercase", color: pal.textMuted }}>Gold Pieces</span>
+                        </div>
+                      ) : (
+                        <>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap" }}>
+                            <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.25em", textTransform: "uppercase", color: pal.textMuted, flexShrink: 0 }}>GP</span>
+                            <div style={{ display: "inline-flex", alignItems: "baseline", gap: 0, background: `${pal.gem}14`, border: `1px solid ${pal.gem}55`, borderRadius: 12, padding: "3px 10px" }}>
+                              <span style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted }}>≈</span>
+                              <span style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.gem, marginLeft: 3 }}>{gpEquivalent(currentCoin)}</span>
+                              <span style={{ fontFamily: pal.fontUI, fontSize: 11, color: pal.textMuted, marginLeft: 4 }}>gp</span>
+                            </div>
+                            <button
+                              onClick={() => setFullCoinExpanded((value) => !value)}
+                              style={{ width: 24, height: 24, background: "transparent", border: "1px solid transparent", color: pal.textMuted, fontSize: 13, cursor: "pointer", padding: 0, lineHeight: 1, display: "flex", alignItems: "center", justifyContent: "center" }}
+                            >
+                              {fullCoinExpanded ? "↑" : "↓"}
+                            </button>
+                          </div>
+
+                          {fullCoinExpanded && (
+                            <div className="coin-full-grid" style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12, marginTop: 14 }}>
+                              {["cp", "sp", "ep", "gp", "pp"].map((denom) => {
+                                const color = COIN_COLORS[denom];
+                                const val = currentCoin[denom] || 0;
+                                return (
+                                  <div key={denom} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+                                    <div style={{ width: 26, height: 26, borderRadius: "50%", background: `${color}18`, border: `1.5px solid ${color}80`, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                                      <span style={{ fontFamily: pal.fontDisplay, fontSize: 10, color }}>{DENOM_SHORT[denom]}</span>
+                                    </div>
+                                    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", border: `1px solid ${pal.border}`, borderRadius: 4, overflow: "hidden", width: "100%" }}>
+                                      <button
+                                        onClick={() => patchCoin(denom, val + 1)}
+                                        style={{ width: "100%", height: 22, background: pal.accentDim, border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 14, cursor: "pointer", lineHeight: 1, padding: 0 }}
+                                      >▲</button>
+                                      <input
+                                        type="number"
+                                        value={val}
+                                        onChange={(e) => patchCoin(denom, parseInt(e.target.value, 10) || 0)}
+                                        style={{ width: "100%", textAlign: "center", fontFamily: pal.fontDisplay, fontSize: 20, color: (denom === "gp" || denom === "pp") ? color : pal.text, background: pal.surface, border: "none", outline: "none", padding: "2px 0" }}
+                                      />
+                                      <button
+                                        onClick={() => patchCoin(denom, val - 1)}
+                                        style={{ width: "100%", height: 22, background: pal.accentDim, border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 14, cursor: "pointer", lineHeight: 1, padding: 0 }}
+                                      >▼</button>
+                                    </div>
+                                    <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", color }}>{DENOM_LABELS[denom]}</span>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {(char.levelingMode || "milestone") === "xp" && (() => {
+                  const level = char.level || 1;
+                  const xp = char.xpCurrent || 0;
+                  const nextThreshold = XP_THRESHOLDS[level + 1] ?? XP_THRESHOLDS[20];
+                  const currentThreshold = XP_THRESHOLDS[level] ?? 0;
+                  const isMaxLevel = level >= 20;
+                  const isReadyToLevelUp = !isMaxLevel && xp >= nextThreshold;
+                  const progress = isMaxLevel ? 1 : Math.min(1, Math.max(0, (xp - currentThreshold) / Math.max(1, nextThreshold - currentThreshold)));
+                  return (
+                    <div style={{ display: "flex", alignItems: "center", gap: 14, padding: "10px 0", borderTop: `1px solid ${pal.border}`, marginTop: 18 }}>
+                      <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.25em", textTransform: "uppercase", color: pal.textMuted, flexShrink: 0 }}>XP</span>
+                      <div style={{ flex: 1, height: 4, background: `${pal.accent}20`, borderRadius: 2, overflow: "hidden", minWidth: 0 }}>
+                        <div style={{ height: "100%", width: `${progress * 100}%`, background: isReadyToLevelUp ? pal.gem : pal.accent, borderRadius: 2, transition: "width 0.4s ease" }} />
+                      </div>
+                      <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", whiteSpace: "nowrap" }}>
+                        <span style={{ color: pal.gem }}>{xp.toLocaleString()}</span>
+                        <span style={{ color: pal.textMuted, margin: "0 3px" }}>/</span>
+                        <span style={{ color: pal.textMuted }}>{isMaxLevel ? "Max Level" : formatXpThreshold(nextThreshold)}</span>
+                      </div>
+                      {isReadyToLevelUp ? (
+                        <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: `${pal.gem}18`, border: `1px solid ${pal.gem}`, borderRadius: 3, padding: "3px 9px", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.gem, animation: "xpLevelupPulse 2.4s ease-in-out infinite", flexShrink: 0 }}>
+                          <span style={{ width: 5, height: 5, borderRadius: "50%", background: pal.gem, display: "inline-block" }} />
+                          Ready
+                        </div>
+                      ) : (
+                        <button onClick={() => setXpAwardOpen((value) => !value)} style={{ width: 24, height: 24, borderRadius: "50%", background: "transparent", border: `1px solid ${pal.border}`, color: pal.textMuted, fontSize: 16, cursor: "pointer", flexShrink: 0, padding: 0, lineHeight: 1 }}>+</button>
+                      )}
+                    </div>
+                  );
+                })()}
+
+                {xpAwardOpen && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 10 }}>
+                    <input
+                      type="number"
+                      min={1}
+                      value={xpAwardValue}
+                      onChange={(e) => setXpAwardValue(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key !== "Enter") return;
+                        const delta = Math.max(0, parseInt(xpAwardValue, 10) || 0);
+                        if (!delta) return;
+                        const prev = char.xpCurrent || 0;
+                        const xpCurrent = prev + delta;
+                        setChar((current) => ({ ...current, xpCurrent }));
+                        applySessionPatch({ xpCurrent }, { xpCurrent: prev }).catch(() => {});
+                        setXpAwardOpen(false);
+                      }}
+                      style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "5px 8px", outline: "none", width: 88, textAlign: "center" }}
+                    />
+                    <button
+                      onClick={() => {
+                        const delta = Math.max(0, parseInt(xpAwardValue, 10) || 0);
+                        if (!delta) return;
+                        const prev = char.xpCurrent || 0;
+                        const xpCurrent = prev + delta;
+                        setChar((current) => ({ ...current, xpCurrent }));
+                        applySessionPatch({ xpCurrent }, { xpCurrent: prev }).catch(() => {});
+                        setXpAwardOpen(false);
+                      }}
+                      style={{ background: pal.accentDim, border: `1px solid ${pal.accent}`, borderRadius: 3, color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", padding: "6px 12px", cursor: "pointer" }}
+                    >
+                      Add XP
+                    </button>
+                    <button
+                      onClick={() => setXpAwardOpen(false)}
+                      style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", padding: "6px 12px", cursor: "pointer" }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                )}
+                </>
               )}
 
               {combatTab === "persona" && (
                 <>
+                  <div style={{ marginBottom: 4 }}>
+                    <div style={secHead}>Skills, Spells & Special Abilities</div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                      {talentGroups.map((group) => (
+                        <div key={group.label}>
+                          <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 6 }}>
+                            {group.label}
+                          </div>
+                          {group.items.length > 0 ? (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                              {group.items.map((item) => (
+                                <InfoBadge
+                                  key={item.key}
+                                  pal={pal}
+                                  label={item.label}
+                                  tooltip={`${group.singular}: ${item.label}`}
+                                  color={group.color}
+                                  background={group.bg}
+                                  border={group.border}
+                                />
+                              ))}
+                            </div>
+                          ) : (
+                            <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>
+                              None listed.
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {(char.inPlay || []).length > 0 && hasPersonaBadgeContent && <HR color={pal.border} />}
+
                   {(char.inPlay || []).length > 0 ? (
                     <ul style={{ listStyle: "none", display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(260px, 1fr))", gap: "0 28px" }}>
                       {char.inPlay.map((item, index) => (
@@ -630,6 +1567,11 @@ export default function CharacterSheetViewMode({ ctx }) {
                     </div>
                   )}
 
+                  {/* Hit Dice Tracker */}
+                  <div style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 4, padding: "12px 16px", marginBottom: 18 }}>
+                    <HitDiceTracker char={char} slug={slug} applySessionPatch={applySessionPatch} setChar={setChar} pal={pal} />
+                  </div>
+
                   <button onClick={() => {
                     if (!slug) return;
                     const inspiration = !char.inspiration;
@@ -644,22 +1586,82 @@ export default function CharacterSheetViewMode({ ctx }) {
                   <div style={{ borderTop: `1px solid ${pal.border}`, margin: "4px 0 20px" }} />
                   <div style={{ marginBottom: 20 }}>
                     <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 10 }}>Conditions</div>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginBottom: 14 }}>
-                      {CONDITIONS.map((condition) => {
-                        const isActive = (char.conditions || []).includes(condition);
-                        return (
-                          <button key={condition} onClick={() => {
-                            if (!slug) return;
-                            const prevConds = char.conditions || [];
-                            const conditions = isActive ? prevConds.filter((value) => value !== condition) : [...prevConds, condition];
-                            setChar((current) => ({ ...current, conditions }));
-                            applySessionPatch({ conditions }, { conditions: prevConds }).catch(() => {});
-                          }} style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.08em", padding: "4px 12px", borderRadius: 12, background: isActive ? pal.gem : "transparent", border: `1px solid ${isActive ? pal.accent : pal.border}`, color: isActive ? pal.bg : pal.textMuted, cursor: slug ? "pointer" : "default", transition: "all 0.15s" }}>
-                            {condition}
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {(() => {
+                      const activeConditions = char.conditions || [];
+                      const exhaustionLevel = char.exhaustionLevel || 0;
+                      const activeChips = [
+                        ...activeConditions.map((condition) => ({ key: condition, label: condition, type: "condition" })),
+                        ...(exhaustionLevel > 0 ? [{ key: "exhausted", label: "Exhausted", type: "exhaustion" }] : []),
+                      ];
+                      const inactiveConditions = CONDITIONS.filter((condition) => !activeConditions.includes(condition));
+
+                      return (
+                        <>
+                          {activeChips.length > 0 && (
+                            <div style={{ display: "flex", flexWrap: "wrap", gap: 8, marginBottom: 10 }}>
+                              {activeChips.map((chip) => {
+                                const color = chip.type === "exhaustion" ? "#c09040" : conditionColorFor(chip.label);
+                                return (
+                                  <div key={chip.key} style={{ display: "inline-flex", alignItems: "center", padding: "5px 14px", borderRadius: 14, fontFamily: pal.fontUI, fontSize: 13, letterSpacing: "0.1em", textTransform: "uppercase", background: `${color}26`, border: `1px solid ${color}b3`, color }}>
+                                    <span>{chip.label}</span>
+                                    {slug && (
+                                      <button
+                                        onClick={() => {
+                                          if (chip.type === "exhaustion") {
+                                            const prevExhaustion = exhaustionLevel;
+                                            setChar((current) => ({ ...current, exhaustionLevel: 0 }));
+                                            applySessionPatch({ exhaustionLevel: 0 }, { exhaustionLevel: prevExhaustion }).catch(() => {});
+                                            return;
+                                          }
+                                          const prevConds = activeConditions;
+                                          const conditions = prevConds.filter((value) => value !== chip.label);
+                                          setChar((current) => ({ ...current, conditions }));
+                                          applySessionPatch({ conditions }, { conditions: prevConds }).catch(() => {});
+                                        }}
+                                        style={{ background: "transparent", border: "none", color: pal.textMuted, fontSize: 14, marginLeft: 8, cursor: "pointer", lineHeight: 1, padding: 0 }}
+                                      >
+                                        ×
+                                      </button>
+                                    )}
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+
+                          {slug && (
+                            <>
+                              <button
+                                onClick={() => setConditionPickerOpen((value) => !value)}
+                                style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 14, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", padding: "4px 14px", cursor: "pointer", marginBottom: conditionPickerOpen && inactiveConditions.length > 0 ? 10 : 0 }}
+                              >
+                                ＋ Add Condition
+                              </button>
+
+                              {conditionPickerOpen && inactiveConditions.length > 0 && (
+                                <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 0, marginBottom: 12, padding: "12px 14px", background: "rgba(0,0,0,0.18)", borderRadius: 6, border: `1px solid ${pal.border}` }}>
+                                  {inactiveConditions.map((condition) => (
+                                    <button
+                                      key={condition}
+                                      onClick={() => {
+                                        const prevConds = activeConditions;
+                                        const conditions = [...prevConds, condition];
+                                        setChar((current) => ({ ...current, conditions }));
+                                        applySessionPatch({ conditions }, { conditions: prevConds }).catch(() => {});
+                                        setConditionPickerOpen(false);
+                                      }}
+                                      style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", padding: "3px 12px", borderRadius: 14, background: "transparent", border: `1px solid ${pal.border}`, color: pal.textMuted, cursor: "pointer" }}
+                                    >
+                                      {condition}
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {slug && (
                       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
@@ -730,11 +1732,15 @@ export default function CharacterSheetViewMode({ ctx }) {
                           {slug && (
                             <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
                               <button onClick={() => {
-                                if (window.confirm("Long rest — reset all spell slots?")) {
+                                if (window.confirm("Long rest — reset all spell slots and restore Hit Dice?")) {
                                   const prevSlots = char.spellSlots || [];
                                   const spellSlots = prevSlots.map((slot) => ({ ...slot, used: 0 }));
-                                  setChar((current) => ({ ...current, spellSlots }));
-                                  applySessionPatch({ spellSlots }, { spellSlots: prevSlots }).catch(() => {});
+                                  const level = char.level || 1;
+                                  const hdCurrent = char.hitDiceCurrent ?? level;
+                                  const hdRestore = Math.max(1, Math.floor(level / 2));
+                                  const hitDiceCurrent = Math.min(level, hdCurrent + hdRestore);
+                                  setChar((current) => ({ ...current, spellSlots, hitDiceCurrent }));
+                                  applySessionPatch({ spellSlots, hitDiceCurrent }, { spellSlots: prevSlots, hitDiceCurrent: hdCurrent }).catch(() => {});
                                 }
                               }} style={{ background: pal.accentDim, border: `1px solid ${pal.accent}`, borderRadius: 3, color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 12px", cursor: "pointer" }}>Long Rest</button>
                               <button onClick={() => {
@@ -789,7 +1795,46 @@ export default function CharacterSheetViewMode({ ctx }) {
                     </div>
                   )}
 
+                  {slug && <SessionNotesSection char={char} setChar={setChar} applySessionPatch={applySessionPatch} pal={pal} />}
+
                   <DiceRoller weapons={char.weapons || []} stats={char.stats || []} pal={pal} slug={slug} />
+                </div>
+              )}
+
+              {combatTab === "map" && (
+                <div>
+                  {activeMap ? (
+                    <>
+                      <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 10 }}>{activeMap.name || "Active Map"}</div>
+                      <div style={{ display: "flex", justifyContent: "flex-end", marginBottom: 10 }}>
+                        <button
+                          onClick={() => window.open(`/map-view?theme=${encodeURIComponent((char.palette || "ocean").toLowerCase())}`, "_blank", "noopener,noreferrer")}
+                          style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", padding: "5px 12px", cursor: "pointer" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = pal.accentBright; e.currentTarget.style.borderColor = pal.accent; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; e.currentTarget.style.borderColor = pal.border; }}
+                        >
+                          Open Window
+                        </button>
+                      </div>
+                      <style>{`@media (max-width: 560px) { .map-viewer-mobile { height: calc(100vh - 160px) !important; } }`}</style>
+                      <div className="map-viewer-mobile" style={{ height: 500 }}>
+                        <MapViewer
+                          imageUrl={activeMap.imageUrl}
+                          name={activeMap.name}
+                          contentType={activeMap.contentType}
+                          height={500}
+                          pal={pal}
+                          publishedView={activeMapView}
+                          allowResetToPublished={!!activeMapView}
+                          resetLabel="Current View"
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <div style={{ padding: "48px 0", textAlign: "center" }}>
+                      <div style={{ fontFamily: pal.fontBody, fontSize: 15, color: pal.textMuted, fontStyle: "italic" }}>The DM hasn&apos;t loaded a map yet.</div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

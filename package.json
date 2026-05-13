@@ -13,6 +13,7 @@
     "test:backend": "node --test backend/src/lib/*.test.cjs backend/src/handlers/*.test.cjs"
   },
   "dependencies": {
+    "pdfjs-dist": "^5.7.284",
     "react": "^19.2.5",
     "react-dom": "^19.2.5",
     "react-router-dom": "^7.14.2"

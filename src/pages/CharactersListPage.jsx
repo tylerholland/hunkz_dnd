@@ -1,9 +1,9 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { listCharacters, verifyPassword } from "../api";
+import { listCharacters, verifyPassword, getPartyRoster } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 
-const RESERVED_CHARACTER_SLUGS = new Set(["initiative", "npc-combat"]);
+const RESERVED_CHARACTER_SLUGS = new Set(["initiative", "npc-combat", "party-roster"]);
 
 function isRenderableCharacterSummary(entry) {
   if (!entry || typeof entry !== "object") return false;
@@ -21,12 +21,27 @@ export default function CharactersListPage() {
   const [dmInput,     setDmInput]     = useState("");
   const [dmError,     setDmError]     = useState(null);
   const [dmActive,    setDmActive]    = useState(() => !!sessionStorage.getItem("dnd_dm_password"));
+  const [partyMemberSlugs, setPartyMemberSlugs] = useState(() => new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
-    listCharacters()
-      .then(setCharacters)
-      .catch(() => setCharacters([]))
+    Promise.all([
+      listCharacters(),
+      getPartyRoster().catch(() => ({ members: [] })),
+    ])
+      .then(([characterData, rosterData]) => {
+        const nextCharacters = Array.isArray(characterData) ? characterData : [];
+        setCharacters(nextCharacters);
+
+        const validCharacters = nextCharacters.filter(isRenderableCharacterSummary);
+        const validSlugs = new Set(validCharacters.map((character) => character.slug));
+        const rosterMembers = Array.isArray(rosterData?.members) ? rosterData.members.filter((slug) => validSlugs.has(slug)) : [];
+        setPartyMemberSlugs(new Set(rosterData?.exists ? rosterMembers : validCharacters.map((character) => character.slug)));
+      })
+      .catch(() => {
+        setCharacters([]);
+        setPartyMemberSlugs(new Set());
+      })
       .finally(() => setLoading(false));
   }, []);
 
@@ -129,6 +144,17 @@ export default function CharactersListPage() {
                 }}
               >
                 Campaign
+              </Link>
+              <Link
+                to="/maps"
+                style={{
+                  background: "transparent", border: "1px solid rgba(100,130,160,0.3)",
+                  borderRadius: 3, color: "#6a8fa8", fontFamily: "'IM Fell English', Georgia, serif",
+                  fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
+                  padding: "5px 12px", textDecoration: "none", display: "inline-block",
+                }}
+              >
+                Maps
               </Link>
               <button onClick={handleDmLogout} style={{
                 background: "transparent", border: "1px solid rgba(192,96,96,0.4)",
@@ -265,6 +291,23 @@ export default function CharactersListPage() {
                     }}>
                       {c.name}
                     </div>
+                    {partyMemberSlugs.has(c.slug) && (
+                      <div style={{
+                        display: "inline-block",
+                        marginBottom: 6,
+                        background: `${p.accentDim}55`,
+                        border: `1px solid ${p.border}`,
+                        borderRadius: 999,
+                        color: p.accent,
+                        fontFamily: "'IM Fell English', Georgia, serif",
+                        fontSize: 10,
+                        letterSpacing: "0.18em",
+                        textTransform: "uppercase",
+                        padding: "2px 8px",
+                      }}>
+                        In Party
+                      </div>
+                    )}
                     {c.nameAlt && (
                       <div style={{ fontStyle: "italic", fontSize: 13, color: p.accent, marginBottom: 4 }}>
                         "{c.nameAlt}"

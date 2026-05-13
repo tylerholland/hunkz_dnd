@@ -1,6 +1,7 @@
-import { createContext, useEffect, useRef } from "react";
+import { createContext, useEffect } from "react";
 import { PALETTES } from "../characterSheet/theme";
 export { debounce } from "../../lib/liveSync";
+export { useHoldToRepeat } from "../../lib/useHoldToRepeat";
 
 export const PalCtx = createContext(PALETTES.ocean);
 
@@ -195,14 +196,20 @@ export function useDashboardStyles() {
 
 export function conditionStyle(cond) {
   const map = {
-    Poisoned: { bg: "rgba(80,160,80,0.15)", border: "rgba(80,160,80,0.4)", color: "#88c888" },
-    Prone: { bg: "rgba(200,144,64,0.14)", border: "rgba(200,144,64,0.38)", color: "#c89060" },
-    Blinded: { bg: "rgba(180,120,120,0.14)", border: "rgba(180,80,80,0.38)", color: "#c08080" },
-    Charmed: { bg: "rgba(160,100,200,0.14)", border: "rgba(140,80,180,0.38)", color: "#b880e0" },
-    Frightened: { bg: "rgba(200,160,60,0.14)", border: "rgba(180,140,40,0.38)", color: "#d0b050" },
-    Paralyzed: { bg: "rgba(120,120,200,0.14)", border: "rgba(80,80,180,0.38)", color: "#8888e0" },
-    Stunned: { bg: "rgba(160,80,160,0.14)", border: "rgba(140,60,140,0.38)", color: "#c060c0" },
-    Unconscious: { bg: "rgba(100,100,100,0.18)", border: "rgba(80,80,80,0.4)", color: "#909090" },
+    Poisoned: { bg: "rgba(160,70,70,0.15)", border: "rgba(192,96,96,0.38)", color: "#d88c8c" },
+    Blinded: { bg: "rgba(160,70,70,0.15)", border: "rgba(192,96,96,0.38)", color: "#d88c8c" },
+    Stunned: { bg: "rgba(160,70,70,0.15)", border: "rgba(192,96,96,0.38)", color: "#d88c8c" },
+    Paralyzed: { bg: "rgba(160,70,70,0.15)", border: "rgba(192,96,96,0.38)", color: "#d88c8c" },
+    Petrified: { bg: "rgba(160,70,70,0.15)", border: "rgba(192,96,96,0.38)", color: "#d88c8c" },
+    Prone: { bg: "rgba(200,144,64,0.14)", border: "rgba(200,144,64,0.38)", color: "#d0aa70" },
+    Grappled: { bg: "rgba(200,144,64,0.14)", border: "rgba(200,144,64,0.38)", color: "#d0aa70" },
+    Restrained: { bg: "rgba(200,144,64,0.14)", border: "rgba(200,144,64,0.38)", color: "#d0aa70" },
+    Exhaustion: { bg: "rgba(200,144,64,0.14)", border: "rgba(200,144,64,0.38)", color: "#d0aa70" },
+    Deafened: { bg: "rgba(88,120,180,0.14)", border: "rgba(110,146,210,0.35)", color: "#9db8ea" },
+    Frightened: { bg: "rgba(130,92,186,0.15)", border: "rgba(158,118,214,0.36)", color: "#c2a0ec" },
+    Charmed: { bg: "rgba(130,92,186,0.15)", border: "rgba(158,118,214,0.36)", color: "#c2a0ec" },
+    Incapacitated: { bg: "rgba(130,92,186,0.15)", border: "rgba(158,118,214,0.36)", color: "#c2a0ec" },
+    Unconscious: { bg: "rgba(160,70,70,0.15)", border: "rgba(192,96,96,0.38)", color: "#d88c8c" },
   };
   return map[cond] || { bg: "rgba(100,130,160,0.14)", border: "rgba(100,130,160,0.35)", color: "#a0c0d0" };
 }
@@ -213,28 +220,6 @@ export function hpBarColor(pct) {
   return "linear-gradient(90deg, #8a2020 0%, #c06060 100%)";
 }
 
-export function useHoldToRepeat(onTick, delay = 500, interval = 80) {
-  const holdTimerRef = useRef(null);
-  const holdIntervalRef = useRef(null);
-
-  function start() {
-    onTick();
-    holdTimerRef.current = setTimeout(() => {
-      holdIntervalRef.current = setInterval(onTick, interval);
-    }, delay);
-  }
-
-  function stop() {
-    clearTimeout(holdTimerRef.current);
-    clearInterval(holdIntervalRef.current);
-    holdTimerRef.current = null;
-    holdIntervalRef.current = null;
-  }
-
-  useEffect(() => () => stop(), []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  return { start, stop };
-}
 
 export function initiativesEqual(a, b) {
   if (!a || !b) return false;

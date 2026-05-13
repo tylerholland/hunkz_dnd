@@ -1,0 +1,1367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Story 17 — Player Sheet Improvements · Before / After</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── Ember palette variables ── */
+:root {
+  --bg: #120d0a;
+  --surface: rgba(30,18,12,0.72);
+  --surface-solid: #1e120c;
+  --border: rgba(160,104,64,0.22);
+  --border-vis: rgba(160,104,64,0.35);
+  --accent: #a06840;
+  --accent-bright: #c89060;
+  --accent-dim: rgba(160,104,64,0.14);
+  --text: #d4c4b0;
+  --text-body: #bfad98;
+  --text-muted: #6a4830;
+  --gem: #c8904c;
+  --gem-low: #5a3820;
+  --glow1: rgba(160,104,64,0.13);
+  --glow2: rgba(100,60,20,0.12);
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Crimson Text', serif;
+  --font-ui: 'IM Fell English', serif;
+
+  /* Condition severity colors (Story 17) */
+  --cond-red: #c06060;
+  --cond-amber: #c09040;
+  --cond-blue: #6090c0;
+  --cond-purple: #9060b8;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ── Page header ── */
+.page-header {
+  padding: 28px 40px 20px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(18,13,10,0.6);
+}
+.page-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 400;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.page-subtitle {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Main layout ── */
+.page-body {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 48px 40px 100px;
+}
+
+/* ── Comparison section ── */
+.comparison-section {
+  margin-bottom: 72px;
+}
+.comparison-section:last-child { margin-bottom: 0; }
+
+.section-heading {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-weight: 400;
+  letter-spacing: 0.08em;
+  color: var(--accent-bright);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.section-subheading {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  margin-bottom: 28px;
+}
+
+/* Side-by-side grid */
+.compare-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(460px, 1fr));
+  gap: 28px;
+  align-items: start;
+}
+
+/* If there are 3 panels (e.g. expanded state), allow 3 columns */
+.compare-grid.three-up {
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+}
+
+/* Individual panel */
+.panel {
+  background: rgba(30,18,12,0.55);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.panel.before { border-color: rgba(160,104,64,0.18); }
+.panel.after  { border-color: rgba(100,160,100,0.30); }
+.panel.after-expanded { border-color: rgba(120,140,200,0.30); }
+
+.panel-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--border);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+}
+.panel.before .panel-label { color: var(--text-muted); background: rgba(0,0,0,0.2); }
+.panel.after  .panel-label { color: rgba(120,200,140,0.9); background: rgba(40,80,40,0.15); border-color: rgba(80,160,80,0.12); }
+.panel.after-expanded .panel-label { color: rgba(140,160,220,0.9); background: rgba(40,50,100,0.15); border-color: rgba(80,100,200,0.12); }
+
+.panel-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.panel.before .panel-dot  { background: var(--text-muted); }
+.panel.after  .panel-dot  { background: rgba(80,200,100,0.8); }
+.panel.after-expanded .panel-dot { background: rgba(100,130,230,0.8); }
+
+.panel-body {
+  padding: 20px 22px;
+}
+
+/* ── Shared card chrome — simulates the stats-block surface ── */
+.card-chrome {
+  background: rgba(30,18,12,0.72);
+  border: 1px solid var(--border-vis);
+  border-radius: 4px;
+  padding: 18px 20px;
+}
+.card-chrome + .card-chrome { margin-top: 10px; }
+
+/* ── Section header (within card) ── */
+.cs-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+.cs-section-title {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.section-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 14px 0;
+}
+
+/* ═══════════════════════════════════════════════
+   1. CONDITIONS
+   ═══════════════════════════════════════════════ */
+
+/* Before: muted inactive pill grid */
+.cond-grid-before {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.cond-pill-inactive {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  border-radius: 14px;
+  background: rgba(106,72,48,0.08);
+  border: 1px solid rgba(106,72,48,0.22);
+  color: var(--text-muted);
+  opacity: 0.65;
+}
+
+/* After: color-coded active chips */
+.cond-active-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.cond-chip-active {
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
+  padding: 5px 14px;
+  border-radius: 14px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cond-chip-active .dismiss {
+  font-size: 14px;
+  margin-left: 8px;
+  color: var(--text-muted);
+  cursor: pointer;
+  line-height: 1;
+}
+.cond-chip-active.red    { background: rgba(192,96,96,0.15);  border: 1px solid rgba(192,96,96,0.7);  color: var(--cond-red); }
+.cond-chip-active.amber  { background: rgba(192,144,64,0.15); border: 1px solid rgba(192,144,64,0.7); color: var(--cond-amber); }
+.cond-chip-active.blue   { background: rgba(96,144,192,0.15); border: 1px solid rgba(96,144,192,0.7); color: var(--cond-blue); }
+.cond-chip-active.purple { background: rgba(144,96,184,0.15); border: 1px solid rgba(144,96,184,0.7); color: var(--cond-purple); }
+
+/* Add Condition trigger — plain text link, not a pill */
+.add-condition-btn {
+  display: inline-block;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  color: #6b7a99;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: none;
+  padding: 0;
+  cursor: pointer;
+  margin-top: 4px;
+  opacity: 0.85;
+}
+.add-condition-btn:hover { opacity: 1; color: var(--accent-bright); }
+
+/* Picker grid (expanded state) */
+.cond-picker-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+  padding: 12px 14px;
+  background: rgba(0,0,0,0.18);
+  border-radius: 6px;
+  border: 1px solid var(--border);
+}
+.cond-picker-pill {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 12px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.cond-picker-pill:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+/* Exhaustion stepper (always visible, unchanged) */
+.exhaustion-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 12px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.exhaustion-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex: 1;
+}
+.exhaust-stepper {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.exhaust-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--accent-bright);
+  font-size: 15px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+.exhaust-value {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text-muted);
+  min-width: 18px;
+  text-align: center;
+}
+
+/* ═══════════════════════════════════════════════
+   2. XP PANEL
+   ═══════════════════════════════════════════════ */
+
+/* Before: full XP panel in the header block */
+.xp-panel-before {
+  margin-top: 18px;
+  padding-top: 18px;
+  border-top: 1px solid var(--border);
+}
+.xp-panel-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.xp-panel-number {
+  font-family: var(--font-display);
+  font-size: 38px;
+  color: var(--gem);
+  line-height: 1;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+.xp-panel-number .xp-sep {
+  font-size: 20px;
+  color: var(--text-muted);
+}
+.xp-panel-number .xp-max {
+  font-size: 20px;
+  color: var(--text-muted);
+}
+.xp-bar-track {
+  height: 6px;
+  background: var(--gem-low);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.xp-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--accent) 0%, var(--gem) 100%);
+}
+.xp-add-btn-row {
+  display: flex;
+  justify-content: flex-end;
+}
+.xp-add-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  color: var(--text-muted);
+  font-size: 18px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+/* After: compact XP strip — bottom of Inventory tab */
+.inventory-tab-stub {
+  margin-bottom: 6px;
+}
+.inventory-tab-stub-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.6;
+  margin-bottom: 8px;
+}
+.inventory-tab-stub-content {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.stub-item-pill {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--text-body);
+  padding: 4px 12px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  opacity: 0.4;
+}
+.coin-stub-strip {
+  height: 28px;
+  background: rgba(200,144,76,0.06);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  margin-bottom: 14px;
+  opacity: 0.45;
+}
+.coin-stub-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.coin-stub-value {
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--gem);
+}
+.xp-strip {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  margin-top: 4px;
+}
+.xp-strip-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.xp-strip-bar-track {
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(200,144,76,0.14);
+  overflow: hidden;
+}
+.xp-strip-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--gem);
+  width: 62%;
+}
+.xp-strip-values {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.xp-strip-values .cur { color: var(--gem); }
+.xp-strip-values .sep { color: var(--text-muted); margin: 0 3px; }
+.xp-strip-values .max { color: var(--text-muted); }
+.xp-strip-add-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--text-muted);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+/* "Placement context" frame — shows which block the XP sat inside */
+.placement-frame {
+  border: 1px dashed rgba(160,104,64,0.22);
+  border-radius: 4px;
+  padding: 14px 16px;
+  margin-bottom: 4px;
+  position: relative;
+}
+.placement-frame-label {
+  position: absolute;
+  top: -9px;
+  left: 12px;
+  background: #1a110d;
+  padding: 0 6px;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.7;
+}
+
+/* Ability score mini row (placeholder context) */
+.ability-mini-row {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-bottom: 12px;
+}
+.ability-mini {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  border: 1px solid var(--border);
+  background: rgba(30,18,12,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--accent);
+}
+
+/* Tab strip mini */
+.tab-strip-mini {
+  display: flex;
+  margin-top: 12px;
+  margin-left: -1px;
+  margin-right: -1px;
+}
+.tab-btn-mini {
+  flex: 1;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-right: none;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.tab-btn-mini:last-child { border-right: 1px solid var(--border); }
+.tab-btn-mini.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+
+/* Persona skills placeholder */
+.skills-section-stub {
+  margin-bottom: 14px;
+}
+.skills-stub-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  display: block;
+}
+.skills-badges-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+.skill-badge {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 3px 11px;
+  border-radius: 3px;
+  border: 1px solid;
+  cursor: pointer;
+}
+.skill-badge.skill  { color: var(--accent-bright); border-color: rgba(200,144,96,0.3); background: rgba(200,144,96,0.08); }
+.skill-badge.spell  { color: var(--accent);        border-color: rgba(160,104,64,0.3); background: rgba(160,104,64,0.08); }
+.skill-badge.special { color: var(--gem);          border-color: rgba(200,144,76,0.3); background: rgba(200,144,76,0.08); }
+
+/* Traits list */
+.traits-list {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border);
+}
+.trait-row {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--text-body);
+}
+.trait-diamond {
+  color: var(--accent);
+  font-size: 11px;
+  flex-shrink: 0;
+  opacity: 0.7;
+}
+
+/* ═══════════════════════════════════════════════
+   3. COIN — multi-denomination collapse
+   ═══════════════════════════════════════════════ */
+
+/* Before: 5-denomination pills inline */
+.coin-denom-row-before {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+.coin-denom-pill-before {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 4px 12px;
+  border-radius: 12px;
+  white-space: nowrap;
+}
+.coin-denom-pill-before.cp { background: rgba(140,100,80,0.12); border: 1px solid rgba(140,100,80,0.35); color: #b08060; }
+.coin-denom-pill-before.sp { background: rgba(180,190,200,0.08); border: 1px solid rgba(180,190,200,0.25); color: #a0b0c0; }
+.coin-denom-pill-before.ep { background: rgba(160,180,170,0.08); border: 1px solid rgba(160,180,170,0.22); color: #90a8a0; }
+.coin-denom-pill-before.gp { background: rgba(200,160,60,0.10); border: 1px solid rgba(200,160,60,0.30); color: #c8a040; }
+.coin-denom-pill-before.pp { background: rgba(180,160,220,0.08); border: 1px solid rgba(180,160,220,0.25); color: #b0a0d8; }
+
+/* After collapsed: GP + equivalent + expand toggle */
+.coin-collapsed-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.coin-collapsed-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.coin-equiv-pill {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--gem);
+  background: rgba(200,144,76,0.08);
+  border: 1px solid rgba(200,144,76,0.33);
+  border-radius: 12px;
+  padding: 3px 10px;
+  display: inline-flex;
+  align-items: baseline;
+  gap: 2px;
+}
+.coin-equiv-pill .approx {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.coin-equiv-pill .unit {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.coin-expand-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  margin-left: auto;
+}
+.coin-expand-btn:hover { border-color: var(--border-vis); }
+
+/* Expanded denomination row */
+.coin-expanded-denoms {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.coin-denom-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  padding: 3px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+}
+.coin-denom-chip .denom-name {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+}
+.coin-denom-chip.cp { background: rgba(140,100,80,0.12); border: 1px solid rgba(140,100,80,0.35); color: #b08060; }
+.coin-denom-chip.sp { background: rgba(180,190,200,0.08); border: 1px solid rgba(180,190,200,0.25); color: #a0b0c0; }
+.coin-denom-chip.ep { background: rgba(160,180,170,0.08); border: 1px solid rgba(160,180,170,0.22); color: #90a8a0; }
+.coin-denom-chip.gp { background: rgba(200,160,60,0.10); border: 1px solid rgba(200,160,60,0.30); color: #c8a040; }
+.coin-denom-chip.pp { background: rgba(180,160,220,0.08); border: 1px solid rgba(180,160,220,0.25); color: #b0a0d8; }
+
+/* Give button */
+.give-btn {
+  margin-left: auto;
+  align-self: center;
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+/* ═══════════════════════════════════════════════
+   4. SKILLS / SPELLS / SPECIAL ABILITIES placement
+   ═══════════════════════════════════════════════ */
+
+/* The "above-the-fold" stats block excerpt (before) */
+.stats-block-excerpt {
+  border-radius: 4px;
+  overflow: hidden;
+}
+.excerpt-row-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  opacity: 0.55;
+  margin-bottom: 4px;
+  display: block;
+}
+.section-divider-dashed {
+  border: none;
+  border-top: 1px dashed rgba(160,104,64,0.3);
+  margin: 10px 0;
+}
+
+/* Removal marker */
+.removed-zone {
+  background: rgba(180,60,60,0.06);
+  border: 1px dashed rgba(180,60,60,0.3);
+  border-radius: 4px;
+  padding: 12px 14px;
+  position: relative;
+}
+.removal-badge {
+  position: absolute;
+  top: -8px;
+  left: 10px;
+  background: rgba(180,60,60,0.7);
+  color: #ffd0d0;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+/* Added zone marker */
+.added-zone {
+  background: rgba(60,140,80,0.06);
+  border: 1px dashed rgba(60,180,90,0.3);
+  border-radius: 4px;
+  padding: 12px 14px;
+  position: relative;
+}
+.added-badge {
+  position: absolute;
+  top: -8px;
+  left: 10px;
+  background: rgba(50,130,70,0.8);
+  color: #c0f0c8;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 3px;
+}
+
+/* ── Dividers between sections on page ── */
+.page-divider {
+  border: none;
+  border-top: 1px solid rgba(160,104,64,0.15);
+  margin: 60px 0;
+}
+
+/* ── Change number badge ── */
+.change-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-dim);
+  border: 1px solid var(--border-vis);
+  font-family: var(--font-display);
+  font-size: 12px;
+  color: var(--accent-bright);
+  margin-right: 10px;
+  vertical-align: middle;
+  flex-shrink: 0;
+}
+.section-heading-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- Page header -->
+<div class="page-header">
+  <div class="page-title">Story 17 — Player Sheet Improvements</div>
+  <div class="page-subtitle">Before / After · Four UI sections · Design review prototype</div>
+</div>
+
+<div class="page-body">
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       CHANGE 1 — CONDITIONS
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="comparison-section">
+    <div class="section-heading-row">
+      <span class="change-badge">1</span>
+      <span class="section-heading">Conditions — Combat Tab</span>
+    </div>
+    <div class="section-subheading">Sparse-first: only active conditions shown. Color-coded by severity. ＋ Add Condition replaces the static all-visible grid.</div>
+
+    <div class="compare-grid three-up">
+
+      <!-- BEFORE -->
+      <div class="panel before">
+        <div class="panel-label"><span class="panel-dot"></span>Before — all 14 conditions always visible</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <div class="cs-section-header">
+              <span class="cs-section-title">Conditions</span>
+            </div>
+            <div class="cond-grid-before">
+              <span class="cond-pill-inactive">Blinded</span>
+              <span class="cond-pill-inactive">Charmed</span>
+              <span class="cond-pill-inactive">Deafened</span>
+              <span class="cond-pill-inactive">Frightened</span>
+              <span class="cond-pill-inactive">Grappled</span>
+              <span class="cond-pill-inactive">Incapacitated</span>
+              <span class="cond-pill-inactive">Invisible</span>
+              <span class="cond-pill-inactive">Paralyzed</span>
+              <span class="cond-pill-inactive">Petrified</span>
+              <span class="cond-pill-inactive">Poisoned</span>
+              <span class="cond-pill-inactive">Prone</span>
+              <span class="cond-pill-inactive">Restrained</span>
+              <span class="cond-pill-inactive">Stunned</span>
+              <span class="cond-pill-inactive">Unconscious</span>
+            </div>
+            <div class="exhaustion-row">
+              <span class="exhaustion-label">Exhaustion</span>
+              <div class="exhaust-stepper">
+                <button class="exhaust-btn">−</button>
+                <span class="exhaust-value">0</span>
+                <button class="exhaust-btn">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AFTER (active conditions visible) -->
+      <div class="panel after">
+        <div class="panel-label"><span class="panel-dot"></span>After — only active conditions shown</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <div class="cs-section-header">
+              <span class="cs-section-title">Conditions</span>
+            </div>
+            <!-- Active condition chips: Poisoned (red) + Frightened (purple) -->
+            <div class="cond-active-row">
+              <span class="cond-chip-active red">Poisoned <span class="dismiss">×</span></span>
+              <span class="cond-chip-active purple">Frightened <span class="dismiss">×</span></span>
+            </div>
+            <!-- Always-visible Add trigger -->
+            <button class="add-condition-btn">＋ Add Condition</button>
+
+            <div class="exhaustion-row">
+              <span class="exhaustion-label">Exhaustion</span>
+              <div class="exhaust-stepper">
+                <button class="exhaust-btn">−</button>
+                <span class="exhaust-value">0</span>
+                <button class="exhaust-btn">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AFTER EXPANDED (picker open) -->
+      <div class="panel after-expanded">
+        <div class="panel-label"><span class="panel-dot"></span>After — picker expanded (add more)</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <div class="cs-section-header">
+              <span class="cs-section-title">Conditions</span>
+            </div>
+            <!-- Active chips still visible -->
+            <div class="cond-active-row">
+              <span class="cond-chip-active red">Poisoned <span class="dismiss">×</span></span>
+              <span class="cond-chip-active purple">Frightened <span class="dismiss">×</span></span>
+            </div>
+            <!-- Add trigger (active state — toggled open) -->
+            <button class="add-condition-btn" style="color: var(--accent-bright); opacity: 1;">＋ Add Condition</button>
+
+            <!-- Picker: remaining conditions not yet active -->
+            <div class="cond-picker-grid">
+              <span class="cond-picker-pill">Blinded</span>
+              <span class="cond-picker-pill">Charmed</span>
+              <span class="cond-picker-pill">Deafened</span>
+              <span class="cond-picker-pill">Grappled</span>
+              <span class="cond-picker-pill">Incapacitated</span>
+              <span class="cond-picker-pill">Invisible</span>
+              <span class="cond-picker-pill">Paralyzed</span>
+              <span class="cond-picker-pill">Petrified</span>
+              <span class="cond-picker-pill">Prone</span>
+              <span class="cond-picker-pill">Restrained</span>
+              <span class="cond-picker-pill">Stunned</span>
+              <span class="cond-picker-pill">Unconscious</span>
+            </div>
+
+            <div class="exhaustion-row">
+              <span class="exhaustion-label">Exhaustion</span>
+              <div class="exhaust-stepper">
+                <button class="exhaust-btn">−</button>
+                <span class="exhaust-value">0</span>
+                <button class="exhaust-btn">+</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /compare-grid -->
+  </div><!-- /comparison-section -->
+
+
+  <hr class="page-divider">
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       CHANGE 2 — XP PLACEMENT
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="comparison-section">
+    <div class="section-heading-row">
+      <span class="change-badge">2</span>
+      <span class="section-heading">XP — Header block → Inventory tab</span>
+    </div>
+    <div class="section-subheading">XP progress leaves the above-the-fold stats block and moves to a compact strip at the bottom of the Inventory tab.</div>
+
+    <div class="compare-grid">
+
+      <!-- BEFORE: XP inside the stats block header -->
+      <div class="panel before">
+        <div class="panel-label"><span class="panel-dot"></span>Before — XP in the above-the-fold stats block</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <!-- Ability scores placeholder -->
+            <span class="excerpt-row-label">Ability scores (unchanged)</span>
+            <div class="ability-mini-row">
+              <div class="ability-mini">18</div>
+              <div class="ability-mini">16</div>
+              <div class="ability-mini">14</div>
+              <div class="ability-mini">14</div>
+              <div class="ability-mini">12</div>
+              <div class="ability-mini">16</div>
+            </div>
+
+            <hr class="section-hr">
+
+            <!-- XP panel — marked as being removed -->
+            <div class="removed-zone" style="margin-bottom:0;">
+              <span class="removal-badge">Removed from here</span>
+              <div class="xp-panel-before">
+                <div class="xp-panel-label">
+                  <span>Experience Points</span>
+                </div>
+                <div class="xp-panel-number">
+                  14,200
+                  <span class="xp-sep">/</span>
+                  <span class="xp-max">23,000</span>
+                </div>
+                <div class="xp-bar-track">
+                  <div class="xp-bar-fill" style="width: 62%;"></div>
+                </div>
+                <div class="xp-add-btn-row">
+                  <button class="xp-add-btn">+</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Skills section continues below -->
+            <hr class="section-hr">
+            <span class="excerpt-row-label" style="margin-top:4px;">Skills / Spells / Special Abilities (follow)</span>
+            <div class="tab-strip-mini" style="margin-top:12px;">
+              <button class="tab-btn-mini">Inventory</button>
+              <button class="tab-btn-mini">Persona</button>
+              <button class="tab-btn-mini active">Combat</button>
+              <button class="tab-btn-mini">Map</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AFTER: Compact strip at bottom of Inventory tab -->
+      <div class="panel after">
+        <div class="panel-label"><span class="panel-dot"></span>After — compact XP strip at bottom of Inventory tab</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <!-- Ability scores unchanged -->
+            <span class="excerpt-row-label">Ability scores (unchanged)</span>
+            <div class="ability-mini-row">
+              <div class="ability-mini">18</div>
+              <div class="ability-mini">16</div>
+              <div class="ability-mini">14</div>
+              <div class="ability-mini">14</div>
+              <div class="ability-mini">12</div>
+              <div class="ability-mini">16</div>
+            </div>
+
+            <!-- No XP here — clean HR to tab strip -->
+            <hr class="section-hr">
+            <span class="excerpt-row-label" style="margin-top:4px;">Tab strip (follows directly)</span>
+            <div class="tab-strip-mini" style="margin-top:12px;">
+              <button class="tab-btn-mini active">Inventory</button>
+              <button class="tab-btn-mini">Persona</button>
+              <button class="tab-btn-mini">Combat</button>
+              <button class="tab-btn-mini">Map</button>
+            </div>
+
+            <!-- Inventory tab content stub -->
+            <div style="margin-top:18px;">
+              <div class="inventory-tab-stub">
+                <span class="inventory-tab-stub-label">Inventory tab content (weapons, equipment…)</span>
+                <div class="inventory-tab-stub-content">
+                  <span class="stub-item-pill">Andúril</span>
+                  <span class="stub-item-pill">Ranger's Longbow</span>
+                  <span class="stub-item-pill">Hunting Knife</span>
+                </div>
+              </div>
+
+              <!-- Coin row (stub) -->
+              <div class="coin-stub-strip">
+                <span class="coin-stub-label">GP</span>
+                <span class="coin-stub-value">≈ 131.52 gp</span>
+              </div>
+
+              <!-- XP strip — added here -->
+              <div class="added-zone" style="padding: 0;">
+                <span class="added-badge">Added here</span>
+                <div class="xp-strip" style="padding: 14px 14px 14px;">
+                  <span class="xp-strip-label">XP</span>
+                  <div class="xp-strip-bar-track">
+                    <div class="xp-strip-bar-fill"></div>
+                  </div>
+                  <span class="xp-strip-values">
+                    <span class="cur">14,200</span>
+                    <span class="sep">/</span>
+                    <span class="max">23k</span>
+                  </span>
+                  <button class="xp-strip-add-btn">+</button>
+                </div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /compare-grid -->
+  </div><!-- /comparison-section -->
+
+
+  <hr class="page-divider">
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       CHANGE 3 — COIN COLLAPSE
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="comparison-section">
+    <div class="section-heading-row">
+      <span class="change-badge">3</span>
+      <span class="section-heading">Coin — Multi-denomination collapse</span>
+    </div>
+    <div class="section-subheading">Five denomination pills hidden by default. A single GP-equivalent summary line is shown; tapping ↓ reveals the full breakdown.</div>
+
+    <div class="compare-grid three-up">
+
+      <!-- BEFORE: all 5 denominations visible -->
+      <div class="panel before">
+        <div class="panel-label"><span class="panel-dot"></span>Before — all 5 denominations always visible</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <div class="cs-section-header">
+              <span class="cs-section-title">Coin</span>
+            </div>
+            <div class="coin-denom-row-before">
+              <span class="coin-denom-pill-before cp">12 cp</span>
+              <span class="coin-denom-pill-before sp">34 sp</span>
+              <span class="coin-denom-pill-before ep">0 ep</span>
+              <span class="coin-denom-pill-before gp">88 gp</span>
+              <span class="coin-denom-pill-before pp">4 pp</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AFTER COLLAPSED -->
+      <div class="panel after">
+        <div class="panel-label"><span class="panel-dot"></span>After — collapsed (default state)</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <div class="cs-section-header">
+              <span class="cs-section-title">Coin</span>
+            </div>
+            <div class="coin-collapsed-row">
+              <span class="coin-collapsed-label">GP</span>
+              <span class="coin-equiv-pill">
+                <span class="approx">≈</span>131.52<span class="unit"> gp</span>
+              </span>
+              <button class="coin-expand-btn">↓</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AFTER EXPANDED -->
+      <div class="panel after-expanded">
+        <div class="panel-label"><span class="panel-dot"></span>After — expanded (tapped ↓)</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <div class="cs-section-header">
+              <span class="cs-section-title">Coin</span>
+            </div>
+            <!-- Summary line stays in place -->
+            <div class="coin-collapsed-row">
+              <span class="coin-collapsed-label">GP</span>
+              <span class="coin-equiv-pill">
+                <span class="approx">≈</span>131.52<span class="unit"> gp</span>
+              </span>
+              <button class="coin-expand-btn">↑</button>
+            </div>
+            <!-- Denomination chips revealed below -->
+            <div class="coin-expanded-denoms" style="align-items: center;">
+              <span class="coin-denom-chip cp"><span class="denom-name">cp</span> 12</span>
+              <span class="coin-denom-chip sp"><span class="denom-name">sp</span> 34</span>
+              <span class="coin-denom-chip ep"><span class="denom-name">ep</span> 0</span>
+              <span class="coin-denom-chip gp"><span class="denom-name">gp</span> 88</span>
+              <span class="coin-denom-chip pp"><span class="denom-name">pp</span> 4</span>
+              <button class="give-btn">Give</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /compare-grid -->
+  </div><!-- /comparison-section -->
+
+
+  <hr class="page-divider">
+
+
+  <!-- ═══════════════════════════════════════════════════════════
+       CHANGE 4 — SKILLS / SPELLS / SPECIAL ABILITIES PLACEMENT
+       ═══════════════════════════════════════════════════════════ -->
+
+  <div class="comparison-section">
+    <div class="section-heading-row">
+      <span class="change-badge">4</span>
+      <span class="section-heading">Skills / Spells / Special Abilities — placement change</span>
+    </div>
+    <div class="section-subheading">Section moves out of the above-the-fold stats block into the top of the Persona tab, above the traits list.</div>
+
+    <div class="compare-grid">
+
+      <!-- BEFORE: Section lives in the permanent header above the tab bar -->
+      <div class="panel before">
+        <div class="panel-label"><span class="panel-dot"></span>Before — section above the tab strip (header area)</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <span class="excerpt-row-label">Ability scores (unchanged)</span>
+            <div class="ability-mini-row" style="margin-bottom: 16px;">
+              <div class="ability-mini">18</div>
+              <div class="ability-mini">16</div>
+              <div class="ability-mini">14</div>
+              <div class="ability-mini">14</div>
+              <div class="ability-mini">12</div>
+              <div class="ability-mini">16</div>
+            </div>
+
+            <!-- Skills/Spells section — marked for removal -->
+            <div class="removed-zone" style="margin-bottom: 14px;">
+              <span class="removal-badge">Removed from here</span>
+              <div class="skills-section-stub" style="margin-top: 8px;">
+                <span class="skills-stub-label">Skills</span>
+                <div class="skills-badges-row">
+                  <span class="skill-badge skill">Athletics +7</span>
+                  <span class="skill-badge skill">Perception +5</span>
+                  <span class="skill-badge skill">Survival +7</span>
+                  <span class="skill-badge skill">Stealth +6</span>
+                </div>
+              </div>
+              <div class="skills-section-stub" style="margin-top: 8px;">
+                <span class="skills-stub-label">Spells</span>
+                <div class="skills-badges-row">
+                  <span class="skill-badge spell">Hunter's Mark</span>
+                  <span class="skill-badge spell">Goodberry</span>
+                  <span class="skill-badge spell">Pass Without Trace</span>
+                </div>
+              </div>
+              <div class="skills-section-stub" style="margin-top: 8px; margin-bottom: 0;">
+                <span class="skills-stub-label">Special Abilities</span>
+                <div class="skills-badges-row">
+                  <span class="skill-badge special">Favored Enemy</span>
+                  <span class="skill-badge special">Natural Explorer</span>
+                  <span class="skill-badge special">Colossus Slayer</span>
+                </div>
+              </div>
+            </div>
+
+            <!-- Tab strip below -->
+            <div class="tab-strip-mini">
+              <button class="tab-btn-mini">Inventory</button>
+              <button class="tab-btn-mini active">Persona</button>
+              <button class="tab-btn-mini">Combat</button>
+              <button class="tab-btn-mini">Map</button>
+            </div>
+
+            <!-- Persona content below the tab strip (traits only, before) -->
+            <div class="traits-list">
+              <span class="excerpt-row-label" style="margin-bottom: 8px;">Persona tab — traits list (before: starts here)</span>
+              <div class="trait-row"><span class="trait-diamond">◆</span>Wary of strangers, trusts deeds over words</div>
+              <div class="trait-row"><span class="trait-diamond">◆</span>Carries the weight of Númenórean lineage silently</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AFTER: Skills section moved into Persona tab, above traits -->
+      <div class="panel after">
+        <div class="panel-label"><span class="panel-dot"></span>After — Skills/Spells section at top of Persona tab</div>
+        <div class="panel-body">
+          <div class="card-chrome">
+            <span class="excerpt-row-label">Ability scores (unchanged)</span>
+            <div class="ability-mini-row" style="margin-bottom: 16px;">
+              <div class="ability-mini">18</div>
+              <div class="ability-mini">16</div>
+              <div class="ability-mini">14</div>
+              <div class="ability-mini">14</div>
+              <div class="ability-mini">12</div>
+              <div class="ability-mini">16</div>
+            </div>
+
+            <!-- Clean tab strip — no skills section above it -->
+            <div class="tab-strip-mini">
+              <button class="tab-btn-mini">Inventory</button>
+              <button class="tab-btn-mini active">Persona</button>
+              <button class="tab-btn-mini">Combat</button>
+              <button class="tab-btn-mini">Map</button>
+            </div>
+
+            <!-- Persona tab — skills section now at the top -->
+            <div style="margin-top: 18px;">
+              <div class="added-zone" style="margin-bottom: 14px;">
+                <span class="added-badge">Moved here</span>
+                <div class="skills-section-stub" style="margin-top: 8px;">
+                  <span class="skills-stub-label">Skills</span>
+                  <div class="skills-badges-row">
+                    <span class="skill-badge skill">Athletics +7</span>
+                    <span class="skill-badge skill">Perception +5</span>
+                    <span class="skill-badge skill">Survival +7</span>
+                    <span class="skill-badge skill">Stealth +6</span>
+                  </div>
+                </div>
+                <div class="skills-section-stub" style="margin-top: 8px;">
+                  <span class="skills-stub-label">Spells</span>
+                  <div class="skills-badges-row">
+                    <span class="skill-badge spell">Hunter's Mark</span>
+                    <span class="skill-badge spell">Goodberry</span>
+                    <span class="skill-badge spell">Pass Without Trace</span>
+                  </div>
+                </div>
+                <div class="skills-section-stub" style="margin-top: 8px; margin-bottom: 0;">
+                  <span class="skills-stub-label">Special Abilities</span>
+                  <div class="skills-badges-row">
+                    <span class="skill-badge special">Favored Enemy</span>
+                    <span class="skill-badge special">Natural Explorer</span>
+                    <span class="skill-badge special">Colossus Slayer</span>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Traits list follows below the skills section -->
+              <div class="traits-list" style="margin-top: 0; padding-top: 0; border-top: none;">
+                <span class="excerpt-row-label" style="margin-bottom: 8px; border-top: 1px solid var(--border); padding-top: 10px;">Traits list (follows below, unchanged)</span>
+                <div class="trait-row"><span class="trait-diamond">◆</span>Wary of strangers, trusts deeds over words</div>
+                <div class="trait-row"><span class="trait-diamond">◆</span>Carries the weight of Númenórean lineage silently</div>
+              </div>
+            </div>
+
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /compare-grid -->
+  </div><!-- /comparison-section -->
+
+
+</div><!-- /page-body -->
+</body>
+</html>

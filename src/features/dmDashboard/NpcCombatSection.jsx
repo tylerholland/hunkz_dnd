@@ -7,7 +7,7 @@ import {
   ALL_CONDITIONS,
   PalCtx,
   VELLUM_CARD_MODE,
-  getActiveTurnSurface,
+  getPartyCardActiveSurface,
   mixHex,
   useHoldToRepeat,
   withAlpha,
@@ -22,6 +22,7 @@ function getNpcCardPalette(dashboardPal) {
   if (dashboardPal !== PALETTES.vellum) {
     return {
       surface: NPC_SURFACE,
+      surfaceSolid: "rgba(24,21,16,0.76)",
       border: NPC_BORDER,
       accent: NPC_ACCENT,
       bright: NPC_BRIGHT,
@@ -38,6 +39,7 @@ function getNpcCardPalette(dashboardPal) {
 
   return {
     surface: withAlpha(mixHex(paperTint, "#6b5c49", 0.08), 0.62),
+    surfaceSolid: withAlpha(mixHex(paperTintStrong, "#6b5c49", 0.18), 0.82),
     border: withAlpha(borderTone, 0.56),
     accent,
     bright: mixHex(NPC_BRIGHT, VELLUM_CARD_MODE.ink, 0.22),
@@ -47,10 +49,32 @@ function getNpcCardPalette(dashboardPal) {
   };
 }
 
-function npcHpStatus(npc) {
-  if (npc.hpCurrent <= 0) return "dead";
-  if (npc.hpCurrent < npc.hpMax / 2) return "bloodied";
+function getNpcInitiativeEntryId(npc) {
+  return npc?.initiativeEntryId ?? npc?.initiativeId ?? null;
+}
+
+function npcHpStatus(hpCurrent, hpMax) {
+  if (hpCurrent <= 0) return "dead";
+  if (hpCurrent < hpMax / 2) return "bloodied";
   return "alive";
+}
+
+function getNpcHpTone(npcPal, hpPct) {
+  if (hpPct < 0.25) {
+    return {
+      fill: "#c06060",
+    };
+  }
+
+  if (hpPct < 0.5) {
+    return {
+      fill: "#c8a040",
+    };
+  }
+
+  return {
+    fill: npcPal.accent,
+  };
 }
 
 function NpcDamageHealModal({ npc, mode, onClose, onOptimisticUpdate, onConfirm }) {
@@ -128,12 +152,159 @@ function NpcConditionPicker({ npc, onAdd, onClose }) {
   );
 }
 
-function NpcCard({ npc, allNpcsRef, isActiveTurn, dmPassword, onUpdate, onOpenModal, onOpenConditions, onRemove }) {
+function NpcNotesStrip({ npc, allNpcsRef, dmPassword, onUpdate, pal, npcPal }) {
+  const [open, setOpen] = useState(false);
+  const [inputVal, setInputVal] = useState("");
+  const inputRef = useRef(null);
+
+  const notes = npc.notes || [];
+  const hasNotes = notes.length > 0;
+
+  async function handleAdd() {
+    const text = inputVal.trim();
+    if (!text) return;
+    const localId = Date.now().toString(36) + Math.random().toString(36).slice(2);
+    const newNote = { id: localId, text };
+    const updatedNpcs = (allNpcsRef.current || []).map((entry) =>
+      entry.id === npc.id ? { ...entry, notes: [...(entry.notes || []), newNote] } : entry
+    );
+    // Optimistic update via ref
+    allNpcsRef.current = updatedNpcs;
+    setInputVal("");
+    inputRef.current?.focus();
+    try {
+      await putNpcCombat(dmPassword, { npcs: updatedNpcs });
+      onUpdate();
+    } catch {
+      // Revert
+      const reverted = (allNpcsRef.current || []).map((entry) =>
+        entry.id === npc.id ? { ...entry, notes: (entry.notes || []).filter((n) => n.id !== localId) } : entry
+      );
+      allNpcsRef.current = reverted;
+      onUpdate();
+    }
+  }
+
+  async function handleDelete(id) {
+    const removed = (npc.notes || []).find((n) => n.id === id);
+    const updatedNpcs = (allNpcsRef.current || []).map((entry) =>
+      entry.id === npc.id ? { ...entry, notes: (entry.notes || []).filter((n) => n.id !== id) } : entry
+    );
+    allNpcsRef.current = updatedNpcs;
+    try {
+      await putNpcCombat(dmPassword, { npcs: updatedNpcs });
+      onUpdate();
+    } catch {
+      if (removed) {
+        const reverted = (allNpcsRef.current || []).map((entry) =>
+          entry.id === npc.id ? { ...entry, notes: [...(entry.notes || []), removed] } : entry
+        );
+        allNpcsRef.current = reverted;
+        onUpdate();
+      }
+    }
+  }
+
+  function handleToggle() {
+    const next = !open;
+    setOpen(next);
+    if (next) {
+      setTimeout(() => inputRef.current?.focus(), 80);
+    }
+  }
+
+  const stripBarBg = open
+    ? `rgba(106,143,168,0.12)`
+    : hasNotes
+    ? `rgba(106,143,168,0.09)`
+    : "transparent";
+
+  const iconColor = hasNotes || open ? npcPal.accent : pal.textMuted;
+  const labelColor = hasNotes || open ? npcPal.bright : pal.textMuted;
+  const label = hasNotes ? "Notes" : "+ Note";
+
+  return (
+    <div
+      style={{ borderTop: `1px solid ${npcPal.actionBorder}`, borderRadius: "0 0 5px 5px", cursor: "pointer", userSelect: "none" }}
+      onClick={handleToggle}
+    >
+      <div style={{ display: "flex", alignItems: "center", gap: 7, padding: "5px 10px", background: stripBarBg, borderRadius: open ? 0 : "0 0 5px 5px", borderBottom: open ? `1px solid ${npcPal.actionBorder}` : "none", transition: "background 0.15s" }}>
+        <svg width="11" height="12" viewBox="0 0 12 13" fill="none" style={{ flexShrink: 0 }}>
+          <rect x="1" y="1" width="8" height="10" rx="1" stroke={iconColor} strokeWidth="1.1" />
+          <line x1="3" y1="4" x2="7" y2="4" stroke={iconColor} strokeWidth="1" />
+          <line x1="3" y1="6.5" x2="7" y2="6.5" stroke={iconColor} strokeWidth="1" />
+          <line x1="3" y1="9" x2="5.5" y2="9" stroke={iconColor} strokeWidth="1" />
+          {hasNotes && <path d="M9 8.5 L11 6.5 L10.5 6 L8.5 8 Z" fill={iconColor} />}
+        </svg>
+        <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: labelColor, flex: 1 }}>{label}</span>
+        {notes.length > 0 && (
+          <span style={{ background: npcPal.accent, color: pal.bg, borderRadius: 10, padding: "1px 6px", fontSize: 10, fontFamily: pal.fontDisplay, minWidth: 16, textAlign: "center", lineHeight: "15px" }}>{notes.length}</span>
+        )}
+        <span style={{ fontSize: 9, color: pal.textMuted, transform: open ? "rotate(180deg)" : "rotate(0deg)", transition: "transform 0.18s", display: "inline-block" }}>▼</span>
+      </div>
+
+      {open && (
+        <div style={{ padding: "8px 10px 10px" }} onClick={(e) => e.stopPropagation()}>
+          {notes.length > 0 && (
+            <ul style={{ listStyle: "none", marginBottom: 6 }}>
+              {notes.map((note, idx) => (
+                <li key={note.id} style={{ display: "flex", alignItems: "flex-start", gap: 7, padding: "5px 0", borderBottom: idx < notes.length - 1 ? `1px solid ${npcPal.actionBorder}` : "none" }}>
+                  <span style={{ flex: 1, fontFamily: pal.fontBody, fontSize: 13, color: pal.textBody, lineHeight: 1.5 }}>{note.text}</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }}
+                    style={{ background: "transparent", border: "none", color: "#c06060", cursor: "pointer", fontSize: 14, padding: "0 2px", opacity: 0.45, lineHeight: 1, flexShrink: 0, marginTop: 1, transition: "opacity 0.15s" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.45"; }}
+                    title="Delete note"
+                  >×</button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {notes.length === 0 && (
+            <div style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 12, color: pal.textMuted, padding: "2px 0 5px" }}>No notes yet.</div>
+          )}
+          <div style={{ display: "flex", gap: 5, marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
+            <input
+              ref={inputRef}
+              type="text"
+              maxLength={500}
+              value={inputVal}
+              onChange={(e) => setInputVal(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
+              placeholder="Combat note… (Enter)"
+              style={{ flex: 1, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 13, padding: "5px 8px", outline: "none" }}
+              onFocus={(e) => { e.target.style.borderColor = npcPal.accent; }}
+              onBlur={(e) => { e.target.style.borderColor = npcPal.actionBorder; }}
+            />
+            <button
+              onClick={(e) => { e.stopPropagation(); handleAdd(); }}
+              style={{ background: npcPal.chipBg, border: `1px solid ${npcPal.accent}`, borderRadius: 3, color: npcPal.bright, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.08em", padding: "5px 10px", cursor: "pointer", whiteSpace: "nowrap", transition: "background 0.15s" }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = withAlpha(npcPal.accent, 0.22); }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = npcPal.chipBg; }}
+            >+ Add</button>
+          </div>
+          <div style={{ fontFamily: pal.fontUI, fontSize: 9, color: pal.textMuted, letterSpacing: "0.12em", marginTop: 5 }}>Session only — discarded when combat ends</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function NpcCard({
+  npc,
+  allNpcsRef,
+  isActiveTurn,
+  isInInitiative,
+  dmPassword,
+  onUpdate,
+  onOpenModal,
+  onOpenConditions,
+  onRemove,
+  onToggleInitiative,
+}) {
   const pal = useContext(PalCtx);
   const npcPal = getNpcCardPalette(pal);
-  const status = npcHpStatus(npc);
-  const isDead = status === "dead";
-  const isBloodied = status === "bloodied";
 
   const serverHp = npc.hpCurrent;
   const hpMax = npc.hpMax;
@@ -196,20 +367,47 @@ function NpcCard({ npc, allNpcsRef, isActiveTurn, dmPassword, onUpdate, onOpenMo
   const plusBind = useHoldToRepeat(() => applyDelta(1));
 
   const hpPct = hpMax > 0 ? Math.max(0, Math.min(1, optimisticHp / hpMax)) : 0;
-  const hpBarColor = isDead ? "#8c3030" : isBloodied ? "#b07030" : npcPal.accent;
-  const leftStripe = isDead ? "#8c3030" : isBloodied ? "#c07030" : npcPal.accent;
-  const cardBorder = isDead ? "rgba(192,60,60,0.4)" : isBloodied ? "rgba(180,100,40,0.5)" : npcPal.border;
-  const activeSurface = isActiveTurn && !isDead ? getActiveTurnSurface(npcPal.surface, isBloodied ? "#c07030" : npcPal.accent, 0.22, 0.08) : npcPal.surface;
-  const glowStyle = isActiveTurn && !isDead ? {
-    "--turn-color": isBloodied ? "#b07030" : npcPal.accent,
-    "--turn-glow": isBloodied ? "rgba(176,112,48,0.42)" : withAlpha(npcPal.accent, 0.36),
-    boxShadow: isBloodied ? "0 0 0 1px rgba(176,112,48,0.7), 0 0 18px 4px rgba(176,112,48,0.26)" : `0 0 0 1px ${withAlpha(npcPal.accent, 0.74)}, 0 0 18px 4px ${withAlpha(npcPal.accent, 0.24)}`,
-  } : {};
+  const status = npcHpStatus(optimisticHp, hpMax);
+  const isDead = status === "dead";
+  const isBloodied = status === "bloodied";
+  const hpTone = getNpcHpTone(npcPal, hpPct);
+  const leftStripe = isDead ? "#8c3030" : npcPal.accent;
+  const cardBorder = isDead ? "rgba(192,60,60,0.4)" : npcPal.border;
+  const activeSurface = isActiveTurn && !isDead
+    ? getPartyCardActiveSurface(pal, pal, {
+        ...npcPal,
+        accent: npcPal.accent,
+        accentBright: npcPal.bright,
+      })
+    : npcPal.surface;
+  const activeTurnStyle = isActiveTurn && !isDead
+    ? {
+        "--turn-color": isBloodied ? "#c07030" : npcPal.accent,
+        "--turn-glow": isBloodied ? "#c0703066" : `${npcPal.accent}66`,
+      }
+    : undefined;
 
   const conditions = Array.isArray(npc.conditions) ? npc.conditions : [];
 
   return (
-    <div data-active-turn={isActiveTurn && !isDead ? "true" : undefined} className={isActiveTurn && !isDead ? "dm-active-turn" : undefined} style={{ background: activeSurface, border: `1px solid ${cardBorder}`, borderRadius: 5, marginBottom: 10, position: "relative", opacity: isDead ? 0.75 : 1, overflow: "visible", ...glowStyle }}>
+    <div
+      data-active-turn={isActiveTurn && !isDead ? "true" : undefined}
+      className={isActiveTurn && !isDead ? "dm-active-turn" : undefined}
+      style={{
+        background: activeSurface,
+        border: `1px solid ${cardBorder}`,
+        borderRadius: 5,
+        marginBottom: 10,
+        position: "relative",
+        opacity: isDead ? 0.75 : 1,
+        overflow: "visible",
+        zIndex: isActiveTurn && !isDead ? 2 : 1,
+        transform: isActiveTurn && !isDead ? "scaleX(1.02)" : "scaleX(1)",
+        transformOrigin: "center center",
+        transition: "transform 0.18s ease",
+        ...activeTurnStyle,
+      }}
+    >
       <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, borderRadius: "5px 0 0 5px", background: leftStripe }} />
       <div style={{ padding: "10px 10px 0 14px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
@@ -222,23 +420,51 @@ function NpcCard({ npc, allNpcsRef, isActiveTurn, dmPassword, onUpdate, onOpenMo
               <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", padding: "2px 7px", borderRadius: 8, background: "rgba(192,60,60,0.14)", border: "1px solid rgba(192,60,60,0.4)", color: "#c06060", flexShrink: 0 }}>Dead</span>
             )}
           </div>
-          <button onClick={onRemove} style={{ background: "transparent", border: "none", color: pal.textMuted, fontSize: 14, cursor: "pointer", padding: "2px 4px", borderRadius: 3, lineHeight: 1, flexShrink: 0 }} onMouseEnter={(e) => { e.currentTarget.style.color = "#c06060"; e.currentTarget.style.background = "rgba(192,96,96,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; e.currentTarget.style.background = ""; }}>×</button>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "baseline", gap: 3, marginBottom: 4 }}>
-          <span style={{ fontFamily: pal.fontDisplay, fontSize: 20, lineHeight: 1, color: isDead ? "#c06060" : isBloodied ? "#c07830" : npcPal.bright }}>{optimisticHp}</span>
-          <span style={{ fontFamily: pal.fontDisplay, fontSize: 12, color: pal.textMuted }}>/</span>
-          <span style={{ fontFamily: pal.fontDisplay, fontSize: 12, color: pal.textMuted }}>{hpMax}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+            {onToggleInitiative && (
+              <button
+                onClick={onToggleInitiative}
+                style={{
+                  background: isInInitiative ? withAlpha(npcPal.accent, 0.12) : "transparent",
+                  border: `1px solid ${isInInitiative ? npcPal.accent : npcPal.actionBorder}`,
+                  color: isInInitiative ? npcPal.bright : pal.textMuted,
+                  borderRadius: 10,
+                  fontFamily: pal.fontUI,
+                  fontSize: 9,
+                  letterSpacing: "0.16em",
+                  textTransform: "uppercase",
+                  padding: "3px 8px",
+                  cursor: "pointer",
+                  whiteSpace: "nowrap",
+                }}
+                title={isInInitiative ? "Remove from initiative" : "Add to initiative"}
+              >{isInInitiative ? "− Init" : "+ Init"}</button>
+            )}
+            <button onClick={onRemove} style={{ background: "transparent", border: "none", color: pal.textMuted, fontSize: 14, cursor: "pointer", padding: "2px 4px", borderRadius: 3, lineHeight: 1, flexShrink: 0 }} onMouseEnter={(e) => { e.currentTarget.style.color = "#c06060"; e.currentTarget.style.background = "rgba(192,96,96,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; e.currentTarget.style.background = ""; }}>×</button>
+          </div>
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 6, position: "relative" }}>
-          <button onPointerDown={minusBind.start} onPointerUp={minusBind.stop} onPointerLeave={minusBind.stop} style={{ width: 26, height: 16, borderRadius: 3, border: `1px solid ${npcPal.actionBorder}`, background: "transparent", color: pal.textMuted, fontFamily: pal.fontDisplay, fontSize: 14, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none", touchAction: "none" }}>−</button>
-          <div style={{ flex: 1, padding: "0 5px" }}>
-            <div style={{ height: 5, borderRadius: 3, overflow: "hidden", background: npcPal.track }}>
-              <div style={{ height: "100%", borderRadius: 3, width: `${hpPct * 100}%`, background: hpBarColor, transition: "width 0.3s ease" }} />
+          <button onPointerDown={minusBind.start} onPointerUp={minusBind.stop} onPointerLeave={minusBind.stop} style={{ width: 26, height: 22, borderRadius: 3, border: `1px solid ${npcPal.actionBorder}`, background: "transparent", color: pal.textMuted, fontFamily: pal.fontDisplay, fontSize: 14, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none", touchAction: "none" }}>−</button>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 0, whiteSpace: "nowrap", padding: "0 8px 0 9px", flexShrink: 0 }}>
+            <span style={{ fontFamily: pal.fontDisplay, fontSize: 20, lineHeight: 1, color: isDead ? "#c06060" : npcPal.bright }}>{optimisticHp}</span>
+            <span style={{ fontFamily: pal.fontDisplay, fontSize: 12, color: pal.textMuted }}>/</span>
+            <span style={{ fontFamily: pal.fontDisplay, fontSize: 12, color: pal.textMuted }}>{hpMax}</span>
+          </div>
+          <div style={{ flex: 1, paddingRight: 5 }}>
+            <div style={{ height: 10, borderRadius: 2, overflow: "hidden", background: "rgba(7,14,22,0.88)", display: "flex", gap: 1 }}>
+              {Array.from({ length: 5 }).map((_, idx) => {
+                const segStart = idx / 5;
+                const segFill = Math.max(0, Math.min(1, (hpPct - segStart) * 5));
+                return (
+                  <div key={idx} style={{ flex: 1, position: "relative", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
+                    <div style={{ position: "absolute", inset: 0, width: `${segFill * 100}%`, background: hpTone.fill, transition: "width 0.3s ease" }} />
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <button onPointerDown={plusBind.start} onPointerUp={plusBind.stop} onPointerLeave={plusBind.stop} style={{ width: 26, height: 16, borderRadius: 3, border: `1px solid ${npcPal.actionBorder}`, background: "transparent", color: pal.textMuted, fontFamily: pal.fontDisplay, fontSize: 14, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none", touchAction: "none" }}>+</button>
+          <button onPointerDown={plusBind.start} onPointerUp={plusBind.stop} onPointerLeave={plusBind.stop} style={{ width: 26, height: 22, borderRadius: 3, border: `1px solid ${npcPal.actionBorder}`, background: "transparent", color: pal.textMuted, fontFamily: pal.fontDisplay, fontSize: 14, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none", touchAction: "none" }}>+</button>
           {deltaIndicator && (
             <div key={deltaIndicator.key} className="dm-hp-delta" style={{ color: deltaIndicator.value > 0 ? "#88c888" : "#d08080" }}>{deltaIndicator.value > 0 ? `+${deltaIndicator.value}` : deltaIndicator.value}</div>
           )}
@@ -263,15 +489,47 @@ function NpcCard({ npc, allNpcsRef, isActiveTurn, dmPassword, onUpdate, onOpenMo
       </div>
 
       <div style={{ display: "flex", gap: 5, padding: "6px 10px 8px", borderTop: `1px solid ${npcPal.actionBorder}`, marginTop: 2 }}>
-        <button onClick={() => onOpenModal("damage")} style={{ flex: 1, background: "transparent", border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(192,96,96,0.5)"; e.currentTarget.style.color = "#d08080"; e.currentTarget.style.background = "rgba(192,96,96,0.08)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = npcPal.actionBorder; e.currentTarget.style.color = pal.textMuted; e.currentTarget.style.background = "transparent"; }}>⚔ Dmg</button>
-        <button onClick={() => onOpenModal("heal")} style={{ flex: 1, background: "transparent", border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(80,160,80,0.5)"; e.currentTarget.style.color = "#88c888"; e.currentTarget.style.background = "rgba(80,160,80,0.08)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = npcPal.actionBorder; e.currentTarget.style.color = pal.textMuted; e.currentTarget.style.background = "transparent"; }}>✦ Heal</button>
-        <button onClick={onOpenConditions} style={{ flex: 1, background: "transparent", border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = "rgba(140,110,180,0.5)"; e.currentTarget.style.color = "#c098e0"; e.currentTarget.style.background = "rgba(140,110,180,0.08)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = npcPal.actionBorder; e.currentTarget.style.color = pal.textMuted; e.currentTarget.style.background = "transparent"; }}>+ Cond</button>
+        {isDead ? (
+          <button
+            onClick={() => onOpenModal("heal")}
+            style={{ flex: 1, background: "rgba(80,160,80,0.08)", border: "1px solid rgba(80,160,80,0.35)", borderRadius: 3, color: "#88c888", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }}
+            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#5a9a5a"; e.currentTarget.style.color = "#a0d8a0"; e.currentTarget.style.background = "rgba(80,160,80,0.14)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(80,160,80,0.35)"; e.currentTarget.style.color = "#88c888"; e.currentTarget.style.background = "rgba(80,160,80,0.08)"; }}
+          >
+            Revive
+          </button>
+        ) : (
+          <>
+            <button onClick={() => onOpenModal("damage")} style={{ flex: 1, background: "rgba(192,96,96,0.08)", border: "1px solid rgba(192,96,96,0.35)", borderRadius: 3, color: "#d08080", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c06060"; e.currentTarget.style.color = "#e09898"; e.currentTarget.style.background = "rgba(192,96,96,0.14)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(192,96,96,0.35)"; e.currentTarget.style.color = "#d08080"; e.currentTarget.style.background = "rgba(192,96,96,0.08)"; }}>⚔ Dmg</button>
+            <button onClick={() => onOpenModal("heal")} style={{ flex: 1, background: "rgba(80,160,80,0.08)", border: "1px solid rgba(80,160,80,0.35)", borderRadius: 3, color: "#88c888", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#5a9a5a"; e.currentTarget.style.color = "#a0d8a0"; e.currentTarget.style.background = "rgba(80,160,80,0.14)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(80,160,80,0.35)"; e.currentTarget.style.color = "#88c888"; e.currentTarget.style.background = "rgba(80,160,80,0.08)"; }}>✦ Heal</button>
+            <button onClick={onOpenConditions} style={{ flex: 1, background: npcPal.chipBg, border: `1px solid ${npcPal.accent}`, borderRadius: 3, color: npcPal.bright, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = npcPal.bright; e.currentTarget.style.color = npcPal.bright; e.currentTarget.style.background = withAlpha(npcPal.accent, 0.22); }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = npcPal.accent; e.currentTarget.style.color = npcPal.bright; e.currentTarget.style.background = npcPal.chipBg; }}>+ Cond</button>
+          </>
+        )}
       </div>
+      <NpcNotesStrip npc={npc} allNpcsRef={allNpcsRef} dmPassword={dmPassword} onUpdate={onUpdate} pal={pal} npcPal={npcPal} />
     </div>
   );
 }
 
-export default function NpcCombatSection({ npcCombat, initiative, dmPassword, onUpdate }) {
+function getNpcInitiativeLink(npc, entries) {
+  const initiativeEntryId = getNpcInitiativeEntryId(npc);
+  const matchIndex = entries.findIndex((entry) =>
+    entry.npcId === npc.id ||
+    (initiativeEntryId && entry.id === initiativeEntryId) ||
+    (!entry.isPC && !entry.npcId && (entry.name || "").trim().toLowerCase() === (npc.name || "").trim().toLowerCase())
+  );
+  return matchIndex >= 0 ? { entry: entries[matchIndex], index: matchIndex } : { entry: null, index: -1 };
+}
+
+export default function NpcCombatSection({
+  npcCombat,
+  initiative,
+  dmPassword,
+  onUpdate,
+  onCommitNpcCombat,
+  onAddNpcToInitiative,
+  onRemoveNpcFromInitiative,
+}) {
   const pal = useContext(PalCtx);
   const npcPal = getNpcCardPalette(pal);
   const allNpcsRef = useRef(npcCombat.npcs || []);
@@ -285,11 +543,22 @@ export default function NpcCombatSection({ npcCombat, initiative, dmPassword, on
   const [showEndConfirm, setShowEndConfirm] = useState(false);
 
   const npcs = npcCombat.npcs || [];
-  const sorted = [...(initiative.entries || [])].sort((a, b) => b.initiative - a.initiative);
-  const activeEntry = sorted[initiative.activeTurnIndex ?? 0];
+  const entries = initiative.entries || [];
+  const activeEntry = entries[initiative.activeTurnIndex ?? 0];
   const activeTurnNpcId = activeEntry?.npcId ?? null;
   const activeTurnEntryId = activeEntry?.id ?? null;
   const activeTurnNpcName = !activeEntry?.isPC ? (activeEntry?.name || "").trim().toLowerCase() : "";
+  const npcWithLinks = npcs.map((npc) => {
+    const link = getNpcInitiativeLink(npc, entries);
+    return {
+      npc,
+      initiativeEntry: link.entry,
+      initiativeIndex: link.index,
+      isInInitiative: link.index >= 0,
+    };
+  });
+  const activeNpcs = npcWithLinks.filter((value) => value.isInInitiative).sort((a, b) => a.initiativeIndex - b.initiativeIndex);
+  const inactiveNpcs = npcWithLinks.filter((value) => !value.isInInitiative);
 
   async function handleAddNpcs() {
     if (!addName.trim() || !addHp) return;
@@ -305,29 +574,45 @@ export default function NpcCombatSection({ npcCombat, initiative, dmPassword, on
       initiativeEntryId: null,
     }));
     const updated = [...npcs, ...newNpcs];
-    try {
-      await putNpcCombat(dmPassword, { npcs: updated });
-      setAddName("");
-      setAddHp("");
-      setAddCount(1);
-      onUpdate();
-    } catch {}
+    allNpcsRef.current = updated;
+    setAddName("");
+    setAddHp("");
+    setAddCount(1);
+    if (onCommitNpcCombat) {
+      await onCommitNpcCombat({ npcs: updated }, { optimistic: true });
+    } else {
+      try {
+        await putNpcCombat(dmPassword, { npcs: updated });
+        onUpdate();
+      } catch {}
+    }
   }
 
   async function handleRemoveNpc(npcId) {
     const updated = npcs.filter((entry) => entry.id !== npcId);
-    try {
-      await putNpcCombat(dmPassword, { npcs: updated });
-      onUpdate();
-    } catch {}
+    allNpcsRef.current = updated;
+    if (onCommitNpcCombat) {
+      await onCommitNpcCombat({ npcs: updated }, { optimistic: true });
+    } else {
+      try {
+        await putNpcCombat(dmPassword, { npcs: updated });
+        onUpdate();
+      } catch {}
+    }
   }
 
   async function handleEndCombat() {
-    try {
-      await putNpcCombat(dmPassword, { npcs: [] });
+    allNpcsRef.current = [];
+    if (onCommitNpcCombat) {
+      await onCommitNpcCombat({ npcs: [] }, { optimistic: true });
       setShowEndConfirm(false);
-      onUpdate();
-    } catch {}
+    } else {
+      try {
+        await putNpcCombat(dmPassword, { npcs: [] });
+        setShowEndConfirm(false);
+        onUpdate();
+      } catch {}
+    }
   }
 
   function handleModalOptimistic(npcId, newHp) {
@@ -370,22 +655,56 @@ export default function NpcCombatSection({ npcCombat, initiative, dmPassword, on
 
       {npcs.length === 0 ? (
         <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", color: pal.textMuted, padding: "12px 0 16px", textAlign: "center" }}>
-          No enemies tracked yet.<br />Add below or tap an NPC in initiative.
+          No enemies tracked yet.<br />Add below to start tracking them.
         </div>
       ) : (
-        npcs.map((npc) => (
-          <NpcCard
-            key={npc.id}
-            npc={npc}
-            allNpcsRef={allNpcsRef}
-            isActiveTurn={activeTurnNpcId === npc.id || (activeTurnEntryId !== null && npc.initiativeEntryId === activeTurnEntryId) || (!!activeTurnNpcName && (npc.name || "").trim().toLowerCase() === activeTurnNpcName)}
-            dmPassword={dmPassword}
-            onUpdate={onUpdate}
-            onOpenModal={(mode) => setModalTarget({ npc, mode })}
-            onOpenConditions={() => setCondTarget(npc)}
-            onRemove={() => handleRemoveNpc(npc.id)}
-          />
-        ))
+        <>
+          {activeNpcs.length > 0 && (
+            <div style={{ marginBottom: 10 }}>
+              <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 8 }}>
+                In Initiative · {activeNpcs.length}
+              </div>
+              {activeNpcs.map(({ npc, isInInitiative }) => (
+                <NpcCard
+                  key={npc.id}
+                  npc={npc}
+                  allNpcsRef={allNpcsRef}
+                  isInInitiative={isInInitiative}
+                  isActiveTurn={activeTurnNpcId === npc.id || (activeTurnEntryId !== null && getNpcInitiativeEntryId(npc) === activeTurnEntryId) || (!!activeTurnNpcName && (npc.name || "").trim().toLowerCase() === activeTurnNpcName)}
+                  dmPassword={dmPassword}
+                  onUpdate={onUpdate}
+                  onOpenModal={(mode) => setModalTarget({ npc, mode })}
+                  onOpenConditions={() => setCondTarget(npc)}
+                  onToggleInitiative={() => onRemoveNpcFromInitiative?.(npc.id)}
+                  onRemove={() => handleRemoveNpc(npc.id)}
+                />
+              ))}
+            </div>
+          )}
+
+          {inactiveNpcs.length > 0 && (
+            <div style={{ marginTop: 22, marginBottom: 10 }}>
+              <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 8 }}>
+                Inactive · {inactiveNpcs.length}
+              </div>
+              {inactiveNpcs.map(({ npc, isInInitiative }) => (
+                <NpcCard
+                  key={npc.id}
+                  npc={npc}
+                  allNpcsRef={allNpcsRef}
+                  isInInitiative={isInInitiative}
+                  isActiveTurn={false}
+                  dmPassword={dmPassword}
+                  onUpdate={onUpdate}
+                  onOpenModal={(mode) => setModalTarget({ npc, mode })}
+                  onOpenConditions={() => setCondTarget(npc)}
+                  onToggleInitiative={() => onAddNpcToInitiative?.(npc.id)}
+                  onRemove={() => handleRemoveNpc(npc.id)}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <div style={{ background: npcPal.surface, border: `1px dashed ${npcPal.actionBorder}`, borderRadius: 5, padding: 14, marginTop: 4 }}>
@@ -404,6 +723,9 @@ export default function NpcCombatSection({ npcCombat, initiative, dmPassword, on
           )}
         </div>
         <button onClick={handleAddNpcs} style={{ width: "100%", background: npcPal.chipBg, border: `1px solid ${npcPal.accent}`, borderRadius: 3, color: npcPal.bright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", padding: "8px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.background = withAlpha(npcPal.accent, 0.22); }} onMouseLeave={(e) => { e.currentTarget.style.background = npcPal.chipBg; }}>+ Add Enemy</button>
+        <div style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginTop: 8, letterSpacing: "0.08em" }}>
+          Use <span style={{ color: npcPal.bright }}>+ Init</span> on a card to add it to the turn order.
+        </div>
       </div>
 
       {modalTarget && (

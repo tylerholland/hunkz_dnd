@@ -165,6 +165,30 @@ Both pages use a self-scheduling `setTimeout` loop rather than a fixed `setInter
 
 ---
 
+## ADR-012 · Public map library endpoint
+
+**Decision**: `GET /maps` returns the full map library (all map names, S3 URLs, and `activeMapId`) to unauthenticated callers. Map images stored under `maps/*` in S3 are also public objects.
+
+**Rationale**: Players need to poll the active map without authenticating — the character sheet header is visible without a password and the map should follow the same no-auth pattern. Requiring auth for the map poll would add a login gate for a read-only visual reference. At the current trust model (one small friend group, no sensitive data in map filenames), this is an acceptable tradeoff.
+
+**Known exposure**: An unauthenticated caller can enumerate all map names and image URLs in the library. If the DM uses map names that spoil plot details, those names are technically readable by anyone who knows the API URL. At current scale this is not a meaningful risk.
+
+**Revisit when**: The app is commercialised, opened to multiple campaigns/groups, or the DM starts using map names that carry plot-sensitive information. At that point, `GET /maps` should require DM auth for the full library list and return only `{ activeMapId, activeMapUrl, activeMapName }` for unauthenticated callers — the minimal payload players actually need.
+
+---
+
+## ADR-013 · 5e rule tables as frontend constants
+
+**Decision**: Immutable official 5e rule tables (XP thresholds by level, Hit Die size by class, proficiency bonus by level, etc.) are stored as named exported constants in `src/features/characterSheet/constants.js`. No backend storage.
+
+**Rationale**: These values are fixed by the 5e ruleset and identical across all characters. Storing them in DynamoDB would add no value and waste a read unit per fetch. Keeping them alongside `BLANK_CHARACTER` and `MOD_ATTRIBUTES` in `constants.js` centralizes all game-rule constants in one file, which is already the established pattern for `CONDITIONS`, `SPELL_LEVEL_LABELS`, `ARMOR_OPTIONS`, etc.
+
+**Naming convention**: Use the most descriptive name that makes the source clear — e.g., `XP_THRESHOLDS` (indexed by level, 1–20), `HIT_DIE_BY_CLASS` (keyed by the string values in `CLASS_OPTIONS`).
+
+**Revisit when**: A future feature requires server-side rule evaluation (e.g., a Lambda computing encounter difficulty). At that point, rule tables would move to a shared JSON in `backend/src/lib/` and the frontend would import from there or from a shared package. Not warranted at current scale.
+
+---
+
 ## Feature Index
 
 This is a navigation aid for humans and future agents. It mirrors the feature language in `design/app-overview.md` and points to the primary code locations for each area.
@@ -185,11 +209,14 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - Edit mode render: `src/features/characterSheet/CharacterSheetEditMode.jsx`
 - Theme + global sheet styles: `src/features/characterSheet/theme.jsx`
 - Sheet constants and blank model: `src/features/characterSheet/constants.js`
+- Shared talents catalog and badge/tooltip UI: `src/features/characterSheet/talentCatalog.js`, `src/features/characterSheet/CharacterTalents.jsx`
+- Talents / tooltip regression spec: `src/features/characterSheet/CharacterTalents.test.jsx`
 - Shared sheet primitives: `src/features/characterSheet/CharacterSheetPrimitives.jsx`
 - Item editor modal: `src/features/characterSheet/ItemEditorModal.jsx`
 - Password change form: `src/features/characterSheet/ChangePasswordForm.jsx`
 - Dice roller used on character sheets: `src/components/DiceRoller.jsx`
 - Shared roll event formatting: `src/lib/rollHistory.js`
+- Shared roll history row renderer: `src/components/RollHistoryList.jsx`
 
 ### Character Detail Pages
 
@@ -204,16 +231,20 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 ### DM Campaign
 
 - Container / polling / orchestration: `src/pages/DmDashboardPage.jsx`
+- Container regression spec: `src/pages/DmDashboardPage.test.jsx`
 - Shared dashboard helpers, responsive CSS, polling constants: `src/features/dmDashboard/dashboardShared.js`
 - DM auth prompt: `src/features/dmDashboard/DmLoginPrompt.jsx`
+- DM auth checking loader: `src/features/dmDashboard/DmAuthLoader.jsx`
 - DM auth prompt spec: `src/features/dmDashboard/DmLoginPrompt.test.jsx`
 - Player party card slice: `src/features/dmDashboard/CharacterCard.jsx`
 - Initiative tracker: `src/features/dmDashboard/InitiativeTracker.jsx`
+- Initiative optimistic-update spec: `src/features/dmDashboard/InitiativeTracker.test.jsx`
 - NPC combat section: `src/features/dmDashboard/NpcCombatSection.jsx`
 - NPC active-turn spec: `src/features/dmDashboard/NpcCombatSection.test.jsx`
 - Shared confirm dialog: `src/features/dmDashboard/ConfirmDialog.jsx`
 - Dice roller used on the DM campaign page: `src/components/DmDiceRoller.jsx`
 - DM dice roller spec: `src/components/DmDiceRoller.test.jsx`
+- Shared roll history row renderer: `src/components/RollHistoryList.jsx`
 
 ### Backend Character APIs
 

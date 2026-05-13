@@ -8,10 +8,7 @@
 
 ## Priority 1 · Split Oversized Feature Files By Feature Slice
 
-**Why now**: Two core files are already beyond the threshold called out in ADR-002.
-
-- `src/components/CharacterSheet.jsx` is over 3000 lines.
-- `src/pages/DmDashboardPage.jsx` is over 2700 lines.
+**Why now**: This was the highest-value cleanup because two core files had already crossed the threshold called out in ADR-002. That first pass is now complete, but the backlog item stays here as a record of the work and as guidance for the next split if the extracted mode files grow too large.
 
 **Recommended direction**:
 
@@ -48,6 +45,10 @@
   - `src/features/characterSheet/CharacterSheetEditMode.jsx`
   - `src/features/characterSheet/CharacterSheetViewMode.jsx`
 - `CharacterSheet.jsx` is now acting as a container for state, sync behavior, and mutation handlers rather than also owning the full render tree.
+- Current post-split file sizes are much healthier:
+  - `src/components/CharacterSheet.jsx` is about 800 lines
+  - `src/pages/DmDashboardPage.jsx` is about 400 lines
+  - the next watch-items are `src/features/characterSheet/CharacterSheetViewMode.jsx` and `src/features/characterSheet/CharacterSheetEditMode.jsx`, which are now the largest remaining screen-slice files
 - A later optional pass could still split the extracted mode components further if they start growing again, especially around:
   - combat rendering / controls
   - collections / section editing
@@ -334,10 +335,10 @@ These may be attractive, but they are not the right cleanup work right now:
 
 If only a few refactors are undertaken in the near term, do them in this order:
 
-1. Split `CharacterSheet.jsx` and `DmDashboardPage.jsx` by feature slice.
-2. Centralize live-sync / optimistic-write utilities.
-3. Remove dead backup files from `src/`.
-4. Introduce a shared page shell / nav layer.
-5. Centralize special-record backend helpers.
+1. Remove dead backup files from `src/`.
+2. Introduce a shared page shell / nav layer.
+3. Extract reusable style factories for repeated UI patterns.
+4. Normalize palette / theme transformation helpers.
+5. Harden frontend deploy / runtime assumptions.
 
-This sequence provides the best balance of maintainability gain, regression reduction, and token-efficiency for future LLM-driven development.
+Refactors 1 and 2 in the original queue are already complete, so this order reflects the next highest-value cleanup work.

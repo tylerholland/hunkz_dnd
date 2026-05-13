@@ -1,11 +1,37 @@
 import { useState } from "react";
 import { MOD_ATTRIBUTES, uid } from "./constants";
 
+export const ITEM_TYPE_OPTIONS = [
+  { value: "", label: "(none)" },
+  { value: "armor", label: "Armor" },
+  { value: "shield", label: "Shield" },
+  { value: "wondrous", label: "Wondrous" },
+  { value: "potion", label: "Potion" },
+  { value: "tool", label: "Tool" },
+  { value: "ammunition", label: "Ammunition" },
+  { value: "quest", label: "Quest" },
+  { value: "other", label: "Other" },
+];
+
+export function itemTypeLabel(value) {
+  const opt = ITEM_TYPE_OPTIONS.find((o) => o.value === (value || "").toLowerCase());
+  return opt ? opt.label : value || "";
+}
+
 export default function ItemEditorModal({ item, pal, onSave, onClose, showType }) {
   const [name, setName] = useState(item?.name || "");
   const [desc, setDesc] = useState(item?.description || "");
   const [mods, setMods] = useState(item?.mods || []);
-  const [type, setType] = useState(item?.type || "");
+  const [type, setType] = useState(() => {
+    const raw = item?.type || "";
+    // Normalize legacy free-text values to lowercase for select matching
+    return ITEM_TYPE_OPTIONS.find((o) => o.value === raw.toLowerCase()) ? raw.toLowerCase() : "";
+  });
+  const [requiresAttunement, setRequiresAttunement] = useState(item?.requiresAttunement || false);
+  const [attuned, setAttuned] = useState(item?.attuned || false);
+  const [trackQty, setTrackQty] = useState(item?.qty != null);
+  const [qty, setQty] = useState(item?.qty ?? 1);
+  const [equipped, setEquipped] = useState(item?.equipped !== false);
 
   const inputStyle = {
     background: pal.surface,
@@ -37,13 +63,32 @@ export default function ItemEditorModal({ item, pal, onSave, onClose, showType }
 
   function handleSave() {
     if (!name.trim()) return;
-    onSave({
+    const saved = {
+      // Spread existing item to preserve any fields not managed by this modal,
+      // then override with the current editor state.
+      ...(item || {}),
       id: item?.id || uid(),
       name: name.trim(),
       description: desc.trim(),
       mods,
-      ...(showType ? { type: type.trim() } : {}),
-    });
+      ...(showType ? { type } : {}),
+      equipped,
+    };
+    // Attunement
+    if (requiresAttunement) {
+      saved.requiresAttunement = true;
+      saved.attuned = attuned;
+    } else {
+      delete saved.requiresAttunement;
+      delete saved.attuned;
+    }
+    // Quantity
+    if (trackQty) {
+      saved.qty = Math.max(0, parseInt(qty, 10) || 0);
+    } else {
+      delete saved.qty;
+    }
+    onSave(saved);
   }
 
   return (
@@ -79,9 +124,91 @@ export default function ItemEditorModal({ item, pal, onSave, onClose, showType }
           {showType && (
             <div>
               <label style={lbl}>Type <span style={{ opacity: 0.5, textTransform: "none", fontSize: 11, letterSpacing: 0 }}>(optional)</span></label>
-              <input style={inputStyle} value={type} onChange={(e) => setType(e.target.value)} placeholder="e.g. Armour, Potion…" />
+              <select
+                style={{ ...inputStyle, appearance: "none", WebkitAppearance: "none" }}
+                value={type}
+                onChange={(e) => setType(e.target.value)}
+              >
+                {ITEM_TYPE_OPTIONS.map((opt) => (
+                  <option key={opt.value} value={opt.value}>{opt.label}</option>
+                ))}
+              </select>
             </div>
           )}
+        </div>
+
+        {/* Attunement */}
+        <div style={{ borderTop: `1px solid ${pal.border}`, paddingTop: 14, marginBottom: 14 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: requiresAttunement ? 8 : 0 }}>
+            <input
+              type="checkbox"
+              checked={requiresAttunement}
+              onChange={(e) => {
+                setRequiresAttunement(e.target.checked);
+                if (!e.target.checked) setAttuned(false);
+              }}
+              style={{ width: 15, height: 15, accentColor: pal.accent, cursor: "pointer", flexShrink: 0 }}
+            />
+            <span style={{ ...lbl, display: "inline", marginBottom: 0, color: requiresAttunement ? pal.accentBright : pal.textMuted }}>Requires Attunement</span>
+          </label>
+          {requiresAttunement && (
+            <div style={{ paddingLeft: 25 }}>
+              <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+                <input
+                  type="checkbox"
+                  checked={attuned}
+                  onChange={(e) => setAttuned(e.target.checked)}
+                  style={{ width: 15, height: 15, accentColor: pal.accent, cursor: "pointer", flexShrink: 0 }}
+                />
+                <span style={{ ...lbl, display: "inline", marginBottom: 0, color: attuned ? pal.accentBright : pal.textMuted }}>Currently Attuned</span>
+              </label>
+            </div>
+          )}
+        </div>
+
+        {/* Quantity */}
+        <div style={{ borderTop: `1px solid ${pal.border}`, paddingTop: 14, marginBottom: 14 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer", marginBottom: trackQty ? 8 : 0 }}>
+            <input
+              type="checkbox"
+              checked={trackQty}
+              onChange={(e) => {
+                setTrackQty(e.target.checked);
+                if (e.target.checked && (qty == null || qty === "")) setQty(1);
+              }}
+              style={{ width: 15, height: 15, accentColor: pal.accent, cursor: "pointer", flexShrink: 0 }}
+            />
+            <span style={{ ...lbl, display: "inline", marginBottom: 0, color: trackQty ? pal.accentBright : pal.textMuted }}>Track Quantity</span>
+          </label>
+          {trackQty && (
+            <div style={{ paddingLeft: 25, display: "flex", alignItems: "center", gap: 10 }}>
+              <span style={{ ...lbl, display: "inline", marginBottom: 0 }}>Current qty</span>
+              <input
+                type="number"
+                min={0}
+                step={1}
+                value={qty}
+                onChange={(e) => setQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+                style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 14, padding: "6px 10px", outline: "none", width: 72 }}
+              />
+            </div>
+          )}
+        </div>
+
+        {/* Equipped */}
+        <div style={{ borderTop: `1px solid ${pal.border}`, paddingTop: 14, marginBottom: 14 }}>
+          <label style={{ display: "flex", alignItems: "center", gap: 10, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={equipped}
+              onChange={(e) => setEquipped(e.target.checked)}
+              style={{ width: 15, height: 15, accentColor: pal.accent, cursor: "pointer", flexShrink: 0 }}
+            />
+            <span style={{ ...lbl, display: "inline", marginBottom: 0, color: equipped ? pal.accentBright : pal.textMuted }}>Equipped / In use</span>
+          </label>
+          <div style={{ paddingLeft: 25, fontFamily: pal.fontBody, fontSize: 12, color: pal.textMuted, marginTop: 4, fontStyle: "italic" }}>
+            Unequipped items don't contribute mods to stats.
+          </div>
         </div>
 
         <div style={{ marginBottom: 20 }}>

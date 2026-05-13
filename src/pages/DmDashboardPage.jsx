@@ -1,12 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, getInitiative, putInitiative, getNpcCombat, putNpcCombat, getRollHistory } from "../api";
+import { getDmParty, patchSession, getInitiative, putInitiative, getNpcCombat, putNpcCombat, getRollHistory, getMapLibrary, listCharacters, getPartyRoster, putPartyRoster } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
-import CharacterCard from "../features/dmDashboard/CharacterCard";
+import CharacterCard, { AwardXpModal, DistributeCoinModal } from "../features/dmDashboard/CharacterCard";
 import ConfirmDialog from "../features/dmDashboard/ConfirmDialog";
 import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
 import InitiativeTracker from "../features/dmDashboard/InitiativeTracker";
 import NpcCombatSection from "../features/dmDashboard/NpcCombatSection";
+import MapPanel from "../features/dmDashboard/MapPanel";
+import MapLibraryStrip from "../features/dmDashboard/MapLibraryStrip";
+import ManagePartyModal from "../features/dmDashboard/ManagePartyModal";
 import {
   PalCtx,
   initiativesEqual,
@@ -21,10 +24,16 @@ export default function DmDashboardPage() {
   const [dmPassword, setDmPassword] = useState(() => sessionStorage.getItem("dnd_dm_password") || "");
   const [authed, setAuthed] = useState(false);
   const [authState, setAuthState] = useState(() => (sessionStorage.getItem("dnd_dm_password") ? "checking" : "prompt"));
+  const [showAwardXpParty, setShowAwardXpParty] = useState(false);
+  const [showDistributeCoinParty, setShowDistributeCoinParty] = useState(false);
+  const [showManageParty, setShowManageParty] = useState(false);
   const [party, setParty] = useState([]);
+  const [libraryCharacters, setLibraryCharacters] = useState([]);
+  const [partyRoster, setPartyRoster] = useState([]);
   const [initiative, setInitiative] = useState({ entries: [], activeTurnIndex: 0 });
   const [npcCombat, setNpcCombat] = useState({ npcs: [] });
   const [rollHistory, setRollHistory] = useState([]);
+  const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [restNotice, setRestNotice] = useState("");
   const [palKey, setPalKey] = useState(() => sessionStorage.getItem("dnd_dm_palette") || "ocean");
@@ -37,6 +46,25 @@ export default function DmDashboardPage() {
   const initiativeExpectedRef = useRef(null);
   const initiativeWriteInFlightRef = useRef(false);
   const queuedInitiativeRef = useRef(null);
+  const npcCombatServerRef = useRef(npcCombat);
+
+  const fetchRosterContext = useCallback(async () => {
+    const [characters, rosterData] = await Promise.all([
+      listCharacters().catch(() => []),
+      getPartyRoster().catch(() => ({ exists: false, members: [] })),
+    ]);
+    const validCharacters = (characters || []).filter((character) => (
+      character &&
+      typeof character === "object" &&
+      typeof character.slug === "string" &&
+      character.slug.trim() &&
+      typeof character.name === "string" &&
+      character.name.trim()
+    ));
+    const fallbackMembers = validCharacters.map((character) => character.slug);
+    setLibraryCharacters(validCharacters);
+    setPartyRoster(rosterData?.exists ? (Array.isArray(rosterData?.members) ? rosterData.members : []) : fallbackMembers);
+  }, []);
 
   const fetchDashboardData = useCallback(async ({ background = false, force = false } = {}) => {
     if (!dmPassword) return;
@@ -46,11 +74,12 @@ export default function DmDashboardPage() {
     activeRequestCountRef.current += 1;
 
     try {
-      const [partyData, initData, npcData, rollHistoryData] = await Promise.all([
+      const [partyData, initData, npcData, rollHistoryData, mapLibraryData] = await Promise.all([
         getDmParty(dmPassword),
         getInitiative(dmPassword),
         getNpcCombat(dmPassword),
         getRollHistory(dmPassword),
+        getMapLibrary(),
       ]);
       if (requestId !== requestSeqRef.current) return;
       setParty(partyData);
@@ -63,8 +92,10 @@ export default function DmDashboardPage() {
         }
         setInitiative(initData);
       }
+      npcCombatServerRef.current = npcData;
       setNpcCombat(npcData);
       setRollHistory(rollHistoryData.rolls || []);
+      setMapLibrary(mapLibraryData || { activeMapId: null, activeMapView: null, maps: [] });
     } catch {
       // Show stale data rather than error on poll failure.
     } finally {
@@ -73,6 +104,27 @@ export default function DmDashboardPage() {
   }, [dmPassword]);
 
   const queueDashboardRefresh = useQueuedRefresh(fetchDashboardData);
+
+  const commitNpcCombatUpdate = useCallback(async (nextNpcCombat, { optimistic = false } = {}) => {
+    if (!dmPassword) return;
+
+    const normalized = {
+      npcs: nextNpcCombat.npcs || [],
+    };
+
+    if (optimistic) {
+      setNpcCombat(normalized);
+    }
+
+    try {
+      await putNpcCombat(dmPassword, normalized);
+      npcCombatServerRef.current = normalized;
+      queueDashboardRefresh(0);
+    } catch {
+      setNpcCombat(npcCombatServerRef.current);
+      queueDashboardRefresh(0);
+    }
+  }, [dmPassword, queueDashboardRefresh]);
 
   const commitInitiativeUpdate = useCallback(async (nextInitiative, { optimistic = false } = {}) => {
     if (!dmPassword) return;
@@ -153,6 +205,127 @@ export default function DmDashboardPage() {
     } catch {}
   }, [dmPassword, initiative, npcCombat, queueDashboardRefresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const handleAddNpcToInitiative = useCallback(async (npcId, targetIndex = null) => {
+    const npc = (npcCombat.npcs || []).find((value) => value.id === npcId);
+    if (!npc) return;
+
+    const entries = initiative.entries || [];
+    const npcInitiativeEntryId = npc.initiativeEntryId ?? npc.initiativeId ?? null;
+    const existingEntry = entries.find((value) => value.npcId === npcId || value.id === npcInitiativeEntryId);
+    const activeEntryId = entries[initiative.activeTurnIndex ?? 0]?.id ?? null;
+
+    let workingEntries = [...entries];
+    let entryId = existingEntry?.id || npcInitiativeEntryId || `id${Date.now()}${Math.random().toString(36).slice(2, 6)}`;
+
+    if (existingEntry) {
+      workingEntries = workingEntries.filter((value) => value.id !== existingEntry.id);
+    } else {
+      workingEntries.push({
+        id: entryId,
+        name: npc.name,
+        initiative: 0,
+        isPC: false,
+        npcId,
+      });
+      workingEntries = workingEntries.filter((value) => value.id !== entryId);
+    }
+
+    const entry = existingEntry
+      ? { ...existingEntry, npcId, name: npc.name }
+      : {
+          id: entryId,
+          name: npc.name,
+          initiative: 0,
+          isPC: false,
+          npcId,
+        };
+
+    const insertIndex = targetIndex === null
+      ? workingEntries.length
+      : Math.max(0, Math.min(targetIndex, workingEntries.length));
+    workingEntries.splice(insertIndex, 0, entry);
+
+    const nextActiveTurnIndex = activeEntryId
+      ? Math.max(0, workingEntries.findIndex((value) => value.id === activeEntryId))
+      : Math.min(initiative.activeTurnIndex ?? 0, Math.max(workingEntries.length - 1, 0));
+
+    const updatedInitiative = {
+      entries: workingEntries,
+      activeTurnIndex: nextActiveTurnIndex < 0 ? 0 : nextActiveTurnIndex,
+    };
+    const updatedNpcCombat = {
+      npcs: (npcCombat.npcs || []).map((value) =>
+        value.id === npcId ? { ...value, initiativeEntryId: entryId } : value
+      ),
+    };
+
+    setInitiative(updatedInitiative);
+    initiativeExpectedRef.current = updatedInitiative;
+    setNpcCombat(updatedNpcCombat);
+
+    try {
+      await Promise.all([
+        putInitiative(dmPassword, updatedInitiative),
+        putNpcCombat(dmPassword, updatedNpcCombat),
+      ]);
+      initiativeServerRef.current = updatedInitiative;
+      npcCombatServerRef.current = updatedNpcCombat;
+      queueDashboardRefresh(0);
+    } catch {
+      initiativeExpectedRef.current = null;
+      setInitiative(initiativeServerRef.current);
+      setNpcCombat(npcCombatServerRef.current);
+      queueDashboardRefresh(0);
+    }
+  }, [dmPassword, initiative, npcCombat, queueDashboardRefresh]);
+
+  const handleRemoveNpcFromInitiative = useCallback(async (npcId) => {
+    const npc = (npcCombat.npcs || []).find((value) => value.id === npcId);
+    if (!npc) return;
+
+    const entries = initiative.entries || [];
+    const npcInitiativeEntryId = npc.initiativeEntryId ?? npc.initiativeId ?? null;
+    const targetEntry = entries.find((value) => value.npcId === npcId || value.id === npcInitiativeEntryId || (!value.isPC && (value.name || "").trim().toLowerCase() === (npc.name || "").trim().toLowerCase()));
+    if (!targetEntry) return;
+
+    const activeEntryId = entries[initiative.activeTurnIndex ?? 0]?.id ?? null;
+    const updatedEntries = entries.filter((value) => value.id !== targetEntry.id);
+    const nextActiveTurnIndex = updatedEntries.length === 0
+      ? 0
+      : activeEntryId === targetEntry.id
+      ? Math.min(initiative.activeTurnIndex ?? 0, updatedEntries.length - 1)
+      : Math.max(0, updatedEntries.findIndex((value) => value.id === activeEntryId));
+
+    const updatedInitiative = {
+      entries: updatedEntries,
+      activeTurnIndex: nextActiveTurnIndex < 0 ? 0 : nextActiveTurnIndex,
+    };
+    const updatedNpcCombat = {
+      npcs: (npcCombat.npcs || []).map((value) =>
+        value.id === npcId ? { ...value, initiativeEntryId: null } : value
+      ),
+    };
+
+    setInitiative(updatedInitiative);
+    initiativeExpectedRef.current = updatedInitiative;
+    setNpcCombat(updatedNpcCombat);
+
+    try {
+      await Promise.all([
+        putInitiative(dmPassword, updatedInitiative),
+        putNpcCombat(dmPassword, updatedNpcCombat),
+      ]);
+      initiativeServerRef.current = updatedInitiative;
+      npcCombatServerRef.current = updatedNpcCombat;
+      queueDashboardRefresh(0);
+    } catch {
+      initiativeExpectedRef.current = null;
+      setInitiative(initiativeServerRef.current);
+      setNpcCombat(npcCombatServerRef.current);
+      queueDashboardRefresh(0);
+    }
+  }, [dmPassword, initiative, npcCombat, queueDashboardRefresh]);
+
   const handleCardUpdate = useCallback((action) => {
     if (action === "shortRest") {
       setConfirmDialog({
@@ -194,6 +367,11 @@ export default function DmDashboardPage() {
     if (authed) fetchDashboardData({ background: true, force: true });
   }, [authed, fetchDashboardData]);
 
+  useEffect(() => {
+    if (!authed) return;
+    fetchRosterContext().catch(() => {});
+  }, [authed, fetchRosterContext]);
+
   useAdaptivePolling({
     enabled: authed,
     poll: fetchDashboardData,
@@ -210,17 +388,65 @@ export default function DmDashboardPage() {
     setDmPassword("");
     setAuthed(false);
     setAuthState("prompt");
+    setShowManageParty(false);
+  }
+
+  async function handleSavePartyRoster(members) {
+    if (!dmPassword) throw new Error("DM password required");
+
+    const nextMembers = [...members];
+    setPartyRoster(nextMembers);
+
+    setParty((current) => current.filter((character) => nextMembers.includes(character.slug)));
+
+    const allowedMemberSet = new Set(nextMembers);
+    const filteredEntries = (initiative.entries || []).filter((entry) => !entry.isPC || (entry.slug && allowedMemberSet.has(entry.slug)));
+    const activeEntryId = (initiative.entries || [])[initiative.activeTurnIndex ?? 0]?.id ?? null;
+    const filteredActiveTurnIndex = filteredEntries.length === 0
+      ? 0
+      : activeEntryId
+      ? Math.max(0, filteredEntries.findIndex((entry) => entry.id === activeEntryId))
+      : Math.min(initiative.activeTurnIndex ?? 0, filteredEntries.length - 1);
+    const nextInitiative = {
+      entries: filteredEntries,
+      activeTurnIndex: filteredActiveTurnIndex < 0 ? 0 : filteredActiveTurnIndex,
+    };
+
+    if (!initiativesEqual(initiative, nextInitiative)) {
+      setInitiative(nextInitiative);
+      initiativeExpectedRef.current = nextInitiative;
+    }
+
+    try {
+      await putPartyRoster(nextMembers, dmPassword);
+      if (!initiativesEqual(initiative, nextInitiative)) {
+        await commitInitiativeUpdate(nextInitiative, { optimistic: false });
+      }
+      await fetchRosterContext();
+      queueDashboardRefresh(0);
+    } catch (err) {
+      await fetchRosterContext().catch(() => {});
+      queueDashboardRefresh(0);
+      throw err;
+    }
   }
 
   async function doLongRest() {
     setConfirmDialog(null);
     await Promise.all(
-      party.map((char) => patchSession(char.slug, {
-        hpCurrent: char.hpMax ?? char.hp ?? 0,
-        spellSlots: Array.isArray(char.spellSlots) ? char.spellSlots.map((slot) => ({ ...slot, used: 0 })) : char.spellSlots,
-      }, dmPassword))
+      party.map((char) => {
+        const level = char.level || 1;
+        const hdCurrent = char.hitDiceCurrent ?? level;
+        const hdRestore = Math.max(1, Math.floor(level / 2));
+        const hitDiceCurrent = Math.min(level, hdCurrent + hdRestore);
+        return patchSession(char.slug, {
+          hpCurrent: char.hpMax ?? char.hp ?? 0,
+          spellSlots: Array.isArray(char.spellSlots) ? char.spellSlots.map((slot) => ({ ...slot, used: 0 })) : char.spellSlots,
+          hitDiceCurrent,
+        }, dmPassword);
+      })
     );
-    setRestNotice("Long rest applied — all HP and spell slots restored.");
+    setRestNotice("Long rest applied — all HP, spell slots, and Hit Dice restored.");
     setTimeout(() => setRestNotice(""), 4000);
     queueDashboardRefresh(0);
   }
@@ -296,6 +522,12 @@ export default function DmDashboardPage() {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
+            <button
+              style={btnSecondary}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
+              onClick={() => setShowManageParty(true)}
+            >Manage Party</button>
             <select
               value={palKey}
               onChange={(e) => {
@@ -332,13 +564,18 @@ export default function DmDashboardPage() {
           >← Character Library</Link>
         </div>
 
-        <div className="dm-layout" style={{ display: "grid", gridTemplateColumns: "1fr 320px 300px", gap: 0, maxWidth: 1400, margin: "0 auto", padding: 24, alignItems: "start" }}>
+        <div className="dm-layout" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 0, maxWidth: 1400, margin: "0 auto", padding: 24, alignItems: "start" }}>
           <div className="dm-party-col" style={{ paddingRight: 20 }}>
+            <MapPanel
+              mapLibrary={mapLibrary}
+              dmPassword={dmPassword}
+              pal={pal}
+              onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
+            />
             <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 14 }}>Party</div>
 
             {(() => {
-              const sortedEntries = [...(initiative.entries || [])].sort((a, b) => b.initiative - a.initiative);
-              const activeEntry = sortedEntries[initiative.activeTurnIndex ?? 0];
+              const activeEntry = (initiative.entries || [])[initiative.activeTurnIndex ?? 0];
               const activeTurnSlug = activeEntry?.slug ?? null;
               return party.length === 0 ? (
                 <div style={{ fontFamily: pal.fontUI, fontSize: 13, color: pal.textMuted, padding: "20px 0" }}>No characters found.</div>
@@ -351,6 +588,7 @@ export default function DmDashboardPage() {
                     onUpdate={handleCardUpdate}
                     onRegisterOpen={handleRegisterOpen}
                     isActiveTurn={activeTurnSlug === char.slug}
+                    allParty={party}
                   />
                 ))
               );
@@ -358,7 +596,7 @@ export default function DmDashboardPage() {
 
             <div style={{ marginTop: 16 }}>
               <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 10 }}>Party-Wide Actions</div>
-              <div style={{ display: "flex", gap: 8 }}>
+              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                 {[
                   {
                     label: "◑ Short Rest — Reset Pact Magic",
@@ -385,6 +623,20 @@ export default function DmDashboardPage() {
                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
                   >{label}</button>
                 ))}
+                {party.some((c) => (c.levelingMode || "milestone") === "xp") && (
+                  <button
+                    onClick={() => setShowAwardXpParty(true)}
+                    style={{ background: "transparent", border: "1px solid rgba(138,180,200,0.35)", borderRadius: 4, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", padding: "8px 14px", cursor: "pointer" }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(138,180,200,0.35)"; e.currentTarget.style.color = pal.textMuted; }}
+                  >✦ Award XP to Party</button>
+                )}
+                <button
+                  onClick={() => setShowDistributeCoinParty(true)}
+                  style={{ background: "transparent", border: "1px solid rgba(200,160,64,0.3)", borderRadius: 4, color: "rgba(200,160,64,0.7)", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", padding: "8px 14px", cursor: "pointer" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c8a040"; e.currentTarget.style.color = "#c8a040"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(200,160,64,0.3)"; e.currentTarget.style.color = "rgba(200,160,64,0.7)"; }}
+                >◈ Distribute Coin</button>
               </div>
             </div>
 
@@ -398,9 +650,31 @@ export default function DmDashboardPage() {
             />
           </div>
 
-          <NpcCombatSection npcCombat={npcCombat} initiative={initiative} dmPassword={dmPassword} onUpdate={() => queueDashboardRefresh(0)} />
-
-          <InitiativeTracker initiative={initiative} party={party} npcCombat={npcCombat} onCommitInitiative={commitInitiativeUpdate} onPromoteToNpc={handlePromoteToNpc} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 0, width: 620, maxWidth: "100%" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "320px 300px", gap: 0 }}>
+              <NpcCombatSection
+                npcCombat={npcCombat}
+                initiative={initiative}
+                dmPassword={dmPassword}
+                onUpdate={() => queueDashboardRefresh(0)}
+                onCommitNpcCombat={commitNpcCombatUpdate}
+                onAddNpcToInitiative={handleAddNpcToInitiative}
+                onRemoveNpcFromInitiative={handleRemoveNpcFromInitiative}
+              />
+              <InitiativeTracker
+                initiative={initiative}
+                party={party}
+                npcCombat={npcCombat}
+                onCommitInitiative={commitInitiativeUpdate}
+                onPromoteToNpc={handlePromoteToNpc}
+              />
+            </div>
+            <MapLibraryStrip
+              mapLibrary={mapLibrary}
+              dmPassword={dmPassword}
+              onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
+            />
+          </div>
         </div>
 
         {confirmDialog && (
@@ -409,6 +683,39 @@ export default function DmDashboardPage() {
             message={confirmDialog.message}
             onConfirm={confirmDialog.onConfirm}
             onCancel={() => setConfirmDialog(null)}
+          />
+        )}
+
+        {showAwardXpParty && (
+          <AwardXpModal
+            char={null}
+            dmPassword={dmPassword}
+            onClose={() => setShowAwardXpParty(false)}
+            onUpdate={() => queueDashboardRefresh(0)}
+            onOptimisticUpdate={(updates) => setParty((prev) => prev.map((c) => { const u = updates.find((u) => u.slug === c.slug); return u ? { ...c, xpCurrent: u.xpCurrent } : c; }))}
+            forParty={true}
+            party={party}
+          />
+        )}
+
+        {showDistributeCoinParty && (
+          <DistributeCoinModal
+            char={null}
+            dmPassword={dmPassword}
+            onClose={() => setShowDistributeCoinParty(false)}
+            onUpdate={() => queueDashboardRefresh(0)}
+            onOptimisticUpdate={(updates) => setParty((prev) => prev.map((c) => { const u = updates.find((u) => u.slug === c.slug); return u ? { ...c, coin: u.coin } : c; }))}
+            forParty={true}
+            party={party}
+          />
+        )}
+
+        {showManageParty && (
+          <ManagePartyModal
+            characters={libraryCharacters}
+            rosterMembers={partyRoster}
+            onClose={() => setShowManageParty(false)}
+            onSave={handleSavePartyRoster}
           />
         )}
       </div>

@@ -1,1635 +1,1693 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>DM Dashboard — Session View</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>DM Dashboard — Design Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
-    /* ── Ocean palette (dashboard chrome) ── */
-    :root {
-      --bg: #0d0f14;
-      --surface: rgba(18,32,48,0.6);
-      --surface-solid: #111e2c;
-      --border: rgba(100,130,160,0.18);
-      --border-vis: rgba(100,130,160,0.32);
-      --accent: #6a8fa8;
-      --accent-bright: #a0c0d0;
-      --accent-dim: #1e3a4e;
-      --text: #c8bfaf;
-      --text-body: #b0a898;
-      --text-muted: #3a5a6a;
-      --glow1: rgba(20,45,80,0.4);
-      --glow2: rgba(15,35,60,0.3);
-      --gem: #8ab4c8;
-      --font-display: 'Cinzel', Georgia, serif;
-      --font-body: 'Crimson Text', Georgia, serif;
-      --font-ui: 'IM Fell English', Georgia, serif;
+/* ─── Keyframes ─────────────────────────────────────────────────────── */
+@keyframes diceShake {
+  0%   { transform: translate(0,0) rotate(0deg); }
+  15%  { transform: translate(-4px,-3px) rotate(-3deg); }
+  30%  { transform: translate(3px,2px) rotate(2deg); }
+  45%  { transform: translate(-3px,3px) rotate(-2deg); }
+  60%  { transform: translate(4px,-2px) rotate(3deg); }
+  75%  { transform: translate(-2px,2px) rotate(-1deg); }
+  90%  { transform: translate(2px,-3px) rotate(2deg); }
+  100% { transform: translate(0,0) rotate(0deg); }
+}
+@keyframes diceSpin {
+  0%   { transform: rotate(0deg) scale(1);   filter: blur(0px);  }
+  20%  { transform: rotate(180deg) scale(1.1); filter: blur(1px); }
+  60%  { transform: rotate(600deg) scale(1.05); filter: blur(2px); }
+  85%  { transform: rotate(700deg) scale(1);  filter: blur(1px); }
+  100% { transform: rotate(720deg) scale(1);  filter: blur(0px);  }
+}
+@keyframes diceSettle {
+  0%   { transform: translateY(0) rotate(0deg); }
+  35%  { transform: translateY(-4px) rotate(-2deg); }
+  65%  { transform: translateY(1px) rotate(1deg); }
+  85%  { transform: translateY(-1px) rotate(0deg); }
+  100% { transform: translateY(0) rotate(0deg); }
+}
+@keyframes diceResultIn {
+  from { opacity:0; transform: scale(0.82); }
+  to   { opacity:1; transform: scale(1); }
+}
+@keyframes nat20Burst {
+  0%   { box-shadow: 0 0 0 0 rgba(240,208,96,0.7); }
+  60%  { box-shadow: 0 0 0 18px rgba(240,208,96,0); }
+  100% { box-shadow: 0 0 0 18px rgba(240,208,96,0); }
+}
+@keyframes nat1Flash {
+  0%,100% { background: rgba(192,96,96,0.12); }
+  40%      { background: rgba(192,96,96,0.45); }
+}
+@keyframes nat1Tilt {
+  0%   { transform: rotate(0deg); }
+  30%  { transform: rotate(-5deg); }
+  70%  { transform: rotate(-5deg); }
+  100% { transform: rotate(0deg); }
+}
+@keyframes historySlideIn {
+  from { opacity:0; transform: translateY(-8px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+@keyframes applyRowIn {
+  from { opacity:0; transform: translateY(8px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+@keyframes accentPulse {
+  0%,100% { opacity:0.4; }
+  50%      { opacity:1.0; }
+}
+@keyframes conditionIn {
+  from { opacity:0; transform: scale(0.7); }
+  to   { opacity:1; transform: scale(1); }
+}
+@keyframes conditionOut {
+  from { opacity:1; transform: scale(1); }
+  to   { opacity:0; transform: scale(0.8); }
+}
+@keyframes hpDamageFlash {
+  0%   { background: rgba(255,255,255,0.55); }
+  100% { background: transparent; }
+}
+@keyframes hpHealGlow {
+  0%   { background: rgba(138,180,200,0.7); }
+  100% { background: transparent; }
+}
+@keyframes failureShake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-3px); }
+  40%  { transform: translateX(3px); }
+  60%  { transform: translateX(-2px); }
+  80%  { transform: translateX(2px); }
+  100% { transform: translateX(0); }
+}
+@keyframes bloodiedFlash {
+  0%,100% { box-shadow: none; }
+  50%      { box-shadow: 0 0 0 2px #c8a040; }
+}
+@keyframes severityPulse {
+  0%,100% { border-color: var(--c-accent); }
+  50%      { border-color: var(--c-bright); }
+}
+@keyframes mapDotPulse {
+  0%,100% { opacity:1; transform: scale(1); }
+  50%      { opacity:0.6; transform: scale(0.85); }
+}
 
-      /* Character palettes — accent and gem values */
-      --ember-accent: #a06840;
-      --ember-bright: #c89060;
-      --ember-gem: #c8904c;
-      --ember-border: rgba(160,104,64,0.35);
-      --ember-surface: rgba(40,22,12,0.6);
+/* ─── Reset & base ───────────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#0d0f14; --surface:rgba(18,32,48,0.6); --surface-solid:#111e2c;
+  --border:rgba(100,130,160,0.18); --border-vis:rgba(100,130,160,0.3);
+  --accent:#6a8fa8; --accent-bright:#a0c0d0; --accent-dim:rgba(30,58,78,0.45);
+  --text:#c8bfaf; --text-body:#b0a898; --text-muted:#3a5a6a;
+  --gem:#8ab4c8; --glow1:rgba(20,45,80,0.4); --glow2:rgba(15,35,60,0.3);
+  --font-d:'Cinzel',Georgia,serif; --font-b:'Crimson Text',Georgia,serif; --font-u:'IM Fell English',Georgia,serif;
+  --npc-accent:#9a8a60; --npc-bright:#c8b880; --npc-surface:rgba(30,25,15,0.65);
+  --npc-border:rgba(150,135,80,0.35);
+}
+body {
+  background: radial-gradient(ellipse at 50% 0%,var(--glow1),transparent 60%),
+              radial-gradient(ellipse at 80% 100%,var(--glow2),transparent 55%), var(--bg);
+  min-height:100vh; color:var(--text); font-family:var(--font-b);
+  -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(128,128,128,0.2);border-radius:3px}
 
-      --ocean-accent: #6a8fa8;
-      --ocean-bright: #a0c0d0;
-      --ocean-gem: #8ab4c8;
-      --ocean-border: rgba(100,130,160,0.35);
-      --ocean-surface: rgba(18,32,48,0.6);
+/* ─── Prototype header ───────────────────────────────────────────────── */
+.proto-header {
+  background:rgba(10,15,20,0.92); border-bottom:1px solid rgba(100,130,160,0.15);
+  padding:10px 24px; display:flex; align-items:center; gap:16px;
+}
+.proto-title { font-family:var(--font-u); font-size:11px; letter-spacing:0.25em; text-transform:uppercase; color:var(--accent-bright); }
+.proto-note  { font-family:var(--font-b); font-style:italic; font-size:12px; color:var(--text-muted); }
 
-      --forest-accent: #5a8a60;
-      --forest-bright: #88b888;
-      --forest-gem: #78b878;
-      --forest-border: rgba(90,138,96,0.35);
-      --forest-surface: rgba(14,26,18,0.6);
-    }
+/* ─── Top bar ────────────────────────────────────────────────────────── */
+.top-bar {
+  background:rgba(13,15,20,0.95); border-bottom:1px solid var(--border);
+  padding:0 24px; height:48px; display:flex; align-items:center; gap:16px;
+  position:sticky; top:0; z-index:100;
+}
+.top-bar-back { font-family:var(--font-u); font-size:12px; color:var(--text-muted); letter-spacing:0.1em; cursor:pointer; }
+.top-bar-back:hover { color:var(--accent-bright); }
+.top-bar-title { font-family:var(--font-d); font-size:16px; letter-spacing:0.18em; color:var(--accent-bright); flex:1; }
+.top-bar-btn {
+  background:transparent; border:1px solid var(--border); border-radius:3px;
+  color:var(--text-muted); font-family:var(--font-u); font-size:11px;
+  letter-spacing:0.12em; text-transform:uppercase; padding:6px 14px; cursor:pointer;
+  transition:border-color 0.18s, color 0.18s;
+}
+.top-bar-btn:hover { border-color:var(--accent); color:var(--accent-bright); }
+.top-bar-btn.combat-start { border-color:rgba(90,138,96,0.5); color:#88b888; }
+.top-bar-btn.combat-start:hover { border-color:#88b888; background:rgba(14,26,18,0.4); }
+.top-bar-btn.combat-end { border-color:rgba(192,96,96,0.5); color:#e08080; }
+.top-bar-btn.combat-end:hover { border-color:#e08080; background:rgba(40,10,10,0.4); }
+.top-bar-party-menu { display:none; }
+.combat-active .top-bar-party-menu { display:flex; }
 
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+/* ─── Dashboard layout ───────────────────────────────────────────────── */
+.dashboard-wrap { padding:0 20px 60px; }
+.dashboard {
+  display:grid;
+  grid-template-columns:1fr 340px;
+  gap:20px; align-items:start;
+  padding-top:20px;
+  transition:grid-template-columns 0.3s ease-out;
+}
+.combat-active .dashboard { grid-template-columns:300px 1fr 320px; }
 
-    body {
-      background:
-        radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
-        radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
-        var(--bg);
-      min-height: 100vh;
-      color: var(--text);
-      font-family: var(--font-body);
-      -webkit-font-smoothing: antialiased;
-    }
+/* party column */
+.col-party { min-width:0; }
+/* 2-col party grid in non-combat on wide screens */
+@media (min-width:900px) {
+  .dashboard-wrap:not(.combat-active) .col-party {
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:0 16px;
+    align-items:start;
+  }
+  .dashboard-wrap:not(.combat-active) .col-party .map-panel,
+  .dashboard-wrap:not(.combat-active) .col-party .party-actions {
+    grid-column:1 / -1;
+  }
+}
 
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+/* dice column — hidden in non-combat */
+.col-dice {
+  min-width:0; overflow:hidden;
+  max-width:0; opacity:0; pointer-events:none;
+  transition:max-width 0.3s ease-out 0.05s, opacity 0.3s ease-out 0.05s;
+}
+.combat-active .col-dice { max-width:600px; opacity:1; pointer-events:auto; }
 
-    /* ── Callout notes ── */
-    .callout-note {
-      background: rgba(30,80,30,0.85);
-      border: 1px solid rgba(80,160,80,0.5);
-      border-radius: 4px;
-      color: #88cc88;
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.05em;
-      padding: 5px 10px;
-      margin: 6px 0 10px 0;
-      display: block;
-    }
-    .callout-note::before { content: "↳ "; opacity: 0.7; }
+/* right column */
+.col-right { min-width:0; }
 
-    /* NEW: improvement callout variant */
-    .callout-new {
-      background: rgba(20,50,80,0.9);
-      border: 1px solid rgba(80,140,200,0.5);
-      border-radius: 4px;
-      color: #80c8f0;
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.05em;
-      padding: 5px 10px;
-      margin: 6px 0 10px 0;
-      display: block;
-    }
-    .callout-new::before { content: "★ NEW: "; opacity: 0.8; color: #a0d8f0; }
+/* ─── Map panel ──────────────────────────────────────────────────────── */
+.map-panel {
+  background:var(--surface); border:1px solid var(--border); border-radius:5px;
+  overflow:hidden; margin-bottom:16px;
+}
+.map-header {
+  padding:10px 14px; display:flex; align-items:center; gap:8px; cursor:pointer;
+  border-bottom:1px solid transparent;
+  transition:border-color 0.18s;
+}
+.map-panel.expanded .map-header { border-bottom-color:var(--border); }
+.map-dot { width:8px; height:8px; border-radius:50%; background:#58c890; flex-shrink:0; animation:mapDotPulse 2.2s ease-in-out infinite; }
+.map-label { font-family:var(--font-u); font-size:12px; letter-spacing:0.18em; text-transform:uppercase; color:var(--accent-bright); flex:1; }
+.map-toggle { font-family:var(--font-u); font-size:11px; color:var(--text-muted); }
+.map-body { max-height:240px; overflow:hidden; transition:max-height 0.25s ease-in-out, opacity 0.25s; background:#060809; }
+.map-panel:not(.expanded) .map-body { max-height:0; opacity:0; }
+.map-panel.expanded .map-body { opacity:1; }
+.map-placeholder {
+  height:240px; display:flex; align-items:center; justify-content:center;
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02) 1px,transparent 1px,transparent 8px);
+}
+.map-placeholder-text { font-family:var(--font-u); font-size:12px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted); }
+.combat-active .map-panel .map-body { max-height:0 !important; opacity:0 !important; }
+.combat-active .map-panel .map-header { border-bottom-color:transparent; }
 
-    /* ── Annotation banner ── */
-    .annotation-bar {
-      background: rgba(10,30,10,0.92);
-      border-bottom: 1px solid rgba(60,120,60,0.4);
-      padding: 11px 24px;
-      position: sticky;
-      top: 0;
-      z-index: 300;
-    }
-    .annotation-bar p {
-      font-family: var(--font-ui);
-      font-size: 12px;
-      color: #77bb77;
-      letter-spacing: 0.04em;
-    }
-    .annotation-bar strong { color: #aaddaa; }
+/* ─── Character Card ─────────────────────────────────────────────────── */
+.card {
+  border-radius:5px; border:1px solid; position:relative; overflow:hidden;
+  margin-bottom:12px;
+  transition:transform 0.3s ease-out, box-shadow 0.3s ease-out, opacity 0.3s ease-out, border-color 0.3s;
+}
+.card::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:5px 0 0 5px;
+  transition:opacity 0.3s;
+}
+/* active turn */
+.card.active-turn { transform:translateY(-2px); z-index:2; }
+.card.active-turn::before { animation:accentPulse 2s ease-in-out infinite; }
+.card.dimmed { opacity:0.82; }
+/* fallen */
+.card.fallen { opacity:0.55; }
+.card.fallen .card-name { text-decoration:line-through; }
 
-    /* ── Dashboard top bar ── */
-    .topbar {
-      display: flex;
-      align-items: center;
-      gap: 16px;
-      padding: 14px 24px;
-      border-bottom: 1px solid var(--border-vis);
-      position: sticky;
-      top: 37px;
-      z-index: 100;
-      background: rgba(13,15,20,0.95);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-    .topbar-title {
-      font-family: var(--font-display);
-      font-size: 18px;
-      letter-spacing: 0.12em;
-      color: var(--accent-bright);
-    }
-    .topbar-subtitle {
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
-    .topbar-spacer { flex: 1; }
-    .topbar-btn {
-      background: rgba(18,32,48,0.5);
-      border: 1px solid var(--accent);
-      border-radius: 3px;
-      color: var(--accent-bright);
-      font-family: var(--font-ui);
-      font-size: 12px;
-      letter-spacing: 0.14em;
-      padding: 7px 16px;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s;
-    }
-    .topbar-btn:hover { background: rgba(106,143,168,0.25); }
-    .topbar-btn.secondary {
-      background: transparent;
-      border-color: var(--border-vis);
-      color: var(--text-muted);
-    }
-    .topbar-btn.secondary:hover { border-color: var(--accent); color: var(--accent-bright); }
+/* palette — ember (Torvin) */
+.card-ember { background:rgba(40,22,12,0.68); border-color:rgba(160,104,64,0.35); }
+.card-ember::before { background:#a06840; }
+.card-ember.active-turn { box-shadow:0 4px 18px rgba(160,104,64,0.28); }
+.card-ember .card-name { --c-name-glow:#c89060; }
+/* palette — ocean (Eoghan) */
+.card-ocean { background:rgba(18,32,48,0.68); border-color:rgba(100,130,160,0.35); }
+.card-ocean::before { background:#6a8fa8; }
+.card-ocean.active-turn { box-shadow:0 4px 18px rgba(106,143,168,0.28); }
+.card-ocean .card-name { --c-name-glow:#a0c0d0; }
+/* palette — forest (Mira) */
+.card-forest { background:rgba(14,26,18,0.68); border-color:rgba(90,138,96,0.35); }
+.card-forest::before { background:#5a8a60; }
+.card-forest.active-turn { box-shadow:0 4px 18px rgba(90,138,96,0.28); }
+.card-forest .card-name { --c-name-glow:#88b888; }
 
-    /* ── Dashboard layout ── */
-    .dashboard-layout {
-      display: grid;
-      grid-template-columns: 1fr 300px;
-      gap: 0;
-      max-width: 1280px;
-      margin: 0 auto;
-      padding: 24px;
-      align-items: start;
-    }
-    @media (max-width: 900px) {
-      .dashboard-layout {
-        grid-template-columns: 1fr;
-      }
-    }
+.card.active-turn .card-name { text-shadow:0 0 10px var(--c-name-glow,#a0c0d0); }
 
-    /* ── Left column: party cards ── */
-    .party-column {
-      padding-right: 20px;
-    }
-    @media (max-width: 900px) {
-      .party-column { padding-right: 0; }
-    }
+/* card per-palette custom props (set inline via style attrs) */
 
-    .section-label {
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.3em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 14px;
-    }
+/* header */
+.card-header { display:flex; align-items:center; gap:10px; padding:12px 14px 8px; }
+.portrait {
+  width:42px; height:42px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-d); font-size:16px; font-weight:500; letter-spacing:0.05em;
+  border:1.5px solid rgba(255,255,255,0.12);
+}
+.card-identity { flex:1; min-width:0; }
+.card-name { font-family:var(--font-d); font-size:15px; letter-spacing:0.1em; display:block; }
+.card-sub  { font-family:var(--font-u); font-size:11px; letter-spacing:0.12em; color:var(--text-muted); display:flex; align-items:center; gap:6px; margin-top:1px; }
+.card-sub a { color:inherit; text-decoration:none; }
+.card-sub a:hover { color:var(--accent-bright); }
+.card-ac {
+  font-family:var(--font-d); font-size:13px; letter-spacing:0.08em; flex-shrink:0;
+  background:rgba(0,0,0,0.3); border:1px solid; border-radius:3px; padding:3px 7px;
+}
+.card-more-btn {
+  background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px;
+  padding:4px 6px; border-radius:3px; flex-shrink:0; line-height:1;
+}
+.card-more-btn:hover { color:var(--text); background:rgba(255,255,255,0.05); }
 
-    /* ── Character card ── */
-    .char-card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: 6px;
-      margin-bottom: 12px;
-      overflow: visible;
-      position: relative;
-      transition: border-color 0.15s;
-    }
-    .char-card:hover { border-color: var(--accent); }
+/* hp row */
+.hp-row { padding:0 14px 10px; display:flex; align-items:center; gap:8px; }
+.hp-btn {
+  width:28px; height:28px; border-radius:3px; border:1px solid; background:transparent;
+  color:var(--text-muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:border-color 0.15s, color 0.15s;
+}
+.hp-btn:hover { color:var(--text); }
+.hp-nums { font-family:var(--font-d); font-size:20px; flex-shrink:0; white-space:nowrap; }
+.hp-bar-wrap { flex:1; position:relative; height:10px; border-radius:2px; background:rgba(0,0,0,0.3); overflow:visible; }
+.hp-segments { display:flex; position:absolute; inset:0; border-radius:2px; overflow:hidden; gap:1px; }
+.hp-seg { flex:1; position:relative; overflow:hidden; }
+.hp-seg-fill { position:absolute; inset:0; border-radius:1px; transition:width 0.15s; }
+.hp-seg-ghost { position:absolute; inset:0; border-radius:1px; pointer-events:none; }
+.hp-seg-flash { position:absolute; inset:0; border-radius:1px; pointer-events:none; animation:hpDamageFlash 0.3s ease-out forwards; }
+.hp-seg-heal  { position:absolute; inset:0; border-radius:1px; pointer-events:none; animation:hpHealGlow 0.25s ease-out forwards; }
 
-    /* Palette accent stripe on left */
-    .char-card::before {
-      content: '';
-      position: absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 3px;
-      border-radius: 6px 0 0 6px;
-    }
-    .char-card.ember::before { background: var(--ember-accent); }
-    .char-card.ocean::before { background: var(--ocean-accent); }
-    .char-card.forest::before { background: var(--forest-accent); }
+/* tier-2 content — hidden during combat */
+.tier2 { overflow:hidden; max-height:200px; transition:max-height 0.2s ease-in, opacity 0.2s ease-in; }
+.combat-active .tier2 { max-height:0; opacity:0; pointer-events:none; }
 
-    .card-main {
-      display: grid;
-      grid-template-columns: auto 1fr auto;
-      gap: 14px;
-      padding: 14px 14px 10px 18px;
-      align-items: start;
-    }
+/* conditions row */
+.conditions-row { padding:4px 14px 8px; display:flex; flex-wrap:wrap; gap:5px; min-height:0; }
+.chip {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
+  padding:3px 8px; border-radius:3px; border:1px solid; cursor:pointer; display:flex; align-items:center; gap:4px;
+  animation:conditionIn 0.18s ease-out;
+  transition:opacity 0.15s;
+}
+.chip.removing { animation:conditionOut 0.15s ease-in forwards; }
+.chip-x { font-size:13px; opacity:0.6; line-height:1; }
+.chip.severe { animation:conditionIn 0.18s ease-out, severityPulse 3s ease-in-out 0.2s infinite; }
+.chip-add {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.1em; background:transparent;
+  border:1px dashed rgba(255,255,255,0.15); border-radius:3px; color:var(--text-muted); cursor:pointer;
+  padding:3px 8px; transition:border-color 0.15s, color 0.15s;
+}
+.chip-add:hover { border-color:var(--accent); color:var(--accent-bright); }
 
-    /* Portrait */
-    .portrait {
-      width: 52px;
-      height: 52px;
-      border-radius: 50%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-family: var(--font-display);
-      font-size: 20px;
-      flex-shrink: 0;
-      border: 2px solid;
-    }
-    .portrait.ember {
-      background: var(--ember-surface);
-      border-color: var(--ember-accent);
-      color: var(--ember-gem);
-    }
-    .portrait.ocean {
-      background: var(--ocean-surface);
-      border-color: var(--ocean-accent);
-      color: var(--ocean-gem);
-    }
-    .portrait.forest {
-      background: var(--forest-surface);
-      border-color: var(--forest-accent);
-      color: var(--forest-gem);
-    }
+/* concentration banner */
+.conc-row {
+  margin:0 14px 8px; background:rgba(0,0,0,0.2); border:1px solid; border-radius:3px;
+  padding:5px 9px; display:flex; align-items:center; gap:7px;
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.1em;
+}
+.conc-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; animation:mapDotPulse 2.2s ease-in-out infinite; }
+.conc-label { flex:1; }
+.conc-save { font-size:10px; letter-spacing:0.08em; opacity:0.7; }
 
-    /* Card info */
-    .card-info {}
-    .card-name {
-      font-family: var(--font-display);
-      font-size: 17px;
-      letter-spacing: 0.06em;
-      margin-bottom: 3px;
-    }
-    .card-name.ember { color: var(--ember-bright); }
-    .card-name.ocean { color: var(--ocean-bright); }
-    .card-name.forest { color: var(--forest-bright); }
+/* spell slots */
+.slots-row { padding:0 14px 8px; display:flex; flex-wrap:wrap; gap:6px; }
+.slot-group { display:flex; align-items:center; gap:4px; }
+.slot-label { font-family:var(--font-u); font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); margin-right:2px; }
+.slot-pip {
+  width:9px; height:9px; border-radius:50%; border:1.5px solid; cursor:pointer;
+  transition:background 0.15s;
+}
+.slot-pip.used { background:transparent; }
 
-    .card-meta {
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 8px;
-    }
+/* inspiration badge */
+.inspired-row { padding:0 14px 8px; }
+.inspired-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.18em; text-transform:uppercase;
+  color:#f0d060; border:1px solid rgba(240,208,96,0.35); border-radius:3px; padding:3px 8px;
+  background:rgba(240,208,96,0.07);
+}
 
-    /* HP display within card */
-    .hp-inline {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 5px;
-    }
-    .hp-nums {
-      display: flex;
-      align-items: baseline;
-      gap: 3px;
-    }
-    .hp-cur {
-      font-family: var(--font-display);
-      font-size: 22px;
-      line-height: 1;
-    }
-    .hp-cur.ember { color: var(--ember-gem); }
-    .hp-cur.ocean { color: var(--ocean-gem); }
-    .hp-cur.forest { color: var(--forest-gem); }
-    .hp-cur.danger { color: #c06060; }
-    .hp-sep-sm {
-      font-family: var(--font-display);
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-    .hp-max-sm {
-      font-family: var(--font-display);
-      font-size: 14px;
-      color: var(--text-muted);
-    }
-    .temp-badge-sm {
-      background: rgba(100,160,200,0.15);
-      border: 1px solid rgba(100,160,200,0.35);
-      border-radius: 8px;
-      padding: 1px 7px;
-      font-family: var(--font-ui);
-      font-size: 10px;
-      letter-spacing: 0.08em;
-      color: #8ab4c8;
-    }
+/* death saves row */
+.death-saves {
+  margin:0 14px 10px; background:rgba(192,60,60,0.1); border:1px solid rgba(192,96,96,0.3);
+  border-radius:3px; padding:8px 10px; display:none;
+}
+.death-saves.visible { display:block; }
+.death-saves-label { font-family:var(--font-u); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:rgba(200,100,100,0.8); margin-bottom:6px; }
+.death-saves-pips { display:flex; align-items:center; gap:10px; }
+.pip-group { display:flex; align-items:center; gap:4px; }
+.pip-label { font-family:var(--font-u); font-size:10px; letter-spacing:0.15em; color:var(--text-muted); margin-right:2px; }
+.pip {
+  width:14px; height:14px; border-radius:50%; border:2px solid rgba(255,255,255,0.2); cursor:pointer;
+  transition:background 0.15s, border-color 0.15s;
+}
+.pip.success-filled { background:#58c890; border-color:#58c890; }
+.pip.failure-filled { background:#c06060; border-color:#c06060; animation:failureShake 0.3s ease-out; }
+.fallen-label {
+  font-family:var(--font-u); font-size:13px; letter-spacing:0.25em; text-transform:uppercase;
+  color:#c06060; text-align:center; margin-top:8px; display:none;
+}
+.fallen .fallen-label { display:block; }
 
-    /* ─────────────────────────────────────────────
-       IMPROVEMENT 1: Inline HP stepper
-       Strip of − / HP bar / + directly on the card.
-       Always visible, no menu needed.
-    ───────────────────────────────────────────── */
-    .hp-stepper-row {
-      display: flex;
-      align-items: center;
-      gap: 0;
-      margin-bottom: 8px;
-    }
-    .hp-step-btn {
-      width: 26px;
-      height: 16px;
-      border-radius: 3px;
-      border: 1px solid var(--border-vis);
-      background: transparent;
-      color: var(--text-muted);
-      font-family: var(--font-display);
-      font-size: 14px;
-      line-height: 1;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      padding: 0;
-      transition: background 0.12s, border-color 0.12s, color 0.12s;
-      user-select: none;
-    }
-    .hp-step-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent-bright);
-      background: rgba(106,143,168,0.14);
-    }
-    .hp-step-btn:active {
-      background: rgba(106,143,168,0.28);
-    }
-    /* Danger cards get red minus button */
-    .char-card.danger-border .hp-step-btn.minus:hover {
-      border-color: rgba(192,96,96,0.6);
-      color: #c06060;
-      background: rgba(192,96,96,0.12);
-    }
+/* xp/coin strips (tier 2) */
+.tier2-row {
+  padding:6px 14px; border-top:1px solid var(--border); display:flex; align-items:center; gap:8px;
+}
+.tier2-label { font-family:var(--font-u); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted); flex:1; }
+.tier2-val { font-family:var(--font-d); font-size:13px; }
 
-    .hp-bar-wrap {
-      flex: 1;
-      padding: 0 5px;
-      position: relative;
-      cursor: default;
-    }
-    .hp-bar-track {
-      height: 6px;
-      border-radius: 3px;
-      overflow: hidden;
-    }
-    .hp-bar-track.ember { background: rgba(58,34,16,0.8); }
-    .hp-bar-track.ocean { background: rgba(24,42,58,0.8); }
-    .hp-bar-track.forest { background: rgba(18,38,22,0.8); }
-    .hp-bar-fill {
-      height: 100%;
-      border-radius: 3px;
-      transition: width 0.3s ease;
-    }
-    .hp-bar-fill.ember-healthy {
-      background: linear-gradient(90deg, var(--ember-accent) 0%, var(--ember-bright) 100%);
-      width: 62%;
-    }
-    .hp-bar-fill.ocean-warning {
-      background: linear-gradient(90deg, #a06020 0%, #d08030 100%);
-      width: 30%;
-    }
-    .hp-bar-fill.forest-healthy {
-      background: linear-gradient(90deg, var(--forest-accent) 0%, var(--forest-bright) 100%);
-      width: 75%;
-    }
+/* ─── Party actions ──────────────────────────────────────────────────── */
+.party-actions {
+  display:flex; gap:8px; flex-wrap:wrap; padding:12px 0; margin-bottom:12px;
+  overflow:hidden; transition:max-height 0.2s ease-in, opacity 0.2s ease-in;
+  max-height:80px;
+}
+.combat-active .party-actions { max-height:0; opacity:0; pointer-events:none; }
+.party-action-btn {
+  background:transparent; border:1px solid var(--border); border-radius:3px;
+  color:var(--text-muted); font-family:var(--font-u); font-size:11px; letter-spacing:0.14em;
+  text-transform:uppercase; padding:7px 14px; cursor:pointer;
+  transition:border-color 0.18s, color 0.18s;
+}
+.party-action-btn:hover { border-color:var(--accent); color:var(--accent-bright); }
 
-    /* ─────────────────────────────────────────────
-       IMPROVEMENT 3: Inline quick-action buttons
-       Damage and Heal visible directly below HP bar.
-       One tap reaches the action — no popover needed
-       for the two most common cases.
-       Full menu "⋯" still opens the popover for
-       the less-common actions.
-    ───────────────────────────────────────────── */
-    .card-quick-actions {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      padding: 6px 0 4px;
-      border-top: 1px solid var(--border);
-    }
-    .cqa-btn {
-      flex: 1;
-      background: transparent;
-      border: 1px solid var(--border-vis);
-      border-radius: 3px;
-      color: var(--text-muted);
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      padding: 5px 0;
-      cursor: pointer;
-      transition: background 0.12s, border-color 0.12s, color 0.12s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 5px;
-    }
-    .cqa-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent-bright);
-      background: rgba(106,143,168,0.1);
-    }
-    .cqa-btn.dmg:hover {
-      border-color: rgba(192,96,96,0.5);
-      color: #d08080;
-      background: rgba(192,96,96,0.08);
-    }
-    .cqa-btn.heal:hover {
-      border-color: rgba(80,160,80,0.5);
-      color: #88c888;
-      background: rgba(80,160,80,0.08);
-    }
-    /* The "⋯" overflow button — less prominent */
-    .cqa-btn.more {
-      flex: 0 0 30px;
-      font-size: 14px;
-      letter-spacing: 0;
-      color: var(--text-muted);
-    }
-    .cqa-btn.more:hover {
-      border-color: var(--accent);
-      color: var(--accent-bright);
-      background: rgba(106,143,168,0.1);
-    }
+/* ─── Dice Roller panel ──────────────────────────────────────────────── */
+.dice-panel {
+  background:var(--surface); border:1px solid var(--border); border-radius:5px;
+  padding:14px; position:sticky; top:68px;
+}
+.dice-panel-title { font-family:var(--font-d); font-size:13px; letter-spacing:0.2em; text-transform:uppercase; color:var(--accent-bright); margin-bottom:12px; }
+.die-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:10px; }
+.die-btn {
+  background:var(--accent-dim); border:1px solid var(--border-vis); border-radius:4px;
+  cursor:pointer; padding:8px 0; display:flex; flex-direction:column; align-items:center; gap:3px;
+  transition:border-color 0.15s, background 0.15s;
+}
+.die-btn:hover { border-color:var(--accent); background:rgba(106,143,168,0.2); }
+.die-btn.selected { border-color:var(--accent-bright); background:rgba(106,143,168,0.25); }
+.die-svg { display:block; }
+.die-label { font-family:var(--font-u); font-size:10px; letter-spacing:0.12em; color:var(--accent-bright); }
 
-    /* Condition chips on card */
-    .card-conditions {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      padding-top: 2px;
-      padding-bottom: 4px;
-    }
-    .card-cond {
-      font-family: var(--font-ui);
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      text-transform: uppercase;
-      padding: 2px 8px;
-      border-radius: 10px;
-      cursor: pointer;
-      transition: filter 0.12s;
-    }
-    .card-cond:hover { filter: brightness(1.2); }
-    .card-cond.poisoned {
-      background: rgba(80,160,80,0.15);
-      border: 1px solid rgba(80,160,80,0.4);
-      color: #88c888;
-    }
-    .card-cond.prone {
-      background: rgba(200,144,64,0.14);
-      border: 1px solid rgba(200,144,64,0.38);
-      color: var(--ember-bright);
-    }
+/* expression display */
+.expr-display {
+  background:rgba(0,0,0,0.35); border:1px solid var(--border); border-radius:3px;
+  padding:7px 10px; font-family:var(--font-d); font-size:15px; color:var(--text);
+  min-height:34px; margin-bottom:8px; letter-spacing:0.06em;
+  display:flex; align-items:center; justify-content:space-between;
+}
+.expr-clear { background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px; opacity:0.6; }
+.expr-clear:hover { opacity:1; color:var(--text); }
 
-    /* Concentration indicator */
-    .conc-indicator {
-      display: flex;
-      align-items: center;
-      gap: 5px;
-      font-family: var(--font-ui);
-      font-size: 10px;
-      letter-spacing: 0.12em;
-      color: var(--accent-bright);
-    }
-    .conc-dot-sm {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--accent-bright);
-      box-shadow: 0 0 5px var(--accent-bright);
-      flex-shrink: 0;
-      animation: pulseDot 2.5s ease-in-out infinite;
-    }
-    @keyframes pulseDot {
-      0%, 100% { opacity: 1; }
-      50%       { opacity: 0.4; }
-    }
+.dice-controls { display:flex; gap:6px; margin-bottom:8px; align-items:center; }
+.dice-ctrl-label { font-family:var(--font-u); font-size:10px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text-muted); }
+.dice-ctrl-input {
+  background:rgba(0,0,0,0.3); border:1px solid var(--border); border-radius:3px;
+  color:var(--text); font-family:var(--font-d); font-size:13px; width:44px;
+  padding:4px 6px; text-align:center;
+}
+.adv-group { display:flex; gap:4px; }
+.adv-btn {
+  background:transparent; border:1px solid var(--border); border-radius:3px;
+  color:var(--text-muted); font-family:var(--font-u); font-size:10px; letter-spacing:0.1em;
+  padding:4px 8px; cursor:pointer; transition:border-color 0.15s, color 0.15s;
+}
+.adv-btn.active { border-color:var(--accent); color:var(--accent-bright); background:var(--accent-dim); }
 
-    /* Inspiration indicator */
-    .insp-indicator {
-      width: 14px;
-      height: 14px;
-      border-radius: 50%;
-      background: var(--ember-gem);
-      box-shadow: 0 0 6px rgba(200,144,76,0.6);
-      flex-shrink: 0;
-      display: inline-block;
-      vertical-align: middle;
-      margin-right: 3px;
-    }
+.roll-btn {
+  width:100%; padding:10px; background:rgba(30,58,78,0.5); border:1px solid var(--accent);
+  border-radius:3px; color:var(--accent-bright); font-family:var(--font-d); font-size:14px;
+  letter-spacing:0.2em; cursor:pointer; transition:background 0.15s, border-color 0.15s;
+  margin-bottom:10px;
+}
+.roll-btn:hover { background:rgba(50,80,100,0.55); border-color:var(--accent-bright); }
+.roll-btn:active { transform:scale(0.98); }
+.roll-btn.rolling { pointer-events:none; opacity:0.7; }
 
-    /* Card right column: AC + action btn */
-    .card-right {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 8px;
-    }
-    .ac-badge {
-      background: var(--surface);
-      border: 1px solid var(--border-vis);
-      border-radius: 4px;
-      padding: 5px 10px;
-      text-align: center;
-      min-width: 46px;
-    }
-    .ac-num {
-      font-family: var(--font-display);
-      font-size: 20px;
-      line-height: 1;
-      color: var(--gem);
-    }
-    .ac-lbl {
-      font-family: var(--font-ui);
-      font-size: 9px;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
+/* dice animation stage */
+.dice-stage { display:flex; gap:8px; justify-content:center; min-height:48px; margin-bottom:8px; flex-wrap:wrap; }
+.die-shape-wrap { display:flex; flex-direction:column; align-items:center; gap:3px; }
+.die-shape { display:flex; align-items:center; justify-content:center; }
+.die-result-num { font-family:var(--font-d); font-size:13px; color:var(--text-muted); opacity:0; }
+.die-result-num.visible { animation:diceResultIn 0.2s ease-out forwards; opacity:1; }
 
-    /* Sheet link */
-    .card-sheet-link {
-      font-family: var(--font-ui);
-      font-size: 10px;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      text-decoration: none;
-      padding: 3px 0;
-      transition: color 0.15s;
-      white-space: nowrap;
-    }
-    .card-sheet-link:hover { color: var(--accent-bright); }
+/* result display */
+.result-area { text-align:center; margin-bottom:8px; min-height:40px; }
+.result-total { font-family:var(--font-d); font-size:32px; color:var(--gem); opacity:0; transition:opacity 0.15s; }
+.result-total.visible { opacity:1; animation:diceResultIn 0.2s ease-out; }
+.result-total.nat20 { color:#f0d060; animation:diceResultIn 0.2s ease-out, nat20Burst 0.5s ease-out 0.1s; }
+.result-total.nat1  { color:#c06060; animation:diceResultIn 0.2s ease-out, nat1Flash 0.2s ease-in-out; }
+.result-label {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.28em; text-transform:uppercase;
+  margin-top:2px; opacity:0;
+}
+.result-label.visible { animation:diceResultIn 0.2s ease-out 0.1s forwards; }
+.result-label.nat20 { color:#f0d060; }
+.result-label.nat1  { color:#c06060; }
 
-    /* ─────────────────────────────────────────────
-       ACTION MODALS (Deal Damage / Heal)
-       Appear as centered overlays. Contain both
-       a stepper and a direct type-in input so the
-       DM can use whichever is faster.
-    ───────────────────────────────────────────── */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.72);
-      z-index: 400;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-overlay.open {
-      display: flex;
-    }
-    .modal-panel {
-      background: var(--surface-solid);
-      border: 1px solid var(--border-vis);
-      border-radius: 6px;
-      width: 320px;
-      box-shadow: 0 16px 48px rgba(0,0,0,0.6);
-      overflow: hidden;
-    }
-    .modal-header {
-      padding: 14px 18px 12px;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .modal-title {
-      font-family: var(--font-display);
-      font-size: 15px;
-      letter-spacing: 0.1em;
-      color: var(--accent-bright);
-    }
-    .modal-title.dmg { color: #d08080; }
-    .modal-title.heal { color: #88c888; }
-    .modal-close {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 18px;
-      cursor: pointer;
-      line-height: 1;
-      padding: 0;
-      transition: color 0.12s;
-    }
-    .modal-close:hover { color: var(--text); }
-    .modal-body {
-      padding: 18px 18px 6px;
-    }
-    .modal-char-context {
-      font-family: var(--font-ui);
-      font-size: 10px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      margin-bottom: 14px;
-    }
+/* apply-to pills */
+.apply-row {
+  display:flex; flex-wrap:wrap; gap:5px; justify-content:center;
+  margin-bottom:8px; opacity:0; pointer-events:none;
+}
+.apply-row.visible { opacity:1; pointer-events:auto; animation:applyRowIn 0.2s ease-out; }
+.apply-pill {
+  background:rgba(0,0,0,0.3); border:1px solid; border-radius:3px; padding:4px 9px;
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+  cursor:pointer; transition:background 0.15s;
+}
+.apply-pill:hover { background:rgba(255,255,255,0.06); }
 
-    /* ─────────────────────────────────────────────
-       IMPROVEMENT 2: Stepper + type-in in the modal
-       The DM can tap +/− to build the value OR type
-       directly. Long-press on ± increments by 5
-       (shown in prototype via separate ±5 buttons).
-    ───────────────────────────────────────────── */
-    .amount-stepper-row {
-      display: flex;
-      align-items: center;
-      gap: 0;
-      margin-bottom: 12px;
-    }
-    .amt-step-btn {
-      width: 40px;
-      height: 52px;
-      border: 1px solid var(--border-vis);
-      background: rgba(18,32,48,0.4);
-      color: var(--text-muted);
-      font-family: var(--font-display);
-      font-size: 20px;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: background 0.12s, border-color 0.12s, color 0.12s;
-      user-select: none;
-      flex-shrink: 0;
-    }
-    .amt-step-btn:first-child {
-      border-radius: 3px 0 0 3px;
-    }
-    .amt-step-btn:last-child {
-      border-radius: 0 3px 3px 0;
-    }
-    .amt-step-btn:hover {
-      background: rgba(106,143,168,0.18);
-      border-color: var(--accent);
-      color: var(--accent-bright);
-    }
-    .amt-step-btn:active {
-      background: rgba(106,143,168,0.32);
-    }
-    #dmg-modal .amt-step-btn:hover {
-      background: rgba(192,96,96,0.14);
-      border-color: rgba(192,96,96,0.5);
-      color: #d08080;
-    }
-    #heal-modal .amt-step-btn:hover {
-      background: rgba(80,160,80,0.12);
-      border-color: rgba(80,160,80,0.45);
-      color: #88c888;
-    }
+/* roll history */
+.history-list { border-top:1px solid var(--border); padding-top:8px; display:flex; flex-direction:column; gap:3px; }
+.history-row {
+  display:flex; justify-content:space-between; align-items:center;
+  font-family:var(--font-u); font-size:11px; padding:2px 0;
+  animation:historySlideIn 0.18s ease-out;
+}
+.history-row:nth-child(1) { opacity:1; }
+.history-row:nth-child(2) { opacity:0.55; }
+.history-row:nth-child(3) { opacity:0.3; }
+.history-row:nth-child(4) { opacity:0.15; }
+.history-row:nth-child(n+5) { display:none; }
+.history-expr { color:var(--text-muted); letter-spacing:0.1em; }
+.history-val  { color:var(--text); font-family:var(--font-d); }
 
-    .amt-input {
-      flex: 1;
-      border: 1px solid var(--border-vis);
-      border-left: none;
-      border-right: none;
-      border-radius: 0;
-      background: var(--surface);
-      color: var(--text);
-      font-family: var(--font-display);
-      font-size: 30px;
-      text-align: center;
-      height: 52px;
-      outline: none;
-      min-width: 0;
-      -moz-appearance: textfield;
-    }
-    .amt-input::-webkit-outer-spin-button,
-    .amt-input::-webkit-inner-spin-button { -webkit-appearance: none; }
-    .amt-input:focus {
-      border-color: var(--accent);
-      background: rgba(18,32,48,0.8);
-    }
-    #dmg-modal .amt-input:focus { border-color: rgba(192,96,96,0.5); }
-    #heal-modal .amt-input:focus { border-color: rgba(80,160,80,0.45); }
+/* ─── Sidebar panels ─────────────────────────────────────────────────── */
+.panel {
+  background:var(--surface); border:1px solid var(--border); border-radius:5px;
+  overflow:hidden; margin-bottom:14px;
+}
+.panel-header {
+  padding:10px 14px; display:flex; align-items:center; gap:8px;
+  border-bottom:1px solid var(--border);
+}
+.panel-title { font-family:var(--font-d); font-size:12px; letter-spacing:0.2em; text-transform:uppercase; color:var(--accent-bright); flex:1; }
+.panel-body { padding:10px 14px; }
 
-    /* Jump buttons: +5 / +10 preset values */
-    .preset-row {
-      display: flex;
-      gap: 5px;
-      margin-bottom: 16px;
-    }
-    .preset-btn {
-      flex: 1;
-      background: transparent;
-      border: 1px solid var(--border);
-      border-radius: 3px;
-      color: var(--text-muted);
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.1em;
-      padding: 5px 0;
-      cursor: pointer;
-      transition: background 0.12s, border-color 0.12s, color 0.12s;
-      text-align: center;
-    }
-    .preset-btn:hover {
-      border-color: var(--accent);
-      color: var(--accent-bright);
-      background: rgba(106,143,168,0.1);
-    }
-    #dmg-modal .preset-btn:hover {
-      border-color: rgba(192,96,96,0.45);
-      color: #d08080;
-      background: rgba(192,96,96,0.08);
-    }
-    #heal-modal .preset-btn:hover {
-      border-color: rgba(80,160,80,0.4);
-      color: #88c888;
-      background: rgba(80,160,80,0.07);
-    }
+/* ─── Initiative tracker ─────────────────────────────────────────────── */
+.next-turn-btn {
+  width:100%; padding:9px; margin-bottom:10px; background:rgba(30,58,78,0.4);
+  border:1px solid var(--accent); border-radius:3px; color:var(--accent-bright);
+  font-family:var(--font-d); font-size:13px; letter-spacing:0.2em; cursor:pointer;
+  transition:background 0.15s;
+}
+.next-turn-btn:hover { background:rgba(50,80,100,0.55); }
+.init-list { display:flex; flex-direction:column; gap:2px; }
+.init-row {
+  display:flex; align-items:center; gap:8px; padding:5px 7px; border-radius:3px;
+  transition:background 0.25s, opacity 0.25s;
+}
+.init-row.active { background:rgba(255,255,255,0.06); }
+.init-indicator { width:3px; height:18px; border-radius:2px; flex-shrink:0; opacity:0; transition:opacity 0.25s; }
+.init-row.active .init-indicator { opacity:1; animation:accentPulse 2s ease-in-out infinite; }
+.init-name { font-family:var(--font-u); font-size:12px; letter-spacing:0.1em; flex:1; }
+.init-val  { font-family:var(--font-d); font-size:12px; color:var(--text-muted); }
+.init-dot  { width:7px; height:7px; border-radius:50%; flex-shrink:0; }
+.init-dead { text-decoration:line-through; opacity:0.45; }
 
-    .modal-confirm-btn {
-      width: 100%;
-      background: rgba(18,32,48,0.6);
-      border: 1px solid var(--accent);
-      border-radius: 3px;
-      color: var(--accent-bright);
-      font-family: var(--font-ui);
-      font-size: 13px;
-      letter-spacing: 0.16em;
-      text-transform: uppercase;
-      padding: 11px 0;
-      cursor: pointer;
-      transition: background 0.15s;
-      margin-bottom: 10px;
-    }
-    .modal-confirm-btn:hover { background: rgba(106,143,168,0.2); }
-    .modal-confirm-btn.dmg {
-      border-color: rgba(192,96,96,0.55);
-      color: #d08080;
-    }
-    .modal-confirm-btn.dmg:hover { background: rgba(192,96,96,0.14); }
-    .modal-confirm-btn.heal {
-      border-color: rgba(80,160,80,0.5);
-      color: #88c888;
-    }
-    .modal-confirm-btn.heal:hover { background: rgba(80,160,80,0.1); }
+/* ─── NPC Cards ──────────────────────────────────────────────────────── */
+.npc-section { margin-top:8px; }
+.npc-section-label {
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.28em; text-transform:uppercase;
+  color:var(--text-muted); padding:0 2px 6px; border-bottom:1px solid var(--border); margin-bottom:8px;
+}
+.npc-card {
+  border-radius:4px; border:1px solid var(--npc-border); background:var(--npc-surface);
+  position:relative; overflow:hidden; margin-bottom:8px;
+  transition:transform 0.3s ease-out, box-shadow 0.3s, opacity 0.25s, border-color 0.3s;
+}
+.npc-card::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:4px 0 0 4px;
+  background:var(--npc-accent); transition:background 0.3s, opacity 0.3s;
+}
+.npc-card.active-turn { transform:translateY(-2px); box-shadow:0 4px 14px rgba(150,130,80,0.2); }
+.npc-card.active-turn::before { animation:accentPulse 2s ease-in-out infinite; }
+.npc-card.dimmed { opacity:0.82; }
+.npc-card.bloodied::before { background:#c8a040; animation:bloodiedFlash 0.2s ease-in-out; }
+.npc-card.dead { opacity:0.7; }
+.npc-card.dead::after {
+  content:''; position:absolute; inset:0; pointer-events:none; border-radius:4px;
+  background:linear-gradient(rgba(192,96,96,0.1),rgba(0,0,0,0.15));
+}
 
-    .modal-footer {
-      padding: 0 18px 14px;
-    }
+.npc-header { padding:9px 12px 4px; display:flex; align-items:center; gap:8px; }
+.npc-name { font-family:var(--font-d); font-size:13px; letter-spacing:0.1em; flex:1; }
+.npc-name.dead { text-decoration:line-through; opacity:0.6; }
+.npc-hp-nums { font-family:var(--font-d); font-size:11px; color:var(--text-muted); flex-shrink:0; }
+.npc-badge {
+  font-family:var(--font-u); font-size:9px; letter-spacing:0.2em; text-transform:uppercase;
+  padding:2px 6px; border-radius:2px; flex-shrink:0;
+}
+.badge-bloodied { color:#c8a040; border:1px solid rgba(200,160,64,0.4); background:rgba(200,160,64,0.08); animation:conditionIn 0.18s ease-out; }
+.badge-dead     { color:#c06060; border:1px solid rgba(192,96,96,0.4); background:rgba(192,96,96,0.08); animation:conditionIn 0.25s ease-out; }
 
-    /* ── Quick-action popover (full menu) ── */
-    .popover-wrap {
-      position: relative;
-    }
-    .quick-popover {
-      display: none;
-      position: absolute;
-      right: 0;
-      top: 34px;
-      z-index: 200;
-      background: var(--surface-solid);
-      border: 1px solid var(--border-vis);
-      border-radius: 5px;
-      min-width: 210px;
-      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-      overflow: hidden;
-    }
-    .quick-popover.open { display: block; }
+.npc-bar-wrap { padding:0 12px 0; position:relative; }
+.npc-bar-track { position:relative; height:8px; border-radius:2px; background:rgba(0,0,0,0.35); overflow:visible; }
+.npc-segments { display:flex; position:absolute; inset:0; border-radius:2px; overflow:hidden; gap:1px; }
+.npc-seg { flex:1; position:relative; overflow:hidden; }
+.npc-seg-fill { position:absolute; inset:0; border-radius:1px; }
+.npc-seg-ghost { position:absolute; inset:0; border-radius:1px; background:rgba(255,255,255,0.2); animation:hpDamageFlash 0.4s ease-out forwards; }
 
-    .popover-header {
-      font-family: var(--font-ui);
-      font-size: 10px;
-      letter-spacing: 0.24em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      padding: 9px 14px 8px;
-      border-bottom: 1px solid var(--border);
-    }
-    .popover-action {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 10px 14px;
-      font-family: var(--font-ui);
-      font-size: 13px;
-      letter-spacing: 0.08em;
-      color: var(--text);
-      cursor: pointer;
-      border-bottom: 1px solid var(--border);
-      transition: background 0.12s;
-    }
-    .popover-action:last-child { border-bottom: none; }
-    .popover-action:hover { background: rgba(106,143,168,0.12); }
-    .popover-action .pa-icon {
-      width: 18px;
-      text-align: center;
-      color: var(--accent-bright);
-      font-size: 15px;
-    }
-    .popover-action.destructive { color: #c06060; }
-    .popover-action.destructive .pa-icon { color: #c06060; }
+.npc-actions { padding:8px 10px 8px; display:flex; gap:6px; }
+.npc-btn {
+  border-radius:3px; border:1px solid; font-family:var(--font-u); font-size:10px; letter-spacing:0.1em;
+  text-transform:uppercase; cursor:pointer; height:26px; transition:background 0.12s;
+  display:flex; align-items:center; justify-content:center; gap:3px; padding:0 10px;
+  flex:0 0 auto;
+}
+.npc-dmg {
+  background:rgba(192,96,96,0.15); border-color:rgba(192,96,96,0.35); color:#e08888;
+}
+.npc-dmg:hover { background:rgba(192,96,96,0.28); }
+.npc-dmg:active { background:rgba(192,96,96,0.4); }
+.npc-heal { background:transparent; border-color:var(--npc-border); color:var(--npc-accent); }
+.npc-heal:hover { background:rgba(150,130,80,0.15); }
+.npc-revive { flex:1; background:rgba(88,200,144,0.1); border-color:rgba(88,200,144,0.3); color:#58c890; }
+.npc-revive:hover { background:rgba(88,200,144,0.2); }
+.npc-remove { background:none; border:none; color:var(--text-muted); font-size:14px; cursor:pointer; padding:0 4px; }
+.npc-remove:hover { color:#c06060; }
 
-    /* ── Right column: initiative tracker ── */
-    .initiative-column {
-      border-left: 1px solid var(--border);
-      padding-left: 20px;
-    }
-    @media (max-width: 900px) {
-      .initiative-column {
-        border-left: none;
-        border-top: 1px solid var(--border);
-        padding-left: 0;
-        padding-top: 20px;
-        margin-top: 20px;
-      }
-    }
+.add-enemy-btn {
+  width:100%; padding:7px; background:transparent; border:1px dashed rgba(150,130,80,0.3);
+  border-radius:3px; color:var(--npc-accent); font-family:var(--font-u); font-size:11px;
+  letter-spacing:0.15em; text-transform:uppercase; cursor:pointer; margin-top:4px;
+  transition:border-color 0.15s, background 0.15s;
+}
+.add-enemy-btn:hover { border-color:var(--npc-accent); background:rgba(150,130,80,0.08); }
 
-    .init-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      margin-bottom: 14px;
-    }
-    .init-title {
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.3em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-    }
-    .init-clear-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.12em;
-      cursor: pointer;
-      padding: 3px 0;
-      transition: color 0.15s;
-    }
-    .init-clear-btn:hover { color: #c06060; }
+/* ─── Map library strip ──────────────────────────────────────────────── */
+.map-strip {
+  display:flex; gap:10px; overflow-x:auto; padding:14px 20px;
+  border-top:1px solid var(--border);
+  overflow:hidden; max-height:120px;
+  transition:max-height 0.2s ease-in, opacity 0.2s ease-in;
+}
+.combat-active .map-strip { max-height:0; opacity:0; pointer-events:none; }
+.map-thumb {
+  flex-shrink:0; width:90px; height:68px; border-radius:3px; border:1px solid var(--border);
+  background:repeating-linear-gradient(45deg,rgba(255,255,255,0.02),rgba(255,255,255,0.02) 1px,transparent 1px,transparent 6px);
+  cursor:pointer; display:flex; align-items:center; justify-content:center; transition:border-color 0.15s;
+  position:relative;
+}
+.map-thumb:hover { border-color:var(--accent); }
+.map-thumb.active { border-color:#58c890; }
+.map-thumb-dot { position:absolute; top:4px; right:4px; width:6px; height:6px; border-radius:50%; background:#58c890; }
+.map-thumb-label { font-family:var(--font-u); font-size:9px; letter-spacing:0.12em; text-transform:uppercase; color:var(--text-muted); }
+.map-add-btn {
+  flex-shrink:0; width:68px; height:68px; border-radius:3px; border:1px dashed var(--border);
+  background:transparent; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  color:var(--text-muted); font-size:22px; transition:border-color 0.15s, color 0.15s;
+}
+.map-add-btn:hover { border-color:var(--accent); color:var(--accent-bright); }
 
-    .init-list {
-      list-style: none;
-      margin-bottom: 14px;
-    }
-    .init-entry {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 9px 12px;
-      border-radius: 4px;
-      margin-bottom: 3px;
-      background: var(--surface);
-      border: 1px solid var(--border);
-      transition: border-color 0.15s;
-    }
-    .init-entry.current-turn {
-      border-color: var(--accent);
-      background: rgba(106,143,168,0.12);
-    }
-    .init-num {
-      font-family: var(--font-display);
-      font-size: 18px;
-      color: var(--gem);
-      width: 28px;
-      text-align: center;
-      flex-shrink: 0;
-    }
-    .init-entry.current-turn .init-num { color: var(--accent-bright); }
-    .init-name {
-      font-family: var(--font-body);
-      font-size: 15px;
-      color: var(--text);
-      flex: 1;
-    }
-    .init-entry.current-turn .init-name { color: var(--accent-bright); font-weight: 600; }
-    .init-npc-tag {
-      font-family: var(--font-ui);
-      font-size: 9px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      color: var(--text-muted);
-      background: rgba(100,130,160,0.1);
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      padding: 1px 6px;
-    }
-    .current-marker {
-      font-family: var(--font-ui);
-      font-size: 10px;
-      letter-spacing: 0.1em;
-      color: var(--accent-bright);
-      white-space: nowrap;
-    }
-    .init-remove-btn {
-      background: transparent;
-      border: none;
-      color: var(--text-muted);
-      font-size: 14px;
-      cursor: pointer;
-      padding: 2px 4px;
-      border-radius: 3px;
-      transition: color 0.12s, background 0.12s;
-      line-height: 1;
-    }
-    .init-remove-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+/* ─── Sidebar empty initiative ───────────────────────────────────────── */
+.init-empty {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.12em; color:var(--text-muted);
+  text-align:center; padding:10px 0;
+}
 
-    .next-turn-btn {
-      background: rgba(18,32,48,0.5);
-      border: 1px solid var(--accent);
-      border-radius: 4px;
-      color: var(--accent-bright);
-      font-family: var(--font-ui);
-      font-size: 12px;
-      letter-spacing: 0.2em;
-      text-transform: uppercase;
-      padding: 9px 0;
-      width: 100%;
-      cursor: pointer;
-      margin-bottom: 10px;
-      transition: background 0.15s;
-    }
-    .next-turn-btn:hover { background: rgba(106,143,168,0.22); }
+/* ─── Callout annotations ────────────────────────────────────────────── */
+.callout {
+  position:absolute; background:rgba(160,192,208,0.1); border:1px solid rgba(160,192,208,0.3);
+  border-radius:3px; color:#a0c0d0; font-family:var(--font-u); font-size:11px;
+  letter-spacing:0.15em; padding:4px 9px; pointer-events:none; text-transform:uppercase;
+  white-space:nowrap; z-index:50;
+}
 
-    /* Add combatant */
-    .add-combatant {
-      display: flex;
-      gap: 6px;
-      margin-top: 8px;
-    }
-    .init-input {
-      flex: 1;
-      background: var(--surface);
-      border: 1px solid var(--border-vis);
-      border-radius: 3px;
-      color: var(--text);
-      font-family: var(--font-body);
-      font-size: 14px;
-      padding: 7px 10px;
-      outline: none;
-    }
-    .init-num-input {
-      width: 50px;
-      background: var(--surface);
-      border: 1px solid var(--border-vis);
-      border-radius: 3px;
-      color: var(--text);
-      font-family: var(--font-display);
-      font-size: 15px;
-      padding: 7px 6px;
-      outline: none;
-      text-align: center;
-    }
-    .init-add-btn {
-      background: transparent;
-      border: 1px solid var(--border-vis);
-      border-radius: 3px;
-      color: var(--accent-bright);
-      font-family: var(--font-ui);
-      font-size: 13px;
-      padding: 7px 12px;
-      cursor: pointer;
-      transition: border-color 0.15s, background 0.15s;
-    }
-    .init-add-btn:hover { border-color: var(--accent); background: rgba(106,143,168,0.15); }
-
-    /* ── Danger highlight ── */
-    .danger-border {
-      border-color: rgba(192,96,96,0.45) !important;
-    }
-    .danger-border::before {
-      background: #c06060 !important;
-    }
-
-    /* ── Party-wide rest row ── */
-    .rest-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 6px;
-    }
-    .rest-party-btn {
-      flex: 1;
-      background: transparent;
-      border: 1px solid var(--border-vis);
-      border-radius: 4px;
-      color: var(--text-muted);
-      font-family: var(--font-ui);
-      font-size: 11px;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      padding: 8px 0;
-      cursor: pointer;
-      text-align: center;
-      transition: border-color 0.15s, color 0.15s;
-    }
-    .rest-party-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
-
-    /* ── HP delta feedback ── */
-    @keyframes hpDelta {
-      0%   { opacity: 1; transform: translateY(0); }
-      70%  { opacity: 1; transform: translateY(-16px); }
-      100% { opacity: 0; transform: translateY(-22px); }
-    }
-    .hp-delta {
-      position: absolute;
-      right: 5px;
-      top: -4px;
-      font-family: var(--font-display);
-      font-size: 13px;
-      pointer-events: none;
-      animation: hpDelta 0.7s ease-out forwards;
-    }
-    .hp-delta.neg { color: #d08080; }
-    .hp-delta.pos { color: #88c888; }
-  </style>
+/* ─── Legend ─────────────────────────────────────────────────────────── */
+.legend {
+  border-top:1px solid var(--border); margin:40px 20px 0; padding:24px 0 60px;
+}
+.legend-title { font-family:var(--font-d); font-size:14px; letter-spacing:0.2em; color:var(--accent-bright); margin-bottom:16px; text-transform:uppercase; }
+.legend-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px 24px; }
+.legend-item { display:flex; gap:10px; align-items:start; }
+.legend-num { font-family:var(--font-d); font-size:12px; color:var(--accent); flex-shrink:0; width:20px; }
+.legend-text { font-family:var(--font-b); font-style:italic; font-size:13px; color:var(--text-muted); line-height:1.5; }
+</style>
 </head>
 <body>
 
-<!-- Annotation banner -->
-<div class="annotation-bar">
-  <p><strong>Prototype: DM Dashboard v2</strong> — Three improvements: <strong>(1)</strong> Inline HP steppers on each card &nbsp;·&nbsp; <strong>(2)</strong> Stepper + type-in in the Deal Damage / Heal modals &nbsp;·&nbsp; <strong>(3)</strong> Damage and Heal buttons always visible on card; full menu via ⋯. Click the buttons to see interactions.</p>
+<!-- Prototype header -->
+<div class="proto-header">
+  <span class="proto-title">DM Dashboard — Design Prototype</span>
+  <span class="proto-note">Click "Start Combat" to enter combat mode. Click cards to set active turn. Click dice to roll.</span>
 </div>
 
 <!-- Top bar -->
-<div class="topbar">
-  <div>
-    <div class="topbar-title">DM Dashboard</div>
-    <div class="topbar-subtitle">Session in progress · 3 players</div>
-  </div>
-  <div class="topbar-spacer"></div>
+<nav class="top-bar">
+  <span class="top-bar-back">← Library</span>
+  <span class="top-bar-title">Campaign</span>
+  <button class="top-bar-btn top-bar-party-menu" onclick="openPartyMenu()">⋯ Party</button>
+  <button class="top-bar-btn" onclick="/* manage party */">Manage Party</button>
+  <button id="combatToggleBtn" class="top-bar-btn combat-start" onclick="toggleCombat()">⚔ Start Combat</button>
+</nav>
 
-  <span class="callout-note" style="margin:0 12px 0 0;">Party-wide rest controls in toolbar — apply long/short rest to all characters at once</span>
+<div class="dashboard-wrap" id="dashboardWrap">
+<!-- Dashboard grid -->
+<div class="dashboard" id="dashboard">
 
-  <button class="topbar-btn secondary">◑ Short Rest</button>
-  <button class="topbar-btn">⏾ Long Rest</button>
-</div>
+<!-- ── LEFT: Party column ─────────────────────────────────── -->
+<div class="col-party" id="colParty">
 
-<!-- Dashboard layout -->
-<div class="dashboard-layout">
-
-  <!-- LEFT: Party cards -->
-  <div class="party-column">
-
-    <div class="section-label">Party</div>
-
-    <span class="callout-note">Each card uses its character's palette for the accent stripe, portrait border, name color, and HP bar — providing instant visual identification. Dashboard chrome stays neutral Ocean palette.</span>
-
-    <!-- ══ Card 1: Aragorn (ember, ~62% HP, concentrating, inspiration) ══ -->
-    <div class="char-card ember" id="card-aragorn">
-      <div class="card-main">
-
-        <div class="portrait ember">A</div>
-
-        <div class="card-info" style="min-width:0;">
-          <div class="card-name ember">Aragorn</div>
-          <div class="card-meta">Human · Ranger · Lvl 8</div>
-
-          <!-- HP numbers row -->
-          <div class="hp-inline">
-            <div class="hp-nums">
-              <span class="hp-cur ember" id="aragorn-hp">28</span>
-              <span class="hp-sep-sm">/</span>
-              <span class="hp-max-sm">45</span>
-            </div>
-            <span class="temp-badge-sm">+8 temp</span>
-          </div>
-
-          <!-- IMPROVEMENT 1: Inline HP stepper bar -->
-          <div class="hp-stepper-row" style="position:relative;">
-            <button class="hp-step-btn minus" onclick="stepHP('aragorn', -1)" title="Deal 1 damage (hold for −5)">−</button>
-            <div class="hp-bar-wrap">
-              <div class="hp-bar-track ember">
-                <div class="hp-bar-fill ember-healthy" id="aragorn-bar"></div>
-              </div>
-            </div>
-            <button class="hp-step-btn plus" onclick="stepHP('aragorn', 1)" title="Heal 1 HP (hold for +5)">+</button>
-          </div>
-
-          <!-- Conditions + indicators -->
-          <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding-bottom:2px;">
-            <div class="conc-indicator">
-              <div class="conc-dot-sm"></div>
-              Fly
-            </div>
-            <div style="display:flex; align-items:center; gap:4px; font-family:var(--font-ui); font-size:10px; letter-spacing:0.1em; color:var(--ember-gem);">
-              <div class="insp-indicator"></div>
-              Inspired
-            </div>
-          </div>
-
-          <!-- IMPROVEMENT 3: Inline quick-action buttons -->
-          <div class="card-quick-actions">
-            <button class="cqa-btn dmg" onclick="openModal('dmg','Aragorn')">⚔ Damage</button>
-            <button class="cqa-btn heal" onclick="openModal('heal','Aragorn')">✦ Heal</button>
-            <button class="cqa-btn more popover-wrap" onclick="togglePopover('popover-aragorn', this)" title="More actions">⋯
-              <div class="quick-popover" id="popover-aragorn">
-                <div class="popover-header">Aragorn — More Actions</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">◈</span> Add Condition</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⬡</span> Set Temp HP</div>
-                <div class="popover-action destructive" onclick="closeAllPopovers()"><span class="pa-icon">○</span> Drop Concentration</div>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        <!-- Right: AC + sheet link -->
-        <div class="card-right">
-          <div class="ac-badge">
-            <div class="ac-num">16</div>
-            <div class="ac-lbl">AC</div>
-          </div>
-          <a href="#" class="card-sheet-link">↗ Sheet</a>
-        </div>
-
+  <!-- Map panel -->
+  <div class="map-panel expanded" id="mapPanel">
+    <div class="map-header" onclick="toggleMap()">
+      <div class="map-dot"></div>
+      <span class="map-label">Catacombs — Level 2</span>
+      <span class="map-toggle" id="mapToggle">▲</span>
+    </div>
+    <div class="map-body">
+      <div class="map-placeholder">
+        <span class="map-placeholder-text">Active Map</span>
       </div>
-    </div>
-
-    <span class="callout-new">Improvement 1: The − / + buttons flank the HP bar directly on the card. One tap adjusts by 1; hold for 5 (simulated here as single taps). No menu needed for quick damage/heal tweaks.</span>
-    <span class="callout-new">Improvement 3: "Damage" and "Heal" buttons are always visible below the HP bar. Tapping them opens the amount modal. "⋯" opens a smaller popover for the less-common actions (Add Condition, Temp HP, Drop Concentration).</span>
-
-    <!-- ══ Card 2: Eoghan (ocean, ~30% HP — danger) ══ -->
-    <div class="char-card ocean danger-border" id="card-eoghan">
-      <div class="card-main">
-
-        <div class="portrait ocean">E</div>
-
-        <div class="card-info" style="min-width:0;">
-          <div class="card-name ocean">Eoghan</div>
-          <div class="card-meta">Half-Elf · Cleric · Lvl 8</div>
-
-          <!-- HP numbers row — danger -->
-          <div class="hp-inline">
-            <div class="hp-nums">
-              <span class="hp-cur danger" id="eoghan-hp">13</span>
-              <span class="hp-sep-sm">/</span>
-              <span class="hp-max-sm">44</span>
-            </div>
-          </div>
-
-          <!-- IMPROVEMENT 1: Inline HP stepper bar -->
-          <div class="hp-stepper-row" style="position:relative;">
-            <button class="hp-step-btn minus" onclick="stepHP('eoghan', -1)" title="Deal 1 damage">−</button>
-            <div class="hp-bar-wrap">
-              <div class="hp-bar-track ocean">
-                <div class="hp-bar-fill ocean-warning" id="eoghan-bar"></div>
-              </div>
-            </div>
-            <button class="hp-step-btn plus" onclick="stepHP('eoghan', 1)" title="Heal 1 HP">+</button>
-          </div>
-
-          <div class="card-conditions">
-            <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.14em; color:var(--text-muted);">No conditions</span>
-          </div>
-
-          <!-- IMPROVEMENT 3: Inline quick-action buttons -->
-          <div class="card-quick-actions">
-            <button class="cqa-btn dmg" onclick="openModal('dmg','Eoghan')">⚔ Damage</button>
-            <button class="cqa-btn heal" onclick="openModal('heal','Eoghan')">✦ Heal</button>
-            <button class="cqa-btn more popover-wrap" onclick="togglePopover('popover-eoghan', this)" title="More actions">⋯
-              <div class="quick-popover" id="popover-eoghan">
-                <div class="popover-header">Eoghan — More Actions</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">◈</span> Add Condition</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⬡</span> Set Temp HP</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⏾</span> Short Rest</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">☾</span> Long Rest</div>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        <!-- Right: AC + sheet link -->
-        <div class="card-right">
-          <div class="ac-badge">
-            <div class="ac-num">14</div>
-            <div class="ac-lbl">AC</div>
-          </div>
-          <a href="#" class="card-sheet-link">↗ Sheet</a>
-        </div>
-
-      </div>
-    </div>
-
-    <span class="callout-note">Eoghan at 30% HP — card border turns danger red, HP bar shifts to amber, HP number in #c06060. The inline Damage / Heal buttons are still visible and tappable even in danger state.</span>
-
-    <!-- ══ Card 3: Aesop (forest, ~75% HP, Poisoned condition) ══ -->
-    <div class="char-card forest" id="card-aesop">
-      <div class="card-main">
-
-        <div class="portrait forest">Æ</div>
-
-        <div class="card-info" style="min-width:0;">
-          <div class="card-name forest">Aesop</div>
-          <div class="card-meta">Gnome · Wizard · Lvl 8</div>
-
-          <!-- HP numbers row -->
-          <div class="hp-inline">
-            <div class="hp-nums">
-              <span class="hp-cur forest" id="aesop-hp">33</span>
-              <span class="hp-sep-sm">/</span>
-              <span class="hp-max-sm">44</span>
-            </div>
-          </div>
-
-          <!-- IMPROVEMENT 1: Inline HP stepper bar -->
-          <div class="hp-stepper-row" style="position:relative;">
-            <button class="hp-step-btn minus" onclick="stepHP('aesop', -1)" title="Deal 1 damage">−</button>
-            <div class="hp-bar-wrap">
-              <div class="hp-bar-track forest">
-                <div class="hp-bar-fill forest-healthy" id="aesop-bar"></div>
-              </div>
-            </div>
-            <button class="hp-step-btn plus" onclick="stepHP('aesop', 1)" title="Heal 1 HP">+</button>
-          </div>
-
-          <div class="card-conditions">
-            <span class="card-cond poisoned" onclick="this.remove()">Poisoned ×</span>
-          </div>
-
-          <!-- IMPROVEMENT 3: Inline quick-action buttons -->
-          <div class="card-quick-actions">
-            <button class="cqa-btn dmg" onclick="openModal('dmg','Aesop')">⚔ Damage</button>
-            <button class="cqa-btn heal" onclick="openModal('heal','Aesop')">✦ Heal</button>
-            <button class="cqa-btn more popover-wrap" onclick="togglePopover('popover-aesop', this)" title="More actions">⋯
-              <div class="quick-popover" id="popover-aesop">
-                <div class="popover-header">Aesop — More Actions</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">◈</span> Add Condition</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⬡</span> Set Temp HP</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">⏾</span> Short Rest</div>
-                <div class="popover-action" onclick="closeAllPopovers()"><span class="pa-icon">☾</span> Long Rest</div>
-              </div>
-            </button>
-          </div>
-        </div>
-
-        <div class="card-right">
-          <div class="ac-badge">
-            <div class="ac-num">13</div>
-            <div class="ac-lbl">AC</div>
-          </div>
-          <a href="#" class="card-sheet-link">↗ Sheet</a>
-        </div>
-
-      </div>
-    </div>
-
-    <span class="callout-note">Condition chip directly tappable — clicking Poisoned × removes the condition inline. Forest palette stripe immediately distinguishes Aesop from the other two cards above.</span>
-
-    <!-- Party-wide rest -->
-    <div style="margin-top:16px;">
-      <div class="section-label">Party-Wide Actions</div>
-      <div class="rest-row">
-        <button class="rest-party-btn">◑ Short Rest — Reset Pact Magic</button>
-        <button class="rest-party-btn">⏾ Long Rest — Reset All Slots + HP</button>
-      </div>
-    </div>
-    <span class="callout-note">Party-wide rest buttons also appear in the top toolbar for quicker access on desktop. Both trigger a confirmation dialog listing exactly what will reset before applying.</span>
-
-  </div><!-- /party-column -->
-
-  <!-- RIGHT: Initiative tracker -->
-  <div class="initiative-column">
-
-    <div class="init-header">
-      <span class="init-title">Initiative Order</span>
-      <button class="init-clear-btn">Clear ×</button>
-    </div>
-
-    <span class="callout-note">Initiative sorted highest-first. Current turn highlighted in Ocean accent. "Next Turn" advances the marker.</span>
-
-    <button class="next-turn-btn">▶ Next Turn</button>
-
-    <ul class="init-list">
-      <li class="init-entry">
-        <span class="init-num">22</span>
-        <span class="init-name">Goblin Archer</span>
-        <span class="init-npc-tag">NPC</span>
-        <button class="init-remove-btn" title="Remove">×</button>
-      </li>
-      <li class="init-entry current-turn">
-        <span class="init-num">19</span>
-        <span class="init-name">Aragorn</span>
-        <span class="current-marker">◀ Now</span>
-        <button class="init-remove-btn" title="Remove">×</button>
-      </li>
-      <li class="init-entry">
-        <span class="init-num">14</span>
-        <span class="init-name">Eoghan</span>
-        <button class="init-remove-btn" title="Remove">×</button>
-      </li>
-      <li class="init-entry">
-        <span class="init-num">11</span>
-        <span class="init-name">Aesop</span>
-        <button class="init-remove-btn" title="Remove">×</button>
-      </li>
-      <li class="init-entry">
-        <span class="init-num">8</span>
-        <span class="init-name">Bandit Captain</span>
-        <span class="init-npc-tag">NPC</span>
-        <button class="init-remove-btn" title="Remove">×</button>
-      </li>
-    </ul>
-
-    <div class="section-label" style="margin-top:16px; margin-bottom:8px;">Add Combatant</div>
-    <div class="add-combatant">
-      <input class="init-input" type="text" placeholder="Name…" value="" />
-      <input class="init-num-input" type="number" placeholder="Init" value="" />
-      <button class="init-add-btn">Add</button>
-    </div>
-
-    <span class="callout-note">DM enters the name and initiative value for each combatant. NPC entries have no connection to character data.</span>
-
-  </div><!-- /initiative-column -->
-
-</div><!-- /dashboard-layout -->
-
-
-<!-- ══════════════════════════════════════════════════
-     IMPROVEMENT 2: Deal Damage modal
-     Stepper + direct input + preset jump buttons
-═══════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="dmg-modal" onclick="handleOverlayClick(event,'dmg-modal')">
-  <div class="modal-panel">
-    <div class="modal-header">
-      <span class="modal-title dmg" id="dmg-modal-title">⚔ Deal Damage — Eoghan</span>
-      <button class="modal-close" onclick="closeModal('dmg-modal')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="modal-char-context" id="dmg-char-context">HP: 13 / 44 &nbsp;·&nbsp; No temp HP</div>
-
-      <span class="callout-new" style="margin-top:0;">Improvement 2: Tap − / + to build the value one step at a time. Or type directly into the field. Preset buttons jump to common values. Both paths work — whichever is faster at the table.</span>
-
-      <!-- IMPROVEMENT 2: Stepper + type-in -->
-      <div class="amount-stepper-row">
-        <button class="amt-step-btn" onclick="adjustAmt('dmg', -1)">−</button>
-        <input class="amt-input" id="dmg-amt" type="number" min="0" max="999" value="0"
-               oninput="clampAmt('dmg')" onkeydown="modalKeydown(event,'dmg-modal')" />
-        <button class="amt-step-btn" onclick="adjustAmt('dmg', 1)">+</button>
-      </div>
-
-      <!-- Preset jump values -->
-      <div class="preset-row">
-        <button class="preset-btn" onclick="setAmt('dmg', 3)">+3</button>
-        <button class="preset-btn" onclick="setAmt('dmg', 5)">+5</button>
-        <button class="preset-btn" onclick="setAmt('dmg', 8)">+8</button>
-        <button class="preset-btn" onclick="setAmt('dmg', 10)">+10</button>
-        <button class="preset-btn" onclick="setAmt('dmg', 15)">+15</button>
-        <button class="preset-btn" onclick="setAmt('dmg', 20)">+20</button>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="modal-confirm-btn dmg" onclick="applyDmg()">Apply Damage</button>
     </div>
   </div>
-</div>
 
-<!-- ══════════════════════════════════════════════════
-     IMPROVEMENT 2: Heal modal
-     Same stepper + type-in pattern, green accent
-═══════════════════════════════════════════════════ -->
-<div class="modal-overlay" id="heal-modal" onclick="handleOverlayClick(event,'heal-modal')">
-  <div class="modal-panel">
-    <div class="modal-header">
-      <span class="modal-title heal" id="heal-modal-title">✦ Heal — Eoghan</span>
-      <button class="modal-close" onclick="closeModal('heal-modal')">×</button>
-    </div>
-    <div class="modal-body">
-      <div class="modal-char-context" id="heal-char-context">HP: 13 / 44</div>
-
-      <!-- IMPROVEMENT 2: Stepper + type-in -->
-      <div class="amount-stepper-row">
-        <button class="amt-step-btn" onclick="adjustAmt('heal', -1)">−</button>
-        <input class="amt-input" id="heal-amt" type="number" min="0" max="999" value="0"
-               oninput="clampAmt('heal')" onkeydown="modalKeydown(event,'heal-modal')" />
-        <button class="amt-step-btn" onclick="adjustAmt('heal', 1)">+</button>
+  <!-- ─ Torvin Ironclad card (ember, Inspired, full HP) ─ -->
+  <div class="card card-ember" id="card-torvin" onclick="setActiveTurn('torvin',event)" style="--c-accent:#a06840;--c-bright:#c89060;--c-border:rgba(160,104,64,0.35);">
+    <div class="card-header">
+      <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#c89060,#5a3018);color:#f0d8b0;">TI</div>
+      <div class="card-identity">
+        <span class="card-name" style="color:#c89060;">Torvin Ironclad</span>
+        <span class="card-sub">Dwarf · Fighter · Lv 9 &nbsp;<a href="#" onclick="return false">↗</a></span>
       </div>
-
-      <!-- Preset jump values -->
-      <div class="preset-row">
-        <button class="preset-btn" onclick="setAmt('heal', 3)">+3</button>
-        <button class="preset-btn" onclick="setAmt('heal', 5)">+5</button>
-        <button class="preset-btn" onclick="setAmt('heal', 8)">+8</button>
-        <button class="preset-btn" onclick="setAmt('heal', 10)">+10</button>
-        <button class="preset-btn" onclick="setAmt('heal', 15)">+15</button>
-        <button class="preset-btn" onclick="setAmt('heal', 20)">+20</button>
-      </div>
+      <div class="card-ac" style="color:#c89060;border-color:rgba(160,104,64,0.4);">AC 18</div>
+      <button class="card-more-btn" onclick="event.stopPropagation()">⋯</button>
     </div>
-    <div class="modal-footer">
-      <button class="modal-confirm-btn heal" onclick="applyHeal()">Apply Healing</button>
+    <div class="hp-row">
+      <button class="hp-btn" style="border-color:rgba(160,104,64,0.3);" onclick="event.stopPropagation();adjustHP('torvin',-1)">−</button>
+      <span class="hp-nums" id="hp-nums-torvin" style="color:#c8904c;">78<span style="font-size:13px;opacity:0.5;">/78</span></span>
+      <div class="hp-bar-wrap" id="hp-bar-torvin" aria-label="HP bar"></div>
+      <button class="hp-btn" style="border-color:rgba(160,104,64,0.3);" onclick="event.stopPropagation();adjustHP('torvin',1)">+</button>
+    </div>
+    <div class="inspired-row"><span class="inspired-badge">★ Inspired</span></div>
+    <div class="conditions-row" id="conds-torvin">
+      <button class="chip-add" onclick="event.stopPropagation();addCondition('torvin')">+ Condition</button>
+    </div>
+    <div class="death-saves" id="death-torvin">
+      <div class="death-saves-label">Death Saves</div>
+      <div class="death-saves-pips">
+        <div class="pip-group">
+          <span class="pip-label">Suc</span>
+          <div class="pip" id="ts-0" onclick="event.stopPropagation();togglePip('torvin','s',0)"></div>
+          <div class="pip" id="ts-1" onclick="event.stopPropagation();togglePip('torvin','s',1)"></div>
+          <div class="pip" id="ts-2" onclick="event.stopPropagation();togglePip('torvin','s',2)"></div>
+        </div>
+        <div class="pip-group">
+          <span class="pip-label">Fail</span>
+          <div class="pip" id="tf-0" onclick="event.stopPropagation();togglePip('torvin','f',0)"></div>
+          <div class="pip" id="tf-1" onclick="event.stopPropagation();togglePip('torvin','f',1)"></div>
+          <div class="pip" id="tf-2" onclick="event.stopPropagation();togglePip('torvin','f',2)"></div>
+        </div>
+      </div>
+      <div class="fallen-label">Fallen</div>
+    </div>
+    <div class="tier2">
+      <div class="tier2-row">
+        <span class="tier2-label">XP</span>
+        <span class="tier2-val" style="color:#c8904c;">48,000</span>
+        <button class="party-action-btn" style="padding:3px 9px;font-size:10px;" onclick="event.stopPropagation()">Award</button>
+      </div>
     </div>
   </div>
+
+  <!-- ─ Eoghan Sunderskeep card (ocean, Hunter's Mark, Poisoned) ─ -->
+  <div class="card card-ocean" id="card-eoghan" onclick="setActiveTurn('eoghan',event)" style="--c-accent:#6a8fa8;--c-bright:#a0c0d0;--c-border:rgba(100,130,160,0.35);">
+    <div class="card-header">
+      <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#a0c0d0,#1a3448);color:#d0e8f0;">ES</div>
+      <div class="card-identity">
+        <span class="card-name" style="color:#a0c0d0;">Eoghan Sunderskeep</span>
+        <span class="card-sub">Human · Ranger · Lv 8 &nbsp;<a href="#" onclick="return false">↗</a></span>
+      </div>
+      <div class="card-ac" style="color:#a0c0d0;border-color:rgba(100,130,160,0.4);">AC 15</div>
+      <button class="card-more-btn" onclick="event.stopPropagation()">⋯</button>
+    </div>
+    <div class="hp-row">
+      <button class="hp-btn" style="border-color:rgba(100,130,160,0.3);" onclick="event.stopPropagation();adjustHP('eoghan',-1)">−</button>
+      <span class="hp-nums" id="hp-nums-eoghan" style="color:#8ab4c8;">31<span style="font-size:13px;opacity:0.5;">/44</span></span>
+      <div class="hp-bar-wrap" id="hp-bar-eoghan"></div>
+      <button class="hp-btn" style="border-color:rgba(100,130,160,0.3);" onclick="event.stopPropagation();adjustHP('eoghan',1)">+</button>
+    </div>
+    <div class="conc-row" style="border-color:rgba(100,130,160,0.25);">
+      <div class="conc-dot" style="background:#8ab4c8;"></div>
+      <span class="conc-label" style="color:#a0c0d0;">Hunter's Mark</span>
+      <span class="conc-save" style="color:#3a5a6a;">· CON +4</span>
+      <button onclick="event.stopPropagation();removeConc('eoghan')" style="background:none;border:none;color:#3a5a6a;cursor:pointer;font-size:12px;padding:0 2px;">×</button>
+    </div>
+    <div class="conditions-row" id="conds-eoghan">
+      <span class="chip severe" style="color:#c8a858;border-color:rgba(200,168,88,0.5);--c-accent:#6a8fa8;--c-bright:#a0c0d0;" onclick="event.stopPropagation();">Poisoned <span class="chip-x" onclick="event.stopPropagation();removeChip(this)">×</span></span>
+      <button class="chip-add" onclick="event.stopPropagation();addCondition('eoghan')">+ Condition</button>
+    </div>
+    <div class="death-saves" id="death-eoghan">
+      <div class="death-saves-label">Death Saves</div>
+      <div class="death-saves-pips">
+        <div class="pip-group">
+          <span class="pip-label">Suc</span>
+          <div class="pip" id="es-0" onclick="event.stopPropagation();togglePip('eoghan','s',0)"></div>
+          <div class="pip" id="es-1" onclick="event.stopPropagation();togglePip('eoghan','s',1)"></div>
+          <div class="pip" id="es-2" onclick="event.stopPropagation();togglePip('eoghan','s',2)"></div>
+        </div>
+        <div class="pip-group">
+          <span class="pip-label">Fail</span>
+          <div class="pip" id="ef-0" onclick="event.stopPropagation();togglePip('eoghan','f',0)"></div>
+          <div class="pip" id="ef-1" onclick="event.stopPropagation();togglePip('eoghan','f',1)"></div>
+          <div class="pip" id="ef-2" onclick="event.stopPropagation();togglePip('eoghan','f',2)"></div>
+        </div>
+      </div>
+      <div class="fallen-label">Fallen</div>
+    </div>
+    <div class="tier2">
+      <div class="tier2-row">
+        <span class="tier2-label">GP</span>
+        <span class="tier2-val" style="color:#8ab4c8;">120</span>
+        <button class="party-action-btn" style="padding:3px 9px;font-size:10px;" onclick="event.stopPropagation()">Give</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─ Mira Ashvale card (forest, Shield conc, spell slots) ─ -->
+  <div class="card card-forest" id="card-mira" onclick="setActiveTurn('mira',event)" style="--c-accent:#5a8a60;--c-bright:#88b888;--c-border:rgba(90,138,96,0.35);">
+    <div class="card-header">
+      <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#88b888,#1a3820);color:#d8f0d8;">MA</div>
+      <div class="card-identity">
+        <span class="card-name" style="color:#88b888;">Mira Ashvale</span>
+        <span class="card-sub">Half-Elf · Wizard · Lv 6 &nbsp;<a href="#" onclick="return false">↗</a></span>
+      </div>
+      <div class="card-ac" style="color:#88b888;border-color:rgba(90,138,96,0.4);">AC 13</div>
+      <button class="card-more-btn" onclick="event.stopPropagation()">⋯</button>
+    </div>
+    <div class="hp-row">
+      <button class="hp-btn" style="border-color:rgba(90,138,96,0.3);" onclick="event.stopPropagation();adjustHP('mira',-1)">−</button>
+      <span class="hp-nums" id="hp-nums-mira" style="color:#78b878;">22<span style="font-size:13px;opacity:0.5;">/38</span></span>
+      <div class="hp-bar-wrap" id="hp-bar-mira"></div>
+      <button class="hp-btn" style="border-color:rgba(90,138,96,0.3);" onclick="event.stopPropagation();adjustHP('mira',1)">+</button>
+    </div>
+    <div class="conc-row" style="border-color:rgba(90,138,96,0.25);">
+      <div class="conc-dot" style="background:#78b878;"></div>
+      <span class="conc-label" style="color:#88b888;">Shield</span>
+      <span class="conc-save" style="color:#3a5a3c;">· CON +2</span>
+      <button onclick="event.stopPropagation();removeConc('mira')" style="background:none;border:none;color:#3a5a3c;cursor:pointer;font-size:12px;padding:0 2px;">×</button>
+    </div>
+    <div class="slots-row" id="slots-mira">
+      <div class="slot-group">
+        <span class="slot-label">L1</span>
+        <div class="slot-pip" style="border-color:#78b878;background:#78b878;" onclick="event.stopPropagation();toggleSlot(this)"></div>
+        <div class="slot-pip" style="border-color:#78b878;background:#78b878;" onclick="event.stopPropagation();toggleSlot(this)"></div>
+        <div class="slot-pip used" style="border-color:rgba(120,184,120,0.4);" onclick="event.stopPropagation();toggleSlot(this)"></div>
+      </div>
+      <div class="slot-group">
+        <span class="slot-label">L2</span>
+        <div class="slot-pip" style="border-color:#78b878;background:#78b878;" onclick="event.stopPropagation();toggleSlot(this)"></div>
+        <div class="slot-pip used" style="border-color:rgba(120,184,120,0.4);" onclick="event.stopPropagation();toggleSlot(this)"></div>
+      </div>
+      <div class="slot-group">
+        <span class="slot-label">L3</span>
+        <div class="slot-pip used" style="border-color:rgba(120,184,120,0.4);" onclick="event.stopPropagation();toggleSlot(this)"></div>
+      </div>
+    </div>
+    <div class="conditions-row" id="conds-mira">
+      <button class="chip-add" onclick="event.stopPropagation();addCondition('mira')">+ Condition</button>
+    </div>
+    <div class="death-saves" id="death-mira">
+      <div class="death-saves-label">Death Saves</div>
+      <div class="death-saves-pips">
+        <div class="pip-group">
+          <span class="pip-label">Suc</span>
+          <div class="pip" id="ms-0" onclick="event.stopPropagation();togglePip('mira','s',0)"></div>
+          <div class="pip" id="ms-1" onclick="event.stopPropagation();togglePip('mira','s',1)"></div>
+          <div class="pip" id="ms-2" onclick="event.stopPropagation();togglePip('mira','s',2)"></div>
+        </div>
+        <div class="pip-group">
+          <span class="pip-label">Fail</span>
+          <div class="pip" id="mf-0" onclick="event.stopPropagation();togglePip('mira','f',0)"></div>
+          <div class="pip" id="mf-1" onclick="event.stopPropagation();togglePip('mira','f',1)"></div>
+          <div class="pip" id="mf-2" onclick="event.stopPropagation();togglePip('mira','f',2)"></div>
+        </div>
+      </div>
+      <div class="fallen-label">Fallen</div>
+    </div>
+    <div class="tier2">
+      <div class="tier2-row">
+        <span class="tier2-label">GP</span>
+        <span class="tier2-val" style="color:#78b878;">55</span>
+        <button class="party-action-btn" style="padding:3px 9px;font-size:10px;" onclick="event.stopPropagation()">Give</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Party actions strip -->
+  <div class="party-actions">
+    <button class="party-action-btn">Short Rest</button>
+    <button class="party-action-btn">Long Rest</button>
+    <button class="party-action-btn">Award XP</button>
+    <button class="party-action-btn">Distribute Coin</button>
+  </div>
+
+</div><!-- /col-party -->
+
+<!-- ── MIDDLE: Dice Roller (combat only) ──────────────────── -->
+<div class="col-dice" id="colDice">
+  <div class="dice-panel" id="dicePanel">
+    <div class="dice-panel-title">Dice Roller</div>
+
+    <!-- Die picker grid -->
+    <div class="die-grid" id="dieGrid">
+      <!-- die buttons injected by JS -->
+    </div>
+
+    <!-- Expression display -->
+    <div class="expr-display" id="exprDisplay">
+      <span id="exprText" style="color:var(--text-muted);font-size:13px;">Pick a die to roll</span>
+      <button class="expr-clear" id="exprClear" onclick="clearExpr()" title="Clear">×</button>
+    </div>
+
+    <!-- Controls row -->
+    <div class="dice-controls">
+      <span class="dice-ctrl-label">×</span>
+      <input class="dice-ctrl-input" id="repeatInput" type="number" min="1" max="8" value="1" />
+      <span class="dice-ctrl-label" style="margin-left:6px;">Mod</span>
+      <input class="dice-ctrl-input" id="modInput" type="number" value="0" />
+      <div class="adv-group" style="margin-left:auto;">
+        <button class="adv-btn active" id="adv-N" onclick="setAdv('N')">Norm</button>
+        <button class="adv-btn" id="adv-A" onclick="setAdv('A')">Adv</button>
+        <button class="adv-btn" id="adv-D" onclick="setAdv('D')">Dis</button>
+      </div>
+    </div>
+
+    <!-- Roll button -->
+    <button class="roll-btn" id="rollBtn" onclick="doRoll()">Roll</button>
+
+    <!-- Dice animation stage -->
+    <div class="dice-stage" id="diceStage"></div>
+
+    <!-- Result area -->
+    <div class="result-area" id="resultArea">
+      <div class="result-total" id="resultTotal"></div>
+      <div class="result-label" id="resultLabel"></div>
+    </div>
+
+    <!-- Apply-to row -->
+    <div class="apply-row" id="applyRow"></div>
+
+    <!-- History -->
+    <div class="history-list" id="historyList" style="display:none;"></div>
+  </div>
+</div><!-- /col-dice -->
+
+<!-- ── RIGHT: Initiative + Enemies ───────────────────────── -->
+<div class="col-right" id="colRight">
+
+  <!-- Initiative panel -->
+  <div class="panel">
+    <div class="panel-header">
+      <span class="panel-title">Initiative</span>
+    </div>
+    <div class="panel-body" id="initiativeBody">
+      <!-- filled by JS based on combat state -->
+    </div>
+  </div>
+
+  <!-- NPC section (combat only) -->
+  <div id="npcSection" style="display:none;">
+    <div class="npc-section-label">Enemies</div>
+    <div id="npcCards"></div>
+    <button class="add-enemy-btn" onclick="addEnemy()">+ Add Enemy</button>
+  </div>
+
+  <!-- Dice roller sidebar (non-combat) -->
+  <div class="panel" id="diceNonCombat">
+    <div class="panel-header">
+      <span class="panel-title">Dice Roller</span>
+      <span style="font-family:var(--font-u);font-size:10px;color:var(--text-muted);">Expand in combat</span>
+    </div>
+  </div>
+
+</div><!-- /col-right -->
+
+</div><!-- /dashboard -->
+</div><!-- /dashboard-wrap -->
+
+<!-- Map library strip -->
+<div class="map-strip" id="mapStrip">
+  <button class="map-add-btn" title="Upload map">+</button>
+  <div class="map-thumb active"><div class="map-thumb-dot"></div><span class="map-thumb-label">Catacombs 2</span></div>
+  <div class="map-thumb"><span class="map-thumb-label">Throne Room</span></div>
+  <div class="map-thumb"><span class="map-thumb-label">Docks</span></div>
+  <div class="map-thumb"><span class="map-thumb-label">Forest Path</span></div>
 </div>
 
+<!-- ─── Legend ───────────────────────────────────────────────── -->
+<div class="legend">
+  <div class="legend-title" style="padding:0 0 0 0;">Design Notes</div>
+  <div class="legend-grid" style="padding:0 0 0 0;">
+    <div class="legend-item"><span class="legend-num">①</span><span class="legend-text">Combat mode shifts layout from 2-col to 3-col. Dice roller promotes to center (1fr). Transition: 300ms ease-out.</span></div>
+    <div class="legend-item"><span class="legend-num">②</span><span class="legend-text">Active turn: left accent bar pulses (2s), card lifts 2px, name glows, all other cards dim to 0.82. Click any card header or Next Turn to advance.</span></div>
+    <div class="legend-item"><span class="legend-num">③</span><span class="legend-text">HP bar: 5 segments. Color by threshold — gem (>50%), amber #c8a040 (20–50%), red #c06060 (&lt;20%). Damage flash 300ms; heal glow 250ms.</span></div>
+    <div class="legend-item"><span class="legend-num">④</span><span class="legend-text">NPC HP drain trail: bar drops instantly; ghost segment (rgba white) lingers and fades 400ms — fighting-game style. Bloodied at 50%, Dead at 0.</span></div>
+    <div class="legend-item"><span class="legend-num">⑤</span><span class="legend-text">Dice roll: shake 200ms → spin 600ms (per-type rotations, blur-to-sharp) → settle 200ms → result reveal. Nat20: gold burst + CRITICAL. Nat1: red flash + FUMBLE + tilt.</span></div>
+    <div class="legend-item"><span class="legend-num">⑥</span><span class="legend-text">Portraits kept visible in all states (user decision). The brief proposed collapse to 4px bar during combat — rejected.</span></div>
+    <div class="legend-item"><span class="legend-num">⑦</span><span class="legend-text">Tier 2 content (XP, coin) auto-hides during combat via max-height transition. Per-card toggle available (⋯ menu).</span></div>
+    <div class="legend-item"><span class="legend-num">⑧</span><span class="legend-text">Map panel auto-collapses when combat begins. Map library strip hides entirely. Both restore when combat ends.</span></div>
+    <div class="legend-item"><span class="legend-num">⑨</span><span class="legend-text">Party-wide actions strip collapses to ⋯ Party button in top bar during combat. Session management actions are never needed mid-round.</span></div>
+    <div class="legend-item"><span class="legend-num">⑩</span><span class="legend-text">Death saves row hidden until HP hits 0. Click + on HP bar to reach 0 and reveal it. Three failures → FALLEN state (card dims, name strikethrough).</span></div>
+  </div>
+</div>
 
 <script>
-  /* ── Character state ── */
-  const chars = {
-    aragorn: { hp: 28, max: 45, temp: 8,  palette: 'ember',  barClass: 'ember-healthy',  dangerClass: '' },
-    eoghan:  { hp: 13, max: 44, temp: 0,  palette: 'ocean',  barClass: 'ocean-warning',  dangerClass: 'danger' },
-    aesop:   { hp: 33, max: 44, temp: 0,  palette: 'forest', barClass: 'forest-healthy', dangerClass: '' },
-  };
+// ─── State ────────────────────────────────────────────────────────────
+const chars = {
+  torvin: { name:'Torvin Ironclad', hp:78, maxHp:78, pal:'ember', accentColor:'#c8904c', deaths:{s:[],f:[]} },
+  eoghan: { name:'Eoghan Sunderskeep', hp:31, maxHp:44, pal:'ocean', accentColor:'#8ab4c8', deaths:{s:[],f:[]} },
+  mira:   { name:'Mira Ashvale', hp:22, maxHp:38, pal:'forest', accentColor:'#78b878', deaths:{s:[],f:[]} }
+};
 
-  let currentModalChar = 'eoghan';
+const initOrder = [
+  { id:'torvin', name:'Torvin Ironclad', type:'pc', val:18 },
+  { id:'hob-captain', name:'Hobgoblin Captain', type:'npc', val:15, hpDot:'#88b888' },
+  { id:'eoghan', name:'Eoghan Sunderskeep', type:'pc', val:12 },
+  { id:'hob-archer-a', name:'Hob. Archer A', type:'npc', val:9, hpDot:'#c8a040' },
+  { id:'mira', name:'Mira Ashvale', type:'pc', val:7 },
+  { id:'hob-archer-b', name:'Hob. Archer B', type:'npc', val:5, hpDot:'#c06060', dead:true }
+];
 
-  /* ── Render HP for a character ── */
-  function renderHP(slug) {
-    const c = chars[slug];
-    const hpEl   = document.getElementById(slug + '-hp');
-    const barEl  = document.getElementById(slug + '-bar');
-    const card   = document.getElementById('card-' + slug);
-    const pct    = Math.max(0, Math.min(100, (c.hp / c.max) * 100));
+const npcs = [
+  { id:'hob-captain', name:'Hobgoblin Captain', hp:52, maxHp:52 },
+  { id:'hob-archer-a', name:'Hobgoblin Archer A', hp:14, maxHp:18 },
+  { id:'hob-archer-b', name:'Hobgoblin Archer B', hp:0, maxHp:18 }
+];
 
-    hpEl.textContent = c.hp;
+let combatActive = false;
+let activeTurnIndex = 0;
+let advMode = 'N';
+let dieExpr = {}; // {4:0,6:0,8:0,...}
+const rollHistory = [];
 
-    // Danger color on HP number
-    hpEl.className = 'hp-cur ' + (pct < 20 ? 'danger' : c.palette);
+// ─── HP bar ───────────────────────────────────────────────────────────
+function hpColor(pct) {
+  if (pct > 0.5) return null; // use per-char accentColor set below
+  if (pct > 0.2) return '#c8a040';
+  return '#c06060';
+}
 
-    // Bar color by health bracket
-    let barFill;
-    if (pct > 50)      barFill = c.palette + '-healthy';
-    else if (pct > 20) barFill = c.palette + '-warning';
-    else               barFill = 'danger-bar';
+function renderHPBar(slug) {
+  const c = chars[slug];
+  const wrap = document.getElementById('hp-bar-' + slug);
+  if (!wrap) return;
+  const pct = c.maxHp > 0 ? c.hp / c.maxHp : 0;
+  const fillColor = pct > 0.5 ? c.accentColor : hpColor(pct);
+  wrap.innerHTML = '';
+  const segs = document.createElement('div');
+  segs.className = 'hp-segments';
+  for (let i = 0; i < 5; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'hp-seg';
+    const fill = document.createElement('div');
+    fill.className = 'hp-seg-fill';
+    const segFill = Math.max(0, Math.min(1, pct * 5 - i));
+    fill.style.cssText = `width:${segFill*100}%;background:${fillColor};`;
+    seg.appendChild(fill);
+    segs.appendChild(seg);
+  }
+  wrap.appendChild(segs);
+  // update nums
+  const numsEl = document.getElementById('hp-nums-' + slug);
+  if (numsEl) {
+    const color = pct > 0.5 ? c.accentColor : hpColor(pct);
+    numsEl.innerHTML = `${c.hp}<span style="font-size:13px;opacity:0.5;">/${c.maxHp}</span>`;
+    numsEl.style.color = color;
+  }
+  // death saves visibility
+  const deathEl = document.getElementById('death-' + slug);
+  if (deathEl) deathEl.classList.toggle('visible', c.hp <= 0);
+}
 
-    barEl.style.width = pct + '%';
+function flashHP(slug, type) {
+  const wrap = document.getElementById('hp-bar-' + slug);
+  if (!wrap) return;
+  const segs = wrap.querySelectorAll('.hp-seg');
+  if (!segs.length) return;
+  segs.forEach(seg => {
+    const flash = document.createElement('div');
+    flash.className = type === 'dmg' ? 'hp-seg-flash' : 'hp-seg-heal';
+    seg.appendChild(flash);
+    setTimeout(() => flash.remove(), 350);
+  });
+}
 
-    // Keep bar colors correct — swap class
-    barEl.className = 'hp-bar-fill';
-    if (pct > 50) {
-      barEl.style.background = slug === 'aragorn'
-        ? 'linear-gradient(90deg, var(--ember-accent) 0%, var(--ember-bright) 100%)'
-        : slug === 'eoghan'
-        ? 'linear-gradient(90deg, var(--ocean-accent) 0%, var(--ocean-bright) 100%)'
-        : 'linear-gradient(90deg, var(--forest-accent) 0%, var(--forest-bright) 100%)';
-    } else if (pct > 20) {
-      barEl.style.background = 'linear-gradient(90deg, #a06020 0%, #d08030 100%)';
-    } else {
-      barEl.style.background = 'linear-gradient(90deg, #8c3030 0%, #c06060 100%)';
-    }
-
-    // Card danger border
-    if (pct < 20) {
-      card.classList.add('danger-border');
-    } else {
-      card.classList.remove('danger-border');
+function adjustHP(slug, delta) {
+  const c = chars[slug];
+  const old = c.hp;
+  c.hp = Math.max(0, Math.min(c.maxHp, c.hp + delta));
+  if (c.hp === old) return;
+  flashHP(slug, delta < 0 ? 'dmg' : 'heal');
+  renderHPBar(slug);
+  // danger threshold
+  const card = document.getElementById('card-' + slug);
+  const pct = c.hp / c.maxHp;
+  if (card) {
+    card.style.transition = 'border-color 0.4s ease-in-out, transform 0.3s, box-shadow 0.3s, opacity 0.3s';
+    if (pct < 0.2 && delta < 0) {
+      const origBorder = getComputedStyle(card).borderColor;
+      card.style.borderColor = '#c06060';
+      setTimeout(() => { if (!card.classList.contains('fallen')) card.style.borderColor = ''; }, 600);
     }
   }
+}
 
-  /* ── Inline HP stepper (Improvement 1) ── */
-  function stepHP(slug, delta) {
-    const c = chars[slug];
-    c.hp = Math.max(0, Math.min(c.max, c.hp + delta));
-    renderHP(slug);
+// ─── Active turn ──────────────────────────────────────────────────────
+function setActiveTurn(slug, evt) {
+  if (evt) evt.stopPropagation();
+  const pcIds = ['torvin','eoghan','mira'];
+  pcIds.forEach(id => {
+    const card = document.getElementById('card-' + id);
+    if (!card) return;
+    card.classList.remove('active-turn','dimmed');
+    if (id !== slug) card.classList.add('dimmed');
+    else card.classList.add('active-turn');
+  });
+  // also dim npc cards
+  document.querySelectorAll('.npc-card').forEach(nc => {
+    nc.classList.remove('active-turn','dimmed');
+    nc.classList.add('dimmed');
+  });
+  // find in initiative and sync
+  const idx = initOrder.findIndex(r => r.id === slug);
+  if (idx >= 0) activeTurnIndex = idx;
+  renderInitiative();
+}
 
-    // Brief floating delta indicator
-    const stepRow = document.querySelector('#card-' + slug + ' .hp-stepper-row');
-    const dot = document.createElement('span');
-    dot.className = 'hp-delta ' + (delta < 0 ? 'neg' : 'pos');
-    dot.textContent = (delta > 0 ? '+' : '') + delta;
-    stepRow.style.position = 'relative';
-    stepRow.appendChild(dot);
-    setTimeout(() => dot.remove(), 750);
+function setActiveNPC(npcId) {
+  // dim all PCs
+  ['torvin','eoghan','mira'].forEach(id => {
+    const card = document.getElementById('card-' + id);
+    if (card) { card.classList.remove('active-turn'); card.classList.add('dimmed'); }
+  });
+  document.querySelectorAll('.npc-card').forEach(nc => {
+    nc.classList.remove('active-turn','dimmed');
+    if (nc.dataset.id !== npcId) nc.classList.add('dimmed');
+    else nc.classList.add('active-turn');
+  });
+}
+
+function clearActiveTurn() {
+  ['torvin','eoghan','mira'].forEach(id => {
+    const card = document.getElementById('card-' + id);
+    if (card) card.classList.remove('active-turn','dimmed');
+  });
+  document.querySelectorAll('.npc-card').forEach(nc => nc.classList.remove('active-turn','dimmed'));
+}
+
+function nextTurn() {
+  if (!combatActive) return;
+  activeTurnIndex = (activeTurnIndex + 1) % initOrder.length;
+  const entry = initOrder[activeTurnIndex];
+  renderInitiative();
+  if (entry.type === 'pc') setActiveTurn(entry.id, null);
+  else setActiveNPC(entry.id);
+}
+
+// ─── Combat toggle ────────────────────────────────────────────────────
+function toggleCombat() {
+  combatActive = !combatActive;
+  const wrap = document.getElementById('dashboardWrap');
+  const btn = document.getElementById('combatToggleBtn');
+  const npcSec = document.getElementById('npcSection');
+  const diceNonCombat = document.getElementById('diceNonCombat');
+
+  if (combatActive) {
+    wrap.classList.add('combat-active');
+    btn.textContent = '✕ End Combat';
+    btn.className = 'top-bar-btn combat-end';
+    npcSec.style.display = 'block';
+    diceNonCombat.style.display = 'none';
+    renderInitiative();
+    renderNPCCards();
+    // set first turn
+    setTimeout(() => {
+      activeTurnIndex = 0;
+      const entry = initOrder[0];
+      if (entry.type === 'pc') setActiveTurn(entry.id, null);
+      else setActiveNPC(entry.id);
+      renderInitiative();
+    }, 350);
+  } else {
+    wrap.classList.remove('combat-active');
+    btn.textContent = '⚔ Start Combat';
+    btn.className = 'top-bar-btn combat-start';
+    npcSec.style.display = 'none';
+    diceNonCombat.style.display = 'block';
+    clearActiveTurn();
+    renderInitiative();
+    // ensure map panel expands
+    const mp = document.getElementById('mapPanel');
+    if (mp && !mp.classList.contains('expanded')) {
+      mp.classList.add('expanded');
+      document.getElementById('mapToggle').textContent = '▲';
+    }
+  }
+}
+
+// ─── Map panel ────────────────────────────────────────────────────────
+function toggleMap() {
+  const mp = document.getElementById('mapPanel');
+  const tog = document.getElementById('mapToggle');
+  mp.classList.toggle('expanded');
+  tog.textContent = mp.classList.contains('expanded') ? '▲' : '▼';
+}
+
+// ─── Initiative ───────────────────────────────────────────────────────
+function renderInitiative() {
+  const body = document.getElementById('initiativeBody');
+  if (!combatActive) {
+    body.innerHTML = '<div class="init-empty">No initiative set.<br><small style="font-size:10px;">Start combat to track turns.</small></div>';
+    return;
+  }
+  const npcState = {};
+  npcs.forEach(n => npcState[n.id] = n);
+
+  let html = `<button class="next-turn-btn" onclick="nextTurn()">▶ Next Turn</button><div class="init-list">`;
+  initOrder.forEach((row, i) => {
+    const isActive = i === activeTurnIndex;
+    const isDead = row.dead || (npcState[row.id] && npcState[row.id].hp <= 0);
+    let dotColor = row.hpDot || 'transparent';
+    if (row.type === 'npc' && npcState[row.id]) {
+      const npc = npcState[row.id];
+      const pct = npc.hp / npc.maxHp;
+      dotColor = pct <= 0 ? '#c06060' : pct < 0.5 ? '#c8a040' : '#88b888';
+    }
+    const accentColors = { torvin:'#a06840', eoghan:'#6a8fa8', mira:'#5a8a60' };
+    const accentC = row.type === 'pc' ? (accentColors[row.id] || var_accent) : '#9a8a60';
+    html += `<div class="init-row ${isActive?'active':''}" data-idx="${i}">
+      <div class="init-indicator" style="background:${accentC};"></div>
+      <span class="init-name ${isDead?'init-dead':''}" style="${isActive?`color:${accentC};`:''}">
+        ${isActive ? '▸ ' : ''}${row.name}
+      </span>
+      <span class="init-val">${row.val}</span>
+      ${row.type==='npc'?`<div class="init-dot" style="background:${dotColor};"></div>`:''}
+    </div>`;
+  });
+  html += '</div>';
+  body.innerHTML = html;
+}
+
+// ─── NPC Cards ────────────────────────────────────────────────────────
+function renderNPCCards() {
+  const container = document.getElementById('npcCards');
+  container.innerHTML = npcs.map(npc => buildNPCCard(npc)).join('');
+}
+
+function npcBarColor(pct) {
+  if (pct <= 0) return '#c06060';
+  if (pct < 0.2) return '#c06060';
+  if (pct < 0.5) return '#c8a040';
+  return '#9a8a60';
+}
+
+function buildNPCSegments(pct) {
+  let segs = '';
+  for (let i = 0; i < 5; i++) {
+    const segFill = Math.max(0, Math.min(1, pct * 5 - i));
+    const color = npcBarColor(pct);
+    segs += `<div class="npc-seg"><div class="npc-seg-fill" style="width:${segFill*100}%;background:${color};position:absolute;inset:0;border-radius:1px;"></div></div>`;
+  }
+  return `<div class="npc-segments" id="npc-segs-${arguments[1]}">${segs}</div>`;
+}
+
+function buildNPCCard(npc) {
+  const pct = npc.maxHp > 0 ? npc.hp / npc.maxHp : 0;
+  const isBloodied = pct < 0.5 && pct > 0;
+  const isDead = npc.hp <= 0;
+  const classes = ['npc-card', isDead?'dead':'', isBloodied?'bloodied':''].filter(Boolean).join(' ');
+
+  const actionsHtml = isDead
+    ? `<div class="npc-actions"><button class="npc-btn npc-revive" onclick="npcRevive('${npc.id}')">↺ Revive</button></div>`
+    : `<div class="npc-actions">
+        <button class="npc-btn npc-dmg" onclick="event.stopPropagation();npcDmg('${npc.id}',6)">⚔ DMG</button>
+        <button class="npc-btn npc-heal" onclick="event.stopPropagation();npcHeal('${npc.id}',4)">+ Heal</button>
+       </div>`;
+
+  const segHtml = buildNPCSegments(pct, npc.id);
+
+  return `<div class="${classes}" id="npc-card-${npc.id}" data-id="${npc.id}" onclick="npcActiveTurn('${npc.id}')">
+    <div class="npc-header">
+      <span class="npc-name ${isDead?'dead':''}">${npc.name}</span>
+      ${isBloodied&&!isDead?'<span class="npc-badge badge-bloodied">Bloodied</span>':''}
+      ${isDead?'<span class="npc-badge badge-dead">Dead</span>':''}
+      <span class="npc-hp-nums">${npc.hp}/${npc.maxHp}</span>
+      <button class="npc-remove" onclick="event.stopPropagation();removeNPC('${npc.id}')" title="Remove">×</button>
+    </div>
+    <div class="npc-bar-wrap">
+      <div class="npc-bar-track" id="npc-track-${npc.id}" style="position:relative;">${segHtml}</div>
+    </div>
+    ${actionsHtml}
+  </div>`;
+}
+
+function npcActiveTurn(id) {
+  const idx = initOrder.findIndex(r => r.id === id);
+  if (idx >= 0) { activeTurnIndex = idx; renderInitiative(); }
+  setActiveNPC(id);
+}
+
+function npcDmg(id, amt) {
+  const npc = npcs.find(n => n.id === id);
+  if (!npc || npc.hp <= 0) return;
+  const oldPct = npc.hp / npc.maxHp;
+  npc.hp = Math.max(0, npc.hp - amt);
+  const newPct = npc.hp / npc.maxHp;
+
+  // inject ghost overlay before re-render (stays visible through the re-render)
+  const track = document.getElementById('npc-track-' + id);
+  if (track && oldPct > newPct) {
+    const ghost = document.createElement('div');
+    ghost.style.cssText = `position:absolute;top:0;height:100%;border-radius:2px;background:rgba(255,255,255,0.18);z-index:2;left:${newPct*100}%;width:${(oldPct-newPct)*100}%;animation:hpDamageFlash 0.4s ease-out forwards;pointer-events:none;`;
+    track.appendChild(ghost);
+    setTimeout(() => ghost.remove(), 450);
   }
 
-  /* ── Hold-to-repeat for stepper buttons ── */
-  let holdTimer = null;
-  let holdInterval = null;
-  document.querySelectorAll('.hp-step-btn').forEach(btn => {
-    btn.addEventListener('mousedown', e => {
-      holdTimer = setTimeout(() => {
-        holdInterval = setInterval(() => btn.click(), 80);
-      }, 500);
+  // check crossed bloodied
+  const crossedBloodied = oldPct >= 0.5 && newPct < 0.5;
+
+  renderNPCCards();
+  renderInitiative();
+
+  if (crossedBloodied) {
+    const card = document.getElementById('npc-card-' + id);
+    if (card) { card.style.animation = 'bloodiedFlash 0.2s ease-in-out'; setTimeout(()=>{ if(card) card.style.animation=''; },250); }
+  }
+}
+
+function npcHeal(id, amt) {
+  const npc = npcs.find(n => n.id === id);
+  if (!npc) return;
+  npc.hp = Math.min(npc.maxHp, npc.hp + amt);
+  renderNPCCards(); renderInitiative();
+}
+
+function npcRevive(id) {
+  const npc = npcs.find(n => n.id === id);
+  if (!npc) return;
+  npc.hp = Math.floor(npc.maxHp * 0.25);
+  const initRow = initOrder.find(r => r.id === id);
+  if (initRow) initRow.dead = false;
+  renderNPCCards(); renderInitiative();
+}
+
+function removeNPC(id) {
+  const idx = npcs.findIndex(n => n.id === id);
+  if (idx >= 0) npcs.splice(idx, 1);
+  const ii = initOrder.findIndex(r => r.id === id);
+  if (ii >= 0) initOrder.splice(ii, 1);
+  renderNPCCards(); renderInitiative();
+}
+
+function addEnemy() {
+  const name = prompt('Enemy name:');
+  if (!name) return;
+  const maxHp = parseInt(prompt('Max HP:') || '20');
+  const id = 'enemy-' + Date.now();
+  npcs.push({ id, name, hp:maxHp, maxHp });
+  const initVal = parseInt(prompt('Initiative roll:') || '10');
+  initOrder.push({ id, name, type:'npc', val:initVal });
+  initOrder.sort((a,b) => b.val - a.val);
+  renderNPCCards(); renderInitiative();
+}
+
+// ─── Conditions ───────────────────────────────────────────────────────
+const CONDITIONS = ['Blinded','Charmed','Deafened','Exhausted','Frightened','Grappled',
+  'Incapacitated','Invisible','Paralyzed','Petrified','Poisoned','Prone','Restrained','Stunned','Unconscious'];
+const SEVERE = new Set(['Paralyzed','Petrified','Stunned','Unconscious','Incapacitated']);
+const COND_COLORS = {
+  Poisoned:['#88a030','rgba(136,160,48,0.4)'],
+  Paralyzed:['#c060c0','rgba(192,96,192,0.4)'],
+  Stunned:['#c8a040','rgba(200,160,64,0.4)'],
+  Petrified:['#8888a0','rgba(136,136,160,0.4)'],
+  Unconscious:['#c06060','rgba(192,96,96,0.4)'],
+  Frightened:['#c06060','rgba(192,96,96,0.4)'],
+  default:['#6a8fa8','rgba(100,130,160,0.4)']
+};
+
+function condColors(name) {
+  return COND_COLORS[name] || COND_COLORS.default;
+}
+
+function addCondition(slug) {
+  const name = prompt('Condition name:\n' + CONDITIONS.join(', '));
+  if (!name) return;
+  const row = document.getElementById('conds-' + slug);
+  if (!row) return;
+  const [c, bc] = condColors(name);
+  const isSevere = SEVERE.has(name);
+  const chip = document.createElement('span');
+  chip.className = 'chip' + (isSevere ? ' severe' : '');
+  chip.style.cssText = `color:${c};border-color:${bc};--c-accent:${c};--c-bright:${c};`;
+  chip.innerHTML = `${name} <span class="chip-x" onclick="event.stopPropagation();removeChip(this)">×</span>`;
+  row.insertBefore(chip, row.querySelector('.chip-add'));
+}
+
+function removeChip(xBtn) {
+  const chip = xBtn.parentElement;
+  chip.classList.add('removing');
+  setTimeout(() => chip.remove(), 150);
+}
+
+function removeConc(slug) {
+  const concRow = document.querySelector(`#card-${slug} .conc-row`);
+  if (concRow) { concRow.style.opacity='0'; concRow.style.transition='opacity 0.2s'; setTimeout(()=>concRow.remove(),200); }
+}
+
+// ─── Spell slots ──────────────────────────────────────────────────────
+function toggleSlot(pip) {
+  pip.classList.toggle('used');
+  if (pip.classList.contains('used')) {
+    pip.style.background = 'transparent';
+  } else {
+    const card = pip.closest('.card');
+    const accent = card ? getComputedStyle(card).getPropertyValue('--c-bright').trim() : '#88b888';
+    pip.style.background = '#78b878';
+  }
+}
+
+// ─── Death saves ─────────────────────────────────────────────────────
+const pipState = {};
+function togglePip(slug, type, idx) {
+  const key = `${slug}-${type}-${idx}`;
+  const id = type === 's' ? `${slug[0]}s-${idx}` : `${slug[0]}f-${idx}`;
+  const pip = document.getElementById(id);
+  if (!pip) return;
+  if (!pipState[key]) {
+    pipState[key] = true;
+    pip.classList.add(type === 's' ? 'success-filled' : 'failure-filled');
+    if (type === 'f') { pip.style.animation = 'failureShake 0.3s ease-out'; setTimeout(()=>pip.style.animation='',350); }
+  } else {
+    pipState[key] = false;
+    pip.classList.remove('success-filled','failure-filled');
+  }
+  // check 3 failures = fallen
+  const failCount = [0,1,2].filter(i => pipState[`${slug}-f-${i}`]).length;
+  const sucCount  = [0,1,2].filter(i => pipState[`${slug}-s-${i}`]).length;
+  const card = document.getElementById('card-' + slug);
+  if (!card) return;
+  if (failCount >= 3) {
+    card.classList.add('fallen');
+    card.style.transition = 'opacity 0.6s ease-in';
+    card.style.borderColor = '#c06060';
+  } else if (sucCount >= 3) {
+    card.classList.remove('fallen');
+    card.style.borderColor = '';
+    // gem pulse
+    const origShadow = card.style.boxShadow;
+    card.style.boxShadow = `0 0 0 0 rgba(138,180,200,0.6)`;
+    card.style.transition = 'box-shadow 0.4s ease-out';
+    setTimeout(()=>{ card.style.boxShadow = `0 0 12px rgba(138,180,200,0)`; setTimeout(()=>{ card.style.boxShadow = ''; },450); },20);
+  } else {
+    card.classList.remove('fallen');
+    card.style.transition = '';
+  }
+}
+
+// ─── Party menu ───────────────────────────────────────────────────────
+function openPartyMenu() { alert('Party actions:\n• Short Rest\n• Long Rest\n• Award XP\n• Distribute Coin'); }
+
+// ─── Dice Roller ──────────────────────────────────────────────────────
+const DIE_TYPES = [4,6,8,10,12,20,100];
+const DIE_ROTATIONS = {4:720,6:720,8:720,10:540,12:540,20:1080,100:360};
+
+// SVG die shapes
+function dieSVG(sides, size, color) {
+  size = size || 24;
+  const c = color || 'currentColor';
+  switch(sides) {
+    case 4:   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><polygon points="12,2 22,20 2,20" fill="none" stroke="${c}" stroke-width="1.5"/></svg>`;
+    case 6:   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><rect x="2" y="2" width="20" height="20" rx="2" fill="none" stroke="${c}" stroke-width="1.5"/></svg>`;
+    case 8:   return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><polygon points="12,2 22,10 22,14 12,22 2,14 2,10" fill="none" stroke="${c}" stroke-width="1.5"/></svg>`;
+    case 10:  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><polygon points="12,2 20,8 20,16 12,22 4,16 4,8" fill="none" stroke="${c}" stroke-width="1.5"/></svg>`;
+    case 12:  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><polygon points="12,2 18,5 22,11 22,13 18,19 12,22 6,19 2,13 2,11 6,5" fill="none" stroke="${c}" stroke-width="1.5"/></svg>`;
+    case 20:  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="${c}" stroke-width="1.5"/></svg>`;
+    case 100: return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><polygon points="12,2 19,6 22,13 19,18 12,22 5,18 2,13 5,6" fill="none" stroke="${c}" stroke-width="1.5"/></svg>`;
+    default:  return `<svg width="${size}" height="${size}" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="none" stroke="${c}" stroke-width="1.5"/></svg>`;
+  }
+}
+
+function buildDieGrid() {
+  const grid = document.getElementById('dieGrid');
+  if (!grid) return;
+  grid.innerHTML = DIE_TYPES.map(sides =>
+    `<button class="die-btn" data-sides="${sides}" onclick="addDie(${sides})">
+      <span class="die-svg">${dieSVG(sides,22,'var(--accent-bright)')}</span>
+      <span class="die-label">d${sides}</span>
+    </button>`
+  ).join('');
+}
+
+function addDie(sides) {
+  dieExpr[sides] = (dieExpr[sides] || 0) + 1;
+  updateExprDisplay();
+  document.querySelectorAll(`.die-btn[data-sides="${sides}"]`).forEach(b => {
+    b.classList.add('selected');
+    setTimeout(() => b.classList.remove('selected'), 200);
+  });
+}
+
+function clearExpr() {
+  dieExpr = {};
+  updateExprDisplay();
+  document.getElementById('modInput').value = '0';
+  document.getElementById('repeatInput').value = '1';
+  clearResult();
+}
+
+function updateExprDisplay() {
+  const parts = Object.entries(dieExpr).filter(([,v])=>v>0).map(([k,v])=>`${v}d${k}`);
+  const mod = parseInt(document.getElementById('modInput')?.value||'0');
+  let expr = parts.join('+') || '';
+  if (mod !== 0) expr += (mod>0?'+':'')+mod;
+  const el = document.getElementById('exprText');
+  if (el) {
+    el.textContent = expr || 'Pick a die to roll';
+    el.style.color = expr ? 'var(--text)' : 'var(--text-muted)';
+  }
+}
+
+function setAdv(mode) {
+  advMode = mode;
+  ['N','A','D'].forEach(m => {
+    const btn = document.getElementById('adv-' + m);
+    if (btn) btn.classList.toggle('active', m === mode);
+  });
+}
+
+function rollDie(sides) { return Math.floor(Math.random() * sides) + 1; }
+
+function doRoll() {
+  const hasDice = Object.values(dieExpr).some(v => v > 0);
+  if (!hasDice) { addDie(20); } // default to d20
+  const mod = parseInt(document.getElementById('modInput')?.value||'0');
+  const repeat = Math.max(1, Math.min(8, parseInt(document.getElementById('repeatInput')?.value||'1')));
+
+  const btn = document.getElementById('rollBtn');
+  if (btn) { btn.classList.add('rolling'); btn.textContent = 'Rolling…'; }
+
+  clearResult();
+
+  // build dice list
+  const diceList = [];
+  Object.entries(dieExpr).forEach(([sides,count]) => {
+    for (let i = 0; i < count; i++) diceList.push(parseInt(sides));
+  });
+
+  // show stage dice
+  const stage = document.getElementById('diceStage');
+  stage.innerHTML = diceList.map((sides,i) =>
+    `<div class="die-shape-wrap" id="die-wrap-${i}">
+      <div class="die-shape" id="die-shape-${i}" style="animation:diceShake 0.2s linear;">
+        ${dieSVG(sides,32,'var(--accent-bright)')}
+      </div>
+      <div class="die-result-num" id="die-num-${i}"></div>
+    </div>`
+  ).join('');
+
+  // spin after shake
+  setTimeout(() => {
+    diceList.forEach((sides,i) => {
+      const shape = document.getElementById('die-shape-' + i);
+      if (!shape) return;
+      const rot = DIE_ROTATIONS[sides] || 720;
+      const delay = i * 60;
+      setTimeout(() => {
+        if (shape) {
+          shape.style.animation = 'none';
+          shape.style.transform = 'rotate(0deg)';
+          void shape.offsetWidth;
+          shape.style.transition = `transform 0.6s cubic-bezier(0.2,0.8,0.3,1.0) ${delay}ms, filter 0.6s ease-out ${delay}ms`;
+          shape.style.transform = `rotate(${rot}deg)`;
+          shape.style.filter = 'blur(0px)';
+        }
+      }, 10);
     });
-    ['mouseup','mouseleave'].forEach(ev =>
-      btn.addEventListener(ev, () => {
-        clearTimeout(holdTimer);
-        clearInterval(holdInterval);
-      })
-    );
-  });
+  }, 200);
 
-  /* ── Modal helpers ── */
-  function openModal(type, charLabel) {
-    // Determine slug
-    const slug = charLabel.toLowerCase() === 'aragorn' ? 'aragorn'
-               : charLabel.toLowerCase() === 'eoghan'  ? 'eoghan'
-               : 'aesop';
-    currentModalChar = slug;
-    const c = chars[slug];
-
-    if (type === 'dmg') {
-      document.getElementById('dmg-modal-title').textContent = '⚔ Deal Damage — ' + charLabel;
-      document.getElementById('dmg-char-context').textContent =
-        'HP: ' + c.hp + ' / ' + c.max + (c.temp ? '  ·  +' + c.temp + ' temp' : '');
-      document.getElementById('dmg-amt').value = 0;
-      document.getElementById('dmg-modal').classList.add('open');
-      document.getElementById('dmg-amt').focus();
-    } else {
-      document.getElementById('heal-modal-title').textContent = '✦ Heal — ' + charLabel;
-      document.getElementById('heal-char-context').textContent =
-        'HP: ' + c.hp + ' / ' + c.max;
-      document.getElementById('heal-amt').value = 0;
-      document.getElementById('heal-modal').classList.add('open');
-      document.getElementById('heal-amt').focus();
-    }
-
-    closeAllPopovers();
-  }
-
-  function closeModal(id) {
-    document.getElementById(id).classList.remove('open');
-  }
-
-  function handleOverlayClick(e, id) {
-    if (e.target === document.getElementById(id)) closeModal(id);
-  }
-
-  function modalKeydown(e, modalId) {
-    if (e.key === 'Enter') {
-      if (modalId === 'dmg-modal') applyDmg();
-      else applyHeal();
-    }
-    if (e.key === 'Escape') closeModal(modalId);
-  }
-
-  /* ── Amount stepper (Improvement 2) ── */
-  function adjustAmt(type, delta) {
-    const el = document.getElementById(type + '-amt');
-    const val = parseInt(el.value, 10) || 0;
-    el.value = Math.max(0, val + delta);
-  }
-
-  function setAmt(type, val) {
-    document.getElementById(type + '-amt').value = val;
-  }
-
-  function clampAmt(type) {
-    const el = document.getElementById(type + '-amt');
-    const v = parseInt(el.value, 10);
-    if (isNaN(v) || v < 0) el.value = 0;
-    if (v > 999) el.value = 999;
-  }
-
-  /* ── Hold-to-repeat on modal steppers ── */
-  document.querySelectorAll('.amt-step-btn').forEach(btn => {
-    btn.addEventListener('mousedown', () => {
-      holdTimer = setTimeout(() => {
-        holdInterval = setInterval(() => btn.click(), 80);
-      }, 500);
+  // settle
+  setTimeout(() => {
+    diceList.forEach((sides,i) => {
+      const shape = document.getElementById('die-shape-' + i);
+      if (!shape) { return; }
+      const delay = i * 60;
+      setTimeout(() => {
+        if (!shape) return;
+        shape.style.transition = 'none';
+        shape.style.animation = `diceSettle 0.2s cubic-bezier(0.3,1.5,0.6,1.0)`;
+      }, delay);
     });
-    ['mouseup','mouseleave'].forEach(ev =>
-      btn.addEventListener(ev, () => {
-        clearTimeout(holdTimer);
-        clearInterval(holdInterval);
-      })
-    );
-  });
+  }, 820);
 
-  /* ── Apply damage / heal ── */
-  function applyDmg() {
-    const amt = Math.max(0, parseInt(document.getElementById('dmg-amt').value, 10) || 0);
-    if (amt === 0) { closeModal('dmg-modal'); return; }
-    const c = chars[currentModalChar];
-    c.hp = Math.max(0, c.hp - amt);
-    renderHP(currentModalChar);
-    closeModal('dmg-modal');
-  }
+  // reveal results
+  setTimeout(() => {
+    const results = [];
+    let total = 0;
+    let isNat20 = false, isNat1 = false;
 
-  function applyHeal() {
-    const amt = Math.max(0, parseInt(document.getElementById('heal-amt').value, 10) || 0);
-    if (amt === 0) { closeModal('heal-modal'); return; }
-    const c = chars[currentModalChar];
-    c.hp = Math.min(c.max, c.hp + amt);
-    renderHP(currentModalChar);
-    closeModal('heal-modal');
-  }
-
-  /* ── Popover toggle (Improvement 3 — "⋯" button) ── */
-  function togglePopover(id, btn) {
-    const pop = document.getElementById(id);
-    const wasOpen = pop.classList.contains('open');
-    closeAllPopovers();
-    if (!wasOpen) pop.classList.add('open');
-  }
-
-  function closeAllPopovers() {
-    document.querySelectorAll('.quick-popover.open').forEach(p => p.classList.remove('open'));
-  }
-
-  // Close popovers on outside click
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.cqa-btn.more') && !e.target.closest('.quick-popover')) {
-      closeAllPopovers();
+    for (let r = 0; r < repeat; r++) {
+      let rollTotal = mod;
+      const rollParts = [];
+      diceList.forEach((sides, i) => {
+        let val = rollDie(sides);
+        if (advMode !== 'N' && sides === 20) {
+          const val2 = rollDie(20);
+          val = advMode === 'A' ? Math.max(val,val2) : Math.min(val,val2);
+        }
+        rollParts.push({ sides, val });
+        rollTotal += val;
+        if (r === 0 && sides === 20) {
+          if (val === 20) isNat20 = true;
+          if (val === 1)  isNat1 = true;
+        }
+      });
+      if (r === 0) {
+        total = rollTotal;
+        // show per-die results
+        rollParts.forEach((p,i) => {
+          const numEl = document.getElementById('die-num-' + i);
+          if (numEl) { numEl.textContent = p.val; numEl.classList.add('visible'); }
+        });
+        // trigger nat1 tilt
+        if (isNat1) {
+          diceList.forEach((sides,i) => {
+            if (sides === 20) {
+              const shape = document.getElementById('die-shape-' + i);
+              if (shape) { shape.style.animation = 'nat1Tilt 0.5s ease-in-out'; }
+            }
+          });
+        }
+      }
+      results.push(rollTotal);
     }
-  });
 
-  // ESC closes modals and popovers
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') {
-      closeModal('dmg-modal');
-      closeModal('heal-modal');
-      closeAllPopovers();
+    // show total
+    const totalEl = document.getElementById('resultTotal');
+    const labelEl = document.getElementById('resultLabel');
+    if (totalEl) {
+      totalEl.textContent = total;
+      totalEl.className = 'result-total visible' + (isNat20?' nat20':isNat1?' nat1':'');
     }
+    if (labelEl) {
+      if (isNat20) { labelEl.textContent = 'Critical'; labelEl.className = 'result-label visible nat20'; }
+      else if (isNat1) { labelEl.textContent = 'Fumble'; labelEl.className = 'result-label visible nat1'; }
+      else { labelEl.textContent = ''; }
+    }
+
+    // apply-to row
+    setTimeout(() => {
+      const applyRow = document.getElementById('applyRow');
+      if (applyRow) {
+        const isDmgRoll = !diceList.includes(20) || Object.keys(dieExpr).length > 1;
+        if (isDmgRoll) {
+          const pillData = [
+            { label:'Torvin', color:'#a06840' },
+            { label:'Eoghan', color:'#6a8fa8' },
+            { label:'Mira', color:'#5a8a60' },
+            ...npcs.filter(n=>n.hp>0).map(n=>({label:n.name.split(' ')[1]||n.name,color:'#9a8a60'}))
+          ];
+          applyRow.innerHTML = pillData.map(p =>
+            `<button class="apply-pill" style="border-color:${p.color};color:${p.color};" onclick="applyDamage('${p.label}',${total})">${p.label}</button>`
+          ).join('');
+          applyRow.classList.add('visible');
+        }
+      }
+    }, 300);
+
+    // add to history
+    const exprStr = Object.entries(dieExpr).filter(([,v])=>v>0).map(([k,v])=>`${v}d${k}`).join('+') + (mod?`${mod>0?'+':''}${mod}`:'');
+    addHistory(exprStr || 'd20', results, repeat);
+
+    if (btn) { btn.classList.remove('rolling'); btn.textContent = 'Roll'; }
+  }, 1000);
+}
+
+function clearResult() {
+  const totalEl = document.getElementById('resultTotal');
+  const labelEl = document.getElementById('resultLabel');
+  const applyRow = document.getElementById('applyRow');
+  const stage = document.getElementById('diceStage');
+  if (totalEl) { totalEl.className = 'result-total'; totalEl.textContent = ''; }
+  if (labelEl) { labelEl.className = 'result-label'; labelEl.textContent = ''; }
+  if (applyRow) { applyRow.className = 'apply-row'; applyRow.innerHTML = ''; }
+}
+
+function applyDamage(name, amt) {
+  const slugMap = { Torvin:'torvin', Eoghan:'eoghan', Mira:'mira' };
+  const slug = slugMap[name];
+  if (slug) { adjustHP(slug, -amt); return; }
+  // try NPC
+  const npc = npcs.find(n => n.name.includes(name));
+  if (npc) { npcDmg(npc.id, amt); }
+}
+
+function addHistory(expr, results, repeat) {
+  const list = document.getElementById('historyList');
+  if (!list) return;
+  list.style.display = 'block';
+  const valStr = repeat > 1 ? results.join(', ') : results[0];
+  const row = document.createElement('div');
+  row.className = 'history-row';
+  row.innerHTML = `<span class="history-expr">${expr}${repeat>1?' ×'+repeat:''}</span><span class="history-val">${valStr}</span>`;
+  list.insertBefore(row, list.firstChild);
+  rollHistory.unshift({ expr, results, repeat });
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────
+function init() {
+  // Render HP bars
+  Object.keys(chars).forEach(slug => renderHPBar(slug));
+  // Build die grid
+  buildDieGrid();
+  // Render initiative (non-combat empty state)
+  renderInitiative();
+  // Wire mod/repeat input to update expression
+  ['modInput','repeatInput'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('input', updateExprDisplay);
   });
+}
+
+init();
 </script>
-
 </body>
 </html>

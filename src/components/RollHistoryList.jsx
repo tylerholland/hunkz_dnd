@@ -43,15 +43,19 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false })
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontFamily: pal.fontUI,
-            fontSize: 10,
-            letterSpacing: "0.12em",
-            textTransform: "uppercase",
-            color: pal.textMuted,
-            marginBottom: 2,
-          }}
+              fontFamily: pal.fontBody,
+              fontSize: 11,
+              color: pal.textBody,
+              fontStyle: "italic",
+              textTransform: "uppercase",
+              minWidth: 0,
+              overflow: "hidden",
+              textOverflow: "ellipsis",
+              whiteSpace: "nowrap",
+          }
+          }
         >
-          {entry.exprLabel}
+         {actionLabel} 
         </div>
         <div
           style={{
@@ -76,17 +80,16 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false })
           ) : null}
           <span
             style={{
-              fontFamily: pal.fontBody,
+              fontFamily: pal.fontUI,
               fontSize: 14,
-              color: pal.textBody,
-              fontStyle: "italic",
-              minWidth: 0,
-              overflow: "hidden",
-              textOverflow: "ellipsis",
-              whiteSpace: "nowrap",
+              letterSpacing: "0.12em",
+              // textTransform: "uppercase",
+              color: pal.textMuted,
+              marginBottom: 2,
             }}
           >
-            {actionLabel}
+            {entry.exprLabel}
+            
           </span>
         </div>
       </div>

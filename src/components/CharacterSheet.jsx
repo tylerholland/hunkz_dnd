@@ -17,7 +17,7 @@ import {
 
 export { PALETTES } from "../features/characterSheet/theme";
 
-export default function CharacterSheet({ initialData, slug, onSave, onCreate, onDelete, onSessionSync }) {
+export default function CharacterSheet({ initialData, slug, onSave, onCreate, onDelete, onSessionSync, activeMap, activeMapView }) {
   useCharacterSheetGlobalStyles();
 
   const [mode, setMode] = useState("view");
@@ -526,7 +526,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
   };
 
   const _itemBonuses = {};
-  [...(char.weapons || []), ...(char.equipment || [])].forEach((item) => {
+  [...(char.weapons || []), ...(char.equipment || [])].filter((item) => item.equipped !== false).forEach((item) => {
     (item.mods || []).forEach(({ attribute, value }) => {
       const parsed = parseModInt(value);
       if (!isNaN(parsed)) _itemBonuses[attribute] = (_itemBonuses[attribute] || 0) + parsed;
@@ -788,6 +788,8 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     setHoveredStat,
     combatTab,
     setTab,
+    activeMap,
+    activeMapView,
   };
 
   if (mode === "edit") {

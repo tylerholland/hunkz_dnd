@@ -1,8 +1,6 @@
 import { useEffect } from "react";
 
 const GLOBAL_CSS = `
-  @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
-
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   html { font-size: 16px; }

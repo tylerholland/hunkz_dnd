@@ -17,7 +17,11 @@ function renderTracker(props = {}) {
       { slug: "aragorn", name: "Aragorn" },
       { slug: "liu-sha", name: "Liu Sha" },
     ],
-    npcCombat: { npcs: [] },
+    npcCombat: {
+      npcs: [
+        { id: "npc-1", name: "Goblin", hpCurrent: 7, hpMax: 7, initiativeEntryId: null },
+      ],
+    },
     onCommitInitiative: vi.fn(() => Promise.resolve()),
     onPromoteToNpc: vi.fn(),
     ...props,
@@ -64,6 +68,32 @@ describe("InitiativeTracker optimistic updates", () => {
       initiative: 12,
       isPC: false,
     });
+    expect(options).toEqual({ optimistic: true });
+  });
+
+  it("reorders initiative entries when moving an entry down", async () => {
+    const props = renderTracker({
+      initiative: {
+        entries: [
+          { id: "entry-1", slug: "aragorn", name: "Aragorn", initiative: 15, isPC: true, npcId: null },
+          { id: "entry-2", slug: "liu-sha", name: "Liu Sha", initiative: 12, isPC: true, npcId: null },
+        ],
+        activeTurnIndex: 0,
+      },
+      party: [
+        { slug: "aragorn", name: "Aragorn" },
+        { slug: "liu-sha", name: "Liu Sha" },
+      ],
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "Modify Order" }));
+    const downButtons = screen.getAllByTitle("Move down");
+    fireEvent.click(downButtons[0]);
+
+    expect(props.onCommitInitiative).toHaveBeenCalledTimes(1);
+    const [payload, options] = props.onCommitInitiative.mock.calls[0];
+    expect(payload.entries.map((entry) => entry.id)).toEqual(["entry-2", "entry-1"]);
+    expect(payload.activeTurnIndex).toBe(1);
     expect(options).toEqual({ optimistic: true });
   });
 });

@@ -1,0 +1,1712 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hit Dice Tracker — UX Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── Ocean palette variables ── */
+:root {
+  --bg: #0d0f14;
+  --surface: rgba(18,26,38,0.72);
+  --surface-solid: #121a26;
+  --border: rgba(106,143,168,0.22);
+  --border-vis: rgba(106,143,168,0.35);
+  --accent: #6a8fa8;
+  --accent-bright: #a0c0d0;
+  --accent-dim: rgba(106,143,168,0.14);
+  --text: #c8bfaf;
+  --text-body: #b0a898;
+  --text-muted: #3a5a6a;
+  --gem: #8ab4c8;
+  --gem-low: #2a4a5a;
+  --glow1: rgba(106,143,168,0.13);
+  --glow2: rgba(40,80,120,0.12);
+  --font-display: 'Cinzel', serif;
+  --font-body: 'Crimson Text', serif;
+  --font-ui: 'IM Fell English', serif;
+
+  /* Amber warning color — not palette-derived, universal */
+  --amber: #c8a040;
+  --amber-dim: rgba(200,160,64,0.15);
+  --amber-border: rgba(200,160,64,0.40);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-body);
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ── Layout ── */
+.sheet {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 48px 32px 80px;
+}
+
+/* ── Prototype nav ── */
+.proto-nav {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 14px 32px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(13,15,20,0.8);
+  position: sticky;
+  top: 0;
+  z-index: 100;
+}
+.proto-tab {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.proto-tab.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.proto-tab:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+.proto-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  display: flex;
+  align-items: center;
+  margin-left: auto;
+}
+
+/* ── Section containers ── */
+.proto-section { display: none; }
+.proto-section.visible { display: block; }
+
+/* ── Stats block ── */
+.stats-block {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 28px 30px;
+  margin-bottom: 44px;
+  isolation: isolate;
+}
+
+/* ── HP / Armor row (NO Hit Dice) ── */
+.hp-row-frame {
+  display: flex;
+  gap: 52px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-bottom: 32px;
+  padding-bottom: 24px;
+  border-bottom: 1px solid var(--border);
+}
+.hp-stat { text-align: center; }
+.hp-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 4px;
+  display: block;
+}
+.hp-number {
+  font-family: var(--font-display);
+  font-size: 44px;
+  color: var(--gem);
+  line-height: 1;
+}
+.hp-number-armor {
+  font-family: var(--font-display);
+  font-size: 44px;
+  color: var(--accent-bright);
+  line-height: 1;
+}
+.armor-type-label {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--accent);
+  display: block;
+  margin-top: 4px;
+}
+
+/* ── Section HR ── */
+hr.section-hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 22px 0;
+}
+
+/* ── Combat section header ── */
+.combat-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+.combat-section-title {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ── Shared button styles ── */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 5px 13px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent-bright); }
+.btn-primary {
+  background: rgba(18,58,78,0.5);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--accent-bright);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  padding: 8px 18px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.btn-primary:hover {
+  background: rgba(106,143,168,0.2);
+  border-color: var(--accent-bright);
+}
+.btn-amber {
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-border);
+  border-radius: 3px;
+  color: var(--amber);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+.btn-amber:hover {
+  background: rgba(200,160,64,0.22);
+  border-color: var(--amber);
+}
+.btn-destructive {
+  background: transparent;
+  border: 1px solid rgba(192,96,96,0.3);
+  border-radius: 3px;
+  color: #c06060;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.btn-destructive:hover { border-color: #c06060; }
+
+/* ── HIT DICE TRACKER ── */
+
+/* Full state (all dice available) — compact single line */
+.hd-row-full {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+.hd-diamond {
+  color: var(--gem);
+  font-size: 10px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+.hd-full-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex: 1;
+}
+.hd-full-count {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--gem);
+  line-height: 1;
+}
+.hd-full-die {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-left: 2px;
+}
+.hd-full-badge {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--gem);
+  opacity: 0.65;
+  border: 1px solid rgba(138,180,200,0.2);
+  border-radius: 2px;
+  padding: 1px 6px;
+}
+/* Spend button on full state — ghost, de-emphasized */
+.hd-full-spend {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+  opacity: 0.6;
+}
+.hd-full-spend:hover { border-color: var(--accent); color: var(--accent-bright); opacity: 1; }
+
+/* Depleted state — expanded tracker */
+.hd-depleted-block {
+  padding: 0;
+}
+.hd-depleted-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.hd-depleted-title {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex: 1;
+}
+.hd-count-display {
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+}
+.hd-count-current {
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1;
+  color: var(--amber);
+}
+.hd-count-current.empty {
+  color: #c06060;
+}
+.hd-count-sep {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.hd-count-max {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--text-muted);
+  line-height: 1;
+}
+.hd-count-die {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  color: var(--text-muted);
+  letter-spacing: 0.06em;
+  margin-left: 4px;
+}
+
+/* Die pip indicators */
+.hd-pips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+.hd-pip {
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  border: 1.5px solid var(--border-vis);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.12s, border-color 0.12s;
+  flex-shrink: 0;
+}
+.hd-pip.available {
+  background: rgba(138,180,200,0.12);
+  border-color: rgba(138,180,200,0.4);
+}
+.hd-pip.available::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--gem);
+  opacity: 0.75;
+}
+.hd-pip.spent {
+  background: transparent;
+  border-color: rgba(106,143,168,0.15);
+  opacity: 0.35;
+}
+.hd-pip.spent::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 1px;
+  background: var(--text-muted);
+  opacity: 0.4;
+}
+
+/* Amber warning strip — appears when dice are low (≤ 25% remaining) */
+.hd-low-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--amber-dim);
+  border: 1px solid var(--amber-border);
+  border-radius: 3px;
+  padding: 6px 12px;
+  margin-bottom: 10px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--amber);
+}
+
+/* Spend action row */
+.hd-action-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.hd-spend-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+.hd-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.hd-stepper-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-bright);
+  font-family: var(--font-display);
+  font-size: 18px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+  transition: background 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding-bottom: 2px;
+}
+.hd-stepper-btn:hover { background: var(--accent-dim); }
+.hd-stepper-btn:disabled { opacity: 0.3; cursor: default; }
+.hd-stepper-val {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--text);
+  min-width: 28px;
+  text-align: center;
+  padding: 0 4px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.hd-recovery-hint {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--text-muted);
+  flex: 1;
+}
+.hd-recovery-range {
+  color: var(--gem);
+  font-style: normal;
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+/* ── Spell Slots (for context — same as combat-view-tab) ── */
+.spell-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--border);
+}
+.spell-slot-row:last-child { border-bottom: none; }
+.slot-level-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  width: 36px;
+  flex-shrink: 0;
+}
+.slot-bubbles { display: flex; gap: 6px; flex: 1; }
+.slot-bubble {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border-vis);
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s, transform 0.1s;
+  flex-shrink: 0;
+}
+.slot-bubble:hover { transform: scale(1.12); border-color: var(--accent); }
+.slot-bubble.used { background: var(--gem); border-color: var(--gem); box-shadow: 0 0 6px rgba(138,180,200,0.38); }
+.slot-count-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.rest-btns { display: flex; gap: 8px; margin-top: 12px; }
+.rest-btn {
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.rest-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+/* ── Spend modal overlay ── */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+.modal-overlay.hidden { display: none; }
+.modal-panel {
+  background: var(--surface-solid);
+  border: 1px solid var(--border-vis);
+  border-radius: 6px;
+  padding: 28px 30px;
+  width: 100%;
+  max-width: 420px;
+}
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.modal-subtitle {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+}
+.modal-die-display {
+  text-align: center;
+  margin-bottom: 20px;
+}
+.modal-die-big {
+  font-family: var(--font-display);
+  font-size: 56px;
+  color: var(--gem);
+  line-height: 1;
+  display: block;
+}
+.modal-die-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 4px;
+}
+.modal-stepper-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+.modal-stepper-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.modal-stepper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.modal-step-btn {
+  background: transparent;
+  border: none;
+  color: var(--accent-bright);
+  font-family: var(--font-display);
+  font-size: 22px;
+  width: 40px;
+  height: 40px;
+  cursor: pointer;
+  transition: background 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  padding-bottom: 2px;
+}
+.modal-step-btn:hover { background: var(--accent-dim); }
+.modal-step-btn:disabled { opacity: 0.3; cursor: default; }
+.modal-step-val {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--text);
+  min-width: 44px;
+  text-align: center;
+  padding: 0 6px;
+  border-left: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+}
+.modal-recovery-preview {
+  background: var(--accent-dim);
+  border: 1px solid var(--border-vis);
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+.modal-recovery-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+  margin-bottom: 6px;
+}
+.modal-recovery-range {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--gem);
+  display: block;
+}
+.modal-recovery-formula {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 4px;
+}
+.modal-btn-row {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+/* Confirmation flash */
+.confirm-toast {
+  position: fixed;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: var(--surface-solid);
+  border: 1px solid rgba(138,180,200,0.4);
+  border-radius: 4px;
+  padding: 10px 20px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  color: var(--gem);
+  opacity: 0;
+  transition: opacity 0.3s, transform 0.3s;
+  z-index: 300;
+  white-space: nowrap;
+}
+.confirm-toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ── Callout annotations ── */
+.callout {
+  position: absolute;
+  background: rgba(0,0,0,0.82);
+  border: 1px solid rgba(106,143,168,0.4);
+  border-radius: 4px;
+  padding: 8px 12px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--accent-bright);
+  line-height: 1.5;
+  pointer-events: none;
+  z-index: 50;
+}
+.callout::before {
+  content: '';
+  position: absolute;
+}
+.callout.left { right: calc(100% + 12px); top: 0; }
+.callout.right { left: calc(100% + 12px); top: 0; }
+.callout.below { top: calc(100% + 8px); left: 0; }
+
+/* ── Page section headings ── */
+.section-heading {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--accent-bright);
+  margin-bottom: 8px;
+  margin-top: 40px;
+}
+.section-desc {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 15px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  line-height: 1.6;
+}
+
+/* ── State demo row for multiple states side by side ── */
+.states-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 24px;
+  margin-bottom: 40px;
+}
+.state-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 20px 22px;
+}
+.state-card-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 14px;
+  display: block;
+}
+
+/* ── Tab strip (for context) ── */
+.tab-strip {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+.tab-btn {
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 5px 16px;
+  cursor: pointer;
+}
+.tab-btn.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+
+/* ── DM card hit dice indicator ── */
+.dm-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 14px 16px;
+  width: 260px;
+  position: relative;
+}
+.dm-card-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--text);
+  margin-bottom: 4px;
+}
+.dm-card-class {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+.dm-card-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+.dm-hp-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  flex: 1;
+}
+.dm-hp-value {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--gem);
+}
+.dm-hp-bar {
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(138,180,200,0.12);
+  overflow: hidden;
+  margin-bottom: 10px;
+}
+.dm-hp-fill {
+  height: 100%;
+  border-radius: 2px;
+  background: var(--gem);
+  transition: width 0.3s;
+}
+.dm-card-meta-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+/* The HD indicator dot on the DM card */
+.hd-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  box-shadow: 0 0 5px var(--amber);
+  flex-shrink: 0;
+  animation: hdPulse 2s ease-in-out infinite;
+}
+@keyframes hdPulse {
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 0.45; }
+}
+.hd-dot-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--amber);
+  opacity: 0.8;
+}
+
+/* ── Long rest restore animation ── */
+@keyframes pipPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.hd-pip.restoring {
+  animation: pipPop 0.35s ease-out forwards;
+}
+
+/* ── Responsive ── */
+@media (max-width: 560px) {
+  .sheet { padding: 32px 16px 60px; }
+  .states-grid { grid-template-columns: 1fr; }
+  .modal-panel { padding: 22px 18px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ── Prototype navigation ── -->
+<nav class="proto-nav">
+  <button class="proto-tab active" onclick="showSection('stats-row')">1. Stats Row</button>
+  <button class="proto-tab" onclick="showSection('full-state')">2. Full State</button>
+  <button class="proto-tab" onclick="showSection('depleted-state')">3. Depleted States</button>
+  <button class="proto-tab" onclick="showSection('spend-interaction')">4. Spend Interaction</button>
+  <button class="proto-tab" onclick="showSection('long-rest')">5. Long Rest</button>
+  <button class="proto-tab" onclick="showSection('dm-card')">6. DM Card</button>
+  <span class="proto-label">Hit Dice Tracker — UX Prototype · Ocean Palette</span>
+</nav>
+
+<div class="sheet">
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 1: Stats Row Without Hit Dice
+  ══════════════════════════════════════════════════════ -->
+  <div id="stats-row" class="proto-section visible">
+
+    <h2 class="section-heading">Stats Row — Without Hit Dice</h2>
+    <p class="section-desc">
+      The HP / Hit Dice / Armor row becomes a clean HP / Armor two-value layout.
+      Hit Dice are removed from the stats block entirely and tracked separately in the Combat tab.
+    </p>
+
+    <!-- Before: three values -->
+    <div style="margin-bottom:32px; position:relative;">
+      <div style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.28em; text-transform:uppercase; color:#c06060; margin-bottom:10px;">
+        ✕  Before — current layout (being replaced)
+      </div>
+      <div class="stats-block" style="opacity:0.55; pointer-events:none;">
+        <div class="hp-row-frame" style="margin-bottom:0; padding-bottom:0; border-bottom:none;">
+          <div class="hp-stat">
+            <span class="hp-label">Hit Points</span>
+            <span class="hp-number">52</span>
+          </div>
+          <div class="hp-stat">
+            <span class="hp-label">Hit Dice</span>
+            <div style="font-family:var(--font-display); line-height:1;">
+              <span style="font-size:44px;">5</span><span style="font-size:22px;">d</span><span style="font-size:44px;">10</span>
+            </div>
+          </div>
+          <div class="hp-stat">
+            <span class="hp-label">Armor</span>
+            <span class="hp-number-armor">16</span>
+            <span class="armor-type-label">Light · Normal</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- After: two values -->
+    <div style="position:relative;">
+      <div style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.28em; text-transform:uppercase; color:var(--gem); margin-bottom:10px;">
+        ✓  After — HP and Armor only, clean two-column balance
+      </div>
+      <div class="stats-block" style="position:relative;">
+        <div class="hp-row-frame" style="margin-bottom:0; padding-bottom:0; border-bottom:none;">
+
+          <div class="hp-stat" style="position:relative;">
+            <span class="hp-label">Hit Points</span>
+            <span class="hp-number">52</span>
+            <div class="callout below" style="left:50%; transform:translateX(-50%); top:calc(100% + 10px); max-width:200px; white-space:nowrap;">
+              Unchanged — same large gem-colored Cinzel number.
+            </div>
+          </div>
+
+          <div class="hp-stat" style="position:relative;">
+            <span class="hp-label">Armor</span>
+            <span class="hp-number-armor">16</span>
+            <span class="armor-type-label">Light · Normal</span>
+            <div class="callout below" style="right:0; top:calc(100% + 10px); max-width:220px;">
+              Unchanged — armor total in accentBright, type label below.
+              Two values create natural balance at equal visual weight.
+            </div>
+          </div>
+
+        </div>
+      </div>
+
+      <div style="height:80px;"></div><!-- callout space -->
+
+      <div style="background:rgba(106,143,168,0.06); border:1px solid var(--border); border-radius:3px; padding:12px 16px; margin-top:8px;">
+        <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted);">Design note —</span>
+        <span style="font-family:var(--font-body); font-size:14px; color:var(--text-body);">
+          Two values reads more cleanly than three on a narrow mobile screen. HP and Armor are the glanceable combat facts; Hit Dice belong with the spendable-resource section of the Combat tab, not the identity/reference block.
+        </span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 2: Full State (no dice spent)
+  ══════════════════════════════════════════════════════ -->
+  <div id="full-state" class="proto-section">
+
+    <h2 class="section-heading">Hit Dice — Full State</h2>
+    <p class="section-desc">
+      When all Hit Dice are available, the tracker is a minimal single-line summary.
+      It confirms "you're fine" at a glance without competing with HP for visual weight.
+      The Spend button is reachable but de-emphasized via reduced opacity.
+    </p>
+
+    <div class="stats-block">
+      <div class="tab-strip">
+        <button class="tab-btn">Inventory</button>
+        <button class="tab-btn">Persona</button>
+        <button class="tab-btn active">Combat</button>
+      </div>
+
+      <!-- HP section for context -->
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span class="combat-section-title">Hit Points</span>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:16px;">
+        <span style="font-family:var(--font-display); font-size:36px; color:var(--gem);">52</span>
+        <span style="font-family:var(--font-ui); font-size:12px; color:var(--text-muted);">/ 58 max</span>
+      </div>
+
+      <hr class="section-hr">
+
+      <!-- ── Hit Dice: FULL STATE ── -->
+      <div style="position:relative;">
+        <div class="hd-row-full">
+          <span class="hd-diamond">◆</span>
+          <span class="hd-full-label">Hit Dice</span>
+          <!-- Count + die type in a tight cluster -->
+          <span class="hd-full-count">5</span>
+          <span class="hd-full-die">d10</span>
+          <span class="hd-full-badge">Full</span>
+          <button class="hd-full-spend" onclick="showSection('spend-interaction')">Spend</button>
+        </div>
+
+        <!-- Annotation callouts -->
+        <div class="callout right" style="left:calc(100% + 14px); top:-4px; max-width:220px;">
+          Single line. Diamond bullet matches the Persona tab trait style — familiar, low-weight.
+          "Full" badge fades when depleted, so absence = action needed.
+        </div>
+      </div>
+
+      <hr class="section-hr">
+
+      <!-- Spell slots for context -->
+      <div>
+        <div class="combat-section-header">
+          <span class="combat-section-title">Spell Slots</span>
+        </div>
+        <div class="spell-slot-row">
+          <span class="slot-level-label">1st</span>
+          <div class="slot-bubbles">
+            <div class="slot-bubble"></div>
+            <div class="slot-bubble"></div>
+            <div class="slot-bubble"></div>
+            <div class="slot-bubble"></div>
+          </div>
+          <span class="slot-count-label">4 / 4</span>
+        </div>
+        <div class="spell-slot-row">
+          <span class="slot-level-label">2nd</span>
+          <div class="slot-bubbles">
+            <div class="slot-bubble"></div>
+            <div class="slot-bubble"></div>
+          </div>
+          <span class="slot-count-label">2 / 2</span>
+        </div>
+        <div class="rest-btns">
+          <button class="rest-btn">⏾ Long Rest</button>
+          <button class="rest-btn">◑ Short Rest</button>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:rgba(106,143,168,0.06); border:1px solid var(--border); border-radius:3px; padding:12px 16px; margin-top:0;">
+      <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted);">Rationale —</span>
+      <span style="font-family:var(--font-body); font-size:14px; color:var(--text-body);">
+        The full state needs zero cognitive load. A player sees "◆ Hit Dice  5 d10  Full" and moves on. Visual weight is ~20% of a spell slot row — appropriate for a resource that requires no action when full.
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 3: Depleted States
+  ══════════════════════════════════════════════════════ -->
+  <div id="depleted-state" class="proto-section">
+
+    <h2 class="section-heading">Hit Dice — Depleted States</h2>
+    <p class="section-desc">
+      When any dice have been spent, the tracker expands to show individual pip indicators.
+      Visual weight increases proportional to how depleted the resource is.
+    </p>
+
+    <div class="states-grid">
+
+      <!-- Partially depleted (3 of 5 remain) -->
+      <div class="state-card" style="position:relative;">
+        <span class="state-card-label">Partially depleted — 3 of 5 remain</span>
+
+        <div class="hd-depleted-block">
+          <div class="hd-depleted-header">
+            <span class="hd-depleted-title">Hit Dice</span>
+            <div class="hd-count-display">
+              <span class="hd-count-current">3</span>
+              <span class="hd-count-sep">/</span>
+              <span class="hd-count-max">5</span>
+              <span class="hd-count-die">d10</span>
+            </div>
+          </div>
+
+          <!-- 5 pips: 3 available (filled), 2 spent (hollow) -->
+          <div class="hd-pips">
+            <div class="hd-pip available"></div>
+            <div class="hd-pip available"></div>
+            <div class="hd-pip available"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+          </div>
+
+          <div class="hd-action-row">
+            <span class="hd-spend-label">Spend</span>
+            <div class="hd-stepper">
+              <button class="hd-stepper-btn" disabled>−</button>
+              <span class="hd-stepper-val">1</span>
+              <button class="hd-stepper-btn">+</button>
+            </div>
+            <span class="hd-recovery-hint">Roll <span class="hd-recovery-range">1d10+2</span></span>
+            <button class="btn-amber">Spend</button>
+          </div>
+        </div>
+
+        <div class="callout below" style="top:calc(100% + 8px); left:0; max-width:260px;">
+          Count shown in amber — a soft warning. Pip indicators give instant spatial sense of how many remain.
+        </div>
+      </div>
+
+      <!-- Heavily depleted (1 of 7 remain) -->
+      <div class="state-card" style="position:relative;">
+        <span class="state-card-label">Heavily depleted — 1 of 7 remain</span>
+
+        <div class="hd-depleted-block">
+          <div class="hd-depleted-header">
+            <span class="hd-depleted-title">Hit Dice</span>
+            <div class="hd-count-display">
+              <span class="hd-count-current" style="color:#c06060;">1</span>
+              <span class="hd-count-sep">/</span>
+              <span class="hd-count-max">7</span>
+              <span class="hd-count-die">d8</span>
+            </div>
+          </div>
+
+          <!-- Low-resource warning strip -->
+          <div class="hd-low-warning">
+            ◈ 1 of 7 Hit Dice remaining — consider saving for emergencies
+          </div>
+
+          <!-- 7 pips: 1 available, 6 spent -->
+          <div class="hd-pips">
+            <div class="hd-pip available"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+          </div>
+
+          <div class="hd-action-row">
+            <span class="hd-spend-label">Spend</span>
+            <div class="hd-stepper">
+              <button class="hd-stepper-btn" disabled>−</button>
+              <span class="hd-stepper-val">1</span>
+              <button class="hd-stepper-btn" disabled>+</button>
+            </div>
+            <span class="hd-recovery-hint">Roll <span class="hd-recovery-range">1d8+1</span></span>
+            <button class="btn-amber" style="opacity:0.7;">Spend</button>
+          </div>
+        </div>
+
+        <div class="callout below" style="top:calc(100% + 8px); left:0; max-width:260px;">
+          Count turns error-red (#c06060, universal error color). Warning strip appears at ≤ 25% remaining (1 of 4+ dice). Stepper max is locked at current count.
+        </div>
+      </div>
+
+      <!-- Fully spent (0 of 5) -->
+      <div class="state-card" style="position:relative;">
+        <span class="state-card-label">Fully spent — 0 of 5 remain</span>
+
+        <div class="hd-depleted-block">
+          <div class="hd-depleted-header">
+            <span class="hd-depleted-title">Hit Dice</span>
+            <div class="hd-count-display">
+              <span class="hd-count-current" style="color:#c06060; opacity:0.6;">0</span>
+              <span class="hd-count-sep">/</span>
+              <span class="hd-count-max">5</span>
+              <span class="hd-count-die">d10</span>
+            </div>
+          </div>
+
+          <!-- All pips spent -->
+          <div class="hd-pips">
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+          </div>
+
+          <div class="hd-action-row" style="opacity:0.45; pointer-events:none;">
+            <span class="hd-spend-label">Spend</span>
+            <div class="hd-stepper">
+              <button class="hd-stepper-btn" disabled>−</button>
+              <span class="hd-stepper-val">0</span>
+              <button class="hd-stepper-btn" disabled>+</button>
+            </div>
+            <span class="hd-recovery-hint" style="color:#c06060; font-style:italic; font-size:13px;">No dice remaining</span>
+          </div>
+        </div>
+
+        <div class="callout below" style="top:calc(100% + 8px); left:0; max-width:260px;">
+          Spend row is fully disabled (opacity 0.45, pointer-events none). No "None remaining" button — just clear visual state. Short Rest button won't help; Long Rest is the path forward.
+        </div>
+      </div>
+
+    </div>
+
+    <div style="height:100px;"></div><!-- callout space -->
+
+    <div style="background:rgba(106,143,168,0.06); border:1px solid var(--border); border-radius:3px; padding:12px 16px;">
+      <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted);">Pip count notes —</span>
+      <span style="font-family:var(--font-body); font-size:14px; color:var(--text-body);">
+        For characters with many levels (10+), pips wrap into a second row. Max 20 pips possible (level 20). At level 20 the pips are compact enough (26px with 7px gap) to fit ~8 per row = 3 rows max. Still glanceable; no overflow truncation needed. At level 1, there's a single pip — which also works fine.
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 4: Spend Interaction
+  ══════════════════════════════════════════════════════ -->
+  <div id="spend-interaction" class="proto-section">
+
+    <h2 class="section-heading">Spend Interaction</h2>
+    <p class="section-desc">
+      Tap "Spend" → modal opens showing die size, stepper (1 to current max), and an HP recovery range preview.
+      This is the key in-session action — optimistic write to hitDiceCurrent via patchSession on confirm.
+    </p>
+
+    <!-- Live demo: Combat tab with an interactive Hit Dice tracker -->
+    <div class="stats-block" style="position:relative;">
+      <div class="tab-strip">
+        <button class="tab-btn">Inventory</button>
+        <button class="tab-btn">Persona</button>
+        <button class="tab-btn active">Combat</button>
+      </div>
+
+      <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+        <span class="combat-section-title">Hit Points</span>
+      </div>
+      <div style="display:flex; align-items:baseline; gap:8px; margin-bottom:16px;">
+        <span style="font-family:var(--font-display); font-size:36px; color:var(--gem);" id="demo-hp">38</span>
+        <span style="font-family:var(--font-ui); font-size:12px; color:var(--text-muted);">/ 58 max</span>
+        <span style="font-family:var(--font-body); font-style:italic; font-size:13px; color:var(--text-muted); margin-left:8px;">↑ tap Spend to recover HP</span>
+      </div>
+
+      <hr class="section-hr">
+
+      <!-- Interactive Hit Dice tracker -->
+      <div id="hd-tracker">
+        <!-- Rendered by JS based on state -->
+      </div>
+
+      <hr class="section-hr">
+
+      <!-- Spell slots for context -->
+      <div>
+        <div class="combat-section-header">
+          <span class="combat-section-title">Spell Slots</span>
+        </div>
+        <div class="spell-slot-row">
+          <span class="slot-level-label">1st</span>
+          <div class="slot-bubbles">
+            <div class="slot-bubble used"></div>
+            <div class="slot-bubble"></div>
+            <div class="slot-bubble"></div>
+            <div class="slot-bubble"></div>
+          </div>
+          <span class="slot-count-label">3 / 4</span>
+        </div>
+        <div class="rest-btns">
+          <button class="rest-btn" onclick="triggerLongRest()">⏾ Long Rest</button>
+          <button class="rest-btn">◑ Short Rest</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Annotation -->
+    <div style="background:rgba(106,143,168,0.06); border:1px solid var(--border); border-radius:3px; padding:12px 16px; margin-top:0;">
+      <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted);">Interaction note —</span>
+      <span style="font-family:var(--font-body); font-size:14px; color:var(--text-body);">
+        The "Spend" button on the tracker row is the tap target (not modal-only). For speed: a direct single-die spend can also work inline without the modal — a minus stepper on the row itself. The modal adds clarity and the HP recovery preview, which is worth the extra tap during a Short Rest deliberation. Both paths are shown in the demo above.
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 5: Long Rest Recovery
+  ══════════════════════════════════════════════════════ -->
+  <div id="long-rest" class="proto-section">
+
+    <h2 class="section-heading">Long Rest — Hit Dice Recovery</h2>
+    <p class="section-desc">
+      Long Rest restores floor(level / 2) Hit Dice, capped at max.
+      No extra UI needed — the existing Long Rest button handles this.
+      Below shows the before/after of a Long Rest at different depletion levels.
+    </p>
+
+    <div class="states-grid">
+
+      <!-- Before long rest: heavily depleted -->
+      <div class="state-card">
+        <span class="state-card-label">Before Long Rest — 1 of 7 remain</span>
+        <div class="hd-depleted-block">
+          <div class="hd-depleted-header">
+            <span class="hd-depleted-title">Hit Dice</span>
+            <div class="hd-count-display">
+              <span class="hd-count-current" style="color:#c06060;">1</span>
+              <span class="hd-count-sep">/</span>
+              <span class="hd-count-max">7</span>
+              <span class="hd-count-die">d8</span>
+            </div>
+          </div>
+          <div class="hd-pips">
+            <div class="hd-pip available"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- After long rest: 4 of 7 (1 + floor(7/2) = 1 + 3 = 4) -->
+      <div class="state-card" id="long-rest-after-card">
+        <span class="state-card-label">After Long Rest — 4 of 7 restored (floor(7÷2)=3 recovered)</span>
+        <div class="hd-depleted-block">
+          <div class="hd-depleted-header">
+            <span class="hd-depleted-title">Hit Dice</span>
+            <div class="hd-count-display">
+              <span class="hd-count-current">4</span>
+              <span class="hd-count-sep">/</span>
+              <span class="hd-count-max">7</span>
+              <span class="hd-count-die">d8</span>
+            </div>
+          </div>
+          <div class="hd-pips" id="long-rest-after-pips">
+            <div class="hd-pip available"></div>
+            <div class="hd-pip available"></div>
+            <div class="hd-pip available"></div>
+            <div class="hd-pip available"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+            <div class="hd-pip spent"></div>
+          </div>
+        </div>
+        <div style="margin-top:12px;">
+          <button class="btn-ghost" onclick="animateLongRest()">▷ Animate recovery</button>
+        </div>
+      </div>
+
+      <!-- Full recovery example: 7 of 7 -->
+      <div class="state-card">
+        <span class="state-card-label">Full recovery — 7 of 7 (after Long Rest from 4+)</span>
+        <div style="padding:6px 0;">
+          <div class="hd-row-full">
+            <span class="hd-diamond">◆</span>
+            <span class="hd-full-label">Hit Dice</span>
+            <span class="hd-full-count">7</span>
+            <span class="hd-full-die">d8</span>
+            <span class="hd-full-badge">Full</span>
+            <button class="hd-full-spend" disabled style="opacity:0.4; cursor:default;">Spend</button>
+          </div>
+        </div>
+        <div style="margin-top:10px; font-family:var(--font-body); font-style:italic; font-size:13px; color:var(--text-muted);">
+          Returns to compact single-line state automatically when current = max.
+        </div>
+      </div>
+
+    </div>
+
+    <div style="background:rgba(106,143,168,0.06); border:1px solid var(--border); border-radius:3px; padding:12px 16px;">
+      <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted);">RAW note —</span>
+      <span style="font-family:var(--font-body); font-size:14px; color:var(--text-body);">
+        5e PHB p.186: Long Rest restores spent Hit Dice equal to half your max (floor). So a 7th-level character recovers 3 Hit Dice — going from 1 → 4. A second Long Rest while at 4 would bring them to 7 (4 + 3 = 7, capped at max 7).
+        The DM's Long Rest button already patches all characters via patchSession; it will now also write hitDiceCurrent = min(current + floor(level/2), level).
+      </span>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 6: DM Card
+  ══════════════════════════════════════════════════════ -->
+  <div id="dm-card" class="proto-section">
+
+    <h2 class="section-heading">DM Campaign Card — Hit Dice Indicator</h2>
+    <p class="section-desc">
+      The DM doesn't manage Hit Dice — that's a player action. The card just needs a passive indicator
+      when dice have been spent so the DM knows a player might need a Short Rest opportunity.
+      Nothing when full; a subtle amber dot when any dice have been spent.
+    </p>
+
+    <div style="display:flex; gap:24px; flex-wrap:wrap; margin-bottom:32px;">
+
+      <!-- DM card: full Hit Dice (no indicator) -->
+      <div>
+        <div style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Full — no indicator shown</div>
+        <div class="dm-card">
+          <div class="dm-card-name">Eoghan</div>
+          <div class="dm-card-class">Rogue · Level 7</div>
+          <div class="dm-card-hp-row">
+            <span class="dm-hp-label">HP</span>
+            <span class="dm-hp-value">52 / 52</span>
+          </div>
+          <div class="dm-hp-bar">
+            <div class="dm-hp-fill" style="width:100%;"></div>
+          </div>
+          <div class="dm-card-meta-row">
+            <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted);">AC 15</span>
+            <!-- No HD indicator when full -->
+          </div>
+        </div>
+      </div>
+
+      <!-- DM card: some dice spent (amber dot) -->
+      <div style="position:relative;">
+        <div style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Some spent — amber pulse dot</div>
+        <div class="dm-card">
+          <div class="dm-card-name">Eoghan</div>
+          <div class="dm-card-class">Rogue · Level 7</div>
+          <div class="dm-card-hp-row">
+            <span class="dm-hp-label">HP</span>
+            <span class="dm-hp-value">38 / 52</span>
+          </div>
+          <div class="dm-hp-bar">
+            <div class="dm-hp-fill" style="width:73%;"></div>
+          </div>
+          <div class="dm-card-meta-row">
+            <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted);">AC 15</span>
+            <span style="flex:1;"></span>
+            <!-- HD indicator when any dice spent -->
+            <div class="hd-dot"></div>
+            <span class="hd-dot-label">4/7 HD</span>
+          </div>
+        </div>
+
+        <div class="callout right" style="left:calc(100% + 14px); top:40px; max-width:220px;">
+          Amber pulsing dot + "4/7 HD" label. Visible at a glance in dim light. Dot-only without label also considered but "4/7 HD" costs only ~4ch and earns its space.
+        </div>
+      </div>
+
+      <!-- DM card: critically low dice -->
+      <div>
+        <div style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.22em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px;">Critically low — red tint</div>
+        <div class="dm-card" style="border-color:rgba(192,96,96,0.25);">
+          <div class="dm-card-name">Eoghan</div>
+          <div class="dm-card-class">Rogue · Level 7</div>
+          <div class="dm-card-hp-row">
+            <span class="dm-hp-label">HP</span>
+            <span class="dm-hp-value" style="color:#c06060;">12 / 52</span>
+          </div>
+          <div class="dm-hp-bar">
+            <div class="dm-hp-fill" style="width:23%; background:#c06060;"></div>
+          </div>
+          <div class="dm-card-meta-row">
+            <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.14em; text-transform:uppercase; color:var(--text-muted);">AC 15</span>
+            <span style="flex:1;"></span>
+            <div class="hd-dot" style="background:#c06060; box-shadow:0 0 5px #c06060;"></div>
+            <span class="hd-dot-label" style="color:#c06060;">1/7 HD</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div style="height:60px;"></div><!-- callout space -->
+
+    <div style="background:rgba(106,143,168,0.06); border:1px solid var(--border); border-radius:3px; padding:12px 16px;">
+      <span style="font-family:var(--font-ui); font-size:10px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted);">DM card philosophy —</span>
+      <span style="font-family:var(--font-body); font-size:14px; color:var(--text-body);">
+        The DM doesn't manage Hit Dice but needs to know when to create Short Rest opportunities.
+        The amber dot is passive information — it doesn't prompt any action by the DM, just informs.
+        It's positioned in the meta row at the bottom of the card, so it doesn't interfere with HP (the primary DM concern).
+        Threshold: dot appears when hitDiceCurrent &lt; hitDiceMax. Turns red when hitDiceCurrent ≤ 1 (or ≤ 25% of max, whichever is fewer). This is deferred per the story's "Out of scope" section — data is available; rendering it is a follow-up.
+      </span>
+    </div>
+
+  </div>
+
+</div><!-- /sheet -->
+
+<!-- ── Spend modal ── -->
+<div class="modal-overlay hidden" id="spend-modal">
+  <div class="modal-panel">
+    <div class="modal-title">Spend Hit Dice</div>
+    <div class="modal-subtitle" id="modal-subtitle">Short Rest — roll and add your CON modifier</div>
+
+    <div class="modal-die-display">
+      <span class="modal-die-big" id="modal-die-big">d10</span>
+      <span class="modal-die-label" id="modal-die-label">5 dice available</span>
+    </div>
+
+    <div class="modal-stepper-row">
+      <span class="modal-stepper-label">Dice to spend</span>
+      <div class="modal-stepper">
+        <button class="modal-step-btn" id="modal-minus" onclick="modalStep(-1)">−</button>
+        <span class="modal-step-val" id="modal-val">1</span>
+        <button class="modal-step-btn" id="modal-plus" onclick="modalStep(1)">+</button>
+      </div>
+    </div>
+
+    <div class="modal-recovery-preview">
+      <span class="modal-recovery-label">Expected HP Recovery</span>
+      <span class="modal-recovery-range" id="modal-range">2 – 12</span>
+      <span class="modal-recovery-formula" id="modal-formula">1d10 + 2 (CON mod)</span>
+    </div>
+
+    <div class="modal-btn-row">
+      <button class="btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn-amber" onclick="confirmSpend()">Spend <span id="modal-confirm-label">1 Die</span></button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirmation toast ── -->
+<div class="confirm-toast" id="confirm-toast"></div>
+
+<script>
+/* ── State ── */
+const HD = {
+  current: 3,
+  max: 5,
+  dieSize: 10,
+  conMod: 2
+};
+
+let modalCount = 1;
+
+/* ── Section navigation ── */
+function showSection(id) {
+  document.querySelectorAll('.proto-section').forEach(s => s.classList.remove('visible'));
+  document.querySelectorAll('.proto-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('visible');
+
+  // match nav tab
+  const tabs = document.querySelectorAll('.proto-tab');
+  const labels = ['stats-row','full-state','depleted-state','spend-interaction','long-rest','dm-card'];
+  const idx = labels.indexOf(id);
+  if (idx >= 0) tabs[idx].classList.add('active');
+
+  // render interactive tracker when on spend-interaction
+  if (id === 'spend-interaction') renderTracker();
+}
+
+/* ── Tracker renderer ── */
+function renderTracker() {
+  const el = document.getElementById('hd-tracker');
+  if (!el) return;
+
+  if (HD.current === HD.max) {
+    // FULL state
+    el.innerHTML = `
+      <div class="hd-row-full" style="position:relative;">
+        <span class="hd-diamond">◆</span>
+        <span class="hd-full-label">Hit Dice</span>
+        <span class="hd-full-count">${HD.current}</span>
+        <span class="hd-full-die">d${HD.dieSize}</span>
+        <span class="hd-full-badge">Full</span>
+        <button class="hd-full-spend" onclick="openModal()">Spend</button>
+      </div>`;
+  } else {
+    // DEPLETED state
+    const pct = HD.current / HD.max;
+    const isLow = pct <= 0.25;
+    const isEmpty = HD.current === 0;
+
+    let pips = '';
+    for (let i = 0; i < HD.max; i++) {
+      const avail = i < HD.current;
+      pips += `<div class="hd-pip ${avail ? 'available' : 'spent'}"></div>`;
+    }
+
+    const countColor = isEmpty ? '#c06060' : (isLow ? '#c06060' : 'var(--amber)');
+    const lowWarning = isLow && !isEmpty ? `
+      <div class="hd-low-warning">
+        ◈ ${HD.current} of ${HD.max} Hit Dice remaining
+      </div>` : '';
+
+    const spendDisabled = isEmpty;
+    const minRange = HD.current > 0 ? (1 + HD.conMod) : 0;
+    const maxRange = HD.current > 0 ? (HD.dieSize + HD.conMod) : 0;
+
+    el.innerHTML = `
+      <div class="hd-depleted-block">
+        <div class="hd-depleted-header">
+          <span class="hd-depleted-title">Hit Dice</span>
+          <div class="hd-count-display">
+            <span class="hd-count-current" style="color:${countColor}${isEmpty ? '; opacity:0.6' : ''};">${HD.current}</span>
+            <span class="hd-count-sep">/</span>
+            <span class="hd-count-max">${HD.max}</span>
+            <span class="hd-count-die">d${HD.dieSize}</span>
+          </div>
+        </div>
+        ${lowWarning}
+        <div class="hd-pips">${pips}</div>
+        <div class="hd-action-row" ${spendDisabled ? 'style="opacity:0.45; pointer-events:none;"' : ''}>
+          <span class="hd-spend-label">Spend</span>
+          <div class="hd-stepper">
+            <button class="hd-stepper-btn" disabled>−</button>
+            <span class="hd-stepper-val">1</span>
+            <button class="hd-stepper-btn" ${HD.current <= 1 ? 'disabled' : ''}>+</button>
+          </div>
+          <span class="hd-recovery-hint">Roll <span class="hd-recovery-range">1d${HD.dieSize}+${HD.conMod}</span>
+            <span style="font-family:var(--font-ui); font-size:11px; color:var(--text-muted); margin-left:4px;">(${minRange}–${maxRange})</span>
+          </span>
+          <button class="btn-amber" onclick="openModal()" ${spendDisabled ? 'disabled' : ''}>Spend</button>
+        </div>
+      </div>`;
+  }
+}
+
+/* ── Modal ── */
+function openModal() {
+  if (HD.current === 0) return;
+  modalCount = 1;
+  updateModal();
+  document.getElementById('spend-modal').classList.remove('hidden');
+}
+
+function closeModal() {
+  document.getElementById('spend-modal').classList.add('hidden');
+}
+
+function modalStep(delta) {
+  modalCount = Math.max(1, Math.min(HD.current, modalCount + delta));
+  updateModal();
+}
+
+function updateModal() {
+  const n = modalCount;
+  const die = HD.dieSize;
+  const con = HD.conMod;
+  const minHP = n * (1 + con);
+  const maxHP = n * (die + con);
+
+  document.getElementById('modal-val').textContent = n;
+  document.getElementById('modal-die-big').textContent = 'd' + die;
+  document.getElementById('modal-die-label').textContent = HD.current + ' ' + (HD.current === 1 ? 'die' : 'dice') + ' available';
+  document.getElementById('modal-range').textContent = minHP + ' – ' + maxHP;
+  document.getElementById('modal-formula').textContent = n + 'd' + die + ' + ' + (n * con) + ' (CON mod ×' + n + ')';
+  document.getElementById('modal-confirm-label').textContent = n + (n === 1 ? ' Die' : ' Dice');
+
+  document.getElementById('modal-minus').disabled = n <= 1;
+  document.getElementById('modal-plus').disabled = n >= HD.current;
+}
+
+function confirmSpend() {
+  const spent = modalCount;
+  HD.current = Math.max(0, HD.current - spent);
+
+  closeModal();
+  renderTracker();
+
+  // Optimistic HP feedback (just UI)
+  const hpEl = document.getElementById('demo-hp');
+  if (hpEl) {
+    const gain = Math.floor(spent * (HD.dieSize / 2) + spent * HD.conMod);
+    const current = parseInt(hpEl.textContent) + gain;
+    hpEl.textContent = Math.min(58, current);
+  }
+
+  showToast('Spent ' + spent + (spent === 1 ? ' die' : ' dice') + ' — adjust HP from dice roll');
+}
+
+/* ── Long Rest ── */
+function triggerLongRest() {
+  const restore = Math.max(1, Math.floor(HD.max / 2));
+  HD.current = Math.min(HD.max, HD.current + restore);
+  renderTracker();
+  showToast('Long Rest — ' + restore + ' Hit ' + (restore === 1 ? 'Die' : 'Dice') + ' restored');
+}
+
+function animateLongRest() {
+  const pipsEl = document.getElementById('long-rest-after-pips');
+  if (!pipsEl) return;
+  const pips = pipsEl.querySelectorAll('.hd-pip');
+  // Stagger the pop animation for the 4 available pips
+  pips.forEach((pip, i) => {
+    if (pip.classList.contains('available')) {
+      pip.classList.remove('restoring');
+      // force reflow
+      void pip.offsetWidth;
+      setTimeout(() => pip.classList.add('restoring'), i * 80);
+    }
+  });
+}
+
+/* ── Toast ── */
+function showToast(msg) {
+  const t = document.getElementById('confirm-toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+/* ── Close modal on overlay click ── */
+document.getElementById('spend-modal').addEventListener('click', function(e) {
+  if (e.target === this) closeModal();
+});
+
+/* ── Keyboard: Escape closes modal ── */
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') closeModal();
+});
+</script>
+</body>
+</html>

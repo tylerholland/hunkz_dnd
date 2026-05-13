@@ -81,6 +81,19 @@ export const getDmParty = (dmPassword) =>
     headers: { "x-character-password": dmPassword },
   });
 
+export const getPartyRoster = () =>
+  request("/party-roster");
+
+export const putPartyRoster = (members, dmPassword) =>
+  request("/party-roster", {
+    method: "PUT",
+    headers: {
+      "Content-Type": "application/json",
+      "x-character-password": dmPassword,
+    },
+    body: JSON.stringify({ members }),
+  });
+
 export const patchSession = (slug, fields, password) =>
   request(`/characters/${slug}/session`, {
     method: "PATCH",
@@ -89,6 +102,16 @@ export const patchSession = (slug, fields, password) =>
       ...(password ? { "x-character-password": password } : {}),
     },
     body: JSON.stringify(fields),
+  });
+
+export const patchDmNote = (slug, action, dmPassword) =>
+  request(`/characters/${slug}/dm-notes`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      "x-character-password": dmPassword,
+    },
+    body: JSON.stringify(action),
   });
 
 export const getInitiative = (dmPassword) =>
@@ -125,3 +148,47 @@ export const getRollHistory = (dmPassword) =>
   requestOptional("/roll-history", {
     headers: { "x-character-password": dmPassword },
   }, "rollHistory", { rolls: [], unsupported: true });
+
+export const getMapLibrary = () =>
+  request("/maps");
+
+export const presignMap = (filename, contentType, size, dmPassword) =>
+  request("/maps/presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ filename, contentType, size }),
+  });
+
+export const postMap = (mapData, dmPassword) =>
+  request("/maps", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify(mapData),
+  });
+
+export const putMapActive = (mapId, dmPassword) =>
+  request("/maps/active", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ mapId }),
+  });
+
+export const putMapView = (mapView, dmPassword) =>
+  request("/maps/view", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify(mapView),
+  });
+
+export const patchMap = (mapId, name, dmPassword) =>
+  request(`/maps/${mapId}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ name }),
+  });
+
+export const deleteMap = (mapId, dmPassword) =>
+  request(`/maps/${mapId}`, {
+    method: "DELETE",
+    headers: { "x-character-password": dmPassword },
+  });

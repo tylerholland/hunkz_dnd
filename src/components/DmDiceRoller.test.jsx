@@ -1,8 +1,13 @@
-import { render, screen } from "@testing-library/react";
-import { describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import DmDiceRoller from "./DmDiceRoller";
 import { PALETTES } from "../features/characterSheet/theme";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 describe("DmDiceRoller remote history", () => {
   it("renders character roll history entries with the character name in their palette color", () => {
@@ -40,5 +45,35 @@ describe("DmDiceRoller remote history", () => {
     const total = screen.getByText("21");
     expect(total).toBeInTheDocument();
     expect(total).toHaveStyle({ color: PALETTES.ember.accent });
+  });
+
+  it("expands repeated DM free rolls into individual history rows", () => {
+    vi.useFakeTimers();
+
+    render(
+      <DmDiceRoller
+        pal={PALETTES.ocean}
+        remoteHistory={[]}
+        onApplyDamage={vi.fn()}
+        onApplyNpcDamage={vi.fn()}
+      />
+    );
+
+    const initialRollButton = screen.getByRole("button", { name: /roll 1d20/i });
+    const repeatRow = initialRollButton.parentElement;
+    const repeatPlusButton = within(repeatRow).getByRole("button", { name: "+" });
+
+    fireEvent.click(repeatPlusButton);
+    fireEvent.click(repeatPlusButton);
+
+    const multiRollButton = screen.getByRole("button", { name: /roll 1d20 ×3/i });
+    fireEvent.click(multiRollButton);
+
+    act(() => {
+      vi.advanceTimersByTime(650);
+    });
+
+    const freeRollRows = screen.getAllByText((_, node) => node?.textContent === "Free Roll");
+    expect(freeRollRows).toHaveLength(3);
   });
 });

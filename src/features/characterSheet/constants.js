@@ -61,7 +61,7 @@ export const BLANK_CHARACTER = {
   hpMax: 0,
   hpCurrent: 0,
   tempHP: 0,
-  hitDice: "",
+  hitDiceCurrent: null,
   armorType: "",
   armorTotal: 0,
   spells: [],
@@ -73,8 +73,13 @@ export const BLANK_CHARACTER = {
   concentration: { active: false, spell: "" },
   inspiration: false,
   inPlay: [],
+  playerNotes: [],
   weapons: [],
   equipment: [],
+  levelingMode: "milestone",
+  xpCurrent: 0,
+  coin: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
+  coinMode: "gp",
   collections: [
     {
       id: uid(),
@@ -102,6 +107,10 @@ export const LIVE_SESSION_FIELDS = [
   "inspiration",
   "weapons",
   "equipment",
+  "playerNotes",
+  "hitDiceCurrent",
+  "xpCurrent",
+  "coin",
 ];
 
 export const ARMOR_OPTIONS = [
@@ -113,8 +122,49 @@ export const ARMOR_OPTIONS = [
 
 export const MOD_ATTRIBUTES = [
   "Strength", "Dexterity", "Constitution", "Wisdom", "Intelligence", "Charisma",
-  "Armor", "HP", "Hit Dice", "Attack Bonus", "Damage", "Initiative", "Speed", "Save DC",
+  "Armor", "HP", "Attack Bonus", "Damage", "Initiative", "Speed", "Save DC",
 ];
+
+export const HIT_DIE_BY_CLASS = {
+  Barbarian: 12,
+  Fighter: 10, Paladin: 10, Ranger: 10,
+  Artificer: 8, Bard: 8, Cleric: 8, Druid: 8, Monk: 8, Rogue: 8, Warlock: 8,
+  Sorcerer: 6, Wizard: 6,
+};
+
+// PHB XP thresholds by level (index 0 = unused, index 1 = XP needed to reach level 2, etc.)
+// XP_THRESHOLDS[n] = total XP required to be at level n
+export const XP_THRESHOLDS = [
+  0,       // level 0 (unused)
+  0,       // level 1 — starts here
+  300,     // level 2
+  900,     // level 3
+  2700,    // level 4
+  6500,    // level 5
+  14000,   // level 6
+  23000,   // level 7
+  34000,   // level 8
+  48000,   // level 9
+  64000,   // level 10
+  85000,   // level 11
+  100000,  // level 12
+  120000,  // level 13
+  140000,  // level 14
+  165000,  // level 15
+  195000,  // level 16
+  225000,  // level 17
+  265000,  // level 18
+  305000,  // level 19
+  355000,  // level 20
+];
+
+export const COIN_COLORS = {
+  cp: "#a07050",
+  sp: "#9aabb8",
+  ep: "#8f8b80",
+  gp: "#c8a040",
+  pp: "#c8d0e0",
+};
 
 export const CONDITIONS = [
   "Blinded", "Charmed", "Deafened", "Frightened", "Grappled",

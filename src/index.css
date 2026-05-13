@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
 /* Drop this into your React app's src/index.css (or replace it entirely).
    This ensures the dark background and correct base font size apply
    before the component's injected styles even load. */
@@ -19,4 +21,5 @@ html, body, #root {
 
 body {
   -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }

@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(VITE_API_URL=https://f4qn4mlb50.execute-api.us-west-1.amazonaws.com npm run:*)",
-      "Bash(npm run:*)"
+      "Bash(npm run:*)",
+      "Bash(npm test:*)",
+      "Bash(python3:*)",
+      "Bash(gs --version)"
     ]
   }
 }

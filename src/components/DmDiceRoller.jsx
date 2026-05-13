@@ -168,6 +168,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
       );
 
       setRollResults(results);
+      setApplyTarget(0);
       setIsRolling(false);
 
       // Auto-reset adv/dis after roll
@@ -177,15 +178,17 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
       const exprLabel = buildExprLabel(groups, flat);
       const modeTag = capturedAdvMode !== "normal"
         ? (capturedAdvMode === "advantage" ? " (adv)" : " (dis)") : "";
-      const histEntry = {
-        id: Date.now() + Math.random(),
-        exprLabel,
-        modeTag,
-        repeatCount,
-        results,
-        timestamp: Date.now(),
-      };
-      setHistory(prev => [histEntry, ...prev].slice(0, 12));
+      const baseTimestamp = Date.now();
+      const historyEntries = results.map((result, index) => buildLocalRollHistoryEntry({
+        id: `${baseTimestamp}-${index}-${Math.random()}`,
+        label: `Free Roll${modeTag}`,
+        result: {
+          ...result,
+          exprLabel,
+        },
+        timestamp: baseTimestamp + index,
+      }));
+      setHistory(prev => [...historyEntries, ...prev].slice(0, 12));
     }, 600);
   }, [isRolling, advMode, repeatCount, exprInput, comboDice, comboMod, dieCount, selectedSides]);
 
@@ -244,29 +247,15 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
   // Selected result for apply-to
   const selectedResult = rollResults ? rollResults[Math.min(applyTarget, rollResults.length - 1)] : null;
   const combinedHistory = [
-    ...history.map((entry) => {
-      if (entry.repeatCount === 1) {
-        return {
-          ...buildLocalRollHistoryEntry({
-            id: entry.id,
-            label: `Free Roll${entry.modeTag}`,
-            result: {
-              ...entry.results[0],
-              exprLabel: entry.exprLabel,
-            },
-            timestamp: entry.timestamp,
-          }),
-          source: "dm-standard",
-          sortTime: entry.timestamp || 0,
-        };
-      }
-
-      return {
+    ...history.map((entry) => ({
         ...entry,
-        source: "dm-multi",
+        label: normalizeRollActionLabel(entry.label),
+        rollValues: Array.isArray(entry.rollValues) && entry.rollValues.length > 0
+          ? entry.rollValues
+          : extractRollValues(entry),
+        source: "dm-standard",
         sortTime: entry.timestamp || 0,
-      };
-    }),
+    })),
     ...remoteHistory.map((entry) => ({
       ...entry,
       label: normalizeRollActionLabel(entry.label),
@@ -605,59 +594,22 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
                     const opacity = opacities[i] ?? 0;
                     if (opacity === 0) return null;
 
-                    const isStandardRow = entry.source === "character" || entry.source === "dm-standard";
                     const palette = entry.source === "character"
                       ? (PALETTES[entry.paletteKey] || PALETTES.ember)
                       : null;
 
-                    if (isStandardRow) {
-                      return (
-                        <RollHistoryRow
-                          key={entry.id}
-                          pal={pal}
-                          entry={{
-                            ...entry,
-                            nameColor: palette?.accent,
-                            totalAccentColor: palette?.accent,
-                          }}
-                          opacity={opacity}
-                          showDivider={i < combinedHistory.length - 1}
-                        />
-                      );
-                    }
-
-                    const totals = entry.results.map((result) => result.total);
-                    const hasCrit = entry.results.some((result) => result.isCrit);
-                    const hasFumble = entry.results.some((result) => result.isFumble);
-                    const summary = totals.join(", ");
-
                     return (
-                      <div
+                      <RollHistoryRow
                         key={entry.id}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          gap: 8,
-                          padding: "6px 0",
-                          borderBottom: i < combinedHistory.length - 1 ? `1px solid ${pal.border}` : "none",
-                          opacity,
-                          transition: "opacity 0.4s",
+                        pal={pal}
+                        entry={{
+                          ...entry,
+                          nameColor: palette?.accent,
+                          totalAccentColor: palette?.accent,
                         }}
-                      >
-                        <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: pal.textMuted, minWidth: 44 }}>
-                          {entry.exprLabel}
-                        </span>
-                        <span style={{ fontFamily: pal.fontUI, fontSize: 9, color: pal.textMuted }}>×{entry.repeatCount}</span>
-                        <span style={{ flex: 1, fontFamily: pal.fontDisplay, fontSize: 13, color: pal.textBody, fontStyle: "italic", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {summary}
-                        </span>
-                        {hasCrit && (
-                          <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", padding: "1px 5px", borderRadius: 2, color: "#ffd060", border: "1px solid rgba(255,200,40,0.4)", background: "rgba(255,200,40,0.08)" }}>crit</span>
-                        )}
-                        {hasFumble && (
-                          <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.1em", textTransform: "uppercase", padding: "1px 5px", borderRadius: 2, color: "#c06060", border: "1px solid rgba(192,60,60,0.4)", background: "rgba(192,60,60,0.08)" }}>fumble</span>
-                        )}
-                      </div>
+                        opacity={opacity}
+                        showDivider={i < combinedHistory.length - 1}
+                      />
                     );
                   })}
                 </div>

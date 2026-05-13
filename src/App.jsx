@@ -3,6 +3,8 @@ import CharacterPage from "./pages/CharacterPage";
 import CharactersListPage from "./pages/CharactersListPage";
 import NewCharacterPage from "./pages/NewCharacterPage";
 import DmDashboardPage from "./pages/DmDashboardPage";
+import MapLibraryPage from "./pages/MapLibraryPage";
+import MapViewerPage from "./pages/MapViewerPage";
 
 export default function App() {
   return (
@@ -10,6 +12,8 @@ export default function App() {
       <Routes>
         <Route path="/"                   element={<CharactersListPage />} />
         <Route path="/dm"                 element={<DmDashboardPage />} />
+        <Route path="/maps"               element={<MapLibraryPage />} />
+        <Route path="/map-view"           element={<MapViewerPage />} />
         <Route path="/characters/new"     element={<NewCharacterPage />} />
         <Route path="/characters/:slug"   element={<CharacterPage />} />
         <Route path="*"                   element={<Navigate to="/" replace />} />

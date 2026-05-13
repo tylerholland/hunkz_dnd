@@ -3,22 +3,30 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
   getDmParty: vi.fn(),
+  listCharacters: vi.fn(),
+  getPartyRoster: vi.fn(),
+  putPartyRoster: vi.fn(),
   patchSession: vi.fn(),
   getInitiative: vi.fn(),
   putInitiative: vi.fn(),
   getNpcCombat: vi.fn(),
   putNpcCombat: vi.fn(),
   getRollHistory: vi.fn(),
+  getMapLibrary: vi.fn(),
 }));
 
 vi.mock("../api", () => ({
   getDmParty: apiMocks.getDmParty,
+  listCharacters: apiMocks.listCharacters,
+  getPartyRoster: apiMocks.getPartyRoster,
+  putPartyRoster: apiMocks.putPartyRoster,
   patchSession: apiMocks.patchSession,
   getInitiative: apiMocks.getInitiative,
   putInitiative: apiMocks.putInitiative,
   getNpcCombat: apiMocks.getNpcCombat,
   putNpcCombat: apiMocks.putNpcCombat,
   getRollHistory: apiMocks.getRollHistory,
+  getMapLibrary: apiMocks.getMapLibrary,
 }));
 
 vi.mock("../components/DmDiceRoller", () => ({
@@ -47,6 +55,9 @@ describe("DmDashboardPage auth refresh", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
+    apiMocks.listCharacters.mockResolvedValue([]);
+    apiMocks.getPartyRoster.mockResolvedValue({ exists: false, members: [] });
+    apiMocks.getMapLibrary.mockResolvedValue({ activeMapId: null, maps: [] });
   });
 
   it("shows the checking loader instead of the password prompt while stored DM creds are being verified", () => {

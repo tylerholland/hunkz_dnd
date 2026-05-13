@@ -289,10 +289,6 @@ export default function CharacterSheetEditMode({ ctx }) {
                 <label style={lbl}>Hit Points <span style={{ opacity: 0.5, textTransform: "none", fontSize: 12, letterSpacing: 0 }}>(max)</span></label>
                 <input style={inputStyle} type="number" min={0} value={char.hpMax ?? char.hp ?? ""} onChange={(e) => update("hpMax", parseInt(e.target.value, 10) || 0)} placeholder="e.g. 38" />
               </div>
-              <div>
-                <label style={lbl}>Hit Dice</label>
-                <input style={inputStyle} value={char.hitDice || ""} onChange={(e) => update("hitDice", e.target.value)} placeholder="e.g. 4d10" />
-              </div>
             </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 14, alignItems: "start" }}>
@@ -495,6 +491,63 @@ export default function CharacterSheetEditMode({ ctx }) {
                 <button onClick={() => removeEquipment(item.id)} style={{ ...inputStyle, width: 34, padding: 0, flexShrink: 0, color: pal.textMuted, fontSize: 20, textAlign: "center" }}>×</button>
               </div>
             ))}
+          </div>
+
+          {/* Leveling Mode & XP */}
+          <div style={{ marginBottom: 32 }}>
+            <div style={secHead}>Leveling</div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={lbl}>Leveling Mode</label>
+              <div style={{ display: "flex", gap: 0, border: `1px solid ${pal.border}`, borderRadius: 3, overflow: "hidden", width: "fit-content" }}>
+                {["milestone", "xp"].map((mode) => {
+                  const selected = (char.levelingMode || "milestone") === mode;
+                  return (
+                    <button key={mode} type="button" onClick={() => update("levelingMode", mode)} style={{ background: selected ? pal.accentDim : "transparent", border: "none", borderRight: mode === "milestone" ? `1px solid ${pal.border}` : "none", color: selected ? pal.accentBright : pal.textMuted, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 20px", cursor: "pointer" }}>
+                      {mode === "milestone" ? "Milestone" : "XP"}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {(char.levelingMode || "milestone") === "xp" && (
+              <div>
+                <label style={lbl}>Current XP</label>
+                <input style={{ ...inputStyle, maxWidth: 200 }} type="number" min={0} value={char.xpCurrent ?? 0} onChange={(e) => update("xpCurrent", parseInt(e.target.value, 10) || 0)} placeholder="0" />
+              </div>
+            )}
+          </div>
+
+          {/* Coin */}
+          <div style={{ marginBottom: 40 }}>
+            <div style={secHead}>Coin</div>
+            <div style={{ marginBottom: 14 }}>
+              <label style={lbl}>Coin Mode</label>
+              <div style={{ display: "flex", gap: 0, border: `1px solid ${pal.border}`, borderRadius: 3, overflow: "hidden", width: "fit-content" }}>
+                {[["gp", "GP Only"], ["full", "Full Denominations"]].map(([mode, label]) => {
+                  const selected = (char.coinMode || "gp") === mode;
+                  return (
+                    <button key={mode} type="button" onClick={() => update("coinMode", mode)} style={{ background: selected ? pal.accentDim : "transparent", border: "none", borderRight: mode === "gp" ? `1px solid ${pal.border}` : "none", color: selected ? pal.accentBright : pal.textMuted, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 20px", cursor: "pointer" }}>
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+            {(char.coinMode || "gp") === "gp" ? (
+              <div>
+                <label style={lbl}>Gold Pieces (GP)</label>
+                <input style={{ ...inputStyle, maxWidth: 200 }} type="number" min={0} value={(char.coin || {}).gp ?? 0} onChange={(e) => update("coin", { ...(char.coin || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }), gp: parseInt(e.target.value, 10) || 0 })} placeholder="0" />
+              </div>
+            ) : (
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(130px, 1fr))", gap: 10 }}>
+                {[["cp", "Copper (CP)", "#a07050"], ["sp", "Silver (SP)", "#9aabb8"], ["ep", "Electrum (EP)", "#8f8b80"], ["gp", "Gold (GP)", "#c8a040"], ["pp", "Platinum (PP)", "#c8d0e0"]].map(([denom, label, color]) => (
+                  <div key={denom}>
+                    <label style={{ ...lbl, color }}>{label}</label>
+                    <input style={{ ...inputStyle, color }} type="number" min={0} value={(char.coin || {})[denom] ?? 0} onChange={(e) => update("coin", { ...(char.coin || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 }), [denom]: parseInt(e.target.value, 10) || 0 })} placeholder="0" />
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {slug && (

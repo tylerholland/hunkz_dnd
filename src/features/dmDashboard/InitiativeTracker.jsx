@@ -8,6 +8,13 @@ import {
   withAlpha,
 } from "./dashboardShared";
 
+function insertByInitiative(entries, entry) {
+  const nextScore = entry.initiative ?? 0;
+  const insertIndex = entries.findIndex((value) => (value.initiative ?? 0) < nextScore);
+  if (insertIndex === -1) return [...entries, entry];
+  return [...entries.slice(0, insertIndex), entry, ...entries.slice(insertIndex)];
+}
+
 export default function InitiativeTracker({ initiative, party, onCommitInitiative, onPromoteToNpc, npcCombat }) {
   const pal = useContext(PalCtx);
   const [newName, setNewName] = useState("");
@@ -15,16 +22,30 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
   const [pcRolls, setPcRolls] = useState({});
   const [promoteOpenId, setPromoteOpenId] = useState(null);
   const [promoteHp, setPromoteHp] = useState("");
+  const [modifyOrderMode, setModifyOrderMode] = useState(false);
   const vellumTurnButtonBg = pal === PALETTES.vellum
     ? getActiveTurnSurface(withAlpha(mixHex(VELLUM_CARD_MODE.paperAlt, pal.accent, 0.14), 0.82), pal.accent, 0.16, 0.05)
     : "rgba(18,32,48,0.5)";
 
-  const entries = [...(initiative.entries || [])].sort((a, b) => b.initiative - a.initiative);
+  const entries = initiative.entries || [];
   const activeTurnIndex = initiative.activeTurnIndex ?? 0;
-  const activeSortedIndex = activeTurnIndex < entries.length ? activeTurnIndex : 0;
+  const activeEntryId = entries[activeTurnIndex]?.id ?? null;
 
   const existingSlugs = new Set((initiative.entries || []).map((entry) => entry.slug).filter(Boolean));
   const availablePCs = (party || []).filter((character) => !existingSlugs.has(character.slug));
+
+  function getActiveIndex(updatedEntries) {
+    if (!activeEntryId) return 0;
+    const nextIndex = updatedEntries.findIndex((value) => value.id === activeEntryId);
+    return nextIndex < 0 ? 0 : nextIndex;
+  }
+
+  function buildPayload(updatedEntries) {
+    return {
+      entries: updatedEntries,
+      activeTurnIndex: getActiveIndex(updatedEntries),
+    };
+  }
 
   async function handleNextTurn() {
     if (entries.length === 0) return;
@@ -43,8 +64,8 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
       isPC: true,
       npcId: null,
     };
-    const updated = [...(initiative.entries || []), entry];
-    await onCommitInitiative({ entries: updated, activeTurnIndex: initiative.activeTurnIndex ?? 0 }, { optimistic: true });
+    const updated = insertByInitiative(initiative.entries || [], entry);
+    await onCommitInitiative(buildPayload(updated), { optimistic: true });
     setPcRolls((rolls) => {
       const next = { ...rolls };
       delete next[char.slug];
@@ -62,20 +83,35 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
       isPC: false,
       npcId: null,
     };
-    const updated = [...(initiative.entries || []), entry];
-    await onCommitInitiative({ entries: updated, activeTurnIndex: initiative.activeTurnIndex ?? 0 }, { optimistic: true });
+    const updated = insertByInitiative(initiative.entries || [], entry);
+    await onCommitInitiative(buildPayload(updated), { optimistic: true });
     setNewName("");
     setNewInit("");
   }
 
   async function handleRemove(id) {
     const updated = (initiative.entries || []).filter((entry) => entry.id !== id);
-    const nextActiveTurnIndex = updated.length === 0 ? 0 : Math.min(initiative.activeTurnIndex ?? 0, updated.length - 1);
-    await onCommitInitiative({ entries: updated, activeTurnIndex: nextActiveTurnIndex }, { optimistic: true });
+    await onCommitInitiative({
+      entries: updated,
+      activeTurnIndex: updated.length === 0 ? 0 : getActiveIndex(updated),
+    }, { optimistic: true });
   }
 
   async function handleClear() {
     await onCommitInitiative({ entries: [], activeTurnIndex: 0 }, { optimistic: true });
+  }
+
+  async function moveEntry(entryId, delta) {
+    const fromIndex = entries.findIndex((entry) => entry.id === entryId);
+    if (fromIndex < 0) return;
+    const toIndex = Math.max(0, Math.min(entries.length - 1, fromIndex + delta));
+    if (toIndex === fromIndex) return;
+
+    const updated = [...entries];
+    const [moved] = updated.splice(fromIndex, 1);
+    updated.splice(toIndex, 0, moved);
+
+    await onCommitInitiative(buildPayload(updated), { optimistic: true });
   }
 
   return (
@@ -97,11 +133,14 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
       >▶ Next Turn</button>
 
       {entries.length === 0 ? (
-        <div style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textMuted, textAlign: "center", padding: "20px 0", letterSpacing: "0.08em" }}>No initiative set — add combatants below</div>
+        <div style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textMuted, textAlign: "center", padding: "20px 0", letterSpacing: "0.08em" }}>
+          No initiative set — add characters, use <span style={{ color: pal.accentBright }}>+ Init</span> on enemies, or add a manual combatant below
+        </div>
       ) : (
-        <ul style={{ listStyle: "none", marginBottom: 14, padding: 0 }}>
+        <div style={{ marginBottom: 14 }}>
+          <ul style={{ listStyle: "none", marginBottom: 10, padding: 0 }}>
           {entries.map((entry, idx) => {
-            const isCurrent = idx === activeSortedIndex;
+            const isCurrent = idx === activeTurnIndex;
             const isPromoteOpen = promoteOpenId === entry.id;
             const trackedNpc = !entry.isPC && entry.npcId ? (npcCombat?.npcs || []).find((npc) => npc.id === entry.npcId) : null;
             let hpDotColor = null;
@@ -112,7 +151,13 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
             }
             const canPromote = !entry.isPC && !entry.npcId && onPromoteToNpc;
             return (
-              <li key={entry.id} style={{ marginBottom: 3 }}>
+              <li
+                key={entry.id}
+                style={{
+                  marginBottom: 3,
+                  borderRadius: 4,
+                }}
+              >
                 <div
                   onClick={canPromote ? () => setPromoteOpenId(isPromoteOpen ? null : entry.id) : undefined}
                   style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: isPromoteOpen ? "4px 4px 0 0" : 4, background: isCurrent ? "rgba(106,143,168,0.12)" : pal.surface, border: `1px solid ${isCurrent ? pal.accent : isPromoteOpen ? "rgba(122,112,96,0.5)" : pal.border}`, cursor: canPromote ? "pointer" : "default" }}
@@ -130,12 +175,37 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
                   {isCurrent && (
                     <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.1em", color: pal.accentBright, whiteSpace: "nowrap" }}>◀ Now</span>
                   )}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); handleRemove(entry.id); }}
-                    style={{ background: "transparent", border: "none", color: pal.textMuted, fontSize: 14, cursor: "pointer", padding: "2px 4px", borderRadius: 3, lineHeight: 1 }}
-                    onMouseEnter={(e) => { e.target.style.color = "#c06060"; e.target.style.background = "rgba(192,96,96,0.1)"; }}
-                    onMouseLeave={(e) => { e.target.style.color = pal.textMuted; e.target.style.background = ""; }}
-                  >×</button>
+                  {modifyOrderMode && (
+                    <>
+                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            moveEntry(entry.id, -1);
+                          }}
+                          disabled={idx === 0}
+                          title="Move up"
+                          style={{ background: "transparent", border: `1px solid ${idx === 0 ? pal.border : pal.accent}`, borderRadius: 3, color: idx === 0 ? pal.textMuted : pal.accentBright, fontFamily: pal.fontUI, fontSize: 10, width: 20, height: 18, cursor: idx === 0 ? "not-allowed" : "pointer", opacity: idx === 0 ? 0.45 : 1, lineHeight: 1 }}
+                        >↑</button>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            moveEntry(entry.id, 1);
+                          }}
+                          disabled={idx === entries.length - 1}
+                          title="Move down"
+                          style={{ background: "transparent", border: `1px solid ${idx === entries.length - 1 ? pal.border : pal.accent}`, borderRadius: 3, color: idx === entries.length - 1 ? pal.textMuted : pal.accentBright, fontFamily: pal.fontUI, fontSize: 10, width: 20, height: 18, cursor: idx === entries.length - 1 ? "not-allowed" : "pointer", opacity: idx === entries.length - 1 ? 0.45 : 1, lineHeight: 1 }}
+                        >↓</button>
+                      </div>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleRemove(entry.id); }}
+                        title="Remove from initiative"
+                        style={{ background: "transparent", border: "none", color: pal.textMuted, fontSize: 14, cursor: "pointer", padding: "2px 4px", borderRadius: 3, lineHeight: 1 }}
+                        onMouseEnter={(e) => { e.target.style.color = "#c06060"; e.target.style.background = "rgba(192,96,96,0.1)"; }}
+                        onMouseLeave={(e) => { e.target.style.color = pal.textMuted; e.target.style.background = ""; }}
+                      >×</button>
+                    </>
+                  )}
                 </div>
                 {isPromoteOpen && (
                   <div style={{ padding: "10px 12px", background: "rgba(30,26,20,0.6)", border: "1px solid rgba(122,112,96,0.5)", borderTop: "none", borderRadius: "0 0 4px 4px" }}>
@@ -170,7 +240,36 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
               </li>
             );
           })}
-        </ul>
+          </ul>
+          <button
+            onClick={() => setModifyOrderMode((value) => !value)}
+            style={{
+              width: "100%",
+              background: modifyOrderMode ? "rgba(106,143,168,0.14)" : "transparent",
+              border: `1px solid ${modifyOrderMode ? pal.accent : pal.border}`,
+              borderRadius: 4,
+              color: modifyOrderMode ? pal.accentBright : pal.textMuted,
+              fontFamily: pal.fontUI,
+              fontSize: 11,
+              letterSpacing: "0.18em",
+              textTransform: "uppercase",
+              padding: "7px 0",
+              cursor: "pointer",
+            }}
+            onMouseEnter={(e) => {
+              if (!modifyOrderMode) {
+                e.currentTarget.style.borderColor = pal.accent;
+                e.currentTarget.style.color = pal.accentBright;
+              }
+            }}
+            onMouseLeave={(e) => {
+              if (!modifyOrderMode) {
+                e.currentTarget.style.borderColor = pal.border;
+                e.currentTarget.style.color = pal.textMuted;
+              }
+            }}
+          >{modifyOrderMode ? "Done" : "Modify Order"}</button>
+        </div>
       )}
 
       {availablePCs.length > 0 && (
@@ -186,7 +285,10 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
         </div>
       )}
 
-      <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 8 }}>Add Combatant</div>
+      <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 4 }}>Add Manual Combatant</div>
+      <div style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginBottom: 8, letterSpacing: "0.06em" }}>
+        For allies, summons, or scene actors that do not need an enemy card.
+      </div>
       <div style={{ display: "flex", gap: 6 }}>
         <input type="text" placeholder="Name…" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEntry()} style={{ flex: 1, background: pal.surface, border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "7px 10px", outline: "none" }} />
         <input type="number" placeholder="Init" value={newInit} onChange={(e) => setNewInit(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEntry()} style={{ width: 50, background: pal.surface, border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 15, padding: "7px 6px", outline: "none", textAlign: "center" }} />

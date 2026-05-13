@@ -1,0 +1,3030 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Maps Feature — UX Prototype</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Ocean palette ── */
+    :root {
+      --bg: #0d0f14;
+      --surface: rgba(18,32,48,0.6);
+      --surface-solid: #111e2c;
+      --border: rgba(100,130,160,0.18);
+      --border-vis: rgba(100,130,160,0.32);
+      --accent: #6a8fa8;
+      --accent-bright: #a0c0d0;
+      --accent-dim: rgba(30,58,78,0.7);
+      --text: #c8bfaf;
+      --text-body: #b0a898;
+      --text-muted: #3a5a6a;
+      --glow1: rgba(20,45,80,0.4);
+      --glow2: rgba(15,35,60,0.3);
+      --gem: #8ab4c8;
+      --font-display: 'Cinzel', Georgia, serif;
+      --font-body: 'Crimson Text', Georgia, serif;
+      --font-ui: 'IM Fell English', Georgia, serif;
+
+      /* Character palette tints for party cards */
+      --ember-accent: #a06840;
+      --ember-bright: #c89060;
+      --ember-gem: #c8904c;
+      --ember-border: rgba(160,104,64,0.35);
+      --ember-surface: rgba(40,22,12,0.6);
+      --forest-accent: #5a8a60;
+      --forest-bright: #88b888;
+      --forest-gem: #78b878;
+      --forest-border: rgba(90,138,96,0.35);
+      --forest-surface: rgba(14,26,18,0.6);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Annotation callouts ── */
+    .callout {
+      background: rgba(20,50,80,0.9);
+      border: 1px solid rgba(80,140,200,0.45);
+      border-radius: 4px;
+      color: #80c8f0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px;
+      display: block;
+    }
+    .callout::before { content: "↳ "; opacity: 0.7; }
+
+    .section-header {
+      background: rgba(10,30,10,0.92);
+      border-bottom: 1px solid rgba(60,120,60,0.4);
+      border-top: 1px solid rgba(60,120,60,0.4);
+      color: #88cc88;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 7px 20px;
+      margin: 32px 0 20px;
+    }
+
+    /* ── Top navigation ── */
+    .top-bar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: rgba(11,14,20,0.97);
+      border-bottom: 1px solid var(--border-vis);
+      backdrop-filter: blur(8px);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 0 20px;
+      height: 48px;
+    }
+    .top-bar-title {
+      font-family: var(--font-display);
+      font-size: 15px;
+      letter-spacing: 0.12em;
+      color: var(--accent-bright);
+      flex: 1;
+    }
+    .top-bar-btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 5px 13px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .top-bar-btn:hover { background: rgba(40,75,100,0.8); border-color: var(--accent-bright); }
+
+    .breadcrumb {
+      padding: 6px 20px 0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+    }
+    .breadcrumb a { color: var(--accent); text-decoration: none; }
+
+    /* ── Three-column dashboard layout ── */
+    /*
+     * Outer wrapper constrains max width.
+     * Inner grid: party column (flex) + right side (2 × 190px).
+     * The right side is itself a flex column: top = [NPC | Initiative] row,
+     * bottom = map library strip that spans both sub-columns.
+     */
+    .dashboard-outer {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 20px 48px;
+      display: grid;
+      grid-template-columns: 1fr 396px; /* 396 = 190+16+190 */
+      gap: 16px;
+    }
+
+    @media (max-width: 900px) {
+      .dashboard-outer { grid-template-columns: 1fr; }
+      .right-side { display: block; }
+      .right-top { display: block; }
+      .right-col { margin-bottom: 12px; }
+      .map-library-strip-wrap { position: static !important; }
+    }
+
+    /* Left party column */
+    .party-col {}
+
+    /* Right side: stacks NPC+Initiative on top, library strip below */
+    .right-side {
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    /* NPC + Initiative side by side */
+    .right-top {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .right-col {}
+
+    /* ── Column headers ── */
+    .col-header {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    /* ── Party card (abbreviated) ── */
+    .party-card {
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .party-card.ember { border-color: var(--ember-border); }
+    .party-card.forest { border-color: var(--forest-border); }
+
+    .card-inner { padding: 12px; }
+    .card-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      letter-spacing: 0.06em;
+      margin-bottom: 3px;
+    }
+    .card-name.ember { color: var(--ember-bright); }
+    .card-name.forest { color: var(--forest-bright); }
+    .card-name.ocean { color: var(--accent-bright); }
+
+    .card-meta {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .card-hp-bar {
+      height: 4px;
+      background: rgba(255,255,255,0.08);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .card-hp-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+    .ember .card-hp-fill { background: var(--ember-accent); }
+    .forest .card-hp-fill { background: var(--forest-accent); }
+    .ocean .card-hp-fill { background: var(--accent); }
+
+    .card-footer {
+      display: flex;
+      gap: 6px;
+      padding: 7px 12px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.15);
+    }
+    .card-footer-btn {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      padding: 4px 0;
+      cursor: pointer;
+      text-align: center;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .card-footer-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+    /* ── Right-column panels (initiative / NPC) ── */
+    .side-panel {
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      padding: 12px;
+      margin-bottom: 10px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    /* ══════════════════════════════════════════════════════
+       MAP VIEWER PANEL — lives in party column
+       ══════════════════════════════════════════════════════ */
+    .map-viewer-panel {
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+
+    /* Collapsible header */
+    .map-viewer-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 12px;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+    }
+    .map-viewer-header:hover { background: rgba(255,255,255,0.02); }
+
+    .map-viewer-header-title {
+      flex: 1;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.24em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .map-viewer-header-title.has-active {
+      color: var(--accent);
+    }
+    .map-viewer-header-title.has-active::before {
+      content: "";
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #5aaa80;
+      margin-right: 7px;
+      vertical-align: middle;
+      animation: mapPulse 2.4s ease-in-out infinite;
+    }
+    @keyframes mapPulse {
+      0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(90,170,128,0.5); }
+      50% { opacity: 0.7; box-shadow: 0 0 0 4px rgba(90,170,128,0); }
+    }
+
+    .map-viewer-active-name {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-style: italic;
+      color: var(--text-body);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      max-width: 160px;
+    }
+
+    .map-clear-btn {
+      background: transparent;
+      border: 1px solid rgba(180,80,80,0.25);
+      border-radius: 3px;
+      color: rgba(192,96,96,0.7);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 2px 8px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .map-clear-btn:hover { border-color: #c06060; color: #c06060; }
+
+    .map-viewer-toggle {
+      font-size: 11px;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+      flex-shrink: 0;
+    }
+    .map-viewer-toggle.open { transform: rotate(180deg); }
+
+    /* Collapsible body */
+    .map-viewer-body {
+      display: none;
+      border-top: 1px solid var(--border);
+    }
+    .map-viewer-body.open { display: block; }
+
+    /* The actual image container — full width, fixed height */
+    .map-canvas-container {
+      position: relative;
+      height: 320px;
+      background: #060a0e;
+      overflow: hidden;
+      cursor: grab;
+    }
+    .map-canvas-container:active { cursor: grabbing; }
+
+    .map-canvas-el {
+      position: absolute;
+      top: 0; left: 0;
+      transform-origin: 0 0;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+      max-width: none;
+    }
+
+    /* Empty state inside the viewer */
+    .map-viewer-empty {
+      height: 320px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      opacity: 0.35;
+    }
+    .map-viewer-empty-icon { font-size: 26px; }
+    .map-viewer-empty-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* Overlay zoom controls — bottom-right corner of the canvas */
+    .map-zoom-controls {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      z-index: 5;
+    }
+    .map-zoom-btn {
+      width: 26px;
+      height: 26px;
+      background: rgba(8,14,22,0.82);
+      border: 1px solid rgba(100,140,180,0.28);
+      border-radius: 3px;
+      color: rgba(160,195,220,0.8);
+      font-size: 14px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      font-family: monospace;
+      padding: 0;
+    }
+    .map-zoom-btn:hover {
+      background: rgba(20,45,70,0.9);
+      border-color: var(--accent);
+      color: var(--accent-bright);
+    }
+    .map-zoom-label {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.06em;
+      color: rgba(140,175,200,0.55);
+      text-align: center;
+      margin-top: 2px;
+      pointer-events: none;
+    }
+
+    /* Drag hint (fades after first interaction) */
+    .map-drag-hint {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 3px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      color: rgba(180,180,180,0.5);
+      padding: 3px 8px;
+      pointer-events: none;
+      transition: opacity 1.5s ease;
+      z-index: 4;
+    }
+    .map-drag-hint.hidden { opacity: 0; }
+
+    /* ══════════════════════════════════════════════════════
+       MAP LIBRARY STRIP — below right columns
+       ══════════════════════════════════════════════════════ */
+    /*
+     * The strip lives inside .right-side as the last child.
+     * It spans the full width of the right side (both sub-columns combined).
+     * When the party column is taller, the strip sticks to the bottom of
+     * the viewport within the right side using position:sticky.
+     */
+    .map-library-strip-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      justify-content: flex-end;
+      /* sticky: strip doesn't float up off the bottom of the viewport */
+      position: sticky;
+      bottom: 16px;
+    }
+
+    .map-library-strip {
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      overflow: hidden;
+      /* Drag-over highlight */
+      transition: border-color 0.15s, background 0.15s;
+      position: relative;
+    }
+    .map-library-strip.drag-over {
+      border-color: var(--accent);
+      background: rgba(25,55,85,0.65);
+    }
+    .map-library-strip.drag-over::after {
+      content: 'Drop to upload';
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent-bright);
+      background: rgba(15,35,60,0.5);
+      border-radius: 5px;
+      pointer-events: none;
+      z-index: 10;
+    }
+
+    /* Strip header row: label + upload button */
+    .map-strip-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px 6px;
+      border-bottom: 1px solid var(--border);
+    }
+    .map-strip-label {
+      flex: 1;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.26em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .map-strip-upload-btn {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      padding: 4px 11px;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .map-strip-upload-btn:hover { background: rgba(40,75,100,0.8); border-color: var(--accent-bright); }
+
+    /* Horizontal scroll row of thumbnails */
+    .map-strip-scroll {
+      display: flex;
+      gap: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      padding: 8px 10px 9px;
+      scrollbar-width: thin;
+      /* min-height keeps strip from collapsing when empty */
+      min-height: 70px;
+      align-items: stretch;
+    }
+
+    /* Empty state inside strip */
+    .map-strip-empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      opacity: 0.45;
+      min-height: 60px;
+    }
+
+    /* Individual thumbnail card in the strip */
+    .map-strip-card {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 84px;
+      flex-shrink: 0;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+    .map-strip-card:last-child { margin-right: 0; }
+
+    .map-strip-thumb {
+      width: 80px;
+      height: 58px;
+      border-radius: 3px;
+      overflow: hidden;
+      border: 1px solid var(--border-vis);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      opacity: 0.6;
+      transition: border-color 0.15s, opacity 0.15s;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .map-strip-card:hover .map-strip-thumb {
+      border-color: var(--accent);
+      opacity: 1;
+    }
+    .map-strip-card.is-active .map-strip-thumb {
+      border-color: #5aaa80;
+      box-shadow: 0 0 0 1px rgba(90,170,128,0.3);
+      opacity: 1;
+    }
+    /* Active dot badge on thumb */
+    .map-strip-card.is-active .map-strip-thumb::after {
+      content: '';
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #5aaa80;
+      box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+    }
+
+    .map-strip-name {
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--text-body);
+      text-align: center;
+      margin-top: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      width: 80px;
+    }
+
+    .map-strip-set-btn {
+      margin-top: 4px;
+      width: 80px;
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 2px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      padding: 3px 4px;
+      cursor: pointer;
+      text-align: center;
+      transition: background 0.12s;
+    }
+    .map-strip-set-btn:hover { background: var(--accent-dim); }
+
+    .map-strip-active-label {
+      margin-top: 4px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #7dcca0;
+    }
+
+    /* ══════════════════════════════════════════════════════
+       UPLOAD MODAL
+       ══════════════════════════════════════════════════════ */
+    .upload-modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.78);
+      z-index: 300;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+    .upload-modal-overlay.open { display: flex; }
+
+    .upload-modal-panel {
+      background: var(--surface-solid);
+      border: 1px solid var(--border-vis);
+      border-radius: 6px;
+      width: 100%;
+      max-width: 480px;
+      overflow: hidden;
+    }
+    .upload-modal-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid var(--border);
+    }
+    .upload-modal-title {
+      flex: 1;
+      font-family: var(--font-display);
+      font-size: 15px;
+      letter-spacing: 0.1em;
+      color: var(--accent-bright);
+    }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 20px;
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 3px;
+      line-height: 1;
+      transition: color 0.15s;
+    }
+    .modal-close:hover { color: var(--text); }
+    .upload-modal-body { padding: 18px; }
+
+    /* Image preview (shown when a file is chosen) */
+    .upload-preview-wrap {
+      position: relative;
+      width: 100%;
+      height: 180px;
+      background: #060a0e;
+      border-radius: 4px;
+      border: 1px solid var(--border-vis);
+      overflow: hidden;
+      margin-bottom: 14px;
+      display: none;
+    }
+    .upload-preview-wrap.visible { display: block; }
+    .upload-preview-img {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+    .upload-preview-change {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      background: rgba(0,0,0,0.7);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      padding: 3px 8px;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .upload-preview-change:hover { color: var(--accent-bright); border-color: var(--accent); }
+
+    /* File drop zone (shown when no file chosen yet) */
+    .drop-zone {
+      border: 1px dashed var(--border-vis);
+      border-radius: 4px;
+      padding: 28px 20px;
+      text-align: center;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      margin-bottom: 14px;
+    }
+    .drop-zone:hover, .drop-zone.dragging {
+      border-color: var(--accent);
+      background: rgba(30,60,90,0.2);
+    }
+    .drop-zone-icon { font-size: 26px; margin-bottom: 8px; opacity: 0.45; }
+    .drop-zone-label {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+    .drop-zone-sub {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-muted);
+      font-style: italic;
+    }
+    #fileInputHidden { display: none; }
+
+    /* Map name input */
+    .form-label {
+      display: block;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 5px;
+    }
+    .form-input {
+      width: 100%;
+      background: rgba(18,32,48,0.6);
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 15px;
+      padding: 8px 12px;
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 16px;
+    }
+    .form-input:focus { border-color: var(--accent); }
+
+    /* Size warning */
+    .size-warning {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(80,60,10,0.5);
+      border: 1px solid rgba(180,140,40,0.4);
+      border-radius: 3px;
+      padding: 8px 12px;
+      margin-bottom: 12px;
+    }
+    .size-warning-icon { font-size: 14px; }
+    .size-warning-text {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: #c8b060;
+      font-style: italic;
+    }
+
+    /* Upload flow steps */
+    .upload-flow { display: none; }
+    .upload-flow.active { display: block; }
+
+    /* Progress bar */
+    .progress-bar-wrap {
+      background: rgba(255,255,255,0.06);
+      border-radius: 3px;
+      height: 5px;
+      overflow: hidden;
+      margin: 12px 0 10px;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 3px;
+      width: 0%;
+      transition: width 0.3s ease;
+    }
+    .progress-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 6px;
+    }
+
+    /* Upload done */
+    .upload-done-banner {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 14px;
+      background: rgba(30,80,50,0.4);
+      border: 1px solid rgba(80,160,100,0.3);
+      border-radius: 4px;
+      margin-bottom: 14px;
+    }
+    .upload-done-icon { font-size: 18px; color: #88cc99; }
+    .upload-done-text {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      color: #88cc99;
+    }
+
+    /* Upload row actions */
+    .upload-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    /* Buttons */
+    .btn-primary {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 7px 16px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-primary:hover { background: rgba(40,75,100,0.8); border-color: var(--accent-bright); }
+
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+      white-space: nowrap;
+    }
+    .btn-ghost:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+    .btn-danger {
+      background: transparent;
+      border: 1px solid rgba(180,80,80,0.35);
+      border-radius: 3px;
+      color: #c06060;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 6px 12px;
+      cursor: pointer;
+      transition: border-color 0.15s, background 0.15s;
+      white-space: nowrap;
+    }
+    .btn-danger:hover { border-color: #c06060; background: rgba(180,60,60,0.12); }
+
+    /* ── Page section labels ── */
+    .page-section {
+      padding: 40px 20px 0;
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    .page-section-title {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      color: var(--accent-bright);
+      margin-bottom: 6px;
+    }
+    .page-section-desc {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 16px;
+    }
+
+    .annotation {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: #80c8f0;
+      background: rgba(20,50,80,0.7);
+      border: 1px solid rgba(80,140,200,0.35);
+      border-radius: 3px;
+      padding: 4px 10px;
+      margin: 8px 0;
+      display: block;
+    }
+    .annotation::before { content: "↳ "; opacity: 0.6; }
+
+    /* Demo state toggle tabs */
+    .demo-tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 16px;
+    }
+    .demo-tab {
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      padding: 4px 12px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    .demo-tab:hover { border-color: var(--accent); color: var(--accent); }
+    .demo-tab.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-bright); }
+
+    .demo-state { display: none; }
+    .demo-state.active { display: block; }
+
+    /* ── Character sheet prototype section ── */
+    .sheet-container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 20px 48px;
+    }
+
+    .sheet-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 0 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 20px;
+    }
+    .sheet-char-name {
+      font-family: var(--font-display);
+      font-size: 20px;
+      letter-spacing: 0.08em;
+      color: var(--accent-bright);
+      flex: 1;
+    }
+
+    .tab-strip {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      padding: 10px 6px 8px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .tab-btn:hover:not(.active):not(.inactive-map) {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+    .tab-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent-bright);
+    }
+    .tab-btn.inactive-map {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .tab-icon { font-size: 16px; line-height: 1; }
+    .tab-label { font-size: 11px; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    .stub-panel {
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      padding: 32px 20px;
+      text-align: center;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    /* Map tab — empty state */
+    .map-tab-empty {
+      background: var(--surface);
+      border: 1px dashed var(--border-vis);
+      border-radius: 5px;
+      padding: 56px 20px;
+      text-align: center;
+    }
+    .map-tab-empty-icon { font-size: 36px; opacity: 0.25; margin-bottom: 12px; }
+    .map-tab-empty-label {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .map-tab-empty-sub {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text-muted);
+    }
+
+    /* Map tab — active map viewer */
+    .map-tab-viewer {
+      background: #070a0d;
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+    }
+    .map-tab-viewer-inner {
+      height: 420px;
+      overflow: hidden;
+      cursor: grab;
+      position: relative;
+    }
+    .map-tab-viewer-inner:active { cursor: grabbing; }
+    .map-viewer-img {
+      position: absolute;
+      top: 0; left: 0;
+      transform-origin: 0 0;
+      pointer-events: none;
+      user-select: none;
+      -webkit-user-drag: none;
+      max-width: none;
+    }
+    .map-viewer-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+    }
+    .map-viewer-name {
+      flex: 1;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text-body);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .map-zoom-display {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      min-width: 36px;
+      text-align: right;
+    }
+    .map-viewer-hint {
+      position: absolute;
+      bottom: 44px;
+      right: 10px;
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: 3px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      color: rgba(200,200,200,0.55);
+      padding: 3px 7px;
+      pointer-events: none;
+      opacity: 1;
+      transition: opacity 1.5s ease;
+    }
+    .map-viewer-hint.hidden { opacity: 0; }
+
+    /* ══════════════════════════════════════════════════════
+       MAP LIBRARY PAGE (Section 4)
+       ══════════════════════════════════════════════════════ */
+    .lib-page-wrap {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 20px 48px;
+    }
+
+    /* Page header row: title left, upload button right */
+    .lib-page-header {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
+      padding: 20px 0 16px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 24px;
+    }
+    .lib-page-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      letter-spacing: 0.1em;
+      color: var(--accent-bright);
+      flex: 1;
+    }
+
+    /* Map library grid */
+    .lib-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 16px;
+    }
+
+    /* Individual map card */
+    .lib-card {
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color 0.15s;
+    }
+    .lib-card:hover { border-color: var(--accent); }
+    .lib-card.lib-card-active { border-color: rgba(90,170,128,0.5); }
+
+    /* Thumbnail */
+    .lib-card-thumb {
+      width: 100%;
+      height: 160px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 32px;
+      flex-shrink: 0;
+      position: relative;
+      overflow: hidden;
+    }
+    /* Active badge in top-right of thumb */
+    .lib-card-active-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(10,30,20,0.85);
+      border: 1px solid rgba(90,170,128,0.5);
+      border-radius: 3px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: #7dcca0;
+      padding: 2px 7px;
+    }
+
+    /* Card body: name + meta */
+    .lib-card-body {
+      padding: 10px 12px 8px;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .lib-card-name {
+      font-family: var(--font-body);
+      font-size: 15px;
+      color: var(--text);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .lib-card-meta {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+    }
+
+    /* Card footer: Set Active + Delete */
+    .lib-card-footer {
+      display: flex;
+      gap: 6px;
+      padding: 8px 12px 10px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.12);
+    }
+    .lib-card-set-btn {
+      flex: 1;
+      background: transparent;
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      padding: 5px 8px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+      text-align: center;
+    }
+    .lib-card-set-btn:hover { background: var(--accent-dim); }
+    .lib-card-set-btn.is-active {
+      background: rgba(10,40,25,0.5);
+      border-color: rgba(90,170,128,0.5);
+      color: #7dcca0;
+      cursor: default;
+    }
+    .lib-card-delete-btn {
+      background: transparent;
+      border: 1px solid rgba(180,80,80,0.28);
+      border-radius: 3px;
+      color: rgba(192,96,96,0.7);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 5px 9px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+    .lib-card-delete-btn:hover { border-color: #c06060; color: #c06060; background: rgba(180,60,60,0.08); }
+
+    /* Inline delete confirm row — replaces footer buttons */
+    .lib-card-delete-confirm {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+    .lib-card-delete-confirm.visible { display: flex; }
+    .lib-card-delete-confirm-label {
+      flex: 1;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: rgba(210,120,120,0.9);
+    }
+    .lib-card-confirm-yes {
+      background: rgba(140,40,40,0.4);
+      border: 1px solid rgba(200,80,80,0.5);
+      border-radius: 3px;
+      color: #e08080;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: background 0.12s;
+    }
+    .lib-card-confirm-yes:hover { background: rgba(180,50,50,0.55); }
+    .lib-card-confirm-no {
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .lib-card-confirm-no:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+    /* Inline rename row — replaces footer buttons */
+    .lib-card-rename-btn {
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 5px 9px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+    .lib-card-rename-btn:hover { border-color: var(--accent); color: var(--accent-bright); background: var(--accent-dim); }
+    .lib-card-rename-row {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      width: 100%;
+    }
+    .lib-card-rename-row.visible { display: flex; }
+    .lib-card-rename-input {
+      flex: 1;
+      min-width: 0;
+      background: rgba(0,0,0,0.3);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 4px 7px;
+      outline: none;
+    }
+    .lib-card-rename-input:focus { border-color: var(--accent-bright); }
+    .lib-card-rename-save {
+      background: var(--accent-dim);
+      border: 1px solid var(--accent);
+      border-radius: 3px;
+      color: var(--accent-bright);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .lib-card-rename-save:hover { background: rgba(40,75,100,0.8); border-color: var(--accent-bright); }
+    .lib-card-rename-cancel {
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .lib-card-rename-cancel:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+    /* Empty state for the whole library page */
+    .lib-empty {
+      grid-column: 1 / -1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 14px;
+      padding: 72px 20px;
+      background: var(--surface);
+      border: 1px dashed var(--border-vis);
+      border-radius: 5px;
+      text-align: center;
+    }
+    .lib-empty-icon { font-size: 42px; opacity: 0.22; }
+    .lib-empty-label {
+      font-family: var(--font-ui);
+      font-size: 13px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .lib-empty-sub {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text-muted);
+      max-width: 320px;
+    }
+
+    /* Drag-over overlay for the library page */
+    .lib-drag-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(8,20,40,0.82);
+      z-index: 200;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 14px;
+      pointer-events: none;
+    }
+    .lib-drag-overlay.visible { display: flex; }
+    .lib-drag-overlay-label {
+      font-family: var(--font-display);
+      font-size: 20px;
+      letter-spacing: 0.14em;
+      color: var(--accent-bright);
+      border: 2px dashed var(--accent);
+      padding: 24px 48px;
+      border-radius: 8px;
+    }
+
+    /* ══════════════════════════════════════════════════════
+       PLAYER SHEET FULL-WIDTH MAP TAB (Section 5)
+       ══════════════════════════════════════════════════════ */
+    .sheet2-container {
+      max-width: 640px;
+      margin: 0 auto;
+      padding: 0 20px 64px;
+    }
+
+    /* Full-width map viewer in the sheet */
+    .sheet-map-fullwidth {
+      background: #070a0d;
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+    }
+    .sheet-map-fw-canvas-wrap {
+      height: 500px;
+      overflow: hidden;
+      cursor: grab;
+      position: relative;
+    }
+    .sheet-map-fw-canvas-wrap:active { cursor: grabbing; }
+
+    .sheet-map-fw-zoom-controls {
+      position: absolute;
+      bottom: 12px;
+      right: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 5;
+    }
+
+    .sheet-map-fw-footer {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 14px;
+      border-top: 1px solid var(--border);
+      background: rgba(0,0,0,0.25);
+    }
+    .sheet-map-fw-name {
+      flex: 1;
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text-body);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .sheet-map-fw-zoom-display {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      min-width: 40px;
+      text-align: right;
+    }
+
+    /* Drag/zoom hint inside canvas */
+    .sheet-map-fw-hint {
+      position: absolute;
+      bottom: 10px;
+      left: 10px;
+      background: rgba(0,0,0,0.65);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 3px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.07em;
+      color: rgba(200,200,200,0.5);
+      padding: 3px 8px;
+      pointer-events: none;
+      transition: opacity 1.5s ease;
+    }
+    .sheet-map-fw-hint.hidden { opacity: 0; }
+
+    /* Empty state for Map tab when no active map */
+    .sheet-map-fw-empty {
+      height: 500px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      background: var(--surface);
+      border: 1px dashed var(--border-vis);
+      border-radius: 5px;
+    }
+    .sheet-map-fw-empty-icon { font-size: 40px; opacity: 0.2; }
+    .sheet-map-fw-empty-label {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .sheet-map-fw-empty-sub {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text-muted);
+      opacity: 0.65;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 1 — DM DASHBOARD
+     ═══════════════════════════════════════════════════════ -->
+
+<div class="section-header">Section 1 — DM Dashboard: Map Viewer + Library Strip</div>
+
+<div class="page-section">
+  <div class="page-section-title">DM Campaign Dashboard</div>
+  <div class="page-section-desc">
+    The map viewer is a collapsible panel at the top of the party column. When expanded it
+    shows the active map full-width with drag-to-pan and scroll/pinch-to-zoom. Small
+    overlay controls (+/−/reset) sit in the bottom-right corner. The map library strip
+    lives below the Enemies and Initiative columns — a horizontal scroll of thumbnails
+    with a Set Active button per map, an Upload button, and a full-strip drag-drop zone.
+  </div>
+  <div class="demo-tabs" id="dmDemoTabs">
+    <button class="demo-tab active" onclick="setDmMapState('active')">Active map loaded</button>
+    <button class="demo-tab" onclick="setDmMapState('empty')">No active map</button>
+  </div>
+  <span class="annotation">Toggle above switches the DM viewer between an active map and the empty state. The library strip is always visible. Use the "Set Active" buttons in the strip to activate a map.</span>
+</div>
+
+<!-- Top nav -->
+<div class="top-bar">
+  <span class="top-bar-title">Campaign</span>
+  <select style="background:transparent;border:1px solid var(--border-vis);color:var(--text-muted);font-family:var(--font-ui);font-size:11px;padding:4px 8px;border-radius:3px;cursor:pointer;">
+    <option>Ocean</option>
+  </select>
+  <button class="top-bar-btn">End Session</button>
+</div>
+<div class="breadcrumb">← Character Library</div>
+
+<!-- ── DASHBOARD OUTER: Party col (left) + Right side ── -->
+<div class="dashboard-outer">
+
+  <!-- ── PARTY COLUMN ── -->
+  <div class="party-col">
+    <div class="col-header">Party</div>
+
+    <!-- MAP VIEWER PANEL -->
+    <div class="map-viewer-panel" id="dmMapViewerPanel">
+      <div class="map-viewer-header" id="dmMapViewerHeader" onclick="toggleMapViewer()">
+        <span class="map-viewer-header-title has-active" id="dmMapViewerTitle">Maps</span>
+        <!-- Active map name shown inline in the header when collapsed -->
+        <span class="map-viewer-active-name" id="dmMapActiveName" style="display:none;">Catacombs — Level 2</span>
+        <button class="map-clear-btn" id="dmMapClearBtn"
+                onclick="event.stopPropagation(); clearActiveDmMap()"
+                style="display:none;">Clear</button>
+        <span class="map-viewer-toggle open" id="dmMapViewerToggle">▼</span>
+      </div>
+
+      <div class="map-viewer-body open" id="dmMapViewerBody">
+        <!-- Active map canvas with overlay zoom controls -->
+        <div id="dmMapActiveState">
+          <div class="map-canvas-container" id="dmMapContainer">
+            <canvas class="map-canvas-el" id="dmMapCanvas"></canvas>
+            <div class="map-zoom-controls">
+              <button class="map-zoom-btn" onclick="dmZoomIn()" title="Zoom in">+</button>
+              <button class="map-zoom-btn" onclick="dmZoomOut()" title="Zoom out">−</button>
+              <button class="map-zoom-btn" onclick="dmZoomReset()" title="Reset view"
+                      style="font-size:11px;letter-spacing:0;">⟳</button>
+            </div>
+            <div class="map-drag-hint" id="dmMapDragHint">Drag to pan · Scroll to zoom</div>
+          </div>
+        </div>
+        <!-- Empty state -->
+        <div id="dmMapEmptyState" style="display:none;">
+          <div class="map-viewer-empty">
+            <div class="map-viewer-empty-icon">🗺</div>
+            <div class="map-viewer-empty-label">No active map</div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- /MAP VIEWER PANEL -->
+
+    <!-- Party cards (abbreviated) -->
+    <div class="party-card ember">
+      <div class="card-inner">
+        <div class="card-name ember">Aragorn</div>
+        <div class="card-meta">Human · Ranger · Lv 5</div>
+        <div class="card-hp-bar"><div class="card-hp-fill" style="width:78%"></div></div>
+      </div>
+      <div class="card-footer">
+        <button class="card-footer-btn">⚔ Damage</button>
+        <button class="card-footer-btn">✦ Heal</button>
+        <button class="card-footer-btn">⋯</button>
+      </div>
+    </div>
+
+    <div class="party-card forest">
+      <div class="card-inner">
+        <div class="card-name forest">Eoghan</div>
+        <div class="card-meta">Elf · Rogue · Lv 5</div>
+        <div class="card-hp-bar"><div class="card-hp-fill" style="width:55%"></div></div>
+      </div>
+      <div class="card-footer">
+        <button class="card-footer-btn">⚔ Damage</button>
+        <button class="card-footer-btn">✦ Heal</button>
+        <button class="card-footer-btn">⋯</button>
+      </div>
+    </div>
+
+    <div class="party-card ocean">
+      <div class="card-inner">
+        <div class="card-name ocean">Aesop</div>
+        <div class="card-meta">Half-elf · Bard · Lv 5</div>
+        <div class="card-hp-bar"><div class="card-hp-fill" style="width:90%"></div></div>
+      </div>
+      <div class="card-footer">
+        <button class="card-footer-btn">⚔ Damage</button>
+        <button class="card-footer-btn">✦ Heal</button>
+        <button class="card-footer-btn">⋯</button>
+      </div>
+    </div>
+
+    <!-- Dice roller stub -->
+    <div class="side-panel" style="margin-top:10px;text-align:center;opacity:0.5;">
+      ⚄ DM Dice Roller (collapsed)
+    </div>
+  </div>
+  <!-- /PARTY COLUMN -->
+
+  <!-- ── RIGHT SIDE ── -->
+  <div class="right-side">
+
+    <!-- NPC + Initiative side by side -->
+    <div class="right-top">
+      <!-- NPC column -->
+      <div class="right-col">
+        <div class="col-header">Enemies / NPCs</div>
+        <div class="side-panel">
+          <div style="margin-bottom:8px;color:var(--text);">Goblin Warchief</div>
+          <div>HP 28/40 · AC 16</div>
+        </div>
+        <div class="side-panel">
+          <div style="margin-bottom:8px;color:var(--text);">Skeleton ×3</div>
+          <div>HP 13/13 · AC 13</div>
+        </div>
+      </div>
+
+      <!-- Initiative column -->
+      <div class="right-col">
+        <div class="col-header">Initiative</div>
+        <div class="side-panel">
+          <div style="margin-bottom:10px;background:var(--accent-dim);border:1px solid var(--accent);border-radius:3px;padding:5px 8px;color:var(--accent-bright);">
+            ▶ Aragorn — 18
+          </div>
+          <div style="margin-bottom:8px;color:var(--text);">Eoghan — 15</div>
+          <div style="margin-bottom:8px;color:var(--text);">Goblin — 12</div>
+          <div style="margin-bottom:8px;color:var(--text);">Aesop — 9</div>
+          <button class="btn-ghost" style="width:100%;margin-top:8px;">Next Turn →</button>
+        </div>
+      </div>
+    </div>
+    <!-- /right-top -->
+
+    <!-- MAP LIBRARY STRIP — sticky to the bottom of the right side -->
+    <div class="map-library-strip-wrap">
+      <div class="map-library-strip" id="mapLibraryStrip"
+           ondragover="handleStripDragOver(event)"
+           ondragleave="handleStripDragLeave(event)"
+           ondrop="handleStripDrop(event)">
+
+        <div class="map-strip-header">
+          <span class="map-strip-label">Map Library</span>
+          <button class="map-strip-upload-btn" onclick="openUploadModal()">+ Upload</button>
+        </div>
+
+        <div class="map-strip-scroll" id="mapStripScroll">
+          <!-- Rendered by JS; shows .map-strip-empty if no maps -->
+        </div>
+
+      </div>
+      <span class="callout" style="margin-top:6px;">Drag an image file anywhere onto the strip to open the upload modal pre-loaded. Scroll horizontally to browse maps. "Set Active" applies immediately. Delete maps in the Map Library page (not shown here).</span>
+    </div>
+    <!-- /MAP LIBRARY STRIP -->
+
+  </div>
+  <!-- /RIGHT SIDE -->
+
+</div><!-- /dashboard-outer -->
+
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 2 — UPLOAD MODAL (standalone demo)
+     ═══════════════════════════════════════════════════════ -->
+
+<div class="section-header">Section 2 — Upload Modal</div>
+
+<div class="page-section" style="padding-bottom:24px;">
+  <div class="page-section-title">Upload Modal</div>
+  <div class="page-section-desc">
+    Triggered by clicking the Upload button in the library strip, or by dropping a file
+    onto the strip. When a file is already known (drag-drop), the modal opens directly
+    to the preview + name-entry state. When opened via button click, it shows the drop
+    zone first.
+  </div>
+  <div style="display:flex;gap:10px;flex-wrap:wrap;">
+    <button class="btn-primary" onclick="openUploadModal()">Open — no file (drop zone)</button>
+    <button class="btn-primary" onclick="openUploadModalWithFile()">Open — file pre-loaded (preview)</button>
+  </div>
+  <span class="annotation" style="margin-top:12px;">The image preview is a full-width 180px strip showing the chosen image. A "Change file" overlay sits bottom-right. Map name is pre-filled from the filename (spaces, title case). Confirm is disabled until a file is present.</span>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 3 — CHARACTER SHEET MAP TAB (UNCHANGED)
+     ═══════════════════════════════════════════════════════ -->
+
+<div class="section-header">Section 3 — Character Sheet: Map Tab</div>
+
+<div class="sheet-container" style="padding-top:40px;">
+  <div class="page-section-title" style="margin-bottom:4px;">Character Sheet — Eoghan</div>
+  <div class="page-section-desc" style="margin-bottom:20px;">
+    The Map tab appears as a fourth tab in the Combat / Persona / Inventory strip.
+    Use the state tabs to see the empty and active states.
+  </div>
+
+  <div class="demo-tabs">
+    <button class="demo-tab active" onclick="setSheetMapState('empty')">No active map</button>
+    <button class="demo-tab" onclick="setSheetMapState('active')">Active map loaded</button>
+  </div>
+
+  <!-- Sheet top bar stub -->
+  <div class="sheet-topbar">
+    <span style="font-family:var(--font-ui);font-size:12px;letter-spacing:0.12em;color:var(--text-muted);">← All Characters</span>
+    <span class="sheet-char-name">Eoghan</span>
+    <button class="btn-ghost" style="font-size:11px;">Edit</button>
+  </div>
+
+  <!-- Four-tab strip -->
+  <div class="tab-strip" id="sheetTabStrip">
+    <button class="tab-btn" onclick="setSheetTab('inventory')" id="tab-inventory">
+      <span class="tab-icon">⚔</span>
+      <span class="tab-label">Inventory</span>
+    </button>
+    <button class="tab-btn" onclick="setSheetTab('persona')" id="tab-persona">
+      <span class="tab-icon">✦</span>
+      <span class="tab-label">Persona</span>
+    </button>
+    <button class="tab-btn" onclick="setSheetTab('combat')" id="tab-combat">
+      <span class="tab-icon">🎲</span>
+      <span class="tab-label">Combat</span>
+    </button>
+    <button class="tab-btn" onclick="setSheetTab('map')" id="tab-map">
+      <span class="tab-icon">🗺</span>
+      <span class="tab-label" id="mapTabLabel">Map</span>
+    </button>
+  </div>
+
+  <!-- Tab panels -->
+  <div class="tab-panel" id="panel-inventory">
+    <div class="stub-panel">Inventory tab content (existing)</div>
+  </div>
+  <div class="tab-panel" id="panel-persona">
+    <div class="stub-panel">Persona tab content (existing)</div>
+  </div>
+  <div class="tab-panel" id="panel-combat">
+    <div class="stub-panel">Combat tab content (existing)</div>
+  </div>
+
+  <!-- Map tab -->
+  <div class="tab-panel" id="panel-map">
+    <!-- Empty state -->
+    <div id="mapTabEmpty" class="demo-state active">
+      <div class="map-tab-empty">
+        <div class="map-tab-empty-icon">🗺</div>
+        <div class="map-tab-empty-label">No map loaded</div>
+        <div class="map-tab-empty-sub">The DM hasn't set an active map yet.</div>
+      </div>
+      <span class="annotation" style="margin-top:10px;">Players see this empty state — no upload UI is shown. Only the DM can set a map.</span>
+    </div>
+
+    <!-- Active map viewer -->
+    <div id="mapTabActive" class="demo-state">
+      <div class="map-tab-viewer">
+        <div class="map-tab-viewer-inner" id="playerMapViewer">
+          <canvas id="playerMapCanvas" style="position:absolute;top:0;left:0;transform-origin:0 0;pointer-events:none;"></canvas>
+          <div class="map-viewer-hint" id="playerMapHint">Drag to pan · Scroll or pinch to zoom</div>
+        </div>
+        <div class="map-viewer-controls">
+          <span class="map-viewer-name">Catacombs — Level 2</span>
+          <button class="btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="resetPlayerPreview()">Reset</button>
+          <span class="map-zoom-display" id="playerZoomDisplay">100%</span>
+        </div>
+      </div>
+      <span class="annotation" style="margin-top:10px;">Each player pans/zooms independently — DM panning does not affect player views. CSS transform on the image element; no external library needed.</span>
+    </div>
+  </div>
+
+</div><!-- /sheet-container -->
+
+
+<!-- ═══════════════════════════════════════════════════════
+     UPLOAD MODAL
+     ═══════════════════════════════════════════════════════ -->
+<div class="upload-modal-overlay" id="uploadModal">
+  <div class="upload-modal-panel">
+    <div class="upload-modal-header">
+      <span class="upload-modal-title">New Map</span>
+      <button class="modal-close" onclick="closeUploadModal()">×</button>
+    </div>
+    <div class="upload-modal-body">
+
+      <!-- Step 1: drop zone / preview + name -->
+      <div class="upload-flow active" id="uploadStep1">
+
+        <!-- Image preview (visible once file chosen) -->
+        <div class="upload-preview-wrap" id="uploadPreviewWrap">
+          <img class="upload-preview-img" id="uploadPreviewImg" src="" alt="" />
+          <button class="upload-preview-change"
+                  onclick="document.getElementById('fileInputHidden').click()">Change file</button>
+        </div>
+
+        <!-- Drop zone (visible when no file yet) -->
+        <div class="drop-zone" id="dropZone"
+             onclick="document.getElementById('fileInputHidden').click()"
+             ondragover="event.preventDefault();this.classList.add('dragging')"
+             ondragleave="this.classList.remove('dragging')"
+             ondrop="handleModalFileDrop(event)">
+          <div class="drop-zone-icon">📁</div>
+          <div class="drop-zone-label">Click to choose or drag a file here</div>
+          <div class="drop-zone-sub">JPEG or PNG · up to ~10 MB</div>
+        </div>
+
+        <input type="file" id="fileInputHidden" accept="image/jpeg,image/png,image/webp"
+               onchange="handleFileSelect(event)" />
+
+        <label class="form-label" for="mapNameInput">Map Name</label>
+        <input class="form-input" id="mapNameInput" type="text" maxlength="48"
+               placeholder="e.g. Catacombs Level 2" />
+
+        <!-- Size warning (shown for large files) -->
+        <div class="size-warning" id="sizeWarning" style="display:none;">
+          <span class="size-warning-icon">⚠</span>
+          <span class="size-warning-text">Large image — may load slowly on mobile. Consider resizing before uploading.</span>
+        </div>
+
+        <div class="upload-actions">
+          <button class="btn-ghost" onclick="closeUploadModal()">Cancel</button>
+          <button class="btn-primary" id="uploadConfirmBtn" onclick="startUpload()"
+                  disabled style="opacity:0.45;cursor:not-allowed;">Upload</button>
+        </div>
+      </div>
+
+      <!-- Step 2: progress -->
+      <div class="upload-flow" id="uploadStep2">
+        <div class="progress-label" id="progressLabel">Uploading...</div>
+        <div class="progress-bar-wrap">
+          <div class="progress-bar-fill" id="progressFill"></div>
+        </div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-muted);font-style:italic;text-align:center;margin-top:8px;">
+          Uploading to S3 via presigned URL…
+        </div>
+      </div>
+
+      <!-- Step 3: done -->
+      <div class="upload-flow" id="uploadStep3">
+        <div class="upload-done-banner">
+          <span class="upload-done-icon">✓</span>
+          <span class="upload-done-text" id="uploadDoneText">Map added to library.</span>
+        </div>
+        <div class="upload-actions">
+          <button class="btn-ghost" onclick="resetUpload()">Upload Another</button>
+          <button class="btn-primary" onclick="setLastUploadActive()">Set as Active</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 4 — MAP LIBRARY PAGE
+     ═══════════════════════════════════════════════════════ -->
+
+<div class="section-header">Section 4 — Map Library Page</div>
+
+<!-- Full-page drag-drop overlay -->
+<div class="lib-drag-overlay" id="libDragOverlay">
+  <div style="font-size:48px;opacity:0.7;">🗺</div>
+  <div class="lib-drag-overlay-label">Drop image to upload</div>
+</div>
+
+<!-- Simulated page top bar -->
+<div class="top-bar">
+  <span class="top-bar-title">Map Library</span>
+  <button class="top-bar-btn" onclick="openUploadModal()">+ Upload</button>
+</div>
+<div class="breadcrumb"><a href="#">← Campaign</a></div>
+
+<div class="lib-page-wrap"
+     id="libPageWrap"
+     ondragover="libPageDragOver(event)"
+     ondragleave="libPageDragLeave(event)"
+     ondrop="libPageDrop(event)">
+
+  <div class="lib-page-header">
+    <span class="lib-page-title">Map Library</span>
+    <button class="btn-primary" onclick="openUploadModal()">+ Upload</button>
+  </div>
+
+  <span class="annotation">Standalone /maps page. Delete lives here — not on the campaign page. Drag any image file anywhere on the page to open the upload modal pre-loaded. Cards show "Set Active" / "● Active" and a Delete button with inline confirmation.</span>
+
+  <div class="demo-tabs" id="libDemoTabs">
+    <button class="demo-tab active" onclick="setLibState('populated')">With maps</button>
+    <button class="demo-tab" onclick="setLibState('empty')">Empty library</button>
+  </div>
+
+  <!-- Grid rendered by JS -->
+  <div class="lib-grid" id="libGrid"></div>
+
+</div>
+
+
+<!-- ═══════════════════════════════════════════════════════
+     SECTION 5 — PLAYER SHEET: MAP TAB (FULL-WIDTH)
+     ═══════════════════════════════════════════════════════ -->
+
+<div class="section-header">Section 5 — Player Character Sheet: Map Tab (Full-Width)</div>
+
+<div class="sheet2-container" style="padding-top:40px;">
+  <div class="page-section-title" style="margin-bottom:4px;">Character Sheet — Eoghan</div>
+  <div class="page-section-desc" style="margin-bottom:20px;">
+    The Map tab is the fourth tab in the four-tab strip. When a map is active it fills
+    the full content column at ~500px tall with pan/zoom. When no map is active the tab
+    is dimmed and non-interactive. Use the state toggle to switch.
+  </div>
+
+  <div class="demo-tabs" id="sheet2DemoTabs">
+    <button class="demo-tab" onclick="setSheet2MapState('empty')">No active map</button>
+    <button class="demo-tab active" onclick="setSheet2MapState('active')">Active map loaded</button>
+  </div>
+
+  <!-- Sheet top bar stub -->
+  <div class="sheet-topbar">
+    <span style="font-family:var(--font-ui);font-size:12px;letter-spacing:0.12em;color:var(--text-muted);">← All Characters</span>
+    <span class="sheet-char-name">Eoghan</span>
+    <button class="btn-ghost" style="font-size:11px;">Edit</button>
+  </div>
+
+  <!-- Four-tab strip -->
+  <div class="tab-strip" id="sheet2TabStrip">
+    <button class="tab-btn" onclick="setSheet2Tab('loadout')" id="s2tab-loadout">
+      <span class="tab-icon">⚔</span>
+      <span class="tab-label">Inventory</span>
+    </button>
+    <button class="tab-btn" onclick="setSheet2Tab('persona')" id="s2tab-persona">
+      <span class="tab-icon">✦</span>
+      <span class="tab-label">Persona</span>
+    </button>
+    <button class="tab-btn active" onclick="setSheet2Tab('combat')" id="s2tab-combat">
+      <span class="tab-icon">🎲</span>
+      <span class="tab-label">Combat</span>
+    </button>
+    <button class="tab-btn" onclick="setSheet2Tab('map')" id="s2tab-map">
+      <span class="tab-icon">🗺</span>
+      <span class="tab-label">Map</span>
+    </button>
+  </div>
+
+  <!-- Tab panels -->
+  <div class="tab-panel" id="s2panel-loadout">
+    <div class="stub-panel">Inventory tab content (existing)</div>
+  </div>
+  <div class="tab-panel" id="s2panel-persona">
+    <div class="stub-panel">Persona tab content (existing)</div>
+  </div>
+  <div class="tab-panel active" id="s2panel-combat">
+    <div class="stub-panel">Combat tab content (existing)</div>
+  </div>
+
+  <!-- Map tab panel -->
+  <div class="tab-panel" id="s2panel-map">
+
+    <!-- Active map: full-width viewer -->
+    <div id="s2MapActive">
+      <div class="sheet-map-fullwidth">
+        <div class="sheet-map-fw-canvas-wrap" id="sheet2MapViewer">
+          <canvas id="sheet2MapCanvas" style="position:absolute;top:0;left:0;transform-origin:0 0;pointer-events:none;"></canvas>
+          <!-- Overlay zoom controls -->
+          <div class="sheet-map-fw-zoom-controls">
+            <button class="map-zoom-btn" onclick="sheet2ZoomIn()" title="Zoom in">+</button>
+            <button class="map-zoom-btn" onclick="sheet2ZoomOut()" title="Zoom out">−</button>
+            <button class="map-zoom-btn" onclick="sheet2ZoomReset()" title="Reset view" style="font-size:11px;letter-spacing:0;">⟳</button>
+          </div>
+          <div class="sheet-map-fw-hint" id="sheet2MapHint">Drag to pan · Scroll or pinch to zoom</div>
+        </div>
+        <div class="sheet-map-fw-footer">
+          <span class="sheet-map-fw-name">Catacombs — Level 2</span>
+          <button class="btn-ghost" style="font-size:11px;padding:4px 10px;" onclick="sheet2ZoomReset()">Reset</button>
+          <span class="sheet-map-fw-zoom-display" id="sheet2ZoomDisplay">100%</span>
+        </div>
+      </div>
+      <span class="annotation" style="margin-top:10px;">Map fills full content width at 500px tall — enough to be genuinely useful on a laptop viewport. Each player pans and zooms independently. Overlay +/−/⟳ controls sit in the bottom-right corner of the canvas.</span>
+    </div>
+
+    <!-- Empty state -->
+    <div id="s2MapEmpty" style="display:none;">
+      <div class="sheet-map-fw-empty">
+        <div class="sheet-map-fw-empty-icon">🗺</div>
+        <div class="sheet-map-fw-empty-label">No map loaded</div>
+        <div class="sheet-map-fw-empty-sub">The DM hasn't loaded a map yet.</div>
+      </div>
+      <span class="annotation" style="margin-top:10px;">When no map is active the Map tab is dimmed (opacity 0.45) and clicking it does nothing. No upload UI is shown — only the DM can add maps.</span>
+    </div>
+
+  </div>
+  <!-- /Map tab panel -->
+
+</div><!-- /sheet2-container -->
+
+
+<script>
+/* ══════════════════════════════════════════════════════
+   STATE
+   ══════════════════════════════════════════════════════ */
+const MOCK_MAPS = [
+  { id: 'map-001', name: 'Catacombs — Level 2', date: 'Apr 12', size: '2.4 MB', active: true },
+  { id: 'map-002', name: 'Thornwood Village',   date: 'Apr 5',  size: '1.8 MB', active: false },
+  { id: 'map-003', name: 'The Iron Keep',        date: 'Mar 28', size: '3.1 MB', active: false },
+  { id: 'map-004', name: 'dungeon_v3_FINAL',     date: 'Mar 15', size: '4.7 MB', active: false },
+];
+let libraryMaps = JSON.parse(JSON.stringify(MOCK_MAPS));
+let lastUploadedId = null;
+let pendingUploadFile = null;
+let sheetMapState = 'empty';
+let sheetActiveTab = null;
+
+/* ══════════════════════════════════════════════════════
+   DM MAP VIEWER: COLLAPSE/EXPAND
+   ══════════════════════════════════════════════════════ */
+function toggleMapViewer() {
+  const body    = document.getElementById('dmMapViewerBody');
+  const toggle  = document.getElementById('dmMapViewerToggle');
+  const isOpen  = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  toggle.classList.toggle('open', !isOpen);
+
+  // When collapsing, show the active map name inline in the header
+  const nameEl  = document.getElementById('dmMapActiveName');
+  const clearEl = document.getElementById('dmMapClearBtn');
+  const active  = libraryMaps.find(m => m.active);
+  if (!isOpen) {
+    // opening — hide inline name
+    if (nameEl) nameEl.style.display = 'none';
+    if (clearEl) clearEl.style.display = 'none';
+  } else {
+    // collapsing — show active name if present
+    if (active) {
+      if (nameEl) { nameEl.textContent = active.name; nameEl.style.display = ''; }
+      if (clearEl) clearEl.style.display = '';
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   DM MAP VIEWER: ACTIVE / EMPTY STATE
+   ══════════════════════════════════════════════════════ */
+function setDmMapState(state) {
+  // Update demo tabs
+  document.querySelectorAll('#dmDemoTabs .demo-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', ['active','empty'][i] === state);
+  });
+
+  const titleEl   = document.getElementById('dmMapViewerTitle');
+  const activeDiv = document.getElementById('dmMapActiveState');
+  const emptyDiv  = document.getElementById('dmMapEmptyState');
+
+  if (state === 'active') {
+    libraryMaps[0].active = true; // ensure Catacombs is set active for demo
+    titleEl.className = 'map-viewer-header-title has-active';
+    activeDiv.style.display = '';
+    emptyDiv.style.display  = 'none';
+    setTimeout(drawDmCanvas, 40);
+  } else {
+    libraryMaps.forEach(m => m.active = false);
+    titleEl.className = 'map-viewer-header-title';
+    activeDiv.style.display = 'none';
+    emptyDiv.style.display  = '';
+  }
+  renderMapStrip();
+}
+
+function clearActiveDmMap() {
+  libraryMaps.forEach(m => m.active = false);
+  const titleEl = document.getElementById('dmMapViewerTitle');
+  titleEl.className = 'map-viewer-header-title';
+  document.getElementById('dmMapActiveState').style.display = 'none';
+  document.getElementById('dmMapEmptyState').style.display  = '';
+  // hide inline header elements
+  const nameEl  = document.getElementById('dmMapActiveName');
+  const clearEl = document.getElementById('dmMapClearBtn');
+  if (nameEl)  nameEl.style.display  = 'none';
+  if (clearEl) clearEl.style.display = 'none';
+  renderMapStrip();
+}
+
+/* ══════════════════════════════════════════════════════
+   MAP LIBRARY STRIP RENDER
+   ══════════════════════════════════════════════════════ */
+function renderMapStrip() {
+  const scroll = document.getElementById('mapStripScroll');
+  if (!scroll) return;
+  scroll.innerHTML = '';
+
+  if (libraryMaps.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'map-strip-empty';
+    empty.textContent = 'No maps yet — upload one above';
+    scroll.appendChild(empty);
+    return;
+  }
+
+  libraryMaps.forEach(map => {
+    const hue  = (parseInt(map.id.replace('map-','')) * 47 + 160) % 360;
+    const card = document.createElement('div');
+    card.className = 'map-strip-card' + (map.active ? ' is-active' : '');
+    card.id = 'scard-' + map.id;
+
+    // Thumbnail
+    const thumb = document.createElement('div');
+    thumb.className = 'map-strip-thumb';
+    thumb.style.background = `linear-gradient(135deg,hsl(${hue},30%,12%) 0%,hsl(${(hue+30)%360},20%,7%) 100%)`;
+    thumb.textContent = '🗺';
+    card.appendChild(thumb);
+
+    // Name
+    const name = document.createElement('div');
+    name.className = 'map-strip-name';
+    name.textContent = map.name;
+    name.title = map.name;
+    card.appendChild(name);
+
+    // Action
+    if (map.active) {
+      const lbl = document.createElement('div');
+      lbl.className = 'map-strip-active-label';
+      lbl.textContent = '● Active';
+      card.appendChild(lbl);
+    } else {
+      const btn = document.createElement('button');
+      btn.className = 'map-strip-set-btn';
+      btn.textContent = 'Set Active';
+      btn.addEventListener('click', () => stripSetActive(map.id));
+      card.appendChild(btn);
+    }
+
+    scroll.appendChild(card);
+  });
+}
+
+function stripSetActive(id) {
+  libraryMaps.forEach(m => m.active = m.id === id);
+  // Update viewer
+  const titleEl   = document.getElementById('dmMapViewerTitle');
+  const activeDiv = document.getElementById('dmMapActiveState');
+  const emptyDiv  = document.getElementById('dmMapEmptyState');
+  titleEl.className = 'map-viewer-header-title has-active';
+  activeDiv.style.display = '';
+  emptyDiv.style.display  = 'none';
+  setTimeout(drawDmCanvas, 40);
+  renderMapStrip();
+  // Update demo tabs to show "active" state selected
+  document.querySelectorAll('#dmDemoTabs .demo-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', i === 0);
+  });
+}
+
+/* ══════════════════════════════════════════════════════
+   STRIP DRAG-DROP
+   ══════════════════════════════════════════════════════ */
+function handleStripDragOver(event) {
+  event.preventDefault();
+  document.getElementById('mapLibraryStrip').classList.add('drag-over');
+}
+function handleStripDragLeave(event) {
+  const strip = document.getElementById('mapLibraryStrip');
+  if (!strip.contains(event.relatedTarget)) {
+    strip.classList.remove('drag-over');
+  }
+}
+function handleStripDrop(event) {
+  event.preventDefault();
+  document.getElementById('mapLibraryStrip').classList.remove('drag-over');
+  const file = event.dataTransfer.files[0];
+  if (file && file.type.match(/^image\/(jpeg|png|webp)$/)) {
+    openUploadModal();
+    setTimeout(() => preloadFileIntoModal(file), 50);
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   UPLOAD MODAL
+   ══════════════════════════════════════════════════════ */
+function openUploadModal() {
+  resetUpload();
+  document.getElementById('uploadModal').classList.add('open');
+}
+
+// Demo helper: open with a synthetic file pre-loaded
+function openUploadModalWithFile() {
+  openUploadModal();
+  // Synthesize a fake file experience for the prototype
+  setTimeout(() => {
+    // Fake preview using the canvas placeholder as a data URL
+    const fakeCanvas = document.createElement('canvas');
+    drawPlaceholderMap(fakeCanvas, 400, 280);
+    const fakeDataUrl = fakeCanvas.toDataURL('image/png');
+    document.getElementById('uploadPreviewImg').src = fakeDataUrl;
+    document.getElementById('uploadPreviewWrap').classList.add('visible');
+    document.getElementById('dropZone').style.display = 'none';
+    document.getElementById('mapNameInput').value = 'Catacombs Level 3';
+    document.getElementById('sizeWarning').style.display = 'none';
+    enableUploadBtn();
+  }, 50);
+}
+
+function closeUploadModal() {
+  document.getElementById('uploadModal').classList.remove('open');
+  pendingUploadFile = null;
+}
+
+document.getElementById('uploadModal').addEventListener('click', function(e) {
+  if (e.target === this) closeUploadModal();
+});
+
+function preloadFileIntoModal(file) {
+  pendingUploadFile = file;
+  const rawName   = file.name.replace(/\.(jpe?g|png|webp)$/i, '').replace(/[-_]/g, ' ');
+  const prettyName = rawName.charAt(0).toUpperCase() + rawName.slice(1);
+  document.getElementById('mapNameInput').value = prettyName;
+
+  // Show image preview
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('uploadPreviewImg').src = e.target.result;
+    document.getElementById('uploadPreviewWrap').classList.add('visible');
+    document.getElementById('dropZone').style.display = 'none';
+  };
+  reader.readAsDataURL(file);
+
+  document.getElementById('sizeWarning').style.display =
+    file.size > 5 * 1024 * 1024 ? 'flex' : 'none';
+  enableUploadBtn();
+}
+
+function enableUploadBtn() {
+  const btn = document.getElementById('uploadConfirmBtn');
+  btn.disabled      = false;
+  btn.style.opacity = '';
+  btn.style.cursor  = '';
+}
+
+function resetUpload() {
+  ['uploadStep1','uploadStep2','uploadStep3'].forEach(id =>
+    document.getElementById(id).classList.remove('active'));
+  document.getElementById('uploadStep1').classList.add('active');
+
+  document.getElementById('fileInputHidden').value     = '';
+  document.getElementById('mapNameInput').value        = '';
+  document.getElementById('uploadPreviewImg').src      = '';
+  document.getElementById('uploadPreviewWrap').classList.remove('visible');
+  document.getElementById('dropZone').style.display   = '';
+  document.getElementById('sizeWarning').style.display = 'none';
+  document.getElementById('progressFill').style.width  = '0%';
+
+  const btn = document.getElementById('uploadConfirmBtn');
+  btn.disabled      = true;
+  btn.style.opacity = '0.45';
+  btn.style.cursor  = 'not-allowed';
+  pendingUploadFile = null;
+  lastUploadedId    = null;
+}
+
+function handleModalFileDrop(event) {
+  event.preventDefault();
+  document.getElementById('dropZone').classList.remove('dragging');
+  const file = event.dataTransfer.files[0];
+  if (file) preloadFileIntoModal(file);
+}
+
+function handleFileSelect(event) {
+  const file = event.target.files[0];
+  if (file) preloadFileIntoModal(file);
+}
+
+function startUpload() {
+  const name = document.getElementById('mapNameInput').value.trim();
+  if (!name) { document.getElementById('mapNameInput').focus(); return; }
+  document.getElementById('uploadStep1').classList.remove('active');
+  document.getElementById('uploadStep2').classList.add('active');
+
+  const fill  = document.getElementById('progressFill');
+  const label = document.getElementById('progressLabel');
+  let pct = 0;
+  const interval = setInterval(() => {
+    pct += Math.random() * 18 + 8;
+    if (pct >= 100) {
+      pct = 100;
+      clearInterval(interval);
+      label.textContent = 'Processing…';
+      setTimeout(finishUpload, 400);
+    }
+    fill.style.width = Math.min(pct, 100) + '%';
+    if (pct < 100) label.textContent = 'Uploading… ' + Math.round(pct) + '%';
+  }, 220);
+}
+
+function finishUpload() {
+  const name    = document.getElementById('mapNameInput').value.trim();
+  const newId   = 'map-' + Date.now();
+  lastUploadedId = newId;
+  libraryMaps.push({ id: newId, name, date: 'Just now', size: '?', active: false });
+  document.getElementById('uploadStep2').classList.remove('active');
+  document.getElementById('uploadStep3').classList.add('active');
+  document.getElementById('uploadDoneText').textContent = '"' + name + '" added to library.';
+  renderMapStrip();
+}
+
+function setLastUploadActive() {
+  if (lastUploadedId) {
+    libraryMaps.forEach(m => m.active = m.id === lastUploadedId);
+    const titleEl   = document.getElementById('dmMapViewerTitle');
+    const activeDiv = document.getElementById('dmMapActiveState');
+    const emptyDiv  = document.getElementById('dmMapEmptyState');
+    titleEl.className = 'map-viewer-header-title has-active';
+    activeDiv.style.display = '';
+    emptyDiv.style.display  = 'none';
+    setTimeout(drawDmCanvas, 40);
+    renderMapStrip();
+  }
+  closeUploadModal();
+}
+
+/* ══════════════════════════════════════════════════════
+   PAN / ZOOM — shared factory
+   ══════════════════════════════════════════════════════ */
+function makePanZoom(container, getCanvas, onZoomChange) {
+  let tx = 0, ty = 0, scale = 1;
+  let dragging = false, lastX, lastY;
+  let lastDist = null;
+
+  function clampAndApply() {
+    const canvas = getCanvas();
+    if (!canvas) return;
+    const cw = container.clientWidth, ch = container.clientHeight;
+    const iw = canvas.width * scale, ih = canvas.height * scale;
+    const minTx = Math.min(0, cw - iw);
+    const minTy = Math.min(0, ch - ih);
+    tx = Math.max(minTx, Math.min(0, tx));
+    ty = Math.max(minTy, Math.min(0, ty));
+    canvas.style.transform      = `translate(${tx}px,${ty}px) scale(${scale})`;
+    canvas.style.transformOrigin = '0 0';
+    if (onZoomChange) onZoomChange(scale);
+  }
+
+  container.addEventListener('mousedown', e => {
+    dragging = true; lastX = e.clientX; lastY = e.clientY;
+    e.preventDefault();
+  });
+  window.addEventListener('mousemove', e => {
+    if (!dragging) return;
+    tx += e.clientX - lastX; ty += e.clientY - lastY;
+    lastX = e.clientX; lastY = e.clientY;
+    clampAndApply();
+  });
+  window.addEventListener('mouseup', () => { dragging = false; });
+
+  container.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect  = container.getBoundingClientRect();
+    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+    const delta    = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.max(0.2, Math.min(8, scale * delta));
+    tx = mx - (mx - tx) * (newScale / scale);
+    ty = my - (my - ty) * (newScale / scale);
+    scale = newScale;
+    clampAndApply();
+  }, { passive: false });
+
+  container.addEventListener('touchstart', e => {
+    if (e.touches.length === 1) {
+      dragging = true;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+    } else if (e.touches.length === 2) {
+      dragging = false;
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      lastDist = Math.hypot(dx, dy);
+    }
+    e.preventDefault();
+  }, { passive: false });
+
+  container.addEventListener('touchmove', e => {
+    if (e.touches.length === 1 && dragging) {
+      tx += e.touches[0].clientX - lastX;
+      ty += e.touches[0].clientY - lastY;
+      lastX = e.touches[0].clientX;
+      lastY = e.touches[0].clientY;
+      clampAndApply();
+    } else if (e.touches.length === 2 && lastDist) {
+      const dx = e.touches[0].clientX - e.touches[1].clientX;
+      const dy = e.touches[0].clientY - e.touches[1].clientY;
+      const dist     = Math.hypot(dx, dy);
+      scale = Math.max(0.2, Math.min(8, scale * (dist / lastDist)));
+      lastDist = dist;
+      clampAndApply();
+    }
+    e.preventDefault();
+  }, { passive: false });
+
+  container.addEventListener('touchend', () => { dragging = false; lastDist = null; });
+
+  function reset()  { tx = 0; ty = 0; scale = 1; clampAndApply(); }
+  function zoomBy(factor, cx, cy) {
+    cx = cx !== undefined ? cx : container.clientWidth  / 2;
+    cy = cy !== undefined ? cy : container.clientHeight / 2;
+    const newScale = Math.max(0.2, Math.min(8, scale * factor));
+    tx = cx - (cx - tx) * (newScale / scale);
+    ty = cy - (cy - ty) * (newScale / scale);
+    scale = newScale;
+    clampAndApply();
+  }
+  return { reset, zoomBy, clampAndApply };
+}
+
+/* ══════════════════════════════════════════════════════
+   PLACEHOLDER MAP CANVAS
+   ══════════════════════════════════════════════════════ */
+function drawPlaceholderMap(canvas, w, h) {
+  canvas.width  = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+
+  ctx.fillStyle = '#0d1520';
+  ctx.fillRect(0, 0, w, h);
+
+  ctx.strokeStyle = 'rgba(100,140,180,0.1)';
+  ctx.lineWidth   = 0.5;
+  for (let x = 0; x < w; x += 40) { ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,h); ctx.stroke(); }
+  for (let y = 0; y < h; y += 40) { ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(w,y); ctx.stroke(); }
+
+  const rooms = [
+    { x: 60,  y: 40,  w: 160, h: 120 },
+    { x: 260, y: 60,  w: 100, h: 80  },
+    { x: 100, y: 200, w: 80,  h: 100 },
+    { x: 300, y: 180, w: 140, h: 100 },
+    { x: 200, y: 160, w: 80,  h: 40  },
+  ];
+  ctx.strokeStyle = 'rgba(140,180,210,0.4)';
+  ctx.lineWidth   = 1.5;
+  rooms.forEach(r => {
+    ctx.fillStyle = 'rgba(20,40,65,0.7)';
+    ctx.fillRect(r.x, r.y, r.w, r.h);
+    ctx.strokeRect(r.x, r.y, r.w, r.h);
+  });
+
+  const doors = [
+    { x: 218, y: 118, horiz: false },
+    { x: 258, y: 95,  horiz: true  },
+    { x: 173, y: 198, horiz: true  },
+    { x: 278, y: 218, horiz: false },
+    { x: 282, y: 160, horiz: true  },
+  ];
+  ctx.strokeStyle = 'rgba(200,160,80,0.7)';
+  ctx.lineWidth   = 3;
+  doors.forEach(d => {
+    ctx.beginPath();
+    if (d.horiz) { ctx.moveTo(d.x-8,d.y); ctx.lineTo(d.x+8,d.y); }
+    else         { ctx.moveTo(d.x,d.y-8); ctx.lineTo(d.x,d.y+8); }
+    ctx.stroke();
+  });
+
+  ctx.fillStyle = 'rgba(160,200,220,0.55)';
+  ctx.font      = '11px sans-serif';
+  ctx.fillText('Guard Room',  66,  100);
+  ctx.fillText('Vault',       274, 100);
+  ctx.fillText('Cells',       108, 248);
+  ctx.fillText('Throne Hall', 304, 230);
+
+  ctx.fillStyle = 'rgba(120,160,200,0.15)';
+  ctx.font      = 'bold 16px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText('Prototype Map — Catacombs Level 2', w / 2, h - 14);
+  ctx.textAlign = 'left';
+}
+
+/* ══════════════════════════════════════════════════════
+   DM MAP CANVAS
+   ══════════════════════════════════════════════════════ */
+let dmPZ = null;
+
+function drawDmCanvas() {
+  const canvas    = document.getElementById('dmMapCanvas');
+  const container = document.getElementById('dmMapContainer');
+  if (!canvas || !container) return;
+  const w = Math.max(container.clientWidth || 300, 400);
+  const h = Math.max(container.clientHeight || 200, 300);
+  drawPlaceholderMap(canvas, w, h);
+  canvas.style.transform       = 'translate(0px,0px) scale(1)';
+  canvas.style.transformOrigin = '0 0';
+  if (dmPZ) dmPZ.clampAndApply();
+}
+
+function dmZoomIn()    { if (dmPZ) dmPZ.zoomBy(1.25); }
+function dmZoomOut()   { if (dmPZ) dmPZ.zoomBy(0.8);  }
+function dmZoomReset() {
+  if (dmPZ) dmPZ.reset();
+  // Hide hint on first reset interaction
+  document.getElementById('dmMapDragHint').classList.add('hidden');
+}
+
+/* ══════════════════════════════════════════════════════
+   PLAYER MAP CANVAS
+   ══════════════════════════════════════════════════════ */
+let playerPZ = null;
+
+function drawPlayerCanvas() {
+  const canvas    = document.getElementById('playerMapCanvas');
+  const container = document.getElementById('playerMapViewer');
+  if (!canvas || !container) return;
+  drawPlaceholderMap(canvas, 560, 400);
+  canvas.style.transform       = 'translate(0px,0px) scale(1)';
+  canvas.style.transformOrigin = '0 0';
+}
+
+function resetPlayerPreview() {
+  if (playerPZ) playerPZ.reset();
+  const el = document.getElementById('playerZoomDisplay');
+  if (el) el.textContent = '100%';
+}
+
+/* ══════════════════════════════════════════════════════
+   SHEET MAP STATE / TAB SWITCHING
+   ══════════════════════════════════════════════════════ */
+function setSheetMapState(state) {
+  sheetMapState = state;
+  document.querySelectorAll('.sheet-container .demo-tabs .demo-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', ['empty','active'][i] === state);
+  });
+  document.getElementById('mapTabEmpty').classList.toggle('active',  state === 'empty');
+  document.getElementById('mapTabActive').classList.toggle('active', state === 'active');
+
+  const mapTabBtn = document.getElementById('tab-map');
+  if (state === 'empty') {
+    mapTabBtn.classList.remove('active');
+    mapTabBtn.classList.add('inactive-map');
+  } else {
+    mapTabBtn.classList.remove('inactive-map');
+    if (sheetActiveTab === 'map') setTimeout(drawPlayerCanvas, 80);
+  }
+}
+
+function setSheetTab(tab) {
+  ['inventory','persona','combat','map'].forEach(t => {
+    document.getElementById('panel-' + t).classList.remove('active');
+    document.getElementById('tab-' + t).classList.remove('active');
+  });
+  if (tab === 'map' && sheetMapState === 'empty') return;
+  sheetActiveTab = tab;
+  document.getElementById('panel-' + tab).classList.add('active');
+  document.getElementById('tab-'   + tab).classList.add('active');
+  if (tab === 'map') setTimeout(drawPlayerCanvas, 80);
+}
+
+/* ══════════════════════════════════════════════════════
+   INIT
+   ══════════════════════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  // Render the library strip
+  renderMapStrip();
+
+  // Wire up pan/zoom for DM viewer
+  const dmContainer = document.getElementById('dmMapContainer');
+  if (dmContainer) {
+    dmPZ = makePanZoom(
+      dmContainer,
+      () => document.getElementById('dmMapCanvas'),
+      (scale) => {
+        // Hide drag hint after first interaction
+        document.getElementById('dmMapDragHint').classList.add('hidden');
+      }
+    );
+  }
+
+  // Wire up pan/zoom for player viewer
+  const playerContainer = document.getElementById('playerMapViewer');
+  if (playerContainer) {
+    playerPZ = makePanZoom(
+      playerContainer,
+      () => document.getElementById('playerMapCanvas'),
+      (scale) => {
+        const el = document.getElementById('playerZoomDisplay');
+        if (el) el.textContent = Math.round(scale * 100) + '%';
+        const hint = document.getElementById('playerMapHint');
+        if (hint) hint.classList.add('hidden');
+      }
+    );
+  }
+
+  // Default DM state: active map shown
+  setDmMapState('active');
+
+  // Default sheet: Combat tab active, Map tab locked
+  setSheetTab('combat');
+  document.getElementById('tab-map').classList.add('inactive-map');
+
+  // Keyboard close for upload modal
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeUploadModal();
+  });
+
+  // Section 4: render library page grid
+  renderLibGrid();
+
+  // Section 5: draw full-width canvas and wire pan/zoom
+  const s2Container = document.getElementById('sheet2MapViewer');
+  if (s2Container) {
+    sheet2PZ = makePanZoom(
+      s2Container,
+      () => document.getElementById('sheet2MapCanvas'),
+      (scale) => {
+        const el = document.getElementById('sheet2ZoomDisplay');
+        if (el) el.textContent = Math.round(scale * 100) + '%';
+        const hint = document.getElementById('sheet2MapHint');
+        if (hint) hint.classList.add('hidden');
+      }
+    );
+  }
+  // Default: active map, Map tab selected
+  setSheet2MapState('active');
+});
+
+/* ══════════════════════════════════════════════════════
+   SECTION 4 — MAP LIBRARY PAGE
+   ══════════════════════════════════════════════════════ */
+
+// Tracks which card currently has the delete confirm open
+let libConfirmOpenId = null;
+// Tracks which card currently has the rename row open
+let libRenameOpenId = null;
+// Whether we're showing the populated or empty demo state
+let libDemoState = 'populated';
+
+function setLibState(state) {
+  libDemoState = state;
+  document.querySelectorAll('#libDemoTabs .demo-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', ['populated','empty'][i] === state);
+  });
+  renderLibGrid();
+}
+
+function renderLibGrid() {
+  const grid = document.getElementById('libGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  libConfirmOpenId = null;
+  libRenameOpenId = null;
+
+  const maps = libDemoState === 'empty' ? [] : libraryMaps;
+
+  if (maps.length === 0) {
+    const empty = document.createElement('div');
+    empty.className = 'lib-empty';
+    empty.innerHTML = `
+      <div class="lib-empty-icon">🗺</div>
+      <div class="lib-empty-label">No maps yet</div>
+      <div class="lib-empty-sub">Upload your first map to share with the party.</div>
+      <button class="btn-primary" onclick="openUploadModal()">+ Upload a Map</button>
+    `;
+    grid.appendChild(empty);
+    return;
+  }
+
+  maps.forEach(map => {
+    const hue = (parseInt(map.id.replace('map-','')) * 47 + 160) % 360;
+    const card = document.createElement('div');
+    card.className = 'lib-card' + (map.active ? ' lib-card-active' : '');
+    card.id = 'libcard-' + map.id;
+
+    // Thumbnail
+    const thumb = document.createElement('div');
+    thumb.className = 'lib-card-thumb';
+    thumb.style.background = `linear-gradient(145deg,hsl(${hue},30%,10%) 0%,hsl(${(hue+40)%360},18%,6%) 100%)`;
+    thumb.innerHTML = '<span style="opacity:0.35;">🗺</span>';
+    if (map.active) {
+      const badge = document.createElement('div');
+      badge.className = 'lib-card-active-badge';
+      badge.textContent = '● Active';
+      thumb.appendChild(badge);
+    }
+    card.appendChild(thumb);
+
+    // Body
+    const body = document.createElement('div');
+    body.className = 'lib-card-body';
+    body.innerHTML = `
+      <div class="lib-card-name" title="${map.name}">${map.name}</div>
+      <div class="lib-card-meta">${map.date} · ${map.size}</div>
+    `;
+    card.appendChild(body);
+
+    // Footer
+    const footer = document.createElement('div');
+    footer.className = 'lib-card-footer';
+
+    // Set Active button
+    const setBtn = document.createElement('button');
+    setBtn.className = 'lib-card-set-btn' + (map.active ? ' is-active' : '');
+    setBtn.textContent = map.active ? '● Active' : 'Set Active';
+    if (!map.active) {
+      setBtn.addEventListener('click', () => libSetActive(map.id));
+    }
+    footer.appendChild(setBtn);
+
+    // Rename button
+    const renameBtn = document.createElement('button');
+    renameBtn.className = 'lib-card-rename-btn';
+    renameBtn.id = 'librenamebtn-' + map.id;
+    renameBtn.textContent = 'Rename';
+    renameBtn.addEventListener('click', () => libShowRename(map.id));
+    footer.appendChild(renameBtn);
+
+    // Inline rename row (hidden until rename clicked)
+    const renameRow = document.createElement('div');
+    renameRow.className = 'lib-card-rename-row';
+    renameRow.id = 'librenamaerow-' + map.id;
+    const renameInput = document.createElement('input');
+    renameInput.type = 'text';
+    renameInput.className = 'lib-card-rename-input';
+    renameInput.id = 'librenameInput-' + map.id;
+    renameInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') libCommitRename(map.id);
+      if (e.key === 'Escape') libCancelRename(map.id);
+    });
+    const renameSave = document.createElement('button');
+    renameSave.className = 'lib-card-rename-save';
+    renameSave.textContent = 'Save';
+    renameSave.addEventListener('click', () => libCommitRename(map.id));
+    const renameCancel = document.createElement('button');
+    renameCancel.className = 'lib-card-rename-cancel';
+    renameCancel.textContent = 'Cancel';
+    renameCancel.addEventListener('click', () => libCancelRename(map.id));
+    renameRow.appendChild(renameInput);
+    renameRow.appendChild(renameSave);
+    renameRow.appendChild(renameCancel);
+    footer.appendChild(renameRow);
+
+    // Delete button
+    const delBtn = document.createElement('button');
+    delBtn.className = 'lib-card-delete-btn';
+    delBtn.id = 'libdel-' + map.id;
+    delBtn.textContent = 'Delete';
+    delBtn.addEventListener('click', () => libShowDeleteConfirm(map.id));
+    footer.appendChild(delBtn);
+
+    // Inline confirm row (hidden until delete clicked)
+    const confirmRow = document.createElement('div');
+    confirmRow.className = 'lib-card-delete-confirm';
+    confirmRow.id = 'libconfirm-' + map.id;
+    confirmRow.innerHTML = `
+      <span class="lib-card-delete-confirm-label">Are you sure?</span>
+      <button class="lib-card-confirm-yes" onclick="libConfirmDelete('${map.id}')">Delete</button>
+      <button class="lib-card-confirm-no"  onclick="libCancelDelete('${map.id}')">Cancel</button>
+    `;
+    footer.appendChild(confirmRow);
+
+    card.appendChild(footer);
+    grid.appendChild(card);
+  });
+}
+
+function libSetActive(id) {
+  libraryMaps.forEach(m => m.active = m.id === id);
+  renderLibGrid();
+  renderMapStrip();
+  // Also sync DM viewer state in section 1
+  const titleEl   = document.getElementById('dmMapViewerTitle');
+  const activeDiv = document.getElementById('dmMapActiveState');
+  const emptyDiv  = document.getElementById('dmMapEmptyState');
+  if (titleEl) titleEl.className = 'map-viewer-header-title has-active';
+  if (activeDiv) activeDiv.style.display = '';
+  if (emptyDiv)  emptyDiv.style.display  = 'none';
+  setTimeout(drawDmCanvas, 40);
+}
+
+function libShowDeleteConfirm(id) {
+  // Close any other open confirm or rename first
+  if (libConfirmOpenId && libConfirmOpenId !== id) libCancelDelete(libConfirmOpenId);
+  if (libRenameOpenId) libCancelRename(libRenameOpenId);
+  libConfirmOpenId = id;
+  const renameBtn  = document.getElementById('librenamebtn-' + id);
+  const delBtn     = document.getElementById('libdel-' + id);
+  const confirmRow = document.getElementById('libconfirm-' + id);
+  if (renameBtn)   renameBtn.style.display  = 'none';
+  if (delBtn)      delBtn.style.display     = 'none';
+  if (confirmRow)  confirmRow.classList.add('visible');
+}
+
+function libCancelDelete(id) {
+  libConfirmOpenId = null;
+  const renameBtn  = document.getElementById('librenamebtn-' + id);
+  const delBtn     = document.getElementById('libdel-' + id);
+  const confirmRow = document.getElementById('libconfirm-' + id);
+  if (renameBtn)   renameBtn.style.display  = '';
+  if (delBtn)      delBtn.style.display     = '';
+  if (confirmRow)  confirmRow.classList.remove('visible');
+}
+
+function libShowRename(id) {
+  // Cancel any open delete confirm or other rename first
+  if (libConfirmOpenId) libCancelDelete(libConfirmOpenId);
+  if (libRenameOpenId && libRenameOpenId !== id) libCancelRename(libRenameOpenId);
+  libRenameOpenId = id;
+  const map = libraryMaps.find(m => m.id === id);
+  const renameBtn  = document.getElementById('librenamebtn-' + id);
+  const delBtn     = document.getElementById('libdel-' + id);
+  const renameRow  = document.getElementById('librenamaerow-' + id);
+  const renameInput = document.getElementById('librenameInput-' + id);
+  if (renameBtn)   renameBtn.style.display  = 'none';
+  if (delBtn)      delBtn.style.display     = 'none';
+  if (renameRow)   renameRow.classList.add('visible');
+  if (renameInput && map) {
+    renameInput.value = map.name;
+    renameInput.focus();
+    renameInput.select();
+  }
+}
+
+function libCancelRename(id) {
+  libRenameOpenId = null;
+  const renameBtn  = document.getElementById('librenamebtn-' + id);
+  const delBtn     = document.getElementById('libdel-' + id);
+  const renameRow  = document.getElementById('librenamaerow-' + id);
+  if (renameBtn)   renameBtn.style.display  = '';
+  if (delBtn)      delBtn.style.display     = '';
+  if (renameRow)   renameRow.classList.remove('visible');
+}
+
+function libCommitRename(id) {
+  const renameInput = document.getElementById('librenameInput-' + id);
+  const newName = renameInput ? renameInput.value.trim() : '';
+  if (newName) {
+    const map = libraryMaps.find(m => m.id === id);
+    if (map) map.name = newName;
+  }
+  libRenameOpenId = null;
+  // Re-render to reflect new name
+  renderLibGrid();
+  renderMapStrip();
+}
+
+function libConfirmDelete(id) {
+  libConfirmOpenId = null;
+  const wasActive = libraryMaps.find(m => m.id === id && m.active);
+  libraryMaps = libraryMaps.filter(m => m.id !== id);
+  if (wasActive) {
+    // Clear active state in DM viewer
+    const titleEl   = document.getElementById('dmMapViewerTitle');
+    const activeDiv = document.getElementById('dmMapActiveState');
+    const emptyDiv  = document.getElementById('dmMapEmptyState');
+    if (titleEl) titleEl.className = 'map-viewer-header-title';
+    if (activeDiv) activeDiv.style.display = 'none';
+    if (emptyDiv)  emptyDiv.style.display  = '';
+  }
+  renderLibGrid();
+  renderMapStrip();
+}
+
+/* Library page drag-drop */
+let libDragCounter = 0;
+function libPageDragOver(e) {
+  e.preventDefault();
+  libDragCounter++;
+  document.getElementById('libDragOverlay').classList.add('visible');
+}
+function libPageDragLeave(e) {
+  libDragCounter--;
+  if (libDragCounter <= 0) {
+    libDragCounter = 0;
+    document.getElementById('libDragOverlay').classList.remove('visible');
+  }
+}
+function libPageDrop(e) {
+  e.preventDefault();
+  libDragCounter = 0;
+  document.getElementById('libDragOverlay').classList.remove('visible');
+  const file = e.dataTransfer.files[0];
+  if (file && file.type.match(/^image\/(jpeg|png|webp)$/)) {
+    openUploadModal();
+    setTimeout(() => preloadFileIntoModal(file), 50);
+  }
+}
+
+/* ══════════════════════════════════════════════════════
+   SECTION 5 — PLAYER SHEET FULL-WIDTH MAP TAB
+   ══════════════════════════════════════════════════════ */
+
+let sheet2PZ     = null;
+let sheet2State  = 'active';
+let sheet2ActiveTab = 'combat';
+
+function setSheet2MapState(state) {
+  sheet2State = state;
+  document.querySelectorAll('#sheet2DemoTabs .demo-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', ['empty','active'][i] === state);
+  });
+
+  const mapTabBtn = document.getElementById('s2tab-map');
+  if (state === 'empty') {
+    mapTabBtn.classList.add('inactive-map');
+    mapTabBtn.classList.remove('active');
+    // If map tab was selected, switch away
+    if (sheet2ActiveTab === 'map') setSheet2Tab('combat');
+  } else {
+    mapTabBtn.classList.remove('inactive-map');
+    // Auto-select map tab when switching to active state for demo clarity
+    setSheet2Tab('map');
+  }
+}
+
+function setSheet2Tab(tab) {
+  ['loadout','persona','combat','map'].forEach(t => {
+    document.getElementById('s2panel-' + t).classList.remove('active');
+    document.getElementById('s2tab-'   + t).classList.remove('active');
+  });
+  // Block map tab when no map
+  if (tab === 'map' && sheet2State === 'empty') return;
+  sheet2ActiveTab = tab;
+  document.getElementById('s2panel-' + tab).classList.add('active');
+  document.getElementById('s2tab-'   + tab).classList.add('active');
+
+  if (tab === 'map') {
+    // Show/hide active vs empty state
+    document.getElementById('s2MapActive').style.display = sheet2State === 'active' ? '' : 'none';
+    document.getElementById('s2MapEmpty').style.display  = sheet2State === 'empty'  ? '' : 'none';
+    if (sheet2State === 'active') setTimeout(drawSheet2Canvas, 80);
+  }
+}
+
+function drawSheet2Canvas() {
+  const canvas    = document.getElementById('sheet2MapCanvas');
+  const container = document.getElementById('sheet2MapViewer');
+  if (!canvas || !container) return;
+  const w = Math.max(container.clientWidth  || 560, 400);
+  const h = Math.max(container.clientHeight || 500, 400);
+  drawPlaceholderMap(canvas, w, h);
+  canvas.style.transform       = 'translate(0px,0px) scale(1)';
+  canvas.style.transformOrigin = '0 0';
+  if (sheet2PZ) sheet2PZ.clampAndApply();
+}
+
+function sheet2ZoomIn()    { if (sheet2PZ) sheet2PZ.zoomBy(1.25); }
+function sheet2ZoomOut()   { if (sheet2PZ) sheet2PZ.zoomBy(0.8);  }
+function sheet2ZoomReset() {
+  if (sheet2PZ) sheet2PZ.reset();
+  const el = document.getElementById('sheet2ZoomDisplay');
+  if (el) el.textContent = '100%';
+  const hint = document.getElementById('sheet2MapHint');
+  if (hint) hint.classList.add('hidden');
+}
+</script>
+</body>
+</html>

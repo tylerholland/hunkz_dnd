@@ -1,0 +1,961 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>XP Tracking — Design Prototype</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Shared tokens ── */
+    :root {
+      /* Ember palette (character sheet) */
+      --bg: #120d0a;
+      --surface: rgba(30,18,12,0.72);
+      --surface-solid: #1e120c;
+      --border: rgba(160,104,64,0.22);
+      --border-vis: rgba(160,104,64,0.35);
+      --accent: #a06840;
+      --accent-bright: #c89060;
+      --accent-dim: rgba(160,104,64,0.14);
+      --text: #d4c4b0;
+      --text-body: #bfad98;
+      --text-muted: #6a4830;
+      --gem: #c8904c;
+      --gem-low: #5a3820;
+      --glow1: rgba(160,104,64,0.13);
+      --glow2: rgba(100,60,20,0.12);
+      --font-display: 'Cinzel', serif;
+      --font-body: 'Crimson Text', serif;
+      --font-ui: 'IM Fell English', serif;
+
+      /* Ocean palette tokens (DM dashboard) */
+      --dm-bg: #0d0f14;
+      --dm-surface: rgba(18,32,48,0.6);
+      --dm-surface-solid: #111e2c;
+      --dm-border: rgba(100,130,160,0.18);
+      --dm-border-vis: rgba(100,130,160,0.32);
+      --dm-accent: #6a8fa8;
+      --dm-accent-bright: #a0c0d0;
+      --dm-accent-dim: #1e3a4e;
+      --dm-text: #c8bfaf;
+      --dm-text-body: #b0a898;
+      --dm-text-muted: #3a5a6a;
+      --dm-gem: #8ab4c8;
+
+      /* Character palette accent rows */
+      --ember-accent: #a06840;
+      --ember-bright: #c89060;
+      --ember-gem: #c8904c;
+      --ember-surface: rgba(40,22,12,0.6);
+      --ember-border: rgba(160,104,64,0.3);
+
+      --ocean-accent: #6a8fa8;
+      --ocean-bright: #a0c0d0;
+      --ocean-gem: #8ab4c8;
+      --ocean-surface: rgba(18,32,48,0.6);
+      --ocean-border: rgba(100,130,160,0.3);
+
+      --forest-accent: #5a8a60;
+      --forest-bright: #88b888;
+      --forest-gem: #78b878;
+      --forest-surface: rgba(14,26,18,0.6);
+      --forest-border: rgba(90,138,96,0.3);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: #0a0a0a;
+      min-height: 100vh;
+      color: #ccc;
+      font-family: 'Crimson Text', serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Annotation bar ── */
+    .annotation-bar {
+      background: rgba(10,30,10,0.95);
+      border-bottom: 1px solid rgba(60,120,60,0.4);
+      padding: 11px 28px;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+    }
+    .annotation-bar p {
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      color: #77bb77;
+      letter-spacing: 0.04em;
+    }
+    .annotation-bar strong { color: #aaddaa; }
+
+    .callout-note {
+      background: rgba(30,70,30,0.85);
+      border: 1px solid rgba(80,160,80,0.4);
+      border-radius: 4px;
+      color: #88cc88;
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px;
+      display: block;
+    }
+    .callout-note::before { content: "↳ "; opacity: 0.7; }
+
+    /* ── Page sections ── */
+    .section-header {
+      font-family: 'Cinzel', serif;
+      font-size: 11px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: #666;
+      padding: 28px 28px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+      margin-bottom: 0;
+    }
+
+    /* ══════════════════════════════════════════
+       PART 1 — CHARACTER SHEET XP STRIP
+    ══════════════════════════════════════════ */
+
+    .char-section {
+      background: radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+                  var(--bg);
+      padding: 32px 28px 40px;
+    }
+
+    /* Ability scores section header (existing element — XP strip sits below it) */
+    .stats-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 18px;
+    }
+
+    /* ── Ability score row (existing, simplified for context) ── */
+    .ability-row {
+      display: flex;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+    }
+    .stat-circle {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 2px solid var(--border-vis);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    .stat-circle .score {
+      font-family: var(--font-display);
+      font-size: 22px;
+      color: var(--gem);
+      line-height: 1;
+    }
+    .stat-circle .label {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    /* Level badge (inside the "Ability Scores · Level N" heading) */
+    .level-badge-wrap {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .level-num {
+      font-family: var(--font-display);
+      font-size: 13px;
+      color: var(--text-muted);
+      letter-spacing: 0.12em;
+    }
+    .level-num strong {
+      font-size: 18px;
+      color: var(--gem);
+      font-weight: 400;
+    }
+
+    /* ══ XP STRIP (new element) ══ */
+    .xp-strip {
+      margin-top: 14px;
+      padding: 10px 14px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .xp-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+    .xp-bar-wrap {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      min-width: 0;
+    }
+    .xp-bar-track {
+      height: 4px;
+      background: rgba(160,104,64,0.12);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .xp-bar-fill {
+      height: 100%;
+      background: var(--accent);
+      border-radius: 2px;
+      transition: width 0.4s ease;
+    }
+    .xp-numbers {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      color: var(--text-body);
+    }
+    .xp-numbers .xp-current {
+      color: var(--gem);
+      font-size: 14px;
+    }
+    .xp-numbers .xp-sep { color: var(--text-muted); margin: 0 3px; }
+    .xp-numbers .xp-next { color: var(--text-muted); }
+
+    /* ══ Level-up badge (replaces / augments the level number) ══ */
+    .levelup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(200,144,76,0.18);
+      border: 1px solid var(--gem);
+      border-radius: 3px;
+      padding: 3px 9px;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--gem);
+      animation: levelup-pulse 2.4s ease-in-out infinite;
+    }
+    @keyframes levelup-pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(200,144,76,0); }
+      50%       { box-shadow: 0 0 8px 2px rgba(200,144,76,0.28); }
+    }
+    .levelup-badge .dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--gem);
+      animation: levelup-dot 2.4s ease-in-out infinite;
+    }
+    @keyframes levelup-dot {
+      0%, 100% { opacity: 0.5; }
+      50%       { opacity: 1; }
+    }
+
+    /* ══ Milestone mode — no XP, clean level display ══ */
+    .milestone-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      font-style: italic;
+      opacity: 0.7;
+      margin-top: 12px;
+    }
+
+    /* ── Stats panel wrapper ── */
+    .stats-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 28px 30px;
+      margin-bottom: 32px;
+      max-width: 860px;
+    }
+
+    /* ══════════════════════════════════════════
+       PART 2 — DM DASHBOARD CARD FRAGMENT
+    ══════════════════════════════════════════ */
+
+    .dm-section {
+      background: radial-gradient(ellipse at 50% 0%, rgba(20,45,80,0.4) 0%, transparent 60%),
+                  var(--dm-bg);
+      padding: 32px 28px 48px;
+    }
+
+    .dm-card {
+      background: var(--dm-surface);
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 5px;
+      overflow: hidden;
+      max-width: 360px;
+    }
+    .dm-card-palette-stripe {
+      height: 3px;
+    }
+    .dm-card-body {
+      padding: 14px 16px 16px;
+    }
+    .dm-card-name {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      color: var(--dm-text);
+      margin-bottom: 3px;
+    }
+    .dm-card-sub {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--dm-text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* HP row (existing context) */
+    .dm-hp-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .dm-hp-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dm-text-muted);
+      width: 28px;
+    }
+    .dm-hp-bar-track {
+      flex: 1;
+      height: 6px;
+      background: rgba(100,130,160,0.12);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .dm-hp-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+    .dm-hp-nums {
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      color: var(--dm-text);
+      min-width: 52px;
+      text-align: right;
+    }
+
+    /* ══ DM XP row ══ */
+    .dm-xp-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .dm-xp-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dm-text-muted);
+      width: 28px;
+    }
+    .dm-xp-bar-track {
+      flex: 1;
+      height: 4px;
+      background: rgba(100,130,160,0.1);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+    .dm-xp-bar-fill {
+      height: 100%;
+      border-radius: 2px;
+    }
+    .dm-xp-nums {
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.06em;
+      color: var(--dm-text-body);
+      min-width: 82px;
+      text-align: right;
+    }
+    .dm-xp-nums .xp-val { color: var(--dm-text); }
+
+    /* Award XP button (sits at end of XP row) */
+    .btn-award-xp {
+      background: transparent;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      color: var(--dm-accent);
+      font-family: 'IM Fell English', serif;
+      font-size: 18px;
+      line-height: 1;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-award-xp:hover {
+      border-color: var(--dm-accent-bright);
+      color: var(--dm-accent-bright);
+    }
+
+    /* Levelup badge (DM card variant — same visual, different palette) */
+    .dm-levelup-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(138,180,200,0.12);
+      border: 1px solid var(--dm-gem);
+      border-radius: 3px;
+      padding: 3px 8px;
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dm-gem);
+      animation: levelup-pulse-dm 2.4s ease-in-out infinite;
+    }
+    @keyframes levelup-pulse-dm {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(138,180,200,0); }
+      50%       { box-shadow: 0 0 7px 2px rgba(138,180,200,0.22); }
+    }
+    .dm-levelup-badge .dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--dm-gem);
+    }
+
+    /* ══ Award XP modal ══ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.76);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal-panel {
+      background: var(--dm-surface-solid);
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 5px;
+      padding: 24px 26px 22px;
+      width: 100%;
+      max-width: 380px;
+      margin: 0 16px;
+    }
+    .modal-title {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      color: var(--dm-text);
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+    .modal-sub {
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      color: var(--dm-text-muted);
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+    .modal-field label {
+      display: block;
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--dm-text-muted);
+      margin-bottom: 6px;
+    }
+    .modal-field input[type=number],
+    .modal-field input[type=text] {
+      width: 100%;
+      background: rgba(18,32,48,0.9);
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      color: var(--dm-text);
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
+      letter-spacing: 0.05em;
+      padding: 10px 14px;
+      outline: none;
+      text-align: center;
+      -moz-appearance: textfield;
+    }
+    .modal-field input::-webkit-outer-spin-button,
+    .modal-field input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .modal-field input:focus {
+      border-color: var(--dm-accent);
+    }
+    .modal-presets {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+      margin-bottom: 18px;
+    }
+    .preset-btn {
+      background: transparent;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      color: var(--dm-text-muted);
+      font-family: 'IM Fell English', serif;
+      font-size: 13px;
+      padding: 4px 11px;
+      cursor: pointer;
+      transition: border-color 0.14s, color 0.14s;
+    }
+    .preset-btn:hover {
+      border-color: var(--dm-accent);
+      color: var(--dm-accent-bright);
+    }
+    /* "Award all" toggle */
+    .award-all-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 18px;
+    }
+    .toggle-pill {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      cursor: pointer;
+    }
+    .toggle-pill input { display: none; }
+    .toggle-track {
+      display: block;
+      width: 36px;
+      height: 20px;
+      background: rgba(100,130,160,0.15);
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 10px;
+      transition: background 0.18s, border-color 0.18s;
+    }
+    .toggle-pill input:checked + .toggle-track {
+      background: rgba(106,143,168,0.35);
+      border-color: var(--dm-accent);
+    }
+    .toggle-thumb {
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: var(--dm-text-muted);
+      transition: transform 0.18s, background 0.18s;
+    }
+    .toggle-pill input:checked ~ .toggle-thumb {
+      transform: translateX(16px);
+      background: var(--dm-accent-bright);
+    }
+    .award-all-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      color: var(--dm-text-body);
+    }
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .btn-cancel {
+      background: transparent;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      color: var(--dm-text-muted);
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      padding: 7px 16px;
+      cursor: pointer;
+    }
+    .btn-confirm {
+      background: rgba(18,58,78,0.5);
+      border: 1px solid var(--dm-accent);
+      border-radius: 3px;
+      color: var(--dm-accent-bright);
+      font-family: 'IM Fell English', serif;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      padding: 7px 20px;
+      cursor: pointer;
+    }
+
+    /* ══ Party-wide Award XP action (Party-Wide Actions section) ══ */
+    .dm-section-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--dm-text-muted);
+      margin-bottom: 10px;
+    }
+    .party-actions-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: 680px;
+    }
+    .btn-party-action {
+      background: transparent;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      color: var(--dm-text-muted);
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      padding: 7px 16px;
+      cursor: pointer;
+      transition: border-color 0.15s, color 0.15s;
+    }
+    .btn-party-action:hover {
+      border-color: var(--dm-accent);
+      color: var(--dm-accent-bright);
+    }
+    .btn-party-action.xp { border-color: rgba(138,180,200,0.35); }
+
+    /* ── Util ── */
+    .demo-row { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+    .demo-col { display: flex; flex-direction: column; gap: 0; }
+    .demo-col-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #4a8a4a;
+      margin-bottom: 10px;
+    }
+    hr.divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      margin: 28px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Annotation bar -->
+  <div class="annotation-bar">
+    <p>
+      <strong>Story 13 — XP Tracking</strong> &nbsp;·&nbsp;
+      Interactive prototype &nbsp;·&nbsp;
+      Three sections: character sheet XP strip (XP mode), milestone mode (no XP), DM party card + Award XP modal
+    </p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 1 — CHARACTER SHEET: XP MODE
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-header">1 — Character Sheet &nbsp;·&nbsp; XP Mode (Ability Scores block)</div>
+
+  <div class="char-section">
+
+    <span class="callout-note">XP strip sits directly below the ability scores row, inside the existing stats surface panel. No new section needed.</span>
+
+    <div class="stats-panel">
+
+      <!-- Level + heading row -->
+      <div class="level-badge-wrap">
+        <div>
+          <span class="stats-label" style="display:inline">Ability Scores &nbsp;·&nbsp; </span>
+          <span class="level-num">Level <strong>4</strong></span>
+        </div>
+        <!-- Level-up badge (shown when XP threshold reached) — hidden in this example -->
+        <!-- <span class="levelup-badge"><span class="dot"></span>Ready to level up</span> -->
+      </div>
+
+      <!-- Ability score circles (existing element, shown for context) -->
+      <div class="ability-row">
+        <div class="stat-circle"><span class="score">16</span><span class="label">STR</span></div>
+        <div class="stat-circle"><span class="score">14</span><span class="label">DEX</span></div>
+        <div class="stat-circle"><span class="score">14</span><span class="label">CON</span></div>
+        <div class="stat-circle"><span class="score">12</span><span class="label">WIS</span></div>
+        <div class="stat-circle"><span class="score">10</span><span class="label">INT</span></div>
+        <div class="stat-circle"><span class="score">14</span><span class="label">CHA</span></div>
+      </div>
+
+      <!-- XP strip (new) -->
+      <div class="xp-strip" id="xpStrip">
+        <span class="xp-label">XP</span>
+        <div class="xp-bar-wrap">
+          <!-- Progress bar: 2450 / 6500 ≈ 37.7% -->
+          <div class="xp-bar-track">
+            <div class="xp-bar-fill" id="xpFill" style="width:37.7%"></div>
+          </div>
+          <div class="xp-numbers">
+            <span class="xp-current" id="xpCurrentDisplay">2,450</span>
+            <span class="xp-sep">/</span>
+            <span class="xp-next">6,500 XP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Level-up state (separate card to show the indicator) ── -->
+    <span class="callout-note">When xpCurrent ≥ threshold: a gentle pulsing badge replaces or supplements the level number. The XP bar fills to 100% and the fill color shifts to gem.</span>
+
+    <div class="stats-panel">
+      <div class="level-badge-wrap">
+        <div>
+          <span class="stats-label" style="display:inline">Ability Scores &nbsp;·&nbsp; </span>
+          <span class="level-num">Level <strong>4</strong></span>
+        </div>
+        <span class="levelup-badge"><span class="dot"></span>Ready to level up</span>
+      </div>
+      <div class="ability-row">
+        <div class="stat-circle"><span class="score">16</span><span class="label">STR</span></div>
+        <div class="stat-circle"><span class="score">14</span><span class="label">DEX</span></div>
+        <div class="stat-circle"><span class="score">14</span><span class="label">CON</span></div>
+        <div class="stat-circle"><span class="score">12</span><span class="label">WIS</span></div>
+        <div class="stat-circle"><span class="score">10</span><span class="label">INT</span></div>
+        <div class="stat-circle"><span class="score">14</span><span class="label">CHA</span></div>
+      </div>
+      <div class="xp-strip">
+        <span class="xp-label">XP</span>
+        <div class="xp-bar-wrap">
+          <!-- 6500 / 6500 = 100% — fill color shifts to gem -->
+          <div class="xp-bar-track">
+            <div class="xp-bar-fill" style="width:100%; background:var(--gem);"></div>
+          </div>
+          <div class="xp-numbers">
+            <span class="xp-current" style="color:var(--gem);">6,500</span>
+            <span class="xp-sep">/</span>
+            <span class="xp-next">6,500 XP</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 2 — CHARACTER SHEET: MILESTONE MODE
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-header">2 — Character Sheet &nbsp;·&nbsp; Milestone Mode (no XP shown)</div>
+
+  <div class="char-section" style="padding-bottom:20px;">
+    <span class="callout-note">When levelingMode === "milestone": the XP strip is absent entirely. No empty row, no placeholder. The stats panel looks exactly as it does today.</span>
+
+    <div class="stats-panel">
+      <div class="level-badge-wrap">
+        <div>
+          <span class="stats-label" style="display:inline">Ability Scores &nbsp;·&nbsp; </span>
+          <span class="level-num">Level <strong>4</strong></span>
+        </div>
+      </div>
+      <div class="ability-row">
+        <div class="stat-circle"><span class="score">16</span><span class="label">STR</span></div>
+        <div class="stat-circle"><span class="score">14</span><span class="label">DEX</span></div>
+        <div class="stat-circle"><span class="score">14</span><span class="label">CON</span></div>
+        <div class="stat-circle"><span class="score">12</span><span class="label">WIS</span></div>
+        <div class="stat-circle"><span class="score">10</span><span class="label">INT</span></div>
+        <div class="stat-circle"><span class="score">14</span><span class="label">CHA</span></div>
+      </div>
+      <!-- No XP strip -->
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 3 — DM PARTY CARDS WITH XP ROWS
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-header">3 — DM Dashboard &nbsp;·&nbsp; Party Cards with XP rows</div>
+
+  <div class="dm-section">
+    <span class="callout-note">Each party card gains a compact XP row directly beneath the HP bar. A "+" button opens the Award XP modal for that character.</span>
+
+    <div class="demo-row">
+
+      <!-- Card A: mid-progress, ember palette -->
+      <div class="demo-col">
+        <div class="demo-col-label">XP mode — mid progress</div>
+        <div class="dm-card">
+          <div class="dm-card-palette-stripe" style="background:var(--ember-accent)"></div>
+          <div class="dm-card-body">
+            <div class="dm-card-name">Aragorn</div>
+            <div class="dm-card-sub">Ranger · Level 4</div>
+            <!-- HP row -->
+            <div class="dm-hp-row">
+              <div class="dm-hp-label">HP</div>
+              <div class="dm-hp-bar-track">
+                <div class="dm-hp-bar-fill" style="width:72%;background:var(--ember-accent)"></div>
+              </div>
+              <div class="dm-hp-nums" style="color:var(--ember-bright)">29 / 40</div>
+            </div>
+            <!-- XP row -->
+            <div class="dm-xp-row">
+              <div class="dm-xp-label">XP</div>
+              <div class="dm-xp-bar-track">
+                <div class="dm-xp-bar-fill" style="width:37.7%;background:var(--ember-accent)"></div>
+              </div>
+              <div class="dm-xp-nums"><span class="xp-val">2,450</span> / 6,500</div>
+              <button class="btn-award-xp" onclick="openModal('Aragorn')" title="Award XP">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card B: level-up threshold reached, ocean palette -->
+      <div class="demo-col">
+        <div class="demo-col-label">XP mode — ready to level up</div>
+        <div class="dm-card">
+          <div class="dm-card-palette-stripe" style="background:var(--ocean-accent)"></div>
+          <div class="dm-card-body">
+            <div class="dm-card-name">Eoghan</div>
+            <div class="dm-card-sub">Rogue · Level 4 &nbsp;<span class="dm-levelup-badge"><span class="dot"></span>Level up</span></div>
+            <!-- HP row -->
+            <div class="dm-hp-row">
+              <div class="dm-hp-label">HP</div>
+              <div class="dm-hp-bar-track">
+                <div class="dm-hp-bar-fill" style="width:100%;background:var(--ocean-accent)"></div>
+              </div>
+              <div class="dm-hp-nums" style="color:var(--ocean-bright)">32 / 32</div>
+            </div>
+            <!-- XP row — at threshold -->
+            <div class="dm-xp-row">
+              <div class="dm-xp-label">XP</div>
+              <div class="dm-xp-bar-track">
+                <div class="dm-xp-bar-fill" style="width:100%;background:var(--ocean-gem)"></div>
+              </div>
+              <div class="dm-xp-nums"><span class="xp-val" style="color:var(--ocean-bright)">6,500</span> / 6,500</div>
+              <button class="btn-award-xp" onclick="openModal('Eoghan')" title="Award XP">+</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card C: milestone mode, forest palette -->
+      <div class="demo-col">
+        <div class="demo-col-label">Milestone mode — no XP row</div>
+        <div class="dm-card">
+          <div class="dm-card-palette-stripe" style="background:var(--forest-accent)"></div>
+          <div class="dm-card-body">
+            <div class="dm-card-name">Aesop</div>
+            <div class="dm-card-sub">Cleric · Level 4</div>
+            <!-- HP row -->
+            <div class="dm-hp-row">
+              <div class="dm-hp-label">HP</div>
+              <div class="dm-hp-bar-track">
+                <div class="dm-hp-bar-fill" style="width:55%;background:var(--forest-accent)"></div>
+              </div>
+              <div class="dm-hp-nums" style="color:var(--forest-bright)">22 / 40</div>
+            </div>
+            <!-- No XP row — milestone mode character -->
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Party-wide Award XP action -->
+    <div class="dm-section-label" style="color:var(--dm-text-muted)">Party-Wide Actions</div>
+    <div class="party-actions-row">
+      <button class="btn-party-action">Short Rest</button>
+      <button class="btn-party-action">Long Rest</button>
+      <button class="btn-party-action xp" onclick="openModal('Whole Party')">Award XP to Party</button>
+    </div>
+    <span class="callout-note" style="max-width:480px; margin-top:14px;">
+      "Award XP to Party" button pre-checks the "Award to whole party" toggle in the modal.
+    </span>
+  </div>
+
+  <!-- ══ Award XP Modal ══ -->
+  <div class="modal-overlay" id="awardModal">
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <div class="modal-title">Award XP</div>
+      <div class="modal-sub" id="modalTarget">Aragorn</div>
+
+      <div class="modal-field">
+        <label>Amount</label>
+        <input type="number" id="xpAmountInput" value="300" min="0" />
+      </div>
+      <div class="modal-presets">
+        <span style="font-family:'IM Fell English',serif;font-size:11px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dm-text-muted);align-self:center;">Quick:</span>
+        <button class="preset-btn" onclick="setXp(50)">50</button>
+        <button class="preset-btn" onclick="setXp(100)">100</button>
+        <button class="preset-btn" onclick="setXp(200)">200</button>
+        <button class="preset-btn" onclick="setXp(300)">300</button>
+        <button class="preset-btn" onclick="setXp(500)">500</button>
+        <button class="preset-btn" onclick="setXp(750)">750</button>
+      </div>
+
+      <!-- Award to whole party toggle -->
+      <div class="award-all-row">
+        <label class="toggle-pill" id="awardAllToggle">
+          <input type="checkbox" id="awardAllCheck" />
+          <span class="toggle-track"></span>
+          <span class="toggle-thumb"></span>
+        </label>
+        <span class="award-all-label">Award to whole party</span>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeModal()">Cancel</button>
+        <button class="btn-confirm" onclick="closeModal()">Award XP</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openModal(target) {
+      document.getElementById('modalTarget').textContent = target;
+      const isParty = target === 'Whole Party';
+      document.getElementById('awardAllCheck').checked = isParty;
+      document.getElementById('awardModal').classList.add('open');
+    }
+    function closeModal() {
+      document.getElementById('awardModal').classList.remove('open');
+    }
+    function setXp(val) {
+      document.getElementById('xpAmountInput').value = val;
+    }
+    // Close on backdrop click
+    document.getElementById('awardModal').addEventListener('click', function(e) {
+      if (e.target === this) closeModal();
+    });
+  </script>
+
+</body>
+</html>

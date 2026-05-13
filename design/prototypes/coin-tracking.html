@@ -1,0 +1,1086 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Coin Tracking — Design Prototype</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Palette tokens ── */
+    :root {
+      /* Ember (character sheet) */
+      --bg: #120d0a;
+      --surface: rgba(30,18,12,0.72);
+      --surface-solid: #1e120c;
+      --border: rgba(160,104,64,0.22);
+      --border-vis: rgba(160,104,64,0.38);
+      --accent: #a06840;
+      --accent-bright: #c89060;
+      --accent-dim: rgba(160,104,64,0.14);
+      --text: #d4c4b0;
+      --text-body: #bfad98;
+      --text-muted: #6a4830;
+      --gem: #c8904c;
+      --gem-low: #5a3820;
+      --glow1: rgba(160,104,64,0.13);
+      --glow2: rgba(100,60,20,0.12);
+      --font-display: 'Cinzel', serif;
+      --font-body: 'Crimson Text', serif;
+      --font-ui: 'IM Fell English', serif;
+
+      /* Ocean (DM dashboard) */
+      --dm-bg: #0d0f14;
+      --dm-surface: rgba(18,32,48,0.6);
+      --dm-surface-solid: #111e2c;
+      --dm-border: rgba(100,130,160,0.18);
+      --dm-border-vis: rgba(100,130,160,0.32);
+      --dm-accent: #6a8fa8;
+      --dm-accent-bright: #a0c0d0;
+      --dm-accent-dim: #1e3a4e;
+      --dm-text: #c8bfaf;
+      --dm-text-body: #b0a898;
+      --dm-text-muted: #3a5a6a;
+      --dm-gem: #8ab4c8;
+
+      /* Character palette accents */
+      --ember-accent: #a06840;
+      --ember-bright: #c89060;
+      --ember-gem: #c8904c;
+      --ocean-accent: #6a8fa8;
+      --ocean-bright: #a0c0d0;
+      --ocean-gem: #8ab4c8;
+      --forest-accent: #5a8a60;
+      --forest-bright: #88b888;
+      --forest-gem: #78b878;
+
+      /* Coin colors (denomination-specific, universal across palettes) */
+      --coin-cp: #a07050;    /* copper */
+      --coin-sp: #9aabb8;    /* silver */
+      --coin-ep: #8f8b80;    /* electrum (greyish) */
+      --coin-gp: #c8a040;    /* gold */
+      --coin-pp: #c8d0e0;    /* platinum */
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: #0a0a0a;
+      min-height: 100vh;
+      color: #ccc;
+      font-family: 'Crimson Text', serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Annotation bar ── */
+    .annotation-bar {
+      background: rgba(10,30,10,0.95);
+      border-bottom: 1px solid rgba(60,120,60,0.4);
+      padding: 11px 28px;
+      position: sticky;
+      top: 0;
+      z-index: 300;
+    }
+    .annotation-bar p {
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      color: #77bb77;
+      letter-spacing: 0.04em;
+    }
+    .annotation-bar strong { color: #aaddaa; }
+
+    .callout-note {
+      background: rgba(30,70,30,0.85);
+      border: 1px solid rgba(80,160,80,0.4);
+      border-radius: 4px;
+      color: #88cc88;
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      padding: 5px 10px;
+      margin: 6px 0 10px;
+      display: block;
+    }
+    .callout-note::before { content: "↳ "; opacity: 0.7; }
+
+    /* ── Section headers ── */
+    .section-header {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.35em;
+      text-transform: uppercase;
+      color: #666;
+      padding: 28px 28px 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+
+    /* ══════════════════════════════════════════
+       CHARACTER SHEET — shared layout
+    ══════════════════════════════════════════ */
+
+    .char-section {
+      background:
+        radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+        var(--bg);
+      padding: 32px 28px 40px;
+    }
+
+    /* Inventory tab intro — tab strip context */
+    .tab-strip {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 24px;
+    }
+    .tab-btn {
+      background: transparent;
+      border: 1px solid var(--border);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 5px 16px;
+      cursor: pointer;
+    }
+    .tab-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent-bright);
+    }
+
+    /* ── Loadout grid (existing) ── */
+    .loadout-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0 32px;
+      max-width: 860px;
+    }
+    @media (max-width: 560px) {
+      .loadout-grid { grid-template-columns: 1fr; }
+    }
+
+    .loadout-col-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .loadout-item-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 0;
+      border-bottom: 1px solid var(--border);
+      font-size: 15px;
+      color: var(--text);
+    }
+    .loadout-item-row:last-child { border-bottom: none; }
+    .chip {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      padding: 2px 7px;
+    }
+
+    /* ══ COIN SECTION ══ */
+    .coin-section {
+      margin-top: 28px;
+      padding-top: 22px;
+      border-top: 1px solid var(--border);
+      max-width: 860px;
+    }
+    .coin-section-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.3em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+    }
+
+    /* ── GP mode: single large field ── */
+    .coin-gp-mode {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .coin-denom-mark {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      font-weight: 500;
+      flex-shrink: 0;
+      border: 2px solid;
+    }
+    .coin-denom-mark.gp {
+      background: rgba(200,160,64,0.1);
+      border-color: rgba(200,160,64,0.5);
+      color: var(--coin-gp);
+    }
+    .coin-stepper-group {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .coin-stepper-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: 'Cinzel', serif;
+      font-size: 18px;
+      line-height: 1;
+      width: 36px;
+      height: 44px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.13s, background 0.13s;
+      flex-shrink: 0;
+    }
+    .coin-stepper-btn:hover {
+      background: var(--accent-dim);
+      color: var(--accent-bright);
+    }
+    .coin-value-input {
+      background: transparent;
+      border: none;
+      border-left: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      color: var(--gem);
+      font-family: 'Cinzel', serif;
+      font-size: 26px;
+      width: 90px;
+      text-align: center;
+      padding: 6px 0;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .coin-value-input::-webkit-outer-spin-button,
+    .coin-value-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .coin-value-input:focus {
+      background: var(--accent-dim);
+    }
+    .coin-gp-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 14px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    /* ── Full denomination mode ── */
+    .coin-full-grid {
+      display: grid;
+      grid-template-columns: repeat(5, auto);
+      gap: 10px 16px;
+      align-items: center;
+      max-width: 600px;
+    }
+    @media (max-width: 560px) {
+      .coin-full-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 10px;
+      }
+    }
+    .coin-full-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 6px;
+    }
+    .coin-full-denom {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .coin-full-denom.cp { color: var(--coin-cp); }
+    .coin-full-denom.sp { color: var(--coin-sp); }
+    .coin-full-denom.ep { color: var(--coin-ep); }
+    .coin-full-denom.gp { color: var(--coin-gp); }
+    .coin-full-denom.pp { color: var(--coin-pp); }
+
+    .coin-full-stepper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+    }
+    .coin-full-stepper .top-btn,
+    .coin-full-stepper .bot-btn {
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      height: 22px;
+      width: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      color: var(--text-muted);
+      transition: color 0.12s, background 0.12s;
+    }
+    .coin-full-stepper .top-btn:hover,
+    .coin-full-stepper .bot-btn:hover {
+      color: var(--accent-bright);
+      background: var(--accent-dim);
+    }
+    .coin-full-stepper .val {
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      text-align: center;
+      width: 60px;
+      border: none;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: transparent;
+      color: var(--text);
+      outline: none;
+      padding: 4px 0;
+      -moz-appearance: textfield;
+    }
+    .coin-full-stepper .val.gp { color: var(--coin-gp); }
+    .coin-full-stepper .val.pp { color: var(--coin-pp); }
+    .coin-full-stepper .val::-webkit-outer-spin-button,
+    .coin-full-stepper .val::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .coin-full-stepper .val:focus { background: var(--accent-dim); }
+
+    /* ── Coin mark circles for full mode ── */
+    .coin-mark-sm {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: 'Cinzel', serif;
+      font-size: 10px;
+      font-weight: 500;
+      border: 2px solid;
+    }
+    .coin-mark-sm.cp { background: rgba(160,112,80,0.1); border-color: rgba(160,112,80,0.4); color: var(--coin-cp); }
+    .coin-mark-sm.sp { background: rgba(154,171,184,0.1); border-color: rgba(154,171,184,0.4); color: var(--coin-sp); }
+    .coin-mark-sm.ep { background: rgba(143,139,128,0.1); border-color: rgba(143,139,128,0.4); color: var(--coin-ep); }
+    .coin-mark-sm.gp { background: rgba(200,160,64,0.12); border-color: rgba(200,160,64,0.45); color: var(--coin-gp); }
+    .coin-mark-sm.pp { background: rgba(200,208,224,0.1); border-color: rgba(200,208,224,0.4); color: var(--coin-pp); }
+
+    /* ══════════════════════════════════════════
+       DM DASHBOARD SECTION
+    ══════════════════════════════════════════ */
+
+    .dm-section {
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(20,45,80,0.4) 0%, transparent 60%),
+        var(--dm-bg);
+      padding: 32px 28px 48px;
+    }
+
+    .dm-card {
+      background: var(--dm-surface);
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 5px;
+      overflow: hidden;
+      max-width: 340px;
+    }
+    .dm-card-palette-stripe { height: 3px; }
+    .dm-card-body { padding: 14px 16px 16px; }
+    .dm-card-name {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      color: var(--dm-text);
+      margin-bottom: 3px;
+    }
+    .dm-card-sub {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--dm-text-muted);
+      margin-bottom: 12px;
+    }
+    .dm-hp-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .dm-row-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--dm-text-muted);
+      width: 28px;
+    }
+    .dm-hp-bar-track { flex:1; height:6px; background:rgba(100,130,160,0.12); border-radius:3px; overflow:hidden; }
+    .dm-hp-bar-fill { height:100%; border-radius:3px; }
+    .dm-hp-nums {
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      color: var(--dm-text);
+      min-width: 52px;
+      text-align: right;
+    }
+
+    /* ── GP badge on DM card ── */
+    .dm-coin-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .dm-gp-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: rgba(200,160,64,0.1);
+      border: 1px solid rgba(200,160,64,0.3);
+      border-radius: 3px;
+      padding: 3px 9px;
+      font-family: 'Cinzel', serif;
+      font-size: 13px;
+      color: var(--coin-gp);
+    }
+    .dm-gp-badge .gp-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: rgba(200,160,64,0.6);
+      margin-left: 3px;
+    }
+    /* Distribute coin button */
+    .btn-give-coin {
+      background: transparent;
+      border: 1px solid rgba(200,160,64,0.3);
+      border-radius: 3px;
+      color: rgba(200,160,64,0.7);
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      padding: 4px 9px;
+      cursor: pointer;
+      margin-left: auto;
+      transition: border-color 0.14s, color 0.14s;
+    }
+    .btn-give-coin:hover {
+      border-color: var(--coin-gp);
+      color: var(--coin-gp);
+    }
+
+    /* ══ Distribute Coin modal ══ */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.76);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s;
+    }
+    .modal-overlay.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal-panel {
+      background: var(--dm-surface-solid);
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 5px;
+      padding: 24px 26px 22px;
+      width: 100%;
+      max-width: 400px;
+      margin: 0 16px;
+    }
+    .modal-title {
+      font-family: 'Cinzel', serif;
+      font-size: 15px;
+      color: var(--dm-text);
+      letter-spacing: 0.1em;
+      margin-bottom: 4px;
+    }
+    .modal-sub {
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      color: var(--dm-text-muted);
+      margin-bottom: 20px;
+      text-transform: uppercase;
+    }
+    /* Denomination selector row */
+    .denom-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .denom-pill {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      background: transparent;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      color: var(--dm-text-muted);
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.12em;
+      padding: 5px 11px;
+      cursor: pointer;
+      transition: border-color 0.14s, color 0.14s, background 0.14s;
+    }
+    .denom-pill .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .denom-pill.active { border-color: var(--coin-gp); color: var(--coin-gp); background: rgba(200,160,64,0.08); }
+    .denom-pill.cp .dot { background: var(--coin-cp); }
+    .denom-pill.sp .dot { background: var(--coin-sp); }
+    .denom-pill.ep .dot { background: var(--coin-ep); }
+    .denom-pill.gp .dot { background: var(--coin-gp); }
+    .denom-pill.pp .dot { background: var(--coin-pp); }
+    .denom-pill.active.cp { border-color: var(--coin-cp); color: var(--coin-cp); background: rgba(160,112,80,0.08); }
+    .denom-pill.active.sp { border-color: var(--coin-sp); color: var(--coin-sp); background: rgba(154,171,184,0.08); }
+    .denom-pill.active.ep { border-color: var(--coin-ep); color: var(--coin-ep); background: rgba(143,139,128,0.08); }
+    .denom-pill.active.gp { border-color: var(--coin-gp); color: var(--coin-gp); background: rgba(200,160,64,0.08); }
+    .denom-pill.active.pp { border-color: var(--coin-pp); color: var(--coin-pp); background: rgba(200,208,224,0.08); }
+
+    /* Amount input */
+    .modal-amount-wrap {
+      display: flex;
+      align-items: center;
+      gap: 0;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .modal-step-btn {
+      background: transparent;
+      border: none;
+      color: var(--dm-text-muted);
+      font-family: 'Cinzel', serif;
+      font-size: 20px;
+      line-height: 1;
+      width: 44px;
+      height: 52px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: color 0.13s, background 0.13s;
+    }
+    .modal-step-btn:hover { color: var(--dm-accent-bright); background: rgba(106,143,168,0.1); }
+    .modal-amount-input {
+      flex: 1;
+      background: transparent;
+      border: none;
+      border-left: 1px solid var(--dm-border-vis);
+      border-right: 1px solid var(--dm-border-vis);
+      color: var(--coin-gp);
+      font-family: 'Cinzel', serif;
+      font-size: 28px;
+      text-align: center;
+      padding: 8px 0;
+      outline: none;
+      -moz-appearance: textfield;
+    }
+    .modal-amount-input::-webkit-outer-spin-button,
+    .modal-amount-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .modal-amount-input:focus { background: rgba(200,160,64,0.05); }
+
+    .modal-presets {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .preset-btn {
+      background: transparent;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      color: var(--dm-text-muted);
+      font-family: 'IM Fell English', serif;
+      font-size: 13px;
+      padding: 4px 11px;
+      cursor: pointer;
+      transition: border-color 0.14s, color 0.14s;
+    }
+    .preset-btn:hover { border-color: var(--dm-accent); color: var(--dm-accent-bright); }
+
+    /* Target selector (characters) */
+    .target-row {
+      display: flex;
+      gap: 7px;
+      flex-wrap: wrap;
+      margin-bottom: 18px;
+    }
+    .target-pill {
+      background: transparent;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      color: var(--dm-text-muted);
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: border-color 0.14s, color 0.14s, background 0.14s;
+    }
+    .target-pill.active {
+      border-color: var(--dm-accent);
+      color: var(--dm-accent-bright);
+      background: var(--dm-accent-dim);
+    }
+    .target-pill.all {
+      border-color: rgba(100,130,160,0.45);
+    }
+    .target-pill.all.active {
+      border-color: var(--dm-accent-bright);
+    }
+
+    /* Give/Deduct toggle */
+    .give-deduct-row {
+      display: flex;
+      gap: 0;
+      margin-bottom: 20px;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .give-deduct-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      color: var(--dm-text-muted);
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      padding: 7px 0;
+      cursor: pointer;
+      transition: color 0.13s, background 0.13s;
+      text-transform: uppercase;
+    }
+    .give-deduct-btn.active {
+      background: var(--dm-accent-dim);
+      color: var(--dm-accent-bright);
+    }
+    .give-deduct-btn:first-child { border-right: 1px solid var(--dm-border-vis); }
+
+    .modal-footer {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+    }
+    .btn-cancel {
+      background: transparent;
+      border: 1px solid var(--dm-border-vis);
+      border-radius: 3px;
+      color: var(--dm-text-muted);
+      font-family: 'IM Fell English', serif;
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      padding: 7px 16px;
+      cursor: pointer;
+    }
+    .btn-confirm {
+      background: rgba(18,58,78,0.5);
+      border: 1px solid var(--dm-accent);
+      border-radius: 3px;
+      color: var(--dm-accent-bright);
+      font-family: 'IM Fell English', serif;
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      padding: 7px 20px;
+      cursor: pointer;
+    }
+
+    /* ── Demo helpers ── */
+    .demo-row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-start; }
+    .demo-col { display: flex; flex-direction: column; }
+    .demo-col-label {
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #4a8a4a;
+      margin-bottom: 10px;
+    }
+    hr.divider {
+      border: none;
+      border-top: 1px solid rgba(255,255,255,0.06);
+      margin: 28px 0;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Annotation bar -->
+  <div class="annotation-bar">
+    <p>
+      <strong>Story 14 — Coin Tracking</strong> &nbsp;·&nbsp;
+      Interactive prototype &nbsp;·&nbsp;
+      Four sections: Inventory tab GP mode, Inventory tab full mode, DM party card GP badge, Distribute Coin modal
+    </p>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 1 — CHARACTER SHEET: INVENTORY TAB, GP MODE
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-header">1 — Character Sheet &nbsp;·&nbsp; Inventory Tab — GP Mode</div>
+
+  <div class="char-section">
+    <span class="callout-note">Coin section lives at the bottom of the Inventory tab, below the weapons/equipment grid. In GP mode: a single gold field with stepper buttons. Direct typing is instant — no modal needed.</span>
+
+    <!-- Tab strip context -->
+    <div class="tab-strip">
+      <button class="tab-btn active">Inventory</button>
+      <button class="tab-btn">Persona</button>
+      <button class="tab-btn">Combat</button>
+      <button class="tab-btn">Map</button>
+    </div>
+
+    <!-- Loadout grid (existing, abbreviated) -->
+    <div class="loadout-grid" style="margin-bottom:0">
+      <div>
+        <div class="loadout-col-label">Weapons</div>
+        <div class="loadout-item-row">
+          Longsword
+          <span class="chip">ATK +5</span>
+          <span class="chip">DMG 1d8+3</span>
+        </div>
+        <div class="loadout-item-row">
+          Longbow
+          <span class="chip">ATK +5</span>
+          <span class="chip">DMG 1d8+3</span>
+        </div>
+      </div>
+      <div>
+        <div class="loadout-col-label">Equipment</div>
+        <div class="loadout-item-row">Chain Mail <span class="chip" style="font-size:10px">Armor</span></div>
+        <div class="loadout-item-row">Explorer's Pack</div>
+        <div class="loadout-item-row">Rope (50 ft)</div>
+      </div>
+    </div>
+
+    <!-- ══ COIN SECTION — GP MODE ══ -->
+    <div class="coin-section">
+      <div class="coin-section-label">Coin</div>
+      <div class="coin-gp-mode">
+        <div class="coin-denom-mark gp">GP</div>
+        <div class="coin-stepper-group">
+          <button class="coin-stepper-btn" onclick="stepCoin('gp', -1)">−</button>
+          <input class="coin-value-input" type="number" id="gpValue" value="147" min="0" />
+          <button class="coin-stepper-btn" onclick="stepCoin('gp', 1)">+</button>
+        </div>
+        <span class="coin-gp-label">Gold Pieces</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 2 — CHARACTER SHEET: INVENTORY TAB, FULL MODE
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-header">2 — Character Sheet &nbsp;·&nbsp; Inventory Tab — Full Denomination Mode</div>
+
+  <div class="char-section">
+    <span class="callout-note">Full mode shows all five denominations in a compact horizontal grid. Each denomination has an up/down stepper and a direct-edit number input. Denomination-specific colors make scanning fast in dim light.</span>
+
+    <div class="tab-strip">
+      <button class="tab-btn active">Inventory</button>
+      <button class="tab-btn">Persona</button>
+      <button class="tab-btn">Combat</button>
+      <button class="tab-btn">Map</button>
+    </div>
+
+    <div class="loadout-grid" style="margin-bottom:0">
+      <div>
+        <div class="loadout-col-label">Weapons</div>
+        <div class="loadout-item-row">Longsword <span class="chip">ATK +5</span></div>
+        <div class="loadout-item-row">Longbow <span class="chip">ATK +5</span></div>
+      </div>
+      <div>
+        <div class="loadout-col-label">Equipment</div>
+        <div class="loadout-item-row">Chain Mail</div>
+        <div class="loadout-item-row">Explorer's Pack</div>
+      </div>
+    </div>
+
+    <!-- ══ COIN SECTION — FULL MODE ══ -->
+    <div class="coin-section">
+      <div class="coin-section-label">Coin</div>
+      <div class="coin-full-grid">
+
+        <!-- CP -->
+        <div class="coin-full-item">
+          <div class="coin-mark-sm cp">CP</div>
+          <div class="coin-full-stepper">
+            <button class="top-btn" onclick="stepFull('cp', 1)">▲</button>
+            <input class="val" type="number" id="cpVal" value="82" min="0" />
+            <button class="bot-btn" onclick="stepFull('cp', -1)">▼</button>
+          </div>
+          <span class="coin-full-denom cp">Copper</span>
+        </div>
+
+        <!-- SP -->
+        <div class="coin-full-item">
+          <div class="coin-mark-sm sp">SP</div>
+          <div class="coin-full-stepper">
+            <button class="top-btn" onclick="stepFull('sp', 1)">▲</button>
+            <input class="val" type="number" id="spVal" value="14" min="0" />
+            <button class="bot-btn" onclick="stepFull('sp', -1)">▼</button>
+          </div>
+          <span class="coin-full-denom sp">Silver</span>
+        </div>
+
+        <!-- EP -->
+        <div class="coin-full-item">
+          <div class="coin-mark-sm ep">EP</div>
+          <div class="coin-full-stepper">
+            <button class="top-btn" onclick="stepFull('ep', 1)">▲</button>
+            <input class="val" type="number" id="epVal" value="0" min="0" />
+            <button class="bot-btn" onclick="stepFull('ep', -1)">▼</button>
+          </div>
+          <span class="coin-full-denom ep">Electrum</span>
+        </div>
+
+        <!-- GP -->
+        <div class="coin-full-item">
+          <div class="coin-mark-sm gp">GP</div>
+          <div class="coin-full-stepper">
+            <button class="top-btn" onclick="stepFull('gp', 1)">▲</button>
+            <input class="val gp" type="number" id="gpVal" value="147" min="0" />
+            <button class="bot-btn" onclick="stepFull('gp', -1)">▼</button>
+          </div>
+          <span class="coin-full-denom gp">Gold</span>
+        </div>
+
+        <!-- PP -->
+        <div class="coin-full-item">
+          <div class="coin-mark-sm pp">PP</div>
+          <div class="coin-full-stepper">
+            <button class="top-btn" onclick="stepFull('pp', 1)">▲</button>
+            <input class="val pp" type="number" id="ppVal" value="3" min="0" />
+            <button class="bot-btn" onclick="stepFull('pp', -1)">▼</button>
+          </div>
+          <span class="coin-full-denom pp">Platinum</span>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════
+       SECTION 3 — DM PARTY CARDS WITH GP BADGE
+  ══════════════════════════════════════════════════════ -->
+  <div class="section-header">3 — DM Dashboard &nbsp;·&nbsp; Party Cards with GP badge</div>
+
+  <div class="dm-section">
+    <span class="callout-note">Each card shows a compact GP badge below the HP bar. A "Give Coin" button on the badge row opens the Distribute Coin modal for that character.</span>
+
+    <div class="demo-row">
+
+      <!-- Aragorn card -->
+      <div class="demo-col">
+        <div class="demo-col-label">Ember palette — GP mode</div>
+        <div class="dm-card">
+          <div class="dm-card-palette-stripe" style="background:var(--ember-accent)"></div>
+          <div class="dm-card-body">
+            <div class="dm-card-name">Aragorn</div>
+            <div class="dm-card-sub">Ranger · Level 4</div>
+            <div class="dm-hp-row">
+              <div class="dm-row-label">HP</div>
+              <div class="dm-hp-bar-track"><div class="dm-hp-bar-fill" style="width:72%;background:var(--ember-accent)"></div></div>
+              <div class="dm-hp-nums" style="color:var(--ember-bright)">29 / 40</div>
+            </div>
+            <div class="dm-coin-row">
+              <div class="dm-row-label">GP</div>
+              <div class="dm-gp-badge">147 <span class="gp-label">gp</span></div>
+              <button class="btn-give-coin" onclick="openCoinModal('Aragorn')">Give Coin</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Eoghan card -->
+      <div class="demo-col">
+        <div class="demo-col-label">Ocean palette — full mode (shows GP equiv)</div>
+        <div class="dm-card">
+          <div class="dm-card-palette-stripe" style="background:var(--ocean-accent)"></div>
+          <div class="dm-card-body">
+            <div class="dm-card-name">Eoghan</div>
+            <div class="dm-card-sub">Rogue · Level 4</div>
+            <div class="dm-hp-row">
+              <div class="dm-row-label">HP</div>
+              <div class="dm-hp-bar-track"><div class="dm-hp-bar-fill" style="width:100%;background:var(--ocean-accent)"></div></div>
+              <div class="dm-hp-nums" style="color:var(--ocean-bright)">32 / 32</div>
+            </div>
+            <!-- Full coin mode: DM card shows GP + a note that it's full mode -->
+            <div class="dm-coin-row">
+              <div class="dm-row-label">GP</div>
+              <div class="dm-gp-badge" style="border-color:rgba(138,180,200,0.35);background:rgba(138,180,200,0.07);color:var(--ocean-gem)">312 <span class="gp-label" style="color:rgba(138,180,200,0.5)">gp</span></div>
+              <button class="btn-give-coin" onclick="openCoinModal('Eoghan')" style="border-color:rgba(138,180,200,0.3);color:rgba(138,180,200,0.6);">Give Coin</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <hr class="divider" />
+
+    <!-- Party-wide distribute from party actions area -->
+    <div style="font-family:'IM Fell English',serif;font-size:11px;letter-spacing:0.28em;text-transform:uppercase;color:var(--dm-text-muted);margin-bottom:10px;">Party-Wide Actions</div>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button style="background:transparent;border:1px solid var(--dm-border-vis);border-radius:3px;color:var(--dm-text-muted);font-family:'IM Fell English',serif;font-size:12px;letter-spacing:0.14em;padding:7px 16px;cursor:pointer;">Short Rest</button>
+      <button style="background:transparent;border:1px solid var(--dm-border-vis);border-radius:3px;color:var(--dm-text-muted);font-family:'IM Fell English',serif;font-size:12px;letter-spacing:0.14em;padding:7px 16px;cursor:pointer;">Long Rest</button>
+      <button onclick="openCoinModal('Whole Party')" style="background:transparent;border:1px solid rgba(200,160,64,0.3);border-radius:3px;color:rgba(200,160,64,0.7);font-family:'IM Fell English',serif;font-size:12px;letter-spacing:0.14em;padding:7px 16px;cursor:pointer;">Distribute Coin to Party</button>
+    </div>
+  </div>
+
+  <!-- ══ Distribute Coin Modal ══ -->
+  <div class="modal-overlay" id="coinModal">
+    <div class="modal-panel" role="dialog" aria-modal="true">
+      <div class="modal-title">Distribute Coin</div>
+      <div class="modal-sub" id="coinModalTarget">Aragorn</div>
+
+      <!-- Give / Deduct toggle -->
+      <div class="give-deduct-row">
+        <button class="give-deduct-btn active" id="btnGive" onclick="setDirection('give')">Give</button>
+        <button class="give-deduct-btn" id="btnDeduct" onclick="setDirection('deduct')">Deduct</button>
+      </div>
+
+      <!-- Denomination selector -->
+      <div style="font-family:'IM Fell English',serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dm-text-muted);margin-bottom:8px;">Denomination</div>
+      <div class="denom-row">
+        <button class="denom-pill cp" onclick="selectDenom(this)"><span class="dot"></span>CP</button>
+        <button class="denom-pill sp" onclick="selectDenom(this)"><span class="dot"></span>SP</button>
+        <button class="denom-pill ep" onclick="selectDenom(this)"><span class="dot"></span>EP</button>
+        <button class="denom-pill gp active" onclick="selectDenom(this)"><span class="dot"></span>GP</button>
+        <button class="denom-pill pp" onclick="selectDenom(this)"><span class="dot"></span>PP</button>
+      </div>
+
+      <!-- Amount -->
+      <div style="font-family:'IM Fell English',serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dm-text-muted);margin-bottom:8px;">Amount</div>
+      <div class="modal-amount-wrap">
+        <button class="modal-step-btn" onclick="stepCoinModal(-10)">−</button>
+        <input class="modal-amount-input" type="number" id="coinAmountInput" value="50" min="1" />
+        <button class="modal-step-btn" onclick="stepCoinModal(10)">+</button>
+      </div>
+      <div class="modal-presets">
+        <button class="preset-btn" onclick="setCoinAmount(10)">10</button>
+        <button class="preset-btn" onclick="setCoinAmount(25)">25</button>
+        <button class="preset-btn" onclick="setCoinAmount(50)">50</button>
+        <button class="preset-btn" onclick="setCoinAmount(100)">100</button>
+        <button class="preset-btn" onclick="setCoinAmount(200)">200</button>
+        <button class="preset-btn" onclick="setCoinAmount(500)">500</button>
+      </div>
+
+      <!-- Target selector -->
+      <div style="font-family:'IM Fell English',serif;font-size:11px;letter-spacing:0.2em;text-transform:uppercase;color:var(--dm-text-muted);margin-bottom:8px;">To</div>
+      <div class="target-row" id="targetRow">
+        <button class="target-pill" onclick="toggleTarget(this)">Aragorn</button>
+        <button class="target-pill active" onclick="toggleTarget(this)">Eoghan</button>
+        <button class="target-pill" onclick="toggleTarget(this)">Aesop</button>
+        <button class="target-pill all" onclick="toggleAll(this)">All Party</button>
+      </div>
+
+      <div class="modal-footer">
+        <button class="btn-cancel" onclick="closeCoinModal()">Cancel</button>
+        <button class="btn-confirm" onclick="closeCoinModal()">Confirm</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ── Character sheet steppers ── */
+    function stepCoin(denom, delta) {
+      const el = document.getElementById('gpValue');
+      const v = parseInt(el.value) || 0;
+      el.value = Math.max(0, v + delta);
+    }
+    function stepFull(denom, delta) {
+      const el = document.getElementById(denom + 'Val');
+      const v = parseInt(el.value) || 0;
+      el.value = Math.max(0, v + delta);
+    }
+
+    /* ── Coin modal ── */
+    function openCoinModal(target) {
+      document.getElementById('coinModalTarget').textContent = target;
+      const isParty = target === 'Whole Party';
+      // If "Whole Party", select all targets
+      if (isParty) {
+        document.querySelectorAll('.target-pill').forEach(p => p.classList.add('active'));
+      } else {
+        document.querySelectorAll('.target-pill').forEach(p => p.classList.remove('active'));
+        const btns = document.querySelectorAll('.target-pill:not(.all)');
+        btns.forEach(b => { if (b.textContent.trim() === target) b.classList.add('active'); });
+      }
+      document.getElementById('coinModal').classList.add('open');
+    }
+    function closeCoinModal() {
+      document.getElementById('coinModal').classList.remove('open');
+    }
+    function setDirection(dir) {
+      document.getElementById('btnGive').classList.toggle('active', dir === 'give');
+      document.getElementById('btnDeduct').classList.toggle('active', dir === 'deduct');
+    }
+    function selectDenom(el) {
+      // Get all class info to preserve cp/sp/gp etc.
+      const denomClass = [...el.classList].find(c => ['cp','sp','ep','gp','pp'].includes(c));
+      document.querySelectorAll('.denom-pill').forEach(p => p.classList.remove('active'));
+      el.classList.add('active');
+      // Update amount input color to match denomination
+      const colors = { cp:'var(--coin-cp)', sp:'var(--coin-sp)', ep:'var(--coin-ep)', gp:'var(--coin-gp)', pp:'var(--coin-pp)' };
+      document.getElementById('coinAmountInput').style.color = colors[denomClass] || 'var(--coin-gp)';
+    }
+    function stepCoinModal(delta) {
+      const el = document.getElementById('coinAmountInput');
+      el.value = Math.max(1, (parseInt(el.value) || 0) + delta);
+    }
+    function setCoinAmount(val) {
+      document.getElementById('coinAmountInput').value = val;
+    }
+    function toggleTarget(el) {
+      el.classList.toggle('active');
+    }
+    function toggleAll(el) {
+      const pills = document.querySelectorAll('.target-pill:not(.all)');
+      const shouldActivate = !el.classList.contains('active');
+      pills.forEach(p => p.classList.toggle('active', shouldActivate));
+      el.classList.toggle('active', shouldActivate);
+    }
+    // Close on backdrop click
+    document.getElementById('coinModal').addEventListener('click', function(e) {
+      if (e.target === this) closeCoinModal();
+    });
+  </script>
+
+</body>
+</html>

@@ -44,6 +44,7 @@ test("getInitiativeState and getNpcCombatState return normalized defaults", asyn
     getInitiativeState,
     getNpcCombatState,
     getRollHistoryState,
+    getPartyRosterState,
   } = loadModuleWithMocks({
     send: async () => ({ Item: null }),
   });
@@ -51,6 +52,7 @@ test("getInitiativeState and getNpcCombatState return normalized defaults", asyn
   assert.deepEqual(await getInitiativeState(), { entries: [], activeTurnIndex: 0 });
   assert.deepEqual(await getNpcCombatState(), { npcs: [] });
   assert.deepEqual(await getRollHistoryState(), { rolls: [] });
+  assert.deepEqual(await getPartyRosterState(), { exists: false, members: [] });
 });
 
 test("saveInitiativeState, saveNpcCombatState, and saveRollHistoryState persist to sentinel slugs", async () => {
@@ -59,6 +61,7 @@ test("saveInitiativeState, saveNpcCombatState, and saveRollHistoryState persist 
     saveInitiativeState,
     saveNpcCombatState,
     saveRollHistoryState,
+    savePartyRosterState,
   } = loadModuleWithMocks({
     send: async (command) => {
       sent.push(command.input);
@@ -76,6 +79,9 @@ test("saveInitiativeState, saveNpcCombatState, and saveRollHistoryState persist 
   await saveRollHistoryState({
     rolls: [{ id: "roll-1", characterName: "Aragorn", exprLabel: "1d20 + 5", total: 19 }],
   });
+  await savePartyRosterState({
+    members: ["aragorn", "liu-sha"],
+  });
 
   assert.equal(sent[0].Item.slug, "initiative");
   assert.deepEqual(sent[0].Item.entries, [{ id: "entry-1", name: "Aragorn", initiative: 10 }]);
@@ -89,4 +95,89 @@ test("saveInitiativeState, saveNpcCombatState, and saveRollHistoryState persist 
   assert.equal(sent[2].Item.slug, "roll-history");
   assert.deepEqual(sent[2].Item.rolls, [{ id: "roll-1", characterName: "Aragorn", exprLabel: "1d20 + 5", total: 19 }]);
   assert.match(sent[2].Item.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
+
+  assert.equal(sent[3].Item.slug, "party-roster");
+  assert.deepEqual(sent[3].Item.members, ["aragorn", "liu-sha"]);
+  assert.match(sent[3].Item.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
+});
+
+test("getNpcCombatState normalizes legacy npc combat shapes", async () => {
+  const { getNpcCombatState } = loadModuleWithMocks({
+    send: async () => ({
+      Item: {
+        slug: "npc-combat",
+        enemies: [
+          {
+            id: "npc-legacy",
+            name: "Goblin",
+            hpCurrent: 7,
+            hpMax: 7,
+            initiativeId: "entry-legacy",
+          },
+        ],
+      },
+    }),
+  });
+
+  assert.deepEqual(await getNpcCombatState(), {
+    npcs: [
+      {
+        id: "npc-legacy",
+        name: "Goblin",
+        hpCurrent: 7,
+        hpMax: 7,
+        initiativeId: "entry-legacy",
+        initiativeEntryId: "entry-legacy",
+        conditions: [],
+        notes: [],
+      },
+    ],
+  });
+});
+
+test("getMapLibraryState normalizes legacy map content types from file extension", async () => {
+  const { getMapLibraryState } = loadModuleWithMocks({
+    send: async () => ({
+      Item: {
+        slug: "map-library",
+        activeMapId: "map-1",
+        activeMapView: {
+          mapId: "map-1",
+          translate: { x: 120, y: -48 },
+          scale: 1.6,
+          pageNumber: 2,
+          updatedAt: "2026-05-09T00:00:00.000Z",
+        },
+        maps: [
+          { id: "map-1", s3Key: "maps/dungeon.pdf", imageUrl: "https://example.com/maps/dungeon.pdf" },
+          { id: "map-2", s3Key: "maps/forest.webp", imageUrl: "https://example.com/maps/forest.webp" },
+        ],
+      },
+    }),
+  });
+
+  assert.deepEqual(await getMapLibraryState(), {
+    activeMapId: "map-1",
+    activeMapView: {
+      mapId: "map-1",
+      translate: { x: 120, y: -48 },
+      scale: 1.6,
+      pageNumber: 2,
+      updatedAt: "2026-05-09T00:00:00.000Z",
+    },
+    maps: [
+      {
+        id: "map-1",
+        s3Key: "maps/dungeon.pdf",
+        imageUrl: "https://example.com/maps/dungeon.pdf",
+        contentType: "application/pdf",
+      },
+      {
+        id: "map-2",
+        s3Key: "maps/forest.webp",
+        imageUrl: "https://example.com/maps/forest.webp",
+        contentType: "image/webp",
+      },
+    ],
+  });
 });

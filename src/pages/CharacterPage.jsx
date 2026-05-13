@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CharacterSheet, { PALETTES } from "../components/CharacterSheet";
-import { getCharacter, updateCharacter, deleteCharacter } from "../api";
+import { getCharacter, updateCharacter, deleteCharacter, getMapLibrary } from "../api";
 import { useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
 
 export default function CharacterPage() {
@@ -10,6 +10,7 @@ export default function CharacterPage() {
   const [data,    setData]    = useState(null);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
+  const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
   const requestSeqRef = useRef(0);
   const activeRequestCountRef = useRef(0);
 
@@ -62,6 +63,23 @@ export default function CharacterPage() {
     poll: fetchCharacter,
   });
 
+  const fetchMapLibrary = useCallback(async ({ background: _ = false } = {}) => {
+    try {
+      const data = await getMapLibrary();
+      setMapLibrary(data || { activeMapId: null, activeMapView: null, maps: [] });
+    } catch { /* ignore */ }
+  }, []);
+
+  useEffect(() => { fetchMapLibrary(); }, [fetchMapLibrary]);
+
+  useAdaptivePolling({
+    enabled: !!slug,
+    poll: fetchMapLibrary,
+  });
+
+  const activeMap = mapLibrary.maps?.find((m) => m.id === mapLibrary.activeMapId) || null;
+  const activeMapView = activeMap && mapLibrary.activeMapView?.mapId === activeMap.id ? mapLibrary.activeMapView : null;
+
   const handleSave = async (charData, password) => {
     await updateCharacter(slug, charData, password);
     setData(charData);
@@ -111,6 +129,8 @@ export default function CharacterPage() {
       onSave={handleSave}
       onDelete={handleDelete}
       onSessionSync={queueSessionSync}
+      activeMap={activeMap}
+      activeMapView={activeMapView}
     />
   );
 }

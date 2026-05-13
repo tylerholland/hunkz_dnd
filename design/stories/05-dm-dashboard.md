@@ -226,3 +226,21 @@ _Long rest / short rest party-wide actions:_ The frontend fires one `PATCH /sess
 - The no-auth session write path (ADR-005 relaxation) requires explicit product-owner sign-off before `PATCH /session` goes to production. This is the single highest-stakes decision across stories 01–05.
 - Initiative persistence (DynamoDB vs. sessionStorage) is resolved above in favor of DynamoDB — confirm with product owner before building the initiative Lambda.
 - The `GET /dm/party` endpoint requiring DM auth means the frontend must send the DM password on every poll. This password lives in `sessionStorage` (`dnd_dm_password`) per ADR-006 — confirm the product owner is comfortable with the DM password being sent on every 2-second polling request (it's over HTTPS; the main concern is log exposure in API Gateway access logs).
+
+---
+
+## UX Design
+
+**Full design brief**: `design/briefs/dm-dashboard-brief.md`
+
+The comprehensive layout redesign brief covers the entire DM Campaign Dashboard page — layout architecture, combat vs. non-combat state adaptation, section hierarchy with annotated wireframes (desktop and mobile), the map panel, dice roller repositioning, party-wide actions, motion specs for all state transitions, and responsive breakpoints at 1200px+, 900px, 768px, and 375px.
+
+Key design decisions in the brief:
+
+1. **Adaptive 2/3-column layout** — the page uses 2 columns during exploration (party + sidebar) and expands to 3 columns during combat (party + enemies + sidebar). The NPC column appears only when NPCs exist, eliminating empty-column waste.
+2. **Dice roller moves to the right sidebar** — docked below initiative, always visible without scrolling. Auto-expands when combat begins.
+3. **Combat mode transitions** — the page visually communicates the shift between exploration and combat through coordinated animations: map panel collapses, enemy column slides in, Tier 2 card content hides, dice roller expands.
+4. **Mobile sticky initiative bar** — a 44px fixed bar during combat shows the current turn and "Next Turn" button, preventing the need to scroll to the initiative list.
+5. **Map library repositioned** — moves from the middle column to a full-width footer strip, freeing column space for enemy tracking.
+
+The brief treats the Story 16 party card redesign as a fixed constraint and does not modify card internals. Six open questions are flagged for the user's explicit decision.

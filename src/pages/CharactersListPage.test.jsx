@@ -4,11 +4,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
   listCharacters: vi.fn(),
+  getPartyRoster: vi.fn(),
   verifyPassword: vi.fn(),
 }));
 
 vi.mock("../api", () => ({
   listCharacters: apiMocks.listCharacters,
+  getPartyRoster: apiMocks.getPartyRoster,
   verifyPassword: apiMocks.verifyPassword,
 }));
 
@@ -49,6 +51,7 @@ describe("CharactersListPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
+    apiMocks.getPartyRoster.mockResolvedValue({ exists: false, members: [] });
   });
 
   it("renders only valid public character cards when the API response includes internal or malformed rows", async () => {
@@ -71,5 +74,18 @@ describe("CharactersListPage", () => {
     expect(screen.queryByText("?")).not.toBeInTheDocument();
 
     expect(screen.getByText("New Character")).toBeInTheDocument();
+  });
+
+  it("shows an In Party badge for roster members", async () => {
+    apiMocks.listCharacters.mockResolvedValueOnce([
+      { slug: "aragorn", name: "Aragorn", palette: "ember", race: "Human", charClass: "Ranger", level: 4 },
+      { slug: "liu-sha", name: "Liu Sha", palette: "ocean", race: "Goliath", charClass: "Monk", level: 1 },
+    ]);
+    apiMocks.getPartyRoster.mockResolvedValueOnce({ exists: true, members: ["liu-sha"] });
+
+    renderPage();
+
+    expect(await screen.findByText("Liu Sha")).toBeInTheDocument();
+    expect(screen.getByText("In Party")).toBeInTheDocument();
   });
 });

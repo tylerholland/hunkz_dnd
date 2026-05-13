@@ -81,7 +81,9 @@ Resources:
           - Effect: Allow
             Principal: "*"
             Action: s3:GetObject
-            Resource: !Sub "${PortraitsBucket.Arn}/portraits/*"
+            Resource:
+              - !Sub "${PortraitsBucket.Arn}/portraits/*"
+              - !Sub "${PortraitsBucket.Arn}/maps/*"
 
   # ── Lambda functions ──────────────────────────────────────────────────────────
   ListFunction:
@@ -221,6 +223,21 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
 
+  DmNotesFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/dmNotes.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /characters/{slug}/dm-notes
+            Method: patch
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
   DmPartyFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -234,6 +251,36 @@ Resources:
             ApiId: !Ref CharactersApi
       Policies:
         - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
+  GetPartyRosterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getPartyRoster.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /party-roster
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
+  PutPartyRosterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/putPartyRoster.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /party-roster
+            Method: put
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
 
   InitiativeFunction:
@@ -301,6 +348,115 @@ Resources:
       Policies:
         - DynamoDBReadPolicy:
             TableName: !Ref CharactersTable
+
+  GetMapLibraryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getMapLibrary.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
+  MapPresignFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/mapPresign.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps/presign
+            Method: post
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+        - S3WritePolicy:
+            BucketName: !Ref PortraitsBucket
+
+  PostMapFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/postMap.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps
+            Method: post
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
+  PutMapActiveFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/putMapActive.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps/active
+            Method: put
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
+  PutMapViewFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/putMapView.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps/view
+            Method: put
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
+  PatchMapFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/patchMap.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps/{mapId}
+            Method: patch
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
+  DeleteMapFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/deleteMap.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps/{mapId}
+            Method: delete
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+        - S3WritePolicy:
+            BucketName: !Ref PortraitsBucket
 
 Outputs:
   ApiUrl:

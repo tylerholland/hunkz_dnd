@@ -16,6 +16,10 @@ const SESSION_FIELDS = [
   "inspiration",
   "weapons",
   "equipment",
+  "playerNotes",
+  "hitDiceCurrent",
+  "xpCurrent",
+  "coin",
 ];
 
 exports.handler = async (event) => {
