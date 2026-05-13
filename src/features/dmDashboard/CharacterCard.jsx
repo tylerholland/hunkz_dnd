@@ -427,7 +427,7 @@ function DamageHealModal({ char, mode, dmPassword, onClose, onOptimisticUpdate, 
   );
 }
 
-function QuickActionPopover({ char, dmPassword, onClose, onUpdate, onOpenHpModal, initialMode = null, initialVal = "" }) {
+function QuickActionPopover({ char, onClose, onUpdate, onOpenHpModal, onCommitFields, initialMode = null, initialVal = "" }) {
   const pal = useContext(PalCtx);
   const [mode, setMode] = useState(initialMode);
   const [inputVal, setInputVal] = useState(initialVal);
@@ -445,23 +445,26 @@ function QuickActionPopover({ char, dmPassword, onClose, onUpdate, onOpenHpModal
   async function applyConditions() {
     const existing = char.conditions || [];
     const merged = Array.from(new Set([...existing, ...selectedConds]));
-    await patchSession(char.slug, { conditions: merged }, dmPassword);
-    onUpdate();
-    onClose();
+    const success = await onCommitFields?.({ conditions: merged });
+    if (success !== false) {
+      setSelectedConds([]);
+      onClose();
+    }
   }
 
   async function applyTempHp() {
     const value = parseInt(inputVal, 10);
     if (isNaN(value) || value < 0) return;
-    await patchSession(char.slug, { tempHP: value }, dmPassword);
-    onUpdate();
-    onClose();
+    const success = await onCommitFields?.({ tempHP: value });
+    if (success !== false) {
+      setInputVal("");
+      onClose();
+    }
   }
 
   async function clearConcentration() {
-    await patchSession(char.slug, { concentration: { active: false, spell: "" } }, dmPassword);
-    onUpdate();
-    onClose();
+    const success = await onCommitFields?.({ concentration: { active: false, spell: "" } });
+    if (success !== false) onClose();
   }
 
   const actionStyle = {
@@ -910,7 +913,7 @@ function NotesStrip({ slug, dmNotes: initialDmNotes, sharedPlayerNotes, dmPasswo
   );
 }
 
-export default function CharacterCard({ char, dmPassword, onUpdate, onRegisterOpen, isActiveTurn = false, allParty = [] }) {
+export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSessionUpdates, onRegisterOpen, isActiveTurn = false, allParty = [] }) {
   const pal = useContext(PalCtx);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [modalMode, setModalMode] = useState(null);
@@ -1038,10 +1041,26 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onRegisterOp
   const coinEquivalent = formatGpEquivalent(displayCoin);
   const metaParts = [toTitleCase(char.race), toTitleCase(char.charClass), char.level ? `Lvl ${char.level}` : null].filter(Boolean);
 
+  const commitSessionFields = useCallback(async (fields) => {
+    if (!fields || typeof fields !== "object") return false;
+
+    if (onCommitSessionUpdates) {
+      return onCommitSessionUpdates([{ slug: char.slug, ...fields }]);
+    }
+
+    try {
+      await patchSession(char.slug, fields, dmPassword);
+      onUpdate();
+      return true;
+    } catch {
+      onUpdate();
+      return false;
+    }
+  }, [char.slug, dmPassword, onCommitSessionUpdates, onUpdate]);
+
   async function removeCondition(cond) {
     const updated = conditions.filter((condition) => condition !== cond);
-    await patchSession(char.slug, { conditions: updated }, dmPassword);
-    onUpdate();
+    await commitSessionFields({ conditions: updated });
   }
 
   const initial = (char.name || "?").charAt(0).toUpperCase();
@@ -1404,10 +1423,10 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onRegisterOp
           {popoverOpen && (
             <QuickActionPopover
               char={char}
-              dmPassword={dmPassword}
               onClose={() => setPopoverOpen(false)}
               onUpdate={handlePopoverUpdate}
               onOpenHpModal={setModalMode}
+              onCommitFields={commitSessionFields}
             />
           )}
         </div>

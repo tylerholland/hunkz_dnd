@@ -77,7 +77,7 @@ function getNpcHpTone(npcPal, hpPct) {
   };
 }
 
-function NpcDamageHealModal({ npc, mode, onClose, onOptimisticUpdate, onConfirm }) {
+function NpcDamageHealModal({ npc, mode, onClose, onConfirm }) {
   const pal = useContext(PalCtx);
   const [amount, setAmount] = useState(0);
   const isHeal = mode === "heal";
@@ -88,7 +88,6 @@ function NpcDamageHealModal({ npc, mode, onClose, onOptimisticUpdate, onConfirm 
 
   function confirm() {
     const newHp = isHeal ? Math.min(npc.hpMax, npc.hpCurrent + amount) : npc.hpCurrent - amount;
-    onOptimisticUpdate(newHp);
     onConfirm(newHp);
     onClose();
   }
@@ -152,7 +151,7 @@ function NpcConditionPicker({ npc, onAdd, onClose }) {
   );
 }
 
-function NpcNotesStrip({ npc, allNpcsRef, dmPassword, onUpdate, pal, npcPal }) {
+function NpcNotesStrip({ npc, allNpcsRef, onCommitNpcs, pal, npcPal }) {
   const [open, setOpen] = useState(false);
   const [inputVal, setInputVal] = useState("");
   const inputRef = useRef(null);
@@ -168,41 +167,19 @@ function NpcNotesStrip({ npc, allNpcsRef, dmPassword, onUpdate, pal, npcPal }) {
     const updatedNpcs = (allNpcsRef.current || []).map((entry) =>
       entry.id === npc.id ? { ...entry, notes: [...(entry.notes || []), newNote] } : entry
     );
-    // Optimistic update via ref
-    allNpcsRef.current = updatedNpcs;
     setInputVal("");
     inputRef.current?.focus();
-    try {
-      await putNpcCombat(dmPassword, { npcs: updatedNpcs });
-      onUpdate();
-    } catch {
-      // Revert
-      const reverted = (allNpcsRef.current || []).map((entry) =>
-        entry.id === npc.id ? { ...entry, notes: (entry.notes || []).filter((n) => n.id !== localId) } : entry
-      );
-      allNpcsRef.current = reverted;
-      onUpdate();
+    const success = await onCommitNpcs(updatedNpcs);
+    if (success === false) {
+      setInputVal(text);
     }
   }
 
   async function handleDelete(id) {
-    const removed = (npc.notes || []).find((n) => n.id === id);
     const updatedNpcs = (allNpcsRef.current || []).map((entry) =>
       entry.id === npc.id ? { ...entry, notes: (entry.notes || []).filter((n) => n.id !== id) } : entry
     );
-    allNpcsRef.current = updatedNpcs;
-    try {
-      await putNpcCombat(dmPassword, { npcs: updatedNpcs });
-      onUpdate();
-    } catch {
-      if (removed) {
-        const reverted = (allNpcsRef.current || []).map((entry) =>
-          entry.id === npc.id ? { ...entry, notes: [...(entry.notes || []), removed] } : entry
-        );
-        allNpcsRef.current = reverted;
-        onUpdate();
-      }
-    }
+    await onCommitNpcs(updatedNpcs);
   }
 
   function handleToggle() {
@@ -296,8 +273,7 @@ function NpcCard({
   allNpcsRef,
   isActiveTurn,
   isInInitiative,
-  dmPassword,
-  onUpdate,
+  onCommitNpcs,
   onOpenModal,
   onOpenConditions,
   onRemove,
@@ -332,8 +308,9 @@ function NpcCard({
   );
   const commitHp = useCallback(async (targetHp) => {
     const updatedNpcs = (allNpcsRef.current || []).map((entry) => entry.id === npc.id ? { ...entry, hpCurrent: targetHp } : entry);
-    await putNpcCombat(dmPassword, { npcs: updatedNpcs });
-  }, [allNpcsRef, dmPassword, npc.id]);
+    const success = await onCommitNpcs(updatedNpcs);
+    if (success === false) throw new Error("Failed to update NPC HP");
+  }, [allNpcsRef, npc.id, onCommitNpcs]);
   const rollbackHp = useCallback((previousServerHp) => {
     optimisticHpRef.current = previousServerHp;
     setOptimisticHp(previousServerHp);
@@ -348,7 +325,6 @@ function NpcCard({
     pendingDeltaRef,
     commitValue: commitHp,
     setLocalValue: rollbackHp,
-    requestSync: onUpdate,
   });
 
   function applyDelta(delta) {
@@ -478,7 +454,7 @@ function NpcCard({
                 onClick={() => {
                   const updated = conditions.filter((value) => value !== condition);
                   const updatedNpcs = (allNpcsRef.current || []).map((entry) => entry.id === npc.id ? { ...entry, conditions: updated } : entry);
-                  putNpcCombat(dmPassword, { npcs: updatedNpcs }).then(onUpdate).catch(() => {});
+                  onCommitNpcs(updatedNpcs);
                 }}
                 style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", padding: "2px 8px", borderRadius: 10, cursor: "pointer", background: "rgba(140,110,180,0.14)", border: "1px solid rgba(140,110,180,0.38)", color: "#c098e0" }}
                 title="Click to remove"
@@ -506,7 +482,7 @@ function NpcCard({
           </>
         )}
       </div>
-      <NpcNotesStrip npc={npc} allNpcsRef={allNpcsRef} dmPassword={dmPassword} onUpdate={onUpdate} pal={pal} npcPal={npcPal} />
+      <NpcNotesStrip npc={npc} allNpcsRef={allNpcsRef} onCommitNpcs={onCommitNpcs} pal={pal} npcPal={npcPal} />
     </div>
   );
 }
@@ -560,6 +536,29 @@ export default function NpcCombatSection({
   const activeNpcs = npcWithLinks.filter((value) => value.isInInitiative).sort((a, b) => a.initiativeIndex - b.initiativeIndex);
   const inactiveNpcs = npcWithLinks.filter((value) => !value.isInInitiative);
 
+  const commitNpcList = useCallback(async (updatedNpcs) => {
+    allNpcsRef.current = updatedNpcs;
+
+    if (onCommitNpcCombat) {
+      const success = await onCommitNpcCombat({ npcs: updatedNpcs }, { optimistic: true });
+      if (success === false) {
+        allNpcsRef.current = npcCombat.npcs || [];
+        return false;
+      }
+      return true;
+    }
+
+    try {
+      await putNpcCombat(dmPassword, { npcs: updatedNpcs });
+      onUpdate();
+      return true;
+    } catch {
+      allNpcsRef.current = npcCombat.npcs || [];
+      onUpdate();
+      return false;
+    }
+  }, [dmPassword, npcCombat.npcs, onCommitNpcCombat, onUpdate]);
+
   async function handleAddNpcs() {
     if (!addName.trim() || !addHp) return;
     const hpMax = parseInt(addHp, 10);
@@ -574,67 +573,42 @@ export default function NpcCombatSection({
       initiativeEntryId: null,
     }));
     const updated = [...npcs, ...newNpcs];
-    allNpcsRef.current = updated;
     setAddName("");
     setAddHp("");
     setAddCount(1);
-    if (onCommitNpcCombat) {
-      await onCommitNpcCombat({ npcs: updated }, { optimistic: true });
-    } else {
-      try {
-        await putNpcCombat(dmPassword, { npcs: updated });
-        onUpdate();
-      } catch {}
-    }
+    await commitNpcList(updated);
   }
 
   async function handleRemoveNpc(npcId) {
     const updated = npcs.filter((entry) => entry.id !== npcId);
-    allNpcsRef.current = updated;
-    if (onCommitNpcCombat) {
-      await onCommitNpcCombat({ npcs: updated }, { optimistic: true });
-    } else {
-      try {
-        await putNpcCombat(dmPassword, { npcs: updated });
-        onUpdate();
-      } catch {}
-    }
+    await commitNpcList(updated);
   }
 
   async function handleEndCombat() {
-    allNpcsRef.current = [];
-    if (onCommitNpcCombat) {
-      await onCommitNpcCombat({ npcs: [] }, { optimistic: true });
+    const success = await commitNpcList([]);
+    if (success !== false) {
       setShowEndConfirm(false);
-    } else {
-      try {
-        await putNpcCombat(dmPassword, { npcs: [] });
-        setShowEndConfirm(false);
-        onUpdate();
-      } catch {}
     }
-  }
-
-  function handleModalOptimistic(npcId, newHp) {
-    allNpcsRef.current = (allNpcsRef.current || []).map((entry) => entry.id === npcId ? { ...entry, hpCurrent: newHp } : entry);
   }
 
   async function handleModalConfirm(npcId, newHp) {
     const updated = (allNpcsRef.current || []).map((entry) => entry.id === npcId ? { ...entry, hpCurrent: newHp } : entry);
-    try {
-      await putNpcCombat(dmPassword, { npcs: updated });
-      onUpdate();
-    } catch {}
+    await commitNpcList(updated);
   }
 
   async function handleAddCondition(npcId, cond) {
     if (!cond) return;
-    const updated = (allNpcsRef.current || []).map((entry) => entry.id === npcId && !entry.conditions.includes(cond) ? { ...entry, conditions: [...entry.conditions, cond] } : entry);
-    try {
-      await putNpcCombat(dmPassword, { npcs: updated });
+    const updated = (allNpcsRef.current || []).map((entry) => {
+      if (entry.id !== npcId) return entry;
+      const conditions = Array.isArray(entry.conditions) ? entry.conditions : [];
+      return conditions.includes(cond)
+        ? entry
+        : { ...entry, conditions: [...conditions, cond] };
+    });
+    const success = await commitNpcList(updated);
+    if (success !== false) {
       setCondTarget(null);
-      onUpdate();
-    } catch {}
+    }
   }
 
   return (
@@ -671,8 +645,7 @@ export default function NpcCombatSection({
                   allNpcsRef={allNpcsRef}
                   isInInitiative={isInInitiative}
                   isActiveTurn={activeTurnNpcId === npc.id || (activeTurnEntryId !== null && getNpcInitiativeEntryId(npc) === activeTurnEntryId) || (!!activeTurnNpcName && (npc.name || "").trim().toLowerCase() === activeTurnNpcName)}
-                  dmPassword={dmPassword}
-                  onUpdate={onUpdate}
+                  onCommitNpcs={commitNpcList}
                   onOpenModal={(mode) => setModalTarget({ npc, mode })}
                   onOpenConditions={() => setCondTarget(npc)}
                   onToggleInitiative={() => onRemoveNpcFromInitiative?.(npc.id)}
@@ -694,8 +667,7 @@ export default function NpcCombatSection({
                   allNpcsRef={allNpcsRef}
                   isInInitiative={isInInitiative}
                   isActiveTurn={false}
-                  dmPassword={dmPassword}
-                  onUpdate={onUpdate}
+                  onCommitNpcs={commitNpcList}
                   onOpenModal={(mode) => setModalTarget({ npc, mode })}
                   onOpenConditions={() => setCondTarget(npc)}
                   onToggleInitiative={() => onAddNpcToInitiative?.(npc.id)}
@@ -733,7 +705,6 @@ export default function NpcCombatSection({
           npc={modalTarget.npc}
           mode={modalTarget.mode}
           onClose={() => setModalTarget(null)}
-          onOptimisticUpdate={(newHp) => handleModalOptimistic(modalTarget.npc.id, newHp)}
           onConfirm={(newHp) => handleModalConfirm(modalTarget.npc.id, newHp)}
         />
       )}

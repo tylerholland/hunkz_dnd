@@ -16,7 +16,7 @@ import {
   useDashboardStyles,
 } from "../features/dmDashboard/dashboardShared";
 import { PALETTES } from "../features/characterSheet/theme";
-import { useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
+import { cloneLiveValue, useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
 
 export default function DmDashboardPage() {
   useDashboardStyles();
@@ -42,11 +42,16 @@ export default function DmDashboardPage() {
   const cardOpenFnsRef = useRef({});
   const requestSeqRef = useRef(0);
   const activeRequestCountRef = useRef(0);
+  const partyRef = useRef(party);
   const initiativeServerRef = useRef(initiative);
   const initiativeExpectedRef = useRef(null);
   const initiativeWriteInFlightRef = useRef(false);
   const queuedInitiativeRef = useRef(null);
   const npcCombatServerRef = useRef(npcCombat);
+
+  useEffect(() => {
+    partyRef.current = party;
+  }, [party]);
 
   const fetchRosterContext = useCallback(async () => {
     const [characters, rosterData] = await Promise.all([
@@ -105,6 +110,52 @@ export default function DmDashboardPage() {
 
   const queueDashboardRefresh = useQueuedRefresh(fetchDashboardData);
 
+  const applyPartyOptimisticUpdates = useCallback((updates) => {
+    if (!Array.isArray(updates) || updates.length === 0) return;
+
+    const updatesBySlug = new Map(
+      updates
+        .filter((update) => update && typeof update.slug === "string" && update.slug.trim())
+        .map((update) => [update.slug, update])
+    );
+
+    setParty((current) => current.map((character) => {
+      const update = updatesBySlug.get(character.slug);
+      return update ? { ...character, ...update } : character;
+    }));
+  }, []);
+
+  const commitPartySessionUpdates = useCallback(async (updates) => {
+    if (!dmPassword || !Array.isArray(updates) || updates.length === 0) return false;
+
+    const snapshot = partyRef.current;
+    const snapshotBySlug = new Map(snapshot.map((character) => [character.slug, character]));
+    const validUpdates = updates.filter((update) => update && typeof update.slug === "string" && update.slug.trim());
+    if (validUpdates.length === 0) return false;
+
+    const reverts = validUpdates.map((update) => {
+      const current = snapshotBySlug.get(update.slug) || {};
+      const revert = { slug: update.slug };
+      Object.keys(update).forEach((key) => {
+        if (key === "slug") return;
+        revert[key] = cloneLiveValue(current[key]);
+      });
+      return revert;
+    });
+
+    applyPartyOptimisticUpdates(validUpdates);
+
+    try {
+      await Promise.all(validUpdates.map(({ slug, ...fields }) => patchSession(slug, fields, dmPassword)));
+      queueDashboardRefresh(0);
+      return true;
+    } catch {
+      applyPartyOptimisticUpdates(reverts);
+      queueDashboardRefresh(0);
+      return false;
+    }
+  }, [applyPartyOptimisticUpdates, dmPassword, queueDashboardRefresh]);
+
   const commitNpcCombatUpdate = useCallback(async (nextNpcCombat, { optimistic = false } = {}) => {
     if (!dmPassword) return;
 
@@ -120,9 +171,11 @@ export default function DmDashboardPage() {
       await putNpcCombat(dmPassword, normalized);
       npcCombatServerRef.current = normalized;
       queueDashboardRefresh(0);
+      return true;
     } catch {
       setNpcCombat(npcCombatServerRef.current);
       queueDashboardRefresh(0);
+      return false;
     }
   }, [dmPassword, queueDashboardRefresh]);
 
@@ -175,12 +228,11 @@ export default function DmDashboardPage() {
   }, []);
 
   const handleApplyNpcDamage = useCallback(async (npcId, amount) => {
-    setNpcCombat((prev) => {
-      const updated = (prev.npcs || []).map((npc) => npc.id === npcId ? { ...npc, hpCurrent: npc.hpCurrent - amount } : npc);
-      putNpcCombat(dmPassword, { npcs: updated }).then(() => queueDashboardRefresh(0)).catch(() => {});
-      return { npcs: updated };
-    });
-  }, [dmPassword, queueDashboardRefresh]); // eslint-disable-line react-hooks/exhaustive-deps
+    const updated = (npcCombat.npcs || []).map((npc) => (
+      npc.id === npcId ? { ...npc, hpCurrent: npc.hpCurrent - amount } : npc
+    ));
+    await commitNpcCombatUpdate({ npcs: updated }, { optimistic: true });
+  }, [commitNpcCombatUpdate, npcCombat.npcs]);
 
   const handlePromoteToNpc = useCallback(async (entryId, hpMax) => {
     const entry = initiative.entries.find((value) => value.id === entryId);
@@ -433,34 +485,34 @@ export default function DmDashboardPage() {
 
   async function doLongRest() {
     setConfirmDialog(null);
-    await Promise.all(
-      party.map((char) => {
-        const level = char.level || 1;
-        const hdCurrent = char.hitDiceCurrent ?? level;
-        const hdRestore = Math.max(1, Math.floor(level / 2));
-        const hitDiceCurrent = Math.min(level, hdCurrent + hdRestore);
-        return patchSession(char.slug, {
-          hpCurrent: char.hpMax ?? char.hp ?? 0,
-          spellSlots: Array.isArray(char.spellSlots) ? char.spellSlots.map((slot) => ({ ...slot, used: 0 })) : char.spellSlots,
-          hitDiceCurrent,
-        }, dmPassword);
-      })
-    );
+    const updates = partyRef.current.map((char) => {
+      const level = char.level || 1;
+      const hdCurrent = char.hitDiceCurrent ?? level;
+      const hdRestore = Math.max(1, Math.floor(level / 2));
+      const hitDiceCurrent = Math.min(level, hdCurrent + hdRestore);
+      return {
+        slug: char.slug,
+        hpCurrent: char.hpMax ?? char.hp ?? 0,
+        spellSlots: Array.isArray(char.spellSlots) ? char.spellSlots.map((slot) => ({ ...slot, used: 0 })) : char.spellSlots,
+        hitDiceCurrent,
+      };
+    });
+    const success = await commitPartySessionUpdates(updates);
+    if (!success) return;
     setRestNotice("Long rest applied — all HP, spell slots, and Hit Dice restored.");
     setTimeout(() => setRestNotice(""), 4000);
-    queueDashboardRefresh(0);
   }
 
   async function doShortRest() {
     setConfirmDialog(null);
-    await Promise.all(
-      party.map((char) => patchSession(char.slug, {
-        spellSlots: Array.isArray(char.spellSlots) ? char.spellSlots.map((slot) => slot.isPactMagic ? { ...slot, used: 0 } : slot) : char.spellSlots,
-      }, dmPassword))
-    );
+    const updates = partyRef.current.map((char) => ({
+      slug: char.slug,
+      spellSlots: Array.isArray(char.spellSlots) ? char.spellSlots.map((slot) => slot.isPactMagic ? { ...slot, used: 0 } : slot) : char.spellSlots,
+    }));
+    const success = await commitPartySessionUpdates(updates);
+    if (!success) return;
     setRestNotice("Short rest applied — Pact Magic slots restored.");
     setTimeout(() => setRestNotice(""), 4000);
-    queueDashboardRefresh(0);
   }
 
   if (!authed) {
@@ -586,6 +638,7 @@ export default function DmDashboardPage() {
                     char={char}
                     dmPassword={dmPassword}
                     onUpdate={handleCardUpdate}
+                    onCommitSessionUpdates={commitPartySessionUpdates}
                     onRegisterOpen={handleRegisterOpen}
                     isActiveTurn={activeTurnSlug === char.slug}
                     allParty={party}
@@ -692,7 +745,7 @@ export default function DmDashboardPage() {
             dmPassword={dmPassword}
             onClose={() => setShowAwardXpParty(false)}
             onUpdate={() => queueDashboardRefresh(0)}
-            onOptimisticUpdate={(updates) => setParty((prev) => prev.map((c) => { const u = updates.find((u) => u.slug === c.slug); return u ? { ...c, xpCurrent: u.xpCurrent } : c; }))}
+            onOptimisticUpdate={applyPartyOptimisticUpdates}
             forParty={true}
             party={party}
           />
@@ -704,7 +757,7 @@ export default function DmDashboardPage() {
             dmPassword={dmPassword}
             onClose={() => setShowDistributeCoinParty(false)}
             onUpdate={() => queueDashboardRefresh(0)}
-            onOptimisticUpdate={(updates) => setParty((prev) => prev.map((c) => { const u = updates.find((u) => u.slug === c.slug); return u ? { ...c, coin: u.coin } : c; }))}
+            onOptimisticUpdate={applyPartyOptimisticUpdates}
             forParty={true}
             party={party}
           />
