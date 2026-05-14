@@ -3,59 +3,7 @@ import { postCharacterRoll } from "../api";
 import RollHistoryList from "./RollHistoryList";
 import { buildCharacterRollPayload, buildDiceExprLabel, buildLocalRollHistoryEntry } from "../lib/rollHistory";
 import { PALETTES } from "../features/characterSheet/theme";
-
-// ── Dice roller CSS keyframes ──────────────────────────────────────────────────
-const DICE_CSS = `
-@keyframes dr-spin-in {
-  0%   { transform: rotate(0deg) scale(0.6); opacity: 0.4; }
-  60%  { transform: rotate(380deg) scale(1.08); opacity: 1; }
-  80%  { transform: rotate(355deg) scale(0.97); }
-  100% { transform: rotate(360deg) scale(1); opacity: 1; }
-}
-@keyframes dr-land-normal {
-  0%   { filter: drop-shadow(0 0 0px rgba(200,144,76,0)); }
-  40%  { filter: drop-shadow(0 0 18px rgba(200,144,76,0.7)); }
-  100% { filter: drop-shadow(0 0 6px rgba(200,144,76,0.2)); }
-}
-@keyframes dr-land-crit {
-  0%   { filter: drop-shadow(0 0 0px rgba(255,200,40,0)); }
-  35%  { filter: drop-shadow(0 0 28px rgba(255,200,40,0.9)); }
-  100% { filter: drop-shadow(0 0 10px rgba(255,200,40,0.4)); }
-}
-@keyframes dr-land-fumble {
-  0%   { filter: drop-shadow(0 0 0px rgba(192,60,60,0)); }
-  35%  { filter: drop-shadow(0 0 28px rgba(192,60,60,0.9)); }
-  100% { filter: drop-shadow(0 0 10px rgba(192,60,60,0.3)); }
-}
-@keyframes dr-num-cycle {
-  0%   { opacity: 0.5; transform: translateY(4px); }
-  100% { opacity: 1; transform: translateY(0); }
-}
-@keyframes dr-reveal-num {
-  0%   { transform: scale(0.5) translateY(8px); opacity: 0; }
-  70%  { transform: scale(1.15) translateY(-2px); opacity: 1; }
-  100% { transform: scale(1) translateY(0); opacity: 1; }
-}
-@keyframes dr-crit-pulse {
-  0%   { transform: scale(1); }
-  30%  { transform: scale(1.35); }
-  60%  { transform: scale(1.2); }
-  100% { transform: scale(1); }
-}
-@keyframes dr-fumble-shake {
-  0%   { transform: translateX(0); }
-  20%  { transform: translateX(-6px) rotate(-3deg); }
-  40%  { transform: translateX(6px) rotate(3deg); }
-  60%  { transform: translateX(-4px) rotate(-2deg); }
-  80%  { transform: translateX(4px) rotate(2deg); }
-  100% { transform: translateX(0); }
-}
-@keyframes dr-group-reveal {
-  0%   { opacity: 0; transform: scale(0.7) translateY(6px); }
-  70%  { opacity: 1; transform: scale(1.08) translateY(-1px); }
-  100% { opacity: 1; transform: scale(1) translateY(0); }
-}
-`;
+import "./diceRoller.css";
 
 // ── Pure utility functions ─────────────────────────────────────────────────────
 
@@ -265,7 +213,6 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
 
   const rollAbility = (stat) => {
     const mod = getAbilityMod(stat);
-    const short = STAT_SHORT[stat.name] || stat.name.slice(0, 3).toUpperCase();
     executeRoll({ groups: [{ count: 1, sides: 20 }], flat: mod, label: `${stat.name} Check`, isD20Attack: true });
   };
 
@@ -328,6 +275,7 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
   const rollerWeapons = weapons.filter(w => getAttackBonus(w) !== null || getDamage(w) !== null);
 
   const { result, rolling } = rollState;
+  // Dynamic: crit/fumble colors change per roll result
   const resultColor = result?.isCrit ? "#ffd060" : result?.isFumble ? "#c06060" : pal.gem;
   const resultNumAnim = result?.isCrit
     ? "dr-crit-pulse 0.7s ease-out"
@@ -335,473 +283,442 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
     ? "dr-fumble-shake 0.5s ease-out"
     : "dr-reveal-num 0.4s cubic-bezier(0.2,0,0.1,1) forwards";
 
-  // ── Shared micro-styles ───────────────────────────────────────────────────────
-  const subLabel = {
-    fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em",
-    textTransform: "uppercase", color: pal.textMuted, marginBottom: 10,
-  };
-  const divider = { border: "none", borderTop: `1px solid ${pal.border}`, margin: "14px 0" };
+  // Dynamic: vellum palette gets a different roll button background
   const primaryRollBg = pal === PALETTES.vellum ? pal.accentDim : "rgba(18,58,78,0.4)";
-  const rollBtnStyle = (variant) => ({
-    fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.10em",
-    padding: "4px 10px", borderRadius: 3, cursor: rolling ? "not-allowed" : "pointer",
-    opacity: rolling ? 0.45 : 1, transition: "all 0.15s", whiteSpace: "nowrap",
-    border: variant === "atk" ? `1px solid ${pal.accent}` : `1px solid ${pal.border}`,
-    background: variant === "atk" ? pal.accentDim : "transparent",
-    color: variant === "atk" ? pal.accentBright : pal.textMuted,
-  });
 
   return (
-    <>
-      <style>{DICE_CSS}</style>
-      <div style={{
-        background: pal.surface, border: `1px solid ${pal.border}`,
-        borderRadius: 4, padding: "16px 18px", marginTop: 16,
-      }}>
-        {/* Header */}
-        <div
-          onClick={toggleOpen}
-          style={{ display: "flex", alignItems: "center", justifyContent: "space-between", cursor: "pointer", userSelect: "none" }}
-        >
-          <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.26em", textTransform: "uppercase", color: pal.textMuted }}>
-            Dice
-          </div>
-          <span style={{
-            fontFamily: pal.fontUI, fontSize: 11, color: pal.textMuted,
-            transition: "transform 0.2s", display: "inline-block",
-            transform: isOpen ? "rotate(180deg)" : "rotate(0deg)",
-          }}>▼</span>
-        </div>
+    <div
+      className="dice-roller-panel"
+      style={{
+        "--pal-surface":       pal.surface,
+        "--pal-surface-solid": pal.surfaceSolid,
+        "--pal-border":        pal.border,
+        "--pal-accent":        pal.accent,
+        "--pal-accent-bright": pal.accentBright,
+        "--pal-accent-dim":    pal.accentDim,
+        "--pal-text":          pal.text,
+        "--pal-text-body":     pal.textBody,
+        "--pal-text-muted":    pal.textMuted,
+        "--pal-gem":           pal.gem,
+        "--pal-gem-low":       pal.gemLow,
+      }}
+    >
+      {/* Header */}
+      <div
+        onClick={toggleOpen}
+        className="flex-row-spread"
+        style={{ cursor: "pointer", userSelect: "none" }}
+      >
+        <span className="label-ui" style={{ marginBottom: 0 }}>Dice</span>
+        <span className={`dice-chevron${isOpen ? " open" : ""}`}>▼</span>
+      </div>
 
-        {isOpen && (
-          <div style={{ marginTop: 14 }}>
+      {isOpen && (
+        <div style={{ marginTop: 14 }}>
 
-            {/* Advantage strip */}
-            <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 2 }}>
-              <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, marginRight: 4 }}>d20 mode</span>
-              {["normal", "advantage", "disadvantage"].map(mode => {
-                const isActive = advMode === mode;
-                const activeColors = mode === "advantage"
-                  ? { border: "#5a9a60", bg: "rgba(60,130,60,0.18)", color: "#88c888" }
-                  : mode === "disadvantage"
-                  ? { border: "#9a5a5a", bg: "rgba(130,60,60,0.18)", color: "#c88888" }
-                  : { border: pal.accent, bg: pal.accentDim, color: pal.accentBright };
-                const label = mode === "normal" ? "Normal" : mode === "advantage" ? "Advantage" : "Disadv.";
-                return (
-                  <button
-                    key={mode}
-                    onClick={() => setAdvMode(mode)}
-                    style={{
-                      fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.12em",
-                      padding: "3px 10px", borderRadius: 3, cursor: "pointer",
-                      border: `1px solid ${isActive ? activeColors.border : pal.border}`,
-                      background: isActive ? activeColors.bg : "transparent",
-                      color: isActive ? activeColors.color : pal.textMuted,
-                      transition: "all 0.15s",
-                    }}
-                  >{label}</button>
-                );
-              })}
-            </div>
-
-            <hr style={divider} />
-
-            {/* Weapons */}
-            <div style={subLabel}>Weapons</div>
-            {rollerWeapons.length > 0 ? (
-              rollerWeapons.map((w, wi) => {
-                const atk = getAttackBonus(w);
-                const dmg = getDamage(w);
-                return (
-                  <div key={w.id || wi} style={{
-                    display: "flex", alignItems: "center", gap: 8, paddingBottom: 8,
-                    borderBottom: wi < rollerWeapons.length - 1 ? `1px solid ${pal.border}` : "none",
-                    marginBottom: 8,
-                  }}>
-                    <span style={{ flex: 1, fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{w.name}</span>
-                    {atk !== null && (
-                      <button disabled={rolling} onClick={() => rollWeaponAtk(w)} style={rollBtnStyle("atk")}>
-                        ATK {fmtMod(atk)}
-                      </button>
-                    )}
-                    {dmg && (
-                      <button disabled={rolling} onClick={() => rollWeaponDmg(w)} style={rollBtnStyle("dmg")}>
-                        DMG {dmg}
-                      </button>
-                    )}
-                  </div>
-                );
-              })
-            ) : (
-              <div style={{ fontFamily: pal.fontBody, fontSize: 13, fontStyle: "italic", color: pal.textMuted, marginBottom: 12 }}>
-                No weapons configured — add them in Inventory.
-              </div>
-            )}
-
-            <hr style={divider} />
-
-            {/* Ability checks */}
-            <div style={subLabel}>Ability Checks</div>
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 8 }}>
-              {STAT_NAMES.map(name => {
-                const stat = (stats || []).find(s => s.name === name) || { name, score: 10, mods: [] };
-                const mod = getAbilityMod(stat);
-                const short = STAT_SHORT[name];
-                const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
-                const isNeg = mod < 0;
-                return (
-                  <div
-                    key={name}
-                    title={`Roll ${short} check`}
-                    onClick={() => !rolling && rollAbility(stat)}
-                    style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, cursor: rolling ? "not-allowed" : "pointer", opacity: rolling ? 0.5 : 1 }}
-                  >
-                    <div style={{
-                      width: 56, height: 56, borderRadius: "50%",
-                      border: `2px solid ${pal.border}`, background: pal.surface,
-                      display: "flex", alignItems: "center", justifyContent: "center",
-                      flexDirection: "column", position: "relative",
-                    }}>
-                      <span style={{ fontFamily: pal.fontDisplay, fontSize: 20, color: pal.gem, lineHeight: 1 }}>{stat.score}</span>
-                      <div style={{
-                        position: "absolute", bottom: -7, left: -7,
-                        width: 22, height: 22, borderRadius: "50%",
-                        background: pal.gemLow,
-                        border: `2px solid ${pal.surfaceSolid || pal.surface}`,
-                        display: "flex", alignItems: "center", justifyContent: "center",
-                        fontFamily: pal.fontDisplay, fontSize: 9,
-                        color: isNeg ? "#c06060" : pal.gem,
-                      }}>{modStr}</div>
-                    </div>
-                    <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted }}>{short}</span>
-                  </div>
-                );
-              })}
-            </div>
-
-            <hr style={divider} />
-
-            {/* Result stage */}
-            {(rolling || result) && (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", minHeight: 130, padding: "8px 0" }}>
-                {rolling ? (
-                  <div style={{ position: "relative", width: 100, height: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    <svg
-                      style={{ position: "absolute", top: 0, left: 0, width: 100, height: 100, animation: "dr-spin-in 1.0s cubic-bezier(0.3,0,0.2,1) forwards", willChange: "transform" }}
-                      viewBox="0 0 100 100"
-                    >
-                      <DieShape sides={selectedSides} stroke={pal.accent} fill={pal.accentDim} />
-                    </svg>
-                    <span style={{
-                      position: "relative", zIndex: 2,
-                      fontFamily: pal.fontDisplay, fontSize: 36, color: pal.gem, userSelect: "none",
-                      animation: "dr-num-cycle 0.08s ease-out",
-                    }}>{cycleNum ?? "?"}</span>
-                  </div>
-                ) : result ? (
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, width: "100%" }}>
-                    {result.isMultiGroup ? (
-                      /* Multi-group: dice row on top, total below */
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10, width: "100%" }}>
-                        {/* Dice shapes row */}
-                        <div style={{ display: "flex", gap: 10, alignItems: "flex-end", justifyContent: "center", flexWrap: "wrap" }}>
-                          {result.groups.map((g, gi) => (
-                            <div key={gi} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, animation: `dr-group-reveal 0.38s cubic-bezier(0.2,0,0.1,1) ${gi * 0.2}s both` }}>
-                              <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted }}>{g.rolls.length}d{g.sides}</span>
-                              <div style={{ position: "relative", width: 70, height: 70, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                                <svg style={{ position: "absolute", top: 0, left: 0, width: 70, height: 70, animation: "dr-land-normal 1.2s ease-out forwards", willChange: "filter" }} viewBox="0 0 100 100">
-                                  <DieShape sides={g.sides} stroke={pal.accent} fill={pal.accentDim} />
-                                </svg>
-                                <span style={{ position: "relative", zIndex: 2, fontFamily: pal.fontDisplay, fontSize: 24, color: pal.gem, userSelect: "none", animation: "dr-reveal-num 0.4s cubic-bezier(0.2,0,0.1,1) forwards" }}>
-                                  {g.rolls.reduce((s, r) => s + r, 0)}
-                                </span>
-                              </div>
-                              <span style={{ fontFamily: pal.fontUI, fontSize: 9, color: pal.textMuted }}>[{g.rolls.join(", ")}]</span>
-                            </div>
-                          ))}
-                          {result.flat !== 0 && (
-                            <div style={{ alignSelf: "center" }}>
-                              <span style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: pal.textMuted }}>{result.flat > 0 ? `+${result.flat}` : result.flat}</span>
-                            </div>
-                          )}
-                        </div>
-                        {/* Total below the dice */}
-                        <div style={{ borderTop: `1px solid ${pal.border}`, paddingTop: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 2, width: "100%" }}>
-                          <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted }}>Total</span>
-                          <span style={{ fontFamily: pal.fontDisplay, fontSize: 40, color: pal.gem, animation: "dr-reveal-num 0.4s 0.3s both" }}>{result.total}</span>
-                        </div>
-                      </div>
-                    ) : (
-                      /* Single die */
-                      <div style={{ position: "relative", width: 100, height: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <svg
-                          style={{
-                            position: "absolute", top: 0, left: 0, width: 100, height: 100, willChange: "filter",
-                            animation: result.isCrit ? "dr-land-crit 1.4s ease-out forwards" : result.isFumble ? "dr-land-fumble 1.2s ease-out forwards" : "dr-land-normal 1.2s ease-out forwards",
-                          }}
-                          viewBox="0 0 100 100"
-                        >
-                          <DieShape sides={result.groups[0]?.sides || 20} stroke={pal.accent} fill={pal.accentDim} />
-                        </svg>
-                        <span style={{
-                          position: "relative", zIndex: 2, fontFamily: pal.fontDisplay, fontSize: 38,
-                          color: resultColor, userSelect: "none", willChange: "transform",
-                          animation: resultNumAnim,
-                        }}>{result.total}</span>
-                      </div>
-                    )}
-
-                    {/* Crit / fumble / label */}
-                    {result.isCrit && (
-                      <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.22em", textTransform: "uppercase", color: "#ffd060", marginTop: 4 }}>
-                        ✦ CRITICAL HIT ✦
-                      </div>
-                    )}
-                    {result.isFumble && (
-                      <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.22em", textTransform: "uppercase", color: "#c06060", marginTop: 4 }}>
-                        ✕ FUMBLE ✕
-                      </div>
-                    )}
-                    {!result.isCrit && !result.isFumble && result.label && (
-                      <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginTop: 2 }}>
-                        {result.label}
-                      </div>
-                    )}
-
-                    {/* Breakdown chips */}
-                    {!result.isMultiGroup && (() => {
-                      const g = result.groups[0];
-                      const hasAdv = result.advKept !== null && result.advDiscarded !== null;
-                      const hasFlat = result.flat !== 0;
-                      const hasMultiRolls = g?.rolls?.length > 1;
-                      if (!hasAdv && !hasFlat && !hasMultiRolls) return null;
-
-                      const chipStyle = (variant) => ({
-                        fontFamily: pal.fontDisplay, fontSize: 13,
-                        color: variant === "used" ? pal.accentBright : pal.textBody,
-                        background: "rgba(30,18,12,0.7)",
-                        border: `1px solid ${variant === "used" ? pal.accent : pal.border}`,
-                        borderRadius: 2, padding: "2px 8px",
-                        textDecoration: variant === "discarded" ? "line-through" : "none",
-                        opacity: variant === "discarded" ? 0.38 : 1,
-                      });
-                      const sep = (key) => <span key={key} style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.textMuted }}>+</span>;
-
-                      const chips = [];
-                      if (hasAdv) {
-                        chips.push(<span key="kept" style={chipStyle("used")} title="kept">{result.advKept}</span>);
-                        chips.push(<span key="disc" style={{ ...chipStyle("discarded"), textDecoration: "line-through", opacity: 0.38 }} title="discarded">{result.advDiscarded}</span>);
-                      } else if (hasMultiRolls) {
-                        g.rolls.forEach((r, i) => {
-                          chips.push(<span key={`r${i}`} style={chipStyle("normal")}>{r}</span>);
-                          if (i < g.rolls.length - 1) chips.push(sep(`p${i}`));
-                        });
-                      }
-                      if (hasFlat) {
-                        if (chips.length) chips.push(sep("flsep"));
-                        chips.push(<span key="flat" style={chipStyle("normal")}>{result.flat > 0 ? `+${result.flat}` : result.flat}</span>);
-                      }
-                      if (chips.length) {
-                        chips.push(<span key="eq" style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.textMuted }}>=</span>);
-                        chips.push(
-                          <span key="total" style={{ ...chipStyle("used"), fontSize: 15, padding: "3px 12px", background: pal.accentDim, borderColor: pal.accentBright }}>
-                            {result.total}
-                          </span>
-                        );
-                      }
-
-                      return (
-                        <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap", justifyContent: "center", minHeight: 24 }}>
-                          {chips}
-                        </div>
-                      );
-                    })()}
-                  </div>
-                ) : null}
-              </div>
-            )}
-
-            <hr style={divider} />
-
-            {/* Free picker */}
-            <div style={subLabel}>Free Roll</div>
-
-            {/* Die buttons */}
-            <div style={{ display: "flex", gap: 6, flexWrap: "wrap", justifyContent: "center", marginBottom: 12 }}>
-              {ALL_SIDES.map(sides => {
-                const isSelected = selectedSides === sides;
-                return (
-                  <button
-                    key={sides}
-                    onClick={() => handleDieSelect(sides)}
-                    onDoubleClick={() => handleDieDblClick(sides)}
-                    title={`d${sides} — double-click to add to combo`}
-                    style={{
-                      display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
-                      cursor: "pointer", border: "none", padding: "5px 3px", borderRadius: 4,
-                      background: isSelected ? pal.accentDim : "transparent",
-                      filter: isSelected ? `drop-shadow(0 0 5px ${pal.accent})` : "none",
-                      transition: "filter 0.15s, background 0.15s",
-                    }}
-                  >
-                    <svg width="44" height="44" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
-                      <DieShape
-                        sides={sides}
-                        stroke={isSelected ? pal.accentBright : pal.accent}
-                        fill={isSelected ? pal.accentDim : pal.surface}
-                      />
-                      <text
-                        x="50" y="58" textAnchor="middle"
-                        fontSize={sides === 100 ? "16" : "18"}
-                        fontWeight="500"
-                        fill={isSelected ? pal.accentBright : pal.textMuted}
-                        fontFamily="Cinzel, serif"
-                        opacity="0.8"
-                      >{sides === 100 ? "%" : sides}</text>
-                    </svg>
-                    <span style={{ fontFamily: pal.fontDisplay, fontSize: 16, color: isSelected ? pal.accentBright : pal.accent, letterSpacing: "0.05em" }}>{sides}</span>
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Count stepper */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 12, marginBottom: 12 }}>
-              <span style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted }}>Count</span>
-              <button onClick={() => setDieCount(c => Math.max(1, c - 1))} style={{ width: 26, height: 26, borderRadius: "50%", border: `1px solid ${pal.border}`, background: "transparent", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-              <span style={{ fontFamily: pal.fontDisplay, fontSize: 22, color: pal.gem, minWidth: 24, textAlign: "center" }}>{dieCount}</span>
-              <button onClick={() => setDieCount(c => Math.min(10, c + 1))} style={{ width: 26, height: 26, borderRadius: "50%", border: `1px solid ${pal.border}`, background: "transparent", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 16, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-            </div>
-
-            {/* Pending combo display */}
-            {comboDice.length > 0 && (
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
-                <span style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginRight: 4 }}>Roll</span>
-                {comboDice.map((g, i) => (
-                  <span key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                    <span style={{ fontFamily: pal.fontDisplay, fontSize: 16, color: pal.accentBright, background: pal.accentDim, border: `1px solid ${pal.accent}`, borderRadius: 2, padding: "2px 8px" }}>
-                      {g.count}d{g.sides}
-                    </span>
-                    {i < comboDice.length - 1 && <span style={{ fontFamily: pal.fontDisplay, fontSize: 16, color: pal.textMuted }}>+</span>}
-                  </span>
-                ))}
-                {comboMod !== 0 && (
-                  <span style={{ fontFamily: pal.fontDisplay, fontSize: 16, color: pal.accentBright, background: pal.accentDim, border: `1px solid ${pal.accent}`, borderRadius: 2, padding: "2px 8px" }}>
-                    {comboMod > 0 ? `+${comboMod}` : comboMod}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {/* Add die / clear */}
-            <div style={{ display: "flex", gap: 8, justifyContent: "center", marginBottom: 10 }}>
-              <button
-                onClick={addDieToCombo}
-                style={{
-                  fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.12em",
-                  padding: "4px 12px", borderRadius: 3, cursor: "pointer",
-                  border: `1px solid ${pal.accent}`, background: `rgba(160,104,64,0.10)`,
-                  color: pal.accentBright, transition: "all 0.15s",
-                }}
-              >+ Add Die</button>
-              {comboDice.length > 0 && (
+          {/* Advantage strip */}
+          <div className="flex-row" style={{ gap: 6, marginBottom: 2 }}>
+            <span className="label-ui-sm" style={{ marginBottom: 0, marginRight: 4 }}>d20 mode</span>
+            {["normal", "advantage", "disadvantage"].map(mode => {
+              const isActive = advMode === mode;
+              // Dynamic: three distinct color sets for the active state
+              const activeColors = mode === "advantage"
+                ? { border: "#5a9a60", bg: "rgba(60,130,60,0.18)", color: "#88c888" }
+                : mode === "disadvantage"
+                ? { border: "#9a5a5a", bg: "rgba(130,60,60,0.18)", color: "#c88888" }
+                : { border: pal.accent, bg: pal.accentDim, color: pal.accentBright };
+              const label = mode === "normal" ? "Normal" : mode === "advantage" ? "Advantage" : "Disadv.";
+              return (
                 <button
-                  onClick={clearCombo}
-                  style={{
-                    fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.12em",
-                    padding: "4px 12px", borderRadius: 3, cursor: "pointer",
-                    border: `1px solid ${pal.border}`, background: "transparent",
-                    color: pal.textMuted, transition: "all 0.15s",
-                  }}
-                >✕ Clear</button>
+                  key={mode}
+                  onClick={() => setAdvMode(mode)}
+                  className="dice-mode-btn"
+                  style={isActive ? {
+                    border: `1px solid ${activeColors.border}`,
+                    background: activeColors.bg,
+                    color: activeColors.color,
+                  } : undefined}
+                >{label}</button>
+              );
+            })}
+          </div>
+
+          <hr className="divider" style={{ margin: "14px 0" }} />
+
+          {/* Weapons */}
+          <div className="dice-sub-label">Weapons</div>
+          {rollerWeapons.length > 0 ? (
+            rollerWeapons.map((w, wi) => {
+              const atk = getAttackBonus(w);
+              const dmg = getDamage(w);
+              return (
+                <div key={w.id || wi} className="flex-row" style={{
+                  gap: 8, paddingBottom: 8,
+                  borderBottom: wi < rollerWeapons.length - 1 ? `1px solid ${pal.border}` : "none",
+                  marginBottom: 8,
+                }}>
+                  <span style={{ flex: 1, fontFamily: pal.fontBody, fontSize: 16, color: pal.text }}>{w.name}</span>
+                  {atk !== null && (
+                    <button
+                      disabled={rolling}
+                      onClick={() => rollWeaponAtk(w)}
+                      className="dice-weapon-btn"
+                      style={{
+                        border: `1px solid ${pal.accent}`,
+                        background: pal.accentDim,
+                        color: pal.accentBright,
+                      }}
+                    >
+                      ATK {fmtMod(atk)}
+                    </button>
+                  )}
+                  {dmg && (
+                    <button
+                      disabled={rolling}
+                      onClick={() => rollWeaponDmg(w)}
+                      className="dice-weapon-btn"
+                      style={{
+                        border: `1px solid ${pal.border}`,
+                        background: "transparent",
+                        color: pal.textMuted,
+                      }}
+                    >
+                      DMG {dmg}
+                    </button>
+                  )}
+                </div>
+              );
+            })
+          ) : (
+            <div style={{ fontFamily: pal.fontBody, fontSize: 13, fontStyle: "italic", color: pal.textMuted, marginBottom: 12 }}>
+              No weapons configured — add them in Inventory.
+            </div>
+          )}
+
+          <hr className="divider" style={{ margin: "14px 0" }} />
+
+          {/* Ability checks */}
+          <div className="dice-sub-label">Ability Checks</div>
+          <div className="flex-row" style={{ gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 8 }}>
+            {STAT_NAMES.map(name => {
+              const stat = (stats || []).find(s => s.name === name) || { name, score: 10, mods: [] };
+              const mod = getAbilityMod(stat);
+              const short = STAT_SHORT[name];
+              const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
+              const isNeg = mod < 0;
+              return (
+                <div
+                  key={name}
+                  title={`Roll ${short} check`}
+                  onClick={() => !rolling && rollAbility(stat)}
+                  className="flex-col"
+                  style={{ alignItems: "center", gap: 4, cursor: rolling ? "not-allowed" : "pointer", opacity: rolling ? 0.5 : 1 }}
+                >
+                  <div className="flex-col" style={{
+                    width: 56, height: 56, borderRadius: "50%",
+                    border: `2px solid ${pal.border}`, background: pal.surface,
+                    alignItems: "center", justifyContent: "center",
+                    position: "relative",
+                  }}>
+                    <span style={{ fontFamily: pal.fontDisplay, fontSize: 20, color: pal.gem, lineHeight: 1 }}>{stat.score}</span>
+                    <div className="flex-row" style={{
+                      position: "absolute", bottom: -7, left: -7,
+                      width: 22, height: 22, borderRadius: "50%",
+                      background: pal.gemLow,
+                      border: `2px solid ${pal.surfaceSolid || pal.surface}`,
+                      justifyContent: "center",
+                      fontFamily: pal.fontDisplay, fontSize: 9,
+                      color: isNeg ? "#c06060" : pal.gem,
+                    }}>{modStr}</div>
+                  </div>
+                  <span className="label-ui-sm" style={{ marginBottom: 0 }}>{short}</span>
+                </div>
+              );
+            })}
+          </div>
+
+          <hr className="divider" style={{ margin: "14px 0" }} />
+
+          {/* Result stage */}
+          {(rolling || result) && (
+            <div className="dice-result-stage">
+              {rolling ? (
+                <div style={{ position: "relative", width: 100, height: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <svg
+                    style={{ position: "absolute", top: 0, left: 0, width: 100, height: 100, animation: "dr-spin-in 1.0s cubic-bezier(0.3,0,0.2,1) forwards", willChange: "transform" }}
+                    viewBox="0 0 100 100"
+                  >
+                    <DieShape sides={selectedSides} stroke={pal.accent} fill={pal.accentDim} />
+                  </svg>
+                  <span style={{
+                    position: "relative", zIndex: 2,
+                    fontFamily: pal.fontDisplay, fontSize: 36, color: pal.gem, userSelect: "none",
+                    animation: "dr-num-cycle 0.08s ease-out",
+                  }}>{cycleNum ?? "?"}</span>
+                </div>
+              ) : result ? (
+                <div className="flex-col" style={{ alignItems: "center", gap: 6, width: "100%" }}>
+                  {result.isMultiGroup ? (
+                    /* Multi-group: dice row on top, total below */
+                    <div className="flex-col" style={{ alignItems: "center", gap: 10, width: "100%" }}>
+                      {/* Dice shapes row */}
+                      <div className="flex-row" style={{ gap: 10, alignItems: "flex-end", justifyContent: "center", flexWrap: "wrap" }}>
+                        {result.groups.map((g, gi) => (
+                          <div key={gi} className="flex-col" style={{ alignItems: "center", gap: 4, animation: `dr-group-reveal 0.38s cubic-bezier(0.2,0,0.1,1) ${gi * 0.2}s both` }}>
+                            <span className="label-ui-sm" style={{ marginBottom: 0 }}>{g.rolls.length}d{g.sides}</span>
+                            <div style={{ position: "relative", width: 70, height: 70, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                              <svg style={{ position: "absolute", top: 0, left: 0, width: 70, height: 70, animation: "dr-land-normal 1.2s ease-out forwards", willChange: "filter" }} viewBox="0 0 100 100">
+                                <DieShape sides={g.sides} stroke={pal.accent} fill={pal.accentDim} />
+                              </svg>
+                              <span style={{ position: "relative", zIndex: 2, fontFamily: pal.fontDisplay, fontSize: 24, color: pal.gem, userSelect: "none", animation: "dr-reveal-num 0.4s cubic-bezier(0.2,0,0.1,1) forwards" }}>
+                                {g.rolls.reduce((s, r) => s + r, 0)}
+                              </span>
+                            </div>
+                            <span style={{ fontFamily: pal.fontUI, fontSize: 9, color: pal.textMuted }}>[{g.rolls.join(", ")}]</span>
+                          </div>
+                        ))}
+                        {result.flat !== 0 && (
+                          <div style={{ alignSelf: "center" }}>
+                            <span style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: pal.textMuted }}>{result.flat > 0 ? `+${result.flat}` : result.flat}</span>
+                          </div>
+                        )}
+                      </div>
+                      {/* Total below the dice */}
+                      <div className="flex-col" style={{ borderTop: `1px solid ${pal.border}`, paddingTop: 10, alignItems: "center", gap: 2, width: "100%" }}>
+                        <span className="label-ui-sm" style={{ marginBottom: 0 }}>Total</span>
+                        <span style={{ fontFamily: pal.fontDisplay, fontSize: 40, color: pal.gem, animation: "dr-reveal-num 0.4s 0.3s both" }}>{result.total}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Single die */
+                    <div style={{ position: "relative", width: 100, height: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <svg
+                        style={{
+                          position: "absolute", top: 0, left: 0, width: 100, height: 100, willChange: "filter",
+                          animation: result.isCrit ? "dr-land-crit 1.4s ease-out forwards" : result.isFumble ? "dr-land-fumble 1.2s ease-out forwards" : "dr-land-normal 1.2s ease-out forwards",
+                        }}
+                        viewBox="0 0 100 100"
+                      >
+                        <DieShape sides={result.groups[0]?.sides || 20} stroke={pal.accent} fill={pal.accentDim} />
+                      </svg>
+                      <span style={{
+                        position: "relative", zIndex: 2, fontFamily: pal.fontDisplay, fontSize: 38,
+                        color: resultColor, userSelect: "none", willChange: "transform",
+                        animation: resultNumAnim,
+                      }}>{result.total}</span>
+                    </div>
+                  )}
+
+                  {/* Crit / fumble / label */}
+                  {result.isCrit && (
+                    <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.22em", textTransform: "uppercase", color: "#ffd060", marginTop: 4 }}>
+                      ✦ CRITICAL HIT ✦
+                    </div>
+                  )}
+                  {result.isFumble && (
+                    <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.22em", textTransform: "uppercase", color: "#c06060", marginTop: 4 }}>
+                      ✕ FUMBLE ✕
+                    </div>
+                  )}
+                  {!result.isCrit && !result.isFumble && result.label && (
+                    <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginTop: 2 }}>
+                      {result.label}
+                    </div>
+                  )}
+
+                  {/* Breakdown chips */}
+                  {!result.isMultiGroup && (() => {
+                    const g = result.groups[0];
+                    const hasAdv = result.advKept !== null && result.advDiscarded !== null;
+                    const hasFlat = result.flat !== 0;
+                    const hasMultiRolls = g?.rolls?.length > 1;
+                    if (!hasAdv && !hasFlat && !hasMultiRolls) return null;
+
+                    const chipStyle = (variant) => ({
+                      fontFamily: pal.fontDisplay, fontSize: 13,
+                      color: variant === "used" ? pal.accentBright : pal.textBody,
+                      background: "rgba(30,18,12,0.7)",
+                      border: `1px solid ${variant === "used" ? pal.accent : pal.border}`,
+                      borderRadius: 2, padding: "2px 8px",
+                      textDecoration: variant === "discarded" ? "line-through" : "none",
+                      opacity: variant === "discarded" ? 0.38 : 1,
+                    });
+                    const sep = (key) => <span key={key} style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.textMuted }}>+</span>;
+
+                    const chips = [];
+                    if (hasAdv) {
+                      chips.push(<span key="kept" style={chipStyle("used")} title="kept">{result.advKept}</span>);
+                      chips.push(<span key="disc" style={{ ...chipStyle("discarded"), textDecoration: "line-through", opacity: 0.38 }} title="discarded">{result.advDiscarded}</span>);
+                    } else if (hasMultiRolls) {
+                      g.rolls.forEach((r, i) => {
+                        chips.push(<span key={`r${i}`} style={chipStyle("normal")}>{r}</span>);
+                        if (i < g.rolls.length - 1) chips.push(sep(`p${i}`));
+                      });
+                    }
+                    if (hasFlat) {
+                      if (chips.length) chips.push(sep("flsep"));
+                      chips.push(<span key="flat" style={chipStyle("normal")}>{result.flat > 0 ? `+${result.flat}` : result.flat}</span>);
+                    }
+                    if (chips.length) {
+                      chips.push(<span key="eq" style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.textMuted }}>=</span>);
+                      chips.push(
+                        <span key="total" style={{ ...chipStyle("used"), fontSize: 15, padding: "3px 12px", background: pal.accentDim, borderColor: pal.accentBright }}>
+                          {result.total}
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <div className="dice-chips-row">
+                        {chips}
+                      </div>
+                    );
+                  })()}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          <hr className="divider" style={{ margin: "14px 0" }} />
+
+          {/* Free picker */}
+          <div className="dice-sub-label">Free Roll</div>
+
+          {/* Die buttons */}
+          <div className="flex-row" style={{ gap: 6, flexWrap: "wrap", justifyContent: "center", marginBottom: 12 }}>
+            {ALL_SIDES.map(sides => {
+              const isSelected = selectedSides === sides;
+              return (
+                <button
+                  key={sides}
+                  onClick={() => handleDieSelect(sides)}
+                  onDoubleClick={() => handleDieDblClick(sides)}
+                  title={`d${sides} — double-click to add to combo`}
+                  className={`dice-die-btn${isSelected ? " selected" : ""}`}
+                >
+                  <svg width="44" height="44" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <DieShape
+                      sides={sides}
+                      stroke={isSelected ? pal.accentBright : pal.accent}
+                      fill={isSelected ? pal.accentDim : pal.surface}
+                    />
+                    <text
+                      x="50" y="58" textAnchor="middle"
+                      fontSize={sides === 100 ? "16" : "18"}
+                      fontWeight="500"
+                      fill={isSelected ? pal.accentBright : pal.textMuted}
+                      fontFamily="Cinzel, serif"
+                      opacity="0.8"
+                    >{sides === 100 ? "%" : sides}</text>
+                  </svg>
+                  <span style={{ fontFamily: pal.fontDisplay, fontSize: 16, color: isSelected ? pal.accentBright : pal.accent, letterSpacing: "0.05em" }}>{sides}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Count stepper */}
+          <div className="flex-row" style={{ justifyContent: "center", gap: 12, marginBottom: 12 }}>
+            <span className="label-ui-sm" style={{ marginBottom: 0 }}>Count</span>
+            <button onClick={() => setDieCount(c => Math.max(1, c - 1))} className="dice-circle-btn">−</button>
+            <span style={{ fontFamily: pal.fontDisplay, fontSize: 22, color: pal.gem, minWidth: 24, textAlign: "center" }}>{dieCount}</span>
+            <button onClick={() => setDieCount(c => Math.min(10, c + 1))} className="dice-circle-btn">+</button>
+          </div>
+
+          {/* Pending combo display */}
+          {comboDice.length > 0 && (
+            <div className="flex-row" style={{ justifyContent: "center", flexWrap: "wrap", gap: 4, marginBottom: 12 }}>
+              <span className="label-ui-sm" style={{ marginBottom: 0, marginRight: 4 }}>Roll</span>
+              {comboDice.map((g, i) => (
+                <span key={i} className="flex-row" style={{ gap: 4 }}>
+                  <span className="dice-combo-chip">{g.count}d{g.sides}</span>
+                  {i < comboDice.length - 1 && <span className="dice-combo-sep">+</span>}
+                </span>
+              ))}
+              {comboMod !== 0 && (
+                <span className="dice-combo-chip">
+                  {comboMod > 0 ? `+${comboMod}` : comboMod}
+                </span>
               )}
             </div>
+          )}
 
-            {/* Flat modifier */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, marginBottom: 10 }}>
-              <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted }}>+ Modifier</span>
-              <input
-                type="number"
-                value={comboMod}
-                min={-99} max={99}
-                onChange={e => setComboMod(parseInt(e.target.value, 10) || 0)}
-                style={{
-                  width: 72, background: pal.surfaceSolid || pal.surface,
-                  border: `1px solid ${pal.border}`, borderRadius: 3,
-                  color: pal.gem, fontFamily: pal.fontDisplay, fontSize: 18,
-                  textAlign: "center", padding: "2px 6px", outline: "none",
-                  MozAppearance: "textfield",
-                }}
-              />
-            </div>
+          {/* Add die / clear */}
+          <div className="flex-row" style={{ gap: 8, justifyContent: "center", marginBottom: 10 }}>
+            <button
+              onClick={addDieToCombo}
+              className="btn-primary"
+              style={{ fontSize: 12, padding: "4px 12px" }}
+            >+ Add Die</button>
+            {comboDice.length > 0 && (
+              <button
+                onClick={clearCombo}
+                className="btn-ghost"
+                style={{ fontSize: 12, padding: "4px 12px" }}
+              >✕ Clear</button>
+            )}
+          </div>
 
-            {/* Big roll button */}
+          {/* Flat modifier */}
+          <div className="flex-row" style={{ justifyContent: "center", gap: 8, marginBottom: 10 }}>
+            <span className="label-ui-sm" style={{ marginBottom: 0 }}>+ Modifier</span>
+            <input
+              type="number"
+              value={comboMod}
+              min={-99} max={99}
+              onChange={e => setComboMod(parseInt(e.target.value, 10) || 0)}
+              className="dice-mod-input"
+              style={{ width: 72, fontSize: 18, padding: "2px 6px" }}
+            />
+          </div>
+
+          {/* Big roll button */}
+          <button
+            disabled={rolling}
+            onClick={rollFree}
+            className="dice-roll-btn"
+            style={{ background: primaryRollBg }}
+          >{getFreeRollLabel()}</button>
+
+          {/* Expression input */}
+          <div className="dice-sub-label">Expression Roll</div>
+          <div className="flex-row" style={{ gap: 8, alignItems: "stretch", marginBottom: 4 }}>
+            <input
+              type="text"
+              value={exprInput}
+              onChange={e => { setExprInput(e.target.value); setExprError(""); }}
+              onKeyDown={e => { if (e.key === "Enter") rollExpr(); }}
+              placeholder="or type: 2d6+1d4+3"
+              autoComplete="off"
+              spellCheck={false}
+              className="dice-expr-input"
+            />
             <button
               disabled={rolling}
-              onClick={rollFree}
-              style={{
-                display: "block", width: "100%", padding: 12,
-                fontFamily: pal.fontDisplay, fontSize: 15, letterSpacing: "0.12em",
-                borderRadius: 4, cursor: rolling ? "not-allowed" : "pointer",
-                border: `1px solid ${pal.accent}`,
-                background: primaryRollBg,
-                color: pal.accentBright, transition: "all 0.15s",
-                textTransform: "uppercase", opacity: rolling ? 0.45 : 1, marginBottom: 16,
-              }}
-            >{getFreeRollLabel()}</button>
-
-            {/* Expression input */}
-            <div style={subLabel}>Expression Roll</div>
-            <div style={{ display: "flex", gap: 8, alignItems: "stretch", marginBottom: 4 }}>
-              <input
-                type="text"
-                value={exprInput}
-                onChange={e => { setExprInput(e.target.value); setExprError(""); }}
-                onKeyDown={e => { if (e.key === "Enter") rollExpr(); }}
-                placeholder="or type: 2d6+1d4+3"
-                autoComplete="off"
-                spellCheck={false}
-                style={{
-                  flex: 1, background: pal.surfaceSolid || pal.surface,
-                  border: `1px solid ${pal.border}`, borderRadius: 3,
-                  color: pal.text, fontFamily: pal.fontUI, fontSize: 13,
-                  letterSpacing: "0.06em", padding: "7px 12px", outline: "none", minWidth: 0,
-                }}
-              />
-              <button
-                disabled={rolling}
-                onClick={rollExpr}
-                style={{
-                  fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em",
-                  padding: "7px 14px", borderRadius: 3, cursor: rolling ? "not-allowed" : "pointer",
-                  border: `1px solid ${pal.accent}`, background: pal.accentDim,
-                  color: pal.accentBright, transition: "all 0.15s",
-                  whiteSpace: "nowrap", opacity: rolling ? 0.45 : 1,
-                }}
-              >Roll</button>
-            </div>
-            {exprError && (
-              <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.14em", color: "#c06060", marginBottom: 6 }}>
-                {exprError}
-              </div>
-            )}
-
-            {/* History */}
-            {history.length > 0 && (
-              <>
-                <hr style={divider} />
-                <RollHistoryList
-                  pal={pal}
-                  title="Recent Rolls"
-                  entries={history}
-                  opacities={[1.0, 0.45, 0.22, 0, 0]}
-                />
-              </>
-            )}
-
+              onClick={rollExpr}
+              className="btn-primary"
+              style={{ fontSize: 11, padding: "7px 14px", whiteSpace: "nowrap" }}
+            >Roll</button>
           </div>
-        )}
-      </div>
-    </>
+          {exprError && (
+            <div className="dice-expr-error">{exprError}</div>
+          )}
+
+          {/* History */}
+          {history.length > 0 && (
+            <>
+              <hr className="divider" style={{ margin: "14px 0" }} />
+              <RollHistoryList
+                pal={pal}
+                title="Recent Rolls"
+                entries={history}
+                opacities={[1.0, 0.45, 0.22, 0, 0]}
+              />
+            </>
+          )}
+
+        </div>
+      )}
+    </div>
   );
 }

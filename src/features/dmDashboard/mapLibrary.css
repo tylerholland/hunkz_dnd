@@ -1,0 +1,91 @@
+/*
+ * mapLibrary.css
+ *
+ * Structural styles for MapLibraryModal.jsx. All dynamic values (border
+ * colors keyed to active state, per-map accent colors) remain inline.
+ * Imported only by MapLibraryModal — no global side effects.
+ */
+
+/* ─── Map card grid ──────────────────────────────────────────────────────── */
+
+.map-lib-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(clamp(160px, calc(33% - 12px), 280px), 1fr));
+  gap: 16px;
+}
+
+/* ─── Individual map card ────────────────────────────────────────────────── */
+
+.map-lib-card {
+  border-radius: 5px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.map-lib-card-body {
+  padding: 8px 10px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* ─── Card action rows ───────────────────────────────────────────────────── */
+
+.map-lib-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: auto;
+}
+
+.map-lib-btn-row {
+  display: flex;
+  gap: 4px;
+}
+
+/* ─── Small card buttons (override shared btn-ghost sizing) ──────────────── */
+
+.map-lib-btn {
+  flex: 1;
+  background: transparent;
+  border-radius: 3px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  padding: 3px 0;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+/* ─── Active status indicator ────────────────────────────────────────────── */
+
+.map-lib-active-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #66cc66;
+  box-shadow: 0 0 6px #66cc66;
+}
+
+/* ─── Rename input wrapper ───────────────────────────────────────────────── */
+
+.map-lib-rename-input {
+  box-sizing: border-box;
+  margin-bottom: 4px;
+}
+
+/* ─── Empty state ────────────────────────────────────────────────────────── */
+
+.map-lib-empty {
+  padding: 40px 0;
+  text-align: center;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pal-text-muted);
+  font-style: italic;
+}

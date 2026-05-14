@@ -1,0 +1,583 @@
+/*
+ * npcCombat.css
+ *
+ * Component-specific structural styles for NpcCombatSection and
+ * InitiativeTracker. Palette values come in via --pal-* custom properties
+ * set at each component root — children inherit without prop drilling.
+ *
+ * Dynamic values (HP bar fill widths, ghost trail positions, per-row computed
+ * colors, active-turn highlight colors) remain as inline style= attributes.
+ */
+
+/* ─── NPC Card ───────────────────────────────────────────────────────────── */
+
+.npc-card {
+  border-radius: 5px;
+  margin-bottom: 10px;
+  position: relative;
+  overflow: visible;
+  transition: transform 0.18s ease;
+}
+
+.npc-card[data-active="true"] {
+  transform: scaleX(1.02);
+  transform-origin: center center;
+  z-index: 2;
+}
+
+.npc-card[data-dead="true"] {
+  opacity: 0.75;
+}
+
+.npc-stripe {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  border-radius: 5px 0 0 5px;
+}
+
+.npc-header {
+  padding: 10px 10px 0 14px;
+}
+
+.npc-name-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 5px;
+}
+
+.npc-name-group {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: 1;
+  min-width: 0;
+}
+
+.npc-name {
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.05em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ─── Status badges ──────────────────────────────────────────────────────── */
+
+.badge-bloodied {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: rgba(180, 100, 40, 0.14);
+  border: 1px solid rgba(180, 100, 40, 0.45);
+  color: #d09050;
+  flex-shrink: 0;
+}
+
+.badge-dead {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 2px 7px;
+  border-radius: 8px;
+  background: rgba(192, 60, 60, 0.14);
+  border: 1px solid rgba(192, 60, 60, 0.4);
+  color: #c06060;
+  flex-shrink: 0;
+}
+
+/* ─── NPC HP row ─────────────────────────────────────────────────────────── */
+
+.npc-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 6px;
+  position: relative;
+}
+
+.npc-stepper {
+  width: 26px;
+  height: 22px;
+  border-radius: 3px;
+  border: 1px solid var(--npc-action-border);
+  background: transparent;
+  color: var(--pal-text-muted);
+  font-family: var(--font-display);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  user-select: none;
+  touch-action: none;
+  transition: border-color 0.15s, color 0.15s;
+}
+
+.npc-stepper:hover {
+  border-color: var(--npc-accent);
+  color: var(--npc-bright);
+}
+
+.npc-hp-numbers {
+  display: flex;
+  align-items: baseline;
+  gap: 0;
+  white-space: nowrap;
+  padding: 0 8px 0 9px;
+  flex-shrink: 0;
+}
+
+/* ─── NPC HP bar ─────────────────────────────────────────────────────────── */
+
+.npc-bar-wrap {
+  flex: 1;
+  padding-right: 5px;
+}
+
+.npc-bar {
+  height: 10px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: rgba(7, 14, 22, 0.88);
+  display: flex;
+  gap: 1px;
+  position: relative;
+}
+
+.npc-bar-seg {
+  flex: 1;
+  position: relative;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+
+.npc-bar-fill {
+  position: absolute;
+  inset: 0;
+  transition: width 0.3s ease;
+}
+
+/* ─── NPC action buttons ─────────────────────────────────────────────────── */
+
+.npc-actions {
+  display: flex;
+  gap: 5px;
+  padding: 6px 10px 8px;
+  margin-top: 2px;
+}
+
+.btn-npc-action {
+  flex: 1;
+  border-radius: 3px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 5px 0;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.btn-npc-dmg {
+  background: rgba(192, 96, 96, 0.08);
+  border: 1px solid rgba(192, 96, 96, 0.35);
+  color: #d08080;
+}
+
+.btn-npc-dmg:hover {
+  border-color: #c06060;
+  color: #e09898;
+  background: rgba(192, 96, 96, 0.14);
+}
+
+.btn-npc-heal {
+  background: rgba(80, 160, 80, 0.08);
+  border: 1px solid rgba(80, 160, 80, 0.35);
+  color: #88c888;
+}
+
+.btn-npc-heal:hover {
+  border-color: #5a9a5a;
+  color: #a0d8a0;
+  background: rgba(80, 160, 80, 0.14);
+}
+
+.btn-npc-cond {
+  background: var(--npc-chip-bg);
+  border: 1px solid var(--npc-accent);
+  color: var(--npc-bright);
+}
+
+.btn-npc-cond:hover {
+  border-color: var(--npc-bright);
+  color: var(--npc-bright);
+}
+
+/* "End Combat" button — orange-red danger tone */
+.btn-end-combat {
+  background: transparent;
+  border: 1px solid rgba(160, 80, 60, 0.45);
+  border-radius: 3px;
+  color: #c08070;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.btn-end-combat:hover {
+  background: rgba(160, 80, 60, 0.15);
+  border-color: rgba(192, 96, 80, 0.7);
+  color: #e0a090;
+}
+
+/* ─── NPC condition chips ────────────────────────────────────────────────── */
+
+.npc-conditions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.npc-condition-chip {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  border-radius: 10px;
+  cursor: pointer;
+  background: rgba(140, 110, 180, 0.14);
+  border: 1px solid rgba(140, 110, 180, 0.38);
+  color: #c098e0;
+}
+
+/* ─── Add enemy form ─────────────────────────────────────────────────────── */
+
+.npc-add-form {
+  border-radius: 5px;
+  padding: 14px;
+  margin-top: 4px;
+}
+
+.npc-add-form-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.npc-add-count-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+/* "× Remove" button on NPC card header */
+.btn-npc-remove {
+  background: transparent;
+  border: none;
+  color: var(--pal-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-npc-remove:hover {
+  color: #c06060;
+  background: rgba(192, 96, 96, 0.1);
+}
+
+/* "+ Add Enemy" button inside the add-form */
+.btn-npc-add-enemy {
+  width: 100%;
+  border-radius: 3px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 8px 0;
+  cursor: pointer;
+  border: 1px solid var(--npc-accent);
+  background: var(--npc-chip-bg);
+  color: var(--npc-bright);
+  transition: background 0.15s;
+}
+
+.btn-npc-add-enemy:hover {
+  background: rgba(122, 112, 96, 0.22);
+}
+
+/* Notes strip delete button hover */
+.btn-note-delete {
+  background: transparent;
+  border: none;
+  color: #c06060;
+  cursor: pointer;
+  font-size: 14px;
+  padding: 0 2px;
+  opacity: 0.45;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: opacity 0.15s;
+}
+
+.btn-note-delete:hover {
+  opacity: 1;
+}
+
+/* Notes strip "+ Add" button */
+.btn-note-add {
+  border-radius: 3px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 5px 10px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+
+/* ─── InitiativeTracker ──────────────────────────────────────────────────── */
+
+.init-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+/* "Clear ×" text button */
+.btn-init-clear {
+  background: transparent;
+  border: none;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  padding: 3px 0;
+  transition: color 0.15s;
+}
+
+.btn-init-clear:hover {
+  color: #c06060;
+}
+
+.init-list {
+  list-style: none;
+  margin-bottom: 10px;
+  padding: 0;
+}
+
+.init-entry {
+  margin-bottom: 3px;
+  border-radius: 4px;
+}
+
+.init-entry-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--pal-border);
+  transition: border-color 0.15s;
+}
+
+.init-entry-row[data-current="true"] {
+  border-color: var(--pal-accent);
+  background: rgba(106, 143, 168, 0.12);
+}
+
+.init-entry-row[data-promote-open="true"] {
+  border-color: rgba(122, 112, 96, 0.5);
+  border-radius: 4px 4px 0 0;
+}
+
+.init-entry-row[data-promote-clickable="true"] {
+  cursor: pointer;
+}
+
+.init-entry-row[data-promote-clickable="true"]:not([data-current="true"]):not([data-promote-open="true"]):hover {
+  border-color: rgba(122, 112, 96, 0.5);
+}
+
+.init-value {
+  font-family: var(--font-display);
+  font-size: 18px;
+  width: 28px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.init-name {
+  font-family: var(--font-body);
+  font-size: 15px;
+  flex: 1;
+}
+
+.init-hp-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: inline-block;
+}
+
+.init-badge-npc {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  background: rgba(100, 130, 160, 0.1);
+  border: 1px solid var(--pal-border);
+  border-radius: 8px;
+  padding: 1px 6px;
+}
+
+.init-now-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--pal-accent-bright);
+  white-space: nowrap;
+}
+
+/* Promote panel (expand below an entry row) */
+.init-promote-panel {
+  padding: 10px 12px;
+  background: rgba(30, 26, 20, 0.6);
+  border: 1px solid rgba(122, 112, 96, 0.5);
+  border-top: none;
+  border-radius: 0 0 4px 4px;
+}
+
+.init-promote-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+/* Move-order controls */
+.init-move-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+/* "Modify Order" toggle button */
+.btn-modify-order {
+  width: 100%;
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 7px 0;
+  cursor: pointer;
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  color: var(--pal-text-muted);
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+
+.btn-modify-order:hover,
+.btn-modify-order[data-active="true"] {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+.btn-modify-order[data-active="true"] {
+  background: rgba(106, 143, 168, 0.14);
+}
+
+/* "× Remove" button inside init list (modify order mode) */
+.btn-init-remove {
+  background: transparent;
+  border: none;
+  color: var(--pal-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 4px;
+  border-radius: 3px;
+  line-height: 1;
+  transition: color 0.15s, background 0.15s;
+}
+
+.btn-init-remove:hover {
+  color: #c06060;
+  background: rgba(192, 96, 96, 0.1);
+}
+
+/* Add Characters / Add PC row */
+.init-pc-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 5px;
+}
+
+/* Shared "Add" and "+" buttons in initiative (ghost-style) */
+.btn-init-add {
+  background: transparent;
+  border: 1px solid rgba(100, 130, 160, 0.32);
+  border-radius: 3px;
+  color: var(--pal-accent-bright);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 5px 10px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.btn-init-add:hover {
+  border-color: var(--pal-accent);
+  background: rgba(106, 143, 168, 0.15);
+}
+
+.btn-init-add-manual {
+  background: transparent;
+  border: 1px solid rgba(100, 130, 160, 0.32);
+  border-radius: 3px;
+  color: var(--pal-accent-bright);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  padding: 7px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.btn-init-add-manual:hover {
+  border-color: var(--pal-accent);
+  background: rgba(106, 143, 168, 0.15);
+}
+
+/* Add-entry form row */
+.init-add-row {
+  display: flex;
+  gap: 6px;
+}

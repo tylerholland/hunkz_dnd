@@ -13,13 +13,12 @@ import ManagePartyModal from "../features/dmDashboard/ManagePartyModal";
 import {
   PalCtx,
   initiativesEqual,
-  useDashboardStyles,
 } from "../features/dmDashboard/dashboardShared";
+import "./pages.css";
 import { PALETTES } from "../features/characterSheet/theme";
 import { cloneLiveValue, useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
 
 export default function DmDashboardClassicPage() {
-  useDashboardStyles();
 
   const [dmPassword, setDmPassword] = useState(() => sessionStorage.getItem("dnd_dm_password") || "");
   const [authed, setAuthed] = useState(false);
@@ -523,24 +522,7 @@ export default function DmDashboardClassicPage() {
     );
   }
 
-  const btnStyle = {
-    background: "rgba(18,32,48,0.5)",
-    border: `1px solid ${pal.accent}`,
-    borderRadius: 3,
-    color: pal.accentBright,
-    fontFamily: pal.fontUI,
-    fontSize: 12,
-    letterSpacing: "0.14em",
-    padding: "7px 16px",
-    cursor: "pointer",
-  };
-
-  const btnSecondary = {
-    ...btnStyle,
-    background: "transparent",
-    borderColor: "rgba(100,130,160,0.32)",
-    color: pal.textMuted,
-  };
+  // btnStyle/btnSecondary replaced by .btn-primary / .btn-ghost CSS classes
 
   return (
     <PalCtx.Provider value={pal}>
@@ -551,35 +533,18 @@ export default function DmDashboardClassicPage() {
         fontFamily: pal.fontBody,
         WebkitFontSmoothing: "antialiased",
       }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
-          padding: "14px 24px",
-          borderBottom: "1px solid rgba(100,130,160,0.32)",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          background: "rgba(13,15,20,0.95)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        }}>
+        <div className="dm-sticky-header">
           <div>
             <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, letterSpacing: "0.12em", color: pal.accentBright }}>Campaign</div>
-            <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted }}>
+            <div className="label-ui">
               {party.length > 0 ? `${party.length} player${party.length !== 1 ? "s" : ""}` : "Loading…"}
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
-            <button
-              style={btnSecondary}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
-              onClick={() => setShowManageParty(true)}
-            >Manage Party</button>
+          <div className="flex-row" style={{ gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
+            <button className="btn-ghost" onClick={() => setShowManageParty(true)}>
+              Manage Party
+            </button>
             <select
               value={palKey}
               onChange={(e) => {
@@ -599,9 +564,8 @@ export default function DmDashboardClassicPage() {
             )}
 
             <button
-              style={{ ...btnSecondary, borderColor: "rgba(192,96,96,0.4)", color: "#c06060" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c06060"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(192,96,96,0.4)"; }}
+              className="btn-ghost"
+              style={{ borderColor: "rgba(192,96,96,0.4)", color: "#c06060" }}
               onClick={handleEndSession}
             >End Session</button>
           </div>
@@ -610,9 +574,8 @@ export default function DmDashboardClassicPage() {
         <div style={{ maxWidth: 1400, margin: "0 auto", padding: "12px 24px 0" }}>
           <Link
             to="/"
-            style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: pal.textMuted, textDecoration: "none", display: "inline-block" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = pal.accentBright; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
+            className="label-ui dm-nav-link"
+            style={{ fontSize: 12, letterSpacing: "0.14em", color: pal.textMuted, textDecoration: "none" }}
           >← Character Library</Link>
         </div>
 
@@ -624,13 +587,13 @@ export default function DmDashboardClassicPage() {
               pal={pal}
               onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
             />
-            <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 14 }}>Party</div>
+            <div className="label-ui" style={{ marginBottom: 14 }}>Party</div>
 
             {(() => {
               const activeEntry = (initiative.entries || [])[initiative.activeTurnIndex ?? 0];
               const activeTurnSlug = activeEntry?.slug ?? null;
               return party.length === 0 ? (
-                <div style={{ fontFamily: pal.fontUI, fontSize: 13, color: pal.textMuted, padding: "20px 0" }}>No characters found.</div>
+                <div className="label-ui" style={{ fontSize: 13, padding: "20px 0" }}>No characters found.</div>
               ) : (
                 party.map((char) => (
                   <CharacterCard
@@ -648,8 +611,8 @@ export default function DmDashboardClassicPage() {
             })()}
 
             <div style={{ marginTop: 16 }}>
-              <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 10 }}>Party-Wide Actions</div>
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <div className="label-ui" style={{ marginBottom: 10 }}>Party-Wide Actions</div>
+              <div className="flex-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "stretch" }}>
                 {[
                   {
                     label: "◑ Short Rest — Reset Pact Magic",
@@ -671,24 +634,20 @@ export default function DmDashboardClassicPage() {
                   <button
                     key={label}
                     onClick={action}
-                    style={{ flex: 1, background: "transparent", border: "1px solid rgba(100,130,160,0.32)", borderRadius: 4, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", padding: "8px 0", cursor: "pointer", textAlign: "center" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
+                    className="btn-ghost"
+                    style={{ flex: 1 }}
                   >{label}</button>
                 ))}
                 {party.some((c) => (c.levelingMode || "milestone") === "xp") && (
                   <button
                     onClick={() => setShowAwardXpParty(true)}
-                    style={{ background: "transparent", border: "1px solid rgba(138,180,200,0.35)", borderRadius: 4, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", padding: "8px 14px", cursor: "pointer" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(138,180,200,0.35)"; e.currentTarget.style.color = pal.textMuted; }}
+                    className="btn-ghost"
                   >✦ Award XP to Party</button>
                 )}
                 <button
                   onClick={() => setShowDistributeCoinParty(true)}
-                  style={{ background: "transparent", border: "1px solid rgba(200,160,64,0.3)", borderRadius: 4, color: "rgba(200,160,64,0.7)", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", padding: "8px 14px", cursor: "pointer" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c8a040"; e.currentTarget.style.color = "#c8a040"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(200,160,64,0.3)"; e.currentTarget.style.color = "rgba(200,160,64,0.7)"; }}
+                  className="btn-ghost"
+                  style={{ borderColor: "rgba(200,160,64,0.3)", color: "rgba(200,160,64,0.7)" }}
                 >◈ Distribute Coin</button>
               </div>
             </div>

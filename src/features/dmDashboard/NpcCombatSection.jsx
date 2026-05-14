@@ -12,6 +12,7 @@ import {
   useHoldToRepeat,
   withAlpha,
 } from "./dashboardShared";
+import "./npcCombat.css";
 
 const NPC_ACCENT = "#7a7060";
 const NPC_BRIGHT = "#b0a080";
@@ -102,22 +103,22 @@ function NpcDamageHealModal({ npc, mode, onClose, onConfirm }) {
   }); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={onClose}>
+    <div className="modal-overlay" style={{ zIndex: 300 }} onClick={onClose}>
       <div style={{ background: pal.surfaceSolid, border: `1px solid ${accentColor}`, borderRadius: 8, padding: "24px 28px", maxWidth: 340, width: "90%" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ fontFamily: pal.fontDisplay, fontSize: 14, letterSpacing: "0.12em", textTransform: "uppercase", color: accentColor, marginBottom: 4 }}>
           {isHeal ? "✦ Heal" : "⚔ Deal Damage"} — {npc.name}
         </div>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 16, margin: "20px 0" }}>
+        <div className="flex-row" style={{ justifyContent: "center", gap: 16, margin: "20px 0" }}>
           <button onPointerDown={minusBind.start} onPointerUp={minusBind.stop} onPointerLeave={minusBind.stop} style={{ width: 40, height: 40, borderRadius: 4, border: `1px solid ${accentColor}`, background: "transparent", color: accentBright, fontFamily: pal.fontDisplay, fontSize: 22, cursor: "pointer" }}>−</button>
           <input type="number" value={amount} min="0" onChange={(e) => setAmount(Math.max(0, parseInt(e.target.value) || 0))} style={{ width: 90, background: "transparent", border: "none", borderBottom: `2px solid ${accentColor}`, color: accentBright, fontFamily: pal.fontDisplay, fontSize: 42, textAlign: "center", outline: "none" }} />
           <button onPointerDown={plusBind.start} onPointerUp={plusBind.stop} onPointerLeave={plusBind.stop} style={{ width: 40, height: 40, borderRadius: 4, border: `1px solid ${accentColor}`, background: "transparent", color: accentBright, fontFamily: pal.fontDisplay, fontSize: 22, cursor: "pointer" }}>+</button>
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 20 }}>
+        <div className="flex-row" style={{ flexWrap: "wrap", gap: 6, justifyContent: "center", marginBottom: 20 }}>
           {[3, 5, 8, 10, 15, 20].map((preset) => (
             <button key={preset} onClick={() => setAmount(preset)} style={{ padding: "5px 12px", borderRadius: 4, border: `1px solid ${amount === preset ? accentColor : "rgba(100,130,160,0.32)"}`, background: amount === preset ? `rgba(${isHeal ? "80,160,80" : "192,96,96"},0.15)` : "transparent", color: amount === preset ? accentBright : pal.textMuted, fontFamily: pal.fontDisplay, fontSize: 14, cursor: "pointer" }}>{preset}</button>
           ))}
         </div>
-        <div style={{ display: "flex", gap: 10 }}>
+        <div className="flex-row" style={{ gap: 10 }}>
           <button onClick={onClose} style={{ flex: 1, background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 4, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", padding: "8px 0", cursor: "pointer" }}>Cancel</button>
           <button onClick={confirm} style={{ flex: 2, background: `rgba(${isHeal ? "80,160,80" : "192,96,96"},0.15)`, border: `1px solid ${accentColor}`, borderRadius: 4, color: accentBright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", padding: "8px 0", cursor: "pointer" }}>
             {isHeal ? `Heal ${amount}` : `Deal ${amount} damage`}
@@ -132,10 +133,10 @@ function NpcConditionPicker({ npc, onAdd, onClose }) {
   const pal = useContext(PalCtx);
   const existing = new Set(npc.conditions || []);
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.6)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 300 }} onClick={onClose}>
+    <div className="modal-overlay" style={{ zIndex: 300 }} onClick={onClose}>
       <div style={{ background: pal.surfaceSolid, border: `1px solid ${pal.accent}`, borderRadius: 8, padding: "20px 24px", maxWidth: 360, width: "90%" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.accentBright, marginBottom: 14 }}>Add Condition — {npc.name}</div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        <div className="flex-row" style={{ flexWrap: "wrap", gap: 6 }}>
           {ALL_CONDITIONS.map((condition) => (
             <button
               key={condition}
@@ -145,7 +146,7 @@ function NpcConditionPicker({ npc, onAdd, onClose }) {
             >{condition}</button>
           ))}
         </div>
-        <button onClick={onClose} style={{ marginTop: 16, width: "100%", background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 4, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", padding: "8px 0", cursor: "pointer" }}>Close</button>
+        <button className="btn-ghost" onClick={onClose} style={{ marginTop: 16, width: "100%", borderRadius: 4, padding: "8px 0" }}>Close</button>
       </div>
     </div>
   );
@@ -225,13 +226,11 @@ function NpcNotesStrip({ npc, allNpcsRef, onCommitNpcs, pal, npcPal }) {
           {notes.length > 0 && (
             <ul style={{ listStyle: "none", marginBottom: 6 }}>
               {notes.map((note, idx) => (
-                <li key={note.id} style={{ display: "flex", alignItems: "flex-start", gap: 7, padding: "5px 0", borderBottom: idx < notes.length - 1 ? `1px solid ${npcPal.actionBorder}` : "none" }}>
+                <li key={note.id} className="flex-row" style={{ alignItems: "flex-start", gap: 7, padding: "5px 0", borderBottom: idx < notes.length - 1 ? `1px solid ${npcPal.actionBorder}` : "none" }}>
                   <span style={{ flex: 1, fontFamily: pal.fontBody, fontSize: 13, color: pal.textBody, lineHeight: 1.5 }}>{note.text}</span>
                   <button
                     onClick={(e) => { e.stopPropagation(); handleDelete(note.id); }}
-                    style={{ background: "transparent", border: "none", color: "#c06060", cursor: "pointer", fontSize: 14, padding: "0 2px", opacity: 0.45, lineHeight: 1, flexShrink: 0, marginTop: 1, transition: "opacity 0.15s" }}
-                    onMouseEnter={(e) => { e.currentTarget.style.opacity = "1"; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.opacity = "0.45"; }}
+                    className="btn-note-delete"
                     title="Delete note"
                   >×</button>
                 </li>
@@ -241,7 +240,7 @@ function NpcNotesStrip({ npc, allNpcsRef, onCommitNpcs, pal, npcPal }) {
           {notes.length === 0 && (
             <div style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 12, color: pal.textMuted, padding: "2px 0 5px" }}>No notes yet.</div>
           )}
-          <div style={{ display: "flex", gap: 5, marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
+          <div className="flex-row" style={{ gap: 5, marginTop: 6 }} onClick={(e) => e.stopPropagation()}>
             <input
               ref={inputRef}
               type="text"
@@ -256,9 +255,8 @@ function NpcNotesStrip({ npc, allNpcsRef, onCommitNpcs, pal, npcPal }) {
             />
             <button
               onClick={(e) => { e.stopPropagation(); handleAdd(); }}
-              style={{ background: npcPal.chipBg, border: `1px solid ${npcPal.accent}`, borderRadius: 3, color: npcPal.bright, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.08em", padding: "5px 10px", cursor: "pointer", whiteSpace: "nowrap", transition: "background 0.15s" }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = withAlpha(npcPal.accent, 0.22); }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = npcPal.chipBg; }}
+              className="btn-note-add"
+              style={{ background: npcPal.chipBg, border: `1px solid ${npcPal.accent}`, color: npcPal.bright }}
             >+ Add</button>
           </div>
           <div style={{ fontFamily: pal.fontUI, fontSize: 9, color: pal.textMuted, letterSpacing: "0.12em", marginTop: 5 }}>Session only — discarded when combat ends</div>
@@ -420,35 +418,25 @@ function NpcCard({
   return (
     <div
       data-active-turn={isActiveTurn && !isDead ? "true" : undefined}
-      className={isActiveTurn && !isDead ? "dm-active-turn" : undefined}
+      data-active={isActiveTurn && !isDead ? "true" : undefined}
+      data-dead={isDead ? "true" : undefined}
+      className={`npc-card${isActiveTurn && !isDead ? " dm-active-turn" : ""}`}
       style={{
         background: activeSurface,
         border: `1px solid ${cardBorder}`,
-        borderRadius: 5,
-        marginBottom: 10,
-        position: "relative",
-        opacity: isDead ? 0.75 : 1,
-        overflow: "visible",
         zIndex: isActiveTurn && !isDead ? 2 : 1,
-        transform: isActiveTurn && !isDead ? "scaleX(1.02)" : "scaleX(1)",
-        transformOrigin: "center center",
-        transition: "transform 0.18s ease",
         ...activeTurnStyle,
       }}
     >
-      <div className={bloodiedFlash ? "dm-bloodied-flash" : undefined} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, borderRadius: "5px 0 0 5px", background: leftStripe }} />
-      <div style={{ padding: "10px 10px 0 14px" }}>
-        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
-            <span style={{ fontFamily: pal.fontDisplay, fontSize: 15, letterSpacing: "0.05em", color: isDead ? pal.textMuted : npcPal.bright, textDecoration: isDead ? "line-through" : "none", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{npc.name}</span>
-            {isBloodied && !isDead && (
-              <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", padding: "2px 7px", borderRadius: 8, background: "rgba(180,100,40,0.14)", border: "1px solid rgba(180,100,40,0.45)", color: "#d09050", flexShrink: 0 }}>Bloodied</span>
-            )}
-            {isDead && (
-              <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", padding: "2px 7px", borderRadius: 8, background: "rgba(192,60,60,0.14)", border: "1px solid rgba(192,60,60,0.4)", color: "#c06060", flexShrink: 0 }}>Dead</span>
-            )}
+      <div className={bloodiedFlash ? "npc-stripe dm-bloodied-flash" : "npc-stripe"} style={{ background: leftStripe }} />
+      <div className="npc-header">
+        <div className="npc-name-row">
+          <div className="npc-name-group">
+            <span className="npc-name" style={{ color: isDead ? pal.textMuted : npcPal.bright, textDecoration: isDead ? "line-through" : "none" }}>{npc.name}</span>
+            {isBloodied && !isDead && <span className="badge-bloodied">Bloodied</span>}
+            {isDead && <span className="badge-dead">Dead</span>}
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          <div className="flex-row" style={{ gap: 6, flexShrink: 0 }}>
             {onToggleInitiative && (
               <button
                 onClick={onToggleInitiative}
@@ -468,25 +456,25 @@ function NpcCard({
                 title={isInInitiative ? "Remove from initiative" : "Add to initiative"}
               >{isInInitiative ? "− Init" : "+ Init"}</button>
             )}
-            <button onClick={onRemove} style={{ background: "transparent", border: "none", color: pal.textMuted, fontSize: 14, cursor: "pointer", padding: "2px 4px", borderRadius: 3, lineHeight: 1, flexShrink: 0 }} onMouseEnter={(e) => { e.currentTarget.style.color = "#c06060"; e.currentTarget.style.background = "rgba(192,96,96,0.1)"; }} onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; e.currentTarget.style.background = ""; }}>×</button>
+            <button onClick={onRemove} className="btn-npc-remove">×</button>
           </div>
         </div>
 
-        <div style={{ display: "flex", alignItems: "center", gap: 0, marginBottom: 6, position: "relative" }}>
-          <button onPointerDown={minusBind.start} onPointerUp={minusBind.stop} onPointerLeave={minusBind.stop} style={{ width: 26, height: 22, borderRadius: 3, border: `1px solid ${npcPal.actionBorder}`, background: "transparent", color: pal.textMuted, fontFamily: pal.fontDisplay, fontSize: 14, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none", touchAction: "none" }}>−</button>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 0, whiteSpace: "nowrap", padding: "0 8px 0 9px", flexShrink: 0 }}>
+        <div className="npc-hp-row">
+          <button onPointerDown={minusBind.start} onPointerUp={minusBind.stop} onPointerLeave={minusBind.stop} className="npc-stepper">−</button>
+          <div className="npc-hp-numbers">
             <span style={{ fontFamily: pal.fontDisplay, fontSize: 20, lineHeight: 1, color: isDead ? "#c06060" : npcPal.bright }}>{optimisticHp}</span>
             <span style={{ fontFamily: pal.fontDisplay, fontSize: 12, color: pal.textMuted }}>/</span>
             <span style={{ fontFamily: pal.fontDisplay, fontSize: 12, color: pal.textMuted }}>{hpMax}</span>
           </div>
-          <div style={{ flex: 1, paddingRight: 5 }}>
-            <div style={{ height: 10, borderRadius: 2, overflow: "hidden", background: "rgba(7,14,22,0.88)", display: "flex", gap: 1, position: "relative" }}>
+          <div className="npc-bar-wrap">
+            <div className="npc-bar">
               {Array.from({ length: 5 }).map((_, idx) => {
                 const segStart = idx / 5;
                 const segFill = Math.max(0, Math.min(1, (hpPct - segStart) * 5));
                 return (
-                  <div key={idx} style={{ flex: 1, position: "relative", background: "rgba(255,255,255,0.06)", overflow: "hidden" }}>
-                    <div style={{ position: "absolute", inset: 0, width: `${segFill * 100}%`, background: hpTone.fill, transition: "width 0.3s ease" }} />
+                  <div key={idx} className="npc-bar-seg">
+                    <div className="npc-bar-fill" style={{ width: `${segFill * 100}%`, background: hpTone.fill }} />
                   </div>
                 );
               })}
@@ -510,14 +498,14 @@ function NpcCard({
               )}
             </div>
           </div>
-          <button onPointerDown={plusBind.start} onPointerUp={plusBind.stop} onPointerLeave={plusBind.stop} style={{ width: 26, height: 22, borderRadius: 3, border: `1px solid ${npcPal.actionBorder}`, background: "transparent", color: pal.textMuted, fontFamily: pal.fontDisplay, fontSize: 14, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none", touchAction: "none" }}>+</button>
+          <button onPointerDown={plusBind.start} onPointerUp={plusBind.stop} onPointerLeave={plusBind.stop} className="npc-stepper">+</button>
           {deltaIndicator && (
             <div key={deltaIndicator.key} className="dm-hp-delta" style={{ color: deltaIndicator.value > 0 ? "#88c888" : "#d08080" }}>{deltaIndicator.value > 0 ? `+${deltaIndicator.value}` : deltaIndicator.value}</div>
           )}
         </div>
 
         {visibleConds.length > 0 && (
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
+          <div className="npc-conditions">
             {visibleConds.map((condition) => (
               <span
                 key={condition}
@@ -541,8 +529,7 @@ function NpcCard({
                   }, 150);
                   removalTimersRef.current.set(condition, timerId);
                 }}
-                className={removingConds.includes(condition) ? "dm-condition-exit" : "dm-condition-enter"}
-                style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", padding: "2px 8px", borderRadius: 10, cursor: "pointer", background: "rgba(140,110,180,0.14)", border: "1px solid rgba(140,110,180,0.38)", color: "#c098e0" }}
+                className={`npc-condition-chip ${removingConds.includes(condition) ? "dm-condition-exit" : "dm-condition-enter"}`}
                 title="Click to remove"
               >{condition}</span>
             ))}
@@ -550,21 +537,14 @@ function NpcCard({
         )}
       </div>
 
-      <div style={{ display: "flex", gap: 5, padding: "6px 10px 8px", borderTop: `1px solid ${npcPal.actionBorder}`, marginTop: 2 }}>
+      <div className="npc-actions" style={{ borderTop: `1px solid ${npcPal.actionBorder}` }}>
         {isDead ? (
-          <button
-            onClick={() => onOpenModal("heal")}
-            style={{ flex: 1, background: "rgba(80,160,80,0.08)", border: "1px solid rgba(80,160,80,0.35)", borderRadius: 3, color: "#88c888", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.16em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }}
-            onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#5a9a5a"; e.currentTarget.style.color = "#a0d8a0"; e.currentTarget.style.background = "rgba(80,160,80,0.14)"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(80,160,80,0.35)"; e.currentTarget.style.color = "#88c888"; e.currentTarget.style.background = "rgba(80,160,80,0.08)"; }}
-          >
-            Revive
-          </button>
+          <button onClick={() => onOpenModal("heal")} className="btn-npc-action btn-npc-heal">Revive</button>
         ) : (
           <>
-            <button onClick={() => onOpenModal("damage")} style={{ flex: 1, background: "rgba(192,96,96,0.08)", border: "1px solid rgba(192,96,96,0.35)", borderRadius: 3, color: "#d08080", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c06060"; e.currentTarget.style.color = "#e09898"; e.currentTarget.style.background = "rgba(192,96,96,0.14)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(192,96,96,0.35)"; e.currentTarget.style.color = "#d08080"; e.currentTarget.style.background = "rgba(192,96,96,0.08)"; }}>⚔ Dmg</button>
-            <button onClick={() => onOpenModal("heal")} style={{ flex: 1, background: "rgba(80,160,80,0.08)", border: "1px solid rgba(80,160,80,0.35)", borderRadius: 3, color: "#88c888", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#5a9a5a"; e.currentTarget.style.color = "#a0d8a0"; e.currentTarget.style.background = "rgba(80,160,80,0.14)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(80,160,80,0.35)"; e.currentTarget.style.color = "#88c888"; e.currentTarget.style.background = "rgba(80,160,80,0.08)"; }}>✦ Heal</button>
-            <button onClick={onOpenConditions} style={{ flex: 1, background: npcPal.chipBg, border: `1px solid ${npcPal.accent}`, borderRadius: 3, color: npcPal.bright, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "5px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = npcPal.bright; e.currentTarget.style.color = npcPal.bright; e.currentTarget.style.background = withAlpha(npcPal.accent, 0.22); }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = npcPal.accent; e.currentTarget.style.color = npcPal.bright; e.currentTarget.style.background = npcPal.chipBg; }}>+ Cond</button>
+            <button onClick={() => onOpenModal("damage")} className="btn-npc-action btn-npc-dmg">⚔ Dmg</button>
+            <button onClick={() => onOpenModal("heal")} className="btn-npc-action btn-npc-heal">✦ Heal</button>
+            <button onClick={onOpenConditions} className="btn-npc-action btn-npc-cond" style={{ "--npc-accent": npcPal.accent, "--npc-bright": npcPal.bright, "--npc-chip-bg": npcPal.chipBg }}>+ Cond</button>
           </>
         )}
       </div>
@@ -698,18 +678,36 @@ export default function NpcCombatSection({
   }
 
   return (
-    <div className="dm-npc-col" style={{ borderLeft: `1px solid ${pal.border}`, paddingLeft: 20, paddingRight: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted }}>
+    <div
+      className="dm-npc-col"
+      style={{
+        borderLeft: `1px solid ${pal.border}`,
+        paddingLeft: 20,
+        paddingRight: 10,
+        "--pal-bg":           pal.bg,
+        "--pal-surface":      pal.surface,
+        "--pal-surface-solid":pal.surfaceSolid,
+        "--pal-border":       pal.border,
+        "--pal-accent":       pal.accent,
+        "--pal-accent-bright":pal.accentBright,
+        "--pal-accent-dim":   pal.accentDim,
+        "--pal-text":         pal.text,
+        "--pal-text-body":    pal.textBody,
+        "--pal-text-muted":   pal.textMuted,
+        "--pal-glow-1":       pal.glow1,
+        "--pal-glow-2":       pal.glow2,
+        "--npc-accent":       npcPal.accent,
+        "--npc-bright":       npcPal.bright,
+        "--npc-chip-bg":      npcPal.chipBg,
+        "--npc-action-border":npcPal.actionBorder,
+      }}
+    >
+      <div className="flex-row-spread" style={{ marginBottom: 14 }}>
+        <span className="label-ui" style={{ letterSpacing: "0.3em" }}>
           Enemies{npcs.length > 0 ? ` · ${npcs.length}` : ""}
         </span>
         {npcs.length > 0 && (
-          <button
-            onClick={() => setShowEndConfirm(true)}
-            style={{ background: "transparent", border: "1px solid rgba(160,80,60,0.45)", borderRadius: 3, color: "#c08070", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.14em", textTransform: "uppercase", padding: "4px 10px", cursor: "pointer" }}
-            onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(160,80,60,0.15)"; e.currentTarget.style.borderColor = "rgba(192,96,80,0.7)"; e.currentTarget.style.color = "#e0a090"; }}
-            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.borderColor = "rgba(160,80,60,0.45)"; e.currentTarget.style.color = "#c08070"; }}
-          >End Combat ×</button>
+          <button onClick={() => setShowEndConfirm(true)} className="btn-end-combat">End Combat ×</button>
         )}
       </div>
 
@@ -721,7 +719,7 @@ export default function NpcCombatSection({
         <>
           {activeNpcs.length > 0 && (
             <div style={{ marginBottom: 10 }}>
-              <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 8 }}>
+              <div className="label-ui" style={{ letterSpacing: "0.22em", marginBottom: 8 }}>
                 In Initiative · {activeNpcs.length}
               </div>
               {activeNpcs.map(({ npc, isInInitiative }) => (
@@ -743,7 +741,7 @@ export default function NpcCombatSection({
 
           {inactiveNpcs.length > 0 && (
             <div style={{ marginTop: 22, marginBottom: 10 }}>
-              <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 8 }}>
+              <div className="label-ui" style={{ letterSpacing: "0.22em", marginBottom: 8 }}>
                 Inactive · {inactiveNpcs.length}
               </div>
               {inactiveNpcs.map(({ npc, isInInitiative }) => (
@@ -765,13 +763,13 @@ export default function NpcCombatSection({
         </>
       )}
 
-      <div style={{ background: npcPal.surface, border: `1px dashed ${npcPal.actionBorder}`, borderRadius: 5, padding: 14, marginTop: 4 }}>
-        <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.28em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 10 }}>Add Enemy</div>
-        <div style={{ display: "flex", gap: 6, marginBottom: 8 }}>
+      <div className="npc-add-form" style={{ background: npcPal.surface, border: `1px dashed ${npcPal.actionBorder}` }}>
+        <div className="label-ui" style={{ letterSpacing: "0.28em", marginBottom: 10 }}>Add Enemy</div>
+        <div className="npc-add-form-row">
           <input type="text" placeholder="Name…" value={addName} onChange={(e) => setAddName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddNpcs()} style={{ flex: 1, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "7px 10px", outline: "none" }} />
           <input type="number" placeholder="HP" value={addHp} onChange={(e) => setAddHp(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddNpcs()} style={{ width: 64, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 15, padding: "7px 8px", outline: "none", textAlign: "center" }} />
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+        <div className="npc-add-count-row">
           <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>Count:</span>
           <input type="number" min="1" max="8" value={addCount} onChange={(e) => setAddCount(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))} style={{ width: 44, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 14, padding: "4px 6px", outline: "none", textAlign: "center" }} />
           {addCount > 1 && addName.trim() && (
@@ -780,7 +778,7 @@ export default function NpcCombatSection({
             </span>
           )}
         </div>
-        <button onClick={handleAddNpcs} style={{ width: "100%", background: npcPal.chipBg, border: `1px solid ${npcPal.accent}`, borderRadius: 3, color: npcPal.bright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.16em", textTransform: "uppercase", padding: "8px 0", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.background = withAlpha(npcPal.accent, 0.22); }} onMouseLeave={(e) => { e.currentTarget.style.background = npcPal.chipBg; }}>+ Add Enemy</button>
+        <button onClick={handleAddNpcs} className="btn-npc-add-enemy">+ Add Enemy</button>
         <div style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginTop: 8, letterSpacing: "0.08em" }}>
           Use <span style={{ color: npcPal.bright }}>+ Init</span> on a card to add it to the turn order.
         </div>

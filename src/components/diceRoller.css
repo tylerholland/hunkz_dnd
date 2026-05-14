@@ -1,0 +1,379 @@
+/*
+ * diceRoller.css
+ *
+ * Shared styles for DiceRoller.jsx and DmDiceRoller.jsx.
+ * Keyframe animations (formerly injected via <style> tag in each component),
+ * plus structural classes used 3+ times in either component.
+ *
+ * Both components set --pal-* variables at their root element so all children
+ * can reference var(--pal-accent) etc. without prop drilling.
+ */
+
+/* ── Keyframe animations: player dice roller (dr-*) ──────────────────────── */
+
+@keyframes dr-spin-in {
+  0%   { transform: rotate(0deg) scale(0.6); opacity: 0.4; }
+  60%  { transform: rotate(380deg) scale(1.08); opacity: 1; }
+  80%  { transform: rotate(355deg) scale(0.97); }
+  100% { transform: rotate(360deg) scale(1); opacity: 1; }
+}
+@keyframes dr-land-normal {
+  0%   { filter: drop-shadow(0 0 0px rgba(200,144,76,0)); }
+  40%  { filter: drop-shadow(0 0 18px rgba(200,144,76,0.7)); }
+  100% { filter: drop-shadow(0 0 6px rgba(200,144,76,0.2)); }
+}
+@keyframes dr-land-crit {
+  0%   { filter: drop-shadow(0 0 0px rgba(255,200,40,0)); }
+  35%  { filter: drop-shadow(0 0 28px rgba(255,200,40,0.9)); }
+  100% { filter: drop-shadow(0 0 10px rgba(255,200,40,0.4)); }
+}
+@keyframes dr-land-fumble {
+  0%   { filter: drop-shadow(0 0 0px rgba(192,60,60,0)); }
+  35%  { filter: drop-shadow(0 0 28px rgba(192,60,60,0.9)); }
+  100% { filter: drop-shadow(0 0 10px rgba(192,60,60,0.3)); }
+}
+@keyframes dr-num-cycle {
+  0%   { opacity: 0.5; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes dr-reveal-num {
+  0%   { transform: scale(0.5) translateY(8px); opacity: 0; }
+  70%  { transform: scale(1.15) translateY(-2px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes dr-crit-pulse {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.35); }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+@keyframes dr-fumble-shake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-6px) rotate(-3deg); }
+  40%  { transform: translateX(6px) rotate(3deg); }
+  60%  { transform: translateX(-4px) rotate(-2deg); }
+  80%  { transform: translateX(4px) rotate(2deg); }
+  100% { transform: translateX(0); }
+}
+@keyframes dr-group-reveal {
+  0%   { opacity: 0; transform: scale(0.7) translateY(6px); }
+  70%  { opacity: 1; transform: scale(1.08) translateY(-1px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); }
+}
+
+/* ── Keyframe animations: DM dice roller (dm-dr-*) ───────────────────────── */
+
+@keyframes dm-dr-spin-in {
+  0%   { transform: rotate(0deg) scale(0.6); opacity: 0.4; }
+  60%  { transform: rotate(380deg) scale(1.08); opacity: 1; }
+  80%  { transform: rotate(355deg) scale(0.97); }
+  100% { transform: rotate(360deg) scale(1); opacity: 1; }
+}
+@keyframes dm-dr-land-normal {
+  0%   { filter: drop-shadow(0 0 0px rgba(138,180,200,0)); }
+  40%  { filter: drop-shadow(0 0 18px rgba(138,180,200,0.7)); }
+  100% { filter: drop-shadow(0 0 6px rgba(138,180,200,0.2)); }
+}
+@keyframes dm-dr-land-crit {
+  0%   { filter: drop-shadow(0 0 0px rgba(255,200,40,0)); }
+  35%  { filter: drop-shadow(0 0 28px rgba(255,200,40,0.9)); }
+  100% { filter: drop-shadow(0 0 10px rgba(255,200,40,0.4)); }
+}
+@keyframes dm-dr-land-fumble {
+  0%   { filter: drop-shadow(0 0 0px rgba(192,60,60,0)); }
+  35%  { filter: drop-shadow(0 0 28px rgba(192,60,60,0.9)); }
+  100% { filter: drop-shadow(0 0 10px rgba(192,60,60,0.3)); }
+}
+@keyframes dm-dr-num-cycle {
+  0%   { opacity: 0.5; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes dm-dr-reveal-num {
+  0%   { transform: scale(0.5) translateY(8px); opacity: 0; }
+  70%  { transform: scale(1.15) translateY(-2px); opacity: 1; }
+  100% { transform: scale(1) translateY(0); opacity: 1; }
+}
+@keyframes dm-dr-crit-pulse {
+  0%   { transform: scale(1); }
+  30%  { transform: scale(1.35); }
+  60%  { transform: scale(1.2); }
+  100% { transform: scale(1); }
+}
+@keyframes dm-dr-fumble-shake {
+  0%   { transform: translateX(0); }
+  20%  { transform: translateX(-6px) rotate(-3deg); }
+  40%  { transform: translateX(6px) rotate(3deg); }
+  60%  { transform: translateX(-4px) rotate(-2deg); }
+  80%  { transform: translateX(4px) rotate(2deg); }
+  100% { transform: translateX(0); }
+}
+@keyframes dm-dr-row-reveal {
+  0%   { opacity: 0; transform: translateY(4px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* ── Shared structural classes ────────────────────────────────────────────── */
+
+/* Root panel wrapper — surface + border */
+.dice-roller-panel {
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 16px 18px;
+  margin-top: 16px;
+}
+
+/* DM variant has tighter padding */
+.dice-roller-panel.dm {
+  padding: 14px 16px;
+}
+
+/* Sub-section label (uppercase tracking, muted) */
+.dice-sub-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 10px;
+}
+
+/* Collapse chevron — rotates when open */
+.dice-chevron {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--pal-text-muted);
+  transition: transform 0.2s;
+  display: inline-block;
+}
+.dice-chevron.open {
+  transform: rotate(180deg);
+}
+
+/* Circular stepper button (count +/−) */
+.dice-circle-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid var(--pal-border);
+  background: transparent;
+  color: var(--pal-accent-bright);
+  font-family: var(--font-display);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+.dice-circle-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-text);
+}
+.dice-circle-btn:disabled,
+.dice-circle-btn.disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+/* DM variant: slightly smaller */
+.dice-circle-btn.sm {
+  width: 24px;
+  height: 24px;
+  font-size: 15px;
+}
+
+/* Combo chip (die expression tag like "2d6") */
+.dice-combo-chip {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--pal-accent-bright);
+  background: var(--pal-accent-dim);
+  border: 1px solid var(--pal-accent);
+  border-radius: 2px;
+  padding: 2px 8px;
+}
+
+/* DM variant: slightly smaller */
+.dice-combo-chip.sm {
+  font-size: 12px;
+  padding: 1px 7px;
+}
+
+/* Small separator "+"/"+N" between combo chips */
+.dice-combo-sep {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--pal-text-muted);
+}
+
+/* Roll button (primary large action) */
+.dice-roll-btn {
+  display: block;
+  width: 100%;
+  padding: 12px;
+  font-family: var(--font-display);
+  font-size: 15px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border-radius: 4px;
+  cursor: pointer;
+  border: 1px solid var(--pal-accent);
+  color: var(--pal-accent-bright);
+  transition: all 0.15s;
+  margin-bottom: 16px;
+}
+.dice-roll-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+.dice-roll-btn:hover:not(:disabled) {
+  border-color: var(--pal-accent-bright);
+}
+
+/* DM roll button: tighter, fits inside flex row */
+.dice-roll-btn.dm {
+  flex: 1;
+  padding: 10px 8px;
+  font-size: 13px;
+  margin-bottom: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Weapon ATK/DMG quick-roll buttons */
+.dice-weapon-btn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.10em;
+  padding: 4px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.dice-weapon-btn:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+/* Expression input field */
+.dice-expr-input {
+  flex: 1;
+  background: var(--pal-surface-solid, var(--pal-surface));
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  padding: 7px 12px;
+  outline: none;
+  min-width: 0;
+  transition: border-color 0.18s;
+}
+.dice-expr-input:focus {
+  border-color: var(--pal-accent);
+}
+
+/* DM expr input: slightly smaller */
+.dice-expr-input.dm {
+  font-size: 12px;
+  padding: 6px 10px;
+}
+
+/* Error text below expression input */
+.dice-expr-error {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: #c06060;
+  margin-bottom: 6px;
+}
+
+/* Modifier number input */
+.dice-mod-input {
+  background: var(--pal-surface-solid, var(--pal-surface));
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-gem);
+  font-family: var(--font-display);
+  text-align: center;
+  outline: none;
+  -moz-appearance: textfield;
+}
+.dice-mod-input::-webkit-inner-spin-button,
+.dice-mod-input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+/* Adv/dis mode buttons — inactive state only; active state set via inline for color variety */
+.dice-mode-btn {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  padding: 3px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: 1px solid var(--pal-border);
+  background: transparent;
+  color: var(--pal-text-muted);
+}
+
+/* Die picker button */
+.dice-die-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  border: none;
+  padding: 5px 3px;
+  border-radius: 4px;
+  background: transparent;
+  transition: filter 0.15s, background 0.15s;
+}
+.dice-die-btn.selected {
+  background: var(--pal-accent-dim);
+  filter: drop-shadow(0 0 5px var(--pal-accent));
+}
+
+/* DM die picker: slightly tighter */
+.dice-die-btn.dm {
+  padding: 4px 2px;
+  gap: 2px;
+}
+
+/* Result stage center wrapper */
+.dice-result-stage {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 130px;
+  padding: 8px 0;
+}
+
+/* Breakdown chips row (adv kept/discarded, multi-roll individual values) */
+.dice-chips-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-wrap: wrap;
+  justify-content: center;
+  min-height: 24px;
+}
+
+/* Apply-damage target pill button — hover handled by onMouseEnter/Leave
+   because the rest/hover colors are dynamic (pal.accentDim varies by palette) */
+.dice-apply-btn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 4px 10px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.12s;
+}

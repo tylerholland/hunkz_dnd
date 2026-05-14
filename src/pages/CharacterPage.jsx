@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import CharacterSheet, { PALETTES } from "../components/CharacterSheet";
 import { getCharacter, updateCharacter, deleteCharacter, getMapLibrary } from "../api";
 import { useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
+import "./pages.css";
 
 export default function CharacterPage() {
   const navigate = useNavigate();
@@ -95,7 +96,7 @@ export default function CharacterPage() {
 
   if (loading) {
     return (
-      <div style={{ ...centeredStyle, background: spinnerPageBg }}>
+      <div className="page-centered" style={{ background: spinnerPageBg }}>
         <div style={{
           width: 36, height: 36, borderRadius: "50%",
           border: `2px solid ${spinnerBg}`, borderTopColor: spinnerColor,
@@ -108,7 +109,7 @@ export default function CharacterPage() {
 
   if (error || !data) {
     return (
-      <div style={centeredStyle}>
+      <div className="page-centered" style={{ background: "#0d0f14" }}>
         <div style={{ fontSize: 13, letterSpacing: "0.25em", textTransform: "uppercase", marginBottom: 16, opacity: 0.5, color: "#6a8fa8", fontFamily: "sans-serif" }}>
           404
         </div>
@@ -135,8 +136,4 @@ export default function CharacterPage() {
   );
 }
 
-const centeredStyle = {
-  minHeight: "100vh", display: "flex", flexDirection: "column",
-  alignItems: "center", justifyContent: "center",
-  background: "#0d0f14",
-};
+// centeredStyle replaced by .page-centered CSS class in pages.css

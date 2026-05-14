@@ -1,0 +1,2251 @@
+/*
+ * characterSheet.css
+ *
+ * Component-specific structural styles for CharacterSheetViewMode.
+ * Palette values are referenced via --pal-* CSS custom properties set at
+ * the rootWrap element in CharacterSheet.jsx.
+ *
+ * Do NOT put generic utility rules here — those belong in shared.css.
+ * Edit-mode structural rules (.em-*) and ItemEditorModal rules live here too —
+ * no separate CSS files are created per the migration rules.
+ */
+
+/* ─── Background glow layer ─────────────────────────────────────────────────
+   The fixed radial-gradient backdrop. Gradient colours remain inline because
+   they are computed from pal values at render time.                        */
+.cs-bg-glow {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* ─── Content shell ──────────────────────────────────────────────────────────
+   The scrollable content column centred on screen.                        */
+.cs-content {
+  position: relative;
+  z-index: 1;
+  max-width: 840px;
+  margin: 0 auto;
+  padding: 30px 28px 100px;
+}
+
+/* ─── Top bar (nav + action buttons) ────────────────────────────────────────*/
+.cs-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 40px;
+}
+
+.cs-topbar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cs-nav-link {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  text-decoration: none;
+}
+
+/* Toolbar ghost buttons — extend .btn-ghost with sheet-specific overrides */
+.cs-toolbar-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-toolbar-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+.cs-toolbar-btn:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+/* ─── Unlock modal ───────────────────────────────────────────────────────────*/
+.cs-unlock-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+}
+
+.cs-unlock-panel {
+  background: var(--pal-surface-solid);
+  border: 1px solid var(--pal-border);
+  border-radius: 6px;
+  padding: 32px 28px;
+  width: 100%;
+  max-width: 360px;
+}
+
+.cs-unlock-heading {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 8px;
+}
+
+.cs-unlock-name {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--pal-text);
+  margin-bottom: 20px;
+}
+
+.cs-unlock-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+/* ─── Header section ─────────────────────────────────────────────────────────*/
+.cs-header {
+  text-align: center;
+  margin-bottom: 52px;
+  padding-bottom: 40px;
+  border-bottom: 1px solid var(--pal-border);
+}
+
+.cs-header-class {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--pal-text-muted);
+  text-transform: uppercase;
+  margin-bottom: 18px;
+}
+
+.cs-char-name {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(1.8rem, 4vw, 2.8rem);
+  color: var(--pal-text);
+  margin: 0 0 8px;
+  letter-spacing: 0.04em;
+  line-height: 1.1;
+}
+
+.cs-char-alt-name {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 18px;
+  color: var(--pal-text);
+  letter-spacing: 0.06em;
+  margin-bottom: 6px;
+}
+
+.cs-char-pronunciation {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--pal-accent);
+  letter-spacing: 0.15em;
+  margin-bottom: 24px;
+}
+
+/* character-details-grid is in index.css */
+.cs-detail-cell {
+  text-align: center;
+}
+
+.cs-detail-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  color: var(--pal-accent-dim);
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.cs-detail-value {
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--pal-accent);
+}
+
+/* ─── Portrait ───────────────────────────────────────────────────────────────*/
+.cs-portrait-wrap {
+  width: calc(100% + 56px);
+  margin-left: -28px;
+  margin-right: -28px;
+  margin-bottom: 44px;
+  overflow: hidden;
+  border-radius: 4px;
+}
+
+.cs-portrait-img {
+  width: 100%;
+  display: block;
+}
+
+.cs-portrait-tagline {
+  margin: 0;
+  padding: 14px 28px 10px;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 22px;
+  color: var(--pal-accent);
+  text-align: center;
+  line-height: 1.7;
+}
+
+/* ─── Main stats panel (surface panel holding HP, armor, ability scores) ─────*/
+.cs-stats-panel {
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 28px 30px;
+  margin-bottom: 44px;
+  isolation: isolate;
+}
+
+/* ─── HP + Armor row ─────────────────────────────────────────────────────────*/
+.cs-vital-row {
+  display: flex;
+  justify-content: center;
+  gap: 52px;
+  margin-bottom: 24px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+
+.cs-vital-cell {
+  text-align: center;
+}
+
+.cs-vital-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-top: 4px;
+}
+
+/* HP number baseline group */
+.cs-hp-nums {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.cs-hp-current {
+  font-family: var(--font-display);
+  font-size: 44px;
+  color: var(--pal-gem);
+  line-height: 1;
+}
+
+.cs-hp-slash {
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--pal-text-muted);
+  line-height: 1;
+}
+
+.cs-hp-max {
+  font-family: var(--font-display);
+  font-size: 30px;
+  color: var(--pal-accent);
+  line-height: 1;
+}
+
+.cs-hp-temp {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--pal-accent-bright);
+  letter-spacing: 0.08em;
+}
+
+/* HP bar track — fill width is always inline (% computed from data) */
+.cs-hp-bar-track {
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--pal-border);
+  overflow: hidden;
+  min-width: 80px;
+}
+
+.cs-hp-bonus-note {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--pal-accent);
+  font-style: italic;
+  opacity: 0.8;
+}
+
+/* ─── Armor flyout ───────────────────────────────────────────────────────────
+   Centered below the armor stat, uses .flyout from shared.css for base    */
+.cs-armor-flyout {
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+}
+
+/* ─── Ability score circles ──────────────────────────────────────────────────*/
+.cs-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px 8px;
+  margin-bottom: 8px;
+  justify-content: center;
+}
+
+.cs-stat-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.cs-stat-circle-wrap {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  margin-left: 8px;
+  margin-bottom: 6px;
+}
+
+/* Circle itself — border/background are palette-derived and set inline
+   because they depend on per-stat score colour thresholds.              */
+.cs-stat-circle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.cs-stat-score {
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1;
+}
+
+/* Modifier badge — background colour is data-driven (inline) */
+.cs-stat-badge {
+  position: absolute;
+  bottom: -6px;
+  left: -8px;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 2px solid var(--pal-surface-solid);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.cs-stat-badge-text {
+  font-family: var(--font-display);
+  font-size: 13px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.cs-stat-name {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--pal-accent-bright);
+  letter-spacing: 0.06em;
+}
+
+.cs-stat-note {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--pal-text-muted);
+  margin-top: 2px;
+}
+
+/* Stat flyout — base from .flyout, positioned above the circle row */
+.cs-stat-flyout {
+  bottom: calc(100% + 6px);
+  left: 0;
+}
+
+/* Flyout rows */
+.cs-flyout-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 20px;
+  margin-bottom: 10px;
+}
+
+.cs-flyout-header-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cs-flyout-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+}
+
+.cs-flyout-row-label {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--pal-text-muted);
+  font-style: italic;
+}
+
+.cs-flyout-row-label-item {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--pal-text-body);
+}
+
+/* ─── Tab strip ──────────────────────────────────────────────────────────────*/
+.cs-tab-strip {
+  display: flex;
+  margin: 0 -30px 24px;
+}
+
+/* Individual tabs — active state colours must remain inline (per-tab data)  */
+.cs-tab-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  height: 64px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+.cs-tab-btn.active {
+  background: var(--pal-accent-dim);
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+.cs-tab-btn.disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+/* Remove inner borders between tabs; last tab keeps its right border */
+.cs-tab-btn:not(:last-child) {
+  border-right: none;
+}
+
+/* ─── Attunement banner (Inventory tab) ─────────────────────────────────────*/
+.cs-attune-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--pal-border);
+  margin-bottom: 16px;
+}
+
+.cs-attune-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+}
+
+.cs-attune-note {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  font-style: italic;
+}
+
+/* ─── Item rows (weapons / equipment) ───────────────────────────────────────*/
+.cs-item-row {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--pal-border);
+  cursor: pointer;
+}
+
+.cs-item-row-inner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: nowrap;
+}
+
+.cs-item-name {
+  font-family: var(--font-body);
+  font-size: 16px;
+  color: var(--pal-text);
+  flex: 1;
+  min-width: 0;
+}
+
+.cs-item-mods {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--pal-text-muted);
+  flex-shrink: 0;
+}
+
+.cs-item-chevron {
+  flex-shrink: 0;
+  color: var(--pal-accent-dim);
+  font-size: 11px;
+  font-family: var(--font-ui);
+}
+
+.cs-item-description {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pal-text-body);
+  margin-top: 6px;
+  line-height: 1.6;
+  font-style: italic;
+}
+
+.cs-item-empty {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pal-text-muted);
+  font-style: italic;
+}
+
+/* Drop item row */
+.cs-drop-row {
+  margin-top: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.cs-drop-btn {
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 4px 0;
+  cursor: pointer;
+}
+
+.cs-drop-confirm-btn {
+  background: transparent;
+  border: 1px solid #c06060;
+  border-radius: 3px;
+  color: #c06060;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+
+.cs-drop-cancel-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 4px 10px;
+  cursor: pointer;
+}
+.cs-drop-cancel-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* Potion use button */
+.cs-potion-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-accent);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 8px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-potion-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* Item type chip (small label on equipment row) */
+.cs-item-type-chip {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--pal-accent);
+  opacity: 0.75;
+  flex-shrink: 0;
+}
+
+/* Column section headers (Weapons / Equipment) */
+.cs-col-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.cs-col-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-accent-dim);
+}
+
+/* ─── Coin section ───────────────────────────────────────────────────────────*/
+.cs-coin-section {
+  border-top: 1px solid var(--pal-border);
+  padding-top: 22px;
+  margin-top: 18px;
+}
+
+.cs-coin-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 16px;
+}
+
+.cs-coin-gp-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.cs-coin-gp-label {
+  font-family: var(--font-ui);
+  font-size: 14px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cs-coin-full-summary {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cs-coin-gp-equiv {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0;
+  background: color-mix(in srgb, var(--pal-gem) 14%, transparent);
+  border: 1px solid color-mix(in srgb, var(--pal-gem) 55%, transparent);
+  border-radius: 12px;
+  padding: 3px 10px;
+}
+
+.cs-coin-toggle-btn {
+  width: 24px;
+  height: 24px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--pal-text-muted);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+@media (max-width: 560px) {
+  .coin-full-grid { grid-template-columns: repeat(2, 1fr) !important; }
+}
+
+/* ─── XP row ─────────────────────────────────────────────────────────────────*/
+.cs-xp-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+  border-top: 1px solid var(--pal-border);
+  margin-top: 18px;
+}
+
+.cs-xp-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  flex-shrink: 0;
+}
+
+.cs-xp-bar-track {
+  flex: 1;
+  height: 4px;
+  background: color-mix(in srgb, var(--pal-accent) 20%, transparent);
+  border-radius: 2px;
+  overflow: hidden;
+  min-width: 0;
+}
+
+.cs-xp-nums {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+}
+
+.cs-xp-award-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ─── Persona tab ────────────────────────────────────────────────────────────*/
+.cs-section-heading {
+  margin-bottom: 4px;
+}
+
+.cs-talent-group {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.cs-talent-group-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 6px;
+}
+
+.cs-talent-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.cs-talent-empty {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pal-text-muted);
+  font-style: italic;
+}
+
+/* Trait list (inPlay) */
+.cs-trait-list {
+  list-style: none;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: 0 28px;
+}
+
+.cs-trait-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--pal-border);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.5;
+  color: var(--pal-text-body);
+}
+
+.cs-trait-bullet {
+  color: var(--pal-accent-dim);
+  font-size: 7px;
+  margin-top: 5px;
+  flex-shrink: 0;
+}
+
+.cs-persona-empty {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--pal-text-muted);
+  font-style: italic;
+}
+
+/* ─── Combat tab ─────────────────────────────────────────────────────────────*/
+
+/* Active turn banner (glow/border driven by isActiveTurn — stays inline) */
+.cs-active-turn-banner {
+  margin-bottom: 16px;
+  padding: 10px 14px;
+  border-radius: 5px;
+  background: var(--pal-accent-dim);
+  border: 1px solid var(--pal-accent);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cs-active-turn-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--pal-accent-bright);
+  margin-bottom: 2px;
+}
+
+.cs-active-turn-desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pal-text-body);
+}
+
+.cs-active-turn-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--pal-accent-bright);
+  flex-shrink: 0;
+}
+
+/* Concentration banner */
+.cs-conc-banner {
+  border: 1px solid var(--pal-accent);
+  border-radius: 4px;
+  padding: 11px 16px;
+  margin-bottom: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.cs-conc-banner-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cs-conc-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--pal-accent-bright);
+  flex-shrink: 0;
+}
+
+.cs-conc-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.26em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  display: block;
+  margin-bottom: 1px;
+}
+
+.cs-conc-spell {
+  font-family: var(--font-display);
+  font-size: 15px;
+  color: var(--pal-accent-bright);
+}
+
+.cs-conc-drop-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-conc-drop-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* Concentration spell input row */
+.cs-conc-input-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 14px;
+  align-items: center;
+}
+
+.cs-set-conc-btn {
+  background: var(--pal-accent-dim);
+  border: 1px solid var(--pal-accent);
+  border-radius: 3px;
+  color: var(--pal-accent-bright);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+/* ─── HP combat card ─────────────────────────────────────────────────────────*/
+.cs-hp-card {
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 16px 18px;
+  margin-bottom: 18px;
+}
+
+.cs-hp-card-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+/* +/- HP stepper circle buttons */
+.cs-hp-stepper {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--pal-accent-dim);
+  border: 1px solid var(--pal-accent);
+  color: var(--pal-accent-bright);
+  font-family: var(--font-display);
+  font-size: 24px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cs-hp-display {
+  flex: 1;
+  text-align: center;
+}
+
+.cs-hp-nums-combat {
+  display: flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 4px;
+}
+
+.cs-hp-current-combat {
+  font-family: var(--font-display);
+  font-size: 48px;
+  color: var(--pal-gem);
+  line-height: 1;
+}
+
+.cs-hp-slash-combat {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--pal-text-muted);
+  line-height: 1;
+}
+
+.cs-hp-max-combat {
+  font-family: var(--font-display);
+  font-size: 32px;
+  color: var(--pal-accent);
+  line-height: 1;
+}
+
+.cs-hp-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-top: 3px;
+}
+
+.cs-hp-temp-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--pal-accent-bright);
+  letter-spacing: 0.08em;
+  margin-top: 2px;
+}
+
+.cs-hp-bar-track-combat {
+  width: 100%;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--pal-border);
+  margin-top: 12px;
+  overflow: hidden;
+}
+
+.cs-temp-hp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cs-temp-hp-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  flex-shrink: 0;
+}
+
+/* Death saves */
+.cs-death-saves {
+  margin-top: 14px;
+  border-top: 1px solid var(--pal-border);
+  padding-top: 12px;
+}
+
+.cs-death-saves-title {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 8px;
+  text-align: center;
+}
+
+.cs-death-save-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  margin-bottom: 6px;
+}
+
+.cs-death-save-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  min-width: 54px;
+  text-align: right;
+}
+
+.cs-death-save-pip {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: transparent;
+}
+
+/* ─── Hit Dice tracker card ──────────────────────────────────────────────────*/
+.cs-hd-card {
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 18px;
+}
+
+/* Full-state hit dice row */
+.cs-hd-full-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+}
+
+.cs-hd-full-gem {
+  color: var(--pal-gem);
+  font-size: 10px;
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+.cs-hd-full-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  flex: 1;
+}
+
+.cs-hd-full-count {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--pal-gem);
+  line-height: 1;
+}
+
+.cs-hd-full-size {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--pal-text-muted);
+  margin-left: 2px;
+}
+
+.cs-hd-full-badge {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--pal-gem);
+  opacity: 0.65;
+  border: 1px solid rgba(138, 180, 200, 0.2);
+  border-radius: 2px;
+  padding: 1px 6px;
+}
+
+/* Spend button for hit dice (full state) */
+.cs-hd-spend-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  padding: 3px 10px;
+  cursor: pointer;
+  flex-shrink: 0;
+  opacity: 0.6;
+  transition: opacity 0.15s, border-color 0.15s, color 0.15s;
+}
+.cs-hd-spend-btn:hover {
+  opacity: 1;
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* Depleted state header row */
+.cs-hd-dep-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cs-hd-dep-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  flex: 1;
+}
+
+/* Low-dice warning strip */
+.cs-hd-low-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(200, 160, 64, 0.15);
+  border: 1px solid rgba(200, 160, 64, 0.4);
+  border-radius: 3px;
+  padding: 6px 12px;
+  margin-bottom: 10px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: #c8a040;
+}
+
+/* Pip grid */
+.cs-hd-pip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+}
+
+/* Spend row (depleted state) */
+.cs-hd-spend-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.cs-hd-spend-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  flex-shrink: 0;
+}
+
+.cs-hd-spend-action-btn {
+  background: rgba(200, 160, 64, 0.15);
+  border: 1px solid rgba(200, 160, 64, 0.4);
+  border-radius: 3px;
+  color: #c8a040;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.cs-hd-spend-action-btn:hover {
+  background: rgba(200, 160, 64, 0.22);
+}
+
+/* Roll preview text */
+.cs-hd-roll-preview {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--pal-text-muted);
+  flex: 1;
+}
+
+.cs-hd-roll-dice {
+  color: var(--pal-gem);
+  font-style: normal;
+  font-family: var(--font-display);
+  font-size: 14px;
+}
+
+.cs-hd-roll-range {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--pal-text-muted);
+  margin-left: 4px;
+}
+
+.cs-hd-empty-note {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: #c06060;
+}
+
+/* Hit Dice spend modal */
+.cs-hd-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+.cs-hd-modal-panel {
+  background: var(--pal-surface-solid);
+  border: 1px solid var(--pal-border);
+  border-radius: 6px;
+  padding: 28px 30px;
+  width: 100%;
+  max-width: 420px;
+}
+
+.cs-hd-modal-title {
+  font-family: var(--font-display);
+  font-size: 20px;
+  color: var(--pal-text);
+  margin-bottom: 4px;
+}
+
+.cs-hd-modal-subtitle {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--pal-text-muted);
+  margin-bottom: 24px;
+}
+
+.cs-hd-modal-die {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+.cs-hd-modal-die-label {
+  font-family: var(--font-display);
+  font-size: 56px;
+  color: var(--pal-gem);
+  line-height: 1;
+  display: block;
+}
+
+.cs-hd-modal-die-avail {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  display: block;
+  margin-top: 4px;
+}
+
+.cs-hd-modal-count-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.cs-hd-modal-count-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cs-hd-modal-recovery {
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.cs-hd-modal-recovery-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  display: block;
+  margin-bottom: 6px;
+}
+
+.cs-hd-modal-recovery-range {
+  font-family: var(--font-display);
+  font-size: 26px;
+  color: var(--pal-gem);
+  display: block;
+}
+
+.cs-hd-modal-recovery-note {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--pal-text-muted);
+  display: block;
+  margin-top: 4px;
+}
+
+.cs-hd-modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+/* ─── Inspiration toggle ─────────────────────────────────────────────────────*/
+.cs-inspiration-btn {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 16px;
+  width: 100%;
+  text-align: left;
+  border-radius: 4px;
+  margin-bottom: 18px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  /* border and background set inline (data-driven: char.inspiration) */
+}
+
+.cs-inspiration-label {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.cs-inspiration-active-badge {
+  margin-left: auto;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-gem);
+  border-radius: 10px;
+  padding: 2px 10px;
+}
+
+/* ─── Conditions section ─────────────────────────────────────────────────────*/
+.cs-conditions-heading {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-accent-dim);
+  margin-bottom: 10px;
+}
+
+.cs-condition-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.cs-condition-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 14px;
+  border-radius: 14px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  /* background + border + color set inline (per-condition severity colour) */
+}
+
+.cs-condition-remove-btn {
+  background: transparent;
+  border: none;
+  color: var(--pal-text-muted);
+  font-size: 14px;
+  margin-left: 8px;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0;
+}
+
+/* "Add condition" pill-style button */
+.cs-add-condition-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 14px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 4px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-add-condition-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* Condition picker dropdown */
+.cs-condition-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  margin-bottom: 12px;
+  padding: 12px 14px;
+  background: rgba(0, 0, 0, 0.18);
+  border-radius: 6px;
+  border: 1px solid var(--pal-border);
+}
+
+/* Individual condition option button */
+.cs-condition-option-btn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 12px;
+  border-radius: 14px;
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-condition-option-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* Exhaustion row */
+.cs-exhaustion-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.cs-exhaustion-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+/* Exhaustion stepper circles */
+.cs-exh-btn {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-exh-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-text);
+}
+
+/* Clear conditions button */
+.cs-clear-conditions-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-clear-conditions-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* ─── Spell slots section ────────────────────────────────────────────────────*/
+.cs-spell-slots-heading {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-accent-dim);
+  margin-bottom: 12px;
+}
+
+.cs-spell-slot-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.cs-spell-slot-level {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  min-width: 32px;
+}
+
+.cs-spell-pips {
+  display: flex;
+  gap: 2px;
+  flex-wrap: wrap;
+}
+
+.cs-spell-pact-tag {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--pal-accent);
+  text-transform: uppercase;
+}
+
+.cs-spell-rest-btns {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+/* ─── Weapons quick-ref (combat tab) ─────────────────────────────────────────*/
+.cs-weapon-card {
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  margin-bottom: 6px;
+  overflow: hidden;
+  transition: border-color 0.15s;
+}
+
+.cs-weapon-card-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 14px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.cs-weapon-card-name {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--pal-text);
+  flex: 1;
+}
+
+.cs-weapon-card-mod {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  color: var(--pal-text-muted);
+  white-space: nowrap;
+}
+
+.cs-weapon-card-mod-val {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--pal-accent-bright);
+}
+
+.cs-weapon-card-chevron {
+  color: var(--pal-text-muted);
+  font-size: 11px;
+  flex-shrink: 0;
+}
+
+.cs-weapon-card-desc {
+  padding: 10px 14px 12px;
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--pal-text-body);
+  border-top: 1px solid var(--pal-border);
+  line-height: 1.55;
+}
+
+.cs-combat-heading {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-accent-dim);
+  margin-bottom: 12px;
+}
+
+/* Combat tab "empty" prompt */
+.cs-combat-empty {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--pal-text-muted);
+  font-style: italic;
+  text-align: center;
+  padding: 20px 0;
+}
+
+/* ─── Session Notes section ───────────────────────────────────────────────────*/
+.cs-notes-section {
+  margin-bottom: 24px;
+}
+
+.cs-notes-heading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.cs-notes-heading-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cs-notes-divider {
+  flex: 1;
+  height: 1px;
+  background: var(--pal-border);
+}
+
+.cs-notes-list {
+  list-style: none;
+  margin-bottom: 12px;
+}
+
+.cs-note-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.cs-note-text {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--pal-text);
+  line-height: 1.5;
+  margin-bottom: 5px;
+}
+
+/* Share toggle button inside a note */
+.cs-note-share-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  border: none;
+  background: transparent;
+  padding: 0;
+  transition: color 0.15s;
+  user-select: none;
+}
+
+/* Delete note button */
+.cs-note-delete-btn {
+  background: transparent;
+  border: none;
+  color: #c06060;
+  cursor: pointer;
+  font-size: 16px;
+  padding: 0 2px;
+  opacity: 0.45;
+  line-height: 1;
+  flex-shrink: 0;
+  margin-top: 2px;
+  transition: opacity 0.15s;
+}
+.cs-note-delete-btn:hover {
+  opacity: 1;
+}
+
+/* Add note input row */
+.cs-note-input-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+/* Add note button */
+.cs-note-add-btn {
+  border: 1px solid var(--pal-accent);
+  border-radius: 3px;
+  color: var(--pal-accent-bright);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  padding: 7px 14px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.15s;
+}
+.cs-note-add-btn:hover {
+  background: color-mix(in srgb, var(--pal-accent) 22%, transparent);
+}
+
+.cs-notes-hint {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--pal-text-muted);
+  letter-spacing: 0.12em;
+}
+
+/* ─── Map tab ─────────────────────────────────────────────────────────────────*/
+.cs-map-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 10px;
+}
+
+.cs-map-open-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 5px 12px;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.cs-map-open-btn:hover {
+  color: var(--pal-accent-bright);
+  border-color: var(--pal-accent);
+}
+
+.cs-map-open-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 10px;
+}
+
+.cs-map-empty {
+  padding: 48px 0;
+  text-align: center;
+}
+
+.cs-map-empty-text {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--pal-text-muted);
+  font-style: italic;
+}
+
+@media (max-width: 560px) {
+  .map-viewer-mobile { height: calc(100vh - 160px) !important; }
+}
+
+/* ─── Collections nav ────────────────────────────────────────────────────────*/
+.cs-collections-nav {
+  margin-bottom: 36px;
+}
+
+.cs-collection-block {
+  margin-bottom: 10px;
+}
+
+.cs-collection-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.22em;
+  color: var(--pal-accent-dim);
+  text-transform: uppercase;
+  text-align: center;
+  margin-bottom: 8px;
+}
+
+.cs-collection-btns {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center;
+}
+
+/* ─── Active section content ─────────────────────────────────────────────────*/
+.cs-section-title {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: 14px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-accent);
+  margin-bottom: 28px;
+}
+
+.cs-section-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.cs-section-list-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--pal-border);
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.6;
+  color: var(--pal-text-body);
+}
+
+.cs-section-bullet {
+  color: var(--pal-accent);
+  margin-top: 5px;
+  font-size: 10px;
+  flex-shrink: 0;
+}
+
+.cs-section-paragraph {
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.9;
+  color: var(--pal-text-body);
+  margin-bottom: 22px;
+  text-align: justify;
+}
+
+/* ─── Locked-state prompt ────────────────────────────────────────────────────*/
+.cs-locked-prompt {
+  text-align: center;
+  padding: 40px 0 20px;
+  border-top: 1px solid var(--pal-border);
+}
+
+.cs-locked-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 16px;
+}
+
+.cs-locked-unlock-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  padding: 8px 20px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-locked-unlock-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* ─── Footer ─────────────────────────────────────────────────────────────────*/
+.cs-footer {
+  margin-top: 64px;
+  padding-top: 26px;
+  border-top: 1px solid var(--pal-border);
+  text-align: center;
+  font-family: var(--font-ui);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--pal-text-muted);
+  letter-spacing: 0.1em;
+  line-height: 1.8;
+}
+
+/* ─── Keyframe animations ─────────────────────────────────────────────────────
+   Moved from injected <style> tags in the component.                      */
+@keyframes hdPipPop {
+  0% { transform: scale(0.5); opacity: 0; }
+  70% { transform: scale(1.15); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes xpLevelupPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(0, 0, 0, 0); }
+  50% { box-shadow: 0 0 8px 2px rgba(138, 180, 200, 0.28); }
+}
+
+@keyframes attunePulse {
+  0%, 100% { opacity: 0.75; }
+  50% { opacity: 1; }
+}
+
+@keyframes overLimitFlash {
+  0%, 100% { box-shadow: 0 0 5px 1px rgba(200, 144, 76, 0.5); }
+  25%, 75% { box-shadow: 0 0 8px 3px rgba(192, 96, 96, 0.8); }
+  50% { box-shadow: 0 0 5px 1px rgba(200, 144, 76, 0.5); }
+}
+
+.attuned-gem {
+  animation: attunePulse 2.2s ease-in-out infinite;
+}
+.attuned-gem.over-limit-flash {
+  animation: overLimitFlash 0.4s ease-in-out;
+}
+
+/* ─── Edit mode ──────────────────────────────────────────────────────────────
+   Structural rules for CharacterSheetEditMode. Palette values via var(--pal-*)
+   inherited from the rootWrap set in CharacterSheet.jsx.                   */
+
+/* Scrollable content column */
+.em-content {
+  position: relative;
+  z-index: 1;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 36px 28px 100px;
+}
+
+/* Top header bar: section label + action buttons */
+.em-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 36px;
+  padding-bottom: 22px;
+  border-bottom: 1px solid var(--pal-border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.em-header-title {
+  font-family: var(--font-display);
+  font-size: 24px;
+  color: var(--pal-text);
+  letter-spacing: 0.04em;
+}
+
+/* Row of action buttons in the header */
+.em-header-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* Kebab / overflow menu dropdown */
+.em-menu-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 8px;
+  z-index: 10;
+  min-width: 200px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+
+.em-menu-item {
+  width: 100%;
+  text-align: left;
+  padding: 8px 12px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  border-radius: 2px;
+  transition: color 0.15s;
+}
+.em-menu-item:hover {
+  color: var(--pal-accent-bright);
+}
+
+/* Stat card (ability score editor) */
+.em-stat-card {
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 12px 14px;
+}
+
+/* Weapon / equipment list row */
+.em-item-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.em-item-name {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--pal-text);
+}
+
+.em-item-mods {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--pal-text-muted);
+  margin-top: 2px;
+}
+
+.em-item-type-tag {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--pal-accent);
+  opacity: 0.7;
+}
+
+/* Trait / list-item edit row (persona traits, list sections) */
+.em-list-item-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+/* Section drag card (collections editor) */
+.em-section-card {
+  background: var(--pal-surface);
+  border-radius: 4px;
+  padding: 14px;
+  margin-bottom: 10px;
+  transition: border-color 0.15s, opacity 0.15s;
+}
+
+/* Section card inner header row */
+.em-section-card-header {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  align-items: center;
+}
+
+/* ─── Item Editor Modal ───────────────────────────────────────────────────────
+   ItemEditorModal uses .modal-overlay from shared.css for the backdrop.
+   The panel is a variant with larger maxWidth and scrollable maxHeight.    */
+
+.em-modal-panel {
+  background: var(--pal-surface-solid);
+  border: 1px solid var(--pal-border);
+  border-radius: 6px;
+  padding: 28px 24px;
+  width: 100%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.em-modal-heading {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 20px;
+}
+
+/* Attunement / qty / equipped divider row */
+.em-toggle-row {
+  border-top: 1px solid var(--pal-border);
+  padding-top: 14px;
+  margin-bottom: 14px;
+}
+
+.em-toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.em-toggle-hint {
+  padding-left: 25px;
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--pal-text-muted);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+/* Checkbox input sizing inside modal toggles */
+.em-checkbox {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Modifiers section */
+.em-mod-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.em-mod-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
+  align-items: center;
+}
+
+/* Add Mod button — dashed ghost variant */
+.em-add-mod-btn {
+  background: transparent;
+  border: 1px dashed var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-accent-bright);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 4px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+.em-add-mod-btn:hover {
+  border-color: var(--pal-accent);
+}
+
+/* Remove mod × button */
+.em-remove-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-body);
+  font-size: 18px;
+  width: 34px;
+  height: 34px;
+  cursor: pointer;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.15s, color 0.15s;
+}
+.em-remove-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-text);
+}
+
+/* Modal action row */
+.em-modal-actions {
+  display: flex;
+  gap: 10px;
+}

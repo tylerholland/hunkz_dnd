@@ -13,7 +13,6 @@ import ManagePartyModal from "../features/dmDashboard/ManagePartyModal";
 import {
   PalCtx,
   initiativesEqual,
-  useDashboardStyles,
 } from "../features/dmDashboard/dashboardShared";
 import { PALETTES } from "../features/characterSheet/theme";
 import { cloneLiveValue, useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
@@ -27,7 +26,6 @@ const PANEL_TRANSITION_MS = 460;
 const DICE_TRANSITION_MS = 280;
 
 export default function DmDashboardPage() {
-  useDashboardStyles();
 
   const initialCombatMode = (
     sessionStorage.getItem(COMBAT_MODE_STORAGE_KEY) ??

@@ -6,15 +6,20 @@
 
 ---
 
-## ADR-001 · Inline React styles (no CSS framework)
+## ADR-001 · Styling: CSS custom properties + static CSS files *(supersedes original inline-styles decision)*
 
-**Decision**: All component styling uses inline React style objects. No Tailwind, no CSS modules, no styled-components.
+**Decision**: Component styling uses a layered CSS system — no Tailwind, no CSS Modules, no styled-components, no runtime style injection.
 
-**Rationale**: Keeps the bundle lean, eliminates a build-time dependency, and makes palette-driven theming straightforward — every style value can reference `pal.accent` etc. directly without CSS variables or class generation.
+1. **Palette theming via CSS custom properties.** Each component root sets `--pal-*` variables once as an inline `style={{}}` object. All children inherit via CSS cascade — no prop drilling. See ADR-014 for the full variable schema and file map.
+2. **Utility classes in `src/shared.css`.** Repeated structural patterns (`.flex-row`, `.btn-ghost`, `.label-ui`, `.input-base`, `.modal-overlay`, etc.) live here. Imported globally via `src/main.jsx`.
+3. **Per-component CSS files** for structural rules that belong to one slice. Imported statically at the top of the component file.
+4. **Inline `style={}` reserved for truly dynamic values only**: HP bar fill widths, ghost trail positions, computed threshold colors, toggle switch positions — anything that changes on every render.
 
-**Exception**: `<style>` tags injected via `useEffect` for `@media` breakpoints and CSS class patterns (`.loadout-grid`, `.character-details-grid`) where inline styles can't express responsive rules.
+**What was removed**: All runtime `<style>` tag injection (`DICE_CSS`, `DASHBOARD_CSS`, `GLOBAL_CSS` string constants), all `onMouseEnter`/`onMouseLeave` hover handlers that only toggled style, and the `useDashboardStyles` / `useCharacterSheetGlobalStyles` no-op hooks.
 
-**Revisit when**: The component count grows large enough that style duplication becomes a maintenance problem, or if a designer needs to work in the codebase without React knowledge.
+**Constraint**: Do not create a CSS class for a style that appears only once. Three or more uses justifies a class. Do not use CSS Modules.
+
+**Revisit when**: A design system library or CSS-in-JS with proper SSR support becomes warranted — only if the project expands beyond a single-group SPA.
 
 ---
 
@@ -189,6 +194,66 @@ Both pages use a self-scheduling `setTimeout` loop rather than a fixed `setInter
 
 ---
 
+## ADR-014 · CSS architecture: variable schema, file map, and inline-style rules
+
+**Context**: Migrated from ~900 inline style objects across all components to a static CSS class system. See `design/architecture/css-migration-checklist.md` for the per-file migration record.
+
+**CSS custom property schema** (set at each component root, inherited by children):
+
+| Variable | Palette key |
+|---|---|
+| `--pal-bg` | `bg` |
+| `--pal-surface` | `surface` |
+| `--pal-surface-solid` | `surfaceSolid` |
+| `--pal-border` | `border` |
+| `--pal-accent` | `accent` |
+| `--pal-accent-bright` | `accentBright` |
+| `--pal-accent-dim` | `accentDim` |
+| `--pal-text` | `text` |
+| `--pal-text-body` | `textBody` |
+| `--pal-text-muted` | `textMuted` |
+| `--pal-glow-1` | `glow1` |
+| `--pal-glow-2` | `glow2` |
+| `--pal-gem` | `gem` |
+| `--pal-gem-low` | `gemLow` |
+| `--font-display` | `fontDisplay` |
+| `--font-body` | `fontBody` |
+| `--font-ui` | `fontUI` |
+
+Per-card palette scoping works: each `.card[style]` root can set different `--pal-*` values; CSS inheritance means all children inside that card use that card's palette without any JS.
+
+**CSS file map**:
+
+| File | Scope |
+|---|---|
+| `src/index.css` | Global reset, body/html, scrollbar, spinner, grid utilities |
+| `src/shared.css` | `:root` variable defaults + all shared utility classes |
+| `src/features/characterSheet/characterSheet.css` | Character sheet view mode, edit mode, item editor |
+| `src/features/dmDashboard/dashboard.css` | Dashboard layout, keyframes, animation utility classes |
+| `src/features/dmDashboard/characterCard.css` | DM party card and its sub-components |
+| `src/features/dmDashboard/npcCombat.css` | NPC combat section + initiative tracker |
+| `src/features/dmDashboard/mapLibrary.css` | Map library modal |
+| `src/components/diceRoller.css` | Shared between `DiceRoller` and `DmDiceRoller`; all dice keyframes |
+| `src/pages/pages.css` | Shared page-level structural classes |
+
+**What stays inline** (rule for all future work):
+- HP / resource bar fill widths (`width: "${pct}%"`)
+- Ghost trail positions and widths (absolutely positioned overlays)
+- Per-row computed colors (threshold-based HP tone, active-turn glow)
+- Condition chip colors via `--pill-color` custom property
+- Toggle switch thumb position (boolean state → pixel value)
+- `onFocus`/`onBlur` border color when the hover color is a runtime palette value
+
+**What must not stay inline**:
+- Any style that is identical across three or more elements → CSS class
+- Hover / focus states → CSS `:hover` / `:focus` rules
+- Structural layout (padding, gap, border-radius, display, flex) → CSS class or component CSS file
+- Animation keyframes → CSS file (never a `<style>` tag injection)
+
+**Revisit when**: Per-component CSS files accumulate enough one-off rules that a CSS-in-JS scoping strategy (CSS Modules, vanilla-extract) would reduce specificity conflicts. Not warranted at current scale.
+
+---
+
 ## Feature Index
 
 This is a navigation aid for humans and future agents. It mirrors the feature language in `design/app-overview.md` and points to the primary code locations for each area.
@@ -199,6 +264,7 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - Character summary fetch: `src/pages/CharactersListPage.jsx`
 - Frontend guard against malformed/internal rows: `src/pages/CharactersListPage.jsx`
 - Regression spec: `src/pages/CharactersListPage.test.jsx`
+- **Shared page-level CSS**: `src/pages/pages.css`
 
 ### Character Sheet
 
@@ -207,7 +273,8 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - View mode render: `src/features/characterSheet/CharacterSheetViewMode.jsx`
 - View mode turn-state spec: `src/features/characterSheet/CharacterSheetViewMode.test.jsx`
 - Edit mode render: `src/features/characterSheet/CharacterSheetEditMode.jsx`
-- Theme + global sheet styles: `src/features/characterSheet/theme.jsx`
+- **Component CSS (view + edit + item editor)**: `src/features/characterSheet/characterSheet.css`
+- Theme / palette definitions: `src/features/characterSheet/theme.jsx`
 - Sheet constants and blank model: `src/features/characterSheet/constants.js`
 - Shared talents catalog and badge/tooltip UI: `src/features/characterSheet/talentCatalog.js`, `src/features/characterSheet/CharacterTalents.jsx`
 - Talents / tooltip regression spec: `src/features/characterSheet/CharacterTalents.test.jsx`
@@ -215,6 +282,7 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - Item editor modal: `src/features/characterSheet/ItemEditorModal.jsx`
 - Password change form: `src/features/characterSheet/ChangePasswordForm.jsx`
 - Dice roller used on character sheets: `src/components/DiceRoller.jsx`
+- **Shared dice roller CSS + keyframes**: `src/components/diceRoller.css`
 - Shared roll event formatting: `src/lib/rollHistory.js`
 - Shared roll history row renderer: `src/components/RollHistoryList.jsx`
 
@@ -223,6 +291,7 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - Existing character route and polling: `src/pages/CharacterPage.jsx`
 - New character flow: `src/pages/NewCharacterPage.jsx`
 - Character route regression spec: `src/pages/CharacterPage.test.jsx`
+- **Shared page-level CSS**: `src/pages/pages.css`
 
 ### Shared Realtime Utilities
 
@@ -232,7 +301,11 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 
 - Container / polling / orchestration: `src/pages/DmDashboardPage.jsx`
 - Container regression spec: `src/pages/DmDashboardPage.test.jsx`
-- Shared dashboard helpers, responsive CSS, polling constants: `src/features/dmDashboard/dashboardShared.js`
+- Shared dashboard helpers and polling constants: `src/features/dmDashboard/dashboardShared.js`
+- **Dashboard layout CSS + all animation keyframes**: `src/features/dmDashboard/dashboard.css`
+- **Party card CSS**: `src/features/dmDashboard/characterCard.css`
+- **NPC combat + initiative tracker CSS**: `src/features/dmDashboard/npcCombat.css`
+- **Map library modal CSS**: `src/features/dmDashboard/mapLibrary.css`
 - DM auth prompt: `src/features/dmDashboard/DmLoginPrompt.jsx`
 - DM auth checking loader: `src/features/dmDashboard/DmAuthLoader.jsx`
 - DM auth prompt spec: `src/features/dmDashboard/DmLoginPrompt.test.jsx`
@@ -243,6 +316,7 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - NPC active-turn spec: `src/features/dmDashboard/NpcCombatSection.test.jsx`
 - Shared confirm dialog: `src/features/dmDashboard/ConfirmDialog.jsx`
 - Dice roller used on the DM campaign page: `src/components/DmDiceRoller.jsx`
+- **Shared dice roller CSS + keyframes**: `src/components/diceRoller.css`
 - DM dice roller spec: `src/components/DmDiceRoller.test.jsx`
 - Shared roll history row renderer: `src/components/RollHistoryList.jsx`
 

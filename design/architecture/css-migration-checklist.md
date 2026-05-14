@@ -110,24 +110,25 @@ For each file below, the pattern is the same:
 
 ---
 
-### 9. Page-level files (lower priority)
-- [ ] `CharactersListPage.jsx` — 37 inline styles
-- [ ] `DmDashboardPage.jsx` — check count, likely low
-- [ ] `MapLibraryModal.jsx` — 31 inline styles, good `.modal-overlay`/`.modal-panel` candidate
-- [ ] `NewCharacterPage.jsx`, `CharacterPage.jsx` — structural wrappers, low density
+### 9. Page-level files (lower priority) ✅ DONE
+- [x] `CharactersListPage.jsx` — 37 inline styles → ~12; `.modal-overlay`/`.modal-panel`, `.btn-ghost`/`.btn-primary`, `.label-ui`, `.flex-row-spread`, `.char-list-grid`/`.char-card-btn`/`.char-card-new` in `pages.css`
+- [x] `DmDashboardPage.jsx` — 22 inline styles → ~8; removed `useDashboardStyles()` call, `.btn-ghost`, `.label-ui`, `.flex-row`, `.dm-sticky-header` + `.dm-nav-link` in `pages.css`
+- [x] `MapLibraryModal.jsx` — 31 inline styles → ~10; `.modal-overlay`/`.modal-panel`, `.btn-primary`/`.btn-ghost`, `.flex-row-spread`, structural rules in new `src/features/dmDashboard/mapLibrary.css`
+- [x] `NewCharacterPage.jsx` — `.modal-overlay`/`.modal-panel`, `.btn-primary`/`.btn-ghost`, `.label-ui`, `.input-base`, `pages.css` imported
+- [x] `CharacterPage.jsx` — `centeredStyle` const removed; `.page-centered` CSS class in `pages.css`
 
 ---
 
-## Cleanup (after all files migrated)
-- [ ] Delete the `DASHBOARD_CSS` string constant from `dashboardShared.js` (now dead code)
-- [ ] Delete the `GLOBAL_CSS` string constant from `theme.jsx` (now dead code)
-- [ ] Remove `useDashboardStyles` call sites (hook is a no-op — just delete the calls)
-- [ ] Remove `useCharacterSheetGlobalStyles` call sites (same)
-- [ ] Remove `useEffect` import from `theme.jsx` if no longer needed
-- [ ] Remove `useEffect` import from `dashboardShared.js` if no longer needed
-- [ ] Delete `src/App.css` (confirmed unused boilerplate)
-- [ ] Audit remaining `!important` rules in `dashboard.css` — most can be removed once cascade order is correct
-- [ ] Run `npm run lint` and `npm run build` to confirm no regressions
+## Cleanup (after all files migrated) ✅ DONE
+- [x] Delete the `DASHBOARD_CSS` string constant from `dashboardShared.js` (now dead code)
+- [x] Delete the `GLOBAL_CSS` string constant from `theme.jsx` (now dead code)
+- [x] Remove `useDashboardStyles` call sites — removed from `DmDashboardPage.jsx` and `DmDashboardPrototypePage.jsx`
+- [x] Remove `useCharacterSheetGlobalStyles` call sites — removed from `CharacterSheet.jsx` import + call
+- [x] Remove `useEffect` import from `theme.jsx` if no longer needed — was already removed before this pass (comment at top of file)
+- [x] Remove `useEffect` import from `dashboardShared.js` if no longer needed — `dashboardShared.js` does not import `useEffect` (uses `createContext` only)
+- [x] Delete `src/App.css` (confirmed unused boilerplate — only referenced in `original_App.jsx` legacy file)
+- [ ] Audit remaining `!important` rules in `dashboard.css` — most can be removed once cascade order is correct (deferred to future pass)
+- [x] Run `npm run lint` and `npm run build` to confirm no regressions — build passes ✓
 
 ---
 

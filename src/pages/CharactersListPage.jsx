@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { listCharacters, verifyPassword, getPartyRoster } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
+import "./pages.css";
 
 const RESERVED_CHARACTER_SLUGS = new Set(["initiative", "npc-combat", "party-roster"]);
 
@@ -74,10 +75,32 @@ export default function CharactersListPage() {
   const pal = PALETTES.ember;
   const visibleCharacters = characters.filter(isRenderableCharacterSummary);
 
+  // Palette CSS variables set once at root; children reference var(--pal-*)
+  const palVars = {
+    "--pal-bg":            pal.bg,
+    "--pal-surface":       pal.surface,
+    "--pal-surface-solid": pal.surfaceSolid,
+    "--pal-border":        pal.border,
+    "--pal-accent":        pal.accent,
+    "--pal-accent-bright": pal.accentBright,
+    "--pal-accent-dim":    pal.accentDim,
+    "--pal-text":          pal.text,
+    "--pal-text-body":     pal.textBody,
+    "--pal-text-muted":    pal.textMuted,
+    "--pal-glow-1":        pal.glow1,
+    "--pal-glow-2":        pal.glow2,
+    "--pal-gem":           pal.gem,
+    "--pal-gem-low":       pal.gemLow,
+  };
+
   return (
     <div style={{
-      minHeight: "100vh", background: "#0d0f14", color: "#c8bfaf",
-      fontFamily: "'Crimson Text', Georgia, serif", padding: "0 32px 80px",
+      ...palVars,
+      minHeight: "100vh",
+      background: "#0d0f14",
+      color: "#c8bfaf",
+      fontFamily: "'Crimson Text', Georgia, serif",
+      padding: "0 32px 80px",
     }}>
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
 
@@ -87,13 +110,7 @@ export default function CharactersListPage() {
           marginBottom: 32,
           borderBottom: "1px solid rgba(100,130,160,0.2)",
         }}>
-          <div style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            gap: 12,
-            marginBottom: 10,
-          }}>
+          <div className="flex-row-spread" style={{ gap: 12, marginBottom: 10 }}>
             <div style={{
               fontFamily: "'Cinzel', Georgia, serif",
               fontWeight: 400,
@@ -120,65 +137,30 @@ export default function CharactersListPage() {
                 DM ✓
               </span>
             ) : (
-              <button onClick={() => setDmPrompt(true)} style={{
-                background: "transparent", border: "1px solid rgba(100,130,160,0.2)",
-                borderRadius: 3, color: "#3a5a6a", fontFamily: "'IM Fell English', Georgia, serif",
-                fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
-                padding: "5px 12px", cursor: "pointer",
-                whiteSpace: "nowrap",
-              }}>
+              <button onClick={() => setDmPrompt(true)} className="btn-ghost" style={{ padding: "5px 12px" }}>
                 DM Login
               </button>
             )}
           </div>
 
           {dmActive && (
-            <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-              <Link
-                to="/dm"
-                style={{
-                  background: "transparent", border: "1px solid rgba(100,130,160,0.3)",
-                  borderRadius: 3, color: "#6a8fa8", fontFamily: "'IM Fell English', Georgia, serif",
-                  fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
-                  padding: "5px 12px", textDecoration: "none", display: "inline-block",
-                }}
-              >
+            <div className="flex-row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <Link to="/dm" className="btn-ghost" style={{ padding: "5px 12px", textDecoration: "none" }}>
                 Campaign
               </Link>
-              <Link
-                to="/dm-classic"
-                style={{
-                  background: "transparent", border: "1px solid rgba(100,130,160,0.3)",
-                  borderRadius: 3, color: "#6a8fa8", fontFamily: "'IM Fell English', Georgia, serif",
-                  fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
-                  padding: "5px 12px", textDecoration: "none", display: "inline-block",
-                }}
-              >
+              <Link to="/dm-classic" className="btn-ghost" style={{ padding: "5px 12px", textDecoration: "none" }}>
                 Classic Layout
               </Link>
-              <Link
-                to="/maps"
-                style={{
-                  background: "transparent", border: "1px solid rgba(100,130,160,0.3)",
-                  borderRadius: 3, color: "#6a8fa8", fontFamily: "'IM Fell English', Georgia, serif",
-                  fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
-                  padding: "5px 12px", textDecoration: "none", display: "inline-block",
-                }}
-              >
+              <Link to="/maps" className="btn-ghost" style={{ padding: "5px 12px", textDecoration: "none" }}>
                 Maps
               </Link>
-              <button onClick={handleDmLogout} style={{
-                background: "transparent", border: "1px solid rgba(192,96,96,0.4)",
-                borderRadius: 3, color: "#c06060", fontFamily: "'IM Fell English', Georgia, serif",
-                fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
-                padding: "5px 12px", cursor: "pointer",
-              }}>
+              <button onClick={handleDmLogout} className="btn-ghost" style={{ padding: "5px 12px", borderColor: "rgba(192,96,96,0.4)", color: "#c06060" }}>
                 End Session
               </button>
             </div>
           )}
           {!dmActive && (
-            <div style={{ fontFamily: "'IM Fell English', Georgia, serif", fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: "#3a5a6a" }}>
+            <div className="label-ui" style={{ marginTop: 4 }}>
               View and manage your party roster
             </div>
           )}
@@ -186,16 +168,9 @@ export default function CharactersListPage() {
 
         {/* DM password modal */}
         {dmPrompt && (
-          <div style={{
-            position: "fixed", inset: 0, zIndex: 100,
-            background: "rgba(0,0,0,0.75)", display: "flex",
-            alignItems: "center", justifyContent: "center", padding: 24,
-          }}>
-            <div style={{
-              background: "#111e2c", border: "1px solid rgba(100,130,160,0.18)",
-              borderRadius: 6, padding: "32px 28px", width: "100%", maxWidth: 340,
-            }}>
-              <div style={{ fontFamily: "'IM Fell English', Georgia, serif", fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: "#3a5a6a", marginBottom: 8 }}>
+          <div className="modal-overlay" style={{ zIndex: 100 }}>
+            <div className="modal-panel" style={{ maxWidth: 340 }}>
+              <div className="label-ui" style={{ marginBottom: 8, letterSpacing: "0.3em" }}>
                 DM Login
               </div>
               <div style={{ fontFamily: "'Cinzel', Georgia, serif", fontSize: 18, color: "#c8bfaf", marginBottom: 20 }}>
@@ -208,31 +183,24 @@ export default function CharactersListPage() {
                   placeholder="DM password…"
                   value={dmInput}
                   onChange={e => setDmInput(e.target.value)}
-                  style={{
-                    background: "rgba(18,32,48,0.55)", border: "1px solid rgba(100,130,160,0.18)",
-                    borderRadius: 3, color: "#c8bfaf", fontFamily: "'Crimson Text', Georgia, serif",
-                    fontSize: 16, padding: "9px 13px", width: "100%", outline: "none", marginBottom: 8,
-                  }}
+                  className="input-base"
+                  style={{ marginBottom: 8, fontSize: 16 }}
                 />
                 {dmError && (
                   <div style={{ color: "#c06060", fontSize: 14, fontFamily: "'Crimson Text', Georgia, serif", marginBottom: 10 }}>
                     {dmError}
                   </div>
                 )}
-                <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
-                  <button type="button" onClick={() => { setDmPrompt(false); setDmInput(""); setDmError(null); }} style={{
-                    background: "transparent", border: "1px solid rgba(100,130,160,0.18)",
-                    borderRadius: 3, color: "#6a8fa8", fontFamily: "'Crimson Text', Georgia, serif",
-                    fontSize: 14, padding: "8px 16px", cursor: "pointer", flex: 1,
-                  }}>
+                <div className="flex-row" style={{ gap: 8, marginTop: 4 }}>
+                  <button
+                    type="button"
+                    onClick={() => { setDmPrompt(false); setDmInput(""); setDmError(null); }}
+                    className="btn-ghost"
+                    style={{ flex: 1 }}
+                  >
                     Cancel
                   </button>
-                  <button type="submit" style={{
-                    background: "rgba(18,58,78,0.5)", border: "1px solid #6a8fa8",
-                    borderRadius: 3, color: "#a0c0d0", fontFamily: "'IM Fell English', Georgia, serif",
-                    fontSize: 14, letterSpacing: "0.08em", padding: "9px 18px",
-                    cursor: "pointer", flex: 2,
-                  }}>
+                  <button type="submit" className="btn-primary" style={{ flex: 2 }}>
                     Unlock
                   </button>
                 </div>
@@ -247,31 +215,15 @@ export default function CharactersListPage() {
             Loading characters…
           </div>
         ) : (
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "repeat(auto-fill, minmax(240px, 1fr))",
-            gap: 20, marginBottom: 32,
-          }}>
+          <div className="char-list-grid">
             {visibleCharacters.map(c => {
               const p = PALETTES[c.palette] || PALETTES.ember;
               return (
                 <button
                   key={c.slug}
                   onClick={() => navigate(`/characters/${c.slug}`)}
-                  style={{
-                    background: "transparent", border: `1px solid ${p.border}`,
-                    borderRadius: 4, padding: 0, cursor: "pointer", textAlign: "left",
-                    transition: "border-color 0.18s, transform 0.12s",
-                    overflow: "hidden",
-                  }}
-                  onMouseEnter={e => {
-                    e.currentTarget.style.borderColor = p.accent;
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                  }}
-                  onMouseLeave={e => {
-                    e.currentTarget.style.borderColor = p.border;
-                    e.currentTarget.style.transform = "translateY(0)";
-                  }}
+                  className="char-card-btn"
+                  style={{ border: `1px solid ${p.border}` }}
                 >
                   {/* Portrait */}
                   {c.portraitUrl ? (
@@ -283,11 +235,7 @@ export default function CharactersListPage() {
                       />
                     </div>
                   ) : (
-                    <div style={{
-                      width: "100%", aspectRatio: "4/3",
-                      background: p.surface, display: "flex",
-                      alignItems: "center", justifyContent: "center",
-                    }}>
+                    <div className="char-card-portrait-placeholder" style={{ background: p.surface }}>
                       <span style={{ fontFamily: "'Cinzel', serif", fontSize: 32, color: p.accentDim }}>
                         {c.name?.[0] || "?"}
                       </span>
@@ -338,19 +286,7 @@ export default function CharactersListPage() {
             })}
 
             {/* New character card */}
-            <button
-              onClick={() => navigate("/characters/new")}
-              style={{
-                background: "transparent",
-                border: "1px dashed rgba(100,130,160,0.25)",
-                borderRadius: 4, cursor: "pointer", padding: 0,
-                display: "flex", flexDirection: "column",
-                alignItems: "center", justifyContent: "center",
-                minHeight: 200, transition: "border-color 0.18s",
-              }}
-              onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.55)"; }}
-              onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.25)"; }}
-            >
+            <button onClick={() => navigate("/characters/new")} className="char-card-new">
               <div style={{ fontSize: 28, color: "rgba(100,130,160,0.4)", marginBottom: 10 }}>+</div>
               <div style={{
                 fontFamily: "'IM Fell English', Georgia, serif",

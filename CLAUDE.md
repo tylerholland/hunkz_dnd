@@ -30,7 +30,7 @@ node scripts/migrate.mjs   # Seeds DynamoDB and uploads portraits to S3 (interac
 
 ## Architecture
 
-**Frontend** (`src/`) — React 19 + Vite SPA, React Router v7, plain JS, inline styles throughout (no CSS framework).
+**Frontend** (`src/`) — React 19 + Vite SPA, React Router v7, plain JS, CSS custom properties for theming (no CSS framework). See ADR-001 and ADR-014 in `design/architecture/decisions.md` for the full CSS architecture.
 
 - `src/components/CharacterSheet.jsx` — Single monolithic component (~2500+ lines) containing all character sheet display logic, edit mode, sub-components, and constants. Most frontend work happens here.
   - `PALETTES` — named color themes; exported and used by pages for theming
@@ -136,6 +136,6 @@ Example invocations:
 
 ## Key conventions
 
-- All styling is inline React styles. Responsive breakpoints use CSS injected via `<style>` tags (e.g., `.loadout-grid` two-column layout collapses at 560px).
+- **Styling**: CSS custom properties (`--pal-*`) set at each component root; children use `var(--pal-*)` via CSS cascade. Utility classes in `src/shared.css`; per-component CSS files alongside each component. Inline `style={}` reserved for truly dynamic values only (HP bar widths, computed threshold colors, toggle positions). No runtime `<style>` tag injection. See ADR-014 for the full variable schema and file map.
 - `sessionStorage` keys: `dnd_palette_${slug}`, `dnd_dm_password`, `dnd_char_${slug}` (per-character password caching), `dnd_tab_${slug}` (active tab; `"loadout"` | `"persona"` | `"combat"` | `"map"`, default `"combat"`), `dnd_dice_open_${slug}` (dice roller section open/closed, default `false`), `dnd_dice_dm_open` (DM dice roller panel open/closed, default `false`).
 - Ignore legacy/backup files at `src/_backup_of_eoghan_sundayApp.jsx`, `src/_eoghan3.jsx`, `src/_oldApp.jsx`, etc.

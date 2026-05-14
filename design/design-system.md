@@ -87,9 +87,42 @@ Note: `vellum` is the only light-background palette — all others are dark. New
 
 ---
 
+## CSS class system
+
+Styles are being migrated from inline JS objects to CSS classes. Use these classes rather than duplicating inline styles. Palette values are inherited via CSS custom properties (`--pal-*`) set at the component root — no prop drilling needed in CSS.
+
+**CSS files:**
+- `src/shared.css` — utility classes used across all components (imported in `main.jsx`)
+- `src/features/characterSheet/characterSheet.css` — character sheet view-mode, edit-mode (`.em-*`), and ItemEditorModal (`.em-modal-*`) structural classes
+- `src/features/dmDashboard/characterCard.css` — DM card component classes (`.cc-*`)
+- `src/features/dmDashboard/dashboard.css` — DM dashboard layout classes
+
+**Key shared utility classes (`shared.css`):**
+- `.flex-row` — `display:flex; align-items:center`
+- `.flex-row-spread` — flex row with `justify-content:space-between`
+- `.flex-col` — flex column
+- `.label-ui` — IM Fell English, 11px, uppercase, `0.22em` tracking, `var(--pal-text-muted)`
+- `.input-base` — standard text input/textarea styling (surface bg, border, body font, 15px)
+- `.btn-ghost` — transparent ghost button (border, textMuted, hover → accent)
+- `.btn-primary` — accent-tinted primary action button
+- `.btn-stepper` — 32px circle +/− stepper
+- `.btn-pill` — pill tag/chip button with `.active` modifier
+- `.modal-overlay` — full-viewport `position:fixed` dark backdrop (`z-index:200`)
+- `.modal-panel` — content box inside overlay (`max-width:400px`)
+- `.flyout` — absolute-positioned tooltip panel
+- `.surface-panel` — surface-background section panel
+- `.divider` — `1px solid var(--pal-border)` horizontal rule
+- `.num-display-lg/md/sm` — Cinzel numeric display sizes
+
+**Palette variable pattern:** Set `--pal-*` vars once at the component root element via `style={{}}`. All child CSS classes inherit them without any JS prop passing. Components that render outside a palette-aware parent (e.g. `ItemEditorModal`) set their own `--pal-*` vars on their root element.
+
+---
+
 ## Interactive elements
 
 ### Buttons
+
+Use CSS classes (see above). For reference, the equivalent inline values are:
 
 Primary action button:
 ```js
@@ -108,6 +141,8 @@ fontSize: 11–13, letterSpacing: "0.12–0.18em"
 Destructive (remove/delete): same as ghost, color `#c06060` (not palette-derived — universal error red).
 
 ### Inputs and textareas
+
+Use `.input-base` CSS class. Equivalent inline values:
 ```js
 background: pal.surface, border: `1px solid ${pal.border}`,
 borderRadius: 3, color: pal.text, fontFamily: pal.fontBody,
@@ -115,6 +150,8 @@ fontSize: 15–16, padding: "8–9px 12–13px", outline: "none", width: "100%"
 ```
 
 ### Labels (above inputs)
+
+Use `.label-ui` CSS class. Equivalent inline values:
 ```js
 fontFamily: pal.fontUI, fontSize: 11–12, letterSpacing: "0.2em",
 textTransform: "uppercase", color: pal.textMuted, display: "block", marginBottom: 5

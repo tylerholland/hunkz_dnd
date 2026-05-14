@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CharacterSheet, { PALETTES } from "../components/CharacterSheet";
 import { createCharacter, getPortraitUploadUrl, updateCharacter } from "../api";
+import "./pages.css";
 
 export default function NewCharacterPage() {
   const navigate = useNavigate();
@@ -62,26 +63,25 @@ export default function NewCharacterPage() {
 
   if (step === "create") {
     const pal = PALETTES[pending?.palette] || PALETTES.ember;
-    const inputStyle = {
-      background: pal.surface, border: `1px solid ${pal.border}`,
-      borderRadius: 3, color: pal.text,
-      fontFamily: pal.fontBody, fontSize: 16,
-      padding: "9px 13px", width: "100%", outline: "none",
+
+    // Set palette CSS variables at root; inputs and buttons reference var(--pal-*)
+    const palVars = {
+      "--pal-bg":            pal.bg,
+      "--pal-surface":       pal.surface,
+      "--pal-surface-solid": pal.surfaceSolid,
+      "--pal-border":        pal.border,
+      "--pal-accent":        pal.accent,
+      "--pal-accent-bright": pal.accentBright,
+      "--pal-accent-dim":    pal.accentDim,
+      "--pal-text":          pal.text,
+      "--pal-text-body":     pal.textBody,
+      "--pal-text-muted":    pal.textMuted,
     };
+
     return (
-      <div style={{
-        minHeight: "100vh", background: pal.bg, display: "flex",
-        alignItems: "center", justifyContent: "center", padding: 24,
-      }}>
-        <div style={{
-          width: "100%", maxWidth: 400,
-          background: pal.surface, border: `1px solid ${pal.border}`,
-          borderRadius: 6, padding: "36px 32px",
-        }}>
-          <div style={{
-            fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em",
-            textTransform: "uppercase", color: pal.textMuted, marginBottom: 8,
-          }}>
+      <div className="page-centered" style={{ ...palVars, background: pal.bg, padding: 24 }}>
+        <div className="modal-panel" style={{ maxWidth: 400, padding: "36px 32px" }}>
+          <div className="label-ui" style={{ marginBottom: 8, letterSpacing: "0.3em" }}>
             Create Character
           </div>
           <div style={{ fontFamily: pal.fontDisplay, fontSize: 22, color: pal.text, marginBottom: 24 }}>
@@ -93,17 +93,17 @@ export default function NewCharacterPage() {
 
           <form onSubmit={handleSubmit}>
             <div style={{ marginBottom: 14 }}>
-              <label style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, display: "block", marginBottom: 6 }}>
+              <label className="label-ui" style={{ marginBottom: 6 }}>
                 Password
               </label>
-              <input type="password" style={inputStyle} value={password}
+              <input type="password" className="input-base" value={password}
                 onChange={e => setPassword(e.target.value)} autoFocus />
             </div>
             <div style={{ marginBottom: 24 }}>
-              <label style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, display: "block", marginBottom: 6 }}>
+              <label className="label-ui" style={{ marginBottom: 6 }}>
                 Confirm Password
               </label>
-              <input type="password" style={inputStyle} value={confirm}
+              <input type="password" className="input-base" value={confirm}
                 onChange={e => setConfirm(e.target.value)} />
             </div>
 
@@ -113,17 +113,11 @@ export default function NewCharacterPage() {
               </div>
             )}
 
-            <div style={{ display: "flex", gap: 10 }}>
-              <button type="button" onClick={() => setStep("build")} style={{ ...inputStyle, width: "auto", padding: "9px 18px", cursor: "pointer" }}>
+            <div className="flex-row" style={{ gap: 10 }}>
+              <button type="button" onClick={() => setStep("build")} className="btn-ghost">
                 ← Back
               </button>
-              <button type="submit" disabled={saving} style={{
-                ...inputStyle, flex: 1, padding: "10px 18px",
-                background: pal.accentDim, borderColor: pal.accent,
-                color: pal.accentBright, cursor: "pointer",
-                fontFamily: pal.fontUI, letterSpacing: "0.08em",
-                opacity: saving ? 0.6 : 1,
-              }}>
+              <button type="submit" disabled={saving} className="btn-primary" style={{ flex: 1, opacity: saving ? 0.6 : 1 }}>
                 {saving ? "Creating…" : "Create Character"}
               </button>
             </div>

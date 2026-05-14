@@ -8,7 +8,7 @@ import {
 } from "../features/characterSheet/constants";
 import CharacterSheetEditMode from "../features/characterSheet/CharacterSheetEditMode";
 import CharacterSheetViewMode from "../features/characterSheet/CharacterSheetViewMode";
-import { PALETTES, useCharacterSheetGlobalStyles } from "../features/characterSheet/theme";
+import { PALETTES } from "../features/characterSheet/theme";
 import {
   cloneLiveValue,
   mergeOptimisticLiveFields,
@@ -18,7 +18,6 @@ import {
 export { PALETTES } from "../features/characterSheet/theme";
 
 export default function CharacterSheet({ initialData, slug, onSave, onCreate, onDelete, onSessionSync, activeMap, activeMapView }) {
-  useCharacterSheetGlobalStyles();
 
   const [mode, setMode] = useState("view");
   const [char, setChar] = useState(() => initialData || BLANK_CHARACTER);

@@ -7,6 +7,7 @@ import {
   mixHex,
   withAlpha,
 } from "./dashboardShared";
+import "./npcCombat.css";
 
 function insertByInitiative(entries, entry) {
   const nextScore = entry.initiative ?? 0;
@@ -115,21 +116,44 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
   }
 
   return (
-    <div className="dm-init-col" style={{ borderLeft: `1px solid ${pal.border}`, paddingLeft: 20 }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-        <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted }}>Initiative Order</span>
-        <button
-          onClick={handleClear}
-          style={{ background: "transparent", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", cursor: "pointer", padding: "3px 0" }}
-          onMouseEnter={(e) => { e.target.style.color = "#c06060"; }}
-          onMouseLeave={(e) => { e.target.style.color = pal.textMuted; }}
-        >Clear ×</button>
+    <div
+      className="dm-init-col"
+      style={{
+        borderLeft: `1px solid ${pal.border}`,
+        paddingLeft: 20,
+        "--pal-bg":           pal.bg,
+        "--pal-surface":      pal.surface,
+        "--pal-surface-solid":pal.surfaceSolid,
+        "--pal-border":       pal.border,
+        "--pal-accent":       pal.accent,
+        "--pal-accent-bright":pal.accentBright,
+        "--pal-accent-dim":   pal.accentDim,
+        "--pal-text":         pal.text,
+        "--pal-text-body":    pal.textBody,
+        "--pal-text-muted":   pal.textMuted,
+        "--pal-glow-1":       pal.glow1,
+        "--pal-glow-2":       pal.glow2,
+      }}
+    >
+      <div className="init-header">
+        <span className="label-ui" style={{ letterSpacing: "0.3em" }}>Initiative Order</span>
+        <button onClick={handleClear} className="btn-init-clear">Clear ×</button>
       </div>
 
       <button
         onClick={handleNextTurn}
         disabled={entries.length === 0}
-        style={{ background: entries.length === 0 ? "transparent" : vellumTurnButtonBg, border: `1px solid ${entries.length === 0 ? pal.border : pal.accent}`, borderRadius: 4, color: entries.length === 0 ? pal.textMuted : pal.accentBright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase", padding: "9px 0", width: "100%", cursor: entries.length === 0 ? "not-allowed" : "pointer", marginBottom: 10 }}
+        className="btn-primary"
+        style={{
+          width: "100%",
+          marginBottom: 10,
+          background: entries.length === 0 ? "transparent" : vellumTurnButtonBg,
+          border: `1px solid ${entries.length === 0 ? pal.border : pal.accent}`,
+          color: entries.length === 0 ? pal.textMuted : pal.accentBright,
+          cursor: entries.length === 0 ? "not-allowed" : "pointer",
+          letterSpacing: "0.2em",
+          padding: "9px 0",
+        }}
       >▶ Next Turn</button>
 
       {entries.length === 0 ? (
@@ -138,7 +162,7 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
         </div>
       ) : (
         <div style={{ marginBottom: 14 }}>
-          <ul style={{ listStyle: "none", marginBottom: 10, padding: 0 }}>
+          <ul className="init-list">
           {entries.map((entry, idx) => {
             const isCurrent = idx === activeTurnIndex;
             const isPromoteOpen = promoteOpenId === entry.id;
@@ -151,47 +175,33 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
             }
             const canPromote = !entry.isPC && !entry.npcId && onPromoteToNpc;
             return (
-              <li
-                key={entry.id}
-                style={{
-                  marginBottom: 3,
-                  borderRadius: 4,
-                }}
-              >
+              <li key={entry.id} className="init-entry">
                 <div
                   onClick={canPromote ? () => setPromoteOpenId(isPromoteOpen ? null : entry.id) : undefined}
-                  style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: isPromoteOpen ? "4px 4px 0 0" : 4, background: isCurrent ? "rgba(106,143,168,0.12)" : pal.surface, border: `1px solid ${isCurrent ? pal.accent : isPromoteOpen ? "rgba(122,112,96,0.5)" : pal.border}`, cursor: canPromote ? "pointer" : "default" }}
-                  onMouseEnter={canPromote ? (e) => { if (!isCurrent) e.currentTarget.style.borderColor = "rgba(122,112,96,0.5)"; } : undefined}
-                  onMouseLeave={canPromote ? (e) => { if (!isCurrent && !isPromoteOpen) e.currentTarget.style.borderColor = pal.border; } : undefined}
+                  data-current={isCurrent ? "true" : undefined}
+                  data-promote-open={isPromoteOpen ? "true" : undefined}
+                  data-promote-clickable={canPromote ? "true" : undefined}
+                  className="init-entry-row"
+                  style={{ background: isCurrent ? "rgba(106,143,168,0.12)" : pal.surface, borderColor: isCurrent ? pal.accent : isPromoteOpen ? "rgba(122,112,96,0.5)" : pal.border, borderRadius: isPromoteOpen ? "4px 4px 0 0" : 4 }}
                 >
-                  <span style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: isCurrent ? pal.accentBright : pal.gem, width: 28, textAlign: "center", flexShrink: 0 }}>{entry.initiative}</span>
-                  <span style={{ fontFamily: pal.fontBody, fontSize: 15, color: isCurrent ? pal.accentBright : pal.text, fontWeight: isCurrent ? 600 : 400, flex: 1, fontStyle: !entry.isPC ? "italic" : "normal" }}>{entry.name}</span>
+                  <span className="num-display-sm init-value" style={{ color: isCurrent ? pal.accentBright : pal.gem, fontSize: 18 }}>{entry.initiative}</span>
+                  <span className="init-name" style={{ color: isCurrent ? pal.accentBright : pal.text, fontWeight: isCurrent ? 600 : 400, fontStyle: !entry.isPC ? "italic" : "normal" }}>{entry.name}</span>
                   {hpDotColor && (
-                    <span style={{ width: 9, height: 9, borderRadius: "50%", flexShrink: 0, background: hpDotColor, boxShadow: `0 0 4px ${hpDotColor}`, display: "inline-block" }} title={`${trackedNpc.hpCurrent}/${trackedNpc.hpMax} HP`} />
+                    <span className="init-hp-dot" style={{ background: hpDotColor, boxShadow: `0 0 4px ${hpDotColor}` }} title={`${trackedNpc.hpCurrent}/${trackedNpc.hpMax} HP`} />
                   )}
-                  {!entry.isPC && !entry.npcId && (
-                    <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, background: "rgba(100,130,160,0.1)", border: `1px solid ${pal.border}`, borderRadius: 8, padding: "1px 6px" }}>NPC</span>
-                  )}
-                  {isCurrent && (
-                    <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.1em", color: pal.accentBright, whiteSpace: "nowrap" }}>◀ Now</span>
-                  )}
+                  {!entry.isPC && !entry.npcId && <span className="init-badge-npc">NPC</span>}
+                  {isCurrent && <span className="init-now-label">◀ Now</span>}
                   {modifyOrderMode && (
                     <>
-                      <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                      <div className="init-move-controls">
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            moveEntry(entry.id, -1);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); moveEntry(entry.id, -1); }}
                           disabled={idx === 0}
                           title="Move up"
                           style={{ background: "transparent", border: `1px solid ${idx === 0 ? pal.border : pal.accent}`, borderRadius: 3, color: idx === 0 ? pal.textMuted : pal.accentBright, fontFamily: pal.fontUI, fontSize: 10, width: 20, height: 18, cursor: idx === 0 ? "not-allowed" : "pointer", opacity: idx === 0 ? 0.45 : 1, lineHeight: 1 }}
                         >↑</button>
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            moveEntry(entry.id, 1);
-                          }}
+                          onClick={(e) => { e.stopPropagation(); moveEntry(entry.id, 1); }}
                           disabled={idx === entries.length - 1}
                           title="Move down"
                           style={{ background: "transparent", border: `1px solid ${idx === entries.length - 1 ? pal.border : pal.accent}`, borderRadius: 3, color: idx === entries.length - 1 ? pal.textMuted : pal.accentBright, fontFamily: pal.fontUI, fontSize: 10, width: 20, height: 18, cursor: idx === entries.length - 1 ? "not-allowed" : "pointer", opacity: idx === entries.length - 1 ? 0.45 : 1, lineHeight: 1 }}
@@ -200,17 +210,15 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
                       <button
                         onClick={(e) => { e.stopPropagation(); handleRemove(entry.id); }}
                         title="Remove from initiative"
-                        style={{ background: "transparent", border: "none", color: pal.textMuted, fontSize: 14, cursor: "pointer", padding: "2px 4px", borderRadius: 3, lineHeight: 1 }}
-                        onMouseEnter={(e) => { e.target.style.color = "#c06060"; e.target.style.background = "rgba(192,96,96,0.1)"; }}
-                        onMouseLeave={(e) => { e.target.style.color = pal.textMuted; e.target.style.background = ""; }}
+                        className="btn-init-remove"
                       >×</button>
                     </>
                   )}
                 </div>
                 {isPromoteOpen && (
-                  <div style={{ padding: "10px 12px", background: "rgba(30,26,20,0.6)", border: "1px solid rgba(122,112,96,0.5)", borderTop: "none", borderRadius: "0 0 4px 4px" }}>
-                    <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.2em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 7 }}>Set max HP to track this enemy</div>
-                    <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <div className="init-promote-panel">
+                    <div className="label-ui" style={{ letterSpacing: "0.2em", marginBottom: 7 }}>Set max HP to track this enemy</div>
+                    <div className="init-promote-row">
                       <input
                         type="number"
                         placeholder="HP"
@@ -243,56 +251,33 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
           </ul>
           <button
             onClick={() => setModifyOrderMode((value) => !value)}
-            style={{
-              width: "100%",
-              background: modifyOrderMode ? "rgba(106,143,168,0.14)" : "transparent",
-              border: `1px solid ${modifyOrderMode ? pal.accent : pal.border}`,
-              borderRadius: 4,
-              color: modifyOrderMode ? pal.accentBright : pal.textMuted,
-              fontFamily: pal.fontUI,
-              fontSize: 11,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              padding: "7px 0",
-              cursor: "pointer",
-            }}
-            onMouseEnter={(e) => {
-              if (!modifyOrderMode) {
-                e.currentTarget.style.borderColor = pal.accent;
-                e.currentTarget.style.color = pal.accentBright;
-              }
-            }}
-            onMouseLeave={(e) => {
-              if (!modifyOrderMode) {
-                e.currentTarget.style.borderColor = pal.border;
-                e.currentTarget.style.color = pal.textMuted;
-              }
-            }}
+            data-active={modifyOrderMode ? "true" : undefined}
+            className="btn-modify-order"
           >{modifyOrderMode ? "Done" : "Modify Order"}</button>
         </div>
       )}
 
       {availablePCs.length > 0 && (
         <div style={{ marginBottom: 14 }}>
-          <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 8 }}>Add Characters</div>
+          <div className="label-ui" style={{ letterSpacing: "0.3em", marginBottom: 8 }}>Add Characters</div>
           {availablePCs.map((char) => (
-            <div key={char.slug} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}>
+            <div key={char.slug} className="init-pc-row">
               <span style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.text, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{char.name || char.nameAlt || char.slug}</span>
               <input type="number" placeholder="Roll" value={pcRolls[char.slug] ?? ""} onChange={(e) => setPcRolls((rolls) => ({ ...rolls, [char.slug]: e.target.value }))} onKeyDown={(e) => e.key === "Enter" && handleAddPC(char)} style={{ width: 52, background: pal.surface, border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 15, padding: "5px 6px", outline: "none", textAlign: "center" }} />
-              <button onClick={() => handleAddPC(char)} style={{ background: "transparent", border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 13, padding: "5px 10px", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.background = "rgba(106,143,168,0.15)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.background = "transparent"; }}>+</button>
+              <button onClick={() => handleAddPC(char)} className="btn-init-add">+</button>
             </div>
           ))}
         </div>
       )}
 
-      <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 4 }}>Add Manual Combatant</div>
+      <div className="label-ui" style={{ letterSpacing: "0.3em", marginBottom: 4 }}>Add Manual Combatant</div>
       <div style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginBottom: 8, letterSpacing: "0.06em" }}>
         For allies, summons, or scene actors that do not need an enemy card.
       </div>
-      <div style={{ display: "flex", gap: 6 }}>
+      <div className="init-add-row">
         <input type="text" placeholder="Name…" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEntry()} style={{ flex: 1, background: pal.surface, border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "7px 10px", outline: "none" }} />
         <input type="number" placeholder="Init" value={newInit} onChange={(e) => setNewInit(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEntry()} style={{ width: 50, background: pal.surface, border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 15, padding: "7px 6px", outline: "none", textAlign: "center" }} />
-        <button onClick={handleAddEntry} style={{ background: "transparent", border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 13, padding: "7px 12px", cursor: "pointer" }} onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.background = "rgba(106,143,168,0.15)"; }} onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.background = "transparent"; }}>Add</button>
+        <button onClick={handleAddEntry} className="btn-init-add-manual">Add</button>
       </div>
     </div>
   );
