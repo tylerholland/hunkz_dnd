@@ -12,6 +12,7 @@ import {
   getPartyCardActiveSurface,
   getPartyCardPalette,
   useHoldToRepeat,
+  withAlpha,
 } from "./dashboardShared";
 
 function AwardXpModal({ char, dmPassword, onClose, onUpdate, onOptimisticUpdate, forParty = false, party = [] }) {
@@ -427,8 +428,7 @@ function DamageHealModal({ char, mode, dmPassword, onClose, onOptimisticUpdate, 
   );
 }
 
-function QuickActionPopover({ char, onClose, onUpdate, onOpenHpModal, onCommitFields, initialMode = null, initialVal = "" }) {
-  const pal = useContext(PalCtx);
+function QuickActionPopover({ char, pal, basePal, onClose, onUpdate, onOpenHpModal, onCommitFields, initialMode = null, initialVal = "" }) {
   const [mode, setMode] = useState(initialMode);
   const [inputVal, setInputVal] = useState(initialVal);
   const [selectedConds, setSelectedConds] = useState([]);
@@ -488,9 +488,9 @@ function QuickActionPopover({ char, onClose, onUpdate, onOpenHpModal, onCommitFi
       position: "absolute",
       right: 0,
       top: 34,
-      zIndex: 100,
-      background: pal.surfaceSolid,
-      border: "1px solid rgba(100,130,160,0.32)",
+      zIndex: 400,
+      background: withAlpha(basePal?.surfaceSolid || pal.surfaceSolid || pal.bg || "#111111", 0.94),
+      border: `1px solid ${pal.uiBorder || pal.border}`,
       borderRadius: 5,
       minWidth: 210,
       boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
@@ -913,7 +913,19 @@ function NotesStrip({ slug, dmNotes: initialDmNotes, sharedPlayerNotes, dmPasswo
   );
 }
 
-export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSessionUpdates, onRegisterOpen, isActiveTurn = false, allParty = [] }) {
+export default function CharacterCard({
+  char,
+  dmPassword,
+  onUpdate,
+  onCommitSessionUpdates,
+  onRegisterOpen,
+  onPopoverOpenChange,
+  isActiveTurn = false,
+  allParty = [],
+  showTier2 = true,
+  dimmed = false,
+  onHeaderClick,
+}) {
   const pal = useContext(PalCtx);
   const [popoverOpen, setPopoverOpen] = useState(false);
   const [modalMode, setModalMode] = useState(null);
@@ -934,6 +946,14 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
   const pendingDeltaRef = useRef(0);
   const flushInFlightRef = useRef(false);
   const [deltaIndicator, setDeltaIndicator] = useState(null);
+  const [hpFeedback, setHpFeedback] = useState(null);
+  const [removingConds, setRemovingConds] = useState([]);
+  const [fadingConcentration, setFadingConcentration] = useState(null);
+  const hpFeedbackTimeoutRef = useRef(null);
+  const prevAnimatedHpRef = useRef(serverHp ?? 0);
+  const removalTimersRef = useRef(new Map());
+  const concentrationFadeTimeoutRef = useRef(null);
+  const prevConcentrationRef = useRef(char.concentration);
 
   const [optimisticXp, setOptimisticXp] = useState(char.xpCurrent ?? 0);
   const xpPendingRef = useRef(false);
@@ -943,6 +963,10 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
   useEffect(() => {
     optimisticHpRef.current = optimisticHp;
   }, [optimisticHp]);
+
+  useEffect(() => {
+    onPopoverOpenChange?.(popoverOpen);
+  }, [onPopoverOpenChange, popoverOpen]);
 
   useEffect(() => {
     hpMaxRef.current = hpMax ?? 0;
@@ -966,6 +990,24 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
   useEffect(() => {
     setCoinExpanded(false);
   }, [char.slug, char.coinMode]);
+
+  useEffect(() => {
+    const previous = prevAnimatedHpRef.current;
+    if (typeof previous === "number" && previous !== optimisticHp) {
+      const nextFeedback = optimisticHp < previous ? "damage" : "heal";
+      setHpFeedback(nextFeedback);
+      window.clearTimeout(hpFeedbackTimeoutRef.current);
+      hpFeedbackTimeoutRef.current = window.setTimeout(() => setHpFeedback(null), nextFeedback === "damage" ? 300 : 250);
+    }
+    prevAnimatedHpRef.current = optimisticHp;
+  }, [optimisticHp]);
+
+  useEffect(() => () => {
+    window.clearTimeout(hpFeedbackTimeoutRef.current);
+    window.clearTimeout(concentrationFadeTimeoutRef.current);
+    removalTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    removalTimersRef.current.clear();
+  }, []);
 
   const getTargetHp = useCallback(
     () => Math.max(0, Math.min(hpMaxRef.current ?? 0, optimisticHpRef.current)),
@@ -1022,17 +1064,31 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
   const hpTone = getHpTone(cardPal, hpPct);
 
   const conditions = Array.isArray(char.conditions) ? char.conditions : [];
-  const visibleConds = conditions;
-
   const concentration = char.concentration;
   const isConcentrating = concentration?.active;
+  const concentrationKey = `${concentration?.active ? "1" : "0"}|${concentration?.spell || ""}`;
+
+  useEffect(() => {
+    const previousConcentration = prevConcentrationRef.current;
+    if (previousConcentration?.active && !isConcentrating) {
+      setFadingConcentration(previousConcentration);
+      window.clearTimeout(concentrationFadeTimeoutRef.current);
+      concentrationFadeTimeoutRef.current = window.setTimeout(() => setFadingConcentration(null), 200);
+    } else if (isConcentrating) {
+      setFadingConcentration(null);
+    }
+    prevConcentrationRef.current = concentration;
+  }, [concentrationKey, concentration, isConcentrating]);
+
+  const visibleConds = [...conditions, ...removingConds.filter((condition) => !conditions.includes(condition))];
+  const concentrationDisplay = isConcentrating ? concentration : fadingConcentration;
   const conScore = char.stats?.find((s) => s.stat === "Constitution")?.score ?? 10;
   const conItemBonus = [...(char.weapons || []), ...(char.equipment || [])].reduce((sum, item) => {
     return sum + (item.mods || []).filter((m) => m.attribute === "Constitution").reduce((s, m) => s + (parseInt(m.value, 10) || 0), 0);
   }, 0);
   const conSaveMod = Math.floor((conScore - 10) / 2) + conItemBonus;
   const conSaveLabel = (conSaveMod >= 0 ? "+" : "") + conSaveMod;
-  const hasStatusRow = visibleConds.length > 0 || isConcentrating || !!char.inspiration;
+  const hasStatusRow = visibleConds.length > 0 || !!concentrationDisplay || !!char.inspiration;
   const spellSlotGroups = getSpellSlotGroups(char.spellSlots || []);
   const deathSaves = getDeathSaveCounts(char);
   const showDeathSaves = hasHp && optimisticHp === 0;
@@ -1059,8 +1115,25 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
   }, [char.slug, dmPassword, onCommitSessionUpdates, onUpdate]);
 
   async function removeCondition(cond) {
-    const updated = conditions.filter((condition) => condition !== cond);
-    await commitSessionFields({ conditions: updated });
+    if (removingConds.includes(cond)) return;
+    setRemovingConds((current) => [...current, cond]);
+
+    const timerId = window.setTimeout(async () => {
+      const updated = conditions.filter((condition) => condition !== cond);
+      const success = await commitSessionFields({ conditions: updated });
+      if (success === false) {
+        setRemovingConds((current) => current.filter((condition) => condition !== cond));
+        removalTimersRef.current.delete(cond);
+        return;
+      }
+      const cleanupTimerId = window.setTimeout(() => {
+        setRemovingConds((current) => current.filter((condition) => condition !== cond));
+        removalTimersRef.current.delete(cond);
+      }, 170);
+      removalTimersRef.current.set(cond, cleanupTimerId);
+    }, 150);
+
+    removalTimersRef.current.set(cond, timerId);
   }
 
   const initial = (char.name || "?").charAt(0).toUpperCase();
@@ -1102,7 +1175,7 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
         borderRadius: 6,
         marginBottom: 12,
         position: "relative",
-        zIndex: popoverOpen ? 50 : isActiveTurn ? 2 : 1,
+        zIndex: popoverOpen ? 200 : isActiveTurn ? 2 : 1,
         overflow: "visible",
         transform: isActiveTurn ? "translateY(-1px)" : "translateY(0)",
         transformOrigin: "center center",
@@ -1127,7 +1200,7 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
         />
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, padding: "12px 14px 10px 18px", alignItems: "start" }}>
+      <div style={{ display: "grid", gridTemplateColumns: "auto 1fr auto", gap: 10, padding: "12px 14px 10px 18px", alignItems: "start", position: "relative", zIndex: 1 }}>
         <div style={{
           width: 42,
           height: 42,
@@ -1147,9 +1220,12 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
           )}
         </div>
 
-        <div style={{ minWidth: 0 }}>
+        <div
+          style={{ minWidth: 0, cursor: onHeaderClick ? "pointer" : "default" }}
+          onClick={onHeaderClick}
+        >
           <div style={{ display: "flex", alignItems: "flex-start", gap: 8, marginBottom: 1, minWidth: 0 }}>
-            <div style={{ fontFamily: cardPal.fontDisplay, fontSize: 17, letterSpacing: "0.1em", fontVariant: "small-caps", color: cardPal.accentBright, lineHeight: 1.1, minWidth: 0, flex: 1 }}>{char.name || "Unknown"}</div>
+            <div style={{ fontFamily: cardPal.fontDisplay, fontSize: 17, letterSpacing: "0.1em", fontVariant: "small-caps", color: cardPal.accentBright, lineHeight: 1.1, minWidth: 0, flex: 1, textShadow: isActiveTurn ? `0 0 10px ${cardPal.accent}55` : "none", transition: "text-shadow 0.18s ease" }}>{char.name || "Unknown"}</div>
             <div style={{ background: "rgba(0,0,0,0.2)", border: `1px solid ${cardPal.uiBorder}`, borderRadius: 3, padding: "4px 10px 3px", fontFamily: cardPal.fontDisplay, fontSize: 13, letterSpacing: "0.1em", fontVariant: "small-caps", color: cardPal.text, whiteSpace: "nowrap", flexShrink: 0 }}>
               AC {char.armorTotal ?? "—"}
             </div>
@@ -1194,6 +1270,17 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
                     </div>
                   );
                 })}
+                {hpFeedback && (
+                  <div
+                    className={`dm-hp-feedback ${hpFeedback === "damage" ? "dm-hp-feedback-damage" : "dm-hp-feedback-heal"}`}
+                    style={{
+                      background: hpFeedback === "damage"
+                        ? "linear-gradient(90deg, rgba(192,96,96,0.28) 0%, rgba(192,96,96,0.08) 100%)"
+                        : `linear-gradient(90deg, ${cardPal.accentBright}3d 0%, transparent 100%)`,
+                      boxShadow: hpFeedback === "heal" ? `0 0 14px ${cardPal.accentBright}55 inset` : "none",
+                    }}
+                  />
+                )}
               </div>
               <button style={stepBtnStyle} onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); plusBind.start(); }} onPointerUp={plusBind.stop} onPointerCancel={plusBind.stop} title="Heal 1 HP (hold to repeat)">+</button>
               {deltaIndicator && (
@@ -1238,19 +1325,21 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
             <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6, marginBottom: spellSlotGroups.length > 0 ? 8 : 6 }}>
               {visibleConds.map((cond) => {
                 const cs = conditionStyle(cond);
+                const isRemoving = removingConds.includes(cond);
                 return (
                   <span
                     key={cond}
                     onClick={() => removeCondition(cond)}
                     title={`Remove ${cond}`}
+                    className={isRemoving ? "dm-condition-exit" : "dm-condition-enter"}
                     style={{ background: cs.bg, border: `1px solid ${cs.border}`, borderRadius: 10, color: cs.color, fontFamily: cardPal.fontUI, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", padding: "2px 8px", cursor: "pointer" }}
                   >{cond} ×</span>
                 );
               })}
-              {isConcentrating && (
-                <span style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: cardPal.fontUI, fontSize: 10, letterSpacing: "0.12em", color: cardPal.accentBright }}>
+              {concentrationDisplay && (
+                <span className={!isConcentrating && fadingConcentration ? "dm-fade-out" : undefined} style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: cardPal.fontUI, fontSize: 10, letterSpacing: "0.12em", color: cardPal.accentBright }}>
                   <span className="dm-pulse-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: cardPal.accentBright, boxShadow: `0 0 5px ${cardPal.accentBright}`, flexShrink: 0, display: "inline-block" }} />
-                  {concentration.spell || "Concentrating"}
+                  {concentrationDisplay.spell || "Concentrating"}
                   <span style={{ color: cardPal.textMuted, fontSize: 9, letterSpacing: "0.08em" }}>· CON {conSaveLabel}</span>
                 </span>
               )}
@@ -1293,10 +1382,19 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
             </div>
           )}
 
-          <div style={{ marginTop: 4, marginBottom: 8, height: 1, background: cardPal.border, opacity: 0.7 }} />
+          <div
+            style={{
+              overflow: "hidden",
+              maxHeight: showTier2 ? 220 : 0,
+              opacity: showTier2 ? 1 : 0,
+              transition: "max-height 0.24s ease-in-out, opacity 0.22s ease-in-out",
+              pointerEvents: showTier2 ? "auto" : "none",
+            }}
+          >
+            <div style={{ marginTop: 4, marginBottom: 8, height: 1, background: cardPal.border, opacity: 0.7 }} />
 
-          <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-            {(char.levelingMode || "milestone") === "xp" && (() => {
+            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+              {(char.levelingMode || "milestone") === "xp" && (() => {
               const level = char.level || 1;
               const xp = optimisticXp;
               const nextThreshold = XP_THRESHOLDS[level + 1] ?? XP_THRESHOLDS[20];
@@ -1323,7 +1421,7 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
               );
             })()}
 
-            {(() => {
+              {(() => {
               const gpVal = displayCoin.gp ?? 0;
               return (
                 <div style={{ display: "flex", flexDirection: "column", gap: coinMode === "gp" ? 0 : 5 }}>
@@ -1395,6 +1493,7 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
                   </div>
               );
             })()}
+            </div>
           </div>
         </div>
 
@@ -1423,6 +1522,8 @@ export default function CharacterCard({ char, dmPassword, onUpdate, onCommitSess
           {popoverOpen && (
             <QuickActionPopover
               char={char}
+              pal={cardPal}
+              basePal={charPal}
               onClose={() => setPopoverOpen(false)}
               onUpdate={handlePopoverUpdate}
               onOpenHpModal={setModalMode}

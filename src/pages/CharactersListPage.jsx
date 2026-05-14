@@ -146,6 +146,17 @@ export default function CharactersListPage() {
                 Campaign
               </Link>
               <Link
+                to="/dm-classic"
+                style={{
+                  background: "transparent", border: "1px solid rgba(100,130,160,0.3)",
+                  borderRadius: 3, color: "#6a8fa8", fontFamily: "'IM Fell English', Georgia, serif",
+                  fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase",
+                  padding: "5px 12px", textDecoration: "none", display: "inline-block",
+                }}
+              >
+                Classic Layout
+              </Link>
+              <Link
                 to="/maps"
                 style={{
                   background: "transparent", border: "1px solid rgba(100,130,160,0.3)",

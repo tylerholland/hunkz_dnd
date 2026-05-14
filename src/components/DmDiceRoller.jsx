@@ -92,7 +92,7 @@ function buildExprLabel(groups, flat) {
 }
 
 // ── DmDiceRoller ───────────────────────────────────────────────────────────────
-export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage, onApplyNpcDamage, remoteHistory = [] }) {
+export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage, onApplyNpcDamage, remoteHistory = [], marginTop = 16 }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
     sessionStorage.getItem("dnd_dice_dm_open") !== "false"
@@ -275,7 +275,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
         border: `1px solid ${pal.border}`,
         borderRadius: 4,
         padding: "14px 16px",
-        marginTop: 16,
+        marginTop,
       }}>
         {/* ── Header ── */}
         <div

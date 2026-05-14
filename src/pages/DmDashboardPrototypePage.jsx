@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
 import { getDmParty, patchSession, getInitiative, putInitiative, getNpcCombat, putNpcCombat, getRollHistory, getMapLibrary, listCharacters, getPartyRoster, putPartyRoster } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
@@ -18,15 +18,37 @@ import {
 import { PALETTES } from "../features/characterSheet/theme";
 import { cloneLiveValue, useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
 
-export default function DmDashboardClassicPage() {
+const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
+const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
+const MAP_TRANSITION_MS = 320;
+const CARD_FLIP_MS = 460;
+const CARD_COMPACT_MS = 240;
+const PANEL_TRANSITION_MS = 460;
+const DICE_TRANSITION_MS = 280;
+
+export default function DmDashboardPage() {
   useDashboardStyles();
 
+  const initialCombatMode = (
+    sessionStorage.getItem(COMBAT_MODE_STORAGE_KEY) ??
+    sessionStorage.getItem(LEGACY_COMBAT_MODE_STORAGE_KEY)
+  ) === "true";
   const [dmPassword, setDmPassword] = useState(() => sessionStorage.getItem("dnd_dm_password") || "");
   const [authed, setAuthed] = useState(false);
   const [authState, setAuthState] = useState(() => (sessionStorage.getItem("dnd_dm_password") ? "checking" : "prompt"));
   const [showAwardXpParty, setShowAwardXpParty] = useState(false);
   const [showDistributeCoinParty, setShowDistributeCoinParty] = useState(false);
   const [showManageParty, setShowManageParty] = useState(false);
+  const [actionMenuOpen, setActionMenuOpen] = useState(false);
+  const [openCardPopoverSlug, setOpenCardPopoverSlug] = useState(null);
+  const [combatMode, setCombatMode] = useState(initialCombatMode);
+  const [mapCollapsed, setMapCollapsed] = useState(initialCombatMode);
+  const [combatLayoutActive, setCombatLayoutActive] = useState(initialCombatMode);
+  const [diceLayoutActive, setDiceLayoutActive] = useState(initialCombatMode);
+  const [diceVisible, setDiceVisible] = useState(true);
+  const [cardsCompact, setCardsCompact] = useState(initialCombatMode);
+  const [combatPanelsVisible, setCombatPanelsVisible] = useState(initialCombatMode);
+  const [nonCombatChromeVisible, setNonCombatChromeVisible] = useState(!initialCombatMode);
   const [party, setParty] = useState([]);
   const [libraryCharacters, setLibraryCharacters] = useState([]);
   const [partyRoster, setPartyRoster] = useState([]);
@@ -40,6 +62,11 @@ export default function DmDashboardClassicPage() {
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
   const cardOpenFnsRef = useRef({});
+  const cardItemRefs = useRef(new Map());
+  const actionMenuRef = useRef(null);
+  const pendingCardFlipRef = useRef(null);
+  const activeCardAnimationsRef = useRef([]);
+  const transitionTimersRef = useRef([]);
   const requestSeqRef = useRef(0);
   const activeRequestCountRef = useRef(0);
   const partyRef = useRef(party);
@@ -52,6 +79,97 @@ export default function DmDashboardClassicPage() {
   useEffect(() => {
     partyRef.current = party;
   }, [party]);
+
+  useEffect(() => () => {
+    transitionTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    transitionTimersRef.current = [];
+    activeCardAnimationsRef.current.forEach((animation) => animation.cancel());
+    activeCardAnimationsRef.current = [];
+  }, []);
+
+  useEffect(() => {
+    sessionStorage.setItem(COMBAT_MODE_STORAGE_KEY, String(combatMode));
+    sessionStorage.removeItem(LEGACY_COMBAT_MODE_STORAGE_KEY);
+  }, [combatMode]);
+
+  useEffect(() => {
+    const handlePointerDown = (event) => {
+      if (!actionMenuRef.current?.contains(event.target)) {
+        setActionMenuOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handlePointerDown);
+    return () => document.removeEventListener("pointerdown", handlePointerDown);
+  }, []);
+
+  useLayoutEffect(() => {
+    const pendingFlip = pendingCardFlipRef.current;
+    if (!pendingFlip) return;
+
+    activeCardAnimationsRef.current.forEach((animation) => animation.cancel());
+    activeCardAnimationsRef.current = [];
+
+    const animations = [];
+    pendingFlip.rects.forEach((previousRect, slug) => {
+      const node = cardItemRefs.current.get(slug);
+      if (!node) return;
+      const nextRect = node.getBoundingClientRect();
+      const deltaX = previousRect.left - nextRect.left;
+      const deltaY = previousRect.top - nextRect.top;
+      const scaleX = previousRect.width / Math.max(nextRect.width, 1);
+      const scaleY = previousRect.height / Math.max(nextRect.height, 1);
+      const hasMovement = Math.abs(deltaX) > 1 || Math.abs(deltaY) > 1 || Math.abs(scaleX - 1) > 0.01 || Math.abs(scaleY - 1) > 0.01;
+      if (!hasMovement) return;
+
+      const animation = node.animate(
+        [
+          {
+            transform: `translate(${deltaX}px, ${deltaY}px) scale(${scaleX}, ${scaleY})`,
+            transformOrigin: "top left",
+          },
+          {
+            transform: "translate(0px, 0px) scale(1, 1)",
+            transformOrigin: "top left",
+          },
+        ],
+        {
+          duration: CARD_FLIP_MS,
+          easing: "cubic-bezier(0.22, 1, 0.36, 1)",
+          fill: "both",
+        }
+      );
+
+      animation.onfinish = () => {
+        node.style.transform = "";
+      };
+      animation.oncancel = () => {
+        node.style.transform = "";
+      };
+      animations.push(animation);
+    });
+
+    activeCardAnimationsRef.current = animations;
+    pendingCardFlipRef.current = null;
+  }, [combatLayoutActive, party.length]);
+
+  const queueTransitionStep = useCallback((fn, delay) => {
+    const timerId = window.setTimeout(fn, delay);
+    transitionTimersRef.current.push(timerId);
+  }, []);
+
+  const clearTransitionSteps = useCallback(() => {
+    transitionTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    transitionTimersRef.current = [];
+  }, []);
+
+  const triggerCardFlip = useCallback((nextLayoutActive) => {
+    pendingCardFlipRef.current = {
+      rects: new Map(
+        Array.from(cardItemRefs.current.entries()).map(([slug, node]) => [slug, node.getBoundingClientRect()])
+      ),
+    };
+    setCombatLayoutActive(nextLayoutActive);
+  }, []);
 
   const fetchRosterContext = useCallback(async () => {
     const [characters, rosterData] = await Promise.all([
@@ -441,6 +559,7 @@ export default function DmDashboardClassicPage() {
     setAuthed(false);
     setAuthState("prompt");
     setShowManageParty(false);
+    setActionMenuOpen(false);
   }
 
   async function handleSavePartyRoster(members) {
@@ -515,6 +634,55 @@ export default function DmDashboardClassicPage() {
     setTimeout(() => setRestNotice(""), 4000);
   }
 
+  async function handleSetActiveTurnForSlug(slug) {
+    const entries = initiative.entries || [];
+    const nextIndex = entries.findIndex((entry) => entry.slug === slug);
+    if (nextIndex < 0) return;
+    await commitInitiativeUpdate({ entries, activeTurnIndex: nextIndex }, { optimistic: true });
+  }
+
+  function toggleCombatMode() {
+    setActionMenuOpen(false);
+    clearTransitionSteps();
+
+    if (!combatMode) {
+      setCombatMode(true);
+      setMapCollapsed(true);
+      setNonCombatChromeVisible(false);
+      queueTransitionStep(() => {
+        triggerCardFlip(true);
+      }, MAP_TRANSITION_MS);
+      queueTransitionStep(() => {
+        setDiceVisible(false);
+      }, MAP_TRANSITION_MS + CARD_FLIP_MS);
+      queueTransitionStep(() => {
+        setDiceLayoutActive(true);
+        setDiceVisible(true);
+        setCardsCompact(true);
+        setCombatPanelsVisible(true);
+      }, MAP_TRANSITION_MS + CARD_FLIP_MS + DICE_TRANSITION_MS);
+      return;
+    }
+
+    setCombatMode(false);
+    setCombatPanelsVisible(false);
+    queueTransitionStep(() => {
+      setDiceVisible(false);
+    }, PANEL_TRANSITION_MS);
+    queueTransitionStep(() => {
+      setDiceLayoutActive(false);
+      setDiceVisible(true);
+      setCardsCompact(false);
+    }, PANEL_TRANSITION_MS + DICE_TRANSITION_MS);
+    queueTransitionStep(() => {
+      triggerCardFlip(false);
+    }, PANEL_TRANSITION_MS + DICE_TRANSITION_MS + CARD_COMPACT_MS);
+    queueTransitionStep(() => {
+      setMapCollapsed(false);
+      setNonCombatChromeVisible(true);
+    }, PANEL_TRANSITION_MS + DICE_TRANSITION_MS + CARD_COMPACT_MS + CARD_FLIP_MS);
+  }
+
   if (!authed) {
     return (
       <PalCtx.Provider value={pal}>
@@ -523,24 +691,84 @@ export default function DmDashboardClassicPage() {
     );
   }
 
-  const btnStyle = {
-    background: "rgba(18,32,48,0.5)",
-    border: `1px solid ${pal.accent}`,
-    borderRadius: 3,
-    color: pal.accentBright,
-    fontFamily: pal.fontUI,
-    fontSize: 12,
-    letterSpacing: "0.14em",
-    padding: "7px 16px",
-    cursor: "pointer",
-  };
-
-  const btnSecondary = {
-    ...btnStyle,
+  const topButtonStyle = {
     background: "transparent",
-    borderColor: "rgba(100,130,160,0.32)",
+    border: "1px solid rgba(100,130,160,0.32)",
+    borderRadius: 3,
     color: pal.textMuted,
+    fontFamily: pal.fontUI,
+    fontSize: 11,
+    letterSpacing: "0.18em",
+    textTransform: "uppercase",
+    padding: "7px 14px",
+    cursor: "pointer",
+    transition: "border-color 0.18s, color 0.18s, background 0.18s",
   };
+  const panelStyle = {
+    background: pal.surface,
+    border: `1px solid ${pal.border}`,
+    borderRadius: 5,
+    overflow: "hidden",
+  };
+  const activeEntry = (initiative.entries || [])[initiative.activeTurnIndex ?? 0];
+  const activeTurnSlug = activeEntry?.slug ?? null;
+  const partyHasXp = party.some((character) => (character.levelingMode || "milestone") === "xp");
+  const partyCardItems = party.length === 0 ? (
+    <div style={{ ...panelStyle, padding: "20px 16px", fontFamily: pal.fontUI, fontSize: 13, color: pal.textMuted }}>
+      No characters found.
+    </div>
+  ) : (
+    party.map((char) => (
+      <div
+        key={char.slug}
+        className="dm-prototype-card-item"
+        style={{ zIndex: openCardPopoverSlug === char.slug ? 260 : 0 }}
+        ref={(node) => {
+          if (node) cardItemRefs.current.set(char.slug, node);
+          else cardItemRefs.current.delete(char.slug);
+        }}
+      >
+        <CharacterCard
+          char={char}
+          dmPassword={dmPassword}
+          onUpdate={handleCardUpdate}
+          onCommitSessionUpdates={commitPartySessionUpdates}
+          onRegisterOpen={handleRegisterOpen}
+          onPopoverOpenChange={(open) => {
+            setOpenCardPopoverSlug((current) => {
+              if (open) return char.slug;
+              return current === char.slug ? null : current;
+            });
+          }}
+          isActiveTurn={combatLayoutActive && activeTurnSlug === char.slug}
+          dimmed={combatLayoutActive && !!activeTurnSlug && activeTurnSlug !== char.slug}
+          showTier2={!cardsCompact}
+          onHeaderClick={combatLayoutActive ? () => handleSetActiveTurnForSlug(char.slug) : undefined}
+          allParty={party}
+        />
+      </div>
+    ))
+  );
+  const partyActionButtons = [
+    {
+      key: "short-rest",
+      label: "Short Rest",
+      action: () => setConfirmDialog({
+        title: "Short Rest",
+        message: "Reset Pact Magic (Warlock) spell slots for all characters. Standard spell slots and HP are not affected.",
+        onConfirm: doShortRest,
+      }),
+    },
+    {
+      key: "long-rest",
+      label: "Long Rest",
+      action: () => setConfirmDialog({
+        title: "Long Rest",
+        message: "Reset all spell slots and restore all characters to max HP. This cannot be undone.",
+        onConfirm: doLongRest,
+      }),
+    },
+  ];
 
   return (
     <PalCtx.Provider value={pal}>
@@ -566,162 +794,201 @@ export default function DmDashboardClassicPage() {
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
         }}>
-          <div>
-            <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, letterSpacing: "0.12em", color: pal.accentBright }}>Campaign</div>
-            <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.textMuted }}>
-              {party.length > 0 ? `${party.length} player${party.length !== 1 ? "s" : ""}` : "Loading…"}
+          <div style={{ display: "flex", alignItems: "baseline", gap: 14, minWidth: 0 }}>
+            <Link
+              to="/"
+              style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: pal.textMuted, textDecoration: "none", whiteSpace: "nowrap" }}
+              onMouseEnter={(e) => { e.currentTarget.style.color = pal.accentBright; }}
+              onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
+            >← Library</Link>
+            <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, letterSpacing: "0.16em", color: pal.accentBright, whiteSpace: "nowrap" }}>Campaign</div>
+            <div style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 12, color: pal.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {combatMode ? "Combat mode active." : "Start combat to enter the 3-column combat layout."}
             </div>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
             <button
-              style={btnSecondary}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
-              onClick={() => setShowManageParty(true)}
-            >Manage Party</button>
-            <select
-              value={palKey}
-              onChange={(e) => {
-                const nextKey = e.target.value;
-                setPalKey(nextKey);
-                sessionStorage.setItem("dnd_dm_palette", nextKey);
+              style={{
+                ...topButtonStyle,
+                borderColor: combatMode ? "rgba(192,96,96,0.5)" : "rgba(90,138,96,0.5)",
+                color: combatMode ? "#e08080" : "#88b888",
               }}
-              style={{ background: "rgba(18,32,48,0.6)", border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", padding: "5px 8px", cursor: "pointer", outline: "none" }}
-            >
-              {Object.keys(PALETTES).map((key) => (
-                <option key={key} value={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</option>
-              ))}
-            </select>
-
-            {restNotice && (
-              <span style={{ fontFamily: pal.fontUI, fontSize: 11, color: "#88c888", letterSpacing: "0.08em" }}>{restNotice}</span>
-            )}
-
-            <button
-              style={{ ...btnSecondary, borderColor: "rgba(192,96,96,0.4)", color: "#c06060" }}
-              onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c06060"; }}
-              onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(192,96,96,0.4)"; }}
-              onClick={handleEndSession}
-            >End Session</button>
+              onMouseEnter={(e) => {
+                e.currentTarget.style.borderColor = combatMode ? "#e08080" : "#88b888";
+                e.currentTarget.style.background = combatMode ? "rgba(40,10,10,0.35)" : "rgba(14,26,18,0.35)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.borderColor = combatMode ? "rgba(192,96,96,0.5)" : "rgba(90,138,96,0.5)";
+                e.currentTarget.style.background = "transparent";
+              }}
+              onClick={toggleCombatMode}
+            >{combatMode ? "✕ End Combat" : "⚔ Start Combat"}</button>
+            <div ref={actionMenuRef} style={{ position: "relative" }}>
+              <button
+                style={topButtonStyle}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
+                onClick={() => setActionMenuOpen((current) => !current)}
+              >All Actions</button>
+              {actionMenuOpen && (
+                <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", minWidth: 220, background: pal.surfaceSolid, border: `1px solid ${pal.border}`, borderRadius: 4, boxShadow: "0 12px 30px rgba(0,0,0,0.35)", padding: 8, zIndex: 200 }}>
+                  <button
+                    onClick={toggleCombatMode}
+                    style={{ width: "100%", background: "transparent", border: "none", color: combatMode ? "#e08080" : "#88b888", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
+                  >{combatMode ? "End Combat" : "Start Combat"}</button>
+                  <button
+                    onClick={() => { setActionMenuOpen(false); setShowManageParty(true); }}
+                    style={{ width: "100%", background: "transparent", border: "none", color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
+                  >Manage Party</button>
+                  <Link
+                    to="/dm-classic"
+                    onClick={() => setActionMenuOpen(false)}
+                    style={{ display: "block", color: pal.text, textDecoration: "none", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px" }}
+                  >Classic Layout</Link>
+                  <div style={{ height: 1, background: pal.border, margin: "6px 0" }} />
+                  <div style={{ padding: "4px 10px 6px", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: pal.textMuted }}>
+                    Theme
+                  </div>
+                  <select
+                    value={palKey}
+                    onChange={(e) => {
+                      const nextKey = e.target.value;
+                      setPalKey(nextKey);
+                      sessionStorage.setItem("dnd_dm_palette", nextKey);
+                    }}
+                    style={{ width: "100%", background: "rgba(18,32,48,0.6)", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.08em", padding: "7px 8px", cursor: "pointer", outline: "none", marginBottom: 8 }}
+                  >
+                    {Object.keys(PALETTES).map((key) => (
+                      <option key={key} value={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</option>
+                    ))}
+                  </select>
+                  <button
+                    onClick={handleEndSession}
+                    style={{ width: "100%", background: "transparent", border: "none", color: "#c06060", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
+                  >Sign Out</button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
 
-        <div style={{ maxWidth: 1400, margin: "0 auto", padding: "12px 24px 0" }}>
-          <Link
-            to="/"
-            style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: pal.textMuted, textDecoration: "none", display: "inline-block" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = pal.accentBright; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
-          >← Character Library</Link>
-        </div>
+        <div style={{ maxWidth: 1720, margin: "0 auto", padding: "20px 20px 56px" }}>
+          {restNotice && (
+            <div style={{ marginBottom: 12, fontFamily: pal.fontUI, fontSize: 11, color: "#88c888", letterSpacing: "0.08em" }}>
+              {restNotice}
+            </div>
+          )}
 
-        <div className="dm-layout" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: 0, maxWidth: 1400, margin: "0 auto", padding: 24, alignItems: "start" }}>
-          <div className="dm-party-col" style={{ paddingRight: 20 }}>
+          <div style={{ marginBottom: 16 }}>
             <MapPanel
               mapLibrary={mapLibrary}
               dmPassword={dmPassword}
               pal={pal}
+              collapsedOverride={mapCollapsed}
               onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
             />
-            <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 14 }}>Party</div>
+          </div>
 
-            {(() => {
-              const activeEntry = (initiative.entries || [])[initiative.activeTurnIndex ?? 0];
-              const activeTurnSlug = activeEntry?.slug ?? null;
-              return party.length === 0 ? (
-                <div style={{ fontFamily: pal.fontUI, fontSize: 13, color: pal.textMuted, padding: "20px 0" }}>No characters found.</div>
-              ) : (
-                party.map((char) => (
-                  <CharacterCard
-                    key={char.slug}
-                    char={char}
-                    dmPassword={dmPassword}
-                    onUpdate={handleCardUpdate}
-                    onCommitSessionUpdates={commitPartySessionUpdates}
-                    onRegisterOpen={handleRegisterOpen}
-                    isActiveTurn={activeTurnSlug === char.slug}
-                    allParty={party}
-                  />
-                ))
-              );
-            })()}
+          <div
+            className="dm-prototype-shell"
+            data-combat={combatLayoutActive ? "true" : "false"}
+            data-dice-combat={diceLayoutActive ? "true" : "false"}
+            data-dice-visible={diceVisible ? "true" : "false"}
+            data-chrome={nonCombatChromeVisible ? "true" : "false"}
+            data-panels={combatPanelsVisible ? "true" : "false"}
+          >
+            <div className="dm-prototype-cards-panel">
+              <div className="dm-prototype-cards">
+                {partyCardItems}
+              </div>
+            </div>
 
-            <div style={{ marginTop: 16 }}>
-              <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.3em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 10 }}>Party-Wide Actions</div>
+            <div
+              className="dm-prototype-party-actions"
+              style={{
+                overflow: "hidden",
+                maxHeight: nonCombatChromeVisible ? 160 : 0,
+                opacity: nonCombatChromeVisible ? 1 : 0,
+              }}
+            >
               <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                {[
-                  {
-                    label: "◑ Short Rest — Reset Pact Magic",
-                    action: () => setConfirmDialog({
-                      title: "Short Rest",
-                      message: "Reset Pact Magic (Warlock) spell slots for all characters. Standard spell slots and HP are not affected.",
-                      onConfirm: doShortRest,
-                    }),
-                  },
-                  {
-                    label: "⏾ Long Rest — Reset All Slots + HP",
-                    action: () => setConfirmDialog({
-                      title: "Long Rest",
-                      message: "Reset all spell slots and restore all characters to max HP. This cannot be undone.",
-                      onConfirm: doLongRest,
-                    }),
-                  },
-                ].map(({ label, action }) => (
+                <button
+                  onClick={toggleCombatMode}
+                  style={{ ...topButtonStyle, borderColor: "rgba(90,138,96,0.5)", color: "#88b888" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#88b888"; e.currentTarget.style.color = "#88b888"; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(90,138,96,0.5)"; e.currentTarget.style.color = "#88b888"; }}
+                >Start Combat</button>
+                {partyActionButtons.map(({ key, label, action }) => (
                   <button
-                    key={label}
+                    key={key}
                     onClick={action}
-                    style={{ flex: 1, background: "transparent", border: "1px solid rgba(100,130,160,0.32)", borderRadius: 4, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", padding: "8px 0", cursor: "pointer", textAlign: "center" }}
+                    style={{ ...topButtonStyle, minWidth: 0 }}
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
                     onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
                   >{label}</button>
                 ))}
-                {party.some((c) => (c.levelingMode || "milestone") === "xp") && (
+                {partyHasXp && (
                   <button
                     onClick={() => setShowAwardXpParty(true)}
-                    style={{ background: "transparent", border: "1px solid rgba(138,180,200,0.35)", borderRadius: 4, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", padding: "8px 14px", cursor: "pointer" }}
+                    style={topButtonStyle}
                     onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(138,180,200,0.35)"; e.currentTarget.style.color = pal.textMuted; }}
-                  >✦ Award XP to Party</button>
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
+                  >Award XP</button>
                 )}
                 <button
                   onClick={() => setShowDistributeCoinParty(true)}
-                  style={{ background: "transparent", border: "1px solid rgba(200,160,64,0.3)", borderRadius: 4, color: "rgba(200,160,64,0.7)", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", padding: "8px 14px", cursor: "pointer" }}
+                  style={{ ...topButtonStyle, borderColor: "rgba(200,160,64,0.3)", color: "rgba(200,160,64,0.75)" }}
                   onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c8a040"; e.currentTarget.style.color = "#c8a040"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(200,160,64,0.3)"; e.currentTarget.style.color = "rgba(200,160,64,0.7)"; }}
-                >◈ Distribute Coin</button>
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(200,160,64,0.3)"; e.currentTarget.style.color = "rgba(200,160,64,0.75)"; }}
+                >Distribute Coin</button>
               </div>
             </div>
 
-            <DmDiceRoller
-              pal={pal}
-              party={party.map((character) => ({ slug: character.slug, name: character.name, palette: character.palette }))}
-              npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name }))}
-              onApplyDamage={handleApplyDamage}
-              onApplyNpcDamage={handleApplyNpcDamage}
-              remoteHistory={rollHistory}
-            />
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 0, width: 620, maxWidth: "100%" }}>
-            <div style={{ display: "grid", gridTemplateColumns: "320px 300px", gap: 0 }}>
-              <NpcCombatSection
-                npcCombat={npcCombat}
-                initiative={initiative}
-                dmPassword={dmPassword}
-                onUpdate={() => queueDashboardRefresh(0)}
-                onCommitNpcCombat={commitNpcCombatUpdate}
-                onAddNpcToInitiative={handleAddNpcToInitiative}
-                onRemoveNpcFromInitiative={handleRemoveNpcFromInitiative}
-              />
-              <InitiativeTracker
-                initiative={initiative}
-                party={party}
-                npcCombat={npcCombat}
-                onCommitInitiative={commitInitiativeUpdate}
-                onPromoteToNpc={handlePromoteToNpc}
+            <div className="dm-prototype-dice-panel">
+              <DmDiceRoller
+                pal={pal}
+                party={party.map((character) => ({ slug: character.slug, name: character.name, palette: character.palette }))}
+                npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name }))}
+                onApplyDamage={handleApplyDamage}
+                onApplyNpcDamage={handleApplyNpcDamage}
+                remoteHistory={rollHistory}
+                marginTop={0}
               />
             </div>
+
+            <div className="dm-prototype-side-panel">
+              <div className="dm-prototype-side-col">
+                <InitiativeTracker
+                  initiative={initiative}
+                  party={party}
+                  npcCombat={npcCombat}
+                  onCommitInitiative={commitInitiativeUpdate}
+                  onPromoteToNpc={handlePromoteToNpc}
+                />
+                <NpcCombatSection
+                  npcCombat={npcCombat}
+                  initiative={initiative}
+                  dmPassword={dmPassword}
+                  onUpdate={() => queueDashboardRefresh(0)}
+                  onCommitNpcCombat={commitNpcCombatUpdate}
+                  onAddNpcToInitiative={handleAddNpcToInitiative}
+                  onRemoveNpcFromInitiative={handleRemoveNpcFromInitiative}
+                />
+              </div>
+            </div>
+          </div>
+
+          <div
+            className="dm-prototype-map-strip"
+            style={{
+              overflow: "hidden",
+              maxHeight: nonCombatChromeVisible ? 200 : 0,
+              opacity: nonCombatChromeVisible ? 1 : 0,
+              transition: "max-height 0.22s ease-in, opacity 0.22s ease-in",
+              marginTop: 18,
+            }}
+          >
             <MapLibraryStrip
               mapLibrary={mapLibrary}
               dmPassword={dmPassword}

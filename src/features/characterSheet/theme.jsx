@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+// useEffect import removed — useCharacterSheetGlobalStyles is now a no-op
 
 const GLOBAL_CSS = `
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -80,20 +80,8 @@ const GLOBAL_CSS = `
 }
 `;
 
-export function useCharacterSheetGlobalStyles() {
-  useEffect(() => {
-    const id = "char-sheet-global";
-    if (document.getElementById(id)) return;
-    const style = document.createElement("style");
-    style.id = id;
-    style.textContent = GLOBAL_CSS;
-    document.head.prepend(style);
-    return () => {
-      const el = document.getElementById(id);
-      if (el) el.remove();
-    };
-  }, []);
-}
+/** @deprecated Global styles are now in src/index.css. This is a no-op kept for call-site compatibility. */
+export function useCharacterSheetGlobalStyles() {}
 
 export function renderInline(text) {
   return text.split(/(\*[^*]+\*)/g).map((part, index) =>

@@ -1,0 +1,291 @@
+/*
+ * shared.css
+ *
+ * CSS custom property schema for the palette system, plus utility classes
+ * that appear repeatedly across CharacterSheet, DM Dashboard, and shared
+ * components. Import this in main.jsx after index.css.
+ *
+ * USAGE PATTERN
+ * Set palette variables once at the component root element:
+ *
+ *   <div style={{
+ *     '--pal-bg':           pal.bg,
+ *     '--pal-surface':      pal.surface,
+ *     '--pal-surface-solid':pal.surfaceSolid,
+ *     '--pal-border':       pal.border,
+ *     '--pal-accent':       pal.accent,
+ *     '--pal-accent-bright':pal.accentBright,
+ *     '--pal-accent-dim':   pal.accentDim,
+ *     '--pal-text':         pal.text,
+ *     '--pal-text-body':    pal.textBody,
+ *     '--pal-text-muted':   pal.textMuted,
+ *     '--pal-glow-1':       pal.glow1,
+ *     '--pal-glow-2':       pal.glow2,
+ *     '--pal-gem':          pal.gem,
+ *     '--pal-gem-low':      pal.gemLow,
+ *   }}>
+ *
+ * All children can then reference var(--pal-accent) etc. in CSS classes
+ * without needing pal passed as a prop.
+ *
+ * Truly dynamic values (hp bar width, per-render computed colors, toggle
+ * positions) remain as inline style= attributes on the element that needs
+ * them. Everything else moves to a CSS class.
+ */
+
+/* ─── Palette variable defaults (ocean palette) ──────────────────────────────
+   These kick in wherever the variables haven't been set by a parent component.
+   In practice every palette-aware component sets them explicitly, so these
+   are just a safe fallback that prevents unstyled flashes.               */
+:root {
+  --pal-bg:           #0d0f14;
+  --pal-surface:      rgba(18,32,48,0.55);
+  --pal-surface-solid:#111e2c;
+  --pal-border:       rgba(100,130,160,0.18);
+  --pal-accent:       #6a8fa8;
+  --pal-accent-bright:#a0c0d0;
+  --pal-accent-dim:   #1e3a4e;
+  --pal-text:         #c8bfaf;
+  --pal-text-body:    #b0a898;
+  --pal-text-muted:   #3a5a6a;
+  --pal-glow-1:       rgba(20,45,80,0.4);
+  --pal-glow-2:       rgba(15,35,60,0.3);
+  --pal-gem:          #8ab4c8;
+  --pal-gem-low:      #2a3a4a;
+
+  /* Typography — identical across all palettes today; vars allow future divergence */
+  --font-display: 'Cinzel', 'Palatino Linotype', Georgia, serif;
+  --font-body:    'Crimson Text', 'Palatino Linotype', Georgia, serif;
+  --font-ui:      'IM Fell English', Georgia, serif;
+}
+
+/* ─── Utility: flex row ──────────────────────────────────────────────────────
+   display:flex + alignItems:center is the single most repeated pattern
+   (~143 occurrences). Use .flex-row for the base; compose with gap-* helpers
+   or an inline style={{ gap }} for the specific spacing needed.          */
+.flex-row {
+  display: flex;
+  align-items: center;
+}
+.flex-row-spread {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.flex-col {
+  display: flex;
+  flex-direction: column;
+}
+
+/* ─── Utility: typography labels ─────────────────────────────────────────────
+   IM Fell English, uppercase, tracked — the most common UI label treatment.
+   ~41 occurrences across 12 files.                                       */
+.label-ui {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  display: block;
+}
+.label-ui-sm {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  display: block;
+}
+
+/* ─── Utility: display numbers ───────────────────────────────────────────────
+   Cinzel for numeric stat values. Font size set per use-case via inline
+   style or a modifier class below.                                       */
+.num-display {
+  font-family: var(--font-display);
+  line-height: 1;
+}
+.num-display-lg { font-family: var(--font-display); font-size: 36px; line-height: 1; }
+.num-display-md { font-family: var(--font-display); font-size: 22px; line-height: 1; }
+.num-display-sm { font-family: var(--font-display); font-size: 14px; line-height: 1; }
+
+/* ─── Utility: divider ───────────────────────────────────────────────────────
+   Horizontal rule using the palette border. Replaces borderTop inline styles. */
+.divider {
+  border: none;
+  border-top: 1px solid var(--pal-border);
+  margin: 8px 0;
+}
+.divider-tight { border: none; border-top: 1px solid var(--pal-border); margin: 4px 0; }
+
+/* ─── Utility: ghost button ──────────────────────────────────────────────────
+   Transparent background, palette border, IM Fell label treatment.
+   ~30 occurrences across 6 files.                                        */
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 6px 14px;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s, background 0.18s;
+}
+.btn-ghost:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+.btn-ghost:disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* ─── Utility: primary action button ─────────────────────────────────────────
+   Accent-bordered, surface-filled. The "positive" call-to-action.       */
+.btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: var(--pal-accent-dim);
+  border: 1px solid var(--pal-accent);
+  border-radius: 3px;
+  color: var(--pal-accent-bright);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: border-color 0.18s, background 0.18s;
+}
+.btn-primary:hover {
+  border-color: var(--pal-accent-bright);
+  background: color-mix(in srgb, var(--pal-accent-dim) 100%, var(--pal-accent) 20%);
+}
+
+/* ─── Utility: stepper button (+/−) ─────────────────────────────────────────
+   Increment/decrement controls on HP bars, qty steppers, etc.           */
+.btn-stepper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-display);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-stepper:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-text);
+}
+
+/* ─── Utility: pill / tag ────────────────────────────────────────────────────
+   Condition chips, preset tags, ability tags. Active state toggled with
+   the .active modifier; color comes from --pill-color set inline.        */
+.btn-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.btn-pill.active {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+  background: var(--pal-accent-dim);
+}
+.btn-pill:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* ─── Utility: modal overlay ─────────────────────────────────────────────────
+   Full-viewport semi-opaque backdrop. 6 identical occurrences.          */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.74);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  padding: 20px;
+}
+
+/* ─── Utility: modal panel ───────────────────────────────────────────────────
+   The content box inside a modal overlay.                                */
+.modal-panel {
+  background: var(--pal-surface-solid);
+  border: 1px solid var(--pal-border);
+  border-radius: 6px;
+  padding: 26px 28px;
+  width: 100%;
+  max-width: 400px;
+  position: relative;
+}
+
+/* ─── Utility: flyout tooltip ────────────────────────────────────────────────
+   Stat flyout, armor breakdown, modifier breakdown. Positioned by parent. */
+.flyout {
+  position: absolute;
+  z-index: 20;
+  background: var(--pal-surface-solid);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 12px 16px;
+  min-width: 180px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.45);
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+/* ─── Utility: surface panel ─────────────────────────────────────────────────
+   General card/section panel background.                                 */
+.surface-panel {
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 20px 22px;
+}
+
+/* ─── Utility: input base ────────────────────────────────────────────────────
+   Text inputs, textareas — palette colors via vars.                      */
+.input-base {
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  padding: 8px 12px;
+  outline: none;
+  width: 100%;
+  transition: border-color 0.18s;
+}
+.input-base:focus {
+  border-color: var(--pal-accent);
+}

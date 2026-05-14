@@ -291,6 +291,16 @@ function NpcCard({
   const pendingDeltaRef = useRef(0);
   const flushInFlightRef = useRef(false);
   const [deltaIndicator, setDeltaIndicator] = useState(null);
+  const [hpFeedback, setHpFeedback] = useState(null);
+  const [ghostTrail, setGhostTrail] = useState(null);
+  const [bloodiedFlash, setBloodiedFlash] = useState(false);
+  const [removingConds, setRemovingConds] = useState([]);
+  const hpFeedbackTimeoutRef = useRef(null);
+  const ghostTrailTimeoutRef = useRef(null);
+  const bloodiedFlashTimeoutRef = useRef(null);
+  const prevAnimatedHpRef = useRef(serverHp);
+  const prevStatusRef = useRef(npcHpStatus(serverHp, hpMax));
+  const removalTimersRef = useRef(new Map());
 
   useEffect(() => { optimisticHpRef.current = optimisticHp; }, [optimisticHp]);
   useEffect(() => {
@@ -301,6 +311,35 @@ function NpcCard({
       optimisticHpRef.current = serverHp;
     }
   }, [serverHp, hpMax]);
+
+  useEffect(() => {
+    const previous = prevAnimatedHpRef.current;
+    if (typeof previous === "number" && previous !== optimisticHp && hpMax > 0) {
+      const nextFeedback = optimisticHp < previous ? "damage" : "heal";
+      setHpFeedback(nextFeedback);
+      window.clearTimeout(hpFeedbackTimeoutRef.current);
+      hpFeedbackTimeoutRef.current = window.setTimeout(() => setHpFeedback(null), nextFeedback === "damage" ? 300 : 250);
+
+      if (optimisticHp < previous) {
+        setGhostTrail({
+          left: `${Math.max(0, (optimisticHp / hpMax) * 100)}%`,
+          width: `${Math.max(0, ((previous - optimisticHp) / hpMax) * 100)}%`,
+          key: Date.now(),
+        });
+        window.clearTimeout(ghostTrailTimeoutRef.current);
+        ghostTrailTimeoutRef.current = window.setTimeout(() => setGhostTrail(null), 400);
+      }
+    }
+    prevAnimatedHpRef.current = optimisticHp;
+  }, [optimisticHp, hpMax]);
+
+  useEffect(() => () => {
+    window.clearTimeout(hpFeedbackTimeoutRef.current);
+    window.clearTimeout(ghostTrailTimeoutRef.current);
+    window.clearTimeout(bloodiedFlashTimeoutRef.current);
+    removalTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
+    removalTimersRef.current.clear();
+  }, []);
 
   const getTargetHp = useCallback(
     () => Math.min(hpMaxRef.current, Math.max(-999, optimisticHpRef.current)),
@@ -346,6 +385,15 @@ function NpcCard({
   const status = npcHpStatus(optimisticHp, hpMax);
   const isDead = status === "dead";
   const isBloodied = status === "bloodied";
+  useEffect(() => {
+    const previousStatus = prevStatusRef.current;
+    if (status === "bloodied" && previousStatus === "alive") {
+      setBloodiedFlash(true);
+      window.clearTimeout(bloodiedFlashTimeoutRef.current);
+      bloodiedFlashTimeoutRef.current = window.setTimeout(() => setBloodiedFlash(false), 200);
+    }
+    prevStatusRef.current = status;
+  }, [status]);
   const hpTone = getNpcHpTone(npcPal, hpPct);
   const leftStripe = isDead ? "#8c3030" : npcPal.accent;
   const cardBorder = isDead ? "rgba(192,60,60,0.4)" : npcPal.border;
@@ -364,6 +412,10 @@ function NpcCard({
     : undefined;
 
   const conditions = Array.isArray(npc.conditions) ? npc.conditions : [];
+  const visibleConds = [
+    ...conditions,
+    ...removingConds.filter((condition) => !conditions.includes(condition)),
+  ];
 
   return (
     <div
@@ -384,7 +436,7 @@ function NpcCard({
         ...activeTurnStyle,
       }}
     >
-      <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, borderRadius: "5px 0 0 5px", background: leftStripe }} />
+      <div className={bloodiedFlash ? "dm-bloodied-flash" : undefined} style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, borderRadius: "5px 0 0 5px", background: leftStripe }} />
       <div style={{ padding: "10px 10px 0 14px" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 5 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 7, flex: 1, minWidth: 0 }}>
@@ -428,7 +480,7 @@ function NpcCard({
             <span style={{ fontFamily: pal.fontDisplay, fontSize: 12, color: pal.textMuted }}>{hpMax}</span>
           </div>
           <div style={{ flex: 1, paddingRight: 5 }}>
-            <div style={{ height: 10, borderRadius: 2, overflow: "hidden", background: "rgba(7,14,22,0.88)", display: "flex", gap: 1 }}>
+            <div style={{ height: 10, borderRadius: 2, overflow: "hidden", background: "rgba(7,14,22,0.88)", display: "flex", gap: 1, position: "relative" }}>
               {Array.from({ length: 5 }).map((_, idx) => {
                 const segStart = idx / 5;
                 const segFill = Math.max(0, Math.min(1, (hpPct - segStart) * 5));
@@ -438,6 +490,24 @@ function NpcCard({
                   </div>
                 );
               })}
+              {ghostTrail && (
+                <div
+                  key={ghostTrail.key}
+                  className="dm-hp-ghost"
+                  style={{ left: ghostTrail.left, width: ghostTrail.width }}
+                />
+              )}
+              {hpFeedback && (
+                <div
+                  className={`dm-hp-feedback ${hpFeedback === "damage" ? "dm-hp-feedback-damage" : "dm-hp-feedback-heal"}`}
+                  style={{
+                    background: hpFeedback === "damage"
+                      ? "linear-gradient(90deg, rgba(192,96,96,0.24) 0%, rgba(192,96,96,0.08) 100%)"
+                      : "linear-gradient(90deg, rgba(136,200,136,0.28) 0%, transparent 100%)",
+                    boxShadow: hpFeedback === "heal" ? "0 0 12px rgba(136,200,136,0.35) inset" : "none",
+                  }}
+                />
+              )}
             </div>
           </div>
           <button onPointerDown={plusBind.start} onPointerUp={plusBind.stop} onPointerLeave={plusBind.stop} style={{ width: 26, height: 22, borderRadius: 3, border: `1px solid ${npcPal.actionBorder}`, background: "transparent", color: pal.textMuted, fontFamily: pal.fontDisplay, fontSize: 14, lineHeight: 1, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, userSelect: "none", touchAction: "none" }}>+</button>
@@ -446,16 +516,32 @@ function NpcCard({
           )}
         </div>
 
-        {conditions.length > 0 && (
+        {visibleConds.length > 0 && (
           <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 4 }}>
-            {conditions.map((condition) => (
+            {visibleConds.map((condition) => (
               <span
                 key={condition}
                 onClick={() => {
-                  const updated = conditions.filter((value) => value !== condition);
-                  const updatedNpcs = (allNpcsRef.current || []).map((entry) => entry.id === npc.id ? { ...entry, conditions: updated } : entry);
-                  onCommitNpcs(updatedNpcs);
+                  if (removingConds.includes(condition)) return;
+                  setRemovingConds((current) => [...current, condition]);
+                  const timerId = window.setTimeout(async () => {
+                    const updated = conditions.filter((value) => value !== condition);
+                    const updatedNpcs = (allNpcsRef.current || []).map((entry) => entry.id === npc.id ? { ...entry, conditions: updated } : entry);
+                    const success = await onCommitNpcs(updatedNpcs);
+                    if (success === false) {
+                      setRemovingConds((current) => current.filter((value) => value !== condition));
+                      removalTimersRef.current.delete(condition);
+                      return;
+                    }
+                    const cleanupTimerId = window.setTimeout(() => {
+                      setRemovingConds((current) => current.filter((value) => value !== condition));
+                      removalTimersRef.current.delete(condition);
+                    }, 170);
+                    removalTimersRef.current.set(condition, cleanupTimerId);
+                  }, 150);
+                  removalTimersRef.current.set(condition, timerId);
                 }}
+                className={removingConds.includes(condition) ? "dm-condition-exit" : "dm-condition-enter"}
                 style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.1em", textTransform: "uppercase", padding: "2px 8px", borderRadius: 10, cursor: "pointer", background: "rgba(140,110,180,0.14)", border: "1px solid rgba(140,110,180,0.38)", color: "#c098e0" }}
                 title="Click to remove"
               >{condition}</span>
