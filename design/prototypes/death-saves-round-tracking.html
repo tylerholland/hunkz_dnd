@@ -1,0 +1,1462 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Death Saves & Round Tracking — Design Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ─── Keyframes ─────────────────────────────────────────────────── */
+@keyframes accentPulse {
+  0%,100% { opacity:0.4; }
+  50%      { opacity:1.0; }
+}
+@keyframes conditionIn {
+  from { opacity:0; transform: scale(0.7); }
+  to   { opacity:1; transform: scale(1); }
+}
+@keyframes hpDamageFlash {
+  0%   { background: rgba(255,255,255,0.55); }
+  100% { background: transparent; }
+}
+@keyframes hpHealGlow {
+  0%   { background: rgba(138,180,200,0.7); }
+  100% { background: transparent; }
+}
+@keyframes mapDotPulse {
+  0%,100% { opacity:1; transform: scale(1); }
+  50%      { opacity:0.6; transform: scale(0.85); }
+}
+
+/* ── Story 19 keyframes ─── */
+
+/* Death save tracker entrance */
+@keyframes dsBlockIn {
+  from { opacity:0; max-height:0; }
+  to   { opacity:1; max-height:120px; }
+}
+@keyframes dsBlockOut {
+  from { opacity:1; max-height:120px; }
+  to   { opacity:0; max-height:0; }
+}
+
+/* Success pip fill — dmConditionIn equivalent: scale 0.7→1, opacity 0→1, 180ms ease-out */
+@keyframes successPipIn {
+  from { transform: scale(0.7); opacity:0; }
+  to   { transform: scale(1);   opacity:1; }
+}
+
+/* Failure pip fill — same entrance, then block shake */
+@keyframes failurePipIn {
+  from { transform: scale(0.7); opacity:0; }
+  to   { transform: scale(1);   opacity:1; }
+}
+
+/* Block shake (whole death-save block on failure mark): ±3px, 300ms */
+@keyframes dmDeathSaveShake {
+  0%   { transform: translateX(0); }
+  18%  { transform: translateX(-3px); }
+  36%  { transform: translateX(3px); }
+  54%  { transform: translateX(-3px); }
+  72%  { transform: translateX(2px); }
+  88%  { transform: translateX(-1px); }
+  100% { transform: translateX(0); }
+}
+
+/* Stabilize glow ring from card: box-shadow 0→12px, fading */
+@keyframes stabilizeGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(90,154,90,0.55); }
+  50%  { box-shadow: 0 0 12px 4px rgba(90,154,90,0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(90,154,90,0); }
+}
+
+/* NAT20 heal glow on HP number */
+@keyframes hpHealNum {
+  0%   { text-shadow: 0 0 0 transparent; }
+  40%  { text-shadow: 0 0 8px rgba(90,154,90,0.8); }
+  100% { text-shadow: none; }
+}
+
+/* Round counter number swap: translateY(-4px)→0, opacity 0.4→1, 200ms */
+@keyframes roundNumIn {
+  from { transform: translateY(-4px); opacity:0.4; }
+  to   { transform: translateY(0);    opacity:1; }
+}
+
+/* Round counter auto-increment brighten flash on the number */
+@keyframes roundBrighten {
+  0%   { color: var(--accent-bright); }
+  60%  { color: #d8eef8; }
+  100% { color: var(--accent-bright); }
+}
+
+/* Fallen card: opacity→0.6, 600ms ease-in */
+@keyframes cardFallen {
+  from { opacity:1; }
+  to   { opacity:0.6; }
+}
+
+/* Damage-at-0 prompt slide in */
+@keyframes dmgPromptIn {
+  from { opacity:0; transform: translateY(4px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+
+/* ─── Reset & base ───────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#0d0f14; --surface:rgba(18,32,48,0.6); --surface-solid:#111e2c;
+  --border:rgba(100,130,160,0.18); --border-vis:rgba(100,130,160,0.3);
+  --accent:#6a8fa8; --accent-bright:#a0c0d0; --accent-dim:rgba(30,58,78,0.45);
+  --text:#c8bfaf; --text-body:#b0a898; --text-muted:#3a5a6a;
+  --gem:#8ab4c8; --glow1:rgba(20,45,80,0.4); --glow2:rgba(15,35,60,0.3);
+  --font-d:'Cinzel',Georgia,serif; --font-b:'Crimson Text',Georgia,serif; --font-u:'IM Fell English',Georgia,serif;
+  /* death save colors — global, not palette-derived per brief */
+  --ds-success:#5a9a5a;
+  --ds-success-empty:rgba(90,154,90,0.4);
+  --ds-failure:#c06060;
+  --ds-failure-empty:rgba(192,96,96,0.35);
+  --ds-wash:rgba(192,96,96,0.06);
+  --ds-bar:#c06060;
+}
+body {
+  background: radial-gradient(ellipse at 50% 0%,var(--glow1),transparent 60%),
+              radial-gradient(ellipse at 80% 100%,var(--glow2),transparent 55%), var(--bg);
+  min-height:100vh; color:var(--text); font-family:var(--font-b);
+  -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(128,128,128,0.2);border-radius:3px}
+
+/* ─── Prototype chrome ───────────────────────────────────────────── */
+.proto-header {
+  background:rgba(10,15,20,0.92); border-bottom:1px solid rgba(100,130,160,0.15);
+  padding:10px 24px; display:flex; align-items:center; gap:16px; flex-wrap:wrap;
+}
+.proto-title { font-family:var(--font-u); font-size:11px; letter-spacing:0.25em; text-transform:uppercase; color:var(--accent-bright); }
+.proto-note  { font-family:var(--font-b); font-style:italic; font-size:12px; color:var(--text-muted); }
+
+/* ─── Page layout ────────────────────────────────────────────────── */
+.page { padding:28px 24px 80px; max-width:1040px; margin:0 auto; }
+
+.scenario-heading {
+  font-family:var(--font-d); font-size:14px; letter-spacing:0.25em; text-transform:uppercase;
+  color:var(--accent-bright); margin-bottom:4px;
+}
+.scenario-desc {
+  font-family:var(--font-b); font-style:italic; font-size:13px; color:var(--text-muted);
+  margin-bottom:20px; line-height:1.5;
+}
+
+.scenario-section { margin-bottom:48px; }
+
+.two-col { display:grid; grid-template-columns:1fr 1fr; gap:20px; align-items:start; }
+.three-col { display:grid; grid-template-columns:1fr 1fr 1fr; gap:20px; align-items:start; }
+@media(max-width:700px) { .two-col,.three-col { grid-template-columns:1fr; } }
+
+hr.divider {
+  border:none; border-top:1px solid var(--border); margin:36px 0;
+}
+
+/* ─── Callout annotations ────────────────────────────────────────── */
+.callout {
+  position:absolute; background:rgba(160,192,208,0.1); border:1px solid rgba(160,192,208,0.3);
+  border-radius:3px; color:#a0c0d0; font-family:var(--font-u); font-size:11px;
+  letter-spacing:0.15em; padding:4px 9px; pointer-events:none; text-transform:uppercase;
+  white-space:nowrap; z-index:50;
+}
+
+/* ─── Character Card (matches dm-dashboard.html exactly) ─────────── */
+.card {
+  border-radius:5px; border:1px solid; position:relative; overflow:hidden;
+  margin-bottom:12px;
+  transition:transform 0.3s ease-out, box-shadow 0.3s ease-out, opacity 0.3s ease-out, border-color 0.3s;
+}
+.card::before {
+  content:''; position:absolute; left:0; top:0; bottom:0; width:3px; border-radius:5px 0 0 5px;
+  transition:opacity 0.3s;
+}
+.card.active-turn { transform:translateY(-2px); z-index:2; }
+.card.active-turn::before { animation:accentPulse 2s ease-in-out infinite; }
+.card.dimmed { opacity:0.82; }
+
+/* fallen state — 600ms ease-in per brief */
+.card.fallen { animation:cardFallen 0.6s ease-in forwards; pointer-events:none; }
+.card.fallen .card-name { text-decoration:line-through; }
+
+/* 0-HP: red border + slow pulsing glow (~1.75x the accentPulse duration) */
+@keyframes deathGlow {
+  0%,100% { box-shadow:0 0 8px 2px rgba(192,96,96,0.12), 0 0 0 1px rgba(192,96,96,0.35); }
+  50%      { box-shadow:0 0 22px 7px rgba(192,96,96,0.32), 0 0 0 1px rgba(192,96,96,0.65); }
+}
+.card.hp-zero {
+  border-color:#c06060 !important;
+  animation: deathGlow 3.5s ease-in-out infinite;
+}
+
+/* ocean palette card */
+.card-ocean { background:rgba(18,32,48,0.68); border-color:rgba(100,130,160,0.35); }
+.card-ocean::before { background:#6a8fa8; }
+.card-ocean.active-turn { box-shadow:0 4px 18px rgba(106,143,168,0.28); }
+.card-ocean .card-name { --c-name-glow:#a0c0d0; }
+
+/* ember palette card */
+.card-ember { background:rgba(40,22,12,0.68); border-color:rgba(160,104,64,0.35); }
+.card-ember::before { background:#a06840; }
+.card-ember.active-turn { box-shadow:0 4px 18px rgba(160,104,64,0.28); }
+.card-ember .card-name { --c-name-glow:#c89060; }
+
+/* forest palette card */
+.card-forest { background:rgba(14,26,18,0.68); border-color:rgba(90,138,96,0.35); }
+.card-forest::before { background:#5a8a60; }
+.card-forest.active-turn { box-shadow:0 4px 18px rgba(90,138,96,0.28); }
+.card-forest .card-name { --c-name-glow:#88b888; }
+
+.card.active-turn .card-name { text-shadow:0 0 10px var(--c-name-glow,#a0c0d0); }
+
+/* card header */
+.card-header { display:flex; align-items:center; gap:10px; padding:12px 14px 8px; }
+.portrait {
+  width:42px; height:42px; border-radius:50%; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-d); font-size:16px; font-weight:500; letter-spacing:0.05em;
+  border:1.5px solid rgba(255,255,255,0.12);
+}
+.card-identity { flex:1; min-width:0; }
+.card-name { font-family:var(--font-d); font-size:15px; letter-spacing:0.1em; display:block; }
+.card-sub  { font-family:var(--font-u); font-size:11px; letter-spacing:0.12em; color:var(--text-muted); display:flex; align-items:center; gap:6px; margin-top:1px; }
+.card-ac {
+  font-family:var(--font-d); font-size:13px; letter-spacing:0.08em; flex-shrink:0;
+  background:rgba(0,0,0,0.3); border:1px solid; border-radius:3px; padding:3px 7px;
+}
+.card-more-btn {
+  background:none; border:none; color:var(--text-muted); cursor:pointer; font-size:16px;
+  padding:4px 6px; border-radius:3px; flex-shrink:0; line-height:1;
+}
+.card-more-btn:hover { color:var(--text); background:rgba(255,255,255,0.05); }
+
+/* HP row */
+.hp-row { padding:0 14px 10px; display:flex; align-items:center; gap:8px; }
+.hp-btn {
+  width:28px; height:28px; border-radius:3px; border:1px solid; background:transparent;
+  color:var(--text-muted); font-size:16px; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; transition:border-color 0.15s, color 0.15s;
+}
+.hp-btn:hover { color:var(--text); }
+.hp-nums { font-family:var(--font-d); font-size:20px; flex-shrink:0; white-space:nowrap; }
+.hp-bar-wrap { flex:1; position:relative; height:10px; border-radius:2px; background:rgba(0,0,0,0.3); overflow:visible; }
+.hp-segments { display:flex; position:absolute; inset:0; border-radius:2px; overflow:hidden; gap:1px; }
+.hp-seg { flex:1; position:relative; overflow:hidden; }
+.hp-seg-fill { position:absolute; inset:0; border-radius:1px; transition:width 0.15s; }
+.hp-seg-flash { position:absolute; inset:0; border-radius:1px; pointer-events:none; animation:hpDamageFlash 0.3s ease-out forwards; }
+.hp-seg-heal  { position:absolute; inset:0; border-radius:1px; pointer-events:none; animation:hpHealGlow 0.25s ease-out forwards; }
+
+/* Conditions row */
+.conditions-row { padding:4px 14px 8px; display:flex; flex-wrap:wrap; gap:5px; min-height:0; }
+.chip {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.1em; text-transform:uppercase;
+  padding:3px 8px; border-radius:3px; border:1px solid; cursor:pointer; display:flex; align-items:center; gap:4px;
+  animation:conditionIn 0.18s ease-out;
+  transition:opacity 0.15s;
+}
+
+/* ─── Damage-at-0 prompt ─────────────────────────────────────────── */
+.dmg-prompt {
+  margin:0 14px 8px;
+  background:rgba(192,96,96,0.08);
+  border:1px solid rgba(192,96,96,0.25);
+  border-radius:3px;
+  padding:8px 10px;
+  display:none;
+  animation:dmgPromptIn 0.18s ease-out;
+}
+.dmg-prompt.visible { display:block; }
+.dmg-prompt-label {
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.2em; text-transform:uppercase;
+  color:rgba(192,96,96,0.8); margin-bottom:7px;
+}
+.dmg-prompt-btns { display:flex; gap:6px; }
+.dmg-prompt-btn {
+  flex:1; padding:7px 6px; min-height:36px;
+  background:transparent; border:1px solid rgba(192,96,96,0.3); border-radius:3px;
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+  color:var(--text-muted); cursor:pointer;
+  transition:background 0.15s, border-color 0.15s, color 0.15s;
+}
+.dmg-prompt-btn:hover { border-color:rgba(192,96,96,0.55); color:#e08888; background:rgba(192,96,96,0.1); }
+.dmg-prompt-btn.default-focus {
+  border-color:rgba(192,96,96,0.55); color:#e08888; background:rgba(192,96,96,0.12);
+}
+.dmg-prompt-btn.no-failure:hover { border-color:var(--border-vis); color:var(--text-muted); background:rgba(255,255,255,0.04); }
+.dmg-btn-num { font-size:1.35em; line-height:1; }
+.dmg-prompt-btn.no-failure { border-color:var(--border); }
+
+/* ─── Death Save Tracker ─────────────────────────────────────────── */
+/*
+  The entire block replaces the existing dashed-pip stub.
+  Brief §3a: red wash bg, 2px left bar, solid pip borders, no "player-reported" caption.
+*/
+.death-saves {
+  margin:0 14px 10px;
+  background:var(--ds-wash);
+  border-left:2px solid var(--ds-bar);
+  border-radius:0 3px 3px 0;
+  padding:7px 10px;
+  /* entrance/exit animation: max-height + opacity, 300ms ease-out */
+  overflow:hidden;
+  max-height:0; opacity:0; pointer-events:none;
+  transition:max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+.death-saves.visible {
+  max-height:120px; opacity:1; pointer-events:auto;
+}
+/* block shake applied via JS class */
+.death-saves.shake {
+  animation:dmDeathSaveShake 0.3s ease-out;
+}
+
+/* Row 1: DEATH SAVES label + pips + shortcuts */
+.ds-main-row {
+  display:flex; align-items:center; gap:0;
+}
+.ds-label {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.22em; text-transform:uppercase;
+  color:var(--text-muted); flex-shrink:0; margin-right:8px;
+}
+
+/* pip cluster */
+.ds-pip-cluster { display:flex; align-items:center; gap:5px; }
+/* vertical rule separator — 1px × 14px per brief §3a③ */
+.ds-divider {
+  width:1px; height:14px; background:var(--border-vis);
+  flex-shrink:0; margin:0 7px;
+}
+
+/* individual pip */
+.ds-pip {
+  width:14px; height:14px; border-radius:50%;
+  border:1.5px solid; /* solid, not dashed — authoritative per brief */
+  cursor:pointer; flex-shrink:0;
+  /* touch target: 44px column height achieved via parent row padding */
+  transition:background 0.12s, border-color 0.12s, box-shadow 0.12s;
+  position:relative;
+}
+.ds-pip.success-empty {
+  background:transparent; border-color:var(--ds-success-empty);
+}
+.ds-pip.success-filled {
+  background:var(--ds-success); border-color:var(--ds-success);
+  /* success pip: no glow — asymmetry vs failures is the point */
+  animation:successPipIn 0.18s ease-out;
+}
+.ds-pip.failure-empty {
+  background:transparent; border-color:var(--ds-failure-empty);
+}
+.ds-pip.failure-filled {
+  background:var(--ds-failure); border-color:var(--ds-failure);
+  box-shadow:0 0 4px rgba(192,96,96,0.55); /* glow on failures, not successes */
+  animation:failurePipIn 0.18s ease-out;
+}
+
+/* NAT20 / NAT1 shortcuts — right of failure cluster */
+.ds-shortcuts {
+  display:flex; gap:5px; margin-left:auto; flex-shrink:0;
+}
+.ds-shortcut {
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+  padding:7px 10px; min-height:44px; /* 44px touch target per brief */
+  border:1px solid var(--border-vis); border-radius:3px;
+  background:transparent; color:var(--text-muted); cursor:pointer;
+  display:flex; align-items:center;
+  transition:color 0.15s, border-color 0.15s, background 0.15s;
+}
+.ds-shortcut.nat20:hover { color:#5a9a5a; border-color:rgba(90,154,90,0.5); background:rgba(90,154,90,0.07); }
+.ds-shortcut.nat1:hover  { color:#c06060; border-color:rgba(192,96,96,0.5); background:rgba(192,96,96,0.07); }
+
+/* Row 2: pip touch row (full width so 44px height target is met) */
+.ds-pip-row {
+  display:flex; align-items:center;
+  padding:8px 0 0;
+  min-height:44px; /* 44px touch row */
+}
+
+/* Row 3: Stable sub-line */
+.ds-stable-row {
+  display:flex; justify-content:flex-end; margin-top:5px;
+}
+.ds-stable-btn {
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.14em; text-transform:uppercase;
+  padding:5px 10px; min-height:32px;
+  border:1px solid var(--border-vis); border-radius:3px;
+  background:transparent; color:var(--text-muted); cursor:pointer;
+  transition:color 0.15s, border-color 0.15s, background 0.15s;
+}
+.ds-stable-btn:hover { color:#5a9a5a; border-color:rgba(90,154,90,0.5); background:rgba(90,154,90,0.07); }
+
+/* Fallen overlay label — fades in when 3 failures */
+.fallen-label {
+  font-family:var(--font-u); font-size:13px; letter-spacing:0.3em; text-transform:uppercase;
+  color:#c06060; text-align:center; padding:6px 0 2px;
+  display:none; animation:conditionIn 0.3s ease-out;
+}
+.card.fallen .fallen-label { display:block; }
+
+/* ─── Initiative Panel ───────────────────────────────────────────── */
+.panel {
+  background:var(--surface); border:1px solid var(--border); border-radius:5px;
+  overflow:hidden; margin-bottom:14px;
+}
+.panel-header {
+  padding:10px 14px; display:flex; align-items:center; gap:6px;
+  border-bottom:1px solid var(--border);
+}
+.panel-title {
+  font-family:var(--font-d); font-size:12px; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--accent-bright); flex:1;
+}
+.panel-body { padding:10px 14px; }
+
+/* ── Round counter (lives in panel-header, right of title) ── */
+.round-counter {
+  display:flex; align-items:center; gap:4px; flex-shrink:0;
+}
+.round-micro-label {
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.2em; text-transform:uppercase;
+  color:var(--text-muted);
+}
+.round-stepper {
+  /* 44px touch target, 24px visual */
+  width:24px; height:24px; min-width:44px; min-height:44px;
+  display:flex; align-items:center; justify-content:center;
+  background:transparent; border:1px solid var(--border); border-radius:3px;
+  color:var(--text-muted); font-family:var(--font-u); font-size:14px; cursor:pointer;
+  transition:border-color 0.15s, color 0.15s;
+}
+.round-stepper:hover:not(:disabled) { border-color:var(--accent); color:var(--accent-bright); }
+.round-stepper:disabled { opacity:0.3; cursor:not-allowed; }
+.round-num {
+  font-family:var(--font-d); font-size:18px; color:var(--accent-bright);
+  min-width:28px; text-align:center;
+  /* swap animation applied via JS class */
+  display:inline-block;
+}
+.round-num.swapping {
+  animation:roundNumIn 0.2s ease-out;
+}
+.round-num.auto-brighten {
+  animation:roundNumIn 0.2s ease-out, roundBrighten 0.4s ease-out;
+}
+
+/* Clear button */
+.init-clear-btn {
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.12em; text-transform:uppercase;
+  padding:3px 8px; min-height:28px;
+  background:transparent; border:1px solid var(--border); border-radius:3px;
+  color:var(--text-muted); cursor:pointer; flex-shrink:0;
+  transition:border-color 0.15s, color 0.15s;
+}
+.init-clear-btn:hover { border-color:rgba(192,96,96,0.4); color:#c06060; }
+
+/* Next Turn button */
+.next-turn-btn {
+  width:100%; padding:9px; margin-bottom:10px; background:rgba(30,58,78,0.4);
+  border:1px solid var(--accent); border-radius:3px; color:var(--accent-bright);
+  font-family:var(--font-d); font-size:13px; letter-spacing:0.2em; cursor:pointer;
+  transition:background 0.15s;
+}
+.next-turn-btn:hover { background:rgba(50,80,100,0.55); }
+
+/* initiative list */
+.init-list { display:flex; flex-direction:column; gap:2px; }
+.init-row {
+  display:flex; align-items:center; gap:8px; padding:5px 7px; border-radius:3px;
+  transition:background 0.25s, opacity 0.25s;
+}
+.init-row.active { background:rgba(255,255,255,0.06); }
+.init-indicator { width:3px; height:18px; border-radius:2px; flex-shrink:0; opacity:0; transition:opacity 0.25s; }
+.init-row.active .init-indicator { opacity:1; animation:accentPulse 2s ease-in-out infinite; }
+.init-name { font-family:var(--font-u); font-size:12px; letter-spacing:0.1em; flex:1; }
+.init-val  { font-family:var(--font-d); font-size:12px; color:var(--text-muted); }
+.init-empty {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.12em; color:var(--text-muted);
+  text-align:center; padding:10px 0;
+}
+
+/* ─── Scenario label bands ───────────────────────────────────────── */
+.state-badge {
+  display:inline-block; font-family:var(--font-u); font-size:10px; letter-spacing:0.2em;
+  text-transform:uppercase; padding:3px 9px; border-radius:2px; margin-bottom:10px;
+}
+.state-badge.healthy { color:#5a9a5a; border:1px solid rgba(90,154,90,0.35); background:rgba(90,154,90,0.07); }
+.state-badge.dying   { color:#c06060; border:1px solid rgba(192,96,96,0.35); background:rgba(192,96,96,0.07); }
+.state-badge.stable  { color:var(--accent-bright); border:1px solid rgba(100,130,160,0.35); background:rgba(100,130,160,0.07); }
+.state-badge.fallen  { color:#c06060; border:1px solid rgba(192,96,96,0.5); background:rgba(192,96,96,0.1); }
+
+/* ─── Legend ─────────────────────────────────────────────────────── */
+.legend {
+  border-top:1px solid var(--border); margin:40px 0 0; padding:24px 0 60px;
+}
+.legend-title {
+  font-family:var(--font-d); font-size:14px; letter-spacing:0.2em; color:var(--accent-bright);
+  margin-bottom:16px; text-transform:uppercase;
+}
+.legend-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(260px,1fr)); gap:12px 24px; }
+.legend-item { display:flex; gap:10px; align-items:start; }
+.legend-num  { font-family:var(--font-d); font-size:12px; color:var(--accent); flex-shrink:0; width:20px; }
+.legend-text { font-family:var(--font-b); font-style:italic; font-size:13px; color:var(--text-muted); line-height:1.5; }
+</style>
+</head>
+<body>
+
+<!-- Prototype header -->
+<div class="proto-header">
+  <span class="proto-title">Death Saves &amp; Round Tracking — Story 19</span>
+  <span class="proto-note">Interactive prototype. Click pips, NAT20/NAT1, Stable, Next Turn, and ± round steppers. Damage button demonstrates the damage-at-0 prompt.</span>
+</div>
+
+<div class="page">
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION 1: Death Save Tracker — per-card feature
+     ══════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-heading">① Death Save Tracker</div>
+  <div class="scenario-desc">Tracker mounts when HP reaches 0. Pips are DM-authoritative (solid borders, not dashed). Failures are visually dominant — right-aligned, red, with glow. Three outcomes: FALLEN (3 failures), Stable (3 successes or Stable button), NAT20 (wakes at 1 HP).</div>
+
+  <div class="two-col">
+
+    <!-- LEFT: Demo card — starts full HP, damage button brings to 0 -->
+    <div style="position:relative;">
+      <div class="callout" style="top:-24px;left:0;">① Interactive demo card</div>
+      <span class="state-badge healthy" id="aesop-state-badge">Healthy (28/28 HP)</span>
+
+      <!-- AESOP — forest palette -->
+      <div class="card card-forest" id="card-aesop" style="--c-accent:#5a8a60;--c-bright:#88b888;--c-border:rgba(90,138,96,0.35);">
+        <div class="card-header">
+          <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#88b888,#1a3820);color:#d8f0d8;">AE</div>
+          <div class="card-identity">
+            <span class="card-name" style="color:#88b888;">Aesop Fieldwick</span>
+            <span class="card-sub">Halfling · Rogue · Lv 4</span>
+          </div>
+          <div class="card-ac" style="color:#88b888;border-color:rgba(90,138,96,0.4);">AC 14</div>
+          <button class="card-more-btn">⋯</button>
+        </div>
+
+        <div class="hp-row">
+          <button class="hp-btn" id="aesop-dmg-btn" style="border-color:rgba(90,138,96,0.3);" onclick="aesopDamage()">⚔</button>
+          <span class="hp-nums" id="hp-nums-aesop" style="color:#78b878;">28<span style="font-size:13px;opacity:0.5;">/28</span></span>
+          <div class="hp-bar-wrap" id="hp-bar-aesop"></div>
+          <button class="hp-btn" style="border-color:rgba(90,138,96,0.3);" onclick="aesopHeal()">+</button>
+        </div>
+
+        <!-- Damage-at-0 inline prompt (hidden until HP=0 and damage attempted) -->
+        <div class="dmg-prompt" id="aesop-dmg-prompt">
+          <div class="dmg-prompt-label">Damage at 0 HP — record failure?</div>
+          <div class="dmg-prompt-btns">
+            <button class="dmg-prompt-btn default-focus" onclick="aesopApplyFailure(1)">+<span class="dmg-btn-num">1</span> Failure</button>
+            <button class="dmg-prompt-btn" onclick="aesopApplyFailure(2)">Crit: +<span class="dmg-btn-num">2</span></button>
+            <button class="dmg-prompt-btn no-failure" onclick="hideDmgPrompt('aesop')">No Failure</button>
+          </div>
+        </div>
+
+        <!-- DEATH SAVE TRACKER — mounts at HP=0 -->
+        <!-- Brief §3a: "DEATH SAVES" label left, failures right of divider, NAT20/NAT1 pills top-right, Stable sub-line -->
+        <div class="death-saves" id="death-aesop">
+
+          <!-- Row 1: label + shortcuts -->
+          <div class="ds-main-row">
+            <span class="ds-label">Death Saves</span>
+            <div class="ds-shortcuts">
+              <button class="ds-shortcut nat20" onclick="event.stopPropagation();dsNat20('aesop')" title="Natural 20 — set HP to 1, clear tracker">Nat 20</button>
+              <button class="ds-shortcut nat1"  onclick="event.stopPropagation();dsNat1('aesop')"  title="Natural 1 — +2 failure pips">Nat 1</button>
+            </div>
+          </div>
+
+          <!-- Row 2: pip row (44px touch target height) -->
+          <div class="ds-pip-row" id="aesop-pip-row">
+            <!-- SUCCESS cluster: 3 pips, filled left-to-right -->
+            <div class="ds-pip-cluster" id="aesop-success-cluster">
+              <div class="ds-pip success-empty" id="aesop-s0" onclick="event.stopPropagation();dsPipClick('aesop','s',0)" title="Success 1"></div>
+              <div class="ds-pip success-empty" id="aesop-s1" onclick="event.stopPropagation();dsPipClick('aesop','s',1)" title="Success 2"></div>
+              <div class="ds-pip success-empty" id="aesop-s2" onclick="event.stopPropagation();dsPipClick('aesop','s',2)" title="Success 3"></div>
+            </div>
+
+            <!-- Vertical rule divider (1px × 14px) -->
+            <div class="ds-divider"></div>
+
+            <!-- FAILURE cluster: 3 pips, filled left-to-right -->
+            <div class="ds-pip-cluster" id="aesop-failure-cluster">
+              <div class="ds-pip failure-empty" id="aesop-f0" onclick="event.stopPropagation();dsPipClick('aesop','f',0)" title="Failure 1"></div>
+              <div class="ds-pip failure-empty" id="aesop-f1" onclick="event.stopPropagation();dsPipClick('aesop','f',1)" title="Failure 2"></div>
+              <div class="ds-pip failure-empty" id="aesop-f2" onclick="event.stopPropagation();dsPipClick('aesop','f',2)" title="Failure 3"></div>
+            </div>
+          </div>
+
+          <!-- Row 3: Stable sub-line — covers external stabilization (Medicine/spell) -->
+          <div class="ds-stable-row">
+            <button class="ds-stable-btn" onclick="event.stopPropagation();dsStable('aesop')">✦ Stable</button>
+          </div>
+
+          <!-- FALLEN label — appears on 3 failures -->
+          <div class="fallen-label" id="aesop-fallen-label">Fallen</div>
+        </div>
+
+        <div class="conditions-row">
+          <span class="chip" style="color:#c8a040;border-color:rgba(200,160,64,0.4);">Unconscious</span>
+        </div>
+      </div><!-- /card-aesop -->
+
+      <!-- Annotation: left bar -->
+      <div class="callout" style="bottom:72px;right:-140px;">② 2px left bar = danger state</div>
+      <div class="callout" style="bottom:16px;right:-140px;">③ Stable vs NAT20 — different outcomes</div>
+    </div>
+
+    <!-- RIGHT: Explanation panel + three resolved states -->
+    <div>
+      <div style="font-family:var(--font-b);font-style:italic;font-size:13px;color:var(--text-muted);margin-bottom:14px;line-height:1.6;">
+        Use the <strong style="color:var(--text);">⚔ Damage</strong> button to reduce HP to 0 and mount the tracker. At 0 HP, apply more damage to see the inline failure prompt.<br><br>
+        <strong style="color:var(--text);">Pip grammar:</strong> Tap empty pip → fills it and all to its left. Tap filled pip → un-fills it and all to its right (instant, correction path).
+      </div>
+
+      <!-- Pip color reference -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:12px 14px;margin-bottom:12px;">
+        <div style="font-family:var(--font-u);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Pip color reference</div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:var(--ds-success);border:1.5px solid var(--ds-success);"></div>
+          <span style="font-family:var(--font-b);font-size:13px;color:var(--text-muted);">Success filled — <code style="font-size:11px;">#5a9a5a</code>, no glow</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:transparent;border:1.5px solid var(--ds-success-empty);"></div>
+          <span style="font-family:var(--font-b);font-size:13px;color:var(--text-muted);">Success empty — solid border, not dashed</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:var(--ds-failure);border:1.5px solid var(--ds-failure);box-shadow:0 0 4px rgba(192,96,96,0.55);"></div>
+          <span style="font-family:var(--font-b);font-size:13px;color:var(--text-muted);">Failure filled — <code style="font-size:11px;">#c06060</code>, glow 4px</span>
+        </div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="width:14px;height:14px;border-radius:50%;background:transparent;border:1.5px solid var(--ds-failure-empty);"></div>
+          <span style="font-family:var(--font-b);font-size:13px;color:var(--text-muted);">Failure empty — solid border, muted red</span>
+        </div>
+      </div>
+
+      <!-- Resolved state reference -->
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:12px 14px;">
+        <div style="font-family:var(--font-u);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Resolved states</div>
+        <div style="font-family:var(--font-b);font-size:13px;color:var(--text-muted);line-height:1.7;">
+          <strong style="color:#5a9a5a;">3 Successes</strong> or <strong style="color:#5a9a5a;">✦ Stable</strong>: tracker collapses, card glow ring, HP stays 0, card dims to 0.85 — <em>safe but still down</em><br>
+          <strong style="color:#a0c0d0;">NAT 20</strong>: tracker collapses, HP animates to 1, character wakes — <em>1 HP + conscious</em><br>
+          <strong style="color:#c06060;">3 Failures</strong>: FALLEN state — card dims to 0.6, name line-through, pips frozen visible — <em>reversible by tapping pip down</em>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /two-col -->
+</div>
+
+<hr class="divider" />
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION 2: Three resolved states — side-by-side
+     ══════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-heading">② Resolved States — Side by Side</div>
+  <div class="scenario-desc">Three distinct end-states for a downed PC. Each has different visual language because the rules outcomes differ meaningfully.</div>
+
+  <div class="three-col">
+
+    <!-- State A: STABLE (3 successes or ✦ Stable) — HP stays 0, dimmed to 0.85 -->
+    <div>
+      <span class="state-badge stable">Stable (0 HP, unconscious)</span>
+      <div class="card card-ocean" style="--c-accent:#6a8fa8;--c-bright:#a0c0d0;--c-border:rgba(100,130,160,0.35);opacity:0.85;border-color:var(--accent) !important;box-shadow:0 0 0 0 rgba(90,154,90,0);">
+        <div class="card-header">
+          <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#a0c0d0,#1a3448);color:#d0e8f0;">NV</div>
+          <div class="card-identity">
+            <span class="card-name" style="color:#a0c0d0;">Naveen Ashford</span>
+            <span class="card-sub">Human · Cleric · Lv 5</span>
+          </div>
+          <div class="card-ac" style="color:#a0c0d0;border-color:rgba(100,130,160,0.4);">AC 16</div>
+        </div>
+        <div class="hp-row">
+          <span class="hp-nums" style="color:#3a5a6a;">0<span style="font-size:13px;opacity:0.5;">/32</span></span>
+          <div class="hp-bar-wrap"><div class="hp-segments"><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;background:#6a8fa8;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div></div></div>
+        </div>
+        <!-- Stable tracker: 3 successes, pips frozen, block will have already collapsed in real use -->
+        <div class="death-saves visible" style="opacity:0.6;">
+          <div class="ds-main-row"><span class="ds-label">Death Saves</span></div>
+          <div class="ds-pip-row">
+            <div class="ds-pip-cluster">
+              <div class="ds-pip success-filled" style="cursor:default;"></div>
+              <div class="ds-pip success-filled" style="cursor:default;"></div>
+              <div class="ds-pip success-filled" style="cursor:default;"></div>
+            </div>
+            <div class="ds-divider"></div>
+            <div class="ds-pip-cluster">
+              <div class="ds-pip failure-empty" style="cursor:default;"></div>
+              <div class="ds-pip failure-empty" style="cursor:default;"></div>
+              <div class="ds-pip failure-empty" style="cursor:default;"></div>
+            </div>
+          </div>
+        </div>
+        <!-- Annotation: in real use the tracker collapses here — shown open for clarity -->
+      </div>
+      <div style="font-family:var(--font-b);font-style:italic;font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5;">Card dims to 0.85 opacity. Border shifts to palette accent (not red). Tracker collapses (shown here for clarity). HP stays 0 — still unconscious.</div>
+    </div>
+
+    <!-- State B: NAT20 — HP=1, fully bright, no tracker -->
+    <div>
+      <span class="state-badge healthy">NAT 20 — Woke up (1 HP)</span>
+      <div class="card card-ocean" style="--c-accent:#6a8fa8;--c-bright:#a0c0d0;--c-border:rgba(100,130,160,0.35);">
+        <div class="card-header">
+          <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#a0c0d0,#1a3448);color:#d0e8f0;">NV</div>
+          <div class="card-identity">
+            <span class="card-name" style="color:#a0c0d0;">Naveen Ashford</span>
+            <span class="card-sub">Human · Cleric · Lv 5</span>
+          </div>
+          <div class="card-ac" style="color:#a0c0d0;border-color:rgba(100,130,160,0.4);">AC 16</div>
+        </div>
+        <div class="hp-row">
+          <span class="hp-nums" style="color:#8ab4c8;">1<span style="font-size:13px;opacity:0.5;">/32</span></span>
+          <div class="hp-bar-wrap"><div class="hp-segments"><div class="hp-seg"><div class="hp-seg-fill" style="width:16.67%;background:#c06060;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div></div></div>
+        </div>
+        <!-- No tracker — cleared on NAT20 -->
+      </div>
+      <div style="font-family:var(--font-b);font-style:italic;font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5;">Full card brightness. Tracker gone. HP = 1. Character is conscious and can act. The 1 HP animates up from 0 with heal-glow in real interaction.</div>
+    </div>
+
+    <!-- State C: FALLEN (3 failures) -->
+    <div>
+      <span class="state-badge fallen">Fallen (3 failures)</span>
+      <!-- Card with fallen styling applied directly (no animation for static display) -->
+      <div class="card card-ocean" style="--c-accent:#6a8fa8;--c-bright:#a0c0d0;--c-border:rgba(100,130,160,0.35);opacity:0.6;border-color:#c06060 !important;">
+        <div class="card-header">
+          <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#a0c0d0,#1a3448);color:#d0e8f0;opacity:0.6;">NV</div>
+          <div class="card-identity">
+            <span class="card-name" style="color:#a0c0d0;text-decoration:line-through;opacity:0.7;">Naveen Ashford</span>
+            <span class="card-sub">Human · Cleric · Lv 5</span>
+          </div>
+          <div class="card-ac" style="color:#3a5a6a;border-color:rgba(100,130,160,0.2);">AC 16</div>
+        </div>
+        <div class="hp-row">
+          <span class="hp-nums" style="color:#3a5a6a;">0<span style="font-size:13px;opacity:0.5;">/32</span></span>
+          <div class="hp-bar-wrap"><div class="hp-segments"><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;background:#c06060;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div></div></div>
+        </div>
+        <!-- Pips frozen visible at 3/3 — tombstone -->
+        <div class="death-saves visible" style="pointer-events:none;">
+          <div class="ds-main-row"><span class="ds-label">Death Saves</span></div>
+          <div class="ds-pip-row">
+            <div class="ds-pip-cluster">
+              <div class="ds-pip failure-empty" style="cursor:default;"></div>
+              <div class="ds-pip failure-empty" style="cursor:default;"></div>
+              <div class="ds-pip failure-empty" style="cursor:default;"></div>
+            </div>
+            <div class="ds-divider"></div>
+            <div class="ds-pip-cluster">
+              <div class="ds-pip failure-filled" style="cursor:default;animation:none;"></div>
+              <div class="ds-pip failure-filled" style="cursor:default;animation:none;"></div>
+              <div class="ds-pip failure-filled" style="cursor:default;animation:none;"></div>
+            </div>
+          </div>
+          <!-- FALLEN label -->
+          <div class="fallen-label" style="display:block;">Fallen</div>
+        </div>
+      </div>
+      <div style="font-family:var(--font-b);font-style:italic;font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5;">0.6 opacity, red border, name strikethrough. Pips remain visible — a tombstone showing exactly how it ended. Reversible by tapping a failure pip down (no confirm dialog).</div>
+    </div>
+
+  </div><!-- /three-col -->
+</div>
+
+<hr class="divider" />
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION 3: Damage-at-0 inline prompt
+     ══════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-heading">③ Damage-at-0 Inline Prompt</div>
+  <div class="scenario-desc">When the DM applies damage to a character already at 0 HP, the confirm flow ends with this inline row. Default focus on [+1 Failure]. Rules-mandated: any damage at 0 HP = +1 failure; a crit or melee hit from within 5 ft = +2 failures.</div>
+
+  <div class="two-col">
+    <!-- Card showing prompt mid-flow -->
+    <div>
+      <span class="state-badge dying">0 HP — prompt active</span>
+      <div class="card card-ember" style="--c-accent:#a06840;--c-bright:#c89060;--c-border:rgba(160,104,64,0.35);border-color:#c06060 !important;">
+        <div class="card-header">
+          <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#c89060,#5a3018);color:#f0d8b0;">TV</div>
+          <div class="card-identity">
+            <span class="card-name" style="color:#c89060;">Torvin Ironclad</span>
+            <span class="card-sub">Dwarf · Fighter · Lv 9</span>
+          </div>
+          <div class="card-ac" style="color:#c89060;border-color:rgba(160,104,64,0.4);">AC 18</div>
+        </div>
+        <div class="hp-row">
+          <span class="hp-nums" style="color:#c06060;">0<span style="font-size:13px;opacity:0.5;">/78</span></span>
+          <div class="hp-bar-wrap"><div class="hp-segments"><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;background:#c06060;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div></div></div>
+        </div>
+        <!-- Prompt shown open -->
+        <div class="dmg-prompt visible">
+          <div class="dmg-prompt-label">Damage at 0 HP — record failure?</div>
+          <div class="dmg-prompt-btns">
+            <button class="dmg-prompt-btn default-focus">[+<span class="dmg-btn-num">1</span> Failure]</button>
+            <button class="dmg-prompt-btn">Crit: +<span class="dmg-btn-num">2</span></button>
+            <button class="dmg-prompt-btn no-failure">No Failure</button>
+          </div>
+        </div>
+        <!-- Tracker already open with 1 failure -->
+        <div class="death-saves visible">
+          <div class="ds-main-row">
+            <span class="ds-label">Death Saves</span>
+            <div class="ds-shortcuts">
+              <button class="ds-shortcut nat20">Nat 20</button>
+              <button class="ds-shortcut nat1">Nat 1</button>
+            </div>
+          </div>
+          <div class="ds-pip-row">
+            <div class="ds-pip-cluster">
+              <div class="ds-pip success-empty"></div>
+              <div class="ds-pip success-empty"></div>
+              <div class="ds-pip success-empty"></div>
+            </div>
+            <div class="ds-divider"></div>
+            <div class="ds-pip-cluster">
+              <div class="ds-pip failure-filled" style="animation:none;"></div>
+              <div class="ds-pip failure-empty"></div>
+              <div class="ds-pip failure-empty"></div>
+            </div>
+          </div>
+          <div class="ds-stable-row"><button class="ds-stable-btn">✦ Stable</button></div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px 16px;">
+        <div style="font-family:var(--font-u);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Interaction flow</div>
+        <div style="font-family:var(--font-b);font-size:14px;color:var(--text-body);line-height:1.8;">
+          1. DM taps <strong style="color:var(--text);">⚔ Damage</strong> on a 0-HP card<br>
+          2. Enters damage amount<br>
+          3. Instead of simply confirming, the inline prompt appears<br>
+          4. DM taps the appropriate button — one extra tap<br><br>
+          <strong style="color:#5a9a5a;">[+1 Failure]</strong> — default focus (most common)<br>
+          <strong style="color:#c06060;">[Crit: +2]</strong> — crit or melee from ≤5 ft<br>
+          <strong style="color:var(--text-muted);">[No Failure]</strong> — damage doesn't apply saves (e.g., AoE from ally with Fireball)
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr class="divider" />
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION 4: Round Counter — initiative header
+     ══════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-heading">④ Round Counter — Initiative Header</div>
+  <div class="scenario-desc">The round counter lives in the initiative header row. Auto-increments with a brighten flash when Next Turn wraps last→first. Manual ± uses same swap animation but NO brighten (honest distinction from a real wrap). Clear × resets to round 1.</div>
+
+  <div class="two-col">
+
+    <!-- LEFT: Combat-active initiative panel with round counter -->
+    <div style="position:relative;">
+      <div class="callout" style="top:-24px;left:0;">④ Interactive — Next Turn wraps round</div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <!-- "INITIATIVE ORDER" label -->
+          <span class="panel-title">Initiative Order</span>
+
+          <!-- ROUND COUNTER: micro-label, −, number, + -->
+          <!-- Brief §3b: "ROUND" 10px IM Fell, Cinzel 18px accentBright between steppers, Clear× last -->
+          <div class="round-counter" id="round-counter">
+            <span class="round-micro-label">Round</span>
+            <button class="round-stepper" id="round-dec" onclick="roundDecrement()" title="Decrease round" disabled>−</button>
+            <span class="round-num" id="round-num">1</span>
+            <button class="round-stepper" id="round-inc" onclick="roundIncrement()" title="Increase round">+</button>
+          </div>
+
+          <!-- Clear × — resets both initiative list and round to 1 -->
+          <button class="init-clear-btn" id="init-clear-btn" onclick="clearInitiative()">Clear ×</button>
+        </div>
+
+        <div class="panel-body">
+          <!-- Next Turn button -->
+          <button class="next-turn-btn" id="next-turn-btn" onclick="nextTurn()">▶ Next Turn</button>
+
+          <!-- Initiative list -->
+          <div class="init-list" id="init-list">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+
+      <div class="callout" style="bottom:-28px;left:0;">Auto-increments on wrap, manual stays muted</div>
+    </div>
+
+    <!-- RIGHT: Explanation -->
+    <div>
+      <div style="background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:14px 16px;margin-bottom:12px;">
+        <div style="font-family:var(--font-u);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:10px;">Round counter rules</div>
+        <div style="font-family:var(--font-b);font-size:13px;color:var(--text-body);line-height:1.8;">
+          <strong style="color:var(--accent-bright);">Auto-increment</strong>: fires when Next Turn wraps from last entry back to index 0. Number does <code style="font-size:11px;">translateY(-4px)→0</code>, opacity <code style="font-size:11px;">0.4→1</code>, 200ms ease-out. The round number briefly brightens (accentBright flash) — signals a real round completed.<br><br>
+          <strong style="color:var(--text);">Manual ±</strong>: same number swap animation but NO brighten flash. The DM is correcting an error, not completing a round — motion language stays honest.<br><br>
+          <strong style="color:#c06060;">Clear ×</strong>: resets initiative list AND round to 1. Combat is over; next fight starts fresh.<br><br>
+          <strong style="color:var(--text-muted);">Empty initiative</strong>: round shows — (em dash, muted), steppers disabled.
+        </div>
+      </div>
+
+      <!-- Empty state preview -->
+      <div class="panel">
+        <div class="panel-header">
+          <span class="panel-title">Initiative Order</span>
+          <div class="round-counter">
+            <span class="round-micro-label">Round</span>
+            <button class="round-stepper" disabled>−</button>
+            <span class="round-num" style="color:var(--text-muted);">–</span>
+            <button class="round-stepper" disabled>+</button>
+          </div>
+          <button class="init-clear-btn" style="opacity:0.4;cursor:default;">Clear ×</button>
+        </div>
+        <div class="panel-body">
+          <div class="init-empty">No initiative set.<br><small style="font-size:10px;">Add combatants to begin.</small></div>
+        </div>
+      </div>
+      <div style="font-family:var(--font-b);font-style:italic;font-size:12px;color:var(--text-muted);margin-top:4px;">Empty state — round shows – (em dash), all controls disabled.</div>
+    </div>
+
+  </div><!-- /two-col -->
+</div>
+
+<hr class="divider" />
+
+<!-- ══════════════════════════════════════════════════════════════
+     SECTION 5: Multiple downed PCs — stacked cards
+     ══════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-heading">⑤ Edge Case — Multiple PCs at 0 HP</div>
+  <div class="scenario-desc">Each downed card shows an independent tracker. The visual weight of multiple red-washed cards is intentional — it IS the "this is dire" signal. No aggregation.</div>
+
+  <div style="max-width:400px;">
+    <!-- Eoghan — 1 failure -->
+    <div class="card card-ocean" style="--c-accent:#6a8fa8;--c-bright:#a0c0d0;--c-border:rgba(100,130,160,0.35);border-color:#c06060 !important;">
+      <div class="card-header">
+        <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#a0c0d0,#1a3448);color:#d0e8f0;">ES</div>
+        <div class="card-identity">
+          <span class="card-name" style="color:#a0c0d0;">Eoghan Sunderskeep</span>
+          <span class="card-sub">Human · Ranger · Lv 8</span>
+        </div>
+        <div class="card-ac" style="color:#a0c0d0;border-color:rgba(100,130,160,0.4);">AC 15</div>
+      </div>
+      <div class="hp-row">
+        <span class="hp-nums" style="color:#c06060;">0<span style="font-size:13px;opacity:0.5;">/44</span></span>
+        <div class="hp-bar-wrap"><div class="hp-segments"><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div></div></div>
+      </div>
+      <div class="death-saves visible">
+        <div class="ds-main-row">
+          <span class="ds-label">Death Saves</span>
+          <div class="ds-shortcuts">
+            <button class="ds-shortcut nat20">Nat 20</button>
+            <button class="ds-shortcut nat1">Nat 1</button>
+          </div>
+        </div>
+        <div class="ds-pip-row">
+          <div class="ds-pip-cluster">
+            <div class="ds-pip success-filled" style="animation:none;"></div>
+            <div class="ds-pip success-empty"></div>
+            <div class="ds-pip success-empty"></div>
+          </div>
+          <div class="ds-divider"></div>
+          <div class="ds-pip-cluster">
+            <div class="ds-pip failure-filled" style="animation:none;"></div>
+            <div class="ds-pip failure-empty"></div>
+            <div class="ds-pip failure-empty"></div>
+          </div>
+        </div>
+        <div class="ds-stable-row"><button class="ds-stable-btn">✦ Stable</button></div>
+      </div>
+    </div>
+
+    <!-- Mira — 2 failures (critical!) -->
+    <div class="card card-forest" style="--c-accent:#5a8a60;--c-bright:#88b888;--c-border:rgba(90,138,96,0.35);border-color:#c06060 !important;">
+      <div class="card-header">
+        <div class="portrait" style="background:radial-gradient(circle at 35% 30%,#88b888,#1a3820);color:#d8f0d8;">MA</div>
+        <div class="card-identity">
+          <span class="card-name" style="color:#88b888;">Mira Ashvale</span>
+          <span class="card-sub">Half-Elf · Wizard · Lv 6</span>
+        </div>
+        <div class="card-ac" style="color:#88b888;border-color:rgba(90,138,96,0.4);">AC 13</div>
+      </div>
+      <div class="hp-row">
+        <span class="hp-nums" style="color:#c06060;">0<span style="font-size:13px;opacity:0.5;">/38</span></span>
+        <div class="hp-bar-wrap"><div class="hp-segments"><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div><div class="hp-seg"><div class="hp-seg-fill" style="width:0%;"></div></div></div></div>
+      </div>
+      <div class="death-saves visible">
+        <div class="ds-main-row">
+          <span class="ds-label">Death Saves</span>
+          <div class="ds-shortcuts">
+            <button class="ds-shortcut nat20">Nat 20</button>
+            <button class="ds-shortcut nat1">Nat 1</button>
+          </div>
+        </div>
+        <div class="ds-pip-row">
+          <div class="ds-pip-cluster">
+            <div class="ds-pip success-empty"></div>
+            <div class="ds-pip success-empty"></div>
+            <div class="ds-pip success-empty"></div>
+          </div>
+          <div class="ds-divider"></div>
+          <div class="ds-pip-cluster">
+            <div class="ds-pip failure-filled" style="animation:none;"></div>
+            <div class="ds-pip failure-filled" style="animation:none;"></div>
+            <div class="ds-pip failure-empty"></div>
+          </div>
+        </div>
+        <div class="ds-stable-row"><button class="ds-stable-btn">✦ Stable</button></div>
+      </div>
+    </div>
+
+    <div style="font-family:var(--font-b);font-style:italic;font-size:12px;color:var(--text-muted);margin-top:6px;line-height:1.5;">
+      Two independent trackers. The DM resolves them in initiative order. Mira at 2 failures is a genuine visual emergency — the failure glow on those two pips signals urgency even in peripheral vision.
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     LEGEND
+     ══════════════════════════════════════════════════════════════ -->
+<div class="legend">
+  <div class="legend-title">Design Notes &amp; Annotations</div>
+  <div class="legend-grid">
+    <div class="legend-item"><span class="legend-num">①</span><span class="legend-text">Death save tracker mounts at HP=0 via max-height + opacity transition (300ms ease-out). Unmounts on heal, stable, or death (250ms ease-in). Exception: on 3 failures, tracker stays visible — the FALLEN animation owns the card-level moment.</span></div>
+    <div class="legend-item"><span class="legend-num">②</span><span class="legend-text">Solid pip borders (not dashed) signal DM authority — this replaced the old "player-reported" dashed-ring stub. The dashed treatment communicated uncertainty; solid communicates ownership. The "player-reported" caption is deleted entirely.</span></div>
+    <div class="legend-item"><span class="legend-num">③</span><span class="legend-text">Success pip fill: scale 0.7→1.0 + opacity 0→1, 180ms ease-out, NO glow. Failure pip fill: same entrance animation THEN whole-block shake (±3px, 300ms). The asymmetry — success is calm, failure shakes — is load-bearing.</span></div>
+    <div class="legend-item"><span class="legend-num">④</span><span class="legend-text">NAT1 taps next two empty failure pips in a 60ms-staggered pair, then ONE block shake — not two shakes. If this reaches 3 failures, the FALLEN sequence fires. If no empty pips remain to fill, NAT1 does nothing (capped at 3).</span></div>
+    <div class="legend-item"><span class="legend-num">⑤</span><span class="legend-text">NAT20 sets hpCurrent=1 and clears all pips. Card red border fades to palette accent (300ms). Tracker collapses (250ms). HP number animates 0→1 with heal-glow. Stable button sets hpCurrent=0, same tracker collapse but HP stays 0 and card dims to 0.85 — visually distinct from NAT20.</span></div>
+    <div class="legend-item"><span class="legend-num">⑥</span><span class="legend-text">Pip tap grammar: tap empty pip → fills it and all pips to its left in that cluster (like spell-slot bubbles). Tap filled pip → un-fills it and all to its right (correction path, instant, no animation). This asymmetry makes correction feel different from marking.</span></div>
+    <div class="legend-item"><span class="legend-num">⑦</span><span class="legend-text">FALLEN state: card opacity → 0.6 over 600ms ease-in. Name line-through. FALLEN label fades in. Pips frozen visible (tombstone). Reversible by tapping a failure pip down — no modal confirm. Death is not irreversible in the tool; reversibility by direct manipulation replaces undo.</span></div>
+    <div class="legend-item"><span class="legend-num">⑧</span><span class="legend-text">Round counter auto-increment animation: translateY(-4px)→0, opacity 0.4→1, 200ms ease-out. PLUS accentBright color briefly brightens. Manual ± uses same swap but NO brighten — honest signal distinction between real wrap and manual correction.</span></div>
+    <div class="legend-item"><span class="legend-num">⑨</span><span class="legend-text">− stepper disabled at round 1 (visual dim + cursor not-allowed). No maximum. Clear × resets both initiative list AND round to 1 in one tap — critical correctness requirement (next fight must not inherit the previous round count).</span></div>
+    <div class="legend-item"><span class="legend-num">⑩</span><span class="legend-text">Damage-at-0 inline prompt is one extra tap inline in the existing damage flow. It does not require the DM to remember to open something separately. [+1 Failure] has default focus. [No Failure] exists for edge cases where the damage source doesn't apply (e.g., AoE from allied Fireball at 0 HP).</span></div>
+  </div>
+</div>
+
+</div><!-- /page -->
+
+<script>
+// ─── Aesop card state ─────────────────────────────────────────────────
+const aesop = { hp: 28, maxHp: 28, successes: 0, failures: 0, fallen: false };
+
+function hpColor(pct) {
+  if (pct > 0.5) return '#78b878'; // forest gem
+  if (pct > 0.2) return '#c8a040';
+  return '#c06060';
+}
+
+function renderAesopHP() {
+  const pct = aesop.maxHp > 0 ? aesop.hp / aesop.maxHp : 0;
+  const color = hpColor(pct);
+  const numsEl = document.getElementById('hp-nums-aesop');
+  numsEl.innerHTML = `${aesop.hp}<span style="font-size:13px;opacity:0.5;">/${aesop.maxHp}</span>`;
+  numsEl.style.color = color;
+
+  const wrap = document.getElementById('hp-bar-aesop');
+  wrap.innerHTML = '';
+  const segs = document.createElement('div');
+  segs.className = 'hp-segments';
+  for (let i = 0; i < 5; i++) {
+    const seg = document.createElement('div');
+    seg.className = 'hp-seg';
+    const fill = document.createElement('div');
+    fill.className = 'hp-seg-fill';
+    const segFill = Math.max(0, Math.min(1, pct * 5 - i));
+    fill.style.cssText = `width:${segFill * 100}%;background:${color};`;
+    seg.appendChild(fill);
+    segs.appendChild(seg);
+  }
+  wrap.appendChild(segs);
+
+  const card = document.getElementById('card-aesop');
+  // 0 HP state
+  if (aesop.hp <= 0) {
+    card.classList.add('hp-zero');
+    document.getElementById('death-aesop').classList.add('visible');
+    document.getElementById('aesop-state-badge').textContent = '0 HP — Death Saves Active';
+    document.getElementById('aesop-state-badge').className = 'state-badge dying';
+  } else {
+    card.classList.remove('hp-zero');
+    document.getElementById('death-aesop').classList.remove('visible');
+    hideDmgPrompt('aesop');
+    document.getElementById('aesop-state-badge').textContent = `Healthy (${aesop.hp}/${aesop.maxHp} HP)`;
+    document.getElementById('aesop-state-badge').className = 'state-badge healthy';
+  }
+}
+
+function aesopDamage() {
+  if (aesop.fallen) return;
+
+  if (aesop.hp <= 0) {
+    // Already at 0 — show the damage-at-0 inline prompt
+    showDmgPrompt('aesop');
+    return;
+  }
+
+  // Chunk damage to bring to 0 faster for demo
+  const dmg = Math.min(aesop.hp, Math.ceil(aesop.hp * 0.35) + 2);
+  aesop.hp = Math.max(0, aesop.hp - dmg);
+
+  // flash
+  flashHP('hp-bar-aesop', 'dmg');
+  renderAesopHP();
+  updateAesopPips();
+}
+
+function aesopHeal() {
+  if (aesop.fallen) return;
+  const was0 = aesop.hp <= 0;
+  aesop.hp = Math.min(aesop.maxHp, aesop.hp + 8);
+  flashHP('hp-bar-aesop', 'heal');
+  if (was0 && aesop.hp > 0) {
+    // Healed above 0 — clear death saves
+    aesop.successes = 0;
+    aesop.failures = 0;
+    updateAesopPips();
+    hideDmgPrompt('aesop');
+  }
+  renderAesopHP();
+}
+
+function showDmgPrompt(slug) {
+  const el = document.getElementById(`${slug}-dmg-prompt`);
+  if (el) el.classList.add('visible');
+}
+
+function hideDmgPrompt(slug) {
+  const el = document.getElementById(`${slug}-dmg-prompt`);
+  if (el) el.classList.remove('visible');
+}
+
+function aesopApplyFailure(count) {
+  hideDmgPrompt('aesop');
+  // Add failures
+  const prev = aesop.failures;
+  aesop.failures = Math.min(3, aesop.failures + count);
+  updateAesopPips();
+  if (aesop.failures > prev) {
+    triggerBlockShake('death-aesop');
+  }
+  checkAesopResolution();
+}
+
+function flashHP(barId, type) {
+  const wrap = document.getElementById(barId);
+  if (!wrap) return;
+  const segs = wrap.querySelectorAll('.hp-seg');
+  segs.forEach(seg => {
+    const flash = document.createElement('div');
+    flash.className = type === 'dmg' ? 'hp-seg-flash' : 'hp-seg-heal';
+    seg.appendChild(flash);
+    setTimeout(() => flash.remove(), 350);
+  });
+}
+
+// ─── Death Save pip interaction ───────────────────────────────────────
+/*
+  Pip grammar (brief §5):
+  - Tap empty pip → fills it AND all empty pips to its left in that cluster
+  - Tap filled pip → un-fills it AND all to its right (correction, instant)
+*/
+function dsPipClick(slug, type, idx) {
+  if (slug !== 'aesop') return; // only aesop is interactive in demo
+  if (aesop.fallen && type === 'f') {
+    // Allow un-filling from fallen state — escape hatch per brief
+  }
+
+  const pipEl = document.getElementById(`aesop-${type}${idx}`);
+  const isFilled = type === 's' ?
+    (idx < aesop.successes) :
+    (idx < aesop.failures);
+
+  if (!isFilled) {
+    // Fill this pip and all to its left → set count to idx+1
+    if (type === 's') {
+      aesop.successes = idx + 1;
+    } else {
+      const prev = aesop.failures;
+      aesop.failures = idx + 1;
+      // Trigger shake for each newly added failure
+      if (aesop.failures > prev) {
+        // Stagger if multiple pips fill (e.g. clicking pip 2 when 0 are filled)
+        setTimeout(() => triggerBlockShake('death-aesop'), 60);
+      }
+    }
+  } else {
+    // Un-fill this pip and all to its right → set count to idx (no animation)
+    if (type === 's') {
+      aesop.successes = idx;
+    } else {
+      aesop.failures = idx;
+      // If falling back from FALLEN
+      if (aesop.fallen) {
+        aesop.fallen = false;
+        const card = document.getElementById('card-aesop');
+        card.classList.remove('fallen');
+        card.style.animation = '';
+        card.style.opacity = '';
+        card.style.borderColor = '#c06060'; // stay red (still at 0 HP)
+      }
+    }
+  }
+
+  updateAesopPips();
+  checkAesopResolution();
+}
+
+function updateAesopPips() {
+  for (let i = 0; i < 3; i++) {
+    const sEl = document.getElementById(`aesop-s${i}`);
+    const fEl = document.getElementById(`aesop-f${i}`);
+    if (sEl) {
+      const filled = i < aesop.successes;
+      sEl.className = 'ds-pip ' + (filled ? 'success-filled' : 'success-empty');
+    }
+    if (fEl) {
+      const filled = i < aesop.failures;
+      fEl.className = 'ds-pip ' + (filled ? 'failure-filled' : 'failure-empty');
+    }
+  }
+}
+
+function triggerBlockShake(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.remove('shake');
+  // Force reflow to restart animation
+  void el.offsetWidth;
+  el.classList.add('shake');
+  setTimeout(() => el.classList.remove('shake'), 320);
+}
+
+function checkAesopResolution() {
+  const card = document.getElementById('card-aesop');
+  const badge = document.getElementById('aesop-state-badge');
+  const dsBlock = document.getElementById('death-aesop');
+
+  if (aesop.failures >= 3 && !aesop.fallen) {
+    // FALLEN — 600ms ease-in
+    aesop.fallen = true;
+    card.classList.add('fallen');
+    card.style.borderColor = '#c06060';
+    badge.textContent = 'FALLEN (3 failures)';
+    badge.className = 'state-badge fallen';
+    // Pips remain visible (tombstone)
+    // Show fallen label inside tracker
+    const fl = document.getElementById('aesop-fallen-label');
+    if (fl) fl.style.display = 'block';
+  } else if (aesop.successes >= 3) {
+    // Stabilized — tracker collapses, card glow ring
+    resolveAesopStabilize('Stable — 3 successes');
+  }
+}
+
+function resolveAesopStabilize(reason) {
+  // Card border: red → accent
+  const card = document.getElementById('card-aesop');
+  card.style.transition = 'border-color 0.3s ease-out, box-shadow 0.4s ease-out, opacity 0.3s ease-out';
+  card.style.borderColor = '#5a8a60'; // forest accent
+  // Glow ring
+  card.style.boxShadow = '0 0 0 0 rgba(90,154,90,0.55)';
+  setTimeout(() => {
+    card.style.boxShadow = '0 0 12px 4px rgba(90,154,90,0.35)';
+    setTimeout(() => {
+      card.style.boxShadow = '0 0 0 0 rgba(90,154,90,0)';
+      setTimeout(() => { card.style.boxShadow = ''; }, 500);
+    }, 250);
+  }, 20);
+  // Tracker collapses
+  const dsBlock = document.getElementById('death-aesop');
+  dsBlock.classList.remove('visible');
+  // Card dims to 0.85 — safe but still down
+  card.style.opacity = '0.85';
+
+  const badge = document.getElementById('aesop-state-badge');
+  badge.textContent = reason + ' (stable, 0 HP)';
+  badge.className = 'state-badge stable';
+  hideDmgPrompt('aesop');
+}
+
+function dsNat20(slug) {
+  if (slug !== 'aesop') return;
+  // Set HP to 1, clear all pips, wake character
+  aesop.hp = 1;
+  aesop.successes = 0;
+  aesop.failures = 0;
+  aesop.fallen = false;
+  updateAesopPips();
+  hideDmgPrompt('aesop');
+
+  const card = document.getElementById('card-aesop');
+  card.classList.remove('fallen', 'hp-zero');
+  card.style.animation = '';
+  card.style.opacity = '';
+
+  // Border: red → accent
+  card.style.transition = 'border-color 0.3s ease-out';
+  card.style.borderColor = '#5a8a60';
+
+  // Tracker collapses
+  document.getElementById('death-aesop').classList.remove('visible');
+
+  // Heal glow on HP
+  flashHP('hp-bar-aesop', 'heal');
+  renderAesopHP(); // HP now 1
+
+  const badge = document.getElementById('aesop-state-badge');
+  badge.textContent = 'NAT 20 — Awake (1 HP)';
+  badge.className = 'state-badge healthy';
+}
+
+function dsNat1(slug) {
+  if (slug !== 'aesop') return;
+  if (aesop.hp > 0 || aesop.fallen) return;
+  // Add 2 failures (staggered 60ms)
+  const prev = aesop.failures;
+  const firstFill = Math.min(prev + 1, 3);
+  const secondFill = Math.min(prev + 2, 3);
+
+  // First pip fills immediately
+  aesop.failures = firstFill;
+  updateAesopPips();
+
+  // Second pip fills after 60ms stagger
+  setTimeout(() => {
+    aesop.failures = secondFill;
+    updateAesopPips();
+    // ONE combined block shake (not two)
+    triggerBlockShake('death-aesop');
+    checkAesopResolution();
+  }, 60);
+}
+
+function dsStable(slug) {
+  if (slug !== 'aesop') return;
+  if (aesop.hp > 0) return;
+  // Clears pips, leaves HP at 0 — distinct from NAT20
+  aesop.successes = 0;
+  aesop.failures = 0;
+  updateAesopPips();
+  resolveAesopStabilize('✦ Stable');
+}
+
+// ─── Initiative & Round Counter ───────────────────────────────────────
+const initEntries = [
+  { id:'eoghan',   name:'Eoghan Sunderskeep', type:'pc', val:18, accent:'#6a8fa8' },
+  { id:'hob-a',    name:'Hobgoblin Captain',  type:'npc',val:14, accent:'#9a8a60' },
+  { id:'torvin',   name:'Torvin Ironclad',    type:'pc', val:12, accent:'#a06840' },
+  { id:'hob-b',    name:'Hob. Archer B',      type:'npc',val:8,  accent:'#9a8a60' },
+  { id:'mira',     name:'Mira Ashvale',       type:'pc', val:5,  accent:'#5a8a60' },
+];
+
+let activeTurnIdx = 0;
+let roundNum = 1;
+let initCleared = false;
+
+function renderInitiative() {
+  const list = document.getElementById('init-list');
+  if (initCleared) {
+    list.innerHTML = '<div class="init-empty">No initiative set.<br><small style="font-size:10px;">Start combat to track turns.</small></div>';
+    // Next Turn disabled state
+    document.getElementById('next-turn-btn').style.opacity = '0.35';
+    document.getElementById('next-turn-btn').style.pointerEvents = 'none';
+    return;
+  }
+  document.getElementById('next-turn-btn').style.opacity = '';
+  document.getElementById('next-turn-btn').style.pointerEvents = '';
+
+  let html = '';
+  initEntries.forEach((row, i) => {
+    const isActive = i === activeTurnIdx;
+    html += `<div class="init-row ${isActive ? 'active' : ''}">
+      <div class="init-indicator" style="background:${row.accent};"></div>
+      <span class="init-name" style="${isActive ? `color:${row.accent};` : ''}">${isActive ? '▸ ' : ''}${row.name}</span>
+      <span class="init-val">${row.val}</span>
+    </div>`;
+  });
+  list.innerHTML = html;
+}
+
+function renderRoundNum(mode) {
+  // mode: 'auto' (wrap → brighten) | 'manual' (no brighten) | 'instant'
+  const el = document.getElementById('round-num');
+  const isEmpty = initCleared;
+
+  el.textContent = isEmpty ? '–' : String(roundNum);
+  el.style.color = isEmpty ? 'var(--text-muted)' : 'var(--accent-bright)';
+
+  if (mode === 'auto') {
+    el.className = 'round-num auto-brighten';
+  } else if (mode === 'manual') {
+    el.className = 'round-num swapping';
+  } else {
+    el.className = 'round-num';
+  }
+  // Remove animation class after it plays so it can be re-triggered
+  setTimeout(() => { el.className = 'round-num'; }, 250);
+
+  // − stepper: disabled at round 1 or when empty
+  const decBtn = document.getElementById('round-dec');
+  decBtn.disabled = (roundNum <= 1 || isEmpty);
+  // + stepper: disabled when empty
+  document.getElementById('round-inc').disabled = isEmpty;
+}
+
+function nextTurn() {
+  if (initCleared) return;
+  const prevIdx = activeTurnIdx;
+  activeTurnIdx = (activeTurnIdx + 1) % initEntries.length;
+
+  // Wrap detection: wrapping from last→first is a real round completed
+  const wrapped = (prevIdx === initEntries.length - 1 && activeTurnIdx === 0);
+  if (wrapped) {
+    roundNum++;
+    renderRoundNum('auto'); // brighten flash — real round completed
+  }
+
+  renderInitiative();
+}
+
+function roundDecrement() {
+  if (roundNum <= 1 || initCleared) return;
+  roundNum--;
+  renderRoundNum('manual'); // same swap, NO brighten
+}
+
+function roundIncrement() {
+  if (initCleared) return;
+  roundNum++;
+  renderRoundNum('manual'); // manual increment — no brighten
+}
+
+function clearInitiative() {
+  // Resets both initiative list AND round to 1 — load-bearing correctness
+  initCleared = !initCleared; // toggle for demo purposes
+  if (initCleared) {
+    roundNum = 1;
+    renderRoundNum('instant');
+    renderInitiative();
+  } else {
+    // Restore
+    activeTurnIdx = 0;
+    roundNum = 1;
+    renderRoundNum('instant');
+    renderInitiative();
+  }
+  document.getElementById('init-clear-btn').textContent = initCleared ? 'Restore ↺' : 'Clear ×';
+}
+
+// ─── Init ─────────────────────────────────────────────────────────────
+renderAesopHP();
+renderInitiative();
+renderRoundNum('instant');
+</script>
+</body>
+</html>

@@ -366,7 +366,7 @@
   align-items: center;
   justify-content: space-between;
   gap: 6px;
-  margin-bottom: 14px;
+  margin-bottom: 6px;
 }
 
 /* ─── Round counter (Story 19) ───────────────────────────────────────────── */
@@ -374,10 +374,8 @@
 .init-round-counter {
   display: flex;
   align-items: center;
-  gap: 4px;
-  flex-shrink: 0;
-  margin-left: auto;
-  margin-right: 6px;
+  gap: 6px;
+  margin-bottom: 10px;
 }
 
 .init-round-micro-label {
@@ -390,11 +388,8 @@
 }
 
 .init-round-stepper {
-  /* 24px visual / 44px touch target */
-  width: 24px;
-  height: 24px;
-  min-width: 44px;
-  min-height: 44px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -15,7 +15,7 @@ import {
   initiativesEqual,
 } from "../features/dmDashboard/dashboardShared";
 import { PALETTES } from "../features/characterSheet/theme";
-import { cloneLiveValue, useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
+import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
 
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
 const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
@@ -68,11 +68,14 @@ export default function DmDashboardPage() {
   const requestSeqRef = useRef(0);
   const activeRequestCountRef = useRef(0);
   const partyRef = useRef(party);
+  const partyExpectedValuesRef = useRef(new Map());
+  const partyRosterExpectedRef = useRef(null);
   const initiativeServerRef = useRef(initiative);
   const initiativeExpectedRef = useRef(null);
   const initiativeWriteInFlightRef = useRef(false);
   const queuedInitiativeRef = useRef(null);
   const npcCombatServerRef = useRef(npcCombat);
+  const npcCombatExpectedRef = useRef(null);
 
   useEffect(() => {
     partyRef.current = party;
@@ -203,7 +206,48 @@ export default function DmDashboardPage() {
         getMapLibrary(),
       ]);
       if (requestId !== requestSeqRef.current) return;
-      setParty(partyData);
+      const expectedRoster = partyRosterExpectedRef.current;
+      let nextPartyData = partyData;
+      if (expectedRoster) {
+        const incomingSlugs = partyData.map((character) => character.slug);
+        const rosterMatches = incomingSlugs.length === expectedRoster.length
+          && incomingSlugs.every((slug, index) => slug === expectedRoster[index]);
+        if (rosterMatches) {
+          partyRosterExpectedRef.current = null;
+        } else {
+          nextPartyData = partyRef.current;
+        }
+      }
+
+      const currentPartyBySlug = new Map(partyRef.current.map((character) => [character.slug, character]));
+      const reconciledParty = nextPartyData.map((incomingCharacter) => {
+        const currentCharacter = currentPartyBySlug.get(incomingCharacter.slug);
+        const expectedFields = partyExpectedValuesRef.current.get(incomingCharacter.slug);
+        if (!currentCharacter || !expectedFields || expectedFields.size === 0) {
+          return incomingCharacter;
+        }
+
+        const mergedCharacter = { ...currentCharacter, ...incomingCharacter };
+        const remainingExpectedFields = new Map();
+        expectedFields.forEach((expectedValue, fieldName) => {
+          if (liveValuesEqual(incomingCharacter[fieldName], expectedValue)) {
+            mergedCharacter[fieldName] = incomingCharacter[fieldName];
+          } else {
+            mergedCharacter[fieldName] = currentCharacter[fieldName];
+            remainingExpectedFields.set(fieldName, expectedValue);
+          }
+        });
+
+        if (remainingExpectedFields.size > 0) {
+          partyExpectedValuesRef.current.set(incomingCharacter.slug, remainingExpectedFields);
+        } else {
+          partyExpectedValuesRef.current.delete(incomingCharacter.slug);
+        }
+
+        return mergedCharacter;
+      });
+
+      setParty(reconciledParty);
       initiativeServerRef.current = initData;
       if (initiativeExpectedRef.current && !initiativesEqual(initData, initiativeExpectedRef.current)) {
         // Keep optimistic turn state until server catches up or write fails.
@@ -214,7 +258,14 @@ export default function DmDashboardPage() {
         setInitiative(initData);
       }
       npcCombatServerRef.current = npcData;
-      setNpcCombat(npcData);
+      if (npcCombatExpectedRef.current && !liveValuesEqual(npcData, npcCombatExpectedRef.current)) {
+        // Keep optimistic NPC state until server catches up or write fails.
+      } else {
+        if (npcCombatExpectedRef.current && liveValuesEqual(npcData, npcCombatExpectedRef.current)) {
+          npcCombatExpectedRef.current = null;
+        }
+        setNpcCombat(npcData);
+      }
       setRollHistory(rollHistoryData.rolls || []);
       setMapLibrary(mapLibraryData || { activeMapId: null, activeMapView: null, maps: [] });
     } catch {
@@ -234,6 +285,17 @@ export default function DmDashboardPage() {
         .filter((update) => update && typeof update.slug === "string" && update.slug.trim())
         .map((update) => [update.slug, update])
     );
+
+    updatesBySlug.forEach((update, slug) => {
+      const expectedFields = partyExpectedValuesRef.current.get(slug) || new Map();
+      Object.entries(update).forEach(([fieldName, fieldValue]) => {
+        if (fieldName === "slug") return;
+        expectedFields.set(fieldName, cloneLiveValue(fieldValue));
+      });
+      if (expectedFields.size > 0) {
+        partyExpectedValuesRef.current.set(slug, expectedFields);
+      }
+    });
 
     setParty((current) => current.map((character) => {
       const update = updatesBySlug.get(character.slug);
@@ -280,6 +342,7 @@ export default function DmDashboardPage() {
     };
 
     if (optimistic) {
+      npcCombatExpectedRef.current = normalized;
       setNpcCombat(normalized);
     }
 
@@ -289,6 +352,7 @@ export default function DmDashboardPage() {
       queueDashboardRefresh(0);
       return true;
     } catch {
+      npcCombatExpectedRef.current = null;
       setNpcCombat(npcCombatServerRef.current);
       queueDashboardRefresh(0);
       return false;
@@ -429,6 +493,7 @@ export default function DmDashboardPage() {
 
     setInitiative(updatedInitiative);
     initiativeExpectedRef.current = updatedInitiative;
+    npcCombatExpectedRef.current = updatedNpcCombat;
     setNpcCombat(updatedNpcCombat);
 
     try {
@@ -441,6 +506,7 @@ export default function DmDashboardPage() {
       queueDashboardRefresh(0);
     } catch {
       initiativeExpectedRef.current = null;
+      npcCombatExpectedRef.current = null;
       setInitiative(initiativeServerRef.current);
       setNpcCombat(npcCombatServerRef.current);
       queueDashboardRefresh(0);
@@ -476,6 +542,7 @@ export default function DmDashboardPage() {
 
     setInitiative(updatedInitiative);
     initiativeExpectedRef.current = updatedInitiative;
+    npcCombatExpectedRef.current = updatedNpcCombat;
     setNpcCombat(updatedNpcCombat);
 
     try {
@@ -488,6 +555,7 @@ export default function DmDashboardPage() {
       queueDashboardRefresh(0);
     } catch {
       initiativeExpectedRef.current = null;
+      npcCombatExpectedRef.current = null;
       setInitiative(initiativeServerRef.current);
       setNpcCombat(npcCombatServerRef.current);
       queueDashboardRefresh(0);
@@ -520,6 +588,7 @@ export default function DmDashboardPage() {
     getDmParty(dmPassword)
       .then((data) => {
         setParty(data);
+        partyRosterExpectedRef.current = null;
         setAuthed(true);
         setAuthState("authed");
       })
@@ -565,6 +634,7 @@ export default function DmDashboardPage() {
 
     const nextMembers = [...members];
     setPartyRoster(nextMembers);
+    partyRosterExpectedRef.current = nextMembers;
 
     setParty((current) => current.filter((character) => nextMembers.includes(character.slug)));
 
@@ -594,6 +664,7 @@ export default function DmDashboardPage() {
       await fetchRosterContext();
       queueDashboardRefresh(0);
     } catch (err) {
+      partyRosterExpectedRef.current = null;
       await fetchRosterContext().catch(() => {});
       queueDashboardRefresh(0);
       throw err;

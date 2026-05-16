@@ -156,37 +156,36 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
     >
       <div className="init-header">
         <span className="label-ui" style={{ letterSpacing: "0.3em" }}>Initiative Order</span>
-
-        {/* Round counter — shows when entries exist, shows em dash when empty */}
-        <div className="init-round-counter">
-          <span className="init-round-micro-label">Round</span>
-          <button
-            className="init-round-stepper"
-            disabled={entries.length === 0 || currentRound <= 1}
-            aria-label="Decrease round"
-            onClick={() => {
-              if (currentRound <= 1) return;
-              const nextRound = currentRound - 1;
-              triggerRoundAnim("swapping");
-              onCommitInitiative({ entries: initiative.entries || [], activeTurnIndex, round: nextRound }, { optimistic: true });
-            }}
-          >−</button>
-          <span className="cc-round-num" ref={roundNumRef}>
-            {entries.length === 0 ? "–" : String(currentRound)}
-          </span>
-          <button
-            className="init-round-stepper"
-            disabled={entries.length === 0}
-            aria-label="Increase round"
-            onClick={() => {
-              const nextRound = currentRound + 1;
-              triggerRoundAnim("swapping");
-              onCommitInitiative({ entries: initiative.entries || [], activeTurnIndex, round: nextRound }, { optimistic: true });
-            }}
-          >+</button>
-        </div>
-
         <button onClick={handleClear} className="btn-init-clear">Clear ×</button>
+      </div>
+
+      {/* Round counter row — sits below header to avoid wrapping */}
+      <div className="init-round-counter">
+        <span className="init-round-micro-label">Round</span>
+        <button
+          className="init-round-stepper"
+          disabled={entries.length === 0 || currentRound <= 1}
+          aria-label="Decrease round"
+          onClick={() => {
+            if (currentRound <= 1) return;
+            const nextRound = currentRound - 1;
+            triggerRoundAnim("swapping");
+            onCommitInitiative({ entries: initiative.entries || [], activeTurnIndex, round: nextRound }, { optimistic: true });
+          }}
+        >−</button>
+        <span className="cc-round-num" ref={roundNumRef}>
+          {entries.length === 0 ? "–" : String(currentRound)}
+        </span>
+        <button
+          className="init-round-stepper"
+          disabled={entries.length === 0}
+          aria-label="Increase round"
+          onClick={() => {
+            const nextRound = currentRound + 1;
+            triggerRoundAnim("swapping");
+            onCommitInitiative({ entries: initiative.entries || [], activeTurnIndex, round: nextRound }, { optimistic: true });
+          }}
+        >+</button>
       </div>
 
       <button

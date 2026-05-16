@@ -1203,7 +1203,7 @@ export default function CharacterCard({
   const hasStatusRow = visibleConds.length > 0 || !!concentrationDisplay || !!char.inspiration;
   const spellSlotGroups = getSpellSlotGroups(char.spellSlots || []);
   const deathSaves = optimisticDeathSaves;
-  const showDeathSaves = hasHp && optimisticHp === 0;
+  const showDeathSaves = hasHp && optimisticHp === 0 && (!isStable || isFallen);
   const coinMode = char.coinMode || "gp";
   const displayCoin = optimisticCoin || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 };
   const coinEquivalent = formatGpEquivalent(displayCoin);
@@ -1475,7 +1475,32 @@ export default function CharacterCard({
               <ExternalLinkIcon color={cardPal.textMuted} />
             </Link>
           </div>
+        </div>
 
+        {/* Actions column: kebab menu + popover */}
+        <div className="cc-actions-col">
+          <button
+            onClick={() => setPopoverOpen((value) => !value)}
+            className={`cc-kebab-btn${popoverOpen ? " active" : ""}`}
+            title="More actions"
+          >⋯</button>
+
+          {popoverOpen && (
+            <QuickActionPopover
+              char={char}
+              pal={cardPal}
+              basePal={charPal}
+              onClose={() => setPopoverOpen(false)}
+              onUpdate={handlePopoverUpdate}
+              onOpenHpModal={setModalMode}
+              onCommitFields={commitSessionFields}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* Full-width section below header */}
+      <div className="cc-card-body">
           {/* HP row */}
           {hasHp && (
             <div className="cc-hp-row">
@@ -1799,28 +1824,6 @@ export default function CharacterCard({
             })()}
             </div>
           </div>
-        </div>
-
-        {/* Actions column: kebab menu + popover */}
-        <div className="cc-actions-col">
-          <button
-            onClick={() => setPopoverOpen((value) => !value)}
-            className={`cc-kebab-btn${popoverOpen ? " active" : ""}`}
-            title="More actions"
-          >⋯</button>
-
-          {popoverOpen && (
-            <QuickActionPopover
-              char={char}
-              pal={cardPal}
-              basePal={charPal}
-              onClose={() => setPopoverOpen(false)}
-              onUpdate={handlePopoverUpdate}
-              onOpenHpModal={setModalMode}
-              onCommitFields={commitSessionFields}
-            />
-          )}
-        </div>
       </div>
 
       <NotesStrip

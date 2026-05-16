@@ -54,10 +54,14 @@
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 10px;
-  padding: 12px 14px 10px 18px;
+  padding: 12px 14px 4px 18px;
   align-items: start;
   position: relative;
   z-index: 1;
+}
+
+.cc-card-body {
+  padding: 0 14px 10px 18px;
 }
 
 /* ─── Portrait circle ────────────────────────────────────────────────────── */
