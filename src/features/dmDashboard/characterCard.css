@@ -247,50 +247,269 @@
   color: var(--pal-accent-bright);
 }
 
-/* ─── Death saves ────────────────────────────────────────────────────────── */
+/* ─── Death saves (Story 19 — authoritative interactive tracker) ─────────── */
 
-.cc-death-saves {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  margin-bottom: 2px;
-  border-radius: 4px;
-  background: rgba(192, 60, 60, 0.08);
-  border-top: 1px solid rgba(192, 80, 80, 0.2);
+/* Slow pulsing red glow on the whole card when HP = 0 */
+@keyframes deathGlow {
+  0%, 100% { box-shadow: 0 0 8px 2px rgba(192,96,96,0.12), 0 0 0 1px rgba(192,96,96,0.35); }
+  50%       { box-shadow: 0 0 22px 7px rgba(192,96,96,0.32), 0 0 0 1px rgba(192,96,96,0.65); }
 }
 
-.cc-death-saves-label {
+.cc-card.hp-zero {
+  border-color: rgba(192, 96, 96, 0.55) !important;
+  animation: deathGlow 3.5s ease-in-out infinite;
+}
+
+/* Tracker block — mounts at HP=0, animates in/out */
+.cc-death-saves {
+  margin: 0 0 8px;
+  background: rgba(192, 96, 96, 0.06);
+  border-left: 2px solid #c06060;
+  border-radius: 0 3px 3px 0;
+  padding: 6px 10px;
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+.cc-death-saves.visible {
+  max-height: 160px;
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Block shake on failure mark — applied via JS class toggle */
+.cc-death-saves.shake {
+  animation: dmDeathSaveShake 0.3s ease-out;
+}
+
+/* Tombstone: pips frozen, no more interaction */
+.cc-death-saves.frozen {
+  pointer-events: none;
+}
+
+/* FALLEN overlay label */
+.cc-fallen-label {
   font-family: var(--font-ui);
-  font-size: 10px;
-  letter-spacing: 0.18em;
+  font-size: 12px;
+  letter-spacing: 0.3em;
   text-transform: uppercase;
   color: #c06060;
-  flex: 1;
+  text-align: center;
+  padding: 4px 0 2px;
+  animation: dmConditionIn 0.3s ease-out;
 }
 
-.cc-death-saves-sep {
-  font-family: var(--font-ui);
-  font-size: 9px;
-  color: var(--pal-text-muted);
-  margin: 0 4px;
-}
-
-.cc-death-pips {
+/* Row 1: label + NAT20/NAT1 shortcuts */
+.cc-ds-main-row {
   display: flex;
   align-items: center;
-  gap: 3px;
+  gap: 0;
+  margin-bottom: 0;
 }
 
-.cc-player-reported {
-  font-family: var(--font-body);
-  font-style: italic;
-  font-size: 9px;
+.cc-ds-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
   color: var(--pal-text-muted);
-  text-align: right;
-  margin-bottom: 8px;
-  padding-right: 2px;
-  letter-spacing: 0.02em;
+  flex-shrink: 0;
+  margin-right: 8px;
+}
+
+.cc-ds-shortcuts {
+  display: flex;
+  gap: 5px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+.cc-ds-shortcut {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 7px 8px;
+  min-height: 44px;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.cc-ds-shortcut.nat20:hover {
+  color: #5a9a5a;
+  border-color: rgba(90, 154, 90, 0.5);
+  background: rgba(90, 154, 90, 0.07);
+}
+
+.cc-ds-shortcut.nat1:hover {
+  color: #c06060;
+  border-color: rgba(192, 96, 96, 0.5);
+  background: rgba(192, 96, 96, 0.07);
+}
+
+/* Row 2: pip row (44px touch target height) */
+.cc-ds-pip-row {
+  display: flex;
+  align-items: center;
+  padding: 8px 0 0;
+  min-height: 44px;
+}
+
+/* pip cluster */
+.cc-ds-pip-cluster {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+/* vertical rule divider between success / failure clusters */
+.cc-ds-divider {
+  width: 1px;
+  height: 14px;
+  background: var(--pal-border);
+  flex-shrink: 0;
+  margin: 0 7px;
+}
+
+/* individual pip — 14px visible, 44px touch zone via parent row */
+.cc-ds-pip {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
+  position: relative;
+}
+
+.cc-ds-pip.success-empty {
+  background: transparent;
+  border-color: rgba(90, 154, 90, 0.4);
+}
+
+.cc-ds-pip.success-filled {
+  background: #5a9a5a;
+  border-color: #5a9a5a;
+  /* no glow on successes — asymmetry vs failures is the point */
+  animation: dmConditionIn 0.18s ease-out;
+}
+
+.cc-ds-pip.failure-empty {
+  background: transparent;
+  border-color: rgba(192, 96, 96, 0.35);
+}
+
+.cc-ds-pip.failure-filled {
+  background: #c06060;
+  border-color: #c06060;
+  box-shadow: 0 0 4px rgba(192, 96, 96, 0.55);
+  animation: dmConditionIn 0.18s ease-out;
+}
+
+/* Row 3: Stable sub-line */
+.cc-ds-stable-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 5px;
+}
+
+.cc-ds-stable-btn {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 5px 10px;
+  min-height: 32px;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.cc-ds-stable-btn:hover {
+  color: #5a9a5a;
+  border-color: rgba(90, 154, 90, 0.5);
+  background: rgba(90, 154, 90, 0.07);
+}
+
+/* ─── Damage-at-0 inline prompt ──────────────────────────────────────────── */
+
+.cc-dmg-at-zero-prompt {
+  margin: 0 0 8px;
+  background: rgba(192, 96, 96, 0.08);
+  border: 1px solid rgba(192, 96, 96, 0.25);
+  border-radius: 3px;
+  padding: 8px 10px;
+  animation: dmgPromptIn 0.18s ease-out;
+}
+
+.cc-dmg-at-zero-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: rgba(192, 96, 96, 0.8);
+  margin-bottom: 7px;
+}
+
+.cc-dmg-at-zero-btns {
+  display: flex;
+  gap: 6px;
+}
+
+.cc-dmg-at-zero-btn {
+  flex: 1;
+  padding: 7px 6px;
+  min-height: 36px;
+  background: transparent;
+  border: 1px solid rgba(192, 96, 96, 0.3);
+  border-radius: 3px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.cc-dmg-at-zero-btn:hover {
+  border-color: rgba(192, 96, 96, 0.55);
+  color: #e08888;
+  background: rgba(192, 96, 96, 0.1);
+}
+
+.cc-dmg-at-zero-btn.default-focus {
+  border-color: rgba(192, 96, 96, 0.55);
+  color: #e08888;
+  background: rgba(192, 96, 96, 0.12);
+}
+
+.cc-dmg-at-zero-btn.no-failure {
+  border-color: var(--pal-border);
+}
+
+.cc-dmg-at-zero-btn.no-failure:hover {
+  border-color: var(--pal-border);
+  color: var(--pal-text-muted);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.cc-dmg-btn-num {
+  font-size: 1.35em;
+  line-height: 1;
 }
 
 /* ─── Status row (conditions, concentration, inspiration) ────────────────── */

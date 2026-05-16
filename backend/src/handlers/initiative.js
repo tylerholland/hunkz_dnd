@@ -24,6 +24,7 @@ exports.handler = async (event) => {
     await saveInitiativeState({
       entries: body.entries,
       activeTurnIndex: body.activeTurnIndex ?? 0,
+      round: body.round ?? 1,
     });
 
     return ok({ success: true });

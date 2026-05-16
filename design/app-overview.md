@@ -338,6 +338,9 @@ A dedicated DM session-management view accessible at `/dm`.
 - Vellum characters receive a special dark-dashboard treatment so they remain readable on Ocean / other dark campaign themes
 - Portrait: 52px circle with image or palette-colored initial letter
 - HP display: `hpCurrent / hpMax` numerically; temp HP badge if `tempHP > 0`; card border turns red and HP number turns `#c06060` when below 20%
+- **0 HP state** (Story 19): when `hpCurrent === 0`, the card adds a slow-pulsing red glow (`deathGlow` keyframe in `characterCard.css`), and the death save tracker mounts below the temp HP row with an animated entrance (max-height + opacity transition).
+- **Death save tracker** (Story 19): mounts only when `hpCurrent === 0`. Replaces the old read-only dashed-pip stub. DM-authoritative — solid borders, no "player-reported" caption. Three success pips (left, green `#5a9a5a`) + vertical rule + three failure pips (right, red `#c06060` with glow). Tap an empty pip to fill up to that index; tap a filled pip to correct it back down. Writes `deathSaves: { successes, failures }` via `patchSession` (ADR-005, no auth). Failure fills trigger `dmDeathSaveShake`. NAT20 sets `hpCurrent = 1` and clears saves in one atomic write. NAT1 adds 2 failures (60ms stagger). "✦ Stable" clears saves at 0 HP (card dims to 0.85 opacity). 3 failures → FALLEN: card dims to 0.6 opacity, name strikethrough, "FALLEN" label fades in, tracker frozen. Reversible by tapping a failure pip back down.
+- **Damage-at-0 inline prompt** (Story 19): when damage lands on a character already at 0 HP (via modal or debounced stepper), an inline row appears: `[+1 Failure] [Crit: +2] [No Failure]`. The numbers "1" and "2" render at 1.35em. Dismisses on button press.
 - **Inline ±1 HP stepper**: `−` and `+` buttons flanking the HP bar directly on the card. Tapping adjusts HP by 1 immediately (optimistic update). Hold-to-repeat: 500ms initial delay, 80ms repeat interval, using `pointerdown`/`pointerup`/`pointercancel` events. **Debounced flush**: accumulates taps in `pendingDeltaRef` (a `useRef`), fires one `patchSession` 300ms after the last tap — no per-tick API calls. On error, reverts the displayed HP. **Delta indicator**: floating `+N` / `−N` label using the character's `pal.gem` color, animated upward via `@keyframes hpDeltaFloat` injected into the shared `DASHBOARD_CSS` style block.
 - **⚔ Damage / ✦ Heal buttons**: always visible below the HP stepper row; each opens a focused `DamageHealModal`:
   - Large number display + `−` / `+` stepper (hold-to-repeat, same 500ms/80ms timing)
@@ -363,12 +366,13 @@ A dedicated DM session-management view accessible at `/dm`.
 **Initiative tracker** (right column, 300px):
 - Entries persist in explicit array order; the order shown is the order stored
 - "Next Turn" advances `activeTurnIndex` mod entries length using an optimistic local update, then confirms with `PUT /initiative`
+- **Round counter** (Story 19): shown in the initiative header row alongside "Initiative Order" / "Clear ×". Shows `1` when entries exist, `–` (em dash) when empty. Auto-increments with a brief `accentBright` brighten animation each time "Next Turn" wraps from the last entry back to the first. Manual ± steppers for correction (no hold-to-repeat; no auto-increment animation on manual changes). "Clear ×" resets round to 1 in the same write. `round` lives on the `slug:"initiative"` sentinel item, written atomically with `entries`/`activeTurnIndex`.
 - PCs can be added only from the current party roster
 - Manual combatant form is reserved for allies, summons, or scene actors that do not need an enemy card
 - Reorder/remove controls are hidden by default and appear only after toggling `Modify Order`
-- "Clear ×" resets to empty
+- "Clear ×" resets to empty (and resets round to 1)
 - Empty state: "No initiative set — add combatants below"
-- State persisted in DynamoDB (`slug: "initiative"` item)
+- State persisted in DynamoDB (`slug: "initiative"` item) — now includes `round` field (default 1)
 
 **NPC combat section**:
 - Separate column/section for non-player combatants tracked outside the character roster

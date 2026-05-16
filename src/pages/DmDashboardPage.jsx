@@ -184,6 +184,7 @@ export default function DmDashboardClassicPage() {
     const normalized = {
       entries: nextInitiative.entries || [],
       activeTurnIndex: nextInitiative.activeTurnIndex ?? 0,
+      round: Math.max(1, nextInitiative.round ?? 1),
     };
 
     queuedInitiativeRef.current = normalized;
@@ -250,7 +251,7 @@ export default function DmDashboardClassicPage() {
     try {
       await Promise.all([
         putNpcCombat(dmPassword, { npcs: updatedNpcs }),
-        putInitiative(dmPassword, { entries: updatedEntries, activeTurnIndex: initiative.activeTurnIndex ?? 0 }),
+        putInitiative(dmPassword, { entries: updatedEntries, activeTurnIndex: initiative.activeTurnIndex ?? 0, round: initiative.round ?? 1 }),
       ]);
       queueDashboardRefresh(0);
     } catch {}
@@ -303,6 +304,7 @@ export default function DmDashboardClassicPage() {
     const updatedInitiative = {
       entries: workingEntries,
       activeTurnIndex: nextActiveTurnIndex < 0 ? 0 : nextActiveTurnIndex,
+      round: initiative.round ?? 1,
     };
     const updatedNpcCombat = {
       npcs: (npcCombat.npcs || []).map((value) =>
@@ -350,6 +352,7 @@ export default function DmDashboardClassicPage() {
     const updatedInitiative = {
       entries: updatedEntries,
       activeTurnIndex: nextActiveTurnIndex < 0 ? 0 : nextActiveTurnIndex,
+      round: initiative.round ?? 1,
     };
     const updatedNpcCombat = {
       npcs: (npcCombat.npcs || []).map((value) =>

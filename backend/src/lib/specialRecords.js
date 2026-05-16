@@ -6,6 +6,7 @@ function normalizeInitiativeRecord(item) {
   return {
     entries: item?.entries ?? [],
     activeTurnIndex: item?.activeTurnIndex ?? 0,
+    round: Math.max(1, item?.round ?? 1),
   };
 }
 
@@ -95,10 +96,11 @@ async function getInitiativeState() {
   return normalizeInitiativeRecord(item);
 }
 
-async function saveInitiativeState({ entries, activeTurnIndex }) {
+async function saveInitiativeState({ entries, activeTurnIndex, round }) {
   await putSpecialRecord(INITIATIVE_SLUG, {
     entries,
     activeTurnIndex: activeTurnIndex ?? 0,
+    round: Math.max(1, round ?? 1),
   });
 }
 

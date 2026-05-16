@@ -1,4 +1,4 @@
-import { useContext, useState } from "react";
+import { useContext, useRef, useState } from "react";
 import { PALETTES } from "../characterSheet/theme";
 import {
   PalCtx,
@@ -31,9 +31,20 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
   const entries = initiative.entries || [];
   const activeTurnIndex = initiative.activeTurnIndex ?? 0;
   const activeEntryId = entries[activeTurnIndex]?.id ?? null;
+  const currentRound = initiative.round ?? 1;
+  const roundNumRef = useRef(null);
 
   const existingSlugs = new Set((initiative.entries || []).map((entry) => entry.slug).filter(Boolean));
   const availablePCs = (party || []).filter((character) => !existingSlugs.has(character.slug));
+
+  function triggerRoundAnim(className) {
+    const el = roundNumRef.current;
+    if (!el) return;
+    el.classList.remove("swapping", "auto-brighten");
+    void el.offsetWidth; // force reflow to restart animation
+    el.classList.add(className);
+    setTimeout(() => el.classList.remove(className), 450);
+  }
 
   function getActiveIndex(updatedEntries) {
     if (!activeEntryId) return 0;
@@ -45,13 +56,19 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
     return {
       entries: updatedEntries,
       activeTurnIndex: getActiveIndex(updatedEntries),
+      round: currentRound,
     };
   }
 
   async function handleNextTurn() {
     if (entries.length === 0) return;
     const next = (activeTurnIndex + 1) % entries.length;
-    await onCommitInitiative({ entries: initiative.entries || [], activeTurnIndex: next }, { optimistic: true });
+    const wrapped = next === 0 && entries.length > 0;
+    const nextRound = wrapped ? currentRound + 1 : currentRound;
+    if (wrapped) {
+      triggerRoundAnim("auto-brighten");
+    }
+    await onCommitInitiative({ entries: initiative.entries || [], activeTurnIndex: next, round: nextRound }, { optimistic: true });
   }
 
   async function handleAddPC(char) {
@@ -92,14 +109,16 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
 
   async function handleRemove(id) {
     const updated = (initiative.entries || []).filter((entry) => entry.id !== id);
+    const nextRound = updated.length === 0 ? 1 : currentRound;
     await onCommitInitiative({
       entries: updated,
       activeTurnIndex: updated.length === 0 ? 0 : getActiveIndex(updated),
+      round: nextRound,
     }, { optimistic: true });
   }
 
   async function handleClear() {
-    await onCommitInitiative({ entries: [], activeTurnIndex: 0 }, { optimistic: true });
+    await onCommitInitiative({ entries: [], activeTurnIndex: 0, round: 1 }, { optimistic: true });
   }
 
   async function moveEntry(entryId, delta) {
@@ -137,6 +156,36 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
     >
       <div className="init-header">
         <span className="label-ui" style={{ letterSpacing: "0.3em" }}>Initiative Order</span>
+
+        {/* Round counter — shows when entries exist, shows em dash when empty */}
+        <div className="init-round-counter">
+          <span className="init-round-micro-label">Round</span>
+          <button
+            className="init-round-stepper"
+            disabled={entries.length === 0 || currentRound <= 1}
+            aria-label="Decrease round"
+            onClick={() => {
+              if (currentRound <= 1) return;
+              const nextRound = currentRound - 1;
+              triggerRoundAnim("swapping");
+              onCommitInitiative({ entries: initiative.entries || [], activeTurnIndex, round: nextRound }, { optimistic: true });
+            }}
+          >−</button>
+          <span className="cc-round-num" ref={roundNumRef}>
+            {entries.length === 0 ? "–" : String(currentRound)}
+          </span>
+          <button
+            className="init-round-stepper"
+            disabled={entries.length === 0}
+            aria-label="Increase round"
+            onClick={() => {
+              const nextRound = currentRound + 1;
+              triggerRoundAnim("swapping");
+              onCommitInitiative({ entries: initiative.entries || [], activeTurnIndex, round: nextRound }, { optimistic: true });
+            }}
+          >+</button>
+        </div>
+
         <button onClick={handleClear} className="btn-init-clear">Clear ×</button>
       </div>
 

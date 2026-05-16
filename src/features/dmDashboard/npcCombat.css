@@ -365,7 +365,81 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 6px;
   margin-bottom: 14px;
+}
+
+/* ─── Round counter (Story 19) ───────────────────────────────────────────── */
+
+.init-round-counter {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+  margin-left: auto;
+  margin-right: 6px;
+}
+
+.init-round-micro-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  flex-shrink: 0;
+}
+
+.init-round-stepper {
+  /* 24px visual / 44px touch target */
+  width: 24px;
+  height: 24px;
+  min-width: 44px;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.init-round-stepper:hover:not(:disabled) {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+.init-round-stepper:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+/* The round number itself */
+.cc-round-num {
+  font-family: var(--font-display);
+  font-size: 18px;
+  color: var(--pal-accent-bright);
+  min-width: 28px;
+  text-align: center;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ─── Round counter animation classes (keyframes in dashboard.css) ─────── */
+
+/* applied briefly after auto-increment (via JS — class toggled, then removed after animation) */
+.cc-round-num.auto-brighten {
+  animation: roundNumIn 0.2s ease-out, roundBrighten 0.4s ease-out;
+}
+
+/* applied on manual ± or clear (same swap, no brighten) */
+.cc-round-num.swapping {
+  animation: roundNumIn 0.2s ease-out;
 }
 
 /* "Clear ×" text button */

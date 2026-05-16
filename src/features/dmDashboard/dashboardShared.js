@@ -163,6 +163,7 @@ export function hpBarColor(pct) {
 export function initiativesEqual(a, b) {
   if (!a || !b) return false;
   if ((a.activeTurnIndex ?? 0) !== (b.activeTurnIndex ?? 0)) return false;
+  if ((a.round ?? 1) !== (b.round ?? 1)) return false;
   const aEntries = a.entries || [];
   const bEntries = b.entries || [];
   if (aEntries.length !== bEntries.length) return false;

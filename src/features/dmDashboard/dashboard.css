@@ -60,6 +60,82 @@
   80%      { transform: translateX(2px); }
 }
 
+/* ─── Story 19 keyframes (Death saves, round counter, fallen state) ─────── */
+
+/* Death-save tracker block mount (max-height + opacity) */
+@keyframes dsBlockIn {
+  from { opacity: 0; max-height: 0; }
+  to   { opacity: 1; max-height: 160px; }
+}
+
+/* Death-save tracker block unmount */
+@keyframes dsBlockOut {
+  from { opacity: 1; max-height: 160px; }
+  to   { opacity: 0; max-height: 0; }
+}
+
+/* Stabilize glow ring (NAT20 / Stable): green box-shadow radiate */
+@keyframes stabilizeGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(90,154,90,0.55); }
+  50%  { box-shadow: 0 0 12px 4px rgba(90,154,90,0.35); }
+  100% { box-shadow: 0 0 0 0 rgba(90,154,90,0); }
+}
+
+/* HP number heal glow for NAT20 */
+@keyframes hpHealNum {
+  0%   { text-shadow: 0 0 0 transparent; }
+  40%  { text-shadow: 0 0 8px rgba(90,154,90,0.8); }
+  100% { text-shadow: none; }
+}
+
+/* Round counter number swap: slides in from above */
+@keyframes roundNumIn {
+  from { transform: translateY(-4px); opacity: 0.4; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+
+/* Round counter auto-increment brighten flash */
+@keyframes roundBrighten {
+  0%   { color: var(--pal-accent-bright); }
+  60%  { color: #d8eef8; }
+  100% { color: var(--pal-accent-bright); }
+}
+
+/* FALLEN card dim (opacity → 0.6) */
+@keyframes cardFallen {
+  from { opacity: 1; }
+  to   { opacity: 0.6; }
+}
+
+/* Damage-at-0 prompt slide-in */
+@keyframes dmgPromptIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Story 19 animation utility classes ────────────────────────────────── */
+
+.cc-round-num.swapping {
+  animation: roundNumIn 0.2s ease-out;
+}
+
+.cc-round-num.auto-brighten {
+  animation: roundNumIn 0.2s ease-out, roundBrighten 0.4s ease-out;
+}
+
+.cc-card.fallen {
+  animation: cardFallen 0.6s ease-in forwards;
+  pointer-events: none;
+}
+
+.cc-card.stabilize-glow {
+  animation: stabilizeGlow 0.4s ease-out;
+}
+
+.cc-hp-heal-num {
+  animation: hpHealNum 0.5s ease-out forwards;
+}
+
 @keyframes hpDeltaFloat {
   0%   { opacity: 1; transform: translateY(0); }
   70%  { opacity: 1; transform: translateY(-18px); }

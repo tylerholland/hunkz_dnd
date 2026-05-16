@@ -20,6 +20,7 @@ const SESSION_FIELDS = [
   "hitDiceCurrent",
   "xpCurrent",
   "coin",
+  "deathSaves",
 ];
 
 exports.handler = async (event) => {
