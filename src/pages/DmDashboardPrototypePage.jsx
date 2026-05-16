@@ -22,8 +22,8 @@ const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
 const MAP_TRANSITION_MS = 320;
 const CARD_FLIP_MS = 460;
 const CARD_COMPACT_MS = 240;
-const PANEL_TRANSITION_MS = 460;
-const DICE_TRANSITION_MS = 280;
+const DICE_EXIT_MS = 240;
+const DICE_ENTER_MS = 420;
 
 export default function DmDashboardPage() {
 
@@ -718,38 +718,40 @@ export default function DmDashboardPage() {
       setCombatMode(true);
       setMapCollapsed(true);
       setNonCombatChromeVisible(false);
+      setDiceVisible(false);
       queueTransitionStep(() => {
         triggerCardFlip(true);
       }, MAP_TRANSITION_MS);
       queueTransitionStep(() => {
-        setDiceVisible(false);
-      }, MAP_TRANSITION_MS + CARD_FLIP_MS);
-      queueTransitionStep(() => {
         setDiceLayoutActive(true);
-        setDiceVisible(true);
+      }, MAP_TRANSITION_MS + DICE_EXIT_MS);
+      queueTransitionStep(() => {
         setCardsCompact(true);
         setCombatPanelsVisible(true);
-      }, MAP_TRANSITION_MS + CARD_FLIP_MS + DICE_TRANSITION_MS);
+      }, MAP_TRANSITION_MS + CARD_FLIP_MS);
+      queueTransitionStep(() => {
+        setDiceVisible(true);
+      }, MAP_TRANSITION_MS + CARD_FLIP_MS + 120);
       return;
     }
 
     setCombatMode(false);
     setCombatPanelsVisible(false);
-    queueTransitionStep(() => {
-      setDiceVisible(false);
-    }, PANEL_TRANSITION_MS);
+    setDiceVisible(false);
     queueTransitionStep(() => {
       setDiceLayoutActive(false);
-      setDiceVisible(true);
       setCardsCompact(false);
-    }, PANEL_TRANSITION_MS + DICE_TRANSITION_MS);
+    }, DICE_EXIT_MS);
     queueTransitionStep(() => {
       triggerCardFlip(false);
-    }, PANEL_TRANSITION_MS + DICE_TRANSITION_MS + CARD_COMPACT_MS);
+    }, DICE_EXIT_MS + CARD_COMPACT_MS);
+    queueTransitionStep(() => {
+      setDiceVisible(true);
+    }, DICE_EXIT_MS + CARD_COMPACT_MS + 120);
     queueTransitionStep(() => {
       setMapCollapsed(false);
       setNonCombatChromeVisible(true);
-    }, PANEL_TRANSITION_MS + DICE_TRANSITION_MS + CARD_COMPACT_MS + CARD_FLIP_MS);
+    }, DICE_EXIT_MS + CARD_COMPACT_MS + 120 + DICE_ENTER_MS);
   }
 
   if (!authed) {
