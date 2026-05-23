@@ -1,0 +1,2492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NPC Library — Design Prototype (Story 24)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Ocean palette (dashboard chrome) ── */
+    :root {
+      --bg: #0d0f14;
+      --surface: rgba(18,32,48,0.6);
+      --surface-solid: #111e2c;
+      --border: rgba(100,130,160,0.18);
+      --border-vis: rgba(100,130,160,0.32);
+      --accent: #6a8fa8;
+      --accent-bright: #a0c0d0;
+      --accent-dim: #1e3a4e;
+      --text: #c8bfaf;
+      --text-body: #b0a898;
+      --text-muted: #3a5a6a;
+      --glow1: rgba(20,45,80,0.4);
+      --glow2: rgba(15,35,60,0.3);
+      --gem: #8ab4c8;
+      --font-display: 'Cinzel', Georgia, serif;
+      --font-body: 'Crimson Text', Georgia, serif;
+      --font-ui: 'IM Fell English', Georgia, serif;
+
+      /* NPC neutral palette */
+      --npc-accent: #7a7060;
+      --npc-bright: #b0a080;
+      --npc-surface: rgba(30,26,20,0.6);
+      --npc-surface-solid: #1e1a14;
+      --npc-border: rgba(120,110,90,0.3);
+      --npc-border-vis: rgba(120,110,90,0.45);
+      --npc-gem: #a09080;
+      --npc-chip-bg: rgba(40,36,28,0.7);
+      --npc-action-border: rgba(120,110,90,0.35);
+      --npc-track: rgba(40,36,28,0.85);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Prototype page header ── */
+    .proto-header {
+      background: rgba(8,12,18,0.95);
+      border-bottom: 1px solid var(--border-vis);
+      padding: 18px 32px 14px;
+      position: sticky;
+      top: 0;
+      z-index: 400;
+    }
+    .proto-header-inner { max-width: 1100px; margin: 0 auto; display: flex; align-items: baseline; gap: 20px; }
+    .proto-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.1em;
+      color: var(--accent-bright);
+    }
+    .proto-meta {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .proto-date { margin-left: auto; }
+
+    /* ── Annotation styles ── */
+    .callout {
+      position: absolute;
+      background: rgba(160,192,208,0.09);
+      border: 1px solid rgba(160,192,208,0.3);
+      border-radius: 3px;
+      color: #a0c0d0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      padding: 4px 9px;
+      pointer-events: none;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .callout-new {
+      background: rgba(20,50,80,0.88);
+      border: 1px solid rgba(80,140,200,0.48);
+      border-radius: 3px;
+      color: #80c8f0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      padding: 4px 9px;
+      display: inline-block;
+      margin: 0 4px 4px 0;
+    }
+    .callout-new::before { content: "★ "; opacity: 0.8; color: #a0d8f0; }
+
+    /* ── Scenario section layout ── */
+    .page-body { max-width: 1100px; margin: 0 auto; padding: 36px 32px 80px; }
+
+    .scenario-section { margin-bottom: 64px; }
+    .scenario-heading {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      color: var(--accent-bright);
+      margin-bottom: 6px;
+    }
+    .scenario-desc {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .scenario-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+    @media (max-width: 800px) {
+      .scenario-grid { grid-template-columns: 1fr; }
+    }
+
+    .scenario-card-wrap {
+      position: relative;
+    }
+    .scenario-label {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* ═══════════════════════════════════════
+       ADD ENEMY FORM
+    ═══════════════════════════════════════ */
+    .add-npc-form {
+      background: rgba(30,26,20,0.4);
+      border: 1px dashed rgba(120,110,90,0.35);
+      border-radius: 5px;
+      padding: 14px;
+    }
+    .add-npc-title {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .add-npc-fields { display: flex; gap: 8px; margin-bottom: 10px; }
+    .npc-text-input {
+      flex: 1;
+      background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .npc-text-input:focus { border-color: var(--npc-accent); }
+    .npc-num-input {
+      width: 72px;
+      background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 15px;
+      padding: 7px 8px;
+      outline: none;
+      text-align: center;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+    .npc-num-input::-webkit-outer-spin-button,
+    .npc-num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .npc-num-input:focus { border-color: var(--npc-accent); }
+
+    .count-stepper-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .count-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+    }
+    .count-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 3px;
+      border: 1px solid var(--npc-border-vis);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .count-btn:hover { border-color: var(--npc-accent); color: var(--npc-bright); }
+    .count-val {
+      font-family: var(--font-display);
+      font-size: 16px;
+      color: var(--text);
+      min-width: 20px;
+      text-align: center;
+    }
+
+    .add-npc-btn {
+      width: 100%;
+      background: rgba(122,112,96,0.15);
+      border: 1px solid var(--npc-accent);
+      border-radius: 3px;
+      color: var(--npc-bright);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 9px 0;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 10px;
+    }
+    .add-npc-btn:hover { background: rgba(122,112,96,0.28); }
+
+    .form-helper-text {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 8px;
+    }
+
+    /* ── Library toggle ── */
+    .lib-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      padding: 8px 0 4px;
+      cursor: pointer;
+      /* min 44px touch target via padding on parent */
+      user-select: none;
+      transition: color 0.12s;
+    }
+    .lib-toggle:hover .lib-toggle-label { color: var(--npc-bright); }
+    .lib-toggle:hover .lib-toggle-diamond { color: var(--npc-accent); }
+    .lib-toggle-diamond {
+      font-size: 11px;
+      color: var(--npc-accent);
+      transition: transform 0.09s ease-out, color 0.09s ease-out;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .lib-toggle-diamond.open { transform: rotate(45deg); }
+    .lib-toggle-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      transition: color 0.09s ease-out;
+    }
+
+    /* ── Library picker panel ── */
+    .lib-picker-wrap {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 160ms ease-in, opacity 160ms ease-in;
+    }
+    .lib-picker-wrap.open {
+      max-height: 480px;
+      opacity: 1;
+      transition: max-height 220ms cubic-bezier(0.34, 1.0, 0.64, 1), opacity 220ms ease-out;
+    }
+
+    .lib-picker {
+      margin-top: 6px;
+      background: rgba(22,18,13,0.85);
+      border: 1px solid var(--npc-action-border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .lib-picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 6px 10px 5px;
+      border-bottom: 1px solid var(--npc-action-border);
+    }
+    .lib-picker-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      cursor: pointer;
+      padding: 4px 0;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.12s;
+    }
+    .lib-picker-close:hover { color: var(--text); }
+
+    .lib-picker-rows {
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    /* ── Library row ── */
+    .lib-row {
+      position: relative;
+      border-bottom: 1px solid var(--npc-action-border);
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-2px);
+      transition: background 0.12s;
+    }
+    .lib-row:last-child { border-bottom: none; }
+
+    /* Stagger fade-in: JS applies .lib-row-visible which drives the animation */
+    .lib-row.lib-row-visible {
+      animation: rowFadeIn 120ms ease-out forwards;
+    }
+    @keyframes rowFadeIn {
+      from { opacity: 0; transform: translateY(-2px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* New row entrance (added via + New library entry) */
+    @keyframes rowReveal {
+      from { opacity: 0; max-height: 0; transform: translateY(-4px); }
+      to   { opacity: 1; max-height: 100px; transform: translateY(0); }
+    }
+    .lib-row.lib-row-new-entry {
+      animation: rowReveal 220ms ease-out forwards;
+    }
+
+    .lib-row-main {
+      display: flex;
+      align-items: flex-start;
+      /* Change 1: increased bottom padding so ability lines breathe */
+      padding: 10px 12px 10px;
+      cursor: pointer;
+      gap: 8px;
+    }
+    .lib-row:hover .lib-row-main { background: var(--npc-chip-bg); }
+    .lib-row-text { flex: 1; min-width: 0; }
+    .lib-row-name {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      color: var(--npc-bright);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 3px;
+    }
+    /* Change 1: line-height 1.45→1.65 for ability preview */
+    .lib-row-preview {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--text-body);
+      line-height: 1.65;
+      opacity: 0.85;
+    }
+    /* Change 1: diamond glyph 10px→11px, opacity 0.85→1 */
+    .lib-row-preview .diamond {
+      color: var(--npc-accent);
+      font-size: 11px;
+      margin-right: 3px;
+      opacity: 1;
+    }
+    .lib-row-preview.empty {
+      font-style: italic;
+      color: var(--text-muted);
+      -webkit-line-clamp: unset;
+      overflow: visible;
+    }
+
+    .lib-row-del-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 2px 4px;
+      min-width: 32px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      flex-shrink: 0;
+      transition: color 0.12s, background 0.12s;
+      line-height: 1;
+    }
+    .lib-row-del-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+
+    /* Inline delete confirmation row */
+    .lib-row-confirm {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 180ms ease-in, opacity 180ms ease-in;
+    }
+    .lib-row-confirm.open {
+      max-height: 40px;
+      opacity: 1;
+      transition: max-height 180ms ease-out, opacity 180ms ease-out;
+    }
+    .lib-row-confirm-inner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px 8px;
+    }
+    .lib-confirm-prompt {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-style: italic;
+      color: var(--text-muted);
+      flex: 1;
+    }
+    .lib-confirm-del-btn {
+      background: transparent;
+      border: 1px solid rgba(192,96,96,0.4);
+      border-radius: 3px;
+      color: #c06060;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 5px 10px;
+      min-height: 32px;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .lib-confirm-del-btn:hover { background: rgba(192,96,96,0.12); border-color: rgba(192,96,96,0.7); }
+    .lib-confirm-cancel-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 5px 8px;
+      min-height: 32px;
+      cursor: pointer;
+      transition: color 0.12s;
+    }
+    .lib-confirm-cancel-btn:hover { color: var(--text); }
+
+    /* ── Library empty state ── */
+    .lib-empty {
+      padding: 20px 16px;
+      text-align: center;
+      border: 1px dashed var(--npc-action-border);
+      border-radius: 4px;
+      margin: 8px;
+    }
+    .lib-empty-text {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-style: italic;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* ─────────────────────────────────────────
+       Change 2: + New library entry button + inline form
+    ───────────────────────────────────────── */
+
+    /* The "add" row that sits at the bottom of the picker list */
+    .lib-new-entry-row {
+      border-top: 1px solid var(--npc-action-border);
+    }
+
+    /* The trigger button — full-row touch target */
+    .lib-new-entry-btn {
+      display: block;
+      width: 100%;
+      background: transparent;
+      border: none;
+      text-align: left;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--npc-accent);
+      padding: 10px 12px;
+      min-height: 44px;
+      cursor: pointer;
+      transition: color 0.12s;
+    }
+    .lib-new-entry-btn:hover { color: var(--npc-bright); }
+
+    /* The inline form — hidden by default (max-height: 0, opacity: 0) */
+    .lib-new-entry-form-wrap {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      /* Collapse: 160ms ease-in */
+      transition: max-height 160ms ease-in, opacity 160ms ease-in;
+    }
+    .lib-new-entry-form-wrap.open {
+      max-height: 240px;
+      opacity: 1;
+      /* Expand: 200ms ease-out cubic */
+      transition: max-height 200ms cubic-bezier(0.34, 1.0, 0.64, 1), opacity 200ms ease-out;
+    }
+
+    .lib-new-entry-form {
+      padding: 10px 12px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    /* Name input: Cinzel 13px */
+    .lib-new-name-input {
+      width: 100%;
+      background: rgba(18,14,10,0.7);
+      border: 1px solid var(--npc-border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 13px;
+      letter-spacing: 0.04em;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .lib-new-name-input:focus { border-color: var(--npc-accent); }
+    .lib-new-name-input.error {
+      /* Brief red flash on empty submit */
+      border-color: #c06060;
+    }
+
+    /* Abilities textarea: Crimson Text 12px */
+    .lib-new-abilities-input {
+      width: 100%;
+      background: rgba(18,14,10,0.7);
+      border: 1px solid var(--npc-border);
+      border-radius: 3px;
+      color: var(--text-body);
+      font-family: var(--font-body);
+      font-size: 12px;
+      line-height: 1.55;
+      padding: 7px 10px;
+      outline: none;
+      min-height: 80px;
+      resize: vertical;
+      transition: border-color 0.15s;
+    }
+    .lib-new-abilities-input:focus { border-color: var(--npc-accent); }
+    .lib-new-abilities-input::placeholder {
+      color: var(--text-muted);
+      font-style: italic;
+    }
+
+    /* Form action row */
+    .lib-new-entry-actions {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: 2px;
+    }
+
+    /* Cancel: ghost, IM Fell English 10px uppercase, textMuted */
+    .lib-new-cancel-btn {
+      background: transparent;
+      border: none;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 8px 4px;
+      min-height: 44px;
+      transition: color 0.12s;
+    }
+    .lib-new-cancel-btn:hover { color: var(--text); }
+
+    /* Add to library: primary style — npcPal.bright text, npcPal.accent border */
+    .lib-new-add-btn {
+      background: rgba(122,112,96,0.15);
+      border: 1px solid var(--npc-accent);
+      border-radius: 3px;
+      color: var(--npc-bright);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 8px 14px;
+      min-height: 44px;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .lib-new-add-btn:hover { background: rgba(122,112,96,0.28); }
+
+    /* ═══════════════════════════════════════
+       NPC CARD
+    ═══════════════════════════════════════ */
+    .npc-card {
+      background: var(--npc-surface);
+      border: 1px solid var(--npc-border);
+      border-radius: 5px;
+      position: relative;
+      transition: border-color 0.15s;
+    }
+    .npc-card:hover { border-color: var(--npc-accent); }
+
+    .npc-card-inner { position: relative; padding: 12px 12px 0 14px; }
+
+    /* Left accent strip on bloodied/active cards */
+    .npc-card.bloodied { border-color: rgba(180,100,40,0.5); }
+    .npc-card.bloodied .npc-card-inner::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0; width: 3px;
+      border-radius: 5px 0 0 5px;
+      background: linear-gradient(180deg, #c07030, #a05020);
+    }
+
+    /* ── Card top row: name + action buttons ── */
+    .npc-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+    .npc-name-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; }
+    .npc-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      letter-spacing: 0.05em;
+      color: var(--npc-bright);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .npc-status-badge {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      background: rgba(180,100,40,0.18);
+      border: 1px solid rgba(180,100,40,0.45);
+      color: #d09050;
+    }
+
+    /* Button cluster in header */
+    .npc-card-btns {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .npc-init-btn {
+      background: transparent;
+      border: 1px solid var(--npc-border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      padding: 3px 7px;
+      min-height: 28px;
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+      white-space: nowrap;
+    }
+    .npc-init-btn:hover { border-color: var(--accent); color: var(--accent-bright); background: rgba(106,143,168,0.1); }
+
+    /* ⋯ overflow button — NEW */
+    .npc-overflow-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 16px;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      padding: 2px 6px;
+      min-width: 32px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      transition: color 0.12s, background 0.12s;
+      line-height: 1;
+    }
+    .npc-overflow-btn:hover { color: var(--npc-bright); background: rgba(122,112,96,0.15); }
+    .npc-overflow-btn.active { color: var(--npc-bright); background: rgba(122,112,96,0.2); }
+
+    .npc-remove-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 2px 4px;
+      min-width: 28px;
+      min-height: 28px;
+      border-radius: 3px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.12s, background 0.12s;
+      flex-shrink: 0;
+    }
+    .npc-remove-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+
+    /* ── Overflow popover ── */
+    .npc-overflow-wrap { position: relative; }
+    .npc-overflow-popover {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 50;
+      background: var(--npc-surface-solid);
+      border: 1px solid var(--npc-action-border);
+      border-radius: 4px;
+      min-width: 200px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+      overflow: hidden;
+
+      /* Bloom animation initial state */
+      opacity: 0;
+      transform: scale(0.94);
+      transform-origin: top right;
+      pointer-events: none;
+      transition: opacity 100ms ease-in, transform 100ms ease-in;
+    }
+    .npc-overflow-popover.open {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+      transition: opacity 140ms ease-out, transform 140ms cubic-bezier(0.34, 1.0, 0.64, 1);
+    }
+
+    .popover-conflict-label {
+      padding: 10px 14px 8px;
+      border-bottom: 1px solid var(--npc-action-border);
+    }
+    .popover-conflict-tag {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 2px;
+    }
+    .popover-conflict-name {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-style: italic;
+      color: var(--text-body);
+    }
+
+    .npc-overflow-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      width: 100%;
+      background: transparent;
+      border: none;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--npc-bright);
+      text-align: left;
+      transition: background 0.12s;
+    }
+    .npc-overflow-item:hover { background: var(--npc-chip-bg); }
+    .npc-overflow-item .item-diamond { color: var(--npc-accent); font-size: 11px; flex-shrink: 0; }
+    .npc-overflow-item.destructive { color: #c06060; border-top: 1px solid var(--npc-action-border); }
+    .npc-overflow-item.destructive:hover { background: rgba(192,96,96,0.08); }
+    .npc-overflow-item .item-x { font-size: 12px; flex-shrink: 0; }
+
+    /* ✓ Saved state within popover row */
+    .npc-overflow-item.saved-state {
+      color: var(--npc-bright);
+      cursor: default;
+      pointer-events: none;
+    }
+    .npc-overflow-item.saved-state .item-check { color: var(--npc-bright); }
+
+    /* ── HP row ── */
+    .npc-hp-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .npc-hp-nums { display: flex; align-items: baseline; gap: 2px; }
+    .npc-hp-cur { font-family: var(--font-display); font-size: 20px; line-height: 1; color: var(--npc-gem); }
+    .npc-card.bloodied .npc-hp-cur { color: #c07830; }
+    .npc-hp-sep { font-family: var(--font-display); font-size: 12px; color: var(--text-muted); }
+    .npc-hp-max { font-family: var(--font-display); font-size: 12px; color: var(--text-muted); }
+    .npc-step-btn {
+      width: 26px; height: 16px; border-radius: 3px;
+      border: 1px solid var(--npc-border); background: transparent;
+      color: var(--text-muted); font-family: var(--font-display);
+      font-size: 14px; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; padding: 0;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      user-select: none;
+    }
+    .npc-step-btn:hover { border-color: var(--npc-accent); color: var(--npc-bright); background: rgba(122,112,96,0.18); }
+    .npc-bar-wrap { flex: 1; padding: 0 5px; }
+    .npc-bar-track { height: 5px; border-radius: 3px; overflow: hidden; background: rgba(40,34,24,0.8); }
+    .npc-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; background: linear-gradient(90deg, var(--npc-accent) 0%, var(--npc-bright) 100%); }
+
+    /* ── Conditions ── */
+    .npc-conditions { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    .npc-cond {
+      font-family: var(--font-ui); font-size: 9px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 8px;
+      background: rgba(200,80,80,0.13); border: 1px solid rgba(200,80,80,0.36); color: #d08080;
+    }
+    .npc-cond.charmed { background: rgba(140,80,180,0.14); border-color: rgba(140,80,180,0.38); color: #c098e0; }
+
+    /* ── Ability reference block (Story 23) ── */
+    .npc-section-divider { border: none; border-top: 1px solid var(--npc-border); margin: 4px 0; }
+
+    .npc-ability-ref { padding: 8px 10px 6px; }
+
+    /* Change 1: line-height 1.55→1.7 for expanded ability text */
+    .npc-ability-ref-text {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-body);
+      line-height: 1.7;
+    }
+
+    /* Change 1: expanded mode shows hanging-indent bullet list treatment */
+    .npc-ability-ref-text.expanded {
+      -webkit-line-clamp: unset;
+      display: block;
+    }
+
+    /* Each ability line as a hanging-indent block */
+    .npc-ability-ref-text .ab-line {
+      display: block;
+      padding-left: 16px;
+      text-indent: -16px;
+      line-height: 1.7;
+      margin-bottom: 2px;
+    }
+    .npc-ability-ref-text .ab-line:last-child { margin-bottom: 0; }
+
+    .npc-ability-ref-text .ab-diamond {
+      font-family: var(--font-display);
+      font-size: 11px;
+      color: var(--npc-accent);
+      margin-right: 4px;
+    }
+    .npc-ability-ref-footer {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 4px;
+    }
+    .npc-ability-show-toggle {
+      background: none;
+      border: none;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--npc-accent);
+      cursor: pointer;
+      padding: 2px 0;
+      min-height: 28px;
+      display: flex;
+      align-items: center;
+      transition: color 0.12s;
+    }
+    .npc-ability-show-toggle:hover { color: var(--npc-bright); }
+    .npc-ability-edit-btn {
+      background: none;
+      border: none;
+      color: var(--npc-accent);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 4px 6px;
+      min-width: 32px;
+      min-height: 32px;
+      border-radius: 3px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.12s, background 0.12s;
+    }
+    .npc-ability-edit-btn:hover { color: var(--npc-bright); background: rgba(122,112,96,0.15); }
+
+    /* ── Quick action row ── */
+    .npc-quick-actions {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 0 8px; border-top: 1px solid var(--npc-border);
+      margin: 0 -12px 0 -14px;
+      padding-left: 14px; padding-right: 12px;
+    }
+    .nqa-btn {
+      flex: 1; background: transparent; border: 1px solid var(--npc-border);
+      border-radius: 3px; color: var(--text-muted);
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.14em;
+      text-transform: uppercase; padding: 5px 0; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .nqa-btn:hover { border-color: var(--npc-accent); color: var(--npc-bright); background: rgba(122,112,96,0.12); }
+    .nqa-btn.dmg:hover { border-color: rgba(192,96,96,0.5); color: #d08080; background: rgba(192,96,96,0.08); }
+    .nqa-btn.heal:hover { border-color: rgba(80,160,80,0.5); color: #88c888; background: rgba(80,160,80,0.08); }
+
+    /* Notes strip stub */
+    .npc-notes-strip {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 5px 12px 5px 14px;
+      border-top: 1px solid var(--npc-border);
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+    }
+
+    /* ═══════════════════════════════════════
+       LEGEND / ANNOTATIONS
+    ═══════════════════════════════════════ */
+    .legend {
+      background: rgba(14,18,26,0.8);
+      border: 1px solid var(--border-vis);
+      border-radius: 6px;
+      padding: 24px 28px;
+      margin-top: 48px;
+    }
+    .legend-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.14em;
+      color: var(--accent-bright);
+      margin-bottom: 18px;
+    }
+    .legend-item {
+      display: grid;
+      grid-template-columns: 24px 1fr;
+      gap: 10px;
+      margin-bottom: 12px;
+      align-items: start;
+    }
+    .legend-num {
+      font-family: var(--font-display);
+      font-size: 13px;
+      color: var(--accent);
+    }
+    .legend-text {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-body);
+      line-height: 1.55;
+    }
+    .legend-text strong {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* State toggle helper (for prototype switching) */
+    .state-toggle-row {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .state-toggle-btn {
+      background: transparent;
+      border: 1px solid var(--npc-border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+    .state-toggle-btn:hover,
+    .state-toggle-btn.active {
+      border-color: var(--npc-accent);
+      color: var(--npc-bright);
+      background: rgba(122,112,96,0.12);
+    }
+
+    /* Stagger delay for library rows */
+    .lib-row:nth-child(1) .lib-row-visible { animation-delay: 0ms; }
+    .lib-row:nth-child(2) .lib-row-visible { animation-delay: 30ms; }
+    .lib-row:nth-child(3) .lib-row-visible { animation-delay: 60ms; }
+    .lib-row:nth-child(4) .lib-row-visible { animation-delay: 90ms; }
+    .lib-row:nth-child(5) .lib-row-visible { animation-delay: 120ms; }
+    .lib-row:nth-child(6) .lib-row-visible { animation-delay: 150ms; }
+
+    /* ── Picker preview: discrete ability lines ── */
+    .lib-row-preview-line {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--text-body);
+      line-height: 1.65;
+    }
+    .lib-row-preview-line .diamond { color: var(--npc-accent); font-size: 11px; margin-right: 3px; }
+    .lib-row-preview-more {
+      display: block;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-top: 1px;
+    }
+
+    /* ── Structured ability list (card + new-entry form) ── */
+    .ability-list { margin: 0; padding: 0; list-style: none; }
+    .ability-list-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      padding: 3px 10px;
+      max-height: 60px;
+      overflow: hidden;
+      transition: max-height 160ms ease-in, opacity 160ms ease-in;
+    }
+    .ability-list-item.removing { max-height: 0 !important; opacity: 0; }
+    .ability-list-item-diamond {
+      font-family: var(--font-display);
+      font-size: 11px;
+      color: var(--npc-accent);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .ability-list-item-text {
+      font-family: var(--font-body);
+      font-size: 13px;
+      color: var(--text-body);
+      line-height: 1.6;
+      flex: 1;
+      word-break: break-word;
+    }
+    .ability-remove-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 0 2px;
+      min-width: 24px;
+      min-height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      flex-shrink: 0;
+      opacity: 0;
+      transition: opacity 0.12s, color 0.12s, background 0.12s;
+    }
+    .ability-list-item:hover .ability-remove-btn { opacity: 1; }
+    .ability-remove-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+
+    /* Add-ability input row */
+    .ability-add-row {
+      display: flex;
+      align-items: stretch;
+      gap: 6px;
+      padding: 6px 10px 4px;
+    }
+    .ability-add-input {
+      flex: 1;
+      background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border);
+      border-radius: 3px;
+      color: var(--text-body);
+      font-family: var(--font-body);
+      font-size: 13px;
+      padding: 5px 8px;
+      outline: none;
+      transition: border-color 0.15s;
+      min-height: 32px;
+    }
+    .ability-add-input:focus { border-color: var(--npc-accent); }
+    .ability-add-input::placeholder { color: var(--text-muted); font-style: italic; }
+    .ability-add-input.error { border-color: #c06060; transition: none; }
+    .ability-add-btn {
+      background: rgba(122,112,96,0.15);
+      border: 1px solid var(--npc-accent);
+      border-radius: 3px;
+      color: var(--npc-bright);
+      font-family: var(--font-ui);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 5px 10px;
+      min-width: 32px;
+      transition: background 0.15s;
+      flex-shrink: 0;
+    }
+    .ability-add-btn:hover { background: rgba(122,112,96,0.28); }
+    .ability-char-counter {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      color: var(--text-muted);
+      text-align: right;
+      padding: 0 10px 2px;
+      display: none;
+    }
+    .ability-char-counter.visible { display: block; }
+    .ability-done-btn {
+      display: block;
+      width: calc(100% - 20px);
+      margin: 6px 10px 8px;
+      background: rgba(122,112,96,0.15);
+      border: 1px solid var(--npc-accent);
+      border-radius: 3px;
+      color: var(--npc-bright);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 8px 0;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .ability-done-btn:hover { background: rgba(122,112,96,0.28); }
+
+    /* Card read vs edit mode switching */
+    .npc-ability-edit-mode { display: none; }
+    .npc-ability-read-mode { display: block; }
+    .npc-card.editing-abilities .npc-ability-edit-mode { display: block; }
+    .npc-card.editing-abilities .npc-ability-read-mode { display: none; }
+
+    /* Name flash animation for empty-submit validation */
+    @keyframes inputErrorFlash {
+      0%   { border-color: #c06060; }
+      50%  { border-color: rgba(192,96,96,0.3); }
+      100% { border-color: #c06060; }
+    }
+    .lib-new-name-input.error {
+      animation: inputErrorFlash 300ms ease-in-out 2;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Prototype page header ── -->
+<header class="proto-header">
+  <div class="proto-header-inner">
+    <span class="proto-title">NPC Library</span>
+    <span class="proto-meta">Story 24 — Design Prototype</span>
+    <span class="callout-new">From library toggle</span>
+    <span class="callout-new">⋯ overflow menu</span>
+    <span class="callout-new">Save / conflict states</span>
+    <span class="callout-new">+ New library entry</span>
+    <span class="callout-new">Scannable ability list</span>
+    <span class="proto-meta proto-date">2026-05-20</span>
+  </div>
+</header>
+
+<div class="page-body">
+
+  <!-- ═══════════════════════════════════════════════════════
+       SURFACE 1 — ADD ENEMY FORM + LIBRARY PICKER
+  ═══════════════════════════════════════════════════════ -->
+  <section class="scenario-section">
+    <h2 class="scenario-heading">Surface 1 — Add Enemy Form with Library Picker</h2>
+    <p class="scenario-desc">
+      The "◇ From library" toggle sits below the helper text at the quietest possible visual weight.
+      Tap it to expand the picker inline. Tap a row to pre-fill the Name field and collapse the picker.
+      The "+ New library entry" button at the bottom of the list lets the DM add creatures without
+      putting them in combat first.
+    </p>
+
+    <div class="scenario-grid">
+
+      <!-- 1A: Picker collapsed (default) -->
+      <div class="scenario-card-wrap">
+        <div class="scenario-label">1A — Picker collapsed (default state)</div>
+        <div class="add-npc-form" id="form-collapsed">
+          <div class="add-npc-title">Add Enemy</div>
+          <div class="add-npc-fields">
+            <input class="npc-text-input" type="text" placeholder="Name…" id="name-input-a" />
+            <input class="npc-num-input" type="number" placeholder="HP" id="hp-input-a" />
+          </div>
+          <div class="count-stepper-row">
+            <span class="count-label">Count:</span>
+            <button class="count-btn" onclick="adjustCount('a', -1)">−</button>
+            <span class="count-val" id="count-a">1</span>
+            <button class="count-btn" onclick="adjustCount('a', 1)">+</button>
+          </div>
+          <button class="add-npc-btn">+ Add Enemy</button>
+          <div class="form-helper-text">Use + Init on a card to add it to the turn order.</div>
+
+          <!-- Library toggle -->
+          <button class="lib-toggle" id="lib-toggle-a" onclick="toggleLibrary('a')" aria-expanded="false">
+            <span class="lib-toggle-diamond" id="lib-diamond-a">◇</span>
+            <span class="lib-toggle-label" id="lib-label-a">From library</span>
+          </button>
+
+          <!-- Library picker panel -->
+          <div class="lib-picker-wrap" id="lib-picker-wrap-a">
+            <div class="lib-picker">
+              <div class="lib-picker-header">
+                <button class="lib-picker-close" onclick="toggleLibrary('a')">× Close</button>
+              </div>
+              <div class="lib-picker-rows" id="lib-rows-a">
+                <!-- Rows injected by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Annotation -->
+        <div style="margin-top:8px;">
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">① Lightest affordance</span>
+          <span class="callout" style="position:static;display:inline-block;">Last tab-stop in form</span>
+        </div>
+      </div>
+
+      <!-- 1B: Empty library state -->
+      <div class="scenario-card-wrap">
+        <div class="scenario-label">1B — Picker expanded, empty library</div>
+        <div class="add-npc-form" id="form-empty">
+          <div class="add-npc-title">Add Enemy</div>
+          <div class="add-npc-fields">
+            <input class="npc-text-input" type="text" placeholder="Name…" />
+            <input class="npc-num-input" type="number" placeholder="HP" />
+          </div>
+          <div class="count-stepper-row">
+            <span class="count-label">Count:</span>
+            <button class="count-btn">−</button>
+            <span class="count-val">1</span>
+            <button class="count-btn">+</button>
+          </div>
+          <button class="add-npc-btn">+ Add Enemy</button>
+          <div class="form-helper-text">Use + Init on a card to add it to the turn order.</div>
+
+          <button class="lib-toggle" style="pointer-events:none;" aria-expanded="true">
+            <span class="lib-toggle-diamond open">◆</span>
+            <span class="lib-toggle-label" style="color:var(--npc-bright);">Hide library</span>
+          </button>
+
+          <!-- Picker: empty state — note the + New library entry button is still present -->
+          <div class="lib-picker-wrap open" style="transition:none;">
+            <div class="lib-picker">
+              <div class="lib-picker-header">
+                <button class="lib-picker-close">× Close</button>
+              </div>
+              <div class="lib-picker-rows">
+                <div class="lib-empty">
+                  <p class="lib-empty-text">
+                    Library is empty.<br>
+                    Save any NPC card from its ⋯ menu to<br>
+                    build your library.
+                  </p>
+                </div>
+                <!-- Change 2: + New library entry present even in empty state -->
+                <div class="lib-new-entry-row">
+                  <button class="lib-new-entry-btn" style="pointer-events:none;">+ New library entry</button>
+                  <!-- form hidden by default — not shown here (static scenario) -->
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- Annotation -->
+        <div style="margin-top:8px;">
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">⑦ Dashed = reserved</span>
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">Instructive, not plaintive</span>
+          <span class="callout" style="position:static;display:inline-block;">⑧ + New entry always visible</span>
+        </div>
+      </div>
+
+    </div><!-- /scenario-grid -->
+
+    <!-- 1C: Full-width — populated picker with all states -->
+    <div style="margin-top:32px;">
+      <div class="scenario-label">1C — Picker expanded, populated (interactive — tap rows, delete, cancel, add new entries)</div>
+      <div style="max-width:480px;">
+        <div class="add-npc-form" id="form-populated">
+          <div class="add-npc-title">Add Enemy</div>
+          <div class="add-npc-fields">
+            <input class="npc-text-input" type="text" placeholder="Name…" id="name-input-b" />
+            <input class="npc-num-input" type="number" placeholder="HP" id="hp-input-b" />
+          </div>
+          <div class="count-stepper-row">
+            <span class="count-label">Count:</span>
+            <button class="count-btn" onclick="adjustCount('b', -1)">−</button>
+            <span class="count-val" id="count-b">1</span>
+            <button class="count-btn" onclick="adjustCount('b', 1)">+</button>
+          </div>
+          <button class="add-npc-btn">+ Add Enemy</button>
+          <div class="form-helper-text">Use + Init on a card to add it to the turn order.</div>
+
+          <button class="lib-toggle" id="lib-toggle-b" onclick="toggleLibrary('b')" aria-expanded="false">
+            <span class="lib-toggle-diamond" id="lib-diamond-b">◇</span>
+            <span class="lib-toggle-label" id="lib-label-b">From library</span>
+          </button>
+
+          <div class="lib-picker-wrap" id="lib-picker-wrap-b">
+            <div class="lib-picker">
+              <div class="lib-picker-header">
+                <button class="lib-picker-close" onclick="toggleLibrary('b')">× Close</button>
+              </div>
+              <div class="lib-picker-rows" id="lib-rows-b">
+                <!-- Injected by JS -->
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">③ Row tap fills Name + collapses</span>
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">⑤ Two-tap delete</span>
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">⑥ Empty abilities variant</span>
+          <span class="callout" style="position:static;display:inline-block;">⑧ + New library entry at bottom</span>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <hr class="scenario-divider" />
+
+  <!-- ═══════════════════════════════════════════════════════
+       SURFACE 2 — NPC CARD WITH ⋯ OVERFLOW MENU
+  ═══════════════════════════════════════════════════════ -->
+  <section class="scenario-section">
+    <h2 class="scenario-heading">Surface 2 — NPC Card with ⋯ Overflow Menu</h2>
+    <p class="scenario-desc">
+      The ⋯ button sits between + Init and × in the card header. Tap it to open the overflow popover
+      anchored to its bottom-right corner. Use the state toggle below each card to switch between
+      "fresh save" and "name conflict" variants. The ability reference block now uses hanging-indent
+      list treatment — tap "Show more" to see the full scannable list.
+    </p>
+
+    <div class="scenario-grid">
+
+      <!-- 2A: Fresh save state -->
+      <div class="scenario-card-wrap">
+        <div class="scenario-label" style="margin-bottom:8px;">2A — Fresh save (no library conflict)</div>
+        <div class="state-toggle-row">
+          <button class="state-toggle-btn active" id="fresh-btn" onclick="setPopoverState('fresh')">Fresh save</button>
+          <button class="state-toggle-btn" id="conflict-btn" onclick="setPopoverState('conflict')">Name conflict</button>
+        </div>
+
+        <!-- NPC Card: Drow Priestess -->
+        <div class="npc-card bloodied" id="npc-card-main">
+          <div class="npc-card-inner">
+
+            <!-- Top row: name + buttons -->
+            <div class="npc-card-top">
+              <div class="npc-name-row">
+                <div class="npc-name">Drow Priestess</div>
+                <span class="npc-status-badge">Bloodied</span>
+              </div>
+              <div class="npc-card-btns">
+                <button class="npc-init-btn">+ Init</button>
+
+                <!-- ⋯ overflow wrap -->
+                <div class="npc-overflow-wrap" id="overflow-wrap">
+                  <button class="npc-overflow-btn" id="overflow-btn" onclick="toggleOverflow()" aria-label="More options">⋯</button>
+
+                  <!-- Popover — fresh state (default) -->
+                  <div class="npc-overflow-popover" id="overflow-popover-fresh">
+                    <button class="npc-overflow-item" id="save-btn-fresh" onclick="doSave('fresh')">
+                      <span class="item-diamond">◆</span>
+                      Save to library
+                    </button>
+                    <button class="npc-overflow-item destructive" onclick="closeOverflow()">
+                      <span class="item-x">×</span>
+                      Remove enemy
+                    </button>
+                  </div>
+
+                  <!-- Popover — conflict state (hidden initially) -->
+                  <div class="npc-overflow-popover" id="overflow-popover-conflict" style="display:none;">
+                    <div class="popover-conflict-label">
+                      <span class="popover-conflict-tag">Already in library:</span>
+                      <span class="popover-conflict-name">"Drow Priestess"</span>
+                    </div>
+                    <button class="npc-overflow-item" id="save-btn-update" onclick="doSave('update')">
+                      <span class="item-diamond">◆</span>
+                      Update existing entry
+                    </button>
+                    <button class="npc-overflow-item" id="save-btn-new" onclick="doSave('new')">
+                      <span class="item-diamond">◆</span>
+                      Save as new entry
+                    </button>
+                    <button class="npc-overflow-item destructive" onclick="closeOverflow()">
+                      <span class="item-x">×</span>
+                      Remove enemy
+                    </button>
+                  </div>
+                </div>
+
+                <button class="npc-remove-btn" title="Remove enemy">×</button>
+              </div>
+            </div>
+
+            <!-- HP row -->
+            <div class="npc-hp-row">
+              <button class="npc-step-btn">−</button>
+              <div class="npc-hp-nums">
+                <span class="npc-hp-cur">31</span>
+                <span class="npc-hp-sep">&thinsp;/&thinsp;</span>
+                <span class="npc-hp-max">44</span>
+              </div>
+              <div class="npc-bar-wrap">
+                <div class="npc-bar-track">
+                  <div class="npc-bar-fill" style="width:70%;"></div>
+                </div>
+              </div>
+              <button class="npc-step-btn">+</button>
+            </div>
+
+            <!-- Conditions -->
+            <div class="npc-conditions">
+              <span class="npc-cond charmed">Charmed</span>
+              <span class="npc-cond">Frightened</span>
+            </div>
+
+            <!-- Ability reference — structured list, read + edit modes -->
+            <hr class="npc-section-divider" />
+            <div class="npc-ability-ref" id="npc-ability-ref-main">
+
+              <!-- READ MODE -->
+              <div class="npc-ability-read-mode" id="card-ability-read">
+                <!-- Populated by renderCardAbilities() -->
+              </div>
+
+              <!-- EDIT MODE -->
+              <div class="npc-ability-edit-mode" id="card-ability-edit">
+                <ul class="ability-list" id="card-ability-list"></ul>
+                <div class="ability-add-row">
+                  <input class="ability-add-input" type="text"
+                    id="card-ability-input"
+                    placeholder="+ Add ability or spell…"
+                    maxlength="255"
+                    autocomplete="off" />
+                  <button class="ability-add-btn" onclick="cardAddAbility()">+</button>
+                </div>
+                <div class="ability-char-counter" id="card-ability-counter"></div>
+                <button class="ability-done-btn" onclick="cardAbilityDone()">Done</button>
+              </div>
+
+            </div>
+
+            <!-- Quick actions -->
+            <hr class="npc-section-divider" />
+            <div class="npc-quick-actions">
+              <button class="nqa-btn dmg">⚔ Dmg</button>
+              <button class="nqa-btn heal">✦ Heal</button>
+              <button class="nqa-btn">+ Cond</button>
+            </div>
+          </div>
+
+          <!-- Notes strip -->
+          <div class="npc-notes-strip">
+            <span>▣ + Note</span>
+            <span style="font-size:14px;">▼</span>
+          </div>
+        </div>
+
+        <!-- Annotations -->
+        <div style="margin-top:8px;">
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">⑪ ⋯ between + Init and ×</span>
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">⑫–⑬ Popover items</span>
+          <span class="callout" style="position:static;display:inline-block;">Change 1: hanging-indent list</span>
+        </div>
+      </div>
+
+      <!-- 2B: Second card showing both popover states as static reference -->
+      <div class="scenario-card-wrap">
+        <div class="scenario-label">2B — Popover states (static reference)</div>
+
+        <!-- Fresh save popover static -->
+        <div style="margin-bottom:24px;">
+          <div class="scenario-label" style="margin-bottom:6px;font-size:9px;">Fresh save — no conflict</div>
+          <div style="position:relative;height:100px;">
+            <div style="position:absolute;right:0;top:0;z-index:10;">
+              <div class="npc-overflow-popover open" style="position:static;transform:none;opacity:1;pointer-events:none;margin-bottom:8px;">
+                <button class="npc-overflow-item" style="pointer-events:none;">
+                  <span class="item-diamond">◆</span>
+                  Save to library
+                </button>
+                <button class="npc-overflow-item destructive" style="pointer-events:none;">
+                  <span class="item-x">×</span>
+                  Remove enemy
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Conflict popover static -->
+        <div>
+          <div class="scenario-label" style="margin-bottom:6px;font-size:9px;">Name conflict — "Drow Priestess" already in library</div>
+          <div class="npc-overflow-popover open" style="position:static;transform:none;opacity:1;pointer-events:none;margin-bottom:16px;">
+            <div class="popover-conflict-label">
+              <span class="popover-conflict-tag">Already in library:</span>
+              <span class="popover-conflict-name">"Drow Priestess"</span>
+            </div>
+            <button class="npc-overflow-item" style="pointer-events:none;">
+              <span class="item-diamond">◆</span>
+              Update existing entry
+            </button>
+            <button class="npc-overflow-item" style="pointer-events:none;">
+              <span class="item-diamond">◆</span>
+              Save as new entry
+            </button>
+            <button class="npc-overflow-item destructive" style="pointer-events:none;">
+              <span class="item-x">×</span>
+              Remove enemy
+            </button>
+          </div>
+        </div>
+
+        <!-- Saved state static -->
+        <div>
+          <div class="scenario-label" style="margin-bottom:6px;font-size:9px;">After save — ✓ Saved (220ms before dismiss)</div>
+          <div class="npc-overflow-popover open" style="position:static;transform:none;opacity:1;pointer-events:none;">
+            <button class="npc-overflow-item saved-state" style="pointer-events:none;">
+              <span class="item-check" style="color:var(--npc-bright);">✓</span>
+              Saved
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">⑭ Conflict header</span>
+          <span class="callout" style="position:static;display:inline-block;margin-right:4px;">⑮ Update in-place</span>
+          <span class="callout" style="position:static;display:inline-block;">⑯ Append new</span>
+        </div>
+      </div>
+
+    </div><!-- /scenario-grid -->
+  </section>
+
+  <hr class="scenario-divider" />
+
+  <!-- ═══════════════════════════════════════════════════════
+       ANIMATION REFERENCE
+  ═══════════════════════════════════════════════════════ -->
+  <section class="scenario-section">
+    <h2 class="scenario-heading">Animation Reference</h2>
+    <p class="scenario-desc">All motions from the brief spec, labeled. All live in the interactive cards above.</p>
+
+    <div style="
+      display:grid;
+      grid-template-columns:repeat(auto-fill,minmax(260px,1fr));
+      gap:16px;
+    ">
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Picker expand</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">max-height 0→scrollHeight + opacity 0→1<br><strong style="color:var(--text);">220ms cubic-bezier(0.34,1.0,0.64,1)</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Picker collapse</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">max-height→0 + opacity→0<br><strong style="color:var(--text);">160ms ease-in</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Row stagger</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">translateY(−2px)→0 + opacity 0→1<br><strong style="color:var(--text);">120ms each, 30ms apart (first 6)</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Delete confirm row</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">max-height 0→32px + opacity 0→1<br><strong style="color:var(--text);">180ms ease-out</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Popover bloom</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">scale(0.94)→scale(1) + opacity 0→1<br><strong style="color:var(--text);">140ms ease-out, transform-origin top-right</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Popover dismiss</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">scale(1)→scale(0.94) + opacity→0<br><strong style="color:var(--text);">100ms ease-in</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">Diamond fill</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">◇ → ◆ + rotate 45° + label cross-fade<br><strong style="color:var(--text);">90ms ease-out</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">✓ Saved in popover</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">Row shows ✓ Saved in npcPal.bright<br><strong style="color:var(--text);">220ms hold, then dismiss</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">+ New entry form expand</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">max-height 0→240px + opacity 0→1; button fades out 100ms simultaneously<br><strong style="color:var(--text);">200ms ease-out cubic</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">+ New entry form collapse</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">max-height→0 + opacity→0; button reappears at 100ms into collapse<br><strong style="color:var(--text);">160ms ease-in</strong></div>
+      </div>
+      <div style="background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;">
+        <div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">New row MRU reveal</div>
+        <div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">New entry prepended at top; opacity 0→1 + max-height 0→100px + translateY(−4px)→0<br><strong style="color:var(--text);">220ms ease-out</strong></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LEGEND
+  ═══════════════════════════════════════════════════════ -->
+  <div class="legend">
+    <div class="legend-title">Legend</div>
+
+    <div class="legend-item">
+      <span class="legend-num">①</span>
+      <span class="legend-text"><strong>◇ From library toggle</strong> — IM Fell English 11px, uppercase, letter-spacing 0.18em, textMuted. The quietest possible affordance. Sits below the helper text, below the primary form fields, as a secondary path. Tab stop order is Name → HP → Count → + Add Enemy → this.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">②</span>
+      <span class="legend-text"><strong>× Close</strong> — Redundant close for when the picker is long and the toggle has scrolled off-screen. 32px touch target.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">③</span>
+      <span class="legend-text"><strong>Row tap action</strong> — Name fills form input, abilities staged in form state, picker collapses (160ms ease-in), HP input receives focus after 80ms. Row briefly flashes npcPal.chipBg (120ms) on tap.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">④</span>
+      <span class="legend-text"><strong>Ability preview</strong> — Crimson Text 11px, two-line clamp via -webkit-line-clamp: 2. Leading ◆ glyph now 11px, opacity 1 (was 10px, 0.85). Line-height 1.65 (was 1.45). Bottom padding on row increased to 10px for breathing room.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑤</span>
+      <span class="legend-text"><strong>Row delete ×</strong> — Two-tap delete. First tap shows [Delete] [Cancel] inline (max-height 0→32px, 180ms ease-out). 6-second auto-dismiss if no action taken. Delete committed: row slides out (max-height→0, opacity→0, translateX(8px), 220ms ease-in). Not undoable.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑥</span>
+      <span class="legend-text"><strong>No abilities saved</strong> — "( no abilities saved )" in Crimson Text italic 11px textMuted. Edge case: DM saved a card with empty abilities field. Still selectable — name fills form. Visually demoted so it's clear what they're getting.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑦</span>
+      <span class="legend-text"><strong>Empty library state</strong> — Dashed border (border: 1px dashed npcPal.actionBorder) distinguishes "not yet filled" from "populated rows." Copy is instructive: tells DM exactly how to populate via the ⋯ menu.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑧</span>
+      <span class="legend-text"><strong>+ New library entry</strong> — IM Fell English 11px uppercase, letter-spacing 0.16em, npcPal.accent. Full-row touch target (min-height 44px, padding 10px 12px). Sits below the last template row with a 1px border-top separator. On hover: color → npcPal.bright. On tap: button fades out (opacity 0, 100ms), inline form expands below (max-height 0→240px, opacity 0→1, 200ms ease-out cubic).</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑨</span>
+      <span class="legend-text"><strong>Inline add form</strong> — Name input (Cinzel 13px, auto-focused) + Abilities textarea (Crimson Text 12px, min-height 80px, resize:vertical, maxLength 255, placeholder "Abilities…\n(spells, attacks, special abilities)"). Cancel (ghost, IM Fell English 10px uppercase, textMuted) collapses form (160ms ease-in) and restores button at 100ms. Empty name submit flashes border-color #c06060 (300ms, 2 iterations). Successful add: entry prepended MRU at top of list (220ms ease-out reveal), form collapses, button restored, focus returns to Name input.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑪</span>
+      <span class="legend-text"><strong>⋯ overflow button</strong> — IM Fell English 14px, textMuted. 32px square touch target. Sits between + Init and × in the header. Hover → npcPal.bright. Tap opens overflow popover anchored top-right.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑫</span>
+      <span class="legend-text"><strong>Save to library</strong> (fresh) — Crimson Text 14px, npcPal.bright. ◆ glyph left. Padding 10px 14px. Full-row touch target. After tap: row shows ✓ Saved (220ms, npcPal.bright) then popover dismisses. Only success affirmation in the feature.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑬</span>
+      <span class="legend-text"><strong>Remove enemy</strong> — Separated from save by 1px divider. color: #c06060. Acts identically to the card's existing × button. Included for hit-target redundancy and DMs who reach the menu first.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑭</span>
+      <span class="legend-text"><strong>Conflict label</strong> — IM Fell English 10px uppercase for "Already in library:", then Crimson Text italic 13px for the name. Non-interactive. Padding 10px 14px 8px.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑮</span>
+      <span class="legend-text"><strong>Update existing</strong> — Dominant choice (~98% of DM intent). Replaces the library entry's abilities in-place; entry's MRU position refreshed (surfaces at top of picker next time).</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">⑯</span>
+      <span class="legend-text"><strong>Save as new</strong> — Appends a new entry despite name collision. Library accepts duplicate names — DM may maintain "Drow Priestess (Boss)" and "Drow Priestess" minion variant intentionally.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">C1</span>
+      <span class="legend-text"><strong>Change 1 — Ability list display</strong> — Preview rows: line-height 1.45→1.65, bottom padding 8px→10px, ◆ glyph 10px→11px opacity 0.85→1. Expanded card ability block: line-height 1.55→1.7, each ◆ line wrapped in .ab-line with display:block + padding-left:16px + text-indent:−16px for hanging indent. Result: scannable reference list, not a paragraph.</span>
+    </div>
+    <div class="legend-item">
+      <span class="legend-num">★</span>
+      <span class="legend-text"><strong>Implied by design-system conventions</strong> — Row hover (background 120ms), button hover border-color (150ms), ability reference show/hide (220ms/180ms ease-out/ease-in) follow existing dashboard motion vocabulary from npc-combat-tracker prototype.</span>
+    </div>
+  </div>
+
+</div><!-- /page-body -->
+
+<script>
+  /* ═══════════════════════════════════════════════════════
+     LIBRARY DATA — mock templates
+  ═══════════════════════════════════════════════════════ */
+  const libraryTemplates = [
+    {
+      id: 'tpl-1',
+      name: 'Drow Priestess',
+      abilities: [
+        'Spells (DC 13)',
+        'Sacred Flame — 1d8 radiant, DEX save',
+        'Suggestion — WIS save, charm 1 creature',
+        'Spiritual Weapon — 1d8+3 force, bonus action',
+        'Hold Person — WIS save, paralyzed',
+        'Spider Climb (always active)',
+        'Innate: Darkness 1/day'
+      ]
+    },
+    {
+      id: 'tpl-2',
+      name: 'Goblin Sneak',
+      abilities: [
+        'Sneak Attack +2d6 once/turn when ally adjacent',
+        'Nimble Escape: Disengage or Dash as bonus action'
+      ]
+    },
+    {
+      id: 'tpl-3',
+      name: 'Bandit Captain',
+      abilities: [
+        'Multiattack: 2× scimitar + 1× dagger',
+        'Parry: +2 AC reaction vs one melee hit'
+      ]
+    },
+    {
+      id: 'tpl-4',
+      name: 'Wraith',
+      abilities: []   /* empty — edge case */
+    }
+  ];
+
+  /* Track which rows have open delete confirm */
+  const deleteConfirmState = {};
+  const deleteTimers = {};
+
+  /* Count values */
+  const countValues = { a: 1, b: 1 };
+
+  /* Track which pickers have the "new entry" form open */
+  const newEntryFormOpen = {};
+
+  /* ID counter for newly added entries */
+  let newEntryCounter = 100;
+
+  /* ═══════════════════════════════════════════════════════
+     HELPERS
+  ═══════════════════════════════════════════════════════ */
+  function adjustCount(formId, delta) {
+    countValues[formId] = Math.max(1, Math.min(8, countValues[formId] + delta));
+    document.getElementById('count-' + formId).textContent = countValues[formId];
+  }
+
+  function escapeHtml(str) {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     LIBRARY PICKER
+  ═══════════════════════════════════════════════════════ */
+  const pickerOpen = { a: false, b: false };
+
+  function buildLibraryRows(containerId, formId) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+
+    libraryTemplates.forEach(function(tpl, idx) {
+      const row = buildLibraryRow(tpl, formId);
+      container.appendChild(row);
+
+      /* Stagger fade-in */
+      (function(r, delay) {
+        setTimeout(function() {
+          r.classList.add('lib-row-visible');
+        }, delay);
+      })(row, idx * 30);
+    });
+
+    /* Change 2: append the "+ New library entry" row at the bottom */
+    container.appendChild(buildNewEntryRow(formId));
+  }
+
+  function buildLibraryRow(tpl, formId) {
+    const row = document.createElement('div');
+    row.className = 'lib-row';
+    row.id = 'row-' + formId + '-' + tpl.id;
+
+    /* Build preview: first 2 ability entries as discrete lines */
+    let previewHtml = '';
+    if (!tpl.abilities || tpl.abilities.length === 0) {
+      previewHtml = '<span style="font-style:italic;color:var(--text-muted);font-size:11px;">(no abilities saved)</span>';
+    } else {
+      const preview = tpl.abilities.slice(0, 2);
+      preview.forEach(function(ab) {
+        previewHtml += '<span class="lib-row-preview-line"><span class="diamond">◆</span>' + escapeHtml(ab) + '</span>';
+      });
+      if (tpl.abilities.length > 2) {
+        previewHtml += '<span class="lib-row-preview-more">+ ' + (tpl.abilities.length - 2) + ' more…</span>';
+      }
+    }
+
+    row.innerHTML =
+      '<div class="lib-row-main" onclick="selectTemplate(\'' + formId + '\',\'' + tpl.id + '\')">' +
+        '<div class="lib-row-text">' +
+          '<div class="lib-row-name" title="' + escapeHtml(tpl.name) + '">' + escapeHtml(tpl.name) + '</div>' +
+          '<div class="lib-row-preview">' + previewHtml + '</div>' +
+        '</div>' +
+        '<button class="lib-row-del-btn" onclick="event.stopPropagation(); startDelete(\'' + formId + '\',\'' + tpl.id + '\')" aria-label="Delete entry">×</button>' +
+      '</div>' +
+      '<div class="lib-row-confirm" id="confirm-' + formId + '-' + tpl.id + '">' +
+        '<div class="lib-row-confirm-inner">' +
+          '<span class="lib-confirm-prompt">Remove from library?</span>' +
+          '<button class="lib-confirm-del-btn" onclick="commitDelete(\'' + formId + '\',\'' + tpl.id + '\')">Delete</button>' +
+          '<button class="lib-confirm-cancel-btn" onclick="cancelDelete(\'' + formId + '\',\'' + tpl.id + '\')">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    return row;
+  }
+
+  /* ── Build the "+ New library entry" footer row with structured ability editor ── */
+  function buildNewEntryRow(formId) {
+    const wrap = document.createElement('div');
+    wrap.className = 'lib-new-entry-row';
+    wrap.id = 'new-entry-row-' + formId;
+
+    const btn = document.createElement('button');
+    btn.className = 'lib-new-entry-btn';
+    btn.id = 'new-entry-btn-' + formId;
+    btn.textContent = '+ New library entry';
+    btn.setAttribute('aria-expanded', 'false');
+    btn.onclick = function() { expandNewEntryForm(formId); };
+
+    const formWrap = document.createElement('div');
+    formWrap.className = 'lib-new-entry-form-wrap';
+    formWrap.id = 'new-entry-form-wrap-' + formId;
+
+    /* Structured form: name input + ability list editor */
+    formWrap.innerHTML =
+      '<div class="lib-new-entry-form">' +
+        '<input class="lib-new-name-input" type="text"' +
+          ' id="new-entry-name-' + formId + '"' +
+          ' placeholder="Name…"' +
+          ' maxlength="80"' +
+          ' autocomplete="off" />' +
+        /* Ability list — starts empty, entries added via input below */
+        '<ul class="ability-list" id="new-entry-ability-list-' + formId + '"></ul>' +
+        /* Add-ability input row */
+        '<div class="ability-add-row">' +
+          '<input class="ability-add-input" type="text"' +
+            ' id="new-entry-ability-input-' + formId + '"' +
+            ' placeholder="+ Add ability or spell…"' +
+            ' maxlength="255"' +
+            ' autocomplete="off" />' +
+          '<button class="ability-add-btn" onclick="newEntryAddAbility(\'' + formId + '\')">+</button>' +
+        '</div>' +
+        '<div class="ability-char-counter" id="new-entry-ability-counter-' + formId + '"></div>' +
+        '<div class="lib-new-entry-actions">' +
+          '<button class="lib-new-cancel-btn" onclick="collapseNewEntryForm(\'' + formId + '\')">Cancel</button>' +
+          '<button class="lib-new-add-btn" onclick="commitNewEntry(\'' + formId + '\')">Add to library</button>' +
+        '</div>' +
+      '</div>';
+
+    wrap.appendChild(btn);
+    wrap.appendChild(formWrap);
+    return wrap;
+  }
+
+  /* Add a single ability to the new-entry form's list */
+  function newEntryAddAbility(formId) {
+    const input = document.getElementById('new-entry-ability-input-' + formId);
+    const list = document.getElementById('new-entry-ability-list-' + formId);
+    if (!input || !list) return;
+    const val = input.value.trim();
+    if (!val) {
+      input.classList.add('error');
+      setTimeout(function() { input.classList.remove('error'); }, 400);
+      return;
+    }
+    addAbilityItemToList(list, val, formId + '-new');
+    input.value = '';
+    input.focus();
+    /* Hide counter */
+    const counter = document.getElementById('new-entry-ability-counter-' + formId);
+    if (counter) { counter.textContent = ''; counter.classList.remove('visible'); }
+  }
+
+  /* Build a removable ability list item and append to a <ul> */
+  function addAbilityItemToList(listEl, text, ns) {
+    const li = document.createElement('li');
+    li.className = 'ability-list-item';
+    li.style.maxHeight = '0';
+    li.style.opacity = '0';
+    li.innerHTML =
+      '<span class="ability-list-item-diamond">◆</span>' +
+      '<span class="ability-list-item-text">' + escapeHtml(text) + '</span>' +
+      '<button class="ability-remove-btn" aria-label="Remove ability">−</button>';
+    li.querySelector('.ability-remove-btn').onclick = function() { removeAbilityItem(li); };
+    listEl.appendChild(li);
+    /* Trigger entrance animation */
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        li.style.transition = 'max-height 180ms ease-out, opacity 180ms ease-out';
+        li.style.maxHeight = '60px';
+        li.style.opacity = '1';
+      });
+    });
+  }
+
+  function removeAbilityItem(li) {
+    li.classList.add('removing');
+    setTimeout(function() { li.remove(); }, 180);
+  }
+
+  function expandNewEntryForm(formId) {
+    if (newEntryFormOpen[formId]) return;
+    newEntryFormOpen[formId] = true;
+
+    const btn = document.getElementById('new-entry-btn-' + formId);
+    const formWrap = document.getElementById('new-entry-form-wrap-' + formId);
+
+    /* Fade out the button simultaneously with the form expand */
+    btn.style.transition = 'opacity 100ms ease-out';
+    btn.style.opacity = '0';
+    btn.style.pointerEvents = 'none';
+    btn.setAttribute('aria-expanded', 'true');
+
+    /* Expand the form: 200ms ease-out cubic */
+    /* Force a reflow before adding .open so the transition fires */
+    formWrap.getBoundingClientRect();
+    formWrap.classList.add('open');
+
+    /* Auto-focus name input after the animation starts */
+    setTimeout(function() {
+      const nameInput = document.getElementById('new-entry-name-' + formId);
+      if (nameInput) nameInput.focus();
+      /* Wire char counter on ability input */
+      const abilityInput = document.getElementById('new-entry-ability-input-' + formId);
+      const counter = document.getElementById('new-entry-ability-counter-' + formId);
+      if (abilityInput && counter) {
+        abilityInput.addEventListener('input', function() {
+          const remaining = 255 - abilityInput.value.length;
+          if (remaining <= 30) {
+            counter.textContent = remaining + ' characters remaining';
+            counter.classList.add('visible');
+          } else {
+            counter.textContent = '';
+            counter.classList.remove('visible');
+          }
+        });
+        abilityInput.addEventListener('keydown', function(e) {
+          if (e.key === 'Enter') { e.preventDefault(); newEntryAddAbility(formId); }
+        });
+      }
+    }, 60);
+  }
+
+  function collapseNewEntryForm(formId) {
+    if (!newEntryFormOpen[formId]) return;
+
+    const btn = document.getElementById('new-entry-btn-' + formId);
+    const formWrap = document.getElementById('new-entry-form-wrap-' + formId);
+    const nameInput = document.getElementById('new-entry-name-' + formId);
+    const abilitiesInput = document.getElementById('new-entry-abilities-' + formId);
+
+    /* Collapse the form: 160ms ease-in */
+    formWrap.classList.remove('open');
+
+    /* Button reappears at 100ms into the collapse (early) */
+    setTimeout(function() {
+      btn.style.transition = 'opacity 80ms ease-out';
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = '';
+      btn.setAttribute('aria-expanded', 'false');
+    }, 100);
+
+    /* Clear inputs after animation completes */
+    setTimeout(function() {
+      if (nameInput) nameInput.value = '';
+      const abilityInput = document.getElementById('new-entry-ability-input-' + formId);
+      if (abilityInput) abilityInput.value = '';
+      const abilityList = document.getElementById('new-entry-ability-list-' + formId);
+      if (abilityList) abilityList.innerHTML = '';
+      newEntryFormOpen[formId] = false;
+    }, 200);
+  }
+
+  function commitNewEntry(formId) {
+    const nameInput = document.getElementById('new-entry-name-' + formId);
+    const name = nameInput ? nameInput.value.trim() : '';
+
+    if (!name) {
+      if (nameInput) {
+        nameInput.classList.remove('error');
+        nameInput.getBoundingClientRect();
+        nameInput.classList.add('error');
+        setTimeout(function() { nameInput.classList.remove('error'); }, 700);
+      }
+      return;
+    }
+
+    /* Collect abilities from the structured list */
+    const list = document.getElementById('new-entry-ability-list-' + formId);
+    const abilities = [];
+    if (list) {
+      list.querySelectorAll('.ability-list-item-text').forEach(function(el) {
+        const txt = el.textContent.trim();
+        if (txt) abilities.push(txt);
+      });
+    }
+
+    newEntryCounter++;
+    const newTpl = {
+      id: 'tpl-' + newEntryCounter,
+      name: name,
+      abilities: abilities
+    };
+    libraryTemplates.unshift(newTpl);
+
+    /* Collapse form first, then prepend the row with reveal animation */
+    collapseNewEntryForm(formId);
+
+    /* After a short delay (so the form collapse starts), prepend new row */
+    setTimeout(function() {
+      const container = document.getElementById('lib-rows-' + formId);
+      if (!container) return;
+
+      /* Find the new-entry-row to insert before it */
+      const newEntryRowEl = document.getElementById('new-entry-row-' + formId);
+
+      const row = buildLibraryRow(newTpl, formId);
+      /* The row starts at opacity:0 per CSS; we use the new-entry reveal animation */
+      row.style.opacity = '0';
+      row.style.maxHeight = '0';
+      row.style.overflow = 'hidden';
+
+      container.insertBefore(row, newEntryRowEl || container.firstChild);
+
+      /* Trigger reveal animation */
+      requestAnimationFrame(function() {
+        requestAnimationFrame(function() {
+          row.classList.add('lib-row-new-entry');
+        });
+      });
+
+      /* Focus the main name input so DM can spawn immediately if desired */
+      setTimeout(function() {
+        const mainNameInput = document.getElementById('name-input-' + formId);
+        if (mainNameInput) mainNameInput.focus();
+      }, 240);
+    }, 80);
+  }
+
+  function toggleLibrary(formId) {
+    pickerOpen[formId] = !pickerOpen[formId];
+
+    const wrap = document.getElementById('lib-picker-wrap-' + formId);
+    const diamond = document.getElementById('lib-diamond-' + formId);
+    const label = document.getElementById('lib-label-' + formId);
+    const toggle = document.getElementById('lib-toggle-' + formId);
+
+    if (pickerOpen[formId]) {
+      /* Expand */
+      wrap.classList.add('open');
+      diamond.textContent = '◆';
+      diamond.classList.add('open');
+      label.textContent = 'Hide library';
+      label.style.color = 'var(--npc-bright)';
+      toggle.setAttribute('aria-expanded', 'true');
+
+      /* Build rows and trigger stagger */
+      buildLibraryRows('lib-rows-' + formId, formId);
+    } else {
+      /* Collapse — also close any open new-entry form */
+      if (newEntryFormOpen[formId]) {
+        /* Instantly hide without animation since picker is closing */
+        newEntryFormOpen[formId] = false;
+      }
+      wrap.classList.remove('open');
+      diamond.textContent = '◇';
+      diamond.classList.remove('open');
+      label.textContent = 'From library';
+      label.style.color = '';
+      toggle.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  function selectTemplate(formId, tplId) {
+    const tpl = libraryTemplates.find(function(t) { return t.id === tplId; });
+    if (!tpl) return;
+
+    /* Flash the row */
+    const row = document.getElementById('row-' + formId + '-' + tplId);
+    if (row) {
+      const main = row.querySelector('.lib-row-main');
+      main.style.background = 'var(--npc-chip-bg)';
+      setTimeout(function() { main.style.background = ''; }, 120);
+    }
+
+    /* Fill name input */
+    const nameInput = document.getElementById('name-input-' + formId);
+    if (nameInput) nameInput.value = tpl.name;
+
+    /* Collapse picker after brief delay */
+    setTimeout(function() {
+      if (pickerOpen[formId]) toggleLibrary(formId);
+
+      /* Focus HP input */
+      setTimeout(function() {
+        const hpInput = document.getElementById('hp-input-' + formId);
+        if (hpInput) hpInput.focus();
+      }, 80);
+    }, 80);
+  }
+
+  function startDelete(formId, tplId) {
+    const key = formId + '-' + tplId;
+    const confirmEl = document.getElementById('confirm-' + formId + '-' + tplId);
+    if (!confirmEl) return;
+
+    /* Close any other open confirms in this picker */
+    Object.keys(deleteConfirmState).forEach(function(k) {
+      if (k !== key && deleteConfirmState[k]) {
+        cancelDelete(k.split('-')[0], k.replace(k.split('-')[0] + '-', ''));
+      }
+    });
+
+    deleteConfirmState[key] = true;
+    confirmEl.classList.add('open');
+
+    /* 6-second auto-dismiss */
+    clearTimeout(deleteTimers[key]);
+    deleteTimers[key] = setTimeout(function() {
+      cancelDelete(formId, tplId);
+    }, 6000);
+  }
+
+  function cancelDelete(formId, tplId) {
+    const key = formId + '-' + tplId;
+    const confirmEl = document.getElementById('confirm-' + formId + '-' + tplId);
+    if (!confirmEl) return;
+    deleteConfirmState[key] = false;
+    confirmEl.classList.remove('open');
+    clearTimeout(deleteTimers[key]);
+  }
+
+  function commitDelete(formId, tplId) {
+    const key = formId + '-' + tplId;
+    clearTimeout(deleteTimers[key]);
+    deleteConfirmState[key] = false;
+
+    const row = document.getElementById('row-' + formId + '-' + tplId);
+    if (!row) return;
+
+    /* Animate out: translateX + fade */
+    row.style.transition = 'max-height 220ms ease-in, opacity 220ms ease-in, transform 220ms ease-in';
+    row.style.transform = 'translateX(8px)';
+    row.style.opacity = '0';
+    row.style.maxHeight = row.offsetHeight + 'px';
+
+    setTimeout(function() {
+      row.style.maxHeight = '0';
+    }, 10);
+
+    setTimeout(function() {
+      row.remove();
+      /* Remove from data */
+      const idx = libraryTemplates.findIndex(function(t) { return t.id === tplId; });
+      if (idx > -1) libraryTemplates.splice(idx, 1);
+    }, 240);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     OVERFLOW POPOVER
+  ═══════════════════════════════════════════════════════ */
+  let overflowOpen = false;
+  let currentPopoverMode = 'fresh'; /* 'fresh' | 'conflict' */
+
+  function toggleOverflow() {
+    overflowOpen ? closeOverflow() : openOverflow();
+  }
+
+  function openOverflow() {
+    overflowOpen = true;
+    const btn = document.getElementById('overflow-btn');
+    const freshPopover = document.getElementById('overflow-popover-fresh');
+    const conflictPopover = document.getElementById('overflow-popover-conflict');
+
+    btn.classList.add('active');
+
+    if (currentPopoverMode === 'fresh') {
+      freshPopover.style.display = '';
+      conflictPopover.style.display = 'none';
+      /* Trigger bloom */
+      requestAnimationFrame(function() {
+        freshPopover.classList.add('open');
+      });
+    } else {
+      conflictPopover.style.display = '';
+      freshPopover.style.display = 'none';
+      requestAnimationFrame(function() {
+        conflictPopover.classList.add('open');
+      });
+    }
+  }
+
+  function closeOverflow() {
+    overflowOpen = false;
+    const btn = document.getElementById('overflow-btn');
+    const freshPopover = document.getElementById('overflow-popover-fresh');
+    const conflictPopover = document.getElementById('overflow-popover-conflict');
+
+    btn.classList.remove('active');
+    freshPopover.classList.remove('open');
+    conflictPopover.classList.remove('open');
+  }
+
+  function doSave(saveType) {
+    /* Show ✓ Saved in the active popover row, then dismiss */
+    const freshPopover = document.getElementById('overflow-popover-fresh');
+    const conflictPopover = document.getElementById('overflow-popover-conflict');
+    const activePopover = currentPopoverMode === 'fresh' ? freshPopover : conflictPopover;
+
+    /* Build saved row */
+    const savedRow = document.createElement('button');
+    savedRow.className = 'npc-overflow-item saved-state';
+    savedRow.style.pointerEvents = 'none';
+    savedRow.innerHTML = '<span class="item-check" style="color:var(--npc-bright);font-size:13px;">✓</span> Saved';
+
+    /* Replace active popover content with saved row */
+    const savedPopover = document.createElement('div');
+    savedPopover.className = 'npc-overflow-popover';
+    savedPopover.style.position = activePopover.style.position;
+    savedPopover.style.right = '0';
+    savedPopover.style.top = 'calc(100% + 4px)';
+    savedPopover.appendChild(savedRow);
+
+    activePopover.parentNode.insertBefore(savedPopover, activePopover);
+    activePopover.style.display = 'none';
+
+    requestAnimationFrame(function() {
+      savedPopover.classList.add('open');
+    });
+
+    /* Dismiss after 220ms */
+    setTimeout(function() {
+      savedPopover.classList.remove('open');
+      setTimeout(function() {
+        savedPopover.remove();
+        closeOverflow();
+      }, 120);
+    }, 880);
+  }
+
+  /* State toggle: switch between fresh and conflict */
+  function setPopoverState(mode) {
+    currentPopoverMode = mode;
+    /* Update button states */
+    document.getElementById('fresh-btn').classList.toggle('active', mode === 'fresh');
+    document.getElementById('conflict-btn').classList.toggle('active', mode === 'conflict');
+    /* Close popover if open to show next open in correct mode */
+    if (overflowOpen) closeOverflow();
+  }
+
+  /* Click-outside to close overflow popover */
+  document.addEventListener('click', function(e) {
+    if (!overflowOpen) return;
+    const wrap = document.getElementById('overflow-wrap');
+    if (wrap && !wrap.contains(e.target)) {
+      closeOverflow();
+    }
+  });
+
+  /* Esc key handling */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      if (overflowOpen) { closeOverflow(); return; }
+      /* Close any open new-entry forms first */
+      if (newEntryFormOpen.a) { collapseNewEntryForm('a'); return; }
+      if (newEntryFormOpen.b) { collapseNewEntryForm('b'); return; }
+      if (pickerOpen.a) { toggleLibrary('a'); return; }
+      if (pickerOpen.b) { toggleLibrary('b'); return; }
+    }
+  });
+
+  /* ═══════════════════════════════════════════════════════
+     CARD ABILITY REFERENCE — structured list, read + edit
+  ═══════════════════════════════════════════════════════ */
+  /* Card's working ability list — matches Drow Priestess from libraryTemplates */
+  let cardAbilities = [
+    'Spells (DC 13)',
+    'Sacred Flame — 1d8 radiant, DEX save',
+    'Suggestion — WIS save, charm 1 creature',
+    'Spiritual Weapon — 1d8+3 force, bonus action',
+    'Hold Person — WIS save, paralyzed',
+    'Spider Climb (always active)',
+    'Innate: Darkness 1/day'
+  ];
+  let cardAbilityExpanded = false;
+  const CARD_COLLAPSED_MAX = 3;
+
+  function renderCardAbilities() {
+    const readEl = document.getElementById('card-ability-read');
+    if (!readEl) return;
+
+    if (cardAbilities.length === 0) {
+      readEl.innerHTML =
+        '<div style="padding:6px 10px;">' +
+          '<button class="npc-ability-show-toggle" onclick="cardEnterEdit()" style="color:var(--text-muted);">+ Add abilities</button>' +
+        '</div>';
+      return;
+    }
+
+    const shown = cardAbilityExpanded ? cardAbilities : cardAbilities.slice(0, CARD_COLLAPSED_MAX);
+    let html = '<ul class="ability-list" style="padding-top:4px;">';
+    shown.forEach(function(ab) {
+      html +=
+        '<li class="ability-list-item" style="max-height:60px;opacity:1;">' +
+          '<span class="ability-list-item-diamond">◆</span>' +
+          '<span class="ability-list-item-text">' + escapeHtml(ab) + '</span>' +
+        '</li>';
+    });
+    html += '</ul>';
+
+    html += '<div class="npc-ability-ref-footer">';
+    if (cardAbilities.length > CARD_COLLAPSED_MAX) {
+      if (cardAbilityExpanded) {
+        html += '<button class="npc-ability-show-toggle" onclick="cardCollapseAbilities()">Show less</button>';
+      } else {
+        html += '<button class="npc-ability-show-toggle" onclick="cardExpandAbilities()">Show all ' + cardAbilities.length + '</button>';
+      }
+    } else {
+      html += '<span></span>';
+    }
+    html += '<button class="npc-ability-edit-btn" title="Edit abilities" onclick="cardEnterEdit()">✎</button>';
+    html += '</div>';
+
+    readEl.innerHTML = html;
+  }
+
+  function cardExpandAbilities() {
+    cardAbilityExpanded = true;
+    renderCardAbilities();
+  }
+  function cardCollapseAbilities() {
+    cardAbilityExpanded = false;
+    renderCardAbilities();
+  }
+
+  function cardEnterEdit() {
+    /* Populate edit list from current cardAbilities */
+    const listEl = document.getElementById('card-ability-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    cardAbilities.forEach(function(ab) {
+      addAbilityItemToList(listEl, ab, 'card');
+    });
+    document.getElementById('npc-card-main').classList.add('editing-abilities');
+    /* Focus the input */
+    setTimeout(function() {
+      const inp = document.getElementById('card-ability-input');
+      if (inp) {
+        inp.focus();
+        inp.addEventListener('keydown', cardAbilityInputKeydown);
+        inp.addEventListener('input', cardAbilityInputCounter);
+      }
+    }, 80);
+  }
+
+  function cardAbilityInputKeydown(e) {
+    if (e.key === 'Enter') { e.preventDefault(); cardAddAbility(); }
+    if (e.key === 'Escape') { cardAbilityDone(); }
+  }
+  function cardAbilityInputCounter() {
+    const inp = document.getElementById('card-ability-input');
+    const counter = document.getElementById('card-ability-counter');
+    if (!inp || !counter) return;
+    const remaining = 255 - inp.value.length;
+    if (remaining <= 30) {
+      counter.textContent = remaining + ' characters remaining';
+      counter.classList.add('visible');
+    } else {
+      counter.textContent = '';
+      counter.classList.remove('visible');
+    }
+  }
+
+  function cardAddAbility() {
+    const inp = document.getElementById('card-ability-input');
+    const listEl = document.getElementById('card-ability-list');
+    if (!inp || !listEl) return;
+    const val = inp.value.trim();
+    if (!val) {
+      inp.classList.add('error');
+      setTimeout(function() { inp.classList.remove('error'); }, 400);
+      return;
+    }
+    addAbilityItemToList(listEl, val, 'card');
+    inp.value = '';
+    inp.focus();
+    const counter = document.getElementById('card-ability-counter');
+    if (counter) { counter.textContent = ''; counter.classList.remove('visible'); }
+  }
+
+  function cardAbilityDone() {
+    /* Collect from the edit list */
+    const listEl = document.getElementById('card-ability-list');
+    const newAbilities = [];
+    if (listEl) {
+      listEl.querySelectorAll('.ability-list-item-text').forEach(function(el) {
+        const txt = el.textContent.trim();
+        if (txt) newAbilities.push(txt);
+      });
+    }
+    cardAbilities = newAbilities;
+    cardAbilityExpanded = false;
+
+    /* Clean up event listeners */
+    const inp = document.getElementById('card-ability-input');
+    if (inp) {
+      inp.removeEventListener('keydown', cardAbilityInputKeydown);
+      inp.removeEventListener('input', cardAbilityInputCounter);
+      inp.value = '';
+    }
+
+    document.getElementById('npc-card-main').classList.remove('editing-abilities');
+    renderCardAbilities();
+  }
+
+  /* No auto-open — show collapsed state as default */
+</script>
+</body>
+</html>

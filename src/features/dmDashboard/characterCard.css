@@ -576,6 +576,96 @@
   margin-right: 2px;
 }
 
+/* ─── Saves strip (Story 20) ─────────────────────────────────────────────── */
+
+.cc-saves-strip {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  padding: 5px 14px 5px 18px;
+  border-top: 1px solid var(--pal-border);
+  margin-bottom: 0;
+}
+
+/* PERC — slightly more visual weight than the save pairs */
+.cc-saves-perc-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  flex-shrink: 0;
+  margin-right: 3px;
+}
+
+.cc-saves-perc-value {
+  font-family: var(--font-display);
+  font-size: 13px;
+  line-height: 1;
+  flex-shrink: 0;
+  color: var(--pal-gem);
+}
+
+/* Divider pip between PERC block and the save triad */
+.cc-saves-divider-dot {
+  width: 2px;
+  height: 2px;
+  border-radius: 50%;
+  background: var(--pal-text-muted);
+  opacity: 0.4;
+  flex-shrink: 0;
+  margin: 0 8px;
+}
+
+/* Save triad: WIS · CON · DEX */
+.cc-saves-triad {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.cc-save-pair {
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+}
+
+.cc-save-pair-label {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  flex-shrink: 0;
+}
+
+.cc-save-pair-value {
+  font-family: var(--font-display);
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+  color: var(--pal-text-body);
+}
+
+/* Middot separators between WIS · CON · DEX */
+.cc-save-sep {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--pal-text-muted);
+  opacity: 0.45;
+  padding: 0 5px;
+  flex-shrink: 0;
+}
+
+/* Speed value (conditional) */
+.cc-saves-speed-value {
+  font-family: var(--font-display);
+  font-size: 11px;
+  line-height: 1;
+  flex-shrink: 0;
+  color: var(--pal-text-body);
+}
+
 /* ─── Tier-2 collapse wrapper ────────────────────────────────────────────── */
 
 .cc-tier2 {

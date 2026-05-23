@@ -650,3 +650,270 @@
   display: flex;
   gap: 6px;
 }
+
+/* ─── NPC Ability Reference (Story 23) ──────────────────────────────────── */
+
+/* Wrapper — sits between conditions and action row */
+.npc-ability-ref {
+  padding: 8px 10px 6px;
+}
+
+/* Empty-state affordance: "+ Ability reference" quiet link */
+.npc-ability-ref-toggle {
+  background: none;
+  border: none;
+  padding: 4px 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  transition: color 0.12s;
+  width: 100%;
+  text-align: left;
+}
+
+.npc-ability-ref-toggle:hover {
+  color: var(--npc-bright);
+}
+
+/* Read-mode footer row: Show all N / Show less (left) + pencil (right) */
+.npc-ability-ref-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 4px;
+}
+
+.npc-ability-show-toggle {
+  background: none;
+  border: none;
+  padding: 2px 0;
+  min-height: 28px;
+  display: flex;
+  align-items: center;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--npc-accent);
+  cursor: pointer;
+  transition: color 0.12s;
+}
+
+.npc-ability-show-toggle:hover {
+  color: var(--npc-bright);
+}
+
+.npc-ability-edit-btn {
+  background: none;
+  border: none;
+  padding: 4px 6px;
+  min-width: 32px;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--npc-accent);
+  font-size: 13px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.12s, background 0.12s;
+  margin-left: auto;
+}
+
+.npc-ability-edit-btn:hover {
+  color: var(--npc-bright);
+  background: rgba(122, 112, 96, 0.15);
+}
+
+/* Structured entry list — read mode */
+.npc-ability-ref-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.npc-ability-ref-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.npc-ability-ref-diamond {
+  font-family: var(--font-display);
+  font-size: 11px;
+  color: var(--npc-accent);
+  flex-shrink: 0;
+  margin-top: 2px;
+  line-height: 1.4;
+}
+
+.npc-ability-ref-text {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--pal-text-body);
+  line-height: 1.6;
+  flex: 1;
+  word-break: break-word;
+}
+
+/* Edit mode — individual removable entry row */
+.npc-ability-ref-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.npc-ability-ref-remove {
+  background: none;
+  border: none;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 2px;
+  min-width: 24px;
+  min-height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  flex-shrink: 0;
+  opacity: 0;
+  transition: opacity 0.12s, color 0.12s, background 0.12s;
+}
+
+.npc-ability-ref-row:hover .npc-ability-ref-remove {
+  opacity: 1;
+}
+
+.npc-ability-ref-remove:hover {
+  color: #c06060;
+  background: rgba(192, 96, 96, 0.1);
+}
+
+.npc-ability-ref-row-text {
+  font-family: var(--font-body);
+  font-size: 13px;
+  color: var(--pal-text-body);
+  line-height: 1.6;
+  flex: 1;
+  word-break: break-word;
+  padding: 2px 0;
+}
+
+/* Add-ability input row */
+.npc-ability-add-row {
+  display: flex;
+  align-items: stretch;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.npc-ability-add-input {
+  flex: 1;
+  background: var(--npc-track, rgba(40, 34, 24, 0.8));
+  border: 1px solid var(--npc-action-border);
+  border-radius: 3px;
+  color: var(--pal-text-body);
+  font-family: var(--font-body);
+  font-size: 13px;
+  padding: 5px 8px;
+  outline: none;
+  transition: border-color 0.15s;
+  min-height: 32px;
+}
+
+.npc-ability-add-input:focus {
+  border-color: var(--npc-accent);
+}
+
+.npc-ability-add-input::placeholder {
+  color: var(--pal-text-muted);
+  font-style: italic;
+}
+
+.npc-ability-add-btn {
+  background: rgba(122, 112, 96, 0.15);
+  border: 1px solid var(--npc-accent);
+  border-radius: 3px;
+  color: var(--npc-bright);
+  font-family: var(--font-ui);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 5px 10px;
+  min-width: 32px;
+  flex-shrink: 0;
+  transition: background 0.15s, opacity 0.15s;
+}
+
+.npc-ability-add-btn:hover:not(:disabled) {
+  background: rgba(122, 112, 96, 0.28);
+}
+
+.npc-ability-add-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Character counter — visible within 30 chars of limit */
+.npc-ability-char-counter {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--pal-text-muted);
+  text-align: right;
+  margin-top: 2px;
+  display: none;
+}
+
+.npc-ability-char-counter.visible {
+  display: block;
+}
+
+.npc-ability-ref-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.npc-ability-cancel-btn,
+.npc-ability-done-btn {
+  display: block;
+  width: 100%;
+  background: rgba(122, 112, 96, 0.15);
+  border: 1px solid var(--npc-action-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  padding: 8px 0;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.npc-ability-cancel-btn:hover {
+  background: rgba(122, 112, 96, 0.22);
+  border-color: var(--npc-accent);
+  color: var(--pal-text-body);
+}
+
+/* Done button — primary style */
+.npc-ability-done-btn {
+  border-color: var(--npc-accent);
+  color: var(--npc-bright);
+}
+
+.npc-ability-done-btn:hover {
+  background: rgba(122, 112, 96, 0.28);
+}

@@ -19,11 +19,20 @@ import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh }
 
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
 const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
+const TEXT_SCALE_STORAGE_KEY = "dnd_dm_text_scale";
 const MAP_TRANSITION_MS = 320;
 const CARD_FLIP_MS = 460;
 const CARD_COMPACT_MS = 240;
 const DICE_EXIT_MS = 240;
 const DICE_ENTER_MS = 420;
+const TEXT_SCALE_STEP = 0.1;
+const TEXT_SCALE_MIN = 0.9;
+const TEXT_SCALE_MAX = 1.4;
+
+function clampTextScale(value) {
+  if (!Number.isFinite(value)) return 1;
+  return Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, value));
+}
 
 export default function DmDashboardPage() {
 
@@ -57,6 +66,9 @@ export default function DmDashboardPage() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [restNotice, setRestNotice] = useState("");
   const [palKey, setPalKey] = useState(() => sessionStorage.getItem("dnd_dm_palette") || "ocean");
+  const [textScale, setTextScale] = useState(() =>
+    clampTextScale(parseFloat(sessionStorage.getItem(TEXT_SCALE_STORAGE_KEY) || "1"))
+  );
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
   const cardOpenFnsRef = useRef({});
@@ -92,6 +104,10 @@ export default function DmDashboardPage() {
     sessionStorage.setItem(COMBAT_MODE_STORAGE_KEY, String(combatMode));
     sessionStorage.removeItem(LEGACY_COMBAT_MODE_STORAGE_KEY);
   }, [combatMode]);
+
+  useEffect(() => {
+    sessionStorage.setItem(TEXT_SCALE_STORAGE_KEY, String(textScale));
+  }, [textScale]);
 
   useEffect(() => {
     const handlePointerDown = (event) => {
@@ -840,6 +856,9 @@ export default function DmDashboardPage() {
       }),
     },
   ];
+  const roundedTextScalePct = Math.round(textScale * 100);
+  const canDecreaseTextScale = textScale > TEXT_SCALE_MIN;
+  const canIncreaseTextScale = textScale < TEXT_SCALE_MAX;
 
   return (
     <PalCtx.Provider value={pal}>
@@ -849,6 +868,7 @@ export default function DmDashboardPage() {
         color: pal.text,
         fontFamily: pal.fontBody,
         WebkitFontSmoothing: "antialiased",
+        zoom: textScale,
       }}>
         <div style={{
           display: "flex",
@@ -917,6 +937,52 @@ export default function DmDashboardPage() {
                     onClick={() => setActionMenuOpen(false)}
                     style={{ display: "block", color: pal.text, textDecoration: "none", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px" }}
                   >Classic Layout</Link>
+                  <div style={{ height: 1, background: pal.border, margin: "6px 0" }} />
+                  <div style={{ padding: "4px 10px 6px", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: pal.textMuted }}>
+                    Text Size
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "36px 1fr 36px", gap: 8, alignItems: "center", padding: "0 10px 8px" }}>
+                    <button
+                      onClick={() => setTextScale((current) => clampTextScale(Number((current - TEXT_SCALE_STEP).toFixed(2))))}
+                      disabled={!canDecreaseTextScale}
+                      aria-label="Decrease text size"
+                      style={{
+                        background: "transparent",
+                        border: `1px solid ${pal.border}`,
+                        borderRadius: 3,
+                        color: canDecreaseTextScale ? pal.text : pal.textMuted,
+                        fontFamily: pal.fontUI,
+                        fontSize: 14,
+                        lineHeight: 1,
+                        padding: "7px 0",
+                        cursor: canDecreaseTextScale ? "pointer" : "not-allowed",
+                        opacity: canDecreaseTextScale ? 1 : 0.45,
+                      }}
+                    >−</button>
+                    <div style={{ textAlign: "center", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", color: pal.text }}>
+                      {roundedTextScalePct}%
+                    </div>
+                    <button
+                      onClick={() => setTextScale((current) => clampTextScale(Number((current + TEXT_SCALE_STEP).toFixed(2))))}
+                      disabled={!canIncreaseTextScale}
+                      aria-label="Increase text size"
+                      style={{
+                        background: "transparent",
+                        border: `1px solid ${pal.border}`,
+                        borderRadius: 3,
+                        color: canIncreaseTextScale ? pal.text : pal.textMuted,
+                        fontFamily: pal.fontUI,
+                        fontSize: 14,
+                        lineHeight: 1,
+                        padding: "7px 0",
+                        cursor: canIncreaseTextScale ? "pointer" : "not-allowed",
+                        opacity: canIncreaseTextScale ? 1 : 0.45,
+                      }}
+                    >+</button>
+                  </div>
+                  <div style={{ padding: "0 10px 8px", fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 11, color: pal.textMuted }}>
+                    Scales this dashboard only.
+                  </div>
                   <div style={{ height: 1, background: pal.border, margin: "6px 0" }} />
                   <div style={{ padding: "4px 10px 6px", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: pal.textMuted }}>
                     Theme
@@ -1045,6 +1111,7 @@ export default function DmDashboardPage() {
                   onCommitNpcCombat={commitNpcCombatUpdate}
                   onAddNpcToInitiative={handleAddNpcToInitiative}
                   onRemoveNpcFromInitiative={handleRemoveNpcFromInitiative}
+                  showEndCombatButton={false}
                 />
               </div>
             </div>

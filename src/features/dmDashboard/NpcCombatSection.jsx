@@ -266,6 +266,190 @@ function NpcNotesStrip({ npc, allNpcsRef, onCommitNpcs, pal, npcPal }) {
   );
 }
 
+const ABILITY_MAX_LENGTH = 255;
+const ABILITY_COUNTER_THRESHOLD = 30;
+const ABILITY_COLLAPSED_LIMIT = 3;
+
+function NpcAbilityRef({ abilities: abilitiesProp, isActiveTurn, npcPal, onSave }) {
+  // Backward-compat coercion: string (legacy) → string[], absent → []
+  const abilities = Array.isArray(abilitiesProp)
+    ? abilitiesProp
+    : typeof abilitiesProp === "string" && abilitiesProp.trim()
+    ? [abilitiesProp]
+    : [];
+
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState([]);
+  const [addInput, setAddInput] = useState("");
+  const addInputRef = useRef(null);
+
+  // Auto-expand on active turn; guard against editing state
+  useEffect(() => {
+    if (editing) return;
+    if (isActiveTurn && abilities.length > 0) setExpanded(true);
+    else setExpanded(false);
+  }, [isActiveTurn, abilities.length, editing]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function enterEdit() {
+    setDraft([...abilities]);
+    setAddInput("");
+    setEditing(true);
+    // Focus the add input after paint
+    setTimeout(() => addInputRef.current?.focus(), 60);
+  }
+
+  function exitEdit() {
+    setEditing(false);
+    setAddInput("");
+  }
+
+  async function commitEdit() {
+    // Trim entries, drop whitespace-only
+    const cleaned = draft.map((entry) => entry.trim()).filter((entry) => entry.length > 0);
+    const success = await onSave(cleaned);
+    if (success !== false) {
+      exitEdit();
+    }
+  }
+
+  function handleAddEntry() {
+    const text = addInput.trim();
+    if (!text) return;
+    setDraft((current) => [...current, text]);
+    setAddInput("");
+    setTimeout(() => addInputRef.current?.focus(), 0);
+  }
+
+  function handleRemoveEntry(index) {
+    setDraft((current) => current.filter((_, idx) => idx !== index));
+  }
+
+  function handleAddKeyDown(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddEntry();
+    }
+    if (e.key === "Escape") {
+      exitEdit();
+    }
+  }
+
+  function handleEditKeyDown(e) {
+    if (e.key === "Escape") {
+      exitEdit();
+    }
+  }
+
+  const addInputLen = addInput.length;
+  const showCounter = addInputLen >= ABILITY_MAX_LENGTH - ABILITY_COUNTER_THRESHOLD;
+
+  // ── Empty state ───────────────────────────────────────────────────────────
+  if (abilities.length === 0 && !editing) {
+    return (
+      <div className="npc-ability-ref">
+        <button
+          className="npc-ability-ref-toggle"
+          onClick={enterEdit}
+          title="Add ability reference"
+        >
+          + Ability reference
+        </button>
+      </div>
+    );
+  }
+
+  // ── Edit mode ─────────────────────────────────────────────────────────────
+  if (editing) {
+    return (
+      <div className="npc-ability-ref" onKeyDown={handleEditKeyDown}>
+        {draft.map((entry, idx) => (
+          <div key={idx} className="npc-ability-ref-row">
+            <button
+              className="npc-ability-ref-remove"
+              onClick={() => handleRemoveEntry(idx)}
+              title="Remove"
+            >−</button>
+            <span className="npc-ability-ref-row-text">{entry}</span>
+          </div>
+        ))}
+
+        <div className="npc-ability-add-row">
+          <input
+            ref={addInputRef}
+            className="npc-ability-add-input"
+            type="text"
+            placeholder="+ Add ability or spell…"
+            maxLength={ABILITY_MAX_LENGTH}
+            value={addInput}
+            onChange={(e) => setAddInput(e.target.value)}
+            onKeyDown={handleAddKeyDown}
+            autoComplete="off"
+          />
+          <button
+            className="npc-ability-add-btn"
+            onClick={handleAddEntry}
+            disabled={!addInput.trim()}
+            title="Add entry"
+          >+</button>
+        </div>
+
+        <div className={`npc-ability-char-counter${showCounter ? " visible" : ""}`}>
+          {ABILITY_MAX_LENGTH - addInputLen} characters remaining
+        </div>
+
+        <div className="npc-ability-ref-actions">
+          <button className="npc-ability-cancel-btn" onClick={exitEdit}>Cancel</button>
+          <button className="npc-ability-done-btn" onClick={commitEdit}>Done</button>
+        </div>
+      </div>
+    );
+  }
+
+  // ── Read mode (collapsed or expanded) ────────────────────────────────────
+  const visibleEntries = expanded ? abilities : abilities.slice(0, ABILITY_COLLAPSED_LIMIT);
+  const hasMore = abilities.length > ABILITY_COLLAPSED_LIMIT;
+
+  return (
+    <div className="npc-ability-ref">
+      <ul className="npc-ability-ref-list">
+        {visibleEntries.map((entry, idx) => (
+          <li key={idx} className="npc-ability-ref-item">
+            <span className="npc-ability-ref-diamond">◆</span>
+            <span className="npc-ability-ref-text">{entry}</span>
+          </li>
+        ))}
+      </ul>
+
+      <div className="npc-ability-ref-footer">
+        <div>
+          {!expanded && hasMore && (
+            <button
+              className="npc-ability-show-toggle"
+              onClick={() => setExpanded(true)}
+            >
+              Show all {abilities.length}
+            </button>
+          )}
+          {expanded && (
+            <button
+              className="npc-ability-show-toggle"
+              onClick={() => setExpanded(false)}
+            >
+              Show less
+            </button>
+          )}
+        </div>
+        <button
+          className="npc-ability-edit-btn"
+          onClick={enterEdit}
+          title="Edit abilities"
+        >✎</button>
+      </div>
+    </div>
+  );
+}
+
 function NpcCard({
   npc,
   allNpcsRef,
@@ -537,6 +721,18 @@ function NpcCard({
         )}
       </div>
 
+      <NpcAbilityRef
+        abilities={npc.abilities}
+        isActiveTurn={isActiveTurn}
+        npcPal={npcPal}
+        onSave={async (nextAbilities) => {
+          const updatedNpcs = (allNpcsRef.current || []).map((entry) =>
+            entry.id === npc.id ? { ...entry, abilities: nextAbilities } : entry
+          );
+          return onCommitNpcs(updatedNpcs);
+        }}
+      />
+
       <div className="npc-actions" style={{ borderTop: `1px solid ${npcPal.actionBorder}` }}>
         {isDead ? (
           <button onClick={() => onOpenModal("heal")} className="btn-npc-action btn-npc-heal">Revive</button>
@@ -571,6 +767,7 @@ export default function NpcCombatSection({
   onCommitNpcCombat,
   onAddNpcToInitiative,
   onRemoveNpcFromInitiative,
+  showEndCombatButton = true,
 }) {
   const pal = useContext(PalCtx);
   const npcPal = getNpcCardPalette(pal);
@@ -700,13 +897,14 @@ export default function NpcCombatSection({
         "--npc-bright":       npcPal.bright,
         "--npc-chip-bg":      npcPal.chipBg,
         "--npc-action-border":npcPal.actionBorder,
+        "--npc-track":        npcPal.track,
       }}
     >
       <div className="flex-row-spread" style={{ marginBottom: 14 }}>
         <span className="label-ui" style={{ letterSpacing: "0.3em" }}>
           Enemies{npcs.length > 0 ? ` · ${npcs.length}` : ""}
         </span>
-        {npcs.length > 0 && (
+        {showEndCombatButton && npcs.length > 0 && (
           <button onClick={() => setShowEndConfirm(true)} className="btn-end-combat">End Combat ×</button>
         )}
       </div>

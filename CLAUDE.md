@@ -79,7 +79,7 @@ node scripts/migrate.mjs   # Seeds DynamoDB and uploads portraits to S3 (interac
 - `backend/template.yaml` — SAM template; DM password hash passed as parameter override from SSM at deploy time
 - S3 bucket `hunkz-dnd` (frontend), `hunkz-dnd-portraits` (portraits + maps under `maps/` prefix)
 
-**Special DynamoDB items**: In addition to character records, the `CharactersTable` stores sentinel items: `slug: "initiative"` (initiative order — now includes `round: number` field, default 1), `slug: "npc-combat"` (NPC HP tracking), `slug: "roll-history"` (shared roll feed), `slug: "map-library"` (active map + library). All are filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `specialItems.js`.
+**Special DynamoDB items**: In addition to character records, the `CharactersTable` stores sentinel items: `slug: "initiative"` (initiative order — now includes `round: number` field, default 1), `slug: "npc-combat"` (NPC HP tracking; NPC object shape: `{ id, name, hpMax, hpCurrent, conditions, initiativeEntryId, notes?, abilities? }` where `abilities: string[]` stores a persistent ability/spell reference list, written via `putNpcCombat`), `slug: "roll-history"` (shared roll feed), `slug: "map-library"` (active map + library). All are filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `specialItems.js`.
 
 **Auth model**: Two roles — `owner` (per-character bcrypt hash stored in DynamoDB) and `dm` (single hash from `DM_PASSWORD_HASH` env var set via SSM). DM session stored in `sessionStorage`.
 

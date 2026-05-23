@@ -1,6 +1,6 @@
 # Story 20 — Party Intelligence Panel
 
-**Status**: Awaiting design
+**Status**: Implemented (saves strip — Story 20, v1 scope)
 
 ---
 

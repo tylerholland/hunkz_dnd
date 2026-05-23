@@ -1,5 +1,7 @@
 # Story 22 — Dice Roller Combat Transition Polish
 
+**Status**: Implemented — confirmed in source code. All four dice panel states use `translateY` + `scale` only in `dashboard.css`. No `translateX` or `scaleX` on the dice panel. `transform-origin: top center` unified.
+
 ## Goal
 The DM dice roller currently "teleports" during combat mode toggle — it fades out in one location with a vertical gesture, then reappears in another location with a mismatched horizontal gesture. The browser reads them as two separate panels rather than one object relocating. This story fixes the motion so the dice roller reads as a single object with a coherent departure and arrival.
 

@@ -1199,6 +1199,31 @@ export default function CharacterCard({
     return sum + (item.mods || []).filter((m) => m.attribute === "Constitution").reduce((s, m) => s + (parseInt(m.value, 10) || 0), 0);
   }, 0);
   const conSaveMod = Math.floor((conScore - 10) / 2) + conItemBonus;
+
+  // Saves strip computations (Story 20)
+  const allItems = [...(char.weapons || []), ...(char.equipment || [])];
+  const equippedItems = allItems.filter((item) => item.equipped !== false);
+  const wisScore = char.stats?.find((s) => s.stat === "Wisdom")?.score ?? 10;
+  const wisItemBonus = equippedItems.reduce((sum, item) => {
+    return sum + (item.mods || []).filter((m) => m.attribute === "Wisdom").reduce((s, m) => s + (parseInt(m.value, 10) || 0), 0);
+  }, 0);
+  const dexScore = char.stats?.find((s) => s.stat === "Dexterity")?.score ?? 10;
+  const dexItemBonus = equippedItems.reduce((sum, item) => {
+    return sum + (item.mods || []).filter((m) => m.attribute === "Dexterity").reduce((s, m) => s + (parseInt(m.value, 10) || 0), 0);
+  }, 0);
+  const speedItemBonus = equippedItems.reduce((sum, item) => {
+    return sum + (item.mods || []).filter((m) => m.attribute === "Speed").reduce((s, m) => s + (parseInt(m.value, 10) || 0), 0);
+  }, 0);
+  const passivePerception = 10 + Math.floor((wisScore - 10) / 2) + wisItemBonus;
+  const wisSaveMod = Math.floor((wisScore - 10) / 2) + wisItemBonus;
+  const dexSaveMod = Math.floor((dexScore - 10) / 2) + dexItemBonus;
+  const SPEED_ZERO_CONDITIONS = ["Restrained", "Paralyzed", "Petrified", "Grappled"];
+  const activeConditions = Array.isArray(char.conditions) ? char.conditions : [];
+  const speedZeroed = SPEED_ZERO_CONDITIONS.some((c) => activeConditions.includes(c));
+  const baseSpeed = char.speed ?? 30;
+  const netSpeed = speedZeroed ? 0 : baseSpeed + speedItemBonus;
+  const showSpeed = netSpeed !== 30 || speedItemBonus !== 0;
+  const formatSaveMod = (mod) => (mod >= 0 ? "+" : "") + mod;
   const conSaveLabel = (conSaveMod >= 0 ? "+" : "") + conSaveMod;
   const hasStatusRow = visibleConds.length > 0 || !!concentrationDisplay || !!char.inspiration;
   const spellSlotGroups = getSpellSlotGroups(char.spellSlots || []);
@@ -1713,6 +1738,40 @@ export default function CharacterCard({
                   })}
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* Saves strip (Story 20) */}
+          {hasHp && (
+            <div className="cc-saves-strip">
+              <span className="cc-saves-perc-label">Perc</span>
+              <span className="cc-saves-perc-value">{passivePerception}</span>
+              <div className="cc-saves-divider-dot" />
+              <div className="cc-saves-triad">
+                <div className="cc-save-pair">
+                  <span className="cc-save-pair-label">Wis</span>
+                  <span className="cc-save-pair-value">{formatSaveMod(wisSaveMod)}</span>
+                </div>
+                <span className="cc-save-sep">·</span>
+                <div className="cc-save-pair">
+                  <span className="cc-save-pair-label">Con</span>
+                  <span className="cc-save-pair-value">{formatSaveMod(conSaveMod)}</span>
+                </div>
+                <span className="cc-save-sep">·</span>
+                <div className="cc-save-pair">
+                  <span className="cc-save-pair-label">Dex</span>
+                  <span className="cc-save-pair-value">{formatSaveMod(dexSaveMod)}</span>
+                </div>
+              </div>
+              {showSpeed && (
+                <>
+                  <div className="cc-saves-divider-dot" />
+                  <span
+                    className="cc-saves-speed-value"
+                    style={speedZeroed ? { color: "#c06060" } : undefined}
+                  >{netSpeed}ft</span>
+                </>
+              )}
             </div>
           )}
 

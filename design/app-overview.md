@@ -383,6 +383,7 @@ A dedicated DM session-management view accessible at `/dm`.
   - `− Init` when already linked into initiative
 - Vellum campaign-theme adjustments also apply to NPC surfaces when the overall campaign theme is light
 - **NPC notes strip**: same collapsible strip pattern as character cards, attached below the action buttons row. NPC notes are stored inline in the NPC object (`notes: [{ id, text }][]`) and written via `putNpcCombat`. Session-scoped: notes are discarded when "End Combat" is triggered. No `sharedWithDm` — no player-sharing section.
+- **NPC ability reference** (Story 23): persistent structured list of abilities/spells on each NPC card. Stored as `abilities: string[]` on the NPC object (optional; absent or old `string` values coerced to array on read). Sits between the conditions row and action buttons row. Three states: (1) empty — quiet "+ Ability reference" affordance; (2) read-collapsed — first 3 entries shown as `◆` list items with "Show all N" + pencil; (3) read-expanded — all entries with "Show less" + pencil; (4) edit mode — removable entry rows + inline add input + Done button. Auto-expands when the NPC is the active initiative turn; auto-collapses on turn-off if not editing. Entries capped at 255 chars; no array-length limit. Written via existing `putNpcCombat` pass-through. No backend changes. DM-only.
 
 **Party-wide actions** (top toolbar + bottom of party column):
 - "Short Rest": resets Pact Magic (`isPactMagic`) spell slots for all characters via parallel `patchSession` calls; shows confirmation dialog first
