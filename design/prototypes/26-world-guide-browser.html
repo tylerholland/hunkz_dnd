@@ -1,0 +1,2003 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>World Guide Browser — Design Prototype (Story 26)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Parchment palette (character sheet context) ── */
+    :root {
+      --bg:            #1a1209;
+      --surface:       rgba(42,30,15,0.7);
+      --surface-solid: #2a1e0f;
+      --border:        rgba(74,53,32,0.5);
+      --border-vis:    rgba(74,53,32,0.8);
+      --accent:        #c8a96e;
+      --accent-bright: #e8c98e;
+      --accent-dim:    rgba(74,53,32,0.45);
+      --text:          #f0e6d3;
+      --text-body:     #d4c4a8;
+      --text-muted:    #8a7560;
+      --glow1:         rgba(80,50,15,0.35);
+      --glow2:         rgba(60,35,10,0.25);
+      --gem:           #e8c98e;
+      --font-display:  'Cinzel', Georgia, serif;
+      --font-body:     'Crimson Text', Georgia, serif;
+      --font-ui:       'IM Fell English', Georgia, serif;
+
+      /* drawer-specific */
+      --drawer-width-desktop: 440px;
+      --drawer-width-tablet:  420px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ─── Prototype page header ─────────────────────────────────────────── */
+    .proto-header {
+      padding: 28px 40px 20px;
+      border-bottom: 1px solid var(--border-vis);
+      margin-bottom: 0;
+    }
+    .proto-header h1 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.1em;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .proto-header .meta {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .proto-header .meta span { color: var(--accent); }
+
+    /* ─── Scenario section ───────────────────────────────────────────────── */
+    .scenario-section {
+      padding: 40px 40px 60px;
+      border-bottom: 1px solid var(--border);
+    }
+    .scenario-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+    .scenario-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    .scenario-desc {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 28px;
+      max-width: 600px;
+      line-height: 1.6;
+    }
+
+    /* ─── Simulated app shell ────────────────────────────────────────────── */
+    .app-shell {
+      position: relative;
+      width: 100%;
+      max-width: 900px;
+      min-height: 560px;
+      background: var(--bg);
+      border: 1px solid var(--border-vis);
+      border-radius: 6px;
+      overflow: hidden;
+      isolation: isolate;
+    }
+
+    /* ── Top bar ── */
+    .app-topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 50px;
+      background: var(--surface-solid);
+      border-bottom: 1px solid var(--border-vis);
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .app-topbar-left {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .topbar-back {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      cursor: pointer;
+      padding: 6px 4px;
+      transition: color 150ms ease;
+    }
+    .topbar-back:hover { color: var(--accent); }
+    .topbar-back::before { content: '← '; }
+
+    .char-name-topbar {
+      font-family: var(--font-display);
+      font-size: 15px;
+      letter-spacing: 0.08em;
+      color: var(--text);
+      padding: 0 8px;
+    }
+
+    .app-topbar-right {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    /* Guide trigger button */
+    .guide-trigger {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      background: transparent;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 0;
+      transition: background 150ms ease;
+      position: relative;
+    }
+    .guide-trigger:hover { background: rgba(200,169,110,0.08); }
+    .guide-trigger svg { transition: color 140ms linear; }
+    .guide-trigger .book-icon { color: var(--text-muted); }
+    .guide-trigger.open .book-icon { color: var(--accent-bright); }
+    .guide-trigger:hover .book-icon { color: var(--accent); }
+    .guide-trigger.open:hover .book-icon { color: var(--accent-bright); }
+
+    .topbar-btn {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      padding: 7px 14px;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: color 150ms, border-color 150ms;
+      min-height: 44px;
+    }
+    .topbar-btn:hover { color: var(--accent); border-color: var(--accent); }
+    .topbar-btn.primary {
+      color: var(--accent-bright);
+      border-color: var(--accent);
+      background: rgba(200,169,110,0.08);
+    }
+
+    /* ── App content body ── */
+    .app-body {
+      display: flex;
+      flex-direction: column;
+      padding: 28px 32px;
+      gap: 20px;
+    }
+
+    /* Character header inside app */
+    .char-header {
+      display: flex;
+      align-items: flex-start;
+      gap: 20px;
+    }
+    .char-portrait-stub {
+      width: 80px;
+      height: 80px;
+      border-radius: 4px;
+      background: var(--surface);
+      border: 1px solid var(--border-vis);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--text-muted);
+      font-size: 28px;
+      opacity: 0.6;
+    }
+    .char-meta h2 {
+      font-family: var(--font-display);
+      font-size: 22px;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      margin-bottom: 4px;
+    }
+    .char-meta .char-subtitle {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .char-meta .char-hp {
+      margin-top: 10px;
+      font-family: var(--font-display);
+      font-size: 13px;
+      letter-spacing: 0.08em;
+      color: var(--accent);
+    }
+
+    /* Tab strip */
+    .tab-strip {
+      display: flex;
+      gap: 8px;
+      margin-top: 4px;
+    }
+    .tab-btn {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 5px 16px;
+      border-radius: 3px;
+      cursor: pointer;
+      border: 1px solid var(--border-vis);
+      color: var(--text-muted);
+      background: transparent;
+      transition: color 150ms, border-color 150ms, background 150ms;
+    }
+    .tab-btn.active {
+      border-color: var(--accent);
+      color: var(--accent-bright);
+      background: var(--accent-dim);
+    }
+    .tab-btn:not(.active):hover {
+      color: var(--accent);
+      border-color: rgba(200,169,110,0.4);
+    }
+
+    /* Placeholder content lines */
+    .content-placeholder { margin-top: 8px; }
+    .placeholder-line {
+      height: 12px;
+      border-radius: 2px;
+      background: rgba(200,169,110,0.06);
+      margin-bottom: 10px;
+    }
+    .placeholder-line.short { width: 45%; }
+    .placeholder-line.med   { width: 70%; }
+    .placeholder-line.long  { width: 90%; }
+    .placeholder-section-head {
+      height: 14px;
+      width: 30%;
+      border-radius: 2px;
+      background: rgba(200,169,110,0.1);
+      margin-bottom: 14px;
+      margin-top: 18px;
+    }
+
+    /* ─── Scrim ──────────────────────────────────────────────────────────── */
+    .drawer-scrim {
+      position: absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.4);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 260ms cubic-bezier(0.2,0.8,0.2,1);
+      z-index: 10;
+    }
+    .drawer-scrim.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    /* ─── Drawer ─────────────────────────────────────────────────────────── */
+    .guide-drawer {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: var(--drawer-width-desktop);
+      height: 100%;
+      background: var(--surface-solid);
+      border-left: 1px solid var(--border-vis);
+      display: flex;
+      flex-direction: column;
+      z-index: 20;
+      transform: translateX(100%);
+      transition: transform 220ms cubic-bezier(0.4,0,0.6,1);
+      overflow: hidden;
+    }
+    .guide-drawer.open {
+      transform: translateX(0);
+      transition: transform 260ms cubic-bezier(0.2,0.8,0.2,1);
+    }
+
+    /* Drawer sticky header (shared by TOC and reading) */
+    .drawer-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      height: 50px;
+      border-bottom: 1px solid var(--border-vis);
+      background: var(--surface-solid);
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    .drawer-title {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .drawer-close {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      color: var(--text-muted);
+      font-size: 18px;
+      border-radius: 4px;
+      transition: color 150ms ease, background 150ms ease;
+      margin-right: -10px;
+    }
+    .drawer-close:hover { color: var(--accent-bright); background: rgba(200,169,110,0.08); }
+
+    /* Back button in reading header */
+    .drawer-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: transparent;
+      border: none;
+      cursor: pointer;
+      padding: 6px 0;
+      min-height: 44px;
+      transition: color 150ms ease;
+    }
+    .drawer-back:hover { color: var(--accent-bright); }
+    .drawer-back svg { flex-shrink: 0; }
+
+    /* ─── Drawer scroll container ────────────────────────────────────────── */
+    .drawer-scroll {
+      flex: 1;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+    }
+    .drawer-scroll::-webkit-scrollbar { width: 4px; }
+    .drawer-scroll::-webkit-scrollbar-track { background: transparent; }
+    .drawer-scroll::-webkit-scrollbar-thumb { background: rgba(200,169,110,0.15); border-radius: 2px; }
+
+    /* ─── TOC view ───────────────────────────────────────────────────────── */
+    .toc-view, .reading-view {
+      position: absolute;
+      inset: 0;
+      overflow-y: auto;
+      overscroll-behavior: contain;
+      display: flex;
+      flex-direction: column;
+      transition: opacity 160ms ease-in-out;
+    }
+    .toc-view::-webkit-scrollbar,
+    .reading-view::-webkit-scrollbar { width: 4px; }
+    .toc-view::-webkit-scrollbar-track,
+    .reading-view::-webkit-scrollbar-track { background: transparent; }
+    .toc-view::-webkit-scrollbar-thumb,
+    .reading-view::-webkit-scrollbar-thumb { background: rgba(200,169,110,0.15); border-radius: 2px; }
+
+    .view-host {
+      position: relative;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .toc-view.fading-out { opacity: 0; transition: opacity 90ms ease-in; pointer-events: none; }
+    .reading-view.fading-in { animation: fadeIn 160ms ease-in-out 60ms both; }
+    @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+    @keyframes fadeOut { from { opacity:1; } to { opacity:0; } }
+
+    .reading-view { opacity: 0; pointer-events: none; }
+    .reading-view.active { opacity: 1; pointer-events: auto; }
+
+    /* ── Resume row ── */
+    .resume-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 20px;
+      margin: 12px 16px 4px;
+      background: rgba(200,169,110,0.07);
+      border: 1px solid rgba(200,169,110,0.2);
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background 150ms, border-color 150ms;
+    }
+    .resume-row:hover {
+      background: rgba(200,169,110,0.12);
+      border-color: rgba(200,169,110,0.4);
+    }
+    .resume-diamond {
+      font-family: var(--font-display);
+      font-size: 11px;
+      color: var(--accent);
+      flex-shrink: 0;
+    }
+    .resume-text {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+    }
+    .resume-text strong { color: var(--accent-bright); }
+
+    /* ── TOC section head label ── */
+    .toc-section-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 18px 20px 6px;
+    }
+
+    /* ── Chapter row ── */
+    .chapter-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 20px;
+      cursor: pointer;
+      border-bottom: 1px solid rgba(74,53,32,0.25);
+      transition: background 150ms ease;
+      min-height: 52px;
+      user-select: none;
+    }
+    .chapter-row:hover { background: rgba(42,30,15,0.8); }
+    .chapter-row:hover .chapter-chevron { color: var(--accent); }
+    .chapter-row:last-child { border-bottom: none; }
+
+    .chapter-name {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      color: var(--text);
+    }
+    .chapter-chevron {
+      font-family: var(--font-ui);
+      font-size: 16px;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      transition: color 150ms ease, transform 220ms ease-out;
+    }
+    .chapter-chevron.rotated { transform: rotate(90deg); }
+
+    /* ── Gazetteer expanded panel ── */
+    .gazetteer-panel {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 220ms ease-out;
+      background: rgba(26,18,9,0.5);
+      border-bottom: 1px solid rgba(74,53,32,0.25);
+    }
+    .gazetteer-panel.expanded {
+      /* JS sets explicit px height */
+      transition: max-height 220ms ease-out;
+    }
+    .gazetteer-panel.collapsing {
+      transition: max-height 180ms ease-in;
+    }
+
+    .gazetteer-inner { padding: 12px 0; }
+
+    /* Filter input */
+    .gazetteer-filter-wrap {
+      padding: 6px 20px 10px 36px;
+    }
+    .gazetteer-filter {
+      width: 100%;
+      background: var(--surface-solid);
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      letter-spacing: 0.06em;
+      padding: 8px 12px 8px 32px;
+      outline: none;
+      transition: border-color 150ms;
+    }
+    .gazetteer-filter::placeholder { color: var(--text-muted); }
+    .gazetteer-filter:focus { border-color: var(--accent); }
+    .filter-icon-wrap {
+      position: relative;
+    }
+    .filter-icon {
+      position: absolute;
+      left: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-muted);
+      pointer-events: none;
+      font-size: 14px;
+    }
+
+    /* Realm row */
+    .realm-row {
+      display: flex;
+      align-items: center;
+      padding: 10px 20px 10px 36px;
+      cursor: pointer;
+      transition: background 150ms ease, opacity 120ms ease;
+      min-height: 44px;
+    }
+    .realm-row:hover { background: rgba(200,169,110,0.06); }
+    .realm-row.hidden {
+      opacity: 0;
+      pointer-events: none;
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      overflow: hidden;
+      transition: opacity 120ms ease-in, max-height 100ms ease-in 120ms;
+    }
+    .realm-name {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      color: var(--text-body);
+    }
+    .no-match-msg {
+      font-family: var(--font-body);
+      font-size: 14px;
+      font-style: italic;
+      color: var(--text-muted);
+      text-align: center;
+      padding: 16px 20px;
+      display: none;
+    }
+
+    /* ─── Reading view internals ─────────────────────────────────────────── */
+    .reading-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px 0 16px;
+      height: 50px;
+      border-bottom: 1px solid var(--border-vis);
+      background: var(--surface-solid);
+      flex-shrink: 0;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .reading-body {
+      padding: 0 24px 40px;
+      flex: 1;
+    }
+
+    .reading-section-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      letter-spacing: 0.06em;
+      color: var(--text);
+      padding: 18px 0 4px;
+      line-height: 1.3;
+    }
+    .reading-breadcrumb {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 20px;
+      margin-top: 4px;
+    }
+
+    /* Markdown rendering */
+    .reading-content p {
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.8;
+      color: var(--text-body);
+      margin-bottom: 1em;
+    }
+    .reading-content h2 {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.05em;
+      color: var(--text);
+      margin-top: 1.8em;
+      margin-bottom: 0.5em;
+    }
+    .reading-content h3 {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      color: var(--text);
+      margin-top: 1.8em;
+      margin-bottom: 0.5em;
+    }
+    .reading-content ul {
+      list-style: none;
+      padding: 0;
+      margin-bottom: 1em;
+    }
+    .reading-content ul li {
+      font-family: var(--font-body);
+      font-size: 16px;
+      line-height: 1.8;
+      color: var(--text-body);
+      padding-left: 20px;
+      position: relative;
+      margin-bottom: 0.3em;
+    }
+    .reading-content ul li::before {
+      content: '◆';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-size: 10px;
+      top: 5px;
+    }
+    .reading-content strong {
+      font-weight: 600;
+      color: var(--text);
+    }
+    .reading-content em {
+      font-style: italic;
+      color: var(--text-body);
+    }
+    .reading-content a {
+      color: var(--accent);
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+    .reading-content a:hover { color: var(--accent-bright); }
+
+    /* ─── Keyframe: drawer slide (handled via class toggle + transitions) ── */
+    @media (prefers-reduced-motion: reduce) {
+      .guide-drawer,
+      .drawer-scrim,
+      .toc-view,
+      .reading-view,
+      .gazetteer-panel,
+      .chapter-chevron,
+      .realm-row { transition: none !important; animation: none !important; }
+    }
+
+    /* ─── Annotations ────────────────────────────────────────────────────── */
+    .callout {
+      position: absolute;
+      background: rgba(160,192,208,0.12);
+      border: 1px solid rgba(160,192,208,0.35);
+      border-radius: 3px;
+      color: #a0c0d0;
+      font-family: 'IM Fell English', serif;
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      padding: 4px 9px;
+      pointer-events: none;
+      text-transform: uppercase;
+      white-space: nowrap;
+      z-index: 100;
+    }
+    .callout-line {
+      position: absolute;
+      background: rgba(160,192,208,0.3);
+      pointer-events: none;
+      z-index: 99;
+    }
+
+    /* ─── Legend ─────────────────────────────────────────────────────────── */
+    .legend {
+      padding: 40px 40px 60px;
+    }
+    .legend-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+    }
+    .legend-item {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 14px;
+      max-width: 700px;
+    }
+    .legend-num {
+      font-family: var(--font-display);
+      font-size: 13px;
+      color: var(--accent);
+      flex-shrink: 0;
+      min-width: 24px;
+    }
+    .legend-text {
+      font-family: var(--font-body);
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-muted);
+    }
+    .legend-text strong { color: var(--text-body); }
+
+    /* ─── Responsive: narrow viewport within prototype page ─────────────── */
+    .mobile-frame {
+      width: 375px;
+      min-height: 500px;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid var(--border-vis);
+    }
+    .mobile-frame .app-shell {
+      max-width: 100%;
+      border: none;
+      border-radius: 0;
+    }
+    .mobile-frame .guide-drawer {
+      width: 100%;
+    }
+
+    /* ─── Tablet frame ───────────────────────────────────────────────────── */
+    .tablet-frame {
+      width: 768px;
+      max-width: 100%;
+      min-height: 500px;
+      border-radius: 6px;
+      overflow: hidden;
+      position: relative;
+      border: 1px solid var(--border-vis);
+    }
+    .tablet-frame .app-shell {
+      max-width: 100%;
+      border: none;
+      border-radius: 0;
+    }
+    .tablet-frame .guide-drawer {
+      width: var(--drawer-width-tablet);
+    }
+
+    /* ─── keyboard hint ──────────────────────────────────────────────────── */
+    .kbd-hint {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      margin-top: 10px;
+    }
+    .kbd {
+      display: inline-block;
+      background: var(--surface-solid);
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    /* ─── edge-case states ───────────────────────────────────────────────── */
+    .error-state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 48px 24px;
+      gap: 12px;
+    }
+    .error-msg {
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-style: italic;
+      color: var(--text-muted);
+      text-align: center;
+    }
+    .retry-btn {
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: transparent;
+      border: 1px solid rgba(200,169,110,0.3);
+      border-radius: 3px;
+      padding: 8px 16px;
+      cursor: pointer;
+      transition: color 150ms, border-color 150ms;
+    }
+    .retry-btn:hover { color: var(--accent-bright); border-color: var(--accent); }
+
+    /* ─── First-open (no session) drawer state ────────────────────────────── */
+    .empty-state-note {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-style: italic;
+      color: var(--text-muted);
+      padding: 8px 20px 0;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     PROTOTYPE HEADER
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="proto-header">
+  <h1>World Guide Browser</h1>
+  <div class="meta">Story 26 &nbsp;·&nbsp; <span>Design Prototype</span> &nbsp;·&nbsp; 2026-05-28 &nbsp;·&nbsp; Parchment palette (character sheet context)</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SCENARIO 1 — Desktop: Drawer closed (default state)
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-label">Scenario 1 of 5</div>
+  <div class="scenario-title">Desktop — Default state (drawer closed)</div>
+  <div class="scenario-desc">
+    Character sheet with the book icon trigger visible in the top bar. Click the open-book icon (or press <kbd class="kbd">g</kbd>) to open the guide drawer. The underlying sheet remains fully interactive.
+  </div>
+  <div class="kbd-hint" style="margin-bottom:18px;">Keyboard: <span class="kbd">g</span> opens/closes &nbsp;·&nbsp; <span class="kbd">Esc</span> closes</div>
+
+  <!-- App shell: desktop, 440px drawer -->
+  <div class="app-shell" id="shell-desktop" style="min-height:600px;">
+
+    <!-- Top bar -->
+    <div class="app-topbar">
+      <div class="app-topbar-left">
+        <div class="topbar-back" tabindex="0">All Characters</div>
+        <div class="char-name-topbar">Eoghan Thornwood</div>
+      </div>
+      <div class="app-topbar-right">
+        <!-- Guide trigger — annotated -->
+        <button class="guide-trigger" id="trigger-desktop" title="World Guide" aria-label="World Guide" aria-expanded="false">
+          <!-- Open-book SVG glyph -->
+          <svg class="book-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+        </button>
+        <button class="topbar-btn">Export JSON</button>
+        <button class="topbar-btn primary">Edit Character</button>
+      </div>
+    </div>
+
+    <!-- App body (character sheet mock) -->
+    <div class="app-body" id="app-body-desktop">
+      <div class="char-header">
+        <div class="char-portrait-stub">⚔</div>
+        <div class="char-meta">
+          <h2>Eoghan Thornwood</h2>
+          <div class="char-subtitle">Half-Elf &nbsp;·&nbsp; Ranger 8 &nbsp;·&nbsp; Neutral Good</div>
+          <div class="char-hp">HP 54 / 68 &nbsp;·&nbsp; AC 16</div>
+        </div>
+      </div>
+      <div class="tab-strip">
+        <button class="tab-btn active">Combat</button>
+        <button class="tab-btn">Loadout</button>
+        <button class="tab-btn">Persona</button>
+        <button class="tab-btn">Map</button>
+      </div>
+      <div class="content-placeholder">
+        <div class="placeholder-section-head"></div>
+        <div class="placeholder-line long"></div>
+        <div class="placeholder-line med"></div>
+        <div class="placeholder-line short"></div>
+        <div class="placeholder-section-head"></div>
+        <div class="placeholder-line long"></div>
+        <div class="placeholder-line med"></div>
+        <div class="placeholder-line long"></div>
+        <div class="placeholder-line short"></div>
+      </div>
+    </div>
+
+    <!-- Scrim (only shown on tablet/mobile) -->
+    <div class="drawer-scrim" id="scrim-desktop"></div>
+
+    <!-- THE DRAWER -->
+    <div class="guide-drawer" id="drawer-desktop" role="dialog" aria-label="World Guide" aria-modal="false">
+      <!-- TOC header (sticky) -->
+      <div class="drawer-header" id="toc-header-desktop">
+        <div class="drawer-title">World Guide</div>
+        <button class="drawer-close" id="close-desktop" title="Close guide" aria-label="Close World Guide">×</button>
+      </div>
+
+      <!-- View host: TOC and Reading views swap here -->
+      <div class="view-host" id="view-host-desktop">
+
+        <!-- TOC VIEW -->
+        <div class="toc-view" id="toc-desktop">
+
+          <!-- Resume shortcut (shown when dnd_guide_section is set) -->
+          <div class="resume-row" id="resume-desktop" title="Jump back to last-read section">
+            <span class="resume-diamond">✦</span>
+            <span class="resume-text">Resume: <strong>Furyondy</strong></span>
+          </div>
+
+          <div class="toc-section-label">Chapters</div>
+
+          <!-- Chapter list -->
+          <div id="toc-chapters-desktop">
+
+            <div class="chapter-row" data-file="greyhawk-world" data-title="Greyhawk's World">
+              <span class="chapter-name">Greyhawk's World</span>
+              <span class="chapter-chevron">›</span>
+            </div>
+
+            <div class="chapter-row" data-file="folk-flanaess" data-title="Folk of the Flanaess">
+              <span class="chapter-name">Folk of the Flanaess</span>
+              <span class="chapter-chevron">›</span>
+            </div>
+
+            <div class="chapter-row" data-file="history-flanaess" data-title="History of the Flanaess">
+              <span class="chapter-name">History of the Flanaess</span>
+              <span class="chapter-chevron">›</span>
+            </div>
+
+            <!-- Gazetteer — expands in-place -->
+            <div class="chapter-row" id="gazetteer-row-desktop" data-gazetteer="true">
+              <span class="chapter-name">Gazetteer of the Flanaess</span>
+              <span class="chapter-chevron" id="gazetteer-chevron-desktop">⌄</span>
+            </div>
+            <div class="gazetteer-panel" id="gazetteer-panel-desktop">
+              <div class="gazetteer-inner" id="gazetteer-inner-desktop">
+                <div class="gazetteer-filter-wrap">
+                  <div class="filter-icon-wrap">
+                    <span class="filter-icon">⌕</span>
+                    <input class="gazetteer-filter" id="filter-desktop" type="text" placeholder="Filter realms…" autocomplete="off" spellcheck="false" />
+                  </div>
+                </div>
+                <div id="realm-list-desktop">
+                  <div class="realm-row" data-file="ahlissa" data-title="Ahlissa" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Ahlissa</span></div>
+                  <div class="realm-row" data-file="bandit-kingdoms" data-title="Bandit Kingdoms" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Bandit Kingdoms</span></div>
+                  <div class="realm-row" data-file="celene" data-title="Celene" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Celene</span></div>
+                  <div class="realm-row" data-file="dyvers" data-title="Dyvers" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Dyvers</span></div>
+                  <div class="realm-row" data-file="furyondy" data-title="Furyondy" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Furyondy</span></div>
+                  <div class="realm-row" data-file="geoff" data-title="Geoff" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Geoff</span></div>
+                  <div class="realm-row" data-file="gran-march" data-title="Gran March" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Gran March</span></div>
+                  <div class="realm-row" data-file="greyhawk" data-title="Free City of Greyhawk" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Free City of Greyhawk</span></div>
+                  <div class="realm-row" data-file="idee" data-title="Idee" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Idee</span></div>
+                  <div class="realm-row" data-file="keoland" data-title="Keoland" data-parent="Gazetteer of the Flanaess"><span class="realm-name">Keoland</span></div>
+                </div>
+                <div class="no-match-msg" id="no-match-desktop"></div>
+              </div>
+            </div>
+
+            <div class="chapter-row" data-file="geography-flanaess" data-title="Geography of the Flanaess">
+              <span class="chapter-name">Geography of the Flanaess</span>
+              <span class="chapter-chevron">›</span>
+            </div>
+
+            <div class="chapter-row" data-file="power-groups" data-title="Power Groups">
+              <span class="chapter-name">Power Groups</span>
+              <span class="chapter-chevron">›</span>
+            </div>
+
+            <div class="chapter-row" data-file="greyhawk-gods" data-title="Greyhawk's Gods">
+              <span class="chapter-name">Greyhawk's Gods</span>
+              <span class="chapter-chevron">›</span>
+            </div>
+
+            <div class="chapter-row" data-file="appendix" data-title="Appendix">
+              <span class="chapter-name">Appendix</span>
+              <span class="chapter-chevron">›</span>
+            </div>
+          </div>
+          <!-- end chapters -->
+        </div>
+        <!-- end .toc-view -->
+
+        <!-- READING VIEW -->
+        <div class="reading-view" id="reading-desktop">
+          <div class="reading-header">
+            <button class="drawer-back" id="back-desktop">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="9,2 4,7 9,12"/>
+              </svg>
+              Back to Guide
+            </button>
+            <button class="drawer-close" id="reading-close-desktop" title="Close guide" aria-label="Close World Guide">×</button>
+          </div>
+          <div class="reading-body">
+            <div class="reading-section-title" id="reading-title-desktop"></div>
+            <div class="reading-breadcrumb" id="reading-breadcrumb-desktop"></div>
+            <div class="reading-content" id="reading-content-desktop"></div>
+          </div>
+        </div>
+        <!-- end .reading-view -->
+
+      </div>
+      <!-- end view-host -->
+    </div>
+    <!-- end drawer -->
+
+    <!-- Annotation: guide trigger placement -->
+    <div class="callout" style="top:56px; right:122px;">① Book icon — 44px target</div>
+    <div class="callout" style="top:56px; right:280px; display:none;" id="callout-open">Accent-bright when open</div>
+  </div>
+  <!-- end app-shell desktop -->
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SCENARIO 2 — Tablet: scrim + tap-to-close
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-label">Scenario 2 of 5</div>
+  <div class="scenario-title">Tablet (700–1099px) — Drawer open with scrim</div>
+  <div class="scenario-desc">
+    420px drawer, 0.4 scrim over the background. Tapping the scrim closes the drawer. The TOC shows the Resume shortcut for "Furyondy" because session state is populated.
+  </div>
+
+  <div class="tablet-frame">
+    <div class="app-shell" id="shell-tablet" style="min-height:520px;">
+      <div class="app-topbar">
+        <div class="app-topbar-left">
+          <div class="topbar-back" style="font-size:11px;">All Characters</div>
+          <div class="char-name-topbar" style="font-size:13px;">Eoghan Thornwood</div>
+        </div>
+        <div class="app-topbar-right">
+          <button class="guide-trigger open" id="trigger-tablet" title="World Guide" aria-label="World Guide" aria-expanded="true">
+            <svg class="book-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+          </button>
+          <button class="topbar-btn">Export JSON</button>
+        </div>
+      </div>
+      <div class="app-body">
+        <div class="char-header">
+          <div class="char-portrait-stub" style="width:60px;height:60px;font-size:22px;">⚔</div>
+          <div class="char-meta">
+            <h2 style="font-size:18px;">Eoghan Thornwood</h2>
+            <div class="char-subtitle">Half-Elf · Ranger 8</div>
+            <div class="char-hp">HP 54 / 68</div>
+          </div>
+        </div>
+        <div class="content-placeholder">
+          <div class="placeholder-section-head"></div>
+          <div class="placeholder-line long"></div>
+          <div class="placeholder-line med"></div>
+        </div>
+      </div>
+
+      <!-- Scrim — visible in this scenario -->
+      <div class="drawer-scrim visible" id="scrim-tablet"></div>
+
+      <!-- Drawer — pre-opened in tablet scenario -->
+      <div class="guide-drawer open" id="drawer-tablet" style="width:var(--drawer-width-tablet);">
+        <div class="drawer-header">
+          <div class="drawer-title">World Guide</div>
+          <button class="drawer-close" id="close-tablet">×</button>
+        </div>
+        <div class="view-host" id="view-host-tablet">
+          <div class="toc-view" id="toc-tablet">
+            <div class="resume-row" id="resume-tablet">
+              <span class="resume-diamond">✦</span>
+              <span class="resume-text">Resume: <strong>Furyondy</strong></span>
+            </div>
+            <div class="toc-section-label">Chapters</div>
+            <div id="toc-chapters-tablet">
+              <div class="chapter-row" data-file="greyhawk-world" data-title="Greyhawk's World" data-shell="tablet"><span class="chapter-name">Greyhawk's World</span><span class="chapter-chevron">›</span></div>
+              <div class="chapter-row" data-file="folk-flanaess" data-title="Folk of the Flanaess" data-shell="tablet"><span class="chapter-name">Folk of the Flanaess</span><span class="chapter-chevron">›</span></div>
+              <div class="chapter-row" data-file="history-flanaess" data-title="History of the Flanaess" data-shell="tablet"><span class="chapter-name">History of the Flanaess</span><span class="chapter-chevron">›</span></div>
+              <div class="chapter-row" id="gazetteer-row-tablet" data-gazetteer="true" data-shell="tablet"><span class="chapter-name">Gazetteer of the Flanaess</span><span class="chapter-chevron" id="gazetteer-chevron-tablet">⌄</span></div>
+              <div class="gazetteer-panel" id="gazetteer-panel-tablet">
+                <div class="gazetteer-inner" id="gazetteer-inner-tablet">
+                  <div class="gazetteer-filter-wrap">
+                    <div class="filter-icon-wrap">
+                      <span class="filter-icon">⌕</span>
+                      <input class="gazetteer-filter" id="filter-tablet" type="text" placeholder="Filter realms…" autocomplete="off" />
+                    </div>
+                  </div>
+                  <div id="realm-list-tablet">
+                    <div class="realm-row" data-file="ahlissa" data-title="Ahlissa" data-parent="Gazetteer of the Flanaess" data-shell="tablet"><span class="realm-name">Ahlissa</span></div>
+                    <div class="realm-row" data-file="bandit-kingdoms" data-title="Bandit Kingdoms" data-parent="Gazetteer of the Flanaess" data-shell="tablet"><span class="realm-name">Bandit Kingdoms</span></div>
+                    <div class="realm-row" data-file="celene" data-title="Celene" data-parent="Gazetteer of the Flanaess" data-shell="tablet"><span class="realm-name">Celene</span></div>
+                    <div class="realm-row" data-file="furyondy" data-title="Furyondy" data-parent="Gazetteer of the Flanaess" data-shell="tablet"><span class="realm-name">Furyondy</span></div>
+                    <div class="realm-row" data-file="geoff" data-title="Geoff" data-parent="Gazetteer of the Flanaess" data-shell="tablet"><span class="realm-name">Geoff</span></div>
+                    <div class="realm-row" data-file="greyhawk" data-title="Free City of Greyhawk" data-parent="Gazetteer of the Flanaess" data-shell="tablet"><span class="realm-name">Free City of Greyhawk</span></div>
+                    <div class="realm-row" data-file="keoland" data-title="Keoland" data-parent="Gazetteer of the Flanaess" data-shell="tablet"><span class="realm-name">Keoland</span></div>
+                  </div>
+                  <div class="no-match-msg" id="no-match-tablet"></div>
+                </div>
+              </div>
+              <div class="chapter-row" data-file="geography-flanaess" data-title="Geography of the Flanaess" data-shell="tablet"><span class="chapter-name">Geography of the Flanaess</span><span class="chapter-chevron">›</span></div>
+              <div class="chapter-row" data-file="power-groups" data-title="Power Groups" data-shell="tablet"><span class="chapter-name">Power Groups</span><span class="chapter-chevron">›</span></div>
+              <div class="chapter-row" data-file="greyhawk-gods" data-title="Greyhawk's Gods" data-shell="tablet"><span class="chapter-name">Greyhawk's Gods</span><span class="chapter-chevron">›</span></div>
+              <div class="chapter-row" data-file="appendix" data-title="Appendix" data-shell="tablet"><span class="chapter-name">Appendix</span><span class="chapter-chevron">›</span></div>
+            </div>
+          </div>
+          <div class="reading-view" id="reading-tablet">
+            <div class="reading-header">
+              <button class="drawer-back" id="back-tablet">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,2 4,7 9,12"/></svg>
+                Back to Guide
+              </button>
+              <button class="drawer-close" id="reading-close-tablet">×</button>
+            </div>
+            <div class="reading-body">
+              <div class="reading-section-title" id="reading-title-tablet"></div>
+              <div class="reading-breadcrumb" id="reading-breadcrumb-tablet"></div>
+              <div class="reading-content" id="reading-content-tablet"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Annotation -->
+      <div class="callout" style="bottom:20px; left:20px; z-index:50;">Scrim 0.4 — tap to close</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SCENARIO 3 — Reading view: Furyondy (Resume target)
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-label">Scenario 3 of 5</div>
+  <div class="scenario-title">Reading view — Furyondy (the Resume target)</div>
+  <div class="scenario-desc">
+    Drawer open in reading view after tapping "✦ Resume: Furyondy" or the Furyondy realm row. Sticky header with "‹ Back to Guide" and ×. Body prose scrolls internally.
+  </div>
+
+  <div class="app-shell" id="shell-reading" style="min-height:620px;">
+    <div class="app-topbar">
+      <div class="app-topbar-left">
+        <div class="topbar-back">All Characters</div>
+        <div class="char-name-topbar">Eoghan Thornwood</div>
+      </div>
+      <div class="app-topbar-right">
+        <button class="guide-trigger open" id="trigger-reading" title="World Guide" aria-label="World Guide" aria-expanded="true">
+          <svg class="book-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+            <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+          </svg>
+        </button>
+        <button class="topbar-btn">Export JSON</button>
+        <button class="topbar-btn primary">Edit Character</button>
+      </div>
+    </div>
+    <div class="app-body">
+      <div class="content-placeholder">
+        <div class="placeholder-section-head"></div>
+        <div class="placeholder-line long"></div>
+        <div class="placeholder-line med"></div>
+        <div class="placeholder-line short"></div>
+      </div>
+    </div>
+
+    <div class="drawer-scrim" id="scrim-reading"></div>
+
+    <div class="guide-drawer open" id="drawer-reading">
+      <div class="view-host" id="view-host-reading" style="height:100%;">
+        <!-- TOC hidden behind -->
+        <div class="toc-view" id="toc-reading" style="opacity:0;pointer-events:none;">
+          <div class="drawer-header"><div class="drawer-title">World Guide</div><button class="drawer-close">×</button></div>
+        </div>
+        <!-- Reading view active -->
+        <div class="reading-view active" id="reading-reading" style="display:flex;flex-direction:column;">
+          <div class="reading-header">
+            <button class="drawer-back" id="back-reading">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,2 4,7 9,12"/></svg>
+              Back to Guide
+            </button>
+            <button class="drawer-close" id="reading-close-reading">×</button>
+          </div>
+          <div class="reading-body" style="overflow-y:auto;flex:1;">
+            <div class="reading-section-title">Furyondy</div>
+            <div class="reading-breadcrumb">Gazetteer of the Flanaess</div>
+            <div class="reading-content" id="furyondy-content-static"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Annotations -->
+    <div class="callout" style="top:56px; right:126px;">Accent-bright: guide is open</div>
+    <div class="callout" style="top:100px; right:5px;">Sticky header — persists on scroll</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SCENARIO 4 — Edge cases: first open / filter no match / fetch error
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-label">Scenario 4 of 5</div>
+  <div class="scenario-title">Edge cases</div>
+  <div class="scenario-desc">Three edge-case states shown side by side: first open (no resume), filter empty state, fetch error.</div>
+
+  <div style="display:flex;gap:24px;flex-wrap:wrap;align-items:flex-start;">
+
+    <!-- 4a: First open, no session -->
+    <div style="position:relative;">
+      <div class="scenario-label" style="margin-bottom:8px;">4a — First open, no session</div>
+      <div style="width:300px;border:1px solid var(--border-vis);border-radius:6px;overflow:hidden;background:var(--surface-solid);">
+        <div class="drawer-header">
+          <div class="drawer-title">World Guide</div>
+          <button class="drawer-close">×</button>
+        </div>
+        <div style="padding:16px 0 8px;">
+          <!-- No Resume row -->
+          <div class="toc-section-label">Chapters</div>
+          <div class="chapter-row"><span class="chapter-name">Greyhawk's World</span><span class="chapter-chevron">›</span></div>
+          <div class="chapter-row"><span class="chapter-name">Folk of the Flanaess</span><span class="chapter-chevron">›</span></div>
+          <div class="chapter-row"><span class="chapter-name">Gazetteer of the Flanaess</span><span class="chapter-chevron">⌄</span></div>
+          <div class="chapter-row"><span class="chapter-name">Geography of the Flanaess</span><span class="chapter-chevron">›</span></div>
+          <div class="chapter-row"><span class="chapter-name">Power Groups</span><span class="chapter-chevron">›</span></div>
+          <div style="padding: 6px 20px 10px; font-family:var(--font-body);font-size:13px;font-style:italic;color:var(--text-muted);">No session — Resume row absent</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4b: Filter no match -->
+    <div style="position:relative;">
+      <div class="scenario-label" style="margin-bottom:8px;">4b — Filter: no matches</div>
+      <div style="width:300px;border:1px solid var(--border-vis);border-radius:6px;overflow:hidden;background:var(--surface-solid);">
+        <div class="drawer-header">
+          <div class="drawer-title">World Guide</div>
+          <button class="drawer-close">×</button>
+        </div>
+        <div style="padding:12px 0;">
+          <div class="toc-section-label">Chapters</div>
+          <div class="chapter-row" style="border-bottom:none;"><span class="chapter-name">Gazetteer of the Flanaess</span><span class="chapter-chevron" style="transform:rotate(90deg);">⌄</span></div>
+          <div style="background:rgba(26,18,9,0.5);padding:12px 0;">
+            <div class="gazetteer-filter-wrap" style="padding-left:20px;">
+              <div class="filter-icon-wrap">
+                <span class="filter-icon">⌕</span>
+                <input class="gazetteer-filter" type="text" value="zzz" readonly style="padding-left:32px;" />
+              </div>
+            </div>
+            <div style="font-family:var(--font-body);font-size:14px;font-style:italic;color:var(--text-muted);text-align:center;padding:16px 20px;">
+              No realms match '<strong>zzz</strong>'
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 4c: Fetch error -->
+    <div style="position:relative;">
+      <div class="scenario-label" style="margin-bottom:8px;">4c — Section fetch error</div>
+      <div style="width:300px;border:1px solid var(--border-vis);border-radius:6px;overflow:hidden;background:var(--surface-solid);">
+        <div class="reading-header" style="position:static;">
+          <button class="drawer-back" style="pointer-events:none;">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,2 4,7 9,12"/></svg>
+            Back to Guide
+          </button>
+          <button class="drawer-close">×</button>
+        </div>
+        <div class="reading-body">
+          <div class="reading-section-title">Keoland</div>
+          <div class="reading-breadcrumb">Gazetteer of the Flanaess</div>
+          <div class="error-state">
+            <div class="error-msg">Could not load this section.<br>Check your connection and try again.</div>
+            <button class="retry-btn">Retry</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SCENARIO 5 — Mobile full-screen
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="scenario-section">
+  <div class="scenario-label">Scenario 5 of 5</div>
+  <div class="scenario-title">Mobile (&lt;700px) — Full-screen takeover</div>
+  <div class="scenario-desc">100vw drawer on small screens. No scrim (drawer fills screen). Tap × or press Esc to dismiss.</div>
+
+  <div class="mobile-frame">
+    <div class="app-shell" id="shell-mobile" style="min-height:520px;">
+      <div class="app-topbar" style="padding:0 12px;">
+        <div class="app-topbar-left" style="gap:4px;">
+          <div class="topbar-back" style="font-size:11px;letter-spacing:0.12em;">← Back</div>
+          <div class="char-name-topbar" style="font-size:13px;">Eoghan</div>
+        </div>
+        <div class="app-topbar-right">
+          <button class="guide-trigger open" id="trigger-mobile" title="World Guide" aria-label="World Guide" aria-expanded="true">
+            <svg class="book-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+      <div class="app-body" style="padding:16px;">
+        <div class="content-placeholder">
+          <div class="placeholder-section-head"></div>
+          <div class="placeholder-line long"></div>
+          <div class="placeholder-line med"></div>
+        </div>
+      </div>
+
+      <!-- Mobile drawer: full width, no scrim needed -->
+      <div class="guide-drawer open" id="drawer-mobile" style="width:100%;">
+        <div class="drawer-header">
+          <div class="drawer-title">World Guide</div>
+          <button class="drawer-close" id="close-mobile">×</button>
+        </div>
+        <div class="view-host" id="view-host-mobile">
+          <div class="toc-view" id="toc-mobile">
+            <div class="resume-row" id="resume-mobile">
+              <span class="resume-diamond">✦</span>
+              <span class="resume-text">Resume: <strong>Furyondy</strong></span>
+            </div>
+            <div class="toc-section-label">Chapters</div>
+            <div id="toc-chapters-mobile">
+              <div class="chapter-row" data-file="greyhawk-world" data-title="Greyhawk's World" data-shell="mobile"><span class="chapter-name">Greyhawk's World</span><span class="chapter-chevron">›</span></div>
+              <div class="chapter-row" id="gazetteer-row-mobile" data-gazetteer="true" data-shell="mobile"><span class="chapter-name">Gazetteer of the Flanaess</span><span class="chapter-chevron" id="gazetteer-chevron-mobile">⌄</span></div>
+              <div class="gazetteer-panel" id="gazetteer-panel-mobile">
+                <div class="gazetteer-inner" id="gazetteer-inner-mobile">
+                  <div class="gazetteer-filter-wrap"><div class="filter-icon-wrap"><span class="filter-icon">⌕</span><input class="gazetteer-filter" id="filter-mobile" type="text" placeholder="Filter realms…" autocomplete="off" /></div></div>
+                  <div id="realm-list-mobile">
+                    <div class="realm-row" data-file="furyondy" data-title="Furyondy" data-parent="Gazetteer of the Flanaess" data-shell="mobile"><span class="realm-name">Furyondy</span></div>
+                    <div class="realm-row" data-file="geoff" data-title="Geoff" data-parent="Gazetteer of the Flanaess" data-shell="mobile"><span class="realm-name">Geoff</span></div>
+                    <div class="realm-row" data-file="greyhawk" data-title="Free City of Greyhawk" data-parent="Gazetteer of the Flanaess" data-shell="mobile"><span class="realm-name">Free City of Greyhawk</span></div>
+                    <div class="realm-row" data-file="keoland" data-title="Keoland" data-parent="Gazetteer of the Flanaess" data-shell="mobile"><span class="realm-name">Keoland</span></div>
+                  </div>
+                  <div class="no-match-msg" id="no-match-mobile"></div>
+                </div>
+              </div>
+              <div class="chapter-row" data-file="power-groups" data-title="Power Groups" data-shell="mobile"><span class="chapter-name">Power Groups</span><span class="chapter-chevron">›</span></div>
+              <div class="chapter-row" data-file="greyhawk-gods" data-title="Greyhawk's Gods" data-shell="mobile"><span class="chapter-name">Greyhawk's Gods</span><span class="chapter-chevron">›</span></div>
+            </div>
+          </div>
+          <div class="reading-view" id="reading-mobile">
+            <div class="reading-header">
+              <button class="drawer-back" id="back-mobile">
+                <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="9,2 4,7 9,12"/></svg>
+                Back to Guide
+              </button>
+              <button class="drawer-close" id="reading-close-mobile">×</button>
+            </div>
+            <div class="reading-body">
+              <div class="reading-section-title" id="reading-title-mobile"></div>
+              <div class="reading-breadcrumb" id="reading-breadcrumb-mobile"></div>
+              <div class="reading-content" id="reading-content-mobile"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="callout" style="bottom:16px;left:16px;z-index:50;">Full-screen — 100vw, no scrim</div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     LEGEND
+═══════════════════════════════════════════════════════════════════════ -->
+<div class="legend">
+  <div class="legend-title">Prototype Legend</div>
+  <div class="legend-item">
+    <div class="legend-num">①</div>
+    <div class="legend-text"><strong>Guide trigger icon</strong> — 44×44px touch target via padding. SVG open-book. Color: <code>textMuted</code> default → <code>accent</code> on hover → <code>accentBright</code> when drawer is open. Transition: 140ms linear (brief spec §3a). Toggle behavior: re-tapping closes the drawer.</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-num">②</div>
+    <div class="legend-text"><strong>Drawer slide animation</strong> — Open: translateX(100%→0), 260ms cubic-bezier(0.2,0.8,0.2,1). Close: translateX(0→100%), 220ms cubic-bezier(0.4,0,0.6,1). Asymmetric: opening announces itself, dismissal gets out of the way (brief §7).</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-num">③</div>
+    <div class="legend-text"><strong>Gazetteer in-place expansion</strong> — max-height eased from 0 to content height. Expand 220ms ease-out. Collapse 180ms ease-in. Chevron ⌄ rotates 90° over the same duration. State persisted in sessionStorage as <code>dnd_guide_gazetteer_expanded</code>.</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-num">④</div>
+    <div class="legend-text"><strong>TOC ↔ Reading cross-fade</strong> — TOC fades out 90ms ease-in, then reading fades in 160ms ease-in-out with 60ms delay. Total 250ms. On Back, direction reverses. (Brief §7.)</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-num">⑤</div>
+    <div class="legend-text"><strong>Resume shortcut</strong> — Only shown when <code>sessionStorage.dnd_guide_section</code> is set. In the prototype this is pre-set to "Furyondy" to demonstrate the populated state. Tapping loads the Furyondy reading view directly.</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-num">⑥</div>
+    <div class="legend-text"><strong>Tablet scrim</strong> — rgba(0,0,0,0.4) overlay fades in/out with the drawer. On desktop (≥1100px) no scrim is applied — the DM may watch HP values while reading lore. Tap-to-close is tablet/mobile only.</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-num">⑦</div>
+    <div class="legend-text"><strong>Realm filter</strong> — Client-side substring match on title. Items fade out (120ms) then height-collapse (100ms). "No realms match" message shown when list is empty. Filter clears on drawer close. Does not filter content — TOC-level navigation only.</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-num">⑧</div>
+    <div class="legend-text"><strong>prefers-reduced-motion</strong> — All transitions and animations set to <code>none</code>. State changes remain instant but visible. Implemented via CSS @media query per design-system convention.</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-num">⑨</div>
+    <div class="legend-text"><strong>Desktop: no scrim, no tap-to-close outside drawer</strong> — clicking the underlying character sheet while the drawer is open does NOT close the drawer. The two surfaces are intentionally co-resident. Only × or Esc close on desktop.</div>
+  </div>
+  <div class="legend-item">
+    <div class="legend-num">⑩</div>
+    <div class="legend-text"><strong>Body scroll lock</strong> — When the drawer is open, <code>overflow:hidden</code> is applied to the app-shell body region to prevent scroll-chaining. <code>overscroll-behavior:contain</code> on the drawer scroll container prevents touch momentum from escaping.</div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     JAVASCRIPT
+═══════════════════════════════════════════════════════════════════════ -->
+<script>
+'use strict';
+
+// ── Content library ──────────────────────────────────────────────────────────
+const CONTENT = {
+  'furyondy': {
+    title: 'Furyondy',
+    parent: 'Gazetteer of the Flanaess',
+    html: `
+      <p><strong>Furyondy</strong> is a kingdom of men situated along the southern shore of the Nyr Dyv, bordered by Veluna to the west and the Shield Lands to the north. Once counted among the most prosperous realms of the Flanaess, it has been bled by decades of war against Iuz the Evil — a demigod of chaotic evil whose territory presses against Furyondy's northern frontier.</p>
+
+      <h2>Ruler</h2>
+      <p><strong>King Belvor IV</strong> (LG male human Ftr14) has ruled Furyondy from the white-walled city of Chendl since 570 CY. A veteran soldier as much as a statesman, Belvor is known for leading campaigns personally, riding at the vanguard when the border fortresses are threatened. He is aging now and the question of succession weighs heavily on the court.</p>
+
+      <h2>Government</h2>
+      <p>Furyondy is a constitutional monarchy tempered by a powerful noble council. The great lords — dukes, counts, and viscounts — hold their lands in fief from the crown but retain substantial autonomy. In practice the crown must negotiate rather than command. The Council of Bishops maintains influence over matters of faith, particularly in towns where the worship of Heironeous, Rao, and Trithereon holds sway.</p>
+
+      <h2>Capital</h2>
+      <p><strong>Chendl</strong>, population approximately 28,000. Built on a low rise above the Velverdyva River, the city is renowned for its white limestone walls and the great cathedral to Heironeous at its centre. The Royal Library of Chendl holds one of the largest collections of historical records in the Flanaess outside Greyhawk itself.</p>
+
+      <h2>Geography</h2>
+      <p>The heartland of Furyondy is fertile farmland threaded by the Att and Velverdyva rivers. The northern provinces grow increasingly wild — the Gnarley Forest presses in from the east and the ruins of border keeps sacked in past wars dot the landscape. The Shield Wall, a series of garrisoned fortresses, marks the de facto northern boundary.</p>
+
+      <h3>Key Locations</h3>
+      <ul>
+        <li><strong>Chendl</strong> — royal capital, seat of Belvor IV</li>
+        <li><strong>Grabford</strong> — river crossing town, heavily fortified</li>
+        <li><strong>Redoubt</strong> — frontier fortress, often contested</li>
+        <li><strong>Willip</strong> — northern port on the Nyr Dyv, gateway to Shield Lands trade</li>
+      </ul>
+
+      <h2>Relations</h2>
+      <p>Furyondy maintains a formal alliance with <strong>Veluna</strong> and uneasy cooperation with the displaced lords of the <strong>Shield Lands</strong>. Relations with <strong>Dyvers</strong> are commercially cordial but politically cool — Dyvers has profited from Furyondy's misfortune by absorbing refugee craftspeople and merchants. The <strong>County of Urnst</strong> to the east maintains nominal neutrality, a neutrality Furyondy finds increasingly frustrating as it bleeds men and gold.</p>
+
+      <p>Against Iuz there is no negotiation. The border is a wound that does not close. Furyondy has appealed to Greyhawk's Circle of Eight on multiple occasions; the mages counsel patience and strategic restraint, advice that sits poorly with a king watching his northern towns burn.</p>
+    `
+  },
+  'greyhawk-world': {
+    title: "Greyhawk's World",
+    parent: null,
+    html: `
+      <p>The world of Greyhawk — officially the World of Greyhawk — is the primary campaign setting first published by Gary Gygax in 1980. It encompasses the continent of Oerik, of which the eastern portion known as the <strong>Flanaess</strong> is detailed in full. The Flanaess is named for the Flan, the first human people to inhabit it.</p>
+
+      <h2>The World</h2>
+      <p>Greyhawk's world is called <strong>Oerth</strong>. It orbits a yellow sun and has one large moon (Luna) and one small green moon (Celene). The year is divided into twelve months of twenty-eight days each, totalling 364 days, with four festivals of one day each marking the solstices and equinoxes.</p>
+
+      <h2>The Flanaess</h2>
+      <p>The Flanaess occupies the eastern portion of Oerik. It is bounded by the Dramidj Ocean to the north, the Solnor Ocean to the east, the Amedio Jungle to the south, and the Dry Steppes to the west. Most of the campaign action described in official materials takes place within this region.</p>
+
+      <h2>The Free City of Greyhawk</h2>
+      <p>The city that gives the setting its common name is a sprawling, politically complex metropolis situated at the confluence of the Selintan River and the Nyr Dyv. It is the home of the Circle of Eight, the most powerful gathering of arcane spellcasters in the Flanaess, and serves as a commercial and cultural hub that most adventurers pass through at some point in their careers.</p>
+    `
+  },
+  'folk-flanaess': {
+    title: 'Folk of the Flanaess',
+    parent: null,
+    html: `
+      <p>The human inhabitants of the Flanaess are descended from several distinct ancestral groups, each with their own cultural and physical characteristics. These groups have mingled extensively over the centuries, but distinct traditions remain strong in many regions.</p>
+
+      <h2>The Flan</h2>
+      <p>The first human people of the Flanaess. Broad-faced, amber to dark brown skin, dark eyes. The Flan were nomadic herders and hunters who left few cities but many sacred sites. Their descendants are most numerous in Geoff, the Duchy of Tenh, and Ratik.</p>
+
+      <h2>The Oeridians</h2>
+      <p>The dominant cultural strain in most central and southern states. Tawny to tan skin, brown to black hair. The great dynastic families of Furyondy, Nyrond, and the Great Kingdom were predominantly Oeridian. They brought a tradition of codified law and stratified nobility.</p>
+
+      <h2>The Suel</h2>
+      <p>Descended from survivors of the Suloise Empire, destroyed in the Rain of Colorless Fire. Very pale skin, blond to red hair, blue to grey eyes. Concentrated in the Scarlet Brotherhood and the Sea Princes. The Suel Imperium left a legacy of arcane power and cultural arrogance that its diaspora has never fully shed.</p>
+
+      <h2>The Bakluni</h2>
+      <p>Western peoples, olive to dark brown skin, dark hair and eyes. The Baklunish states lie to the west: Ekbir, Tusmit, Ket, and the Tiger and Wolf Nomads. The Invoked Devastation that destroyed their empire was a direct response to the Suloise Rain of Colorless Fire — mutual annihilation that reshaped the west of the Flanaess.</p>
+    `
+  },
+  'history-flanaess': {
+    title: 'History of the Flanaess',
+    parent: null,
+    html: `
+      <p>The recorded history of the Flanaess spans roughly three thousand years in conventional sources, though elven lore and dwarven clan records reach back further into an age before human settlement. The following is a compressed summary of the major periods.</p>
+
+      <h2>The Age of Great Sorrow (–500 to –200 CY)</h2>
+      <p>The twin empires of the Suloise and Baklunish peoples fought a series of wars culminating in mutual magical devastation: the <strong>Rain of Colorless Fire</strong> destroyed the Suloise heartland; the <strong>Invoked Devastation</strong> collapsed the Baklunish cities. Refugees from both empires flooded east into the Flanaess, displacing Flan peoples and colliding with Oeridian migrants already moving west.</p>
+
+      <h2>The Great Kingdom (–150 to 446 CY)</h2>
+      <p>The Aerdi Oeridians established the <strong>Aerdy Great Kingdom</strong>, which at its height encompassed most of the central and eastern Flanaess. The Overking in Rauxes commanded tribute from kingdoms that today consider themselves independent nations. By 350 CY the Great Kingdom was already fragmenting — corrupt Overkings, provincial rebellions, and the slow rot of an overstretched administrative apparatus.</p>
+
+      <h2>The Current Year (576 CY)</h2>
+      <p>The canonical starting date of most Greyhawk campaigns. The Great Kingdom endures in reduced form in the east. Independent states proliferate. Iuz has consolidated power in the north. The city of Greyhawk mediates between factions without committing to any. Adventurers find opportunity in every direction.</p>
+    `
+  },
+  'geography-flanaess': {
+    title: 'Geography of the Flanaess',
+    parent: null,
+    html: `
+      <p>The Flanaess is a diverse continent-portion encompassing arctic tundra, temperate forest, fertile plains, and subtropical coastline. Major geographical features define political boundaries and trade routes.</p>
+
+      <h2>Major Waterways</h2>
+      <p>The <strong>Nyr Dyv</strong> (Lake of Unknown Depths) is the largest body of fresh water in the Flanaess, bordered by Furyondy, the Shield Lands, Nyrond, and the domains of Greyhawk. The <strong>Velverdyva</strong> and <strong>Selintan</strong> rivers are the major commercial arteries of the western and central regions respectively.</p>
+
+      <h2>Major Mountain Ranges</h2>
+      <ul>
+        <li><strong>Crystalmist Mountains</strong> — western spine, source of several major rivers</li>
+        <li><strong>Barrier Peaks</strong> — northwestern range, site of the famous dungeon module</li>
+        <li><strong>Lortmil Mountains</strong> — central, historically contested between Veluna and the Ulek states</li>
+        <li><strong>Rakers</strong> — northeastern range forming the spine of Ratik and Bone March</li>
+      </ul>
+
+      <h2>Major Forests</h2>
+      <p>The <strong>Gnarley Forest</strong> stretches between the Nyr Dyv and the Lortmils. The <strong>Welkwood</strong> and <strong>Suss Forest</strong> mark the southern approaches to the Wild Coast. The <strong>Adri Forest</strong> in the east shelters communities that have long resisted incorporation into the Great Kingdom.</p>
+    `
+  },
+  'power-groups': {
+    title: 'Power Groups',
+    parent: null,
+    html: `
+      <p>Several organisations operate across state boundaries and wield influence disproportionate to their membership. Understanding these factions is essential for navigating high-level politics in the Flanaess.</p>
+
+      <h2>Circle of Eight</h2>
+      <p>Eight archmages (nine historically, before Mordenkainen formalized the group) who intervene in Flanaess politics to preserve the balance of power. They favour no alignment, no nation, and no ideology — only equilibrium. Members include <strong>Mordenkainen</strong>, <strong>Bigby</strong>, <strong>Tenser</strong>, <strong>Otiluke</strong>, <strong>Rary</strong>, <strong>Nystul</strong>, <strong>Otto</strong>, and <strong>Jallarzi Sallavarian</strong>. Based loosely in Greyhawk but operating everywhere.</p>
+
+      <h2>Scarlet Brotherhood</h2>
+      <p>A secretive Suel supremacist order headquartered in the Tilvanot Peninsula. Agents of the Brotherhood have infiltrated courts, guilds, and temples across the Flanaess. Their long-term goal is the restoration of Suel dominance — by manipulation, assassination, and eventual open conquest.</p>
+
+      <h2>Thieves' Guilds</h2>
+      <p>Most major cities host a thieves' guild. Greyhawk's guild, the <strong>Thieves' Quarter</strong>, is especially powerful — a semi-legitimate institution that controls black markets, extortion, and information brokering city-wide. The guilds of Dyvers and Rel Mord operate with comparable scale.</p>
+
+      <h2>Church of Iuz</h2>
+      <p>Not merely a religious body — the priests of Iuz are military officers, interrogators, and administrators for the demigod's territory. The <strong>Boneheart</strong>, Iuz's inner council of priests and archmages, directs military campaigns and magical projects from Dorakaa.</p>
+    `
+  },
+  'greyhawk-gods': {
+    title: "Greyhawk's Gods",
+    parent: null,
+    html: `
+      <p>The gods of the Flanaess are many, and worshippers are pragmatic — a farmer thanks Berei for the harvest and Procan for rain without troubling himself about their theological relationship. The major deities relevant to adventurers are listed here by alignment.</p>
+
+      <h2>Lawful Good</h2>
+      <ul>
+        <li><strong>Heironeous</strong> — god of chivalry and valor. Patron of paladins and fighters in Furyondy, Nyrond, and the Shield Lands. Symbol: a lightning bolt.</li>
+        <li><strong>Pholtus</strong> — god of light and law. Strict, unforgiving. Dominant in Pale and Nyrond. Symbol: a full moon with a crescent moon, bisected by a staff.</li>
+        <li><strong>Rao</strong> — god of peace and reason. Worshipped in Veluna. His priests are diplomats and mediators.</li>
+      </ul>
+
+      <h2>Neutral</h2>
+      <ul>
+        <li><strong>Boccob</strong> — god of magic and arcane knowledge. Favoured by wizards everywhere. Symbol: an eye within a pentagon.</li>
+        <li><strong>Obad-Hai</strong> — god of nature. Rangers, druids, and rural communities.</li>
+        <li><strong>Istus</strong> — goddess of fate. Baklunish origin; her worship has spread widely. The threads of fate are her symbol.</li>
+      </ul>
+
+      <h2>Chaotic Evil</h2>
+      <ul>
+        <li><strong>Iuz</strong> — demigod of deceit and pain. Son of Zuggtmoy and the archmage Iggwilv. Has physically occupied territory in the Flanaess since his escape from beneath Castle Greyhawk.</li>
+        <li><strong>Erythnul</strong> — god of slaughter. Patron of bandits, berserkers, and those who kill for pleasure. Symbol: a blood-red tear.</li>
+      </ul>
+    `
+  },
+  'appendix': {
+    title: 'Appendix',
+    parent: null,
+    html: `
+      <p>This appendix collects reference material that does not belong cleanly within any chapter: calendar information, language families, coinage standards, and a brief glossary of Flan, Oeridian, and Suloise terms that appear in the main text.</p>
+
+      <h2>Calendar</h2>
+      <p>The <strong>Common Year (CY)</strong> is the standard reckoning in most states of the Flanaess. The year has 364 days: twelve months of 28 days each, plus four one-day festivals (Needfest, Richfest, Brewfest, Growfest). The canonical campaign starting date is <strong>576 CY</strong>.</p>
+
+      <h2>Languages</h2>
+      <ul>
+        <li><strong>Common</strong> (Oeridian origin) — trade language, spoken everywhere</li>
+        <li><strong>Old Oeridian</strong> — liturgical language, legal documents</li>
+        <li><strong>Flan</strong> — spoken in Geoff, Tenh, Ratik highlands</li>
+        <li><strong>Suloise</strong> — Scarlet Brotherhood, Sea Princes dialect</li>
+        <li><strong>Baklunish</strong> — western states, Tiger/Wolf Nomads</li>
+        <li><strong>Elvish (Flanaess dialect)</strong> — Celene, Sunndi, forest communities</li>
+      </ul>
+
+      <h2>Coinage</h2>
+      <p>Most states use variants of the standard metal coinage: copper pieces (cp), silver pieces (sp), gold pieces (gp), and platinum pieces (pp). The Greyhawk standard ratio: 10cp = 1sp, 10sp = 1gp, 5gp = 1pp. Some states mint their own coin at slightly different weights; Dyvers merchants sometimes discount foreign coin.</p>
+    `
+  },
+  'ahlissa': { title: 'Ahlissa', parent: 'Gazetteer of the Flanaess', html: `<p><strong>Ahlissa</strong> (formally the United Kingdom of Ahlissa) is a successor state of the Great Kingdom, carved out of its southern and southeastern territories after the Greyhawk Wars. It is governed by the Overking Xavener I from the city of Zelradton.</p><h2>Character</h2><p>Ahlissa is wealthy but tightly controlled. Xavener has restored order through administrative efficiency and a willingness to execute rivals publicly. Merchants from Greyhawk and Dyvers find trade profitable but are advised to avoid political commentary.</p>` },
+  'bandit-kingdoms': { title: 'Bandit Kingdoms', parent: 'Gazetteer of the Flanaess', html: `<p>A loose confederation of petty states in the north-central Flanaess, nominally free but in practice dominated by banditry and constant internal conflict. There is no unified ruler — a dozen warlords compete for dominance while nominally acknowledging mutual borders.</p><h2>Current State</h2><p>Since the Greyhawk Wars, portions of the Bandit Kingdoms have been absorbed by Iuz. The western sections are under direct demonic occupation; the eastern remnants maintain a precarious independence.</p>` },
+  'celene': { title: 'Celene', parent: 'Gazetteer of the Flanaess', html: `<p><strong>Celene</strong> is an elven kingdom in the Welkwood and Suss Forest region, ruled by Queen Yolande. It is among the most insular of the Flanaess states — the elves of Celene have withdrawn from most human politics and declined to assist their neighbours during the Greyhawk Wars.</p><h2>Relations</h2><p>This neutrality has permanently damaged Celene's reputation with Furyondy, the Knights of Luna, and the Ulek states. The debate within Celene between isolationists and interventionists continues.</p>` },
+  'dyvers': { title: 'Dyvers', parent: 'Gazetteer of the Flanaess', html: `<p><strong>Dyvers</strong> is a free city on the western shore of the Nyr Dyv, governed by Magister Larissa Hunter. It is Greyhawk's primary commercial rival, though smaller and less politically complex.</p><h2>Economy</h2><p>Dyvers profits from its position as a transit point between the Velverdyva trade route and Nyr Dyv shipping. It has grown wealthier during Furyondy's troubles, absorbing skilled craftspeople and merchants who fled the border wars.</p>` },
+  'geoff': { title: 'Geoff', parent: 'Gazetteer of the Flanaess', html: `<p><strong>Geoff</strong> is a grand duchy west of Keoland, largely overrun by a coalition of giants, humanoids, and other monsters during the Greyhawk Wars. Most of its human population has fled to Keoland and the Gran March as refugees.</p><h2>Current State</h2><p>The nominal Grand Duke Ewerd Destron governs from Hochoch, a town in the eastern strip of territory not yet occupied. Liberation of the heartland is the primary military objective of the region, but resources are scarce and the giant forces remain entrenched.</p>` },
+  'gran-march': { title: 'Gran March', parent: 'Gazetteer of the Flanaess', html: `<p>The <strong>Gran March</strong> is a military state south of Geoff and Keoland, governed by Commandant Magnus Vrianian. It is organised along military lines — every citizen owes military service and the state is essentially a permanent war footing.</p><h2>Role</h2><p>The Gran March serves as the forward base for efforts to reclaim Geoff. Its soldiers are disciplined and experienced, and it has one of the highest concentrations of cavalry in the western Flanaess.</p>` },
+  'greyhawk': { title: 'Free City of Greyhawk', parent: 'Gazetteer of the Flanaess', html: `<p>The <strong>Free City of Greyhawk</strong> is the most cosmopolitan city in the Flanaess — a population of roughly 69,000 within the walls, more in the surrounding domain. It is governed by the Directing Oligarchy, a council of powerful citizens representing guilds, temples, and noble houses.</p><h2>The Circle of Eight</h2><p>Mordenkainen's Circle of Eight is nominally based in Greyhawk, though the mages operate independently of city government. Their presence ensures that no single power moves against Greyhawk without incurring arcane consequences.</p><h2>Adventuring</h2><p>Greyhawk is the default hub for many campaigns — it has every service an adventuring party might need, a thieves' guild to avoid or exploit, political factions to navigate, and the ruins of Castle Greyhawk brooding in the hills north of town.</p>` },
+  'idee': { title: 'Idee', parent: 'Gazetteer of the Flanaess', html: `<p><strong>Idee</strong> is a small county in the southeastern Flanaess, formerly a dependency of the Great Kingdom. It lies between Sunndi and the South Province and has maintained independence only through careful neutrality.</p><h2>Character</h2><p>Idee is known for its fine craftsmanship, particularly metalwork and textiles. The ruling count, Fedorek Lorinar, walks a careful line between Ahlissa's economic dominance and Sunndi's military protection.</p>` },
+  'keoland': { title: 'Keoland', parent: 'Gazetteer of the Flanaess', html: `<p><strong>Keoland</strong> is the largest state in the Sheldomar Valley, a kingdom that once expanded aggressively north and east before being checked by its own exhausted provinces. The current king, Skotti, has adopted a policy of internal consolidation over further expansion.</p><h2>The Sheldomar Valley</h2><p>Keoland anchors the political order of the valley — Ulek, Gran March, and Geoff all fall within its sphere of influence. The recent giant invasions of Geoff have strained this order severely, and Keoland's decision about how much military resource to commit to liberation is the central political question of the region.</p>` }
+};
+
+// ── Minimal markdown renderer ─────────────────────────────────────────────────
+// Content is pre-rendered as HTML strings above, but this function handles
+// any plain text fallback with basic formatting.
+function renderMarkdown(text) {
+  // Already HTML — return as-is for pre-rendered content
+  return text;
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+const state = {
+  desktop: { open: false, view: 'toc', currentFile: null, gazeteerOpen: false },
+  tablet:  { open: true,  view: 'toc', currentFile: null, gazeteerOpen: false },
+  mobile:  { open: true,  view: 'toc', currentFile: null, gazeteerOpen: false },
+  reading: { open: true,  view: 'reading', currentFile: 'furyondy', gazeteerOpen: false }
+};
+
+// sessionStorage simulation
+const SESSION = {
+  section: 'furyondy',
+  gazeteerExpanded: false
+};
+
+// ── Shell controllers ─────────────────────────────────────────────────────────
+function makeShell(shellId) {
+  const shell = document.getElementById('shell-' + shellId);
+  if (!shell) return null;
+
+  const drawer     = document.getElementById('drawer-' + shellId);
+  const trigger    = document.getElementById('trigger-' + shellId);
+  const scrim      = document.getElementById('scrim-' + shellId);
+  const closeBtn   = document.getElementById('close-' + shellId);
+  const backBtn    = document.getElementById('back-' + shellId);
+  const readingClose = document.getElementById('reading-close-' + shellId);
+
+  const tocView      = document.getElementById('toc-' + shellId);
+  const readingView  = document.getElementById('reading-' + shellId);
+  const viewHost     = document.getElementById('view-host-' + shellId);
+
+  const resumeRow    = document.getElementById('resume-' + shellId);
+  const gazeteerRow  = document.getElementById('gazetteer-row-' + shellId);
+  const gazeteerPanel= document.getElementById('gazetteer-panel-' + shellId);
+  const gazeteerChev = document.getElementById('gazetteer-chevron-' + shellId);
+  const gazeteerInner= document.getElementById('gazetteer-inner-' + shellId);
+  const filterInput  = document.getElementById('filter-' + shellId);
+  const realmList    = document.getElementById('realm-list-' + shellId);
+  const noMatch      = document.getElementById('no-match-' + shellId);
+
+  const readingTitle = document.getElementById('reading-title-' + shellId);
+  const readingCrumb = document.getElementById('reading-breadcrumb-' + shellId);
+  const readingContent = document.getElementById('reading-content-' + shellId);
+
+  // Current local state
+  let s = state[shellId] || { open: false, view: 'toc', currentFile: null, gazeteerOpen: false };
+
+  function openDrawer() {
+    s.open = true;
+    if (drawer) {
+      drawer.classList.add('open');
+      // transition is set by CSS: open uses 260ms cubic, close uses 220ms cubic
+    }
+    if (trigger) {
+      trigger.classList.add('open');
+      trigger.setAttribute('aria-expanded', 'true');
+    }
+    // Scrim: only show on tablet (shell width 700-1099) — prototype uses explicit tablet shell
+    if (scrim && (shellId === 'tablet')) {
+      scrim.classList.add('visible');
+    }
+    // Save to sessionStorage simulation
+    try { sessionStorage.setItem('dnd_guide_open', '1'); } catch(e) {}
+  }
+
+  function closeDrawer() {
+    s.open = false;
+    if (drawer) drawer.classList.remove('open');
+    if (trigger) {
+      trigger.classList.remove('open');
+      trigger.setAttribute('aria-expanded', 'false');
+    }
+    if (scrim) scrim.classList.remove('visible');
+    // Clear filter on close
+    if (filterInput) filterInput.value = '';
+    if (realmList) showAllRealms(realmList, noMatch);
+    try { sessionStorage.setItem('dnd_guide_open', '0'); } catch(e) {}
+  }
+
+  function toggleDrawer() {
+    if (s.open) { closeDrawer(); } else { openDrawer(); }
+  }
+
+  // ── View switching ───────────────────────────────────────────────────────
+  function showTOC() {
+    if (!tocView || !readingView) return;
+    s.view = 'toc';
+
+    // Cross-fade: reading → TOC
+    readingView.style.transition = 'opacity 90ms ease-in';
+    readingView.style.opacity = '0';
+    readingView.style.pointerEvents = 'none';
+
+    setTimeout(() => {
+      readingView.classList.remove('active');
+      tocView.style.opacity = '0';
+      tocView.style.pointerEvents = 'auto';
+      // Fade in TOC
+      requestAnimationFrame(() => {
+        tocView.style.transition = 'opacity 160ms ease-in-out';
+        tocView.style.opacity = '1';
+      });
+    }, 90);
+  }
+
+  function showReading(file, title, parent) {
+    if (!tocView || !readingView) return;
+    s.view = 'reading';
+    s.currentFile = file;
+
+    // Populate reading view
+    const content = CONTENT[file];
+    if (readingTitle)   readingTitle.textContent  = content ? content.title  : title;
+    if (readingCrumb)   readingCrumb.textContent  = content ? (content.parent || '') : (parent || '');
+    if (readingContent) readingContent.innerHTML  = content ? content.html   : '<p style="color:var(--text-muted);font-style:italic;">Content not available in prototype.</p>';
+
+    // Persist to session
+    try { sessionStorage.setItem('dnd_guide_section', file); } catch(e) {}
+    SESSION.section = file;
+
+    // Cross-fade: TOC → reading (250ms total: 90ms out + 60ms delay + 160ms in)
+    tocView.style.transition = 'opacity 90ms ease-in';
+    tocView.style.opacity = '0';
+    tocView.style.pointerEvents = 'none';
+
+    setTimeout(() => {
+      readingView.classList.add('active');
+      readingView.style.opacity = '0';
+      readingView.style.pointerEvents = 'auto';
+      setTimeout(() => {
+        readingView.style.transition = 'opacity 160ms ease-in-out';
+        readingView.style.opacity = '1';
+      }, 60);
+    }, 90);
+  }
+
+  // ── Gazetteer expand/collapse ────────────────────────────────────────────
+  function expandGazetteer() {
+    if (!gazeteerPanel || !gazeteerInner) return;
+    s.gazeteerOpen = true;
+    const h = gazeteerInner.scrollHeight;
+    gazeteerPanel.style.maxHeight = h + 'px';
+    gazeteerPanel.classList.remove('collapsing');
+    gazeteerPanel.classList.add('expanded');
+    if (gazeteerChev) gazeteerChev.classList.add('rotated');
+    try { sessionStorage.setItem('dnd_guide_gazetteer_expanded', '1'); } catch(e) {}
+  }
+
+  function collapseGazetteer() {
+    if (!gazeteerPanel) return;
+    s.gazeteerOpen = false;
+    gazeteerPanel.classList.remove('expanded');
+    gazeteerPanel.classList.add('collapsing');
+    gazeteerPanel.style.maxHeight = '0';
+    if (gazeteerChev) gazeteerChev.classList.remove('rotated');
+    // Clear filter
+    if (filterInput) filterInput.value = '';
+    if (realmList) showAllRealms(realmList, noMatch);
+    try { sessionStorage.setItem('dnd_guide_gazetteer_expanded', '0'); } catch(e) {}
+  }
+
+  function toggleGazetteer() {
+    if (s.gazeteerOpen) { collapseGazetteer(); } else { expandGazetteer(); }
+  }
+
+  // ── Realm filter ─────────────────────────────────────────────────────────
+  function showAllRealms(list, noMatchEl) {
+    if (!list) return;
+    list.querySelectorAll('.realm-row').forEach(r => r.classList.remove('hidden'));
+    if (noMatchEl) noMatchEl.style.display = 'none';
+  }
+
+  function filterRealms(query, list, noMatchEl) {
+    if (!list) return;
+    const q = query.toLowerCase().trim();
+    let visible = 0;
+    list.querySelectorAll('.realm-row').forEach(row => {
+      const name = (row.dataset.title || '').toLowerCase();
+      if (!q || name.includes(q)) {
+        row.classList.remove('hidden');
+        visible++;
+      } else {
+        row.classList.add('hidden');
+      }
+    });
+    if (noMatchEl) {
+      if (q && visible === 0) {
+        noMatchEl.textContent = `No realms match '${query}'`;
+        noMatchEl.style.display = 'block';
+      } else {
+        noMatchEl.style.display = 'none';
+      }
+    }
+  }
+
+  // ── Event wiring ─────────────────────────────────────────────────────────
+  if (trigger)  trigger.addEventListener('click', toggleDrawer);
+  if (closeBtn) closeBtn.addEventListener('click', closeDrawer);
+  if (readingClose) readingClose.addEventListener('click', closeDrawer);
+  if (backBtn)  backBtn.addEventListener('click', showTOC);
+
+  // Scrim tap-to-close (tablet + mobile)
+  if (scrim && (shellId === 'tablet' || shellId === 'mobile')) {
+    scrim.addEventListener('click', closeDrawer);
+  }
+
+  // Gazetteer toggle
+  if (gazeteerRow) gazeteerRow.addEventListener('click', toggleGazetteer);
+
+  // Chapter rows
+  if (drawer) {
+    drawer.querySelectorAll('.chapter-row:not([data-gazetteer])').forEach(row => {
+      row.addEventListener('click', () => {
+        const file   = row.dataset.file;
+        const title  = row.dataset.title;
+        const parent = row.dataset.parent || null;
+        if (file) showReading(file, title, parent);
+      });
+    });
+
+    // Realm rows
+    drawer.querySelectorAll('.realm-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const file   = row.dataset.file;
+        const title  = row.dataset.title;
+        const parent = row.dataset.parent || 'Gazetteer of the Flanaess';
+        if (file) showReading(file, title, parent);
+      });
+    });
+  }
+
+  // Resume row
+  if (resumeRow) {
+    resumeRow.addEventListener('click', () => {
+      const file = SESSION.section || 'furyondy';
+      const content = CONTENT[file];
+      if (content) showReading(file, content.title, content.parent);
+    });
+  }
+
+  // Filter input
+  if (filterInput && realmList) {
+    filterInput.addEventListener('input', () => {
+      filterRealms(filterInput.value, realmList, noMatch);
+    });
+  }
+
+  // Restore sessionStorage state
+  function restoreState() {
+    // Resume row visibility
+    if (resumeRow) {
+      const sec = SESSION.section;
+      resumeRow.style.display = sec ? '' : 'none';
+    }
+    // Gazetteer state
+    try {
+      const gz = sessionStorage.getItem('dnd_guide_gazetteer_expanded');
+      if (gz === '1' && !s.gazeteerOpen) expandGazetteer();
+    } catch(e) {}
+  }
+
+  restoreState();
+
+  return { openDrawer, closeDrawer, toggleDrawer, showTOC, showReading };
+}
+
+// ── Init all shells ───────────────────────────────────────────────────────────
+const shells = {};
+['desktop', 'tablet', 'mobile'].forEach(id => {
+  shells[id] = makeShell(id);
+});
+
+// Reading scenario shell: wire back/close only
+(function() {
+  const backBtn = document.getElementById('back-reading');
+  const closeBtn = document.getElementById('reading-close-reading');
+  const drawer = document.getElementById('drawer-reading');
+  const trigger = document.getElementById('trigger-reading');
+  const shell = document.getElementById('shell-reading');
+  if (!shell) return;
+  // Just close
+  if (closeBtn) closeBtn.addEventListener('click', () => {
+    if (drawer) drawer.classList.remove('open');
+    if (trigger) { trigger.classList.remove('open'); trigger.setAttribute('aria-expanded','false'); }
+  });
+  if (backBtn) backBtn.addEventListener('click', () => {
+    // Show re-open scenario hint
+    const rr = document.getElementById('reading-reading');
+    const tt = document.getElementById('toc-reading');
+    if (rr && tt) {
+      rr.style.transition = 'opacity 90ms ease-in';
+      rr.style.opacity = '0';
+      rr.style.pointerEvents = 'none';
+      setTimeout(() => {
+        rr.classList.remove('active');
+        tt.style.opacity = '0';
+        tt.style.pointerEvents = 'auto';
+        setTimeout(() => {
+          tt.style.transition = 'opacity 160ms ease-in-out';
+          tt.style.opacity = '1';
+        }, 60);
+      }, 90);
+    }
+  });
+  if (trigger) trigger.addEventListener('click', () => {
+    if (drawer) {
+      if (drawer.classList.contains('open')) {
+        drawer.classList.remove('open');
+        trigger.classList.remove('open');
+        trigger.setAttribute('aria-expanded','false');
+      } else {
+        drawer.classList.add('open');
+        trigger.classList.add('open');
+        trigger.setAttribute('aria-expanded','true');
+      }
+    }
+  });
+})();
+
+// ── Populate Furyondy content in Scenario 3 static view ──────────────────────
+(function() {
+  const el = document.getElementById('furyondy-content-static');
+  if (el && CONTENT['furyondy']) {
+    el.innerHTML = CONTENT['furyondy'].html;
+  }
+})();
+
+// ── Global keyboard handler (desktop shell only) ──────────────────────────────
+document.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+  if (e.key === 'g' || e.key === 'G') {
+    if (shells.desktop) shells.desktop.toggleDrawer();
+  }
+  if (e.key === 'Escape') {
+    if (shells.desktop) shells.desktop.closeDrawer();
+  }
+});
+
+// ── Scroll lock on body when desktop drawer open ──────────────────────────────
+// (Prototype scoped: applied to app-shell body div, not document body,
+//  since multiple scenarios share the page)
+
+</script>
+
+</body>
+</html>

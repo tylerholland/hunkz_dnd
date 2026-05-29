@@ -40,8 +40,8 @@ export function formatRollValues(rollValues = []) {
     : "";
 }
 
-export function buildCharacterRollPayload({ label, result }) {
-  return {
+export function buildRollHistoryPayload({ id, label, result, characterName, paletteKey, source }) {
+  const payload = {
     exprLabel: buildDiceExprLabel(result.groups, result.flat, { spaced: true }),
     label: normalizeRollActionLabel(label),
     total: result.total,
@@ -49,10 +49,21 @@ export function buildCharacterRollPayload({ label, result }) {
     isCrit: !!result.isCrit,
     isFumble: !!result.isFumble,
   };
+
+  if (typeof id === "string" && id.trim()) payload.id = id.trim();
+  if (typeof characterName === "string" && characterName.trim()) payload.characterName = characterName.trim();
+  if (typeof paletteKey === "string" && paletteKey.trim()) payload.paletteKey = paletteKey.trim();
+  if (typeof source === "string" && source.trim()) payload.source = source.trim();
+
+  return payload;
 }
 
-export function buildLocalRollHistoryEntry({ id, label, result, timestamp }) {
-  return {
+export function buildCharacterRollPayload(args) {
+  return buildRollHistoryPayload(args);
+}
+
+export function buildLocalRollHistoryEntry({ id, label, result, timestamp, characterName, source }) {
+  const entry = {
     id,
     exprLabel: result.exprLabel || buildDiceExprLabel(result.groups, result.flat),
     label: normalizeRollActionLabel(label),
@@ -62,4 +73,9 @@ export function buildLocalRollHistoryEntry({ id, label, result, timestamp }) {
     isFumble: !!result.isFumble,
     timestamp: timestamp || Date.now(),
   };
+
+  if (typeof characterName === "string" && characterName.trim()) entry.characterName = characterName.trim();
+  if (typeof source === "string" && source.trim()) entry.source = source.trim();
+
+  return entry;
 }

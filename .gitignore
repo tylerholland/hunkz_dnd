@@ -14,3 +14,6 @@ backend/.aws-sam/
 # Local env files
 .env.local
 .env.*.local
+
+# Assets
+src/assets/Living-Greyhawk-Gazetteer.pdf

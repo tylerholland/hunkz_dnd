@@ -8,6 +8,8 @@ import { HR } from "./CharacterSheetPrimitives";
 import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, HIT_DIE_BY_CLASS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt } from "./constants";
 import { renderInline } from "./theme";
 import MapViewer from "../maps/MapViewer";
+import WorldGuideTrigger from "../worldGuide/WorldGuideTrigger";
+import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
 import "./characterSheet.css";
 
 const CONDITION_SEVERITY_COLORS = {
@@ -342,6 +344,7 @@ function SessionNotesSection({ char, setChar, applySessionPatch, pal }) {
 }
 
 export default function CharacterSheetViewMode({ ctx }) {
+  const [guideOpen, setGuideOpen] = useState(false);
   const [conditionPickerOpen, setConditionPickerOpen] = useState(false);
   const [fullCoinExpanded, setFullCoinExpanded] = useState(false);
   const [xpAwardOpen, setXpAwardOpen] = useState(false);
@@ -475,6 +478,8 @@ export default function CharacterSheetViewMode({ ctx }) {
 
   return (
     <div style={rootWrap}>
+      <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
+
       <div aria-hidden="true" className="cs-bg-glow" style={{
         background: `
           radial-gradient(ellipse at 18% 45%, ${pal.glow1} 0%, transparent 55%),
@@ -489,6 +494,7 @@ export default function CharacterSheetViewMode({ ctx }) {
             ← All Characters
           </Link>
           <div className="cs-topbar-actions">
+            <WorldGuideTrigger open={guideOpen} onToggle={() => setGuideOpen((o) => !o)} />
             <button onClick={exportJSON} className="cs-toolbar-btn">
               Export JSON
             </button>

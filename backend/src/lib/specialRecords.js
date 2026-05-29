@@ -2,6 +2,8 @@ const { GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { db, TABLE } = require("./db");
 const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG } = require("./specialItems");
 
+const ROLL_HISTORY_LIMIT = 500;
+
 function normalizeInitiativeRecord(item) {
   return {
     entries: item?.entries ?? [],
@@ -122,7 +124,7 @@ async function saveRollHistoryState({ rolls }) {
   await putSpecialRecord(ROLL_HISTORY_SLUG, { rolls });
 }
 
-async function appendRollHistoryEvent(event, limit = 20) {
+async function appendRollHistoryEvent(event, limit = ROLL_HISTORY_LIMIT) {
   const current = await getRollHistoryState();
   const rolls = [event, ...(current.rolls || [])].slice(0, limit);
   await saveRollHistoryState({ rolls });
@@ -173,6 +175,7 @@ module.exports = {
   normalizeMapLibraryRecord,
   normalizeMapView,
   normalizePartyRosterRecord,
+  ROLL_HISTORY_LIMIT,
   getInitiativeState,
   saveInitiativeState,
   getNpcCombatState,

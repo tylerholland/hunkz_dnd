@@ -597,7 +597,6 @@ export default function DmDashboardClassicPage() {
   }
 
   // btnStyle/btnSecondary replaced by .btn-primary / .btn-ghost CSS classes
-
   return (
     <PalCtx.Provider value={pal}>
       <div style={{
@@ -730,6 +729,7 @@ export default function DmDashboardClassicPage() {
               pal={pal}
               party={party.map((character) => ({ slug: character.slug, name: character.name, palette: character.palette }))}
               npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name }))}
+              dmPassword={dmPassword}
               onApplyDamage={handleApplyDamage}
               onApplyNpcDamage={handleApplyNpcDamage}
               remoteHistory={rollHistory}

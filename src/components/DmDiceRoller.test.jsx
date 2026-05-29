@@ -1,12 +1,25 @@
 import { act } from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+const apiMocks = vi.hoisted(() => ({
+  postDmRoll: vi.fn(),
+}));
+
+vi.mock("../api", () => ({
+  postDmRoll: apiMocks.postDmRoll,
+}));
 
 import DmDiceRoller from "./DmDiceRoller";
 import { PALETTES } from "../features/characterSheet/theme";
 
 afterEach(() => {
   vi.useRealTimers();
+});
+
+beforeEach(() => {
+  vi.clearAllMocks();
+  apiMocks.postDmRoll.mockResolvedValue({ success: true });
 });
 
 describe("DmDiceRoller remote history", () => {
@@ -75,5 +88,42 @@ describe("DmDiceRoller remote history", () => {
 
     const freeRollRows = screen.getAllByText((_, node) => node?.textContent === "Free Roll");
     expect(freeRollRows).toHaveLength(3);
+  });
+
+  it("persists DM rolls into shared roll history with a DM identity", async () => {
+    vi.useFakeTimers();
+
+    render(
+      <DmDiceRoller
+        pal={PALETTES.ocean}
+        dmPassword="swordfish"
+        remoteHistory={[]}
+        onApplyDamage={vi.fn()}
+        onApplyNpcDamage={vi.fn()}
+      />
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /roll 1d20/i }));
+
+    await act(async () => {
+      vi.advanceTimersByTime(650);
+      await Promise.resolve();
+    });
+
+    expect(apiMocks.postDmRoll).toHaveBeenCalledTimes(1);
+
+    const [password, payload] = apiMocks.postDmRoll.mock.calls[0];
+    expect(password).toBe("swordfish");
+    expect(payload).toMatchObject({
+      characterName: "DM",
+      source: "dm",
+      exprLabel: "1d20",
+      label: "Free Roll",
+    });
+    expect(payload.id).toEqual(expect.stringMatching(/^dm-roll-/));
+    expect(payload.total).toEqual(expect.any(Number));
+    expect(payload.rollValues).toHaveLength(1);
+
+    expect(screen.getByText("DM")).toBeInTheDocument();
   });
 });

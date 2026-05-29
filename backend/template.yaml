@@ -349,6 +349,21 @@ Resources:
         - DynamoDBReadPolicy:
             TableName: !Ref CharactersTable
 
+  PostDmRollFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/postDmRoll.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /roll-history
+            Method: post
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
   GetMapLibraryFunction:
     Type: AWS::Serverless::Function
     Properties:

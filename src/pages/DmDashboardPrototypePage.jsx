@@ -10,6 +10,7 @@ import NpcCombatSection from "../features/dmDashboard/NpcCombatSection";
 import MapPanel from "../features/dmDashboard/MapPanel";
 import MapLibraryStrip from "../features/dmDashboard/MapLibraryStrip";
 import ManagePartyModal from "../features/dmDashboard/ManagePartyModal";
+import WorldGuideDrawer from "../features/worldGuide/WorldGuideDrawer";
 import {
   PalCtx,
   initiativesEqual,
@@ -46,6 +47,7 @@ export default function DmDashboardPage() {
   const [showAwardXpParty, setShowAwardXpParty] = useState(false);
   const [showDistributeCoinParty, setShowDistributeCoinParty] = useState(false);
   const [showManageParty, setShowManageParty] = useState(false);
+  const [guideOpen, setGuideOpen] = useState(false);
   const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [openCardPopoverSlug, setOpenCardPopoverSlug] = useState(null);
   const [combatMode, setCombatMode] = useState(initialCombatMode);
@@ -862,6 +864,7 @@ export default function DmDashboardPage() {
 
   return (
     <PalCtx.Provider value={pal}>
+      <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
       <div style={{
         background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), radial-gradient(ellipse at 80% 100%, ${pal.glow2} 0%, transparent 55%), ${pal.bg}`,
         minHeight: "100vh",
@@ -885,16 +888,17 @@ export default function DmDashboardPage() {
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
         }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 14, minWidth: 0 }}>
+          <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, letterSpacing: "0.16em", color: pal.accentBright, whiteSpace: "nowrap" }}>Campaign</div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 14, minWidth: 0 }}>            
             <Link
               to="/"
               style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: pal.textMuted, textDecoration: "none", whiteSpace: "nowrap" }}
               onMouseEnter={(e) => { e.currentTarget.style.color = pal.accentBright; }}
               onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
             >← Library</Link>
-            <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, letterSpacing: "0.16em", color: pal.accentBright, whiteSpace: "nowrap" }}>Campaign</div>
+            
             <div style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 12, color: pal.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {combatMode ? "Combat mode active." : "Start combat to enter the 3-column combat layout."}
+              {combatMode ? "Combat mode active." : "Adventure mode active."}
             </div>
           </div>
 
@@ -932,6 +936,10 @@ export default function DmDashboardPage() {
                     onClick={() => { setActionMenuOpen(false); setShowManageParty(true); }}
                     style={{ width: "100%", background: "transparent", border: "none", color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
                   >Manage Party</button>
+                  <button
+                    onClick={() => { setActionMenuOpen(false); setGuideOpen(true); }}
+                    style={{ width: "100%", background: "transparent", border: "none", color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
+                  >World Guide</button>
                   <Link
                     to="/dm-classic"
                     onClick={() => setActionMenuOpen(false)}
@@ -1087,6 +1095,7 @@ export default function DmDashboardPage() {
                 pal={pal}
                 party={party.map((character) => ({ slug: character.slug, name: character.name, palette: character.palette }))}
                 npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name }))}
+                dmPassword={dmPassword}
                 onApplyDamage={handleApplyDamage}
                 onApplyNpcDamage={handleApplyNpcDamage}
                 remoteHistory={rollHistory}

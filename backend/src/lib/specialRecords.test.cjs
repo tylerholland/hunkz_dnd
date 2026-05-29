@@ -49,7 +49,7 @@ test("getInitiativeState and getNpcCombatState return normalized defaults", asyn
     send: async () => ({ Item: null }),
   });
 
-  assert.deepEqual(await getInitiativeState(), { entries: [], activeTurnIndex: 0 });
+  assert.deepEqual(await getInitiativeState(), { entries: [], activeTurnIndex: 0, round: 1 });
   assert.deepEqual(await getNpcCombatState(), { npcs: [] });
   assert.deepEqual(await getRollHistoryState(), { rolls: [] });
   assert.deepEqual(await getPartyRosterState(), { exists: false, members: [] });
@@ -86,6 +86,7 @@ test("saveInitiativeState, saveNpcCombatState, and saveRollHistoryState persist 
   assert.equal(sent[0].Item.slug, "initiative");
   assert.deepEqual(sent[0].Item.entries, [{ id: "entry-1", name: "Aragorn", initiative: 10 }]);
   assert.equal(sent[0].Item.activeTurnIndex, 0);
+  assert.equal(sent[0].Item.round, 1);
   assert.match(sent[0].Item.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
 
   assert.equal(sent[1].Item.slug, "npc-combat");
@@ -180,4 +181,36 @@ test("getMapLibraryState normalizes legacy map content types from file extension
       },
     ],
   });
+});
+
+test("appendRollHistoryEvent keeps the newest 500 rolls by default", async () => {
+  const sent = [];
+  const existingRolls = Array.from({ length: 500 }, (_, index) => ({ id: `existing-${index}` }));
+  const {
+    appendRollHistoryEvent,
+    ROLL_HISTORY_LIMIT,
+  } = loadModuleWithMocks({
+    send: async (command) => {
+      if (command.input?.Key?.slug === "roll-history") {
+        return {
+          Item: {
+            slug: "roll-history",
+            rolls: existingRolls,
+          },
+        };
+      }
+
+      sent.push(command.input);
+      return {};
+    },
+  });
+
+  await appendRollHistoryEvent({ id: "new-roll" });
+
+  assert.equal(ROLL_HISTORY_LIMIT, 500);
+  assert.equal(sent.length, 1);
+  assert.equal(sent[0].Item.slug, "roll-history");
+  assert.equal(sent[0].Item.rolls.length, 500);
+  assert.equal(sent[0].Item.rolls[0].id, "new-roll");
+  assert.equal(sent[0].Item.rolls.at(-1).id, "existing-498");
 });

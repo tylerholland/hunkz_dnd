@@ -2,7 +2,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { parseDiceExpr, rollDie, DieShape } from "./DiceRoller";
 import { RollHistoryRow } from "./RollHistoryList";
 import { PALETTES } from "../features/characterSheet/theme";
-import { buildLocalRollHistoryEntry, extractRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
+import { postDmRoll } from "../api";
+import { buildLocalRollHistoryEntry, buildRollHistoryPayload, extractRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
 import "./diceRoller.css";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -55,8 +56,12 @@ function buildExprLabel(groups, flat) {
   return parts.join("+");
 }
 
+function createClientRollId(timestamp, index) {
+  return `dm-roll-${timestamp}-${index}-${Math.random().toString(36).slice(2, 8)}`;
+}
+
 // ── DmDiceRoller ───────────────────────────────────────────────────────────────
-export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage, onApplyNpcDamage, remoteHistory = [], marginTop = 16 }) {
+export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, remoteHistory = [], marginTop = 16 }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
     sessionStorage.getItem("dnd_dice_dm_open") !== "false"
@@ -143,18 +148,37 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
       const modeTag = capturedAdvMode !== "normal"
         ? (capturedAdvMode === "advantage" ? " (adv)" : " (dis)") : "";
       const baseTimestamp = Date.now();
-      const historyEntries = results.map((result, index) => buildLocalRollHistoryEntry({
-        id: `${baseTimestamp}-${index}-${Math.random()}`,
-        label: `Free Roll${modeTag}`,
-        result: {
-          ...result,
-          exprLabel,
-        },
-        timestamp: baseTimestamp + index,
-      }));
+      const historyEntries = results.map((result, index) => {
+        const id = createClientRollId(baseTimestamp, index);
+        return buildLocalRollHistoryEntry({
+          id,
+          label: `Free Roll${modeTag}`,
+          result: {
+            ...result,
+            exprLabel,
+          },
+          timestamp: baseTimestamp + index,
+          characterName: "DM",
+          source: "dm",
+        });
+      });
       setHistory(prev => [...historyEntries, ...prev].slice(0, 12));
+
+      if (dmPassword) {
+        const rollPayloads = results.map((result, index) => buildRollHistoryPayload({
+          id: historyEntries[index]?.id,
+          label: `Free Roll${modeTag}`,
+          result: {
+            ...result,
+            exprLabel,
+          },
+          characterName: "DM",
+          source: "dm",
+        }));
+        Promise.allSettled(rollPayloads.map((payload) => postDmRoll(dmPassword, payload))).catch(() => {});
+      }
     }, 600);
-  }, [isRolling, advMode, repeatCount, exprInput, comboDice, comboMod, dieCount, selectedSides]);
+  }, [isRolling, advMode, repeatCount, exprInput, comboDice, comboMod, dieCount, selectedSides, dmPassword]);
 
   // ── Combo builder ───────────────────────────────────────────────────────────
   const handleDieSelect = (sides) => setSelectedSides(sides);
@@ -203,19 +227,22 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
         rollValues: Array.isArray(entry.rollValues) && entry.rollValues.length > 0
           ? entry.rollValues
           : extractRollValues(entry),
-        source: "dm-standard",
+        source: entry.source === "dm" ? "dm" : "dm-standard",
         sortTime: entry.timestamp || 0,
     })),
     ...remoteHistory.map((entry) => ({
       ...entry,
+      characterName: entry.source === "dm" ? (entry.characterName || "DM") : entry.characterName,
       label: normalizeRollActionLabel(entry.label),
       rollValues: Array.isArray(entry.rollValues) && entry.rollValues.length > 0
         ? entry.rollValues
         : extractRollValues(entry),
-      source: "character",
+      source: entry.source === "dm" ? "dm" : "character",
       sortTime: Date.parse(entry.createdAt || "") || 0,
     })),
-  ].sort((a, b) => b.sortTime - a.sortTime);
+  ]
+    .sort((a, b) => b.sortTime - a.sortTime)
+    .filter((entry, index, items) => index === items.findIndex((candidate) => candidate.id === entry.id));
 
   return (
     <div
@@ -509,6 +536,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
                   const palette = entry.source === "character"
                     ? (PALETTES[entry.paletteKey] || PALETTES.ember)
                     : null;
+                  const isDmEntry = entry.source === "dm";
 
                   return (
                     <RollHistoryRow
@@ -516,8 +544,8 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], onApplyDamage
                       pal={pal}
                       entry={{
                         ...entry,
-                        nameColor: palette?.accent,
-                        totalAccentColor: palette?.accent,
+                        nameColor: palette?.accent || (isDmEntry ? pal.accentBright : undefined),
+                        totalAccentColor: palette?.accent || (isDmEntry ? pal.gem : undefined),
                       }}
                       opacity={opacity}
                       showDivider={i < combinedHistory.length - 1}

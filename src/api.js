@@ -2,6 +2,7 @@ const BASE = import.meta.env.VITE_API_URL;
 const OPTIONAL_ENDPOINT_SUPPORT = {
   rollHistory: null,
   characterRolls: null,
+  dmRollHistoryPost: null,
 };
 
 async function request(path, options = {}) {
@@ -148,6 +149,16 @@ export const getRollHistory = (dmPassword) =>
   requestOptional("/roll-history", {
     headers: { "x-character-password": dmPassword },
   }, "rollHistory", { rolls: [], unsupported: true });
+
+export const postDmRoll = (dmPassword, payload) =>
+  requestOptional("/roll-history", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-character-password": dmPassword,
+    },
+    body: JSON.stringify(payload),
+  }, "dmRollHistoryPost", { success: false, unsupported: true });
 
 export const getMapLibrary = () =>
   request("/maps");

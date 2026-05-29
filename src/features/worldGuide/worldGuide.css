@@ -1,0 +1,581 @@
+/*
+ * worldGuide.css
+ *
+ * Styles for the World Guide Browser drawer (Story 26).
+ * Uses --pal-* CSS custom properties set by the mount context
+ * (CharacterSheetViewMode or DmDashboardPage).
+ *
+ * z-index: drawer 1100, scrim 1099 — above all existing modals (max 1000).
+ */
+
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ─── Trigger button ─────────────────────────────────────────────────────────
+   32×32 icon padded to 44×44 touch target. Uses --pal-* variables so it
+   inherits whichever palette is active on its mount surface.              */
+.guide-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  padding: 0;
+  flex-shrink: 0;
+  transition: background 150ms ease;
+}
+.guide-trigger:hover {
+  background: rgba(128, 128, 128, 0.08);
+}
+.guide-trigger .guide-trigger-icon {
+  color: var(--pal-text-muted);
+  transition: color 140ms linear;
+}
+.guide-trigger:hover .guide-trigger-icon {
+  color: var(--pal-accent);
+}
+.guide-trigger.is-open .guide-trigger-icon {
+  color: var(--pal-accent-bright);
+}
+
+/* ─── Scrim ──────────────────────────────────────────────────────────────────
+   Tablet only (700–1099px). Desktop: pointer-events none, opacity 0 always. */
+.world-guide-scrim {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 1099;
+  transition: opacity 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.world-guide-scrim.is-visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* ─── Drawer shell ───────────────────────────────────────────────────────────
+   Fixed right edge, full height. Animated via .is-open class toggle.     */
+.world-guide-drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 440px;
+  height: 100vh;
+  background: var(--pal-bg);
+  border-left: 1px solid var(--pal-border);
+  display: flex;
+  flex-direction: column;
+  z-index: 1100;
+  transform: translateX(100%);
+  transition: transform 220ms cubic-bezier(0.4, 0, 0.6, 1);
+  overflow: hidden;
+}
+.world-guide-drawer.is-open {
+  transform: translateX(0);
+  transition: transform 260ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* ─── Drawer sticky header (TOC view) ───────────────────────────────────────*/
+.wg-toc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  height: 50px;
+  border-bottom: 1px solid var(--pal-border);
+  background: var(--pal-bg);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.wg-drawer-title {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 12px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+.wg-close-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: var(--pal-text-muted);
+  font-size: 18px;
+  border-radius: 4px;
+  transition: color 150ms ease, background 150ms ease;
+  margin-right: -10px;
+  flex-shrink: 0;
+}
+.wg-close-btn:hover {
+  color: var(--pal-accent-bright);
+  background: rgba(128, 128, 128, 0.08);
+}
+
+/* ─── View host ──────────────────────────────────────────────────────────────
+   Contains TOC view and Reading view; both position:absolute to allow
+   cross-fade without layout shift.                                        */
+.wg-view-host {
+  position: relative;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ─── TOC view ───────────────────────────────────────────────────────────────*/
+.wg-toc-view {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  opacity: 1;
+  pointer-events: auto;
+  transition: opacity 90ms ease-in;
+}
+.wg-toc-view.is-fading-out {
+  opacity: 0;
+  pointer-events: none;
+}
+.wg-toc-view::-webkit-scrollbar { width: 4px; }
+.wg-toc-view::-webkit-scrollbar-track { background: transparent; }
+.wg-toc-view::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.2); border-radius: 2px; }
+
+/* ─── Reading view ───────────────────────────────────────────────────────────*/
+.wg-reading-view {
+  position: absolute;
+  inset: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  display: flex;
+  flex-direction: column;
+  opacity: 0;
+  pointer-events: none;
+}
+.wg-reading-view.is-active {
+  animation: wg-fade-in 160ms ease-in-out 60ms both;
+  pointer-events: auto;
+}
+.wg-reading-view.is-fading-out {
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 90ms ease-in;
+}
+.wg-reading-view::-webkit-scrollbar { width: 4px; }
+.wg-reading-view::-webkit-scrollbar-track { background: transparent; }
+.wg-reading-view::-webkit-scrollbar-thumb { background: rgba(128, 128, 128, 0.2); border-radius: 2px; }
+
+@keyframes wg-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* ─── Reading sticky header ──────────────────────────────────────────────────*/
+.wg-reading-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px 0 16px;
+  height: 50px;
+  border-bottom: 1px solid var(--pal-border);
+  background: var(--pal-bg);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  z-index: 5;
+}
+.wg-back-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-accent);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 6px 0;
+  min-height: 44px;
+  transition: color 150ms ease;
+}
+.wg-back-btn:hover { color: var(--pal-accent-bright); }
+.wg-back-btn svg { flex-shrink: 0; }
+
+/* ─── Reading body ───────────────────────────────────────────────────────────*/
+.wg-reading-body {
+  padding: 0 24px 40px;
+  flex: 1;
+}
+.wg-section-title {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 22px;
+  letter-spacing: 0.06em;
+  color: var(--pal-text);
+  padding: 18px 0 4px;
+  line-height: 1.3;
+}
+.wg-breadcrumb {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 20px;
+  margin-top: 4px;
+}
+
+/* ─── Markdown body content ──────────────────────────────────────────────────*/
+.wg-reading-content p {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--pal-text-body);
+  margin-bottom: 1em;
+}
+.wg-reading-content h2 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  color: var(--pal-text);
+  margin-top: 1.8em;
+  margin-bottom: 0.5em;
+}
+.wg-reading-content h3 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  color: var(--pal-text);
+  margin-top: 1.8em;
+  margin-bottom: 0.5em;
+}
+.wg-reading-content h4 {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--pal-text);
+  margin-top: 1.4em;
+  margin-bottom: 0.4em;
+}
+.wg-reading-content ul {
+  list-style: none;
+  padding: 0;
+  margin-bottom: 1em;
+}
+.wg-reading-content ul li {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--pal-text-body);
+  padding-left: 20px;
+  position: relative;
+  margin-bottom: 0.3em;
+}
+.wg-reading-content ul li::before {
+  content: '◆';
+  position: absolute;
+  left: 0;
+  color: var(--pal-accent);
+  font-size: 10px;
+  top: 5px;
+}
+.wg-reading-content ol {
+  padding-left: 0;
+  margin-bottom: 1em;
+  list-style: none;
+  counter-reset: wg-ol;
+}
+.wg-reading-content ol li {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.8;
+  color: var(--pal-text-body);
+  padding-left: 28px;
+  position: relative;
+  margin-bottom: 0.3em;
+  counter-increment: wg-ol;
+}
+.wg-reading-content ol li::before {
+  content: counter(wg-ol) ".";
+  position: absolute;
+  left: 0;
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 14px;
+  color: var(--pal-accent);
+}
+.wg-reading-content strong {
+  font-weight: 600;
+  color: var(--pal-text);
+}
+.wg-reading-content em {
+  font-style: italic;
+  color: var(--pal-text-body);
+}
+.wg-reading-content a {
+  color: var(--pal-accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.wg-reading-content a:hover { color: var(--pal-accent-bright); }
+.wg-reading-content code {
+  background: var(--pal-surface);
+  font-family: var(--font-ui, monospace);
+  font-size: 14px;
+  padding: 1px 5px;
+  border-radius: 2px;
+  color: var(--pal-text-muted);
+}
+
+/* ─── Resume row ─────────────────────────────────────────────────────────────*/
+.wg-resume-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  margin: 12px 16px 4px;
+  background: rgba(128, 128, 128, 0.05);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 150ms, border-color 150ms;
+}
+.wg-resume-row:hover {
+  background: rgba(128, 128, 128, 0.1);
+  border-color: var(--pal-accent);
+}
+.wg-resume-diamond {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 11px;
+  color: var(--pal-accent);
+  flex-shrink: 0;
+}
+.wg-resume-text {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-accent);
+}
+.wg-resume-text strong {
+  color: var(--pal-accent-bright);
+}
+
+/* ─── TOC section label ──────────────────────────────────────────────────────*/
+.wg-toc-section-label {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  padding: 18px 20px 6px;
+}
+
+/* ─── Chapter rows ───────────────────────────────────────────────────────────*/
+.wg-chapter-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 20px;
+  cursor: pointer;
+  border-bottom: 1px solid var(--pal-border);
+  transition: background 150ms ease;
+  min-height: 52px;
+  user-select: none;
+}
+.wg-chapter-row:hover { background: var(--pal-surface); }
+.wg-chapter-row:hover .wg-chapter-chevron { color: var(--pal-accent); }
+.wg-chapter-row:last-child { border-bottom: none; }
+
+.wg-chapter-name {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 16px;
+  letter-spacing: 0.04em;
+  color: var(--pal-text);
+}
+.wg-chapter-chevron {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 16px;
+  color: var(--pal-text-muted);
+  flex-shrink: 0;
+  transition: color 150ms ease, transform 220ms ease-out;
+}
+.wg-chapter-chevron.is-expanded {
+  transform: rotate(90deg);
+  transition: color 150ms ease, transform 180ms ease-in;
+}
+
+/* ─── Gazetteer expanded panel ───────────────────────────────────────────────*/
+.wg-gazetteer-panel {
+  overflow: hidden;
+  max-height: 0;
+  transition: max-height 220ms ease-out;
+  border-bottom: 1px solid var(--pal-border);
+}
+.wg-gazetteer-inner {
+  padding: 12px 0;
+}
+
+/* ─── Gazetteer filter ───────────────────────────────────────────────────────*/
+.wg-filter-wrap {
+  padding: 6px 20px 10px 36px;
+}
+.wg-filter-icon-wrap {
+  position: relative;
+}
+.wg-filter-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--pal-text-muted);
+  pointer-events: none;
+  font-size: 14px;
+}
+.wg-filter-input {
+  width: 100%;
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text);
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  padding: 8px 12px 8px 32px;
+  outline: none;
+  transition: border-color 150ms;
+}
+.wg-filter-input::placeholder { color: var(--pal-text-muted); }
+.wg-filter-input:focus { border-color: var(--pal-accent); }
+
+/* ─── Realm rows ─────────────────────────────────────────────────────────────*/
+.wg-realm-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px 10px 36px;
+  cursor: pointer;
+  transition: background 150ms ease;
+  min-height: 44px;
+}
+.wg-realm-row:hover { background: rgba(128, 128, 128, 0.06); }
+.wg-realm-name {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--pal-text-body);
+}
+
+/* ─── Child rows (for expandable sections beyond Gazetteer) ─────────────────*/
+.wg-child-row {
+  display: flex;
+  align-items: center;
+  padding: 10px 20px 10px 36px;
+  cursor: pointer;
+  transition: background 150ms ease;
+  min-height: 44px;
+  border-bottom: 1px solid var(--pal-border);
+}
+.wg-child-row:hover { background: var(--pal-surface); }
+.wg-child-row:last-child { border-bottom: none; }
+.wg-child-name {
+  font-family: 'Cinzel', Georgia, serif;
+  font-size: 14px;
+  letter-spacing: 0.04em;
+  color: var(--pal-text-body);
+}
+
+/* ─── No-match message ───────────────────────────────────────────────────────*/
+.wg-no-match {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 14px;
+  font-style: italic;
+  color: var(--pal-text-muted);
+  text-align: center;
+  padding: 16px 20px;
+}
+
+/* ─── Loading / error states ─────────────────────────────────────────────────*/
+.wg-loading {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--pal-text-muted);
+  padding: 32px 20px;
+  text-align: center;
+}
+.wg-error-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  gap: 12px;
+}
+.wg-error-msg {
+  font-family: 'Crimson Text', Georgia, serif;
+  font-size: 15px;
+  font-style: italic;
+  color: var(--pal-text-muted);
+  text-align: center;
+}
+.wg-retry-btn {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-accent);
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: color 150ms, border-color 150ms;
+}
+.wg-retry-btn:hover {
+  color: var(--pal-accent-bright);
+  border-color: var(--pal-accent);
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────────────────
+   All transitions/animations become instant when the user prefers it.    */
+@media (prefers-reduced-motion: reduce) {
+  .world-guide-drawer,
+  .world-guide-scrim,
+  .wg-toc-view,
+  .wg-reading-view,
+  .wg-gazetteer-panel,
+  .wg-chapter-chevron,
+  .wg-realm-row,
+  .guide-trigger .guide-trigger-icon {
+    transition: none !important;
+    animation: none !important;
+  }
+  .wg-reading-view.is-active {
+    opacity: 1;
+    animation: none !important;
+  }
+}
+
+/* ─── Responsive: tablet (700–1099px) ───────────────────────────────────────*/
+@media (max-width: 1099px) {
+  .world-guide-drawer {
+    width: 420px;
+  }
+}
+
+/* ─── Responsive: mobile (<700px) ───────────────────────────────────────────*/
+@media (max-width: 699px) {
+  .world-guide-drawer {
+    width: 100vw;
+  }
+}

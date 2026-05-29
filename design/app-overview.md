@@ -43,6 +43,7 @@ The full sheet is hidden behind a password prompt until unlocked. On load, the s
 
 The top bar (always visible, no auth required) contains:
 - `← All Characters` link (back to list)
+- World Guide trigger icon (open-book SVG, 44px touch target; opens the World Guide drawer)
 - `Export JSON` button
 - `🔒 Edit Character` / `Edit Character` button (triggers unlock or enters edit mode)
 
@@ -324,6 +325,7 @@ A dedicated DM session-management view accessible at `/dm`.
 
 **Top bar** (sticky): focuses on navigation/session controls. `Short Rest` and `Long Rest` were removed from the top bar to reduce mobile width pressure; those actions still exist lower on the page in the party-wide actions section. A breadcrumb-style `← Character Library` link sits below the bar.
 - `Manage Party` button opens a DM-only roster modal for choosing which library characters are in the active campaign
+- World Guide trigger icon (between Manage Party and palette select; same open-book icon as character sheet)
 
 **Party roster model**:
 - The campaign party is not implicitly "all characters in the library"
@@ -479,6 +481,45 @@ Filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `
 | PUT | /maps/active | DM | Sets or clears `activeMapId` |
 | PATCH | /maps/{mapId} | DM | Renames a map entry |
 | DELETE | /maps/{mapId} | DM | Removes from DynamoDB + deletes S3 object (best-effort) |
+
+---
+
+---
+
+### World Guide Browser (`WorldGuideDrawer.jsx`, `WorldGuideTrigger.jsx`)
+
+A right-edge slide-in drawer providing in-session reference to the campaign world guide. Accessible from both the character sheet top bar and the DM dashboard top bar via an open-book SVG icon (44px touch target).
+
+**Trigger**: `WorldGuideTrigger` component — open-book SVG, 20×20 within a 44px target. Color: `pal.textMuted` default, `pal.accent` on hover, `pal.accentBright` when open. Class `.guide-trigger` defined in `worldGuide.css`.
+
+**Drawer dimensions**: 440px fixed (desktop ≥1100px, no scrim), 420px (tablet 700–1099px, 0.4 scrim tap-to-close), 100vw (mobile <700px). `position: fixed`, z-index 1100. Scrim z-index 1099. Slide animation: open 260ms `cubic-bezier(0.2,0.8,0.2,1)`, close 220ms `cubic-bezier(0.4,0,0.6,1)`. Instant on `prefers-reduced-motion`.
+
+**Palette**: `pal` object passed as prop; `--pal-*` CSS variables set inline on the drawer element (same pattern as `ItemEditorModal`). Inherits from whichever palette the mount surface uses.
+
+**Content**: Static markdown files under `public/world-guide/`. `toc.json` fetched on first open from `/world-guide/toc.json`. Individual sections fetched lazily from `/world-guide/{file}`. Per-session in-memory cache (`useRef(Map)`) prevents re-fetches.
+
+**TOC structure**: Two-level hierarchy. Top-level entries are chapter rows (Cinzel 16px). The Gazetteer section (`file: null`) expands in-place to reveal 56+ realm entries with a substring filter input. Other chapters with `children` (Folk, Geography, Power Groups, Gods) expand their child list in-place — tapping the chapter row navigates to the index file, the chevron expands children. Chapters without children navigate directly on tap.
+
+**Reading view**: Cross-fades from TOC (90ms out, 160ms in, 60ms delay). Sticky header with "‹ Back to Guide" (left) and × close (right). Section title (Cinzel 22px) + breadcrumb (parent name). Body in Crimson Text 16px, line-height 1.8. Subheadings `##`/`###` in Cinzel 18/16px, `####` in Cinzel 14px. Unordered lists use ◆ diamond bullets.
+
+**Markdown renderer**: Hand-written, no library. Supports: `#` title (stripped to section header), `##`/`###`/`####` headings, paragraphs, `**bold**`, `*italic*`, `` `code` ``, `- / *` unordered lists, `1.` ordered lists, `[text](url)` links (`.md` links intercepted for in-drawer navigation; external links open new tab).
+
+**Session persistence** (`sessionStorage` keys):
+- `dnd_guide_open` — drawer open/closed (written on change; cleared to `false` on unmount)
+- `dnd_guide_section` — last-viewed file path (powers Resume row)
+- `dnd_guide_scroll_${file}` — scroll position per section, throttled 250ms; cleared on Back
+- `dnd_guide_gazetteer_expanded` — Gazetteer expansion state
+
+**Resume row**: shown at top of TOC when `dnd_guide_section` is set. Tapping restores the section and its saved scroll position.
+
+**Keyboard**: `Esc` closes the drawer when open.
+
+**Error states**: TOC fetch fail → retry button in drawer. Section fetch fail → title/breadcrumb visible, body shows retry (Back still works).
+
+**Files**:
+- `src/features/worldGuide/WorldGuideDrawer.jsx` — drawer shell, all state, TOC view, reading view, markdown renderer
+- `src/features/worldGuide/WorldGuideTrigger.jsx` — icon button, `open` + `onToggle` props
+- `src/features/worldGuide/worldGuide.css` — all drawer styles, slide animation, typography, responsive breakpoints
 
 ---
 
