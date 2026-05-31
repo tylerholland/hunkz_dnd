@@ -940,11 +940,6 @@ export default function DmDashboardPage() {
                     onClick={() => { setActionMenuOpen(false); setGuideOpen(true); }}
                     style={{ width: "100%", background: "transparent", border: "none", color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
                   >World Guide</button>
-                  <Link
-                    to="/dm-classic"
-                    onClick={() => setActionMenuOpen(false)}
-                    style={{ display: "block", color: pal.text, textDecoration: "none", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px" }}
-                  >Classic Layout</Link>
                   <div style={{ height: 1, background: pal.border, margin: "6px 0" }} />
                   <div style={{ padding: "4px 10px 6px", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: pal.textMuted }}>
                     Text Size

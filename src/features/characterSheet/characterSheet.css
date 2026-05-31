@@ -867,12 +867,15 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .cs-conc-banner-left {
   display: flex;
   align-items: center;
   gap: 10px;
+  min-width: 0;
+  flex: 1 1 auto;
 }
 
 .cs-conc-dot {
@@ -897,6 +900,7 @@
   font-family: var(--font-display);
   font-size: 15px;
   color: var(--pal-accent-bright);
+  overflow-wrap: anywhere;
 }
 
 .cs-conc-drop-btn {
@@ -916,6 +920,14 @@
 .cs-conc-drop-btn:hover {
   border-color: var(--pal-accent);
   color: var(--pal-accent-bright);
+}
+
+@media (max-width: 480px) {
+  .cs-conc-drop-btn {
+    width: 100%;
+    padding: 9px 12px;
+    text-align: center;
+  }
 }
 
 /* Concentration spell input row */

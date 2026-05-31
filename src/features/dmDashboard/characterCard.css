@@ -36,6 +36,19 @@
   pointer-events: none;
 }
 
+/* Widen stripe in the portrait band so stripe + portrait border read as one element */
+.cc-stripe::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 3px;
+  height: 76px;
+  background: var(--pal-accent);
+  border-radius: 3px 0 0 0;
+  box-shadow: 0 0 6px var(--pal-portrait-glow, rgba(106, 143, 168, 0.4));
+}
+
 /* ─── Active-turn glow bar (bottom edge) ─────────────────────────────────── */
 
 .cc-turn-bar {
@@ -52,12 +65,18 @@
 
 .cc-header-grid {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  gap: 10px;
-  padding: 12px 14px 4px 18px;
+  grid-template-columns: 92px 1fr auto;
+  gap: 14px;
+  padding: 2px 14px 4px 18px;
   align-items: start;
   position: relative;
   z-index: 1;
+}
+
+/* Identity column — name + meta; top padding gives breathing room below the bleed */
+.cc-identity {
+  min-width: 0;
+  padding-top: 10px;
 }
 
 .cc-card-body {
@@ -67,16 +86,26 @@
 /* ─── Portrait circle ────────────────────────────────────────────────────── */
 
 .cc-portrait {
-  width: 42px;
-  height: 42px;
+  width: 80px;
+  height: 80px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  border: 2px solid var(--pal-accent);
+  border: 3px solid var(--pal-accent);
   background: var(--pal-surface-solid);
   overflow: hidden;
+  position: relative;
+  z-index: 2;
+  margin-top: -20px;
+  /* Layer 1: drop shadow; Layer 2: surface-color spacer ring anchors portrait to its card;
+     Layer 3: outer accent glow halo */
+  box-shadow:
+    0 3px 10px rgba(0, 0, 0, 0.5),
+    0 0 0 6px var(--pal-surface-solid),
+    0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25));
+  transition: box-shadow 0.22s ease, border-color 0.22s ease;
 }
 
 .cc-portrait img {
@@ -84,11 +113,12 @@
   height: 100%;
   object-fit: cover;
   border-radius: 50%;
+  filter: brightness(0.97) saturate(0.92);
 }
 
 .cc-portrait-initial {
   font-family: var(--font-display);
-  font-size: 16px;
+  font-size: 32px;
   color: var(--pal-gem);
 }
 
@@ -104,7 +134,7 @@
 
 .cc-name-text {
   font-family: var(--font-display);
-  font-size: 17px;
+  font-size: 19px;
   letter-spacing: 0.1em;
   font-variant: small-caps;
   color: var(--pal-accent-bright);
@@ -251,7 +281,7 @@
   color: var(--pal-accent-bright);
 }
 
-/* ─── Death saves (Story 19 — authoritative interactive tracker) ─────────── */
+/* ─── HP = 0 card state (death glow) ────────────────────────────────────── */
 
 /* Slow pulsing red glow on the whole card when HP = 0 */
 @keyframes deathGlow {
@@ -264,256 +294,504 @@
   animation: deathGlow 3.5s ease-in-out infinite;
 }
 
-/* Tracker block — mounts at HP=0, animates in/out */
-.cc-death-saves {
-  margin: 0 0 8px;
-  background: rgba(192, 96, 96, 0.06);
-  border-left: 2px solid #c06060;
-  border-radius: 0 3px 3px 0;
-  padding: 6px 10px;
+/* Portrait state animations — sync with card-level glows */
+@keyframes portraitDeathGlow {
+  0%, 100% {
+    box-shadow:
+      0 3px 10px rgba(0, 0, 0, 0.5),
+      0 0 0 6px var(--pal-surface-solid),
+      0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25)),
+      0 0 12px 3px rgba(192, 80, 80, 0.3);
+  }
+  50% {
+    box-shadow:
+      0 3px 10px rgba(0, 0, 0, 0.5),
+      0 0 0 6px var(--pal-surface-solid),
+      0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25)),
+      0 0 28px 8px rgba(192, 80, 80, 0.6);
+  }
+}
+
+@keyframes portraitTurnGlow {
+  0%, 100% {
+    box-shadow:
+      0 3px 10px rgba(0, 0, 0, 0.5),
+      0 0 0 6px var(--pal-surface-solid),
+      0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25)),
+      0 0 10px 2px rgba(138, 180, 200, 0.18);
+  }
+  50% {
+    box-shadow:
+      0 3px 10px rgba(0, 0, 0, 0.5),
+      0 0 0 6px var(--pal-surface-solid),
+      0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25)),
+      0 0 22px 6px rgba(138, 180, 200, 0.42);
+  }
+}
+
+.cc-card.hp-zero .cc-portrait {
+  border-color: rgba(192, 96, 96, 0.7);
+  animation: portraitDeathGlow 3.5s ease-in-out infinite;
+}
+
+.cc-card.dm-active-turn .cc-portrait {
+  border-color: var(--pal-gem);
+  animation: portraitTurnGlow 2.2s ease-in-out infinite;
+}
+
+/* Active turn wins over 0HP when both apply simultaneously */
+.cc-card.dm-active-turn.hp-zero .cc-portrait {
+  border-color: var(--pal-gem);
+  animation: portraitTurnGlow 2.2s ease-in-out infinite;
+}
+
+.cc-card.fallen .cc-portrait {
+  filter: grayscale(0.45) brightness(0.7);
+  border-color: rgba(192, 96, 96, 0.5);
+  animation: none;
+}
+
+/* Responsive: reduce bleed at narrow widths */
+@media (max-width: 400px) {
+  .cc-portrait {
+    width: 56px;
+    height: 56px;
+    margin-top: 0;
+  }
+  .cc-portrait-initial { font-size: 22px; }
+  .cc-header-grid { grid-template-columns: 68px 1fr auto; padding: 12px 14px 4px 18px; }
+  .cc-identity { padding-top: 0; }
+  .cc-actions-col { padding-top: 1px; }
+}
+
+/* ─── Death Saves Strip (redesign — brief §3–§8) ─────────────────────────── */
+
+/* Notes strip loses its bottom radius when the DS strip is mounted below it */
+.cc-notes-strip.has-death-strip-below {
+  border-radius: 0;
+}
+
+/* Outer wrapper — drives mount / unmount via max-height + opacity */
+.ds-strip-wrap {
   overflow: hidden;
   max-height: 0;
   opacity: 0;
   pointer-events: none;
-  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+  transition: max-height 300ms ease-out, opacity 300ms ease-out;
 }
 
-.cc-death-saves.visible {
-  max-height: 160px;
+.ds-strip-wrap.mounted {
+  max-height: 100px;
   opacity: 1;
   pointer-events: auto;
 }
 
-/* Block shake on failure mark — applied via JS class toggle */
-.cc-death-saves.shake {
-  animation: dmDeathSaveShake 0.3s ease-out;
-}
-
-/* Tombstone: pips frozen, no more interaction */
-.cc-death-saves.frozen {
+.ds-strip-wrap.unmounting {
+  max-height: 0;
+  opacity: 0;
   pointer-events: none;
+  transition: opacity 180ms ease-in, max-height 250ms ease-in;
 }
 
-/* FALLEN overlay label */
-.cc-fallen-label {
-  font-family: var(--font-ui);
-  font-size: 12px;
-  letter-spacing: 0.3em;
-  text-transform: uppercase;
-  color: #c06060;
-  text-align: center;
-  padding: 4px 0 2px;
-  animation: dmConditionIn 0.3s ease-out;
+/* The strip itself — brief §3a */
+.ds-strip {
+  background: rgba(192, 96, 96, 0.07);
+  border-top: 1px solid rgba(192, 96, 96, 0.45);
+  border-radius: 0 0 6px 6px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  transition: background 250ms ease-out, border-top-color 250ms ease-out;
 }
 
-/* Row 1: label + NAT20/NAT1 shortcuts */
-.cc-ds-main-row {
+/* FALLEN state — strip background and border deepen */
+.ds-strip.fallen {
+  background: rgba(192, 96, 96, 0.11);
+  border-top-color: rgba(192, 96, 96, 0.6);
+}
+
+/* ── Pip row — always 40px (brief §3a) ────────────────────────────────────── */
+
+.ds-pip-row {
+  height: 40px;
   display: flex;
   align-items: center;
-  gap: 0;
-  margin-bottom: 0;
+  padding: 0 0 0 12px;
+  flex-shrink: 0;
+  gap: 10px;
+  position: relative;
 }
 
-.cc-ds-label {
+/* "DEATH SAVES" label — brief §3a② */
+.ds-label {
   font-family: var(--font-ui);
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--pal-text-muted);
+  color: rgba(192, 96, 96, 0.65);
   flex-shrink: 0;
-  margin-right: 8px;
+  white-space: nowrap;
+  user-select: none;
 }
 
-.cc-ds-shortcuts {
+/* pip cluster flex container */
+.ds-pip-cluster {
   display: flex;
-  gap: 5px;
-  margin-left: auto;
+  align-items: center;
+  gap: 8px;
   flex-shrink: 0;
 }
 
-.cc-ds-shortcut {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  padding: 7px 8px;
-  min-height: 44px;
-  border: 1px solid var(--pal-border);
-  border-radius: 3px;
-  background: transparent;
-  color: var(--pal-text-muted);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
-}
-
-.cc-ds-shortcut.nat20:hover {
-  color: #5a9a5a;
-  border-color: rgba(90, 154, 90, 0.5);
-  background: rgba(90, 154, 90, 0.07);
-}
-
-.cc-ds-shortcut.nat1:hover {
-  color: #c06060;
-  border-color: rgba(192, 96, 96, 0.5);
-  background: rgba(192, 96, 96, 0.07);
-}
-
-/* Row 2: pip row (44px touch target height) */
-.cc-ds-pip-row {
-  display: flex;
-  align-items: center;
-  padding: 8px 0 0;
-  min-height: 44px;
-}
-
-/* pip cluster */
-.cc-ds-pip-cluster {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-
-/* vertical rule divider between success / failure clusters */
-.cc-ds-divider {
+/* vertical divider between success / failure clusters — brief §3a④ */
+.ds-cluster-divider {
   width: 1px;
-  height: 14px;
-  background: var(--pal-border);
+  height: 16px;
+  background: rgba(192, 96, 96, 0.25);
   flex-shrink: 0;
-  margin: 0 7px;
 }
 
-/* individual pip — 14px visible, 44px touch zone via parent row */
-.cc-ds-pip {
-  width: 14px;
-  height: 14px;
+/* Individual pip button — 36×40px tap target; 12px visible circle inside */
+.ds-pip {
+  width: 36px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.ds-pip-dot {
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   border: 1.5px solid;
-  cursor: pointer;
   flex-shrink: 0;
-  transition: background 0.12s, border-color 0.12s, box-shadow 0.12s;
-  position: relative;
+  transition: background 120ms, border-color 120ms, box-shadow 120ms;
 }
 
-.cc-ds-pip.success-empty {
+/* Success pip states */
+.ds-pip-dot.success-empty {
   background: transparent;
   border-color: rgba(90, 154, 90, 0.4);
 }
 
-.cc-ds-pip.success-filled {
+.ds-pip-dot.success-filled {
   background: #5a9a5a;
   border-color: #5a9a5a;
-  /* no glow on successes — asymmetry vs failures is the point */
-  animation: dmConditionIn 0.18s ease-out;
 }
 
-.cc-ds-pip.failure-empty {
+.ds-pip-dot.success-filled.entering {
+  animation: dmConditionIn 180ms ease-out;
+}
+
+/* Failure pip states */
+.ds-pip-dot.failure-empty {
   background: transparent;
   border-color: rgba(192, 96, 96, 0.35);
 }
 
-.cc-ds-pip.failure-filled {
+.ds-pip-dot.failure-filled {
   background: #c06060;
   border-color: #c06060;
   box-shadow: 0 0 4px rgba(192, 96, 96, 0.55);
-  animation: dmConditionIn 0.18s ease-out;
 }
 
-/* Row 3: Stable sub-line */
-.cc-ds-stable-row {
+.ds-pip-dot.failure-filled.entering {
+  animation: dmConditionIn 180ms ease-out;
+}
+
+/* Frozen pip (FALLEN) — grayscale, no glow */
+.ds-pip-dot.failure-filled.frozen {
+  filter: grayscale(0.3);
+  box-shadow: none;
+}
+
+/* Disclosure chevron — 44×40px tap target, right edge (brief §3a⑥) */
+.ds-chevron-btn {
+  width: 44px;
+  height: 40px;
   display: flex;
-  justify-content: flex-end;
-  margin-top: 5px;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0;
 }
 
-.cc-ds-stable-btn {
+.ds-chevron-glyph {
+  font-size: 12px;
+  color: rgba(192, 96, 96, 0.5);
+  font-family: var(--font-ui);
+  line-height: 1;
+  display: inline-block;
+  transition: transform 220ms ease-out, color 150ms;
+  user-select: none;
+}
+
+.ds-chevron-btn:hover .ds-chevron-glyph {
+  color: rgba(192, 96, 96, 0.8);
+}
+
+.ds-chevron-glyph.expanded {
+  transform: rotate(180deg);
+}
+
+/* ── Damage-at-0 prompt (brief §3c) — replaces pip row contents ──────────── */
+
+.ds-damage-prompt {
+  height: 40px;
+  display: none;
+  align-items: center;
+  padding: 0 8px 0 12px;
+  gap: 7px;
+  flex-shrink: 0;
+  position: relative;
+}
+
+.ds-damage-prompt.visible {
+  display: flex;
+  animation: dmgPromptSlideIn 150ms ease-out;
+}
+
+.ds-dmg-label {
   font-family: var(--font-ui);
   font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: rgba(192, 96, 96, 0.75);
+  flex-shrink: 0;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Damage pills — brief §3c */
+.ds-dmg-pill {
+  height: 32px;
+  min-width: 44px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 11px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 5px 10px;
-  min-height: 32px;
-  border: 1px solid var(--pal-border);
   border-radius: 3px;
+  border: 1px solid;
   background: transparent;
-  color: var(--pal-text-muted);
   cursor: pointer;
-  transition: color 0.15s, border-color 0.15s, background 0.15s;
+  white-space: nowrap;
+  transition: background 150ms, border-color 150ms, color 150ms;
 }
 
-.cc-ds-stable-btn:hover {
-  color: #5a9a5a;
-  border-color: rgba(90, 154, 90, 0.5);
-  background: rgba(90, 154, 90, 0.07);
-}
-
-/* ─── Damage-at-0 inline prompt ──────────────────────────────────────────── */
-
-.cc-dmg-at-zero-prompt {
-  margin: 0 0 8px;
-  background: rgba(192, 96, 96, 0.08);
-  border: 1px solid rgba(192, 96, 96, 0.25);
-  border-radius: 3px;
-  padding: 8px 10px;
-  animation: dmgPromptIn 0.18s ease-out;
-}
-
-.cc-dmg-at-zero-label {
-  font-family: var(--font-ui);
-  font-size: 10px;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: rgba(192, 96, 96, 0.8);
-  margin-bottom: 7px;
-}
-
-.cc-dmg-at-zero-btns {
-  display: flex;
-  gap: 6px;
-}
-
-.cc-dmg-at-zero-btn {
-  flex: 1;
-  padding: 7px 6px;
-  min-height: 36px;
-  background: transparent;
-  border: 1px solid rgba(192, 96, 96, 0.3);
-  border-radius: 3px;
-  font-family: var(--font-ui);
-  font-size: 10px;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--pal-text-muted);
-  cursor: pointer;
-  transition: background 0.15s, border-color 0.15s, color 0.15s;
-}
-
-.cc-dmg-at-zero-btn:hover {
+.ds-dmg-pill.fail-one {
   border-color: rgba(192, 96, 96, 0.55);
-  color: #e08888;
-  background: rgba(192, 96, 96, 0.1);
+  color: #d89494;
+  box-shadow: 0 0 0 1.5px rgba(192, 96, 96, 0.35);
 }
 
-.cc-dmg-at-zero-btn.default-focus {
-  border-color: rgba(192, 96, 96, 0.55);
-  color: #e08888;
+.ds-dmg-pill.fail-one:hover {
+  background: rgba(192, 96, 96, 0.15);
+}
+
+.ds-dmg-pill.fail-crit {
+  border-color: rgba(192, 96, 96, 0.4);
+  color: #d08080;
+}
+
+.ds-dmg-pill.fail-crit:hover {
   background: rgba(192, 96, 96, 0.12);
 }
 
-.cc-dmg-at-zero-btn.no-failure {
-  border-color: var(--pal-border);
-}
-
-.cc-dmg-at-zero-btn.no-failure:hover {
-  border-color: var(--pal-border);
+.ds-dmg-pill.no-fail {
+  border-color: rgba(100, 130, 160, 0.3);
   color: var(--pal-text-muted);
-  background: rgba(255, 255, 255, 0.04);
 }
 
-.cc-dmg-btn-num {
-  font-size: 1.35em;
-  line-height: 1;
+.ds-dmg-pill.no-fail:hover {
+  background: rgba(100, 130, 160, 0.06);
+  border-color: rgba(100, 130, 160, 0.45);
+}
+
+/* Timer bar under damage prompt (auto-resolve countdown) */
+.ds-timer-bar-wrap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(192, 96, 96, 0.12);
+  overflow: hidden;
+}
+
+.ds-timer-bar {
+  height: 100%;
+  background: rgba(192, 96, 96, 0.4);
+  width: 100%;
+}
+
+/* ── Inner divider + shortcut row (expanded, brief §3b) ─────────────────── */
+
+.ds-inner-divider {
+  height: 1px;
+  background: rgba(192, 96, 96, 0.18);
+  margin: 0 12px;
+  flex-shrink: 0;
+  display: none;
+}
+
+.ds-inner-divider.visible {
+  display: block;
+}
+
+.ds-shortcut-row {
+  height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 8px;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: height 220ms ease-out, opacity 180ms ease-out;
+}
+
+.ds-shortcut-row.expanded {
+  height: 48px;
+  opacity: 1;
+  pointer-events: auto;
+  animation: dsStripExpand 220ms ease-out;
+  animation-delay: 100ms;
+  animation-fill-mode: both;
+}
+
+.ds-shortcut-row.collapsing {
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-in, height 180ms ease-in;
+}
+
+/* Shortcut pills — brief §3b */
+.ds-shortcut-pill {
+  height: 32px;
+  min-width: 44px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  border: 1px solid;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms, border-color 150ms, color 150ms;
+}
+
+.ds-shortcut-pill.nat20 {
+  border-color: rgba(90, 154, 90, 0.5);
+  color: #a8c8a8;
+}
+
+.ds-shortcut-pill.nat20:hover,
+.ds-shortcut-pill.nat20:active {
+  background: rgba(90, 154, 90, 0.15);
+}
+
+.ds-shortcut-pill.nat1 {
+  border-color: rgba(192, 96, 96, 0.5);
+  color: #d89494;
+}
+
+.ds-shortcut-pill.nat1:hover,
+.ds-shortcut-pill.nat1:active {
+  background: rgba(192, 96, 96, 0.15);
+}
+
+/* ✦ STABLE — right-aligned, semantic asymmetry per brief §3b */
+.ds-shortcut-stable {
+  margin-left: auto;
+}
+
+.ds-shortcut-pill.stable {
+  border-color: rgba(90, 154, 90, 0.5);
+  color: #a8c8a8;
+}
+
+.ds-shortcut-pill.stable:hover,
+.ds-shortcut-pill.stable:active {
+  background: rgba(90, 154, 90, 0.15);
+}
+
+/* ── FALLEN tombstone (brief §3d) ────────────────────────────────────────── */
+
+.ds-tombstone {
+  height: 40px;
+  display: none;
+  align-items: center;
+  padding: 0 0 0 12px;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.ds-tombstone.visible {
+  display: flex;
+  animation: dsTombstoneIn 300ms ease-out;
+}
+
+/* "⨯ FALLEN" — Cinzel, brief §3d */
+.ds-fallen-label {
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #c06060;
+  flex: 1;
+  user-select: none;
+}
+
+.ds-fallen-glyph {
+  color: #a04040;
+  margin-right: 5px;
+}
+
+/* Frozen pip cluster (right side of tombstone) */
+.ds-frozen-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-right: 12px;
+}
+
+/* ─── Reduced motion overrides ───────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  .ds-strip-wrap,
+  .ds-strip-wrap.mounted,
+  .ds-strip-wrap.unmounting,
+  .ds-shortcut-row,
+  .ds-shortcut-row.expanded,
+  .ds-shortcut-row.collapsing,
+  .ds-strip.shake,
+  .ds-strip.resolve-glow,
+  .ds-pip-dot.entering,
+  .ds-tombstone.visible,
+  .ds-damage-prompt.visible {
+    animation: none !important;
+    transition-duration: 0.001ms !important;
+  }
 }
 
 /* ─── Status row (conditions, concentration, inspiration) ────────────────── */
@@ -790,20 +1068,19 @@
 
 .cc-coin-give-btn {
   background: transparent;
-  border: 1px solid rgba(200, 160, 64, 0.3);
+  border: 1px solid var(--pal-border);
   border-radius: 4px;
-  color: rgba(200, 160, 64, 0.7);
+  color: var(--pal-text-muted);
   font-family: var(--font-ui);
   font-size: 10px;
   letter-spacing: 0.08em;
   padding: 3px 8px;
   cursor: pointer;
   transition: border-color 0.14s, color 0.14s;
-  margin-left: auto;
 }
 .cc-coin-give-btn:hover {
-  border-color: #c8a040;
-  color: #c8a040;
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
 }
 
 .cc-coin-breakdown {
@@ -822,15 +1099,16 @@
   padding: 2px 8px;
 }
 
-/* ─── Actions column (right side: kebab menu + popover) ──────────────────── */
+/* ─── Actions column (right side: kebab menu + AC badge + popover) ───────── */
 
 .cc-actions-col {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 8px;
+  gap: 6px;
   position: relative;
-  padding-top: 1px;
+  min-width: 44px;
+  padding-top: 10px;
 }
 
 .cc-kebab-btn {

@@ -1,0 +1,1945 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Death Saves Strip — Design Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ─── Keyframes ──────────────────────────────────────────────────── */
+
+/* Pip fill: scale 0.7→1 + opacity 0→1, 180ms ease-out (dmConditionIn) */
+@keyframes dmConditionIn {
+  from { transform: scale(0.7); opacity: 0; }
+  to   { transform: scale(1);   opacity: 1; }
+}
+
+/* Strip shake on failure mark (dmDeathSaveShake) */
+@keyframes dmDeathSaveShake {
+  0%   { transform: translateX(0); }
+  18%  { transform: translateX(-3px); }
+  36%  { transform: translateX(3px); }
+  54%  { transform: translateX(-3px); }
+  72%  { transform: translateX(2px); }
+  88%  { transform: translateX(-1px); }
+  100% { transform: translateX(0); }
+}
+
+/* FALLEN tombstone cross-fade — pip row out */
+@keyframes dmFadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* Shortcut row reveal — dsStripExpand */
+@keyframes dsStripExpand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* Stable/NAT20/3rd-success: green outer glow pulse */
+@keyframes dsResolveGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(90,154,90,0); }
+  40%  { box-shadow: 0 0 0 4px rgba(90,154,90,0.45), 0 0 14px 4px rgba(90,154,90,0.22); }
+  100% { box-shadow: 0 0 0 0 rgba(90,154,90,0); }
+}
+
+/* Card dim (stable / 3rd success) */
+@keyframes cardDimIn {
+  from { opacity: 1; }
+  to   { opacity: 0.85; }
+}
+
+/* FALLEN: card dims more deeply */
+@keyframes cardFallenDim {
+  from { opacity: 1; }
+  to   { opacity: 0.7; }
+}
+
+/* Tombstone cross-fade in */
+@keyframes dsTombstoneIn {
+  0%   { opacity: 0; transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* 0-HP card border glow */
+@keyframes deathBorderGlow {
+  0%,100% { box-shadow: 0 0 6px 1px rgba(192,96,96,0.1),  0 0 0 1px rgba(192,96,96,0.3); }
+  50%      { box-shadow: 0 0 18px 5px rgba(192,96,96,0.28), 0 0 0 1px rgba(192,96,96,0.6); }
+}
+
+/* ambient pulsing dot */
+@keyframes ambientPulse {
+  0%,100% { opacity: 1; transform: scale(1); }
+  50%      { opacity: 0.55; transform: scale(0.82); }
+}
+
+/* damage prompt slide in */
+@keyframes dmgPromptIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.001ms !important;
+    transition-duration: 0.001ms !important;
+  }
+}
+
+/* ─── Reset & base ───────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  /* Ocean palette */
+  --bg: #0d0f14;
+  --surface: rgba(18,32,48,0.65);
+  --surface-solid: #111e2c;
+  --border: rgba(100,130,160,0.18);
+  --border-vis: rgba(100,130,160,0.3);
+  --accent: #6a8fa8;
+  --accent-bright: #a0c0d0;
+  --accent-dim: rgba(30,58,78,0.45);
+  --text: #c8bfaf;
+  --text-body: #b0a898;
+  --text-muted: #3a5a6a;
+  --gem: #8ab4c8;
+  --font-d: 'Cinzel', Georgia, serif;
+  --font-b: 'Crimson Text', Georgia, serif;
+  --font-u: 'IM Fell English', Georgia, serif;
+
+  /* Death save colors — universal, not palette-derived (brief §7) */
+  --ds-success:       #5a9a5a;
+  --ds-success-rim:   rgba(90,154,90,0.4);
+  --ds-failure:       #c06060;
+  --ds-failure-rim:   rgba(192,96,96,0.35);
+  --ds-failure-glow:  rgba(192,96,96,0.55);
+  --ds-wash:          rgba(192,96,96,0.07);
+  --ds-wash-fallen:   rgba(192,96,96,0.11);
+  --ds-top-border:    rgba(192,96,96,0.45);
+  --ds-top-fallen:    rgba(192,96,96,0.6);
+  --ds-label:         rgba(192,96,96,0.65);
+  --ds-dmg-label:     rgba(192,96,96,0.75);
+  --ds-inner-div:     rgba(192,96,96,0.18);
+  --ds-vert-div:      rgba(192,96,96,0.25);
+  --ds-chevron:       rgba(192,96,96,0.5);
+  --ds-fallen-glyph:  #a04040;
+}
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(20,45,80,0.4) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, rgba(15,35,60,0.3) 0%, transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-b);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ─── Prototype chrome ───────────────────────────────────────────── */
+.proto-header {
+  background: rgba(10,15,20,0.94);
+  border-bottom: 1px solid rgba(100,130,160,0.15);
+  padding: 10px 24px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+.proto-title {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+}
+.proto-note {
+  font-family: var(--font-b);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ─── Page layout ────────────────────────────────────────────────── */
+.page { padding: 28px 24px 80px; max-width: 1100px; margin: 0 auto; }
+
+.scenario-heading {
+  font-family: var(--font-d);
+  font-size: 14px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--accent-bright);
+  margin-bottom: 4px;
+}
+.scenario-desc {
+  font-family: var(--font-b);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 20px;
+  line-height: 1.5;
+}
+.scenario-section { margin-bottom: 56px; }
+
+.two-col {
+  display: grid;
+  grid-template-columns: 400px 400px;
+  gap: 24px;
+  align-items: start;
+}
+@media (max-width: 880px) {
+  .two-col { grid-template-columns: 1fr; }
+}
+
+hr.divider { border: none; border-top: 1px solid var(--border); margin: 40px 0; }
+
+/* ─── Control panel ──────────────────────────────────────────────── */
+.control-panel {
+  background: rgba(10,18,28,0.7);
+  border: 1px solid var(--border-vis);
+  border-radius: 4px;
+  padding: 14px 18px;
+  margin-bottom: 28px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: center;
+}
+.control-label {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-right: 4px;
+}
+.ctrl-btn {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 8px 14px;
+  min-height: 36px;
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+}
+.ctrl-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
+.ctrl-btn.active { border-color: var(--accent); color: var(--accent-bright); background: var(--accent-dim); }
+.ctrl-btn.danger:hover { border-color: rgba(192,96,96,0.55); color: #d88888; }
+.ctrl-sep { width: 1px; height: 28px; background: var(--border); flex-shrink: 0; }
+
+/* ─── Callout annotations ────────────────────────────────────────── */
+.callout {
+  position: absolute;
+  background: rgba(160,192,208,0.1);
+  border: 1px solid rgba(160,192,208,0.3);
+  border-radius: 3px;
+  color: #a0c0d0;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  padding: 4px 9px;
+  pointer-events: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  z-index: 50;
+}
+
+/* ─── Card chrome ────────────────────────────────────────────────── */
+.card {
+  border-radius: 4px;
+  border: 1px solid var(--border-vis);
+  background: rgba(18,28,42,0.75);
+  position: relative;
+  overflow: hidden; /* needed for bottom-radius on strip */
+  transition: opacity 0.35s ease-out, border-color 0.3s, box-shadow 0.3s;
+}
+
+/* Left accent stripe — 3px */
+.card::before {
+  content: '';
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 4px 0 0 4px;
+  pointer-events: none;
+}
+
+/* 0-HP state: red border + slow glow */
+.card.hp-zero {
+  border-color: rgba(192,96,96,0.5) !important;
+  animation: deathBorderGlow 3.5s ease-in-out infinite;
+}
+.card.hp-zero::before { background: #c06060; }
+
+/* Stable: dimmed card */
+.card.stable-dim {
+  opacity: 0.85;
+  animation: none;
+  border-color: rgba(192,96,96,0.2) !important;
+}
+.card.stable-dim::before { background: var(--accent); }
+
+/* FALLEN: deeper dim, pointer-events off inside */
+.card.fallen-dim {
+  opacity: 0.7;
+  animation: none;
+  border-color: rgba(192,96,96,0.4) !important;
+}
+.card.fallen-dim::before { background: #c06060; }
+
+/* ─── Card header ────────────────────────────────────────────────── */
+.card-header {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 13px 14px 0 18px;
+}
+
+.portrait {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(100,130,160,0.45);
+  background: rgba(20,38,58,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-family: var(--font-d);
+  font-size: 16px;
+  font-weight: 500;
+  color: var(--accent-bright);
+  letter-spacing: 0.04em;
+}
+
+.card-identity { flex: 1; min-width: 0; }
+
+.char-name {
+  font-family: var(--font-d);
+  font-size: 15px;
+  letter-spacing: 0.1em;
+  color: var(--accent-bright);
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.char-meta {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+  margin-top: 2px;
+}
+
+.ac-badge {
+  font-family: var(--font-d);
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: var(--gem);
+  background: rgba(0,0,0,0.3);
+  border: 1px solid rgba(100,130,160,0.22);
+  border-radius: 3px;
+  padding: 4px 9px;
+  flex-shrink: 0;
+  text-align: center;
+}
+.ac-badge-label {
+  font-family: var(--font-u);
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  display: block;
+  text-align: center;
+  margin-top: 1px;
+}
+
+/* ─── HP block ───────────────────────────────────────────────────── */
+.hp-block {
+  padding: 9px 14px 8px 18px;
+}
+
+.hp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.hp-nums {
+  font-family: var(--font-d);
+  font-size: 19px;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+  color: var(--gem);
+}
+.hp-nums.at-zero { color: #c06060; }
+
+.hp-bar-wrap {
+  flex: 1;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(0,0,0,0.35);
+  overflow: hidden;
+}
+.hp-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+  background: var(--gem);
+  transition: width 0.25s ease-out;
+}
+.hp-bar-fill.at-zero { width: 0% !important; background: #c06060; }
+
+.hp-label {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* ─── Conditions area ────────────────────────────────────────────── */
+.conditions-area {
+  padding: 0 14px 8px 18px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  min-height: 26px;
+}
+
+.condition-chip {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 3px 8px;
+  border-radius: 3px;
+  border: 1px solid rgba(192,145,96,0.4);
+  color: rgba(210,170,120,0.75);
+  background: rgba(192,145,96,0.08);
+}
+
+/* ─── Notes strip placeholder ────────────────────────────────────── */
+.notes-strip {
+  border-top: 1px solid var(--border);
+  padding: 0 12px 0 0;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+}
+.notes-strip-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  padding-left: 18px;
+  flex: 1;
+}
+.notes-strip-chevron {
+  font-size: 10px;
+  color: var(--text-muted);
+  transition: transform 0.18s;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   DEATH SAVES STRIP — the hero element
+   Brief §3a–§3d, §7, §8
+═══════════════════════════════════════════════════════════════════ */
+
+.ds-strip-wrap {
+  /* max-height animate for mount/unmount (brief §5) */
+  overflow: hidden;
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  /* mount: 300ms ease-out; unmount is driven by JS removing class */
+  transition: max-height 300ms ease-out, opacity 300ms ease-out;
+}
+
+/* mounted — HP = 0 */
+.ds-strip-wrap.mounted {
+  max-height: 96px; /* tall enough for expanded state */
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* unmount: run via short class to reverse */
+.ds-strip-wrap.unmounting {
+  max-height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease-in, max-height 250ms ease-in;
+}
+
+/* The strip itself */
+.ds-strip {
+  /* brief §3a: red wash + red top border */
+  background: var(--ds-wash);
+  border-top: 1px solid var(--ds-top-border);
+  /* bottom corners match card (4px), top corners flush */
+  border-radius: 0 0 4px 4px;
+  /* 40px resting height, 89px expanded */
+  /* Layout: flex row, 12px left pad, 0 right (chevron hugs edge) */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  /* shake applied as JS class */
+  transition: background 250ms ease-out;
+}
+.ds-strip.shake {
+  animation: dmDeathSaveShake 300ms ease-out;
+}
+.ds-strip.resolve-glow {
+  animation: dsResolveGlow 400ms ease-out;
+}
+
+/* ── Pip row (always 40px high) ── */
+.ds-pip-row {
+  height: 40px;
+  display: flex;
+  align-items: center;
+  padding: 0 0 0 12px; /* 12px left, 0 right — chevron hugs right edge */
+  flex-shrink: 0;
+  gap: 10px; /* brief §8 cluster gap */
+  position: relative;
+}
+
+/* DEATH SAVES label */
+.ds-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ds-label);
+  flex-shrink: 0;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* pip cluster flex container */
+.ds-pip-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px; /* brief §8: gap 8px within cluster */
+  flex-shrink: 0;
+}
+
+/* vertical divider between clusters */
+.ds-cluster-divider {
+  width: 1px;
+  height: 16px; /* brief §8 */
+  background: var(--ds-vert-div);
+  flex-shrink: 0;
+}
+
+/* Individual pip — 12px visible diameter, 36×40px tap target */
+.ds-pip {
+  /* tap target: 36px wide, full row height via flex alignment */
+  width: 36px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  padding: 0;
+}
+.ds-pip-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px solid;
+  flex-shrink: 0;
+  transition: background 120ms, border-color 120ms, box-shadow 120ms;
+  /* fill animation applied via JS class */
+}
+
+/* Success pip states */
+.ds-pip-dot.success-empty {
+  background: transparent;
+  border-color: var(--ds-success-rim);
+}
+.ds-pip-dot.success-filled {
+  background: var(--ds-success);
+  border-color: var(--ds-success);
+}
+.ds-pip-dot.success-filled.entering {
+  animation: dmConditionIn 180ms ease-out;
+}
+
+/* Failure pip states */
+.ds-pip-dot.failure-empty {
+  background: transparent;
+  border-color: var(--ds-failure-rim);
+}
+.ds-pip-dot.failure-filled {
+  background: var(--ds-failure);
+  border-color: var(--ds-failure);
+  box-shadow: 0 0 4px var(--ds-failure-glow); /* brief §3a⑤ */
+}
+.ds-pip-dot.failure-filled.entering {
+  animation: dmConditionIn 180ms ease-out;
+}
+
+/* Frozen pip (FALLEN state) — grayscale, no glow */
+.ds-pip-dot.failure-filled.frozen {
+  filter: grayscale(0.3);
+  box-shadow: none;
+}
+
+/* Disclosure chevron — 44×40px tap target, right edge */
+.ds-chevron-btn {
+  width: 44px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  margin-left: auto;
+  padding: 0;
+}
+.ds-chevron-glyph {
+  font-size: 12px;
+  color: var(--ds-chevron);
+  font-family: var(--font-u);
+  line-height: 1;
+  display: inline-block;
+  transition: transform 220ms ease-out, color 150ms;
+  user-select: none;
+}
+.ds-chevron-btn:hover .ds-chevron-glyph {
+  color: rgba(192,96,96,0.8);
+}
+.ds-chevron-glyph.expanded {
+  transform: rotate(180deg);
+}
+
+/* ── Damage-at-0 prompt — replaces pip row contents temporarily */
+.ds-damage-prompt {
+  height: 40px;
+  display: none; /* shown by JS */
+  align-items: center;
+  padding: 0 8px 0 12px;
+  gap: 7px;
+  animation: dmgPromptIn 150ms ease-out;
+  flex-shrink: 0;
+}
+.ds-damage-prompt.visible {
+  display: flex;
+}
+
+.ds-dmg-label {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ds-dmg-label);
+  flex-shrink: 0;
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Damage pills */
+.ds-dmg-pill {
+  height: 32px;
+  min-width: 44px; /* 44px tap target */
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  border: 1px solid;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms, border-color 150ms, color 150ms;
+}
+.ds-dmg-pill.fail-one {
+  border-color: rgba(192,96,96,0.55);
+  color: #d89494;
+  /* default focus — brief §3c */
+  box-shadow: 0 0 0 1.5px rgba(192,96,96,0.35);
+}
+.ds-dmg-pill.fail-one:hover { background: rgba(192,96,96,0.15); }
+
+.ds-dmg-pill.fail-crit {
+  border-color: rgba(192,96,96,0.4);
+  color: #d08080;
+}
+.ds-dmg-pill.fail-crit:hover { background: rgba(192,96,96,0.12); }
+
+.ds-dmg-pill.no-fail {
+  border-color: rgba(100,130,160,0.3);
+  color: var(--text-muted);
+}
+.ds-dmg-pill.no-fail:hover { background: rgba(100,130,160,0.06); border-color: rgba(100,130,160,0.45); }
+
+/* timer bar under damage prompt */
+.ds-timer-bar-wrap {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: rgba(192,96,96,0.12);
+  overflow: hidden;
+}
+.ds-timer-bar {
+  height: 100%;
+  background: rgba(192,96,96,0.4);
+  width: 100%;
+  transition: none;
+}
+
+/* ── Inner divider + shortcut row (expanded) ── */
+.ds-inner-divider {
+  height: 1px;
+  background: var(--ds-inner-div);
+  margin: 0 12px;
+  flex-shrink: 0;
+  /* only visible when expanded */
+  display: none;
+}
+
+.ds-shortcut-row {
+  /* 48px shortcut area — brief §3b total 89px = 40+1+48 */
+  height: 0;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  padding: 0 8px 0 8px;
+  gap: 6px;
+  opacity: 0;
+  pointer-events: none;
+  transition: height 220ms ease-out, opacity 180ms ease-out;
+}
+.ds-shortcut-row.expanded {
+  height: 48px;
+  opacity: 1;
+  pointer-events: auto;
+  animation: dsStripExpand 220ms ease-out;
+  /* content fade delayed 100ms per brief §5 */
+  animation-delay: 100ms;
+  animation-fill-mode: both;
+}
+.ds-shortcut-row.collapsing {
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 120ms ease-in, height 180ms ease-in;
+}
+
+/* Shortcut pills — brief §3b */
+.ds-shortcut-pill {
+  height: 32px;
+  min-width: 44px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border-radius: 3px;
+  border: 1px solid;
+  background: transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 150ms, border-color 150ms, color 150ms;
+}
+
+.ds-shortcut-pill.nat20 {
+  border-color: rgba(90,154,90,0.5);
+  color: #a8c8a8;
+}
+.ds-shortcut-pill.nat20:hover,
+.ds-shortcut-pill.nat20:active { background: rgba(90,154,90,0.15); }
+
+.ds-shortcut-pill.nat1 {
+  border-color: rgba(192,96,96,0.5);
+  color: #d89494;
+}
+.ds-shortcut-pill.nat1:hover,
+.ds-shortcut-pill.nat1:active { background: rgba(192,96,96,0.15); }
+
+/* ✦ STABLE — right-aligned (semantic asymmetry per brief §3b) */
+.ds-shortcut-stable {
+  margin-left: auto;
+}
+.ds-shortcut-pill.stable {
+  border-color: rgba(90,154,90,0.5);
+  color: #a8c8a8;
+}
+.ds-shortcut-pill.stable:hover,
+.ds-shortcut-pill.stable:active { background: rgba(90,154,90,0.15); }
+
+/* ── FALLEN tombstone (§3d) ── */
+.ds-tombstone {
+  height: 40px;
+  display: none; /* shown by JS */
+  align-items: center;
+  padding: 0 0 0 12px;
+  gap: 10px;
+  animation: dsTombstoneIn 300ms ease-out;
+  flex-shrink: 0;
+}
+.ds-tombstone.visible {
+  display: flex;
+}
+
+.ds-fallen-label {
+  font-family: var(--font-d); /* Cinzel — weight font, character's life is a noun */
+  font-size: 13px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ds-failure);
+  flex: 1;
+  user-select: none;
+}
+.ds-fallen-glyph {
+  color: var(--ds-fallen-glyph);
+  font-family: var(--font-d);
+  margin-right: 5px;
+}
+
+/* Frozen pip cluster (right side of tombstone) */
+.ds-frozen-cluster {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+  padding-right: 12px;
+}
+
+/* ─── Scenario / state labels ────────────────────────────────────── */
+.state-badge {
+  display: inline-block;
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 3px 9px;
+  border-radius: 2px;
+  margin-bottom: 10px;
+}
+.state-badge.healthy { color: #5a9a5a; border: 1px solid rgba(90,154,90,0.35); background: rgba(90,154,90,0.06); }
+.state-badge.dying   { color: #c06060; border: 1px solid rgba(192,96,96,0.35); background: rgba(192,96,96,0.06); }
+.state-badge.fallen  { color: #c06060; border: 1px solid rgba(192,96,96,0.5); background: rgba(192,96,96,0.1); }
+.state-badge.stable  { color: var(--accent-bright); border: 1px solid rgba(100,130,160,0.35); background: rgba(100,130,160,0.06); }
+
+/* card label above card */
+.card-label {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+
+/* ─── Legend ─────────────────────────────────────────────────────── */
+.legend {
+  border-top: 1px solid var(--border);
+  margin: 40px 0 0;
+  padding: 24px 0 60px;
+}
+.legend-title {
+  font-family: var(--font-d);
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  color: var(--accent-bright);
+  margin-bottom: 16px;
+  text-transform: uppercase;
+}
+.legend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px 28px;
+}
+.legend-item { display: flex; gap: 10px; align-items: start; }
+.legend-num  { font-family: var(--font-d); font-size: 12px; color: var(--accent); flex-shrink: 0; width: 20px; }
+.legend-text { font-family: var(--font-b); font-style: italic; font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+/* ─── Log output (shows what actions fire) ───────────────────────── */
+.action-log {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+  background: rgba(0,0,0,0.3);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 8px 12px;
+  margin-top: 12px;
+  min-height: 28px;
+  text-transform: uppercase;
+}
+</style>
+</head>
+<body>
+
+<!-- Prototype header -->
+<div class="proto-header">
+  <span class="proto-title">Death Saves Strip — Redesign Brief</span>
+  <span class="proto-note">Click pips to fill/unfill. Tap ⌃ chevron to reveal shortcut row. Use control panel to drive state transitions. 2026-05-29</span>
+</div>
+
+<div class="page">
+
+  <!-- ══════════════════════════════════════════════════════════
+       CONTROL PANEL
+  ══════════════════════════════════════════════════════════ -->
+  <div class="control-panel" id="globalControls">
+    <span class="control-label">Controls:</span>
+    <button class="ctrl-btn active" id="btnToggleHP" onclick="globalToggleHP()">HP = 0 (dying)</button>
+    <div class="ctrl-sep"></div>
+    <button class="ctrl-btn danger" id="btnDamageAt0" onclick="globalDamageAt0()">Damage at 0</button>
+    <button class="ctrl-btn" id="btnResetPips" onclick="globalResetPips()">Reset pips (0/0)</button>
+  </div>
+
+  <!-- ══════════════════════════════════════════════════════════
+       SCENARIO 1 — Two cards side by side
+  ══════════════════════════════════════════════════════════ -->
+  <div class="scenario-section">
+    <div class="scenario-heading">Scenario 1 — Active Dying vs. Fallen</div>
+    <div class="scenario-desc">Left: HP = 0, strip mounted, pips interactive. Click pips to fill/unfill. Tap ⌃ to reveal shortcut row. Right: FALLEN state — 3 failures, tombstone, frozen pips.</div>
+
+    <div class="two-col">
+
+      <!-- Card A: Active dying -->
+      <div>
+        <div class="card-label">Card A — Active Dying</div>
+        <div class="state-badge dying" id="badgeA">Dying — 0 HP</div>
+        <div class="card hp-zero" id="cardA">
+          <!-- Left accent stripe via ::before -->
+          <!-- Header -->
+          <div class="card-header">
+            <div class="portrait">RM</div>
+            <div class="card-identity">
+              <span class="char-name">Rowena Marchetti</span>
+              <span class="char-meta">Lvl 7 Wizard · Human</span>
+            </div>
+            <div class="ac-badge">
+              13
+              <span class="ac-badge-label">AC</span>
+            </div>
+          </div>
+          <!-- HP -->
+          <div class="hp-block">
+            <div class="hp-row">
+              <span class="hp-nums at-zero" id="hpNumsA">0 / 42</span>
+              <div class="hp-bar-wrap">
+                <div class="hp-bar-fill at-zero" id="hpBarA" style="width:0%"></div>
+              </div>
+              <span class="hp-label">HP</span>
+            </div>
+          </div>
+          <!-- Conditions -->
+          <div class="conditions-area">
+            <span class="condition-chip">Concentration</span>
+            <span class="condition-chip">Prone</span>
+          </div>
+          <!-- Notes strip placeholder -->
+          <div class="notes-strip">
+            <span class="notes-strip-label">Notes</span>
+            <span class="notes-strip-chevron">▶</span>
+          </div>
+          <!-- Death Saves Strip -->
+          <div class="ds-strip-wrap mounted" id="stripWrapA">
+            <div class="ds-strip" id="stripA">
+
+              <!-- Pip row (default visible) -->
+              <div class="ds-pip-row" id="pipRowA" style="position:relative;">
+                <span class="ds-label">Death Saves</span>
+
+                <!-- Success cluster -->
+                <div class="ds-pip-cluster" id="successClusterA">
+                  <button class="ds-pip" onclick="pipClick('A','success',0)" aria-label="Success 1">
+                    <div class="ds-pip-dot success-empty" id="sA0"></div>
+                  </button>
+                  <button class="ds-pip" onclick="pipClick('A','success',1)" aria-label="Success 2">
+                    <div class="ds-pip-dot success-empty" id="sA1"></div>
+                  </button>
+                  <button class="ds-pip" onclick="pipClick('A','success',2)" aria-label="Success 3">
+                    <div class="ds-pip-dot success-empty" id="sA2"></div>
+                  </button>
+                </div>
+
+                <div class="ds-cluster-divider"></div>
+
+                <!-- Failure cluster -->
+                <div class="ds-pip-cluster" id="failureClusterA">
+                  <button class="ds-pip" onclick="pipClick('A','failure',0)" aria-label="Failure 1">
+                    <div class="ds-pip-dot failure-empty" id="fA0"></div>
+                  </button>
+                  <button class="ds-pip" onclick="pipClick('A','failure',1)" aria-label="Failure 2">
+                    <div class="ds-pip-dot failure-empty" id="fA1"></div>
+                  </button>
+                  <button class="ds-pip" onclick="pipClick('A','failure',2)" aria-label="Failure 3">
+                    <div class="ds-pip-dot failure-empty" id="fA2"></div>
+                  </button>
+                </div>
+
+                <!-- Chevron -->
+                <button class="ds-chevron-btn" id="chevronBtnA" onclick="toggleShortcuts('A')" aria-label="Toggle shortcuts">
+                  <span class="ds-chevron-glyph" id="chevronGlyphA">⌃</span>
+                </button>
+
+                <!-- Timer bar (damage at 0) -->
+                <div class="ds-timer-bar-wrap" id="timerWrapA" style="display:none;">
+                  <div class="ds-timer-bar" id="timerBarA"></div>
+                </div>
+              </div>
+
+              <!-- Damage-at-0 prompt (hidden by default) -->
+              <div class="ds-damage-prompt" id="dmgPromptA">
+                <span class="ds-dmg-label">+ Damage at 0</span>
+                <button class="ds-dmg-pill fail-one" onclick="dmgPill('A','fail1')">+1 Fail</button>
+                <button class="ds-dmg-pill fail-crit" onclick="dmgPill('A','crit2')">Crit <strong>+2</strong></button>
+                <button class="ds-dmg-pill no-fail" onclick="dmgPill('A','nofail')">No Fail</button>
+              </div>
+
+              <!-- Inner divider (visible when expanded) -->
+              <div class="ds-inner-divider" id="innerDivA"></div>
+
+              <!-- Shortcut row (collapsed by default) -->
+              <div class="ds-shortcut-row" id="shortcutRowA">
+                <button class="ds-shortcut-pill nat20" onclick="shortcutAction('A','nat20')">Nat 20</button>
+                <button class="ds-shortcut-pill nat1" onclick="shortcutAction('A','nat1')">Nat 1</button>
+                <div class="ds-shortcut-stable">
+                  <button class="ds-shortcut-pill stable" onclick="shortcutAction('A','stable')">✦ Stable</button>
+                </div>
+              </div>
+
+              <!-- Tombstone (hidden by default) -->
+              <div class="ds-tombstone" id="tombstoneA">
+                <span class="ds-fallen-label"><span class="ds-fallen-glyph">⨯</span>Fallen</span>
+                <div class="ds-frozen-cluster" id="frozenClusterA">
+                  <!-- populated by JS -->
+                </div>
+              </div>
+
+            </div><!-- /.ds-strip -->
+          </div><!-- /.ds-strip-wrap -->
+        </div><!-- /.card -->
+
+        <div class="action-log" id="logA">Awaiting interaction…</div>
+      </div>
+
+      <!-- Card B: FALLEN state (starts static, pre-set to 3 failures) -->
+      <div>
+        <div class="card-label">Card B — FALLEN (3 failures)</div>
+        <div class="state-badge fallen" id="badgeB">FALLEN</div>
+        <div class="card fallen-dim" id="cardB">
+          <div class="card-header">
+            <div class="portrait" style="border-color: rgba(192,96,96,0.5); color:#c06060;">TB</div>
+            <div class="card-identity">
+              <span class="char-name" style="color:#c06060; text-decoration: line-through;">Theron Blackwood</span>
+              <span class="char-meta">Lvl 5 Fighter · Half-Elf</span>
+            </div>
+            <div class="ac-badge" style="border-color: rgba(192,96,96,0.25);">
+              17
+              <span class="ac-badge-label">AC</span>
+            </div>
+          </div>
+          <div class="hp-block">
+            <div class="hp-row">
+              <span class="hp-nums at-zero" id="hpNumsB">0 / 58</span>
+              <div class="hp-bar-wrap">
+                <div class="hp-bar-fill at-zero" style="width:0%"></div>
+              </div>
+              <span class="hp-label">HP</span>
+            </div>
+          </div>
+          <div class="conditions-area">
+            <span class="condition-chip" style="border-color:rgba(192,96,96,0.4); color:rgba(210,100,100,0.75);">Unconscious</span>
+          </div>
+          <div class="notes-strip">
+            <span class="notes-strip-label">Notes</span>
+            <span class="notes-strip-chevron">▶</span>
+          </div>
+          <!-- Death Saves Strip — FALLEN state -->
+          <div class="ds-strip-wrap mounted" id="stripWrapB">
+            <div class="ds-strip" id="stripB" style="background: var(--ds-wash-fallen); border-top-color: var(--ds-top-fallen);">
+
+              <!-- Tombstone (visible) -->
+              <div class="ds-tombstone visible" id="tombstoneB">
+                <span class="ds-fallen-label"><span class="ds-fallen-glyph">⨯</span>Fallen</span>
+                <div class="ds-frozen-cluster" id="frozenClusterB">
+                  <!-- populated by JS -->
+                </div>
+              </div>
+
+              <!-- Hidden pip row (used when reverting from FALLEN) -->
+              <div class="ds-pip-row" id="pipRowB" style="display:none; position:relative;">
+                <span class="ds-label">Death Saves</span>
+                <div class="ds-pip-cluster" id="successClusterB">
+                  <button class="ds-pip" onclick="pipClick('B','success',0)" aria-label="Success 1">
+                    <div class="ds-pip-dot success-empty" id="sB0"></div>
+                  </button>
+                  <button class="ds-pip" onclick="pipClick('B','success',1)" aria-label="Success 2">
+                    <div class="ds-pip-dot success-empty" id="sB1"></div>
+                  </button>
+                  <button class="ds-pip" onclick="pipClick('B','success',2)" aria-label="Success 3">
+                    <div class="ds-pip-dot success-empty" id="sB2"></div>
+                  </button>
+                </div>
+                <div class="ds-cluster-divider"></div>
+                <div class="ds-pip-cluster" id="failureClusterB">
+                  <button class="ds-pip" onclick="pipClick('B','failure',0)" aria-label="Failure 1">
+                    <div class="ds-pip-dot failure-empty" id="fB0"></div>
+                  </button>
+                  <button class="ds-pip" onclick="pipClick('B','failure',1)" aria-label="Failure 2">
+                    <div class="ds-pip-dot failure-empty" id="fB1"></div>
+                  </button>
+                  <button class="ds-pip" onclick="pipClick('B','failure',2)" aria-label="Failure 3">
+                    <div class="ds-pip-dot failure-empty" id="fB2"></div>
+                  </button>
+                </div>
+                <button class="ds-chevron-btn" id="chevronBtnB" onclick="toggleShortcuts('B')" aria-label="Toggle shortcuts">
+                  <span class="ds-chevron-glyph" id="chevronGlyphB">⌃</span>
+                </button>
+                <div class="ds-timer-bar-wrap" id="timerWrapB" style="display:none;">
+                  <div class="ds-timer-bar" id="timerBarB"></div>
+                </div>
+              </div>
+
+              <div class="ds-damage-prompt" id="dmgPromptB">
+                <span class="ds-dmg-label">+ Damage at 0</span>
+                <button class="ds-dmg-pill fail-one" onclick="dmgPill('B','fail1')">+1 Fail</button>
+                <button class="ds-dmg-pill fail-crit" onclick="dmgPill('B','crit2')">Crit <strong>+2</strong></button>
+                <button class="ds-dmg-pill no-fail" onclick="dmgPill('B','nofail')">No Fail</button>
+              </div>
+
+              <div class="ds-inner-divider" id="innerDivB"></div>
+              <div class="ds-shortcut-row" id="shortcutRowB">
+                <button class="ds-shortcut-pill nat20" onclick="shortcutAction('B','nat20')">Nat 20</button>
+                <button class="ds-shortcut-pill nat1" onclick="shortcutAction('B','nat1')">Nat 1</button>
+                <div class="ds-shortcut-stable">
+                  <button class="ds-shortcut-pill stable" onclick="shortcutAction('B','stable')">✦ Stable</button>
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </div><!-- /.card -->
+
+        <div class="action-log" id="logB">Tap a frozen pip to revert from FALLEN → active pip row.</div>
+      </div>
+
+    </div><!-- /.two-col -->
+  </div><!-- /scenario 1 -->
+
+  <hr class="divider" />
+
+  <!-- ══════════════════════════════════════════════════════════
+       SCENARIO 2 — Mount / Unmount at HP=0 transition
+  ══════════════════════════════════════════════════════════ -->
+  <div class="scenario-section">
+    <div class="scenario-heading">Scenario 2 — Strip Mount / Unmount</div>
+    <div class="scenario-desc">A healthy character card with the strip unmounted. Toggle HP with the control panel button above to see the 300ms ease-out mount animation and 250ms ease-in unmount.</div>
+
+    <div class="two-col">
+      <div>
+        <div class="card-label">Card C — Healthy (HP &gt; 0)</div>
+        <div class="state-badge healthy" id="badgeC">Healthy — HP 27/27</div>
+        <div class="card" id="cardC">
+          <div class="card-header">
+            <div class="portrait" style="border-color:rgba(90,138,96,0.6); color:#78b878;">AS</div>
+            <div class="card-identity">
+              <span class="char-name" style="color:#88b888;">Aesop Sunwhisper</span>
+              <span class="char-meta">Lvl 4 Druid · Wood Elf</span>
+            </div>
+            <div class="ac-badge" style="border-color:rgba(90,138,96,0.3); color:#78b878;">
+              14
+              <span class="ac-badge-label" style="color:rgba(90,138,96,0.6);">AC</span>
+            </div>
+          </div>
+          <div class="hp-block">
+            <div class="hp-row">
+              <span class="hp-nums" id="hpNumsC" style="color:#78b878;">27 / 27</span>
+              <div class="hp-bar-wrap">
+                <div class="hp-bar-fill" id="hpBarC" style="width:100%; background:#78b878;"></div>
+              </div>
+              <span class="hp-label">HP</span>
+            </div>
+          </div>
+          <div class="conditions-area">
+            <!-- no conditions — ambient healthy -->
+          </div>
+          <div class="notes-strip">
+            <span class="notes-strip-label">Notes</span>
+            <span class="notes-strip-chevron">▶</span>
+          </div>
+          <!-- Death Saves Strip (unmounted) -->
+          <div class="ds-strip-wrap" id="stripWrapC">
+            <div class="ds-strip" id="stripC">
+              <div class="ds-pip-row" id="pipRowC" style="position:relative;">
+                <span class="ds-label">Death Saves</span>
+                <div class="ds-pip-cluster">
+                  <button class="ds-pip" onclick="pipClick('C','success',0)"><div class="ds-pip-dot success-empty" id="sC0"></div></button>
+                  <button class="ds-pip" onclick="pipClick('C','success',1)"><div class="ds-pip-dot success-empty" id="sC1"></div></button>
+                  <button class="ds-pip" onclick="pipClick('C','success',2)"><div class="ds-pip-dot success-empty" id="sC2"></div></button>
+                </div>
+                <div class="ds-cluster-divider"></div>
+                <div class="ds-pip-cluster">
+                  <button class="ds-pip" onclick="pipClick('C','failure',0)"><div class="ds-pip-dot failure-empty" id="fC0"></div></button>
+                  <button class="ds-pip" onclick="pipClick('C','failure',1)"><div class="ds-pip-dot failure-empty" id="fC1"></div></button>
+                  <button class="ds-pip" onclick="pipClick('C','failure',2)"><div class="ds-pip-dot failure-empty" id="fC2"></div></button>
+                </div>
+                <button class="ds-chevron-btn" id="chevronBtnC" onclick="toggleShortcuts('C')">
+                  <span class="ds-chevron-glyph" id="chevronGlyphC">⌃</span>
+                </button>
+                <div class="ds-timer-bar-wrap" id="timerWrapC" style="display:none;">
+                  <div class="ds-timer-bar" id="timerBarC"></div>
+                </div>
+              </div>
+              <div class="ds-damage-prompt" id="dmgPromptC">
+                <span class="ds-dmg-label">+ Damage at 0</span>
+                <button class="ds-dmg-pill fail-one" onclick="dmgPill('C','fail1')">+1 Fail</button>
+                <button class="ds-dmg-pill fail-crit" onclick="dmgPill('C','crit2')">Crit <strong>+2</strong></button>
+                <button class="ds-dmg-pill no-fail" onclick="dmgPill('C','nofail')">No Fail</button>
+              </div>
+              <div class="ds-inner-divider" id="innerDivC"></div>
+              <div class="ds-shortcut-row" id="shortcutRowC">
+                <button class="ds-shortcut-pill nat20" onclick="shortcutAction('C','nat20')">Nat 20</button>
+                <button class="ds-shortcut-pill nat1" onclick="shortcutAction('C','nat1')">Nat 1</button>
+                <div class="ds-shortcut-stable">
+                  <button class="ds-shortcut-pill stable" onclick="shortcutAction('C','stable')">✦ Stable</button>
+                </div>
+              </div>
+              <div class="ds-tombstone" id="tombstoneC">
+                <span class="ds-fallen-label"><span class="ds-fallen-glyph">⨯</span>Fallen</span>
+                <div class="ds-frozen-cluster" id="frozenClusterC"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="action-log" id="logC">Use the "Toggle HP" control above to mount / unmount the strip.</div>
+      </div>
+    </div>
+  </div>
+
+  <hr class="divider" />
+
+  <!-- ══════════════════════════════════════════════════════════
+       LEGEND
+  ══════════════════════════════════════════════════════════ -->
+  <div class="legend">
+    <div class="legend-title">Legend</div>
+    <div class="legend-grid">
+      <div class="legend-item">
+        <div class="legend-num">1</div>
+        <div class="legend-text">Strip mounts via max-height 0→40px + opacity 0→1 in 300ms ease-out when HP drops to 0. Unmounts opacity first then max-height in 250ms ease-in (brief §5).</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-num">2</div>
+        <div class="legend-text">Pip fill reuses dmConditionIn: scale 0.7→1 + opacity 0→1, 180ms ease-out. Failure pips add strip dmDeathSaveShake after fill completes (+180ms offset).</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-num">3</div>
+        <div class="legend-text">3rd success → green outer glow pulse (dsResolveGlow, 400ms) then strip unmounts. Card dims to 0.85. No "STABLE" label — dimmed card communicates "down but safe" (brief §3e).</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-num">4</div>
+        <div class="legend-text">3rd failure → dmDeathSaveShake → pip row cross-fades out → tombstone fades in (dsTombstoneIn, 300ms). Card dims to 0.7. Cinzel "FALLEN" because the character's life is now a noun (brief §3d).</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-num">5</div>
+        <div class="legend-text">Chevron ⌃ tap: strip grows 40→89px via shortcut row height transition 220ms ease-out. Chevron rotates 180°. Shortcut content fades in with 100ms delay (brief §5).</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-num">6</div>
+        <div class="legend-text">Damage-at-0 prompt fires as pip row contents are replaced. Auto-resolves to No Fail after 12 seconds (timer bar animates). If shortcuts were open they collapse first (180ms) before prompt appears.</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-num">7</div>
+        <div class="legend-text">NAT 20: atomic action — successes=0, failures=0, HP→1, green glow, strip unmounts. NAT 1: staggered 2 failures (+60ms offset), one combined shake at +180ms. ✦ STABLE: deathSaves={0,0}, HP stays 0, strip collapses.</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-num">8</div>
+        <div class="legend-text">Tapping any frozen pip in FALLEN state un-fills it and transitions back to the active pip row (brief §3d reversibility). Card un-dims.</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-num">9</div>
+        <div class="legend-text">Death save colors are universal — not palette-derived — so they read identically on all character palette themes (ember/ocean/forest/etc). Only the No-Fail pill uses var(--pal-text-muted) as the neutral exit (brief §3c).</div>
+      </div>
+      <div class="legend-item">
+        <div class="legend-num">10</div>
+        <div class="legend-text">NAT20/✦STABLE pills are left-grouped (roll outcomes); ✦STABLE is right-aligned (external intervention). The semantic asymmetry is intentional per brief §3b.</div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.page -->
+
+<script>
+/* ═════════════════════════════════════════════════════════════════
+   State model
+   cards: A, B, C
+   Each card has: { successes:0, failures:0, hp:number, maxHp:number,
+                    mounted:bool, fallen:bool, stable:bool,
+                    shortcutsOpen:bool, dmgPromptVisible:bool }
+═════════════════════════════════════════════════════════════════ */
+
+const STATE = {
+  A: { successes: 0, failures: 0, hp: 0, maxHp: 42, mounted: true, fallen: false, stable: false, shortcutsOpen: false, dmgPromptVisible: false, dmgTimer: null },
+  B: { successes: 0, failures: 3, hp: 0, maxHp: 58, mounted: true, fallen: true,  stable: false, shortcutsOpen: false, dmgPromptVisible: false, dmgTimer: null },
+  C: { successes: 0, failures: 0, hp: 27, maxHp: 27, mounted: false, fallen: false, stable: false, shortcutsOpen: false, dmgPromptVisible: false, dmgTimer: null },
+};
+
+/* ── helpers ── */
+function log(card, msg) {
+  const el = document.getElementById('log' + card);
+  if (el) el.textContent = msg;
+}
+
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+/* Removes a class after animation ends (or timeout fallback) */
+function oneShot(el, cls, duration) {
+  el.classList.add(cls);
+  setTimeout(() => el.classList.remove(cls), duration);
+}
+
+/* ── Render pips for a card ── */
+function renderPips(card, animate, type) {
+  const s = STATE[card];
+  for (let i = 0; i < 3; i++) {
+    const dot = document.getElementById('s' + card + i);
+    if (!dot) continue;
+    const filled = i < s.successes;
+    const wasEmpty = dot.classList.contains('success-empty');
+    dot.className = 'ds-pip-dot ' + (filled ? 'success-filled' : 'success-empty');
+    if (animate === 'fill' && (type === 'success' || type === 'all') && filled && wasEmpty) {
+      dot.classList.add('entering');
+      setTimeout(() => dot.classList.remove('entering'), 200);
+    }
+  }
+  for (let i = 0; i < 3; i++) {
+    const dot = document.getElementById('f' + card + i);
+    if (!dot) continue;
+    const filled = i < s.failures;
+    const wasEmpty = dot.classList.contains('failure-empty');
+    dot.className = 'ds-pip-dot ' + (filled ? 'failure-filled' : 'failure-empty');
+    if (animate === 'fill' && (type === 'failure' || type === 'all') && filled && wasEmpty) {
+      dot.classList.add('entering');
+      setTimeout(() => dot.classList.remove('entering'), 200);
+    }
+  }
+}
+
+/* ── Render frozen pips in tombstone ── */
+function renderFrozenPips(card) {
+  const cluster = document.getElementById('frozenCluster' + card);
+  if (!cluster) return;
+  cluster.innerHTML = '';
+  for (let i = 0; i < 3; i++) {
+    const btn = document.createElement('button');
+    btn.className = 'ds-pip';
+    btn.style.cursor = 'pointer';
+    btn.setAttribute('aria-label', 'Frozen failure ' + (i + 1));
+    const dot = document.createElement('div');
+    dot.className = 'ds-pip-dot failure-filled frozen';
+    btn.appendChild(dot);
+    btn.addEventListener('click', () => frozenPipClick(card, i));
+    cluster.appendChild(btn);
+  }
+}
+
+/* ── Mount / unmount strip ── */
+function mountStrip(card) {
+  const wrap = document.getElementById('stripWrap' + card);
+  if (!wrap) return;
+  wrap.classList.remove('unmounting');
+  // force reflow
+  void wrap.offsetHeight;
+  wrap.classList.add('mounted');
+}
+
+function unmountStrip(card, callback) {
+  const wrap = document.getElementById('stripWrap' + card);
+  if (!wrap) return;
+  wrap.classList.remove('mounted');
+  wrap.classList.add('unmounting');
+  setTimeout(() => {
+    wrap.classList.remove('unmounting');
+    if (callback) callback();
+  }, 260);
+}
+
+/* ── Show/hide tombstone vs pip row ── */
+function showTombstone(card) {
+  const tomb = document.getElementById('tombstone' + card);
+  const pipRow = document.getElementById('pipRow' + card);
+  const dmgPrompt = document.getElementById('dmgPrompt' + card);
+  const chevronBtn = document.getElementById('chevronBtn' + card);
+  if (tomb) tomb.classList.add('visible');
+  if (pipRow) pipRow.style.display = 'none';
+  if (dmgPrompt) dmgPrompt.classList.remove('visible');
+  if (chevronBtn) chevronBtn.style.display = 'none'; // no chevron in FALLEN
+  renderFrozenPips(card);
+  // Strip background deepens
+  const strip = document.getElementById('strip' + card);
+  if (strip) {
+    strip.style.background = 'var(--ds-wash-fallen)';
+    strip.style.borderTopColor = 'var(--ds-top-fallen)';
+  }
+}
+
+function hideTombstone(card) {
+  const tomb = document.getElementById('tombstone' + card);
+  const pipRow = document.getElementById('pipRow' + card);
+  const chevronBtn = document.getElementById('chevronBtn' + card);
+  if (tomb) tomb.classList.remove('visible');
+  if (pipRow) pipRow.style.display = 'flex';
+  if (chevronBtn) chevronBtn.style.display = 'flex';
+  const strip = document.getElementById('strip' + card);
+  if (strip) {
+    strip.style.background = 'var(--ds-wash)';
+    strip.style.borderTopColor = 'var(--ds-top-border)';
+  }
+}
+
+/* ── Full card render ── */
+function renderCard(card) {
+  const s = STATE[card];
+  const cardEl = document.getElementById('card' + card);
+  const badge = document.getElementById('badge' + card);
+
+  // Card visual state
+  cardEl.classList.remove('hp-zero', 'stable-dim', 'fallen-dim');
+  if (s.fallen) {
+    cardEl.classList.add('fallen-dim');
+  } else if (s.stable) {
+    cardEl.classList.add('stable-dim');
+  } else if (s.hp === 0 && s.mounted) {
+    cardEl.classList.add('hp-zero');
+  }
+
+  // Badge
+  if (badge) {
+    if (s.fallen) { badge.className = 'state-badge fallen'; badge.textContent = 'FALLEN'; }
+    else if (s.stable) { badge.className = 'state-badge stable'; badge.textContent = 'Stable — 0 HP'; }
+    else if (s.hp === 0) { badge.className = 'state-badge dying'; badge.textContent = 'Dying — 0 HP'; }
+    else { badge.className = 'state-badge healthy'; badge.textContent = 'Healthy — HP ' + s.hp + '/' + s.maxHp; }
+  }
+
+  // HP numbers
+  const hpNums = document.getElementById('hpNums' + card);
+  if (hpNums) {
+    hpNums.textContent = s.hp + ' / ' + s.maxHp;
+    hpNums.classList.toggle('at-zero', s.hp === 0);
+  }
+  const hpBar = document.getElementById('hpBar' + card);
+  if (hpBar) {
+    const pct = s.maxHp > 0 ? Math.round((s.hp / s.maxHp) * 100) : 0;
+    hpBar.style.width = pct + '%';
+    hpBar.classList.toggle('at-zero', s.hp === 0);
+  }
+
+  // Pips
+  renderPips(card);
+}
+
+/* ── Pip click ── */
+function pipClick(card, type, idx) {
+  const s = STATE[card];
+  if (s.fallen || s.stable) return;
+  if (s.dmgPromptVisible) return;
+
+  if (type === 'success') {
+    const currentFilled = s.successes;
+    if (idx < currentFilled) {
+      // un-fill from idx onward
+      s.successes = idx;
+      renderPips(card, 'unfill', 'success');
+      log(card, 'Success pips → ' + s.successes);
+    } else {
+      // fill up to idx inclusive
+      s.successes = idx + 1;
+      renderPips(card, 'fill', 'success');
+      log(card, 'Success pips → ' + s.successes);
+      if (s.successes === 3) {
+        scheduleStable(card);
+        return;
+      }
+    }
+  } else {
+    const currentFilled = s.failures;
+    if (idx < currentFilled) {
+      s.failures = idx;
+      renderPips(card, 'unfill', 'failure');
+      log(card, 'Failure pips → ' + s.failures);
+    } else {
+      s.failures = idx + 1;
+      renderPips(card, 'fill', 'failure');
+      log(card, 'Failure pips → ' + s.failures);
+      // shake on failure fill
+      const strip = document.getElementById('strip' + card);
+      setTimeout(() => {
+        if (strip) oneShot(strip, 'shake', 350);
+      }, 180);
+      if (s.failures === 3) {
+        scheduleFallen(card);
+        return;
+      }
+    }
+  }
+}
+
+/* ── 3rd success → stable ── */
+async function scheduleStable(card) {
+  const s = STATE[card];
+  log(card, '3 successes — stabilizing…');
+  renderPips(card, 'fill', 'success');
+
+  await sleep(200); // let pip animate
+
+  // Green glow on strip
+  const strip = document.getElementById('strip' + card);
+  if (strip) oneShot(strip, 'resolve-glow', 450);
+
+  await sleep(400);
+
+  // Collapse shortcuts if open
+  if (s.shortcutsOpen) collapseShortcuts(card);
+  clearDmgPrompt(card);
+
+  s.stable = true;
+  s.successes = 0;
+  s.failures = 0;
+  renderPips(card);
+
+  // Unmount strip
+  await sleep(50);
+  unmountStrip(card);
+
+  // Dim card
+  const cardEl = document.getElementById('card' + card);
+  if (cardEl) {
+    cardEl.classList.remove('hp-zero');
+    cardEl.classList.add('stable-dim');
+    cardEl.style.animation = 'none';
+  }
+  const badge = document.getElementById('badge' + card);
+  if (badge) { badge.className = 'state-badge stable'; badge.textContent = 'Stable — 0 HP'; }
+
+  log(card, 'Stable. Strip collapsed. Card dimmed to 0.85. HP stays 0.');
+}
+
+/* ── 3rd failure → FALLEN ── */
+async function scheduleFallen(card) {
+  const s = STATE[card];
+  log(card, '3 failures — FALLEN…');
+
+  // Final shake
+  const strip = document.getElementById('strip' + card);
+  if (strip) {
+    oneShot(strip, 'shake', 350);
+    await sleep(330);
+  }
+
+  // Cross-fade: pip row out
+  const pipRow = document.getElementById('pipRow' + card);
+  if (pipRow) {
+    pipRow.style.animation = 'dmFadeOut 300ms ease-out forwards';
+    await sleep(280);
+  }
+
+  s.fallen = true;
+  showTombstone(card);
+
+  // Dim card
+  const cardEl = document.getElementById('card' + card);
+  if (cardEl) {
+    cardEl.classList.remove('hp-zero');
+    cardEl.classList.add('fallen-dim');
+    cardEl.style.animation = 'none';
+  }
+
+  renderCard(card);
+  log(card, 'FALLEN. Tap a frozen pip to revert.');
+}
+
+/* ── Frozen pip click → revert from FALLEN ── */
+function frozenPipClick(card, idx) {
+  const s = STATE[card];
+  // un-fill from idx onward — tapping any pip reverts to pip row
+  s.failures = idx; // un-fill from idx (tap pip 0 → 0 failures, tap pip 2 → 2 failures)
+  s.fallen = false;
+
+  hideTombstone(card);
+
+  const cardEl = document.getElementById('card' + card);
+  if (cardEl) {
+    cardEl.classList.remove('fallen-dim', 'stable-dim');
+    cardEl.classList.add('hp-zero');
+    cardEl.style.animation = '';
+  }
+
+  renderPips(card);
+
+  const badge = document.getElementById('badge' + card);
+  if (badge) { badge.className = 'state-badge dying'; badge.textContent = 'Dying — 0 HP'; }
+
+  log(card, 'Reverted from FALLEN — failures now ' + s.failures + '. Active pip row restored.');
+}
+
+/* ── Toggle shortcut row ── */
+function toggleShortcuts(card) {
+  const s = STATE[card];
+  if (s.fallen || s.dmgPromptVisible) return;
+  if (s.shortcutsOpen) {
+    collapseShortcuts(card);
+  } else {
+    expandShortcuts(card);
+  }
+}
+
+function expandShortcuts(card) {
+  const s = STATE[card];
+  s.shortcutsOpen = true;
+  const row = document.getElementById('shortcutRow' + card);
+  const divider = document.getElementById('innerDiv' + card);
+  const glyph = document.getElementById('chevronGlyph' + card);
+  if (row) { row.classList.remove('collapsing'); row.classList.add('expanded'); }
+  if (divider) divider.style.display = 'block';
+  if (glyph) glyph.classList.add('expanded');
+  log(card, 'Shortcuts revealed. Strip 40→89px.');
+}
+
+function collapseShortcuts(card) {
+  const s = STATE[card];
+  s.shortcutsOpen = false;
+  const row = document.getElementById('shortcutRow' + card);
+  const divider = document.getElementById('innerDiv' + card);
+  const glyph = document.getElementById('chevronGlyph' + card);
+  if (row) { row.classList.remove('expanded'); row.classList.add('collapsing'); }
+  if (divider) setTimeout(() => { divider.style.display = 'none'; }, 180);
+  if (glyph) glyph.classList.remove('expanded');
+  setTimeout(() => { if (row) row.classList.remove('collapsing'); }, 200);
+}
+
+/* ── Shortcut actions ── */
+async function shortcutAction(card, action) {
+  const s = STATE[card];
+  collapseShortcuts(card);
+
+  if (action === 'nat20') {
+    log(card, 'NAT 20 — awakening! HP → 1, saves cleared.');
+    s.successes = 0;
+    s.failures = 0;
+    s.hp = 1;
+
+    // Green glow
+    const strip = document.getElementById('strip' + card);
+    if (strip) oneShot(strip, 'resolve-glow', 450);
+    await sleep(400);
+
+    unmountStrip(card);
+    const cardEl = document.getElementById('card' + card);
+    if (cardEl) {
+      cardEl.classList.remove('hp-zero', 'stable-dim', 'fallen-dim');
+      cardEl.style.animation = 'none';
+    }
+    s.mounted = false;
+    renderCard(card);
+    log(card, 'NAT 20 — HP = 1. Character wakes. Strip unmounted.');
+
+  } else if (action === 'nat1') {
+    log(card, 'NAT 1 — adding 2 failures…');
+    // Staggered fills (+60ms offset), one combined shake at +180ms
+    const prev = s.failures;
+    const f1 = clamp(prev + 1, 0, 3);
+    s.failures = f1;
+    renderPips(card, 'fill', 'failure');
+
+    await sleep(60);
+
+    const f2 = clamp(f1 + 1, 0, 3);
+    s.failures = f2;
+    renderPips(card, 'fill', 'failure');
+
+    await sleep(180);
+    const strip = document.getElementById('strip' + card);
+    if (strip) oneShot(strip, 'shake', 350);
+
+    if (s.failures >= 3) {
+      await sleep(400);
+      scheduleFallen(card);
+    } else {
+      log(card, 'NAT 1 — failures now ' + s.failures);
+    }
+
+  } else if (action === 'stable') {
+    log(card, '✦ Stable — external stabilization.');
+    s.successes = 0;
+    s.failures = 0;
+    s.stable = true;
+
+    const strip = document.getElementById('strip' + card);
+    if (strip) oneShot(strip, 'resolve-glow', 450);
+    await sleep(400);
+
+    unmountStrip(card);
+    const cardEl = document.getElementById('card' + card);
+    if (cardEl) {
+      cardEl.classList.remove('hp-zero');
+      cardEl.classList.add('stable-dim');
+      cardEl.style.animation = 'none';
+    }
+    s.mounted = false;
+    renderCard(card);
+    log(card, '✦ Stable. HP stays 0. Card dimmed. Strip unmounted.');
+  }
+}
+
+/* ── Damage at 0 prompt ── */
+function showDmgPrompt(card) {
+  const s = STATE[card];
+  if (!s.mounted || s.fallen || s.stable || s.hp !== 0) return;
+
+  // Collapse shortcuts first if open
+  if (s.shortcutsOpen) {
+    collapseShortcuts(card);
+    setTimeout(() => _showDmgPrompt(card), 200);
+  } else {
+    _showDmgPrompt(card);
+  }
+}
+
+function _showDmgPrompt(card) {
+  const s = STATE[card];
+  s.dmgPromptVisible = true;
+
+  const pipRow = document.getElementById('pipRow' + card);
+  const dmgPrompt = document.getElementById('dmgPrompt' + card);
+  const timerWrap = document.getElementById('timerWrap' + card);
+  const timerBar = document.getElementById('timerBar' + card);
+
+  if (pipRow) pipRow.style.display = 'none';
+  if (dmgPrompt) dmgPrompt.classList.add('visible');
+
+  // Auto-resolve timer (12 seconds) — brief §3c
+  if (timerWrap) timerWrap.style.display = 'block';
+  if (timerBar) {
+    timerBar.style.transition = 'none';
+    timerBar.style.width = '100%';
+    void timerBar.offsetWidth;
+    timerBar.style.transition = 'width 12s linear';
+    timerBar.style.width = '0%';
+  }
+
+  s.dmgTimer = setTimeout(() => {
+    dmgPill(card, 'nofail');
+  }, 12000);
+
+  log(card, 'Damage at 0 — pick a pill. Auto-resolves No Fail in 12s.');
+}
+
+function clearDmgPrompt(card) {
+  const s = STATE[card];
+  s.dmgPromptVisible = false;
+
+  const pipRow = document.getElementById('pipRow' + card);
+  const dmgPrompt = document.getElementById('dmgPrompt' + card);
+  const timerWrap = document.getElementById('timerWrap' + card);
+
+  if (pipRow) pipRow.style.display = 'flex';
+  if (dmgPrompt) dmgPrompt.classList.remove('visible');
+  if (timerWrap) timerWrap.style.display = 'none';
+
+  if (s.dmgTimer) { clearTimeout(s.dmgTimer); s.dmgTimer = null; }
+}
+
+function dmgPill(card, action) {
+  const s = STATE[card];
+  clearDmgPrompt(card);
+
+  if (action === 'fail1') {
+    s.failures = clamp(s.failures + 1, 0, 3);
+    renderPips(card, 'fill', 'failure');
+    const strip = document.getElementById('strip' + card);
+    setTimeout(() => { if (strip) oneShot(strip, 'shake', 350); }, 180);
+    log(card, '+1 Fail — failures now ' + s.failures);
+    if (s.failures >= 3) setTimeout(() => scheduleFallen(card), 350);
+  } else if (action === 'crit2') {
+    const f1 = clamp(s.failures + 1, 0, 3);
+    s.failures = f1;
+    renderPips(card, 'fill', 'failure');
+    setTimeout(() => {
+      s.failures = clamp(f1 + 1, 0, 3);
+      renderPips(card, 'fill', 'failure');
+      const strip = document.getElementById('strip' + card);
+      setTimeout(() => { if (strip) oneShot(strip, 'shake', 350); }, 180);
+      log(card, 'Crit +2 — failures now ' + s.failures);
+      if (s.failures >= 3) setTimeout(() => scheduleFallen(card), 350);
+    }, 60);
+  } else {
+    log(card, 'No Fail — dismissed.');
+  }
+}
+
+/* ── Global control panel ── */
+let globalHP = false; // false = A&C are at 0 HP; true = A is healed, C stays healed
+
+function globalToggleHP() {
+  // Operates on card A (main demo card) and card C (mount/unmount demo)
+  const btn = document.getElementById('btnToggleHP');
+  const sA = STATE.A;
+  const sC = STATE.C;
+
+  if (sA.hp === 0) {
+    // Heal A → above 0
+    sA.hp = 42;
+    sA.successes = 0;
+    sA.failures = 0;
+    sA.fallen = false;
+    sA.stable = false;
+    clearDmgPrompt('A');
+    if (sA.shortcutsOpen) collapseShortcuts('A');
+    hideTombstone('A');
+    unmountStrip('A', () => {
+      sA.mounted = false;
+      renderCard('A');
+      renderPips('A');
+    });
+    const cardA = document.getElementById('cardA');
+    if (cardA) { cardA.classList.remove('hp-zero', 'stable-dim', 'fallen-dim'); cardA.style.animation = 'none'; }
+    const badgeA = document.getElementById('badgeA');
+    if (badgeA) { badgeA.className = 'state-badge healthy'; badgeA.textContent = 'Healthy — HP 42/42'; }
+    const hpNumsA = document.getElementById('hpNumsA');
+    if (hpNumsA) { hpNumsA.textContent = '42 / 42'; hpNumsA.classList.remove('at-zero'); }
+    const hpBarA = document.getElementById('hpBarA');
+    if (hpBarA) { hpBarA.style.width = '100%'; hpBarA.classList.remove('at-zero'); }
+    log('A', 'Healed to 42 HP. Strip unmounted.');
+    btn.textContent = 'HP > 0 → Set HP = 0';
+    btn.classList.remove('active');
+
+    // Also mount C (it starts healthy — now goes to 0)
+    sC.hp = 0;
+    sC.mounted = true;
+    sC.fallen = false;
+    sC.stable = false;
+    mountStrip('C');
+    const cardC = document.getElementById('cardC');
+    if (cardC) { cardC.classList.add('hp-zero'); cardC.style.animation = ''; }
+    renderCard('C');
+    log('C', 'HP dropped to 0. Strip mounted.');
+
+  } else {
+    // Drop A back to 0
+    sA.hp = 0;
+    sA.successes = 0;
+    sA.failures = 0;
+    sA.fallen = false;
+    sA.stable = false;
+    sA.mounted = true;
+    mountStrip('A');
+    const cardA = document.getElementById('cardA');
+    if (cardA) { cardA.classList.remove('stable-dim', 'fallen-dim'); cardA.classList.add('hp-zero'); cardA.style.animation = ''; }
+    renderPips('A');
+    renderCard('A');
+    log('A', 'Dropped to 0 HP. Strip mounted.');
+    btn.textContent = 'HP = 0 (dying)';
+    btn.classList.add('active');
+
+    // Heal C
+    sC.hp = 27;
+    sC.mounted = false;
+    sC.fallen = false;
+    sC.stable = false;
+    clearDmgPrompt('C');
+    if (sC.shortcutsOpen) collapseShortcuts('C');
+    hideTombstone('C');
+    unmountStrip('C', () => { renderCard('C'); });
+    const cardC = document.getElementById('cardC');
+    if (cardC) { cardC.classList.remove('hp-zero', 'stable-dim', 'fallen-dim'); cardC.style.animation = 'none'; }
+    renderPips('C');
+    log('C', 'Healed. Strip unmounted.');
+  }
+}
+
+function globalDamageAt0() {
+  // Fire damage-at-0 prompt on card A if mounted
+  const s = STATE.A;
+  if (!s.mounted || s.hp !== 0 || s.fallen || s.stable) {
+    log('A', 'Card A is not in a dying state — set HP = 0 first.');
+    return;
+  }
+  showDmgPrompt('A');
+}
+
+function globalResetPips() {
+  for (const card of ['A', 'B', 'C']) {
+    const s = STATE[card];
+    s.successes = 0;
+    s.failures = 0;
+    s.fallen = false;
+    s.stable = false;
+    clearDmgPrompt(card);
+    if (s.shortcutsOpen) collapseShortcuts(card);
+    hideTombstone(card);
+    const cardEl = document.getElementById('card' + card);
+    if (cardEl) {
+      cardEl.classList.remove('stable-dim', 'fallen-dim');
+      if (s.mounted) cardEl.classList.add('hp-zero');
+      cardEl.style.animation = '';
+    }
+    renderPips(card);
+    const pipRow = document.getElementById('pipRow' + card);
+    if (pipRow) { pipRow.style.display = 'flex'; pipRow.style.animation = ''; }
+    const badge = document.getElementById('badge' + card);
+    if (badge && s.mounted && s.hp === 0) {
+      badge.className = 'state-badge dying';
+      badge.textContent = 'Dying — 0 HP';
+    }
+    log(card, 'Pips reset to 0/0.');
+  }
+}
+
+/* ── Init ── */
+(function init() {
+  // Card B starts in FALLEN state — render frozen pips
+  renderFrozenPips('B');
+  // Card A — render initial pips
+  renderPips('A');
+  renderPips('C');
+})();
+</script>
+
+</body>
+</html>

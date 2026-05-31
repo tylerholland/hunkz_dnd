@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Player Sheet — Profile / Session Mode — Design Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── Keyframes ── */
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.85)} }
+@keyframes partyGlowPulse {
+  0%,100%{box-shadow:0 0 0 2px var(--party-accent,#6a8fa8),0 0 8px 3px rgba(106,143,168,.45)}
+  50%{box-shadow:0 0 0 2px var(--party-accent,#6a8fa8),0 0 16px 7px rgba(106,143,168,.65)}
+}
+@keyframes ownGlowPulse {
+  0%,100%{box-shadow:0 0 0 2px #6a8fa8,0 0 8px 4px rgba(106,143,168,.45)}
+  50%{box-shadow:0 0 0 2px #6a8fa8,0 0 18px 8px rgba(106,143,168,.65)}
+}
+@keyframes deathGlow {
+  0%,100%{box-shadow:0 0 0 1px rgba(192,96,96,.5),0 0 10px 3px rgba(192,96,96,.3)}
+  50%{box-shadow:0 0 0 2px rgba(192,96,96,.8),0 0 20px 8px rgba(192,96,96,.5)}
+}
+@keyframes accentPulse {
+  0%,100%{opacity:.4} 50%{opacity:1}
+}
+@keyframes toggleHint {
+  0%,100%{border-color:rgba(106,143,168,.18)} 50%{border-color:#a0c0d0}
+}
+@keyframes modeIn {
+  from{opacity:0;transform:translateX(24px)}
+  to{opacity:1;transform:translateX(0)}
+}
+@keyframes modeOut {
+  from{opacity:1} to{opacity:0}
+}
+@keyframes hpFlashDmg {
+  0%{background:rgba(192,96,96,.45)} 100%{background:transparent}
+}
+@keyframes hpFlashHeal {
+  0%{background:rgba(106,200,130,.35)} 100%{background:transparent}
+}
+@keyframes historyIn {
+  from{opacity:0;transform:translateY(-6px)} to{opacity:1;transform:translateY(0)}
+}
+@keyframes entryPulse {
+  0%{border-color:#a0c0d0;box-shadow:0 0 8px rgba(160,192,208,.5)}
+  100%{border-color:rgba(106,143,168,.18);box-shadow:none}
+}
+@keyframes dmgBtnBrighten {
+  0%{border-color:#a0c0d0;background:rgba(160,192,208,.15)}
+  100%{border-color:rgba(90,180,100,.5);background:rgba(90,180,100,.07)}
+}
+@keyframes roundPulse {
+  0%,100%{color:#8ab4c8} 50%{color:#a0c0d0;text-shadow:0 0 8px rgba(160,192,208,.6)}
+}
+@keyframes diceShake {
+  0%{transform:translate(0,0) rotate(0deg)}
+  15%{transform:translate(-4px,-3px) rotate(-3deg)}
+  30%{transform:translate(3px,2px) rotate(2deg)}
+  50%{transform:translate(-3px,3px) rotate(-2deg)}
+  70%{transform:translate(4px,-2px) rotate(3deg)}
+  85%{transform:translate(-2px,2px) rotate(-1deg)}
+  100%{transform:translate(0,0) rotate(0deg)}
+}
+@keyframes diceSpin {
+  0%{transform:rotate(0deg) scale(1)}
+  40%{transform:rotate(360deg) scale(1.1)}
+  80%{transform:rotate(680deg) scale(1.05)}
+  100%{transform:rotate(720deg) scale(1)}
+}
+@keyframes diceSettle {
+  0%{transform:translateY(0)}
+  35%{transform:translateY(-4px) rotate(-2deg)}
+  65%{transform:translateY(1px) rotate(1deg)}
+  100%{transform:translateY(0)}
+}
+@keyframes resultIn {
+  from{opacity:0;transform:scale(.8)} to{opacity:1;transform:scale(1)}
+}
+@keyframes nat20Burst {
+  0%{box-shadow:0 0 0 0 rgba(240,208,96,.7)}
+  60%{box-shadow:0 0 0 18px rgba(240,208,96,0)}
+  100%{box-shadow:0 0 0 18px rgba(240,208,96,0)}
+}
+@keyframes advChipReset {
+  0%{transform:scale(1)} 50%{transform:scale(.85)} 100%{transform:scale(1)}
+}
+@keyframes slotPip {
+  0%{transform:scale(1)} 40%{transform:scale(.7)} 100%{transform:scale(1)}
+}
+@keyframes yourTurnSlide {
+  from{opacity:0;transform:translateX(8px)} to{opacity:1;transform:translateX(0)}
+}
+@keyframes initExpand {
+  from{max-height:0;opacity:0} to{max-height:400px;opacity:1}
+}
+
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── Root tokens (ocean palette = Eoghan) ── */
+:root{
+  --bg:#0d1117;
+  --surface:rgba(18,32,48,.62);
+  --surface-solid:#111e2c;
+  --border:rgba(106,143,168,.18);
+  --border-vis:rgba(106,143,168,.3);
+  --accent:#6a8fa8;
+  --accent-bright:#8bb4cc;
+  --accent-dim:rgba(30,58,78,.45);
+  --text:#c8d8e4;
+  --text-body:#b0c0cc;
+  --text-muted:rgba(200,216,228,.45);
+  --gem:#7ec8a4;
+  --font-d:'Cinzel',Georgia,serif;
+  --font-b:'Crimson Text',Georgia,serif;
+  --font-u:'IM Fell English',Georgia,serif;
+  --glow1:rgba(18,40,70,.45);
+  --glow2:rgba(12,30,55,.32);
+  /* Aragorn ember */
+  --aragorn-accent:#c87840;
+  --aragorn-bright:#e09060;
+  /* Aesop forest */
+  --aesop-accent:#5a8a60;
+  --aesop-bright:#88b888;
+}
+
+body{
+  background:radial-gradient(ellipse at 50% 0%,var(--glow1),transparent 60%),
+             radial-gradient(ellipse at 80% 100%,var(--glow2),transparent 55%),
+             var(--bg);
+  min-height:100vh; color:var(--text); font-family:var(--font-b);
+  -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(128,128,128,.2);border-radius:3px}
+
+/* ── Proto header ── */
+.proto-header{
+  background:rgba(8,12,18,.94);border-bottom:1px solid rgba(106,143,168,.12);
+  padding:8px 24px;display:flex;align-items:center;gap:14px;
+}
+.proto-title{font-family:var(--font-u);font-size:11px;letter-spacing:.28em;text-transform:uppercase;color:var(--accent-bright)}
+.proto-sub{font-family:var(--font-b);font-style:italic;font-size:12px;color:var(--text-muted)}
+
+/* ── Top bar ── */
+.top-bar{
+  background:rgba(11,15,22,.96);border-bottom:1px solid var(--border);
+  padding:0 24px;height:48px;display:flex;align-items:center;gap:14px;
+  position:sticky;top:0;z-index:110;
+}
+.top-bar-back{font-family:var(--font-u);font-size:12px;color:var(--text-muted);letter-spacing:.1em;cursor:pointer;padding:4px 0}
+.top-bar-back:hover{color:var(--accent-bright)}
+.top-bar-title{font-family:var(--font-d);font-size:15px;letter-spacing:.2em;color:var(--accent-bright);flex:1}
+.top-bar-btn{
+  background:transparent;border:1px solid var(--border);border-radius:3px;
+  color:var(--text-muted);font-family:var(--font-u);font-size:11px;letter-spacing:.12em;
+  text-transform:uppercase;padding:6px 13px;cursor:pointer;min-height:36px;
+  transition:border-color .18s,color .18s;
+}
+.top-bar-btn:hover{border-color:var(--accent);color:var(--accent-bright)}
+
+/* ── Mode toggle pill ── */
+.mode-toggle{
+  display:flex;border:1px solid var(--border);border-radius:3px;overflow:hidden;
+  background:rgba(0,0,0,.25);
+}
+.mode-seg{
+  font-family:var(--font-u);font-size:12px;letter-spacing:.2em;text-transform:uppercase;
+  padding:0 18px;height:44px;display:flex;align-items:center;gap:6px;cursor:pointer;
+  border:none;background:transparent;color:var(--text-muted);
+  transition:background .18s,color .18s,border-color .18s;white-space:nowrap;
+}
+.mode-seg.active{
+  background:var(--accent-dim);color:var(--accent-bright);
+  box-shadow:inset 0 0 0 1px var(--accent);
+}
+.mode-seg:not(.active):hover{color:var(--text);background:rgba(255,255,255,.04)}
+
+/* ── Two-column session layout ── */
+.session-layout{
+  display:grid;
+  grid-template-columns:340px 1fr;
+  min-height:calc(100vh - 48px);
+  max-width:1200px;
+}
+.session-left{
+  background:linear-gradient(180deg,rgba(106,143,168,.05) 0%,rgba(106,143,168,.02) 60%,transparent 100%);
+  border-right:1px solid var(--border);
+  padding:20px 22px 40px;
+  position:sticky;top:48px;height:calc(100vh - 48px);
+  overflow-y:auto;flex-shrink:0;
+}
+.session-right{
+  padding:20px 28px 80px;
+  overflow-y:auto;
+  min-width:0;
+}
+
+/* ── Section labels (IM Fell English headers) ── */
+.section-label{
+  font-family:var(--font-u);font-size:11px;letter-spacing:.28em;text-transform:uppercase;
+  color:var(--text-muted);margin-bottom:10px;display:block;
+}
+.section-rule{
+  border:none;border-top:1px solid var(--border);margin:18px 0;
+}
+
+/* ── Identity strip ── */
+.identity-strip{display:flex;align-items:center;gap:14px;margin-bottom:20px;padding:0 0 18px}
+.identity-portrait{
+  width:56px;height:56px;border-radius:50%;flex-shrink:0;
+  background:var(--accent-dim);border:2px solid rgba(106,143,168,.35);
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-d);font-size:20px;color:var(--accent-bright);
+  transition:width .22s ease-out,height .22s ease-out,box-shadow .22s ease-out;
+  overflow:hidden;
+}
+.identity-portrait.own-turn{
+  width:72px;height:72px;
+  animation:ownGlowPulse 1.8s ease-in-out infinite;
+}
+.identity-info{flex:1;min-width:0}
+.identity-name{font-family:var(--font-d);font-size:20px;letter-spacing:.12em;color:var(--accent-bright);display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.identity-sub{font-family:var(--font-u);font-size:11px;letter-spacing:.14em;color:var(--text-muted);display:block;margin-top:2px}
+.identity-badges{display:flex;gap:7px;margin-top:7px;flex-wrap:wrap}
+.identity-badge{
+  font-family:var(--font-u);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  padding:3px 8px;border:1px solid var(--border);border-radius:3px;color:var(--text-muted);
+  white-space:nowrap;
+}
+
+/* ── Ability chips (3×2 grid) ── */
+.ability-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:4px}
+.ability-chip{
+  display:flex;flex-direction:column;align-items:center;gap:1px;
+  padding:8px 4px 7px;border:1px solid var(--border);border-radius:3px;
+  background:rgba(0,0,0,.18);cursor:pointer;
+  transition:border-color .15s,background .15s;min-height:44px;
+}
+.ability-chip:hover{border-color:var(--accent);background:rgba(106,143,168,.08)}
+.ability-chip-mod{font-family:var(--font-d);font-size:22px;color:var(--gem);line-height:1}
+.ability-chip-name{font-family:var(--font-u);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-muted)}
+
+/* ── Initiative strip ── */
+.init-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.init-round{font-family:var(--font-d);font-size:13px;color:var(--accent-bright);letter-spacing:.1em}
+.init-round.pulse{animation:roundPulse .4s ease-in-out}
+.init-list{display:flex;flex-direction:column;gap:2px}
+.init-row{
+  display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:3px;
+  font-family:var(--font-u);font-size:12px;letter-spacing:.1em;
+  border-left:2px solid transparent;
+  transition:background .16s,border-color .16s;
+  cursor:default;
+}
+.init-row.active{
+  background:rgba(106,143,168,.1);border-left-color:var(--accent-bright);
+}
+.init-arrow{color:var(--accent-bright);font-size:12px;flex-shrink:0;width:10px}
+.init-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.init-name{flex:1;color:var(--text-body)}
+.init-name.pc-self{color:var(--accent-bright)}
+.init-name.pc-aragorn{color:var(--aragorn-accent)}
+.init-name.pc-aesop{color:var(--aesop-accent)}
+.init-your-turn{
+  font-family:var(--font-u);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--accent-bright);animation:yourTurnSlide .24s ease-out;
+}
+/* enemy health glow states */
+.init-row.bloodied{
+  border-left-color:#c8a840;
+  box-shadow:-2px 0 6px rgba(200,168,64,.35);
+}
+.init-row.neardeath{
+  border-left-color:#c06060;
+  box-shadow:-2px 0 8px rgba(192,96,96,.45);
+}
+
+/* mobile init collapse */
+.init-collapsed-line{
+  display:none;font-family:var(--font-u);font-size:12px;letter-spacing:.12em;
+  color:var(--accent-bright);padding:5px 0;cursor:pointer;
+}
+.init-expand-btn{background:none;border:none;color:var(--text-muted);font-family:var(--font-u);font-size:11px;letter-spacing:.12em;cursor:pointer;padding:4px 0;display:flex;align-items:center;gap:5px}
+.init-expand-arrow{display:inline-block;transition:transform .18s}
+.init-expand-arrow.open{transform:rotate(180deg)}
+.init-expandable{overflow:hidden;transition:max-height .22s cubic-bezier(.34,1,.64,1),opacity .2s;max-height:400px;opacity:1}
+.init-expandable.collapsed{max-height:0;opacity:0}
+
+/* ── Party strip ── */
+.party-list{display:flex;flex-direction:column;gap:4px}
+.party-row{
+  display:flex;align-items:center;gap:10px;padding:6px 2px;
+  border-left:2px solid transparent;padding-left:6px;
+  transition:border-color .22s;
+}
+.party-row.bloodied{border-left-color:var(--accent)}
+.party-row.critical{border-left-color:#c06060}
+.party-row.down{border-left-color:#c06060}
+.party-avatar{
+  border-radius:50%;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-d);font-size:14px;font-weight:500;
+  border:2px solid rgba(255,255,255,.1);
+  transition:width .22s ease-out,height .22s ease-out,box-shadow .22s ease-out,font-size .22s ease-out;
+}
+.party-avatar.resting{width:44px;height:44px;font-size:14px}
+.party-avatar.active-turn{
+  width:56px;height:56px;font-size:17px;
+  animation:partyGlowPulse 1.8s ease-in-out infinite;
+}
+.party-info{flex:1;min-width:0}
+.party-name{font-family:var(--font-d);font-size:14px;letter-spacing:.1em;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.party-hp-row{display:flex;align-items:center;gap:7px;margin-top:3px}
+.party-hp-nums{font-family:var(--font-d);font-size:13px;white-space:nowrap;flex-shrink:0}
+.party-hp-nums.critical{color:#c06060}
+.party-hp-bar-wrap{height:6px;border-radius:2px;background:rgba(0,0,0,.3);overflow:hidden;flex-shrink:0}
+.party-hp-bar-fill{height:100%;border-radius:2px;transition:width .28s ease-out}
+.hp-healthy{background:var(--gem)}
+.hp-wounded{background:#c8a840}
+.hp-critical{background:#c06060}
+.party-conditions{display:flex;gap:4px;flex-wrap:wrap}
+.party-cond-chip{
+  font-family:var(--font-u);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  padding:2px 6px;border:1px solid var(--border);border-radius:2px;color:var(--text-muted);
+}
+.party-down-label{font-family:var(--font-d);font-size:12px;letter-spacing:.15em;color:#c06060;text-transform:uppercase}
+
+/* ── Right column sections ── */
+
+/* Concentration banner */
+.conc-banner{
+  display:flex;align-items:center;gap:9px;padding:8px 14px;
+  border:1px solid rgba(106,143,168,.28);border-radius:3px;
+  background:rgba(106,143,168,.06);margin-bottom:16px;
+}
+.conc-dot{width:8px;height:8px;border-radius:50%;background:var(--gem);flex-shrink:0;animation:pulse 2.2s ease-in-out infinite}
+.conc-text{font-family:var(--font-u);font-size:12px;letter-spacing:.15em;color:var(--accent-bright);flex:1}
+.conc-drop{background:none;border:none;color:var(--text-muted);font-family:var(--font-u);font-size:11px;letter-spacing:.1em;cursor:pointer;padding:4px 0}
+.conc-drop:hover{color:#c06060}
+.conc-add-btn{
+  background:none;border:1px dashed rgba(106,143,168,.3);border-radius:3px;
+  color:var(--text-muted);font-family:var(--font-u);font-size:11px;letter-spacing:.15em;
+  text-transform:uppercase;padding:5px 12px;cursor:pointer;margin-bottom:16px;display:inline-block;
+  transition:border-color .15s,color .15s;
+}
+.conc-add-btn:hover{border-color:var(--accent);color:var(--accent-bright)}
+
+/* HP hero card */
+.hp-hero{
+  background:var(--surface);border:1px solid var(--border-vis);border-radius:5px;
+  padding:14px 18px 16px;margin-bottom:16px;position:relative;overflow:hidden;
+  box-shadow:0 4px 20px rgba(0,0,0,.3);
+}
+.hp-hero.flash-dmg{animation:hpFlashDmg .3s ease-out}
+.hp-hero.flash-heal{animation:hpFlashHeal .3s ease-out}
+.hp-hero.death{animation:deathGlow 1.4s ease-in-out infinite;border-color:rgba(192,96,96,.5)}
+.hp-nums-row{display:flex;align-items:baseline;gap:6px;margin-bottom:4px}
+.hp-current{font-family:var(--font-d);font-size:40px;color:var(--gem);line-height:1;transition:color .28s}
+.hp-current.wounded{color:#c8a840}
+.hp-current.critical,.hp-current.death{color:#c06060}
+.hp-sep{font-family:var(--font-d);font-size:24px;color:var(--text-muted)}
+.hp-max{font-family:var(--font-d);font-size:24px;color:var(--text-muted)}
+.hp-temp{font-family:var(--font-u);font-size:13px;letter-spacing:.12em;color:var(--accent-bright);margin-left:8px;align-self:center}
+.hp-bar-wrap{height:6px;border-radius:2px;background:rgba(0,0,0,.35);overflow:hidden;margin-bottom:12px}
+.hp-bar-fill{height:100%;border-radius:2px;transition:width .28s ease-out,background .28s}
+.hp-controls{display:flex;align-items:center;gap:10px}
+.hp-stepper{
+  width:32px;height:32px;border-radius:50%;border:1px solid var(--border-vis);
+  background:transparent;color:var(--text-muted);font-size:18px;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:border-color .15s,color .15s;flex-shrink:0;
+}
+.hp-stepper:hover{border-color:var(--accent);color:var(--text)}
+.hp-action-btn{
+  background:transparent;border:1px solid var(--border);border-radius:3px;
+  color:var(--text-muted);font-family:var(--font-u);font-size:10px;letter-spacing:.14em;
+  text-transform:uppercase;padding:0 14px;height:36px;cursor:pointer;
+  display:flex;align-items:center;gap:5px;
+  transition:border-color .15s,color .15s;
+}
+.hp-action-btn.dmg:hover{border-color:#c06060;color:#e08080}
+.hp-action-btn.heal:hover{border-color:var(--gem);color:var(--gem)}
+.hp-spacer{flex:1}
+.unconscious-label{font-family:var(--font-d);font-size:24px;letter-spacing:.2em;color:#c06060;text-transform:uppercase}
+
+/* Conditions row */
+.conditions-row{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.cond-chip{
+  font-family:var(--font-u);font-size:11px;letter-spacing:.1em;text-transform:uppercase;
+  padding:4px 9px;border:1px solid var(--accent);border-radius:3px;
+  color:var(--accent-bright);background:rgba(106,143,168,.07);cursor:pointer;
+}
+.cond-manage-btn{
+  background:none;border:1px dashed rgba(106,143,168,.3);border-radius:3px;
+  color:var(--text-muted);font-family:var(--font-u);font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;padding:4px 10px;cursor:pointer;
+  transition:border-color .15s,color .15s;
+}
+.cond-manage-btn:hover{border-color:var(--accent);color:var(--accent-bright)}
+
+/* Spell slots */
+.slots-wrap{display:flex;flex-wrap:wrap;gap:10px}
+.slot-group{display:flex;align-items:center;gap:5px}
+.slot-lbl{font-family:var(--font-u);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-muted);margin-right:2px}
+.slot-pip{
+  width:10px;height:10px;border-radius:50%;border:1.5px solid;cursor:pointer;
+  transition:background .15s,transform .22s;
+}
+.slot-pip.used{background:transparent !important}
+.slot-pip.consume-anim{animation:slotPip .22s ease-in-out}
+
+/* Inspiration row */
+.inspo-row{display:flex;align-items:center;gap:10px}
+.inspo-toggle{
+  display:flex;align-items:center;gap:7px;cursor:pointer;
+  padding:6px 0;min-height:44px;
+}
+.inspo-gem{
+  width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border-vis);
+  background:transparent;transition:background .2s,box-shadow .2s;flex-shrink:0;
+}
+.inspo-gem.active{background:var(--gem);box-shadow:0 0 6px rgba(126,200,164,.5)}
+.inspo-label{font-family:var(--font-u);font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted)}
+.inspo-label.active{color:var(--gem)}
+
+/* Session sub-tabs */
+.session-tabs{display:flex;gap:6px;margin-bottom:0}
+.s-tab{
+  background:transparent;border:1px solid var(--border);border-radius:3px;
+  color:var(--text-muted);font-family:var(--font-u);font-size:11px;letter-spacing:.18em;
+  text-transform:uppercase;padding:0 16px;height:38px;cursor:pointer;
+  transition:background .15s,border-color .15s,color .15s;
+}
+.s-tab:hover{border-color:var(--accent);color:var(--text-body)}
+.s-tab.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent-bright)}
+.s-tab.disabled{opacity:.4;cursor:not-allowed;pointer-events:none}
+
+/* Sub-tab content */
+.tab-content{display:none}
+.tab-content.active{display:block;animation:modeIn .14s ease-out}
+
+/* ── Weapon / spell rows ── */
+.combat-section{display:flex;flex-direction:column}
+.weapon-row{
+  display:flex;align-items:center;gap:10px;padding:10px 0;
+  border-bottom:1px solid var(--border);
+}
+.weapon-row:last-child{border-bottom:none}
+.weapon-name{font-family:var(--font-b);font-size:15px;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.weapon-level-pill{font-family:var(--font-u);font-size:11px;letter-spacing:.12em;color:var(--accent);margin-left:6px}
+.weapon-meta{font-family:var(--font-u);font-size:11px;letter-spacing:.1em;color:var(--text-muted);white-space:nowrap;flex-shrink:0}
+.adv-chip{
+  width:24px;height:24px;border-radius:3px;border:1px solid var(--border);
+  background:transparent;font-family:var(--font-u);font-size:12px;color:var(--text-muted);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:border-color .12s,color .12s;
+}
+.adv-chip.adv{border-color:var(--accent-bright);color:var(--accent-bright);background:rgba(139,180,204,.12);animation:advChipReset .18s ease-out}
+.adv-chip.dis{border-color:#c8a840;color:#c8a840;background:rgba(200,168,64,.1)}
+.weapon-btn{
+  background:transparent;border:1px solid var(--border);border-radius:3px;
+  font-family:var(--font-u);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--text-muted);height:28px;padding:0 10px;cursor:pointer;white-space:nowrap;
+  display:flex;align-items:center;gap:4px;flex-shrink:0;
+  transition:border-color .15s,color .15s,background .15s;
+}
+.weapon-btn.atk:hover{border-color:var(--accent);color:var(--accent-bright)}
+.weapon-btn.atk.active{border-color:var(--accent);color:var(--accent-bright)}
+.weapon-btn.dmg{transition:border-color .24s,color .24s,background .24s}
+.weapon-btn.dmg.hot{
+  border-color:rgba(90,200,120,.6);color:#7ec8a4;background:rgba(90,200,120,.08);
+}
+.weapon-btn.cast:hover{border-color:#88b888;color:#88b888}
+.weapon-btn.disabled-slot{color:var(--text-muted);opacity:.4;cursor:not-allowed;pointer-events:none}
+.weapon-expand{
+  width:24px;height:24px;border:none;background:none;color:var(--text-muted);
+  cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:13px;
+  transition:transform .15s;flex-shrink:0;
+}
+.weapon-expand.open{transform:rotate(180deg)}
+.weapon-desc-row{
+  padding:6px 0 10px 0;border-bottom:1px solid var(--border);
+  font-family:var(--font-b);font-style:italic;font-size:14px;color:var(--text-body);line-height:1.6;
+  display:none;
+}
+.weapon-desc-row.open{display:block}
+
+/* ── Dice roller card ── */
+.dice-card{
+  background:var(--surface);border:1px solid var(--border);border-radius:5px;
+  padding:14px 16px;margin-top:20px;
+}
+.dice-card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.dice-card-title{font-family:var(--font-d);font-size:13px;letter-spacing:.2em;text-transform:uppercase;color:var(--accent-bright)}
+.die-grid-player{display:grid;grid-template-columns:repeat(6,1fr);gap:6px;margin-bottom:10px}
+.die-btn-player{
+  background:transparent;border:none;cursor:pointer;
+  display:flex;flex-direction:column;align-items:center;gap:3px;padding:6px 2px;
+  border-radius:3px;transition:background .15s;min-height:44px;
+}
+.die-btn-player:hover{background:rgba(106,143,168,.08)}
+.die-btn-player.selected svg polygon,.die-btn-player.selected svg rect{stroke:var(--accent-bright) !important}
+.die-lbl{font-family:var(--font-u);font-size:10px;letter-spacing:.12em;color:var(--text-muted)}
+.dice-expr-row{display:flex;gap:6px;margin-bottom:8px;align-items:center}
+.dice-expr{
+  flex:1;background:rgba(0,0,0,.32);border:1px solid var(--border);border-radius:3px;
+  color:var(--text);font-family:var(--font-d);font-size:15px;padding:6px 10px;
+  letter-spacing:.06em;min-height:34px;display:flex;align-items:center;
+}
+.dice-expr-clear{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:16px;padding:4px 6px}
+.adv-group{display:flex;gap:4px;margin-bottom:8px}
+.adv-btn{
+  background:transparent;border:1px solid var(--border);border-radius:3px;
+  color:var(--text-muted);font-family:var(--font-u);font-size:10px;letter-spacing:.1em;
+  padding:4px 10px;cursor:pointer;transition:border-color .15s,color .15s;
+}
+.adv-btn.active{border-color:var(--accent);color:var(--accent-bright);background:var(--accent-dim)}
+.roll-btn{
+  width:100%;padding:9px;background:rgba(30,58,78,.5);border:1px solid var(--accent);
+  border-radius:3px;color:var(--accent-bright);font-family:var(--font-d);font-size:13px;
+  letter-spacing:.2em;cursor:pointer;margin-bottom:10px;
+  transition:background .15s,border-color .15s;
+}
+.roll-btn:hover{background:rgba(50,80,100,.55);border-color:var(--accent-bright)}
+.dice-stage{display:flex;gap:8px;justify-content:center;min-height:44px;margin-bottom:6px;flex-wrap:wrap}
+.die-shape-wrap{display:flex;flex-direction:column;align-items:center;gap:2px}
+.die-result-num{font-family:var(--font-d);font-size:13px;color:var(--text-muted);opacity:0}
+.die-result-num.show{animation:resultIn .2s ease-out forwards;opacity:1}
+.result-area{text-align:center;margin-bottom:8px;min-height:40px}
+.result-total{font-family:var(--font-d);font-size:32px;color:var(--gem);opacity:0;transition:opacity .15s}
+.result-total.show{opacity:1;animation:resultIn .2s ease-out}
+.result-total.nat20{color:#f0d060;animation:resultIn .2s ease-out,nat20Burst .5s ease-out .1s}
+.result-total.nat1{color:#c06060}
+.result-label{font-family:var(--font-u);font-size:11px;letter-spacing:.28em;text-transform:uppercase;margin-top:2px;opacity:0;color:var(--text-muted)}
+.result-label.show{animation:resultIn .2s ease-out .1s forwards}
+.history-list{border-top:1px solid var(--border);padding-top:8px;display:flex;flex-direction:column;gap:3px}
+.history-row{
+  display:flex;justify-content:space-between;align-items:center;
+  padding:3px 0;animation:historyIn .18s ease-out;
+}
+.history-row:nth-child(1){opacity:1}
+.history-row:nth-child(2){opacity:.55}
+.history-row:nth-child(3){opacity:.3}
+.history-row:nth-child(4){opacity:.15}
+.history-row:nth-child(n+5){display:none}
+.history-src{font-family:var(--font-u);font-size:10px;letter-spacing:.1em;color:var(--text-muted)}
+.history-expr{font-family:var(--font-u);font-size:11px;color:var(--text-muted);letter-spacing:.08em}
+.history-val{font-family:var(--font-d);font-size:14px;color:var(--text)}
+.history-row.entry-pulse{animation:historyIn .18s ease-out,entryPulse .22s ease-out .18s}
+
+/* ── Loadout sub-tab ── */
+.loadout-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 28px}
+@media(max-width:600px){.loadout-grid{grid-template-columns:1fr}}
+.loadout-item{
+  display:flex;align-items:center;gap:8px;padding:8px 0;
+  border-bottom:1px solid var(--border);
+}
+.loadout-name{flex:1;font-family:var(--font-b);font-size:15px;color:var(--text)}
+.item-type-icon{
+  position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:22px;height:22px;color:var(--accent);opacity:.7;cursor:default;flex-shrink:0;
+  transition:opacity .15s;
+}
+.item-type-icon:hover{opacity:1}
+.item-type-icon .icon-tip{
+  position:absolute;bottom:calc(100% + 5px);left:50%;transform:translateX(-50%);
+  background:var(--surface);border:1px solid rgba(106,143,168,.35);border-radius:3px;
+  padding:3px 8px;font-family:var(--font-u);font-size:10px;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--accent-bright);white-space:nowrap;
+  pointer-events:none;opacity:0;transition:opacity .15s;z-index:10;
+}
+.item-type-icon:hover .icon-tip{opacity:1}
+.equip-toggle{
+  width:26px;height:26px;flex-shrink:0;
+  background:none;border:1px solid var(--border);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-size:12px;color:var(--text-muted);cursor:pointer;
+  transition:border-color .15s,color .15s,background .15s;
+}
+.equip-toggle.active{border-color:var(--accent);color:var(--accent-bright);background:rgba(106,143,168,.08)}
+
+/* ── Notes sub-tab ── */
+.note-row{
+  padding:10px 0;border-bottom:1px solid var(--border);
+  font-family:var(--font-b);font-size:14px;color:var(--text-body);line-height:1.65;
+}
+.note-row:last-child{border-bottom:none}
+.note-shared{font-family:var(--font-u);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--accent);margin-top:5px;display:block}
+.notes-input{
+  width:100%;background:rgba(0,0,0,.25);border:1px solid var(--border);border-radius:3px;
+  color:var(--text);font-family:var(--font-b);font-size:15px;padding:9px 12px;
+  resize:none;outline:none;min-height:80px;line-height:1.6;
+}
+.notes-input:focus{border-color:var(--accent)}
+
+/* ── Profile mode (single column) ── */
+.profile-layout{max-width:640px;margin:0 auto;padding:28px 32px 80px}
+.profile-portrait-wrap{
+  margin:0 -32px 32px;overflow:hidden;border-radius:4px;
+}
+.profile-portrait-img{
+  width:100%;display:block;
+  background:linear-gradient(135deg,rgba(106,143,168,.3) 0%,rgba(126,200,164,.15) 100%);
+  height:280px;
+}
+.profile-portrait-placeholder{
+  height:280px;display:flex;align-items:center;justify-content:center;
+  font-family:var(--font-d);font-size:72px;color:rgba(106,143,168,.3);
+  background:linear-gradient(160deg,rgba(18,32,48,.8),rgba(12,22,36,.95));
+}
+.profile-tagline{font-family:var(--font-b);font-style:italic;font-size:20px;color:var(--accent);text-align:center;line-height:1.7;padding:10px 0 20px}
+.profile-details-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px 20px;margin-bottom:28px}
+.profile-detail{display:flex;flex-direction:column;gap:3px}
+.profile-detail-label{font-family:var(--font-u);font-size:10px;letter-spacing:.22em;text-transform:uppercase;color:var(--text-muted)}
+.profile-detail-val{font-family:var(--font-b);font-size:15px;color:var(--text)}
+.profile-stats-panel{
+  background:var(--surface);border:1px solid var(--border);border-radius:5px;
+  padding:24px 28px;margin-bottom:28px;
+}
+.profile-hp-row{display:flex;gap:40px;justify-content:center;flex-wrap:wrap;margin-bottom:20px}
+.profile-hp-stat{display:flex;flex-direction:column;align-items:center;gap:3px}
+.profile-hp-num{font-family:var(--font-d);font-size:44px;color:var(--gem);line-height:1}
+.profile-hp-lbl{font-family:var(--font-u);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted)}
+.ability-circles{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.ability-circle{
+  width:68px;height:68px;border-radius:50%;border:2px solid var(--border);
+  background:var(--surface);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;
+  cursor:pointer;transition:border-color .18s;position:relative;
+}
+.ability-circle:hover{border-color:var(--accent)}
+.ability-score{font-family:var(--font-d);font-size:28px;color:var(--gem);line-height:1}
+.ability-name{font-family:var(--font-u);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-muted)}
+.profile-tab-strip{display:flex;gap:6px;margin-bottom:20px}
+.profile-tab{
+  background:transparent;border:1px solid var(--border);border-radius:3px;
+  color:var(--text-muted);font-family:var(--font-u);font-size:12px;letter-spacing:.18em;
+  text-transform:uppercase;padding:5px 16px;cursor:pointer;
+  transition:background .15s,border-color .15s,color .15s;
+}
+.profile-tab.active{background:var(--accent-dim);border-color:var(--accent);color:var(--accent-bright)}
+.backstory-section{font-family:var(--font-b);font-size:17px;color:var(--text-body);line-height:1.85;text-align:justify}
+
+/* ── Mobile / responsive ── */
+@media(max-width:900px){
+  .session-layout{display:block}
+  .session-left{
+    position:static;height:auto;overflow:visible;
+    border-right:none;border-bottom:1px solid var(--border);
+    padding:16px 20px;
+    background:linear-gradient(180deg,rgba(106,143,168,.05) 0%,transparent 100%);
+  }
+  .session-right{padding:16px 20px 80px}
+  .mode-toggle{width:100%;border-radius:0}
+  .mode-seg{flex:1;justify-content:center;height:44px}
+  .identity-portrait{width:56px;height:56px}
+  .identity-portrait.own-turn{width:72px;height:72px}
+  .die-grid-player{grid-template-columns:repeat(6,1fr)}
+  .init-collapsed-line{display:flex;align-items:center;justify-content:space-between}
+  .init-list.desktop-only{display:none}
+  .party-hp-bar-wrap.narrow{width:60px !important}
+  .session-tabs .s-tab{height:44px;flex:1;text-align:center;padding:0 8px}
+  .s-tab{font-size:10px}
+  .hp-current{font-size:36px}
+}
+@media(min-width:901px){
+  .init-collapsed-line{display:none}
+  .init-expandable{max-height:400px !important;opacity:1 !important}
+  .session-layout-header{display:flex;align-items:center;padding:10px 24px;gap:20px;border-bottom:1px solid var(--border)}
+  .mode-toggle-desktop{width:220px}
+}
+
+/* ── Modals ── */
+.modal-overlay{
+  position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;pointer-events:none;transition:opacity .18s;
+}
+.modal-overlay.open{opacity:1;pointer-events:auto}
+.modal-panel{
+  background:var(--surface-solid);border:1px solid var(--border-vis);border-radius:5px;
+  padding:24px 28px;max-width:420px;width:90%;
+  transform:scale(.95);transition:transform .18s;
+}
+.modal-overlay.open .modal-panel{transform:scale(1)}
+.modal-title{font-family:var(--font-d);font-size:16px;letter-spacing:.18em;color:var(--accent-bright);margin-bottom:18px}
+.modal-input{
+  width:100%;background:rgba(0,0,0,.3);border:1px solid var(--border);border-radius:3px;
+  color:var(--text);font-family:var(--font-d);font-size:28px;padding:8px 12px;
+  text-align:center;outline:none;letter-spacing:.1em;
+}
+.modal-input:focus{border-color:var(--accent)}
+.modal-buttons{display:flex;gap:10px;margin-top:16px;justify-content:flex-end}
+.modal-btn{
+  background:transparent;border:1px solid var(--border);border-radius:3px;
+  font-family:var(--font-u);font-size:11px;letter-spacing:.15em;text-transform:uppercase;
+  color:var(--text-muted);padding:8px 18px;cursor:pointer;
+  transition:border-color .15s,color .15s;
+}
+.modal-btn:hover{border-color:var(--accent);color:var(--accent-bright)}
+.modal-btn.confirm-dmg{border-color:rgba(192,96,96,.5);color:#e08080}
+.modal-btn.confirm-dmg:hover{border-color:#c06060}
+.modal-btn.confirm-heal{border-color:rgba(126,200,164,.5);color:var(--gem)}
+.modal-btn.confirm-heal:hover{border-color:var(--gem)}
+
+/* ── Control panel (reviewer) ── */
+.ctrl-panel{
+  position:fixed;bottom:20px;right:20px;z-index:300;
+  background:rgba(8,14,22,.96);border:1px solid rgba(106,143,168,.3);border-radius:5px;
+  padding:14px 16px;min-width:220px;max-height:90vh;overflow-y:auto;
+}
+.ctrl-panel-title{font-family:var(--font-u);font-size:10px;letter-spacing:.25em;text-transform:uppercase;color:var(--accent-bright);margin-bottom:12px}
+.ctrl-group{margin-bottom:10px}
+.ctrl-label{font-family:var(--font-u);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--text-muted);display:block;margin-bottom:5px}
+.ctrl-btns{display:flex;flex-wrap:wrap;gap:4px}
+.ctrl-btn{
+  background:transparent;border:1px solid rgba(106,143,168,.25);border-radius:3px;
+  color:var(--text-muted);font-family:var(--font-u);font-size:10px;letter-spacing:.1em;
+  text-transform:uppercase;padding:4px 8px;cursor:pointer;
+  transition:border-color .12s,color .12s;
+}
+.ctrl-btn:hover,.ctrl-btn.active{border-color:var(--accent-bright);color:var(--accent-bright);background:rgba(106,143,168,.1)}
+.ctrl-collapse{background:none;border:none;color:var(--text-muted);cursor:pointer;font-size:14px;float:right;margin-top:-2px}
+
+/* ── Callout annotations ── */
+.callout{
+  position:absolute;background:rgba(160,192,208,.1);border:1px solid rgba(160,192,208,.32);
+  border-radius:3px;color:rgba(160,192,208,.8);font-family:var(--font-u);
+  font-size:10px;letter-spacing:.15em;padding:3px 8px;pointer-events:none;
+  text-transform:uppercase;white-space:nowrap;z-index:50;
+}
+
+/* ── Reduced motion ── */
+@media(prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<!-- Proto header -->
+<div class="proto-header">
+  <span class="proto-title">Player Sheet — Profile / Session Mode</span>
+  <span class="proto-sub">Story 27 · Design Prototype · 2026-05-30</span>
+</div>
+
+<!-- Top bar (sticky) -->
+<div class="top-bar" id="topBar">
+  <span class="top-bar-back">← All Characters</span>
+  <span class="top-bar-title" id="topBarName">Eoghan</span>
+  <button class="top-bar-btn">World Guide</button>
+  <button class="top-bar-btn">Export</button>
+  <button class="top-bar-btn">⋯</button>
+</div>
+
+<!-- ── MODE TOGGLE (desktop: inside session-layout-header; mobile: full-width) ── -->
+<div class="session-layout-header" id="desktopToggleBar">
+  <div class="mode-toggle mode-toggle-desktop" id="modeToggle" role="group" aria-label="View mode">
+    <button class="mode-seg" id="segProfile" onclick="setMode('profile')" aria-pressed="false">❡ Profile</button>
+    <button class="mode-seg active" id="segSession" onclick="setMode('session')" aria-pressed="true">⚔ Session</button>
+  </div>
+  <!-- annotation -->
+  <div style="position:relative">
+    <span class="callout" style="top:0;left:0">Stored: sessionStorage.dnd_mode_slug</span>
+  </div>
+</div>
+
+<!-- ────────────────────────── SESSION MODE ────────────────────────── -->
+<div id="sessionView">
+  <div class="session-layout">
+
+    <!-- ══ LEFT COLUMN ══ -->
+    <div class="session-left">
+
+      <!-- Identity strip -->
+      <div class="identity-strip" style="border-bottom:1px solid var(--border)">
+        <div class="identity-portrait" id="ownPortrait">E</div>
+        <div class="identity-info">
+          <span class="identity-name">Eoghan</span>
+          <span class="identity-sub">Hexblade Warlock · Level 5</span>
+          <div class="identity-badges">
+            <span class="identity-badge">AC 15</span>
+            <span class="identity-badge">Spd 30</span>
+            <span class="identity-badge" style="border-color:rgba(126,200,164,.3);color:var(--gem)">◆ Inspired</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Abilities -->
+      <hr class="section-rule">
+      <span class="section-label">Ability Scores</span>
+      <div class="ability-grid" id="abilityGrid">
+        <!-- chips injected by JS -->
+      </div>
+
+      <!-- Initiative -->
+      <hr class="section-rule">
+      <div class="init-header">
+        <span class="section-label" style="margin-bottom:0">Initiative</span>
+        <span class="init-round" id="roundCounter">Round 3</span>
+      </div>
+
+      <!-- Mobile collapsed line -->
+      <div class="init-collapsed-line" id="initCollapsed">
+        <span id="initActiveLine">Round 3 · <span style="color:var(--accent-bright)">Eoghan</span> · YOUR TURN</span>
+        <button class="init-expand-btn" onclick="toggleInitExpand()">
+          <span>Show order</span>
+          <span class="init-expand-arrow" id="initArrow">▼</span>
+        </button>
+      </div>
+
+      <!-- Initiative list -->
+      <div class="init-expandable" id="initList">
+        <div class="init-list desktop-only" id="initiativeEntries">
+          <!-- injected by JS -->
+        </div>
+      </div>
+
+      <!-- Party -->
+      <hr class="section-rule">
+      <span class="section-label">Party</span>
+      <div class="party-list" id="partyList">
+        <!-- injected by JS -->
+      </div>
+
+    </div><!-- /session-left -->
+
+    <!-- ══ RIGHT COLUMN ══ -->
+    <div class="session-right" id="sessionRight">
+
+      <!-- Concentration banner -->
+      <div id="concBanner" style="display:none">
+        <div class="conc-banner">
+          <div class="conc-dot"></div>
+          <span class="conc-text">Concentrating: <strong>Hex</strong></span>
+          <button class="conc-drop" onclick="dropConcentration()">Drop</button>
+        </div>
+      </div>
+      <button class="conc-add-btn" id="concAddBtn" onclick="addConcentration()">+ Concentration</button>
+
+      <!-- HP hero (only elevated card) -->
+      <div class="hp-hero" id="hpHero">
+        <!-- annotations -->
+        <span class="callout" style="top:-28px;right:0">Only elevated card on surface</span>
+        <div class="hp-nums-row">
+          <span class="hp-current" id="hpCurrent">40</span>
+          <span class="hp-sep">/</span>
+          <span class="hp-max" id="hpMax">44</span>
+          <span class="hp-temp" id="hpTemp">+5 temp</span>
+        </div>
+        <div class="hp-bar-wrap">
+          <div class="hp-bar-fill" id="hpBar" style="width:91%;background:var(--gem)"></div>
+        </div>
+        <div class="hp-controls">
+          <button class="hp-stepper" id="hpMinus" onclick="changeHP(-1)" aria-label="Minus 1 HP">−</button>
+          <button class="hp-stepper" id="hpPlus" onclick="changeHP(1)" aria-label="Plus 1 HP">+</button>
+          <span class="hp-spacer"></span>
+          <button class="hp-action-btn dmg" onclick="openModal('damage')">⚔ Damage</button>
+          <button class="hp-action-btn heal" onclick="openModal('heal')">✦ Heal</button>
+        </div>
+      </div>
+
+      <!-- Conditions -->
+      <hr class="section-rule">
+      <span class="section-label">Conditions</span>
+      <div class="conditions-row" id="conditionsRow">
+        <span class="cond-chip" onclick="removeCondition(this)">Prone ×</span>
+        <button class="cond-manage-btn" onclick="alert('Condition manager — 14-condition grid + exhaustion stepper')">+ Manage</button>
+      </div>
+
+      <!-- Spell slots -->
+      <hr class="section-rule">
+      <span class="section-label">Spell Slots</span>
+      <div class="slots-wrap" id="slotsWrap">
+        <!-- injected by JS -->
+      </div>
+
+      <!-- Inspiration -->
+      <hr class="section-rule">
+      <div class="inspo-row">
+        <label class="inspo-toggle" onclick="toggleInspo()">
+          <div class="inspo-gem active" id="inspoGem"></div>
+          <span class="inspo-label active" id="inspoLabel">Inspiration</span>
+        </label>
+      </div>
+
+      <!-- Session sub-tabs -->
+      <hr class="section-rule">
+      <div class="session-tabs" id="sessionTabs">
+        <button class="s-tab active" onclick="switchTab('combat')" id="tabCombat">Combat</button>
+        <button class="s-tab" onclick="switchTab('loadout')" id="tabLoadout">Loadout</button>
+        <button class="s-tab disabled" onclick="" id="tabMap">Map</button>
+        <button class="s-tab" onclick="switchTab('notes')" id="tabNotes">Notes</button>
+      </div>
+
+      <!-- ── COMBAT tab ── -->
+      <div class="tab-content active" id="tab-combat">
+        <div style="height:14px"></div>
+        <div class="combat-section" id="weaponRows">
+          <!-- injected by JS -->
+        </div>
+      </div>
+
+      <!-- ── LOADOUT tab ── -->
+      <div class="tab-content" id="tab-loadout">
+        <div style="height:14px"></div>
+        <div class="loadout-grid" id="loadoutGrid">
+          <!-- injected by JS -->
+        </div>
+      </div>
+
+      <!-- ── MAP tab ── -->
+      <div class="tab-content" id="tab-map">
+        <div style="height:40px;display:flex;align-items:center;justify-content:center">
+          <span style="font-family:var(--font-u);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted);font-style:italic">No active map — DM has not set a map</span>
+        </div>
+      </div>
+
+      <!-- ── NOTES tab ── -->
+      <div class="tab-content" id="tab-notes">
+        <div style="height:14px"></div>
+        <div id="notesList">
+          <div class="note-row">
+            Goblins seem afraid of the torch light — flanking them near the brazier might draw them out of cover.
+            <span class="note-shared">Shared with DM</span>
+          </div>
+          <div class="note-row">
+            L5 Hex Blade curse resets on kill — save short rest slots if possible.
+          </div>
+        </div>
+        <div style="margin-top:14px">
+          <textarea class="notes-input" placeholder="Add a session note…" rows="3"></textarea>
+        </div>
+      </div>
+
+      <!-- Dice roller card -->
+      <div class="dice-card" id="diceCard">
+        <div class="dice-card-header">
+          <span class="dice-card-title">Dice Roller</span>
+          <span style="font-family:var(--font-u);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-muted)">Expanded by default in Session</span>
+        </div>
+        <div class="die-grid-player" id="dieGrid">
+          <!-- DieShape SVGs injected by JS -->
+        </div>
+        <div class="dice-expr-row">
+          <div class="dice-expr" id="diceExpr">–</div>
+          <button class="dice-expr-clear" onclick="clearDice()">×</button>
+        </div>
+        <div class="adv-group">
+          <span style="font-family:var(--font-u);font-size:10px;letter-spacing:.15em;text-transform:uppercase;color:var(--text-muted);margin-right:4px;align-self:center">Adv</span>
+          <button class="adv-btn" id="advNorm" onclick="setAdv('normal')" class="active">Normal</button>
+          <button class="adv-btn" id="advAdv" onclick="setAdv('adv')">Adv ▲</button>
+          <button class="adv-btn" id="advDis" onclick="setAdv('dis')">Dis ▼</button>
+        </div>
+        <button class="roll-btn" id="rollBtn" onclick="doRoll()">Roll</button>
+        <div class="dice-stage" id="diceStage"></div>
+        <div class="result-area" id="resultArea">
+          <div class="result-total" id="resultTotal"></div>
+          <div class="result-label" id="resultLabel"></div>
+        </div>
+        <div class="history-list" id="historyList"></div>
+      </div>
+
+    </div><!-- /session-right -->
+  </div><!-- /session-layout -->
+</div><!-- /sessionView -->
+
+<!-- ────────────────────────── PROFILE MODE ────────────────────────── -->
+<div id="profileView" style="display:none">
+  <div class="profile-layout">
+    <div class="profile-portrait-wrap">
+      <div class="profile-portrait-placeholder">E</div>
+    </div>
+    <p class="profile-tagline">"Some souls are cursed from the moment they first reach for power — Eoghan reached anyway."</p>
+
+    <!-- Character details grid -->
+    <div class="profile-details-grid" style="margin-bottom:28px">
+      <div class="profile-detail"><span class="profile-detail-label">Race</span><span class="profile-detail-val">Half-Elf</span></div>
+      <div class="profile-detail"><span class="profile-detail-label">Class</span><span class="profile-detail-val">Warlock</span></div>
+      <div class="profile-detail"><span class="profile-detail-label">Subclass</span><span class="profile-detail-val">Hexblade</span></div>
+      <div class="profile-detail"><span class="profile-detail-label">Level</span><span class="profile-detail-val">5</span></div>
+      <div class="profile-detail"><span class="profile-detail-label">Alignment</span><span class="profile-detail-val">Chaotic Neutral</span></div>
+      <div class="profile-detail"><span class="profile-detail-label">Background</span><span class="profile-detail-val">Soldier</span></div>
+    </div>
+
+    <!-- Stats panel -->
+    <div class="profile-stats-panel">
+      <div class="profile-hp-row">
+        <div class="profile-hp-stat"><span class="profile-hp-num" style="color:var(--gem)">40</span><span class="profile-hp-lbl">HP</span></div>
+        <div class="profile-hp-stat"><span class="profile-hp-num" style="font-size:36px">3d8</span><span class="profile-hp-lbl">Hit Dice</span></div>
+        <div class="profile-hp-stat"><span class="profile-hp-num" style="color:var(--accent-bright)">15</span><span class="profile-hp-lbl">Armor</span></div>
+      </div>
+      <hr class="section-rule">
+      <div class="ability-circles" style="justify-content:center">
+        <div class="ability-circle"><span class="ability-score">8</span><span class="ability-name">STR</span></div>
+        <div class="ability-circle"><span class="ability-score">14</span><span class="ability-name">DEX</span></div>
+        <div class="ability-circle"><span class="ability-score">13</span><span class="ability-name">CON</span></div>
+        <div class="ability-circle"><span class="ability-score">10</span><span class="ability-name">WIS</span></div>
+        <div class="ability-circle"><span class="ability-score">12</span><span class="ability-name">INT</span></div>
+        <div class="ability-circle"><span class="ability-score">18</span><span class="ability-name">CHA</span></div>
+      </div>
+    </div>
+
+    <!-- Profile tabs -->
+    <div class="profile-tab-strip">
+      <button class="profile-tab" onclick="switchProfileTab('inventory',this)">Inventory</button>
+      <button class="profile-tab active" onclick="switchProfileTab('persona',this)">Persona</button>
+      <button class="profile-tab" onclick="switchProfileTab('combat',this)">Combat</button>
+      <button class="profile-tab" onclick="switchProfileTab('map',this)">Map</button>
+    </div>
+    <div class="backstory-section" id="profileTabContent">
+      <p style="margin-bottom:16px"><em>Eoghan never intended to make a pact.</em> The sword appeared on the night his unit was slaughtered — an obsidian blade jutting from the mud, humming with a warmth that shouldn't have been there. He picked it up to survive. The Hexblade accepted the deal without words.</p>
+      <p>He tells himself he controls it. The blade tells him nothing at all.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ── Damage / Heal Modal ── -->
+<div class="modal-overlay" id="dmgModal">
+  <div class="modal-panel">
+    <div class="modal-title" id="modalTitle">Damage</div>
+    <input class="modal-input" id="modalInput" type="number" min="0" max="999" placeholder="0" value="">
+    <div class="modal-buttons">
+      <button class="modal-btn" onclick="closeModal()">Cancel</button>
+      <button class="modal-btn confirm-dmg" id="modalConfirm" onclick="confirmModal()">Apply Damage</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Reviewer Control Panel ── -->
+<div class="ctrl-panel" id="ctrlPanel">
+  <button class="ctrl-collapse" onclick="toggleCtrl()" title="Collapse">⊟</button>
+  <div class="ctrl-panel-title">Prototype Controls</div>
+  <div id="ctrlBody">
+    <div class="ctrl-group">
+      <span class="ctrl-label">Mode</span>
+      <div class="ctrl-btns">
+        <button class="ctrl-btn" onclick="setMode('profile')">Profile</button>
+        <button class="ctrl-btn active" onclick="setMode('session')">Session</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">HP State</span>
+      <div class="ctrl-btns">
+        <button class="ctrl-btn active" onclick="setHPState('full')">Full</button>
+        <button class="ctrl-btn" onclick="setHPState('bloodied')">Bloodied</button>
+        <button class="ctrl-btn" onclick="setHPState('critical')">Critical</button>
+        <button class="ctrl-btn" onclick="setHPState('down')">Down</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Active Turn</span>
+      <div class="ctrl-btns">
+        <button class="ctrl-btn active" onclick="setTurn('mine')">Mine</button>
+        <button class="ctrl-btn" onclick="setTurn('aragorn')">Aragorn's</button>
+        <button class="ctrl-btn" onclick="setTurn('goblin')">Goblin's</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Aragorn HP</span>
+      <div class="ctrl-btns">
+        <button class="ctrl-btn active" onclick="setPartyState('full')">Healthy</button>
+        <button class="ctrl-btn" onclick="setPartyState('bloodied')">Bloodied</button>
+        <button class="ctrl-btn" onclick="setPartyState('down')">Down</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Enemy Glow</span>
+      <div class="ctrl-btns">
+        <button class="ctrl-btn" onclick="setEnemyGlow('bloodied')">Bloodied</button>
+        <button class="ctrl-btn" onclick="setEnemyGlow('neardeath')">Near Death</button>
+        <button class="ctrl-btn active" onclick="setEnemyGlow('none')">None</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Concentration</span>
+      <div class="ctrl-btns">
+        <button class="ctrl-btn" onclick="setConcen(true)">On</button>
+        <button class="ctrl-btn active" onclick="setConcen(false)">Off</button>
+      </div>
+    </div>
+    <div class="ctrl-group">
+      <span class="ctrl-label">Inspiration</span>
+      <div class="ctrl-btns">
+        <button class="ctrl-btn active" onclick="setInspo(true)">On</button>
+        <button class="ctrl-btn" onclick="setInspo(false)">Off</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ────────────── LEGEND ────────────── -->
+<div style="background:rgba(8,14,22,.9);border-top:1px solid var(--border);padding:32px;margin-top:0">
+  <div style="max-width:900px;margin:0 auto">
+    <span class="section-label" style="margin-bottom:16px;display:block">Prototype Legend</span>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px 40px;font-family:var(--font-b);font-size:14px;color:var(--text-body);line-height:1.7">
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">①  Single surface</strong><br>Sections divided by 1px rules + IM Fell English labels — not floating card widgets. Only the HP hero, dice roller, and modals get card elevation.</div>
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">②  Left column wash</strong><br>linear-gradient(180deg, rgba(accent,.05), rgba(accent,.02), transparent) — tint to distinguish identity/reference side from action right column.</div>
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">③  Avatar grow + ring glow</strong><br>44px resting → 56px active turn (party). Own portrait 56px → 72px on own turn. 220ms ease-out scale; 1.8s ownGlowPulse/partyGlowPulse.</div>
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">④  Two-step Attack → Damage</strong><br>Damage button dim at rest. After Attack click, brightens (dmgBtnBrighten 240ms) then holds hot style for 8s, then decays 320ms ease-out.</div>
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">⑤  Per-row adv/dis chip</strong><br>24×24px pill. Tap cycles · → ▲ → ▼ → · . Resets to · after next Attack roll (advChipReset 180ms scale bounce).</div>
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">⑥  Slot auto-consume</strong><br>Highest available slot of spell level decremented on Cast. Pip scales 1→.7→1 (slotPip 220ms). Undo link in history (8s then fades). No slot = buttons disabled, labeled "No L2 slot".</div>
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">⑦  Mobile: init collapsed</strong><br>Collapses to 1 active-turn line + ▼ Show order. max-height 0→400px, 220ms cubic-bezier(.34,1,.64,1). Arrow rotates 180°. Always expanded on desktop.</div>
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">⑧  Auto-switch logic</strong><br>If entries.length > 0 AND round > 0 AND no stored preference → opens in Session. Toggle receives 400ms accentPulse border hint. Explicit player override wins.</div>
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">⑨  DieShape SVG polygons</strong><br>d4 triangle · d6 square · d8 diamond · d10 pentagon · d12 heptagon · d20 near-circle. stroke=#6a8fa8 (d4-d12), stroke=#8bb4cc (d20). No border-box buttons.</div>
+      <div><strong style="font-family:var(--font-u);font-size:11px;letter-spacing:.15em;color:var(--accent)">⑩  Roll history</strong><br>All rolls (weapon rows, ability chips, dice panel) write to shared history. Source label in IM Fell English 10px muted. Newest entry gets 220ms border pulse.</div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════
+   STATE
+════════════════════════════════════════ */
+const STATE = {
+  mode: 'session',
+  hp: { current: 40, max: 44, temp: 5 },
+  concentration: false,
+  concSpell: '',
+  inspiration: true,
+  turn: 'mine', // 'mine' | 'aragorn' | 'goblin'
+  round: 3,
+  enemyGlow: 'none',
+  party: {
+    aragorn: { hp: 18, hpMax: 24, state: 'full' },
+    aesop:   { hp: 12, hpMax: 12, state: 'full' }
+  },
+  slots: { 1:[true,true,false,false], 2:[true,false,false] },
+  diceExpr: [],
+  diceAdv: 'normal',
+  rollHistory: [],
+  modalMode: null,
+  weaponAdvState: {},
+  damageHot: {},
+  damageTimeout: {},
+};
+
+const ABILITY_STATS = [
+  { name:'STR', score:8,  mod:-1 },
+  { name:'DEX', score:14, mod:+2 },
+  { name:'CON', score:13, mod:+1 },
+  { name:'WIS', score:10, mod:0  },
+  { name:'INT', score:12, mod:+1 },
+  { name:'CHA', score:18, mod:+4 },
+];
+
+const WEAPONS = [
+  { id:'eb',   name:'Eldritch Blast',  type:'atk', meta:'ATK +6 · 1d10 Force · 60 ft',  dice:'1d10', atkBonus:6, desc:'Two beams at level 5. Repelling Blast: push 10 ft on hit.', cantrip:true },
+  { id:'hex',  name:'Hex Blade',       type:'atk', meta:'ATK +7 · 1d8+4 Slashing',      dice:'1d8+4', atkBonus:7, desc:'Hexblade\'s Curse: +5 dmg, crit on 19-20 vs cursed target.', cantrip:false },
+  { id:'fire', name:'Fireball',        type:'save', meta:'8d6 Fire · DC 15 Dex',         dice:'8d6', dc:15, level:3, desc:'30ft radius. Half damage on save. Uses L3 slot.', cantrip:false },
+  { id:'hexsp',name:'Hex',             type:'util', meta:'Concentration · Bonus Action',  level:1, desc:'Curse a target: +1d6 Necrotic on hit. Moves on target death.', cantrip:false, conc:true },
+];
+
+const LOADOUT_ITEMS = [
+  { name:'Pact Blade (Hex Blade)',  type:'Weapon',     equipped:true  },
+  { name:'Studded Leather Armor',   type:'Armor',      equipped:true  },
+  { name:'Buckler Shield',          type:'Shield',     equipped:false },
+  { name:'Ring of Protection',      type:'Wondrous',   equipped:true  },
+  { name:'Healing Potion ×2',       type:'Potion',     equipped:false },
+  { name:'Shortbow Arrows ×20',     type:'Ammunition', equipped:false },
+  { name:'Thieves\' Tools',         type:'Tool',       equipped:false },
+  { name:'Spell Focus (Rod)',       type:'Other',      equipped:true  },
+];
+
+const INIT_ORDER = [
+  { id:'eoghan',  name:'Eoghan',       pc:true,  self:true,  palette:'#6a8fa8' },
+  { id:'goblinA', name:'Goblin Scout', pc:false, self:false },
+  { id:'aragorn', name:'Aragorn',      pc:true,  self:false,  palette:'#c87840' },
+  { id:'goblinB', name:'Goblin B',     pc:false, self:false },
+  { id:'aesop',   name:'Aesop',        pc:true,  self:false,  palette:'#5a8a60' },
+];
+
+// Turn → active index map
+const TURN_IDX = { mine:0, goblin:1, aragorn:2 };
+
+/* ════════════════════════════════════════
+   DIE SHAPE RENDERER
+════════════════════════════════════════ */
+function dieSVG(sides, size=28) {
+  const s = size, cx = s/2, cy = s/2;
+  const accent = sides===20 ? '#8bb4cc' : '#6a8fa8';
+  const sw = sides===20 ? 2 : 1.5;
+  let shape = '';
+  if(sides===4)  shape=`<polygon points="${cx},2 ${s-2},${s-2} 2,${s-2}" fill="none" stroke="${accent}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+  if(sides===6)  shape=`<rect x="3" y="3" width="${s-6}" height="${s-6}" rx="2" fill="none" stroke="${accent}" stroke-width="${sw}"/>`;
+  if(sides===8)  shape=`<polygon points="${cx},2 ${s-2},${cy} ${cx},${s-2} 2,${cy}" fill="none" stroke="${accent}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+  if(sides===10) shape=`<polygon points="${cx},2 ${s-4},10 ${s-6},${s-3} 6,${s-3} 4,10" fill="none" stroke="${accent}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+  if(sides===12) shape=`<polygon points="${cx},2 ${s-5},5 ${s-2},${cy} ${s-5},${s-5} ${cx},${s-2} 5,${s-5} 2,${cy} 5,5" fill="none" stroke="${accent}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+  if(sides===20) shape=`<polygon points="${cx},2 ${s-5},6 ${s-2},${cy-2} ${s-4},${s-4} ${cx+4},${s-2} ${cx-4},${s-2} 4,${s-4} 2,${cy-2} 5,6" fill="none" stroke="${accent}" stroke-width="${sw}" stroke-linejoin="round"/>`;
+  return `<svg width="${s}" height="${s}" viewBox="0 0 ${s} ${s}" class="die-svg">${shape}</svg>`;
+}
+
+/* ════════════════════════════════════════
+   INIT
+════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  buildAbilityGrid();
+  buildWeaponRows();
+  buildDieGrid();
+  buildSpellSlots();
+  buildLoadout();
+  renderInitiative();
+  renderParty();
+  updateHP();
+  updateConcentration();
+  updateInspo();
+  // default adv button state
+  document.getElementById('advNorm').classList.add('active');
+});
+
+/* ════════════════════════════════════════
+   ABILITY GRID
+════════════════════════════════════════ */
+function buildAbilityGrid() {
+  const grid = document.getElementById('abilityGrid');
+  grid.innerHTML = ABILITY_STATS.map(a => {
+    const sign = a.mod>=0 ? '+' : '';
+    return `<div class="ability-chip" onclick="abilityRoll('${a.name}',${a.mod})" title="Roll ${a.name} check">
+      <span class="ability-chip-mod">${sign}${a.mod}</span>
+      <span class="ability-chip-name">${a.name}</span>
+    </div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════
+   SPELL SLOTS
+════════════════════════════════════════ */
+function buildSpellSlots() {
+  const wrap = document.getElementById('slotsWrap');
+  wrap.innerHTML = Object.entries(STATE.slots).map(([lvl, pips]) => {
+    const filled = pips.filter(Boolean).length;
+    const total = pips.length;
+    const color = `rgba(${lvl==1?'106,143,168':'126,200,164'},.7)`;
+    const pipsHTML = pips.map((used, i) =>
+      `<div class="slot-pip ${used?'':'used'}" data-level="${lvl}" data-idx="${i}"
+        style="border-color:${color};background:${used?color:'transparent'}"
+        onclick="toggleSlot(${lvl},${i})"></div>`
+    ).join('');
+    return `<div class="slot-group">
+      <span class="slot-lbl">L${lvl}</span>${pipsHTML}
+    </div>`;
+  }).join('');
+}
+
+function toggleSlot(lvl, idx) {
+  STATE.slots[lvl][idx] = !STATE.slots[lvl][idx];
+  buildSpellSlots();
+}
+
+function consumeSlot(lvl) {
+  const pips = STATE.slots[lvl];
+  if(!pips) return false;
+  const idx = pips.findIndex(p => p === true);
+  if(idx === -1) return false;
+  pips[idx] = false;
+  buildSpellSlots();
+  return true;
+}
+
+function hasSlot(lvl) {
+  return STATE.slots[lvl] && STATE.slots[lvl].some(p => p === true);
+}
+
+/* ════════════════════════════════════════
+   WEAPON ROWS
+════════════════════════════════════════ */
+function buildWeaponRows() {
+  const container = document.getElementById('weaponRows');
+  container.innerHTML = WEAPONS.map(w => {
+    STATE.weaponAdvState[w.id] = STATE.weaponAdvState[w.id] || '·';
+    STATE.damageHot[w.id] = STATE.damageHot[w.id] || false;
+
+    const levelPill = w.cantrip
+      ? `<span class="weapon-level-pill">(Cant.)</span>`
+      : w.level ? `<span class="weapon-level-pill">(L${w.level})</span>` : '';
+
+    const noSlot = w.level && !w.cantrip && !hasSlot(w.level);
+    const disClass = noSlot ? ' disabled-slot' : '';
+
+    let buttons = '';
+    if(w.type==='atk') {
+      const hotClass = STATE.damageHot[w.id] ? ' hot' : '';
+      buttons = `
+        <button class="weapon-btn atk${disClass}" onclick="weaponAttack('${w.id}')" title="Roll attack">⚔ Attack</button>
+        <button class="weapon-btn dmg${hotClass}${disClass}" id="dmgBtn_${w.id}" onclick="weaponDamage('${w.id}')" title="Roll damage">✦ Damage</button>`;
+    } else if(w.type==='save') {
+      buttons = `
+        <button class="weapon-btn cast${disClass}" onclick="weaponCast('${w.id}')" title="Cast spell">✦ Cast (DC ${w.dc})</button>
+        <button class="weapon-btn dmg${disClass}" onclick="weaponDamage('${w.id}')" title="Roll damage">✦ Damage</button>`;
+    } else {
+      buttons = `<button class="weapon-btn cast${disClass}" onclick="weaponCast('${w.id}')" title="Cast spell">✦ Cast</button>`;
+    }
+
+    const adv = STATE.weaponAdvState[w.id];
+    const advClass = adv==='▲' ? ' adv' : adv==='▼' ? ' dis' : '';
+
+    return `<div class="weapon-row">
+      <span class="weapon-name">${w.name}${levelPill}</span>
+      <span class="weapon-meta">${w.meta}</span>
+      <button class="adv-chip${advClass}" id="advChip_${w.id}" onclick="cycleAdv('${w.id}')" title="Adv/Dis">${adv}</button>
+      ${buttons}
+      <button class="weapon-expand" id="expand_${w.id}" onclick="toggleDesc('${w.id}')">▼</button>
+    </div>
+    <div class="weapon-desc-row" id="desc_${w.id}">${w.desc || ''}</div>`;
+  }).join('');
+}
+
+function cycleAdv(id) {
+  const map = {'·':'▲','▲':'▼','▼':'·'};
+  STATE.weaponAdvState[id] = map[STATE.weaponAdvState[id]] || '·';
+  const chip = document.getElementById('advChip_'+id);
+  if(chip) {
+    chip.textContent = STATE.weaponAdvState[id];
+    chip.className = 'adv-chip' + (STATE.weaponAdvState[id]==='▲'?' adv':STATE.weaponAdvState[id]==='▼'?' dis':'');
+  }
+}
+
+function toggleDesc(id) {
+  const desc = document.getElementById('desc_'+id);
+  const btn  = document.getElementById('expand_'+id);
+  if(!desc) return;
+  desc.classList.toggle('open');
+  if(btn) btn.classList.toggle('open');
+}
+
+function weaponAttack(id) {
+  const w = WEAPONS.find(x=>x.id===id);
+  if(!w) return;
+  const adv = STATE.weaponAdvState[id];
+  let d20 = rollDie(20), d20b = rollDie(20);
+  let roll = d20;
+  let advLabel = '';
+  if(adv==='▲') { roll=Math.max(d20,d20b); advLabel=' (adv)'; }
+  if(adv==='▼') { roll=Math.min(d20,d20b); advLabel=' (dis)'; }
+  const total = roll + (w.atkBonus||0);
+  const src = `${w.name} · Attack${advLabel}`;
+  addHistory(src, `d20+${w.atkBonus||0}`, total, roll===20?'nat20':roll===1?'nat1':'');
+  showRollResult(total, `1d20+${w.atkBonus||0}`, roll===20?'NAT 20!':roll===1?'NAT 1':src);
+
+  // brighten damage button for 8s
+  const dmgBtn = document.getElementById('dmgBtn_'+id);
+  if(dmgBtn) {
+    dmgBtn.classList.add('hot');
+    clearTimeout(STATE.damageTimeout[id]);
+    STATE.damageTimeout[id] = setTimeout(()=>{
+      dmgBtn.classList.remove('hot');
+    }, 8000);
+  }
+
+  // reset per-row adv
+  STATE.weaponAdvState[id] = '·';
+  const chip = document.getElementById('advChip_'+id);
+  if(chip){chip.textContent='·';chip.className='adv-chip';}
+}
+
+function weaponDamage(id) {
+  const w = WEAPONS.find(x=>x.id===id);
+  if(!w) return;
+  const expr = w.dice || '1d6';
+  const parts = parseDiceExpr(expr);
+  let total = 0;
+  const rolls = [];
+  parts.dice.forEach(([n,s])=>{for(let i=0;i<n;i++){const r=rollDie(s);total+=r;rolls.push(r);}});
+  total += parts.flat;
+  const src = `${w.name} · Damage`;
+  addHistory(src, expr, total, '');
+  showRollResult(total, expr, src);
+}
+
+function weaponCast(id) {
+  const w = WEAPONS.find(x=>x.id===id);
+  if(!w) return;
+  if(w.level && !w.cantrip) {
+    if(!hasSlot(w.level)) { alert(`No L${w.level} slot available.`); return; }
+    consumeSlot(w.level);
+  }
+  if(w.conc) { STATE.concentration=true; STATE.concSpell=w.name; updateConcentration(); }
+  const src = w.type==='save'
+    ? `Cast ${w.name} at L${w.level} · DC ${w.dc}`
+    : `Cast ${w.name}${w.level?' at L'+w.level:''}`;
+  addHistory(src, w.level?`L${w.level} slot used`:'', '', '');
+  showRollResult(null, src, w.level?`Slot L${w.level} used`:'Utility cast');
+}
+
+/* ════════════════════════════════════════
+   DICE ROLLER
+════════════════════════════════════════ */
+const DIE_SIDES = [4,6,8,10,12,20];
+
+function buildDieGrid() {
+  const grid = document.getElementById('dieGrid');
+  grid.innerHTML = DIE_SIDES.map(s =>
+    `<button class="die-btn-player" id="diebtn_${s}" onclick="selectDie(${s})" title="d${s}">
+      ${dieSVG(s,30)}
+      <span class="die-lbl">d${s}</span>
+    </button>`
+  ).join('');
+}
+
+function selectDie(sides) {
+  STATE.diceExpr.push(sides);
+  updateDiceExpr();
+  DIE_SIDES.forEach(s=>{
+    const b = document.getElementById('diebtn_'+s);
+    if(b) b.classList.remove('selected');
+  });
+  const btn = document.getElementById('diebtn_'+sides);
+  if(btn) btn.classList.add('selected');
+}
+
+function updateDiceExpr() {
+  const expr = document.getElementById('diceExpr');
+  if(!STATE.diceExpr.length){expr.textContent='–';return;}
+  // group dice
+  const counts = {};
+  STATE.diceExpr.forEach(s=>{ counts[s]=(counts[s]||0)+1; });
+  expr.textContent = Object.entries(counts).map(([s,n])=>`${n}d${s}`).join(' + ');
+}
+
+function clearDice() {
+  STATE.diceExpr = [];
+  updateDiceExpr();
+  DIE_SIDES.forEach(s=>{
+    const b = document.getElementById('diebtn_'+s);
+    if(b) b.classList.remove('selected');
+  });
+  document.getElementById('resultTotal').className='result-total';
+  document.getElementById('resultLabel').className='result-label';
+  document.getElementById('diceStage').innerHTML='';
+}
+
+function setAdv(mode) {
+  STATE.diceAdv = mode;
+  ['advNorm','advAdv','advDis'].forEach(id=>document.getElementById(id)?.classList.remove('active'));
+  const map = {normal:'advNorm',adv:'advAdv',dis:'advDis'};
+  document.getElementById(map[mode])?.classList.add('active');
+}
+
+function doRoll() {
+  if(!STATE.diceExpr.length) { selectDie(20); }
+  const counts = {};
+  STATE.diceExpr.forEach(s=>{ counts[s]=(counts[s]||0)+1; });
+
+  // build stage
+  const stage = document.getElementById('diceStage');
+  stage.innerHTML='';
+  let allRolls=[];
+
+  Object.entries(counts).forEach(([s,n])=>{
+    for(let i=0;i<n;i++){
+      const v = rollDie(parseInt(s));
+      allRolls.push({sides:parseInt(s),val:v});
+      const wrap = document.createElement('div');
+      wrap.className='die-shape-wrap';
+      wrap.innerHTML=dieSVG(parseInt(s),32)+`<div class="die-result-num" data-val="${v}">${v}</div>`;
+      const svg = wrap.querySelector('svg');
+      svg.style.animation='diceSpin .9s ease-out forwards';
+      stage.appendChild(wrap);
+      setTimeout(()=>{
+        const num = wrap.querySelector('.die-result-num');
+        if(num) num.classList.add('show');
+        svg.style.animation='diceSettle .25s ease-out';
+      }, 900);
+    }
+  });
+
+  setTimeout(()=>{
+    const total = allRolls.reduce((s,r)=>s+r.val,0);
+    const isSingleD20 = allRolls.length===1 && allRolls[0].sides===20;
+    const nat = isSingleD20 && (allRolls[0].val===20?'nat20':allRolls[0].val===1?'nat1':'');
+
+    const rt = document.getElementById('resultTotal');
+    const rl = document.getElementById('resultLabel');
+    rt.textContent = total;
+    rt.className = 'result-total show' + (nat==='nat20'?' nat20':nat==='nat1'?' nat1':'');
+    rl.textContent = nat==='nat20'?'Natural 20!':nat==='nat1'?'Natural 1':'';
+    rl.className = 'result-label'+(nat?' show':'');
+
+    const exprStr = Object.entries(counts).map(([s,n])=>`${n}d${s}`).join('+');
+    addHistory('Dice Roller', exprStr, total, nat);
+  }, 1000);
+}
+
+/* ════════════════════════════════════════
+   DICE MATH
+════════════════════════════════════════ */
+function rollDie(sides) { return Math.floor(Math.random()*sides)+1; }
+
+function parseDiceExpr(expr) {
+  const result = { dice:[], flat:0 };
+  const parts = expr.replace(/\s/g,'').split('+');
+  parts.forEach(p=>{
+    if(p.includes('d')){
+      const [n,s]=p.split('d');
+      result.dice.push([parseInt(n)||1, parseInt(s)]);
+    } else {
+      result.flat += parseInt(p)||0;
+    }
+  });
+  return result;
+}
+
+/* ════════════════════════════════════════
+   ROLL HISTORY
+════════════════════════════════════════ */
+function addHistory(src, expr, total, nat) {
+  STATE.rollHistory.unshift({src, expr, total, nat, ts:Date.now()});
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if(!STATE.rollHistory.length){list.innerHTML='';return;}
+  list.innerHTML = STATE.rollHistory.slice(0,6).map((r,i)=>`
+    <div class="history-row${i===0?' entry-pulse':''}">
+      <span>
+        <span class="history-src">${r.src}</span>
+        ${r.expr?`<span class="history-expr"> · ${r.expr}</span>`:''}
+      </span>
+      <span class="history-val">${r.total||''}</span>
+    </div>`).join('');
+}
+
+function showRollResult(total, expr, label) {
+  const rt = document.getElementById('resultTotal');
+  const rl = document.getElementById('resultLabel');
+  if(total !== null) {
+    rt.textContent = total;
+    rt.className = 'result-total show';
+  }
+  rl.textContent = label;
+  rl.className = 'result-label show';
+}
+
+/* ════════════════════════════════════════
+   ABILITY CHIP ROLL
+════════════════════════════════════════ */
+function abilityRoll(stat, mod) {
+  const roll = rollDie(20);
+  const total = roll + mod;
+  const src = `${stat} Check`;
+  const sign = mod>=0?'+':'';
+  addHistory(src, `d20${sign}${mod}`, total, roll===20?'nat20':roll===1?'nat1':'');
+  showRollResult(total, `d20${sign}${mod}`, src);
+  // switch to dice section visible
+  const diceCard = document.getElementById('diceCard');
+  if(diceCard) diceCard.scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+/* ════════════════════════════════════════
+   HP
+════════════════════════════════════════ */
+function updateHP() {
+  const { current, max, temp } = STATE.hp;
+  const pct = Math.max(0, Math.min(100, (current/max)*100));
+  const hpC = document.getElementById('hpCurrent');
+  const hpBar = document.getElementById('hpBar');
+  const hpTemp = document.getElementById('hpTemp');
+  const hero = document.getElementById('hpHero');
+
+  let color, hpClass = '';
+  if(current <= 0){ color='#c06060'; hpClass='death'; }
+  else if(pct <= 20){ color='#c06060'; hpClass='critical'; }
+  else if(pct <= 50){ color='#c8a840'; hpClass='wounded'; }
+  else { color='var(--gem)'; hpClass=''; }
+
+  if(hpC) { hpC.textContent = current<=0 ? '' : current; hpC.className='hp-current '+(hpClass); }
+  if(hpBar) { hpBar.style.width=pct+'%'; hpBar.style.background=color; }
+  if(hpTemp) hpTemp.style.display = temp>0?'':'none';
+  if(hero) hero.className = 'hp-hero'+(current<=0?' death':'');
+
+  // unconscious label
+  let unlabel = hero?.querySelector('.unconscious-label');
+  if(current<=0) {
+    if(!unlabel) {
+      unlabel = document.createElement('div');
+      unlabel.className='unconscious-label';
+      unlabel.textContent='UNCONSCIOUS';
+      hero?.querySelector('.hp-nums-row')?.prepend(unlabel);
+    }
+  } else {
+    unlabel?.remove();
+  }
+
+  document.getElementById('hpCurrent').textContent = current<=0 ? '0' : current;
+}
+
+function changeHP(delta) {
+  STATE.hp.current = Math.max(0, Math.min(STATE.hp.max + STATE.hp.temp, STATE.hp.current + delta));
+  const hero = document.getElementById('hpHero');
+  hero.classList.add(delta<0?'flash-dmg':'flash-heal');
+  setTimeout(()=>hero.classList.remove('flash-dmg','flash-heal'),300);
+  updateHP();
+}
+
+/* ════════════════════════════════════════
+   HP MODAL
+════════════════════════════════════════ */
+function openModal(type) {
+  STATE.modalMode = type;
+  const overlay = document.getElementById('dmgModal');
+  const title = document.getElementById('modalTitle');
+  const confirm = document.getElementById('modalConfirm');
+  const input = document.getElementById('modalInput');
+  title.textContent = type==='damage' ? 'Apply Damage' : 'Heal';
+  confirm.textContent = type==='damage' ? 'Apply Damage' : 'Apply Heal';
+  confirm.className = 'modal-btn ' + (type==='damage'?'confirm-dmg':'confirm-heal');
+  input.value='';
+  overlay.classList.add('open');
+  input.focus();
+}
+function closeModal() { document.getElementById('dmgModal').classList.remove('open'); }
+function confirmModal() {
+  const val = parseInt(document.getElementById('modalInput').value)||0;
+  if(STATE.modalMode==='damage') { changeHP(-val); }
+  else { changeHP(val); }
+  closeModal();
+}
+document.getElementById('dmgModal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeModal(); });
+
+/* ════════════════════════════════════════
+   CONCENTRATION
+════════════════════════════════════════ */
+function updateConcentration() {
+  const banner = document.getElementById('concBanner');
+  const addBtn = document.getElementById('concAddBtn');
+  if(STATE.concentration) {
+    banner.style.display='block';
+    addBtn.style.display='none';
+    banner.querySelector('.conc-text').innerHTML=`Concentrating: <strong>${STATE.concSpell||'Hex'}</strong>`;
+  } else {
+    banner.style.display='none';
+    addBtn.style.display='inline-block';
+  }
+}
+function dropConcentration() { STATE.concentration=false; STATE.concSpell=''; updateConcentration(); }
+function addConcentration() {
+  const spell = prompt('Spell name:','Hex');
+  if(spell){STATE.concentration=true;STATE.concSpell=spell;updateConcentration();}
+}
+
+/* ════════════════════════════════════════
+   INSPIRATION
+════════════════════════════════════════ */
+function updateInspo() {
+  const gem = document.getElementById('inspoGem');
+  const lbl = document.getElementById('inspoLabel');
+  if(gem) gem.className='inspo-gem'+(STATE.inspiration?' active':'');
+  if(lbl) { lbl.className='inspo-label'+(STATE.inspiration?' active':''); }
+}
+function toggleInspo() { STATE.inspiration=!STATE.inspiration; updateInspo(); }
+function setInspo(v) { STATE.inspiration=v; updateInspo(); }
+
+/* ════════════════════════════════════════
+   CONDITIONS
+════════════════════════════════════════ */
+function removeCondition(el) { el.parentNode.removeChild(el); }
+
+/* ════════════════════════════════════════
+   INITIATIVE
+════════════════════════════════════════ */
+function renderInitiative() {
+  const activeIdx = TURN_IDX[STATE.turn];
+  const list = document.getElementById('initiativeEntries');
+  list.innerHTML = INIT_ORDER.map((entry, i) => {
+    const isActive = i === activeIdx;
+    const isSelf = entry.self;
+    let rowClass = 'init-row';
+    if(isActive) rowClass += ' active';
+    if(!entry.pc && STATE.enemyGlow==='bloodied') rowClass += ' bloodied';
+    if(!entry.pc && STATE.enemyGlow==='neardeath') rowClass += ' neardeath';
+
+    const dot = entry.pc && !entry.self
+      ? `<span class="init-dot" style="background:${entry.palette}"></span>`
+      : entry.self
+        ? `<span class="init-dot" style="background:var(--accent)"></span>`
+        : `<span style="width:8px;display:inline-block"></span>`;
+
+    const nameClass = isSelf
+      ? 'init-name pc-self'
+      : entry.id==='aragorn' ? 'init-name pc-aragorn'
+      : entry.id==='aesop'   ? 'init-name pc-aesop'
+      : 'init-name';
+
+    const arrow = isActive ? `<span class="init-arrow">▸</span>` : `<span class="init-arrow"></span>`;
+    const yourTurn = isActive && isSelf ? `<span class="init-your-turn">YOUR TURN</span>` : '';
+
+    return `<div class="${rowClass}">${arrow}${dot}<span class="${nameClass}">${entry.name}</span>${yourTurn}</div>`;
+  }).join('');
+
+  // Update collapsed line
+  const active = INIT_ORDER[activeIdx];
+  const isSelf = active.self;
+  const activeLine = document.getElementById('initActiveLine');
+  if(activeLine) {
+    activeLine.innerHTML = `Round ${STATE.round} · <span style="color:${active.palette||'var(--accent-bright)'}">${active.name}</span>${isSelf?' · <span style="color:var(--accent-bright)">YOUR TURN</span>':''}`;
+  }
+
+  // Own portrait glow
+  const portrait = document.getElementById('ownPortrait');
+  if(portrait) {
+    if(STATE.turn==='mine') portrait.classList.add('own-turn');
+    else portrait.classList.remove('own-turn');
+  }
+}
+
+function toggleInitExpand() {
+  const list = document.getElementById('initList');
+  const arrow = document.getElementById('initArrow');
+  const collapsed = list.classList.toggle('collapsed');
+  if(arrow) arrow.classList.toggle('open', !collapsed);
+}
+
+/* ════════════════════════════════════════
+   PARTY STRIP
+════════════════════════════════════════ */
+function renderParty() {
+  const activeIdx = TURN_IDX[STATE.turn];
+  const pl = document.getElementById('partyList');
+
+  const members = [
+    {
+      id:'aragorn',
+      name:'Aragorn',
+      accent:'#c87840',
+      ...STATE.party.aragorn,
+      activeIdx: 2
+    },
+    {
+      id:'aesop',
+      name:'Aesop',
+      accent:'#5a8a60',
+      hp: STATE.party.aesop.hp,
+      hpMax: STATE.party.aesop.hpMax,
+      activeIdx: 4
+    }
+  ];
+
+  pl.innerHTML = members.map(m => {
+    const isActiveTurn = activeIdx === m.activeIdx;
+    const pct = Math.max(0,Math.min(100,(m.hp/m.hpMax)*100));
+    let barColor = pct>50?'var(--gem)':pct>20?'#c8a840':'#c06060';
+    let rowClass = 'party-row';
+    if(m.id==='aragorn') {
+      if(STATE.party.aragorn.state==='down') { rowClass+=' down'; }
+      else if(STATE.party.aragorn.state==='bloodied') { rowClass+=' bloodied'; }
+    }
+
+    const avatarClass = 'party-avatar ' + (isActiveTurn?'active-turn':'resting');
+    const avatarStyle = `background:${m.accent}22;border-color:${m.accent}55;--party-accent:${m.accent}`;
+
+    let hpDisplay = m.hp<=0
+      ? `<span class="party-down-label">DOWN</span>`
+      : `<span class="party-hp-nums${pct<=20?' critical':''}">${m.hp}/${m.hpMax}</span>
+         <div class="party-hp-bar-wrap" style="width:90px"><div class="party-hp-bar-fill ${pct>50?'hp-healthy':pct>20?'hp-wounded':'hp-critical'}" style="width:${pct}%"></div></div>`;
+
+    return `<div class="${rowClass}">
+      <div class="${avatarClass}" style="${avatarStyle}">${m.name[0]}</div>
+      <div class="party-info">
+        <span class="party-name" style="color:${m.accent}">${m.name}</span>
+        <div class="party-hp-row">${hpDisplay}</div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+/* ════════════════════════════════════════
+   LOADOUT
+════════════════════════════════════════ */
+const ITEM_TYPE_ICONS = {
+  Weapon: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="12" y1="2" x2="3" y2="13"/>
+    <path d="M10,2 L14,2 L14,6 Z"/>
+    <line x1="6.5" y1="9.5" x2="4.5" y2="8.5"/>
+    <line x1="2" y1="14" x2="4" y2="12"/>
+  </svg>`,
+  Armor: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8,2 L13,5 L13,10 Q13,14 8,15 Q3,14 3,10 L3,5 Z"/>
+  </svg>`,
+  Shield: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8,2 L13,5 L13,10 Q13,14 8,15 Q3,14 3,10 L3,5 Z"/>
+    <path d="M8,5 L8,12 M5.5,8 L10.5,8"/>
+  </svg>`,
+  Wondrous: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M8,1.5 L9.3,6.7 L14.5,8 L9.3,9.3 L8,14.5 L6.7,9.3 L1.5,8 L6.7,6.7 Z"/>
+  </svg>`,
+  Potion: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="6" y1="2" x2="10" y2="2"/>
+    <path d="M6,2 L6,6 L3,10 Q2,14 8,14 Q14,14 13,10 L10,6 L10,2"/>
+    <circle cx="7" cy="10.5" r="1" fill="currentColor" stroke="none" opacity="0.6"/>
+  </svg>`,
+  Tool: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="8" y1="3" x2="8" y2="10"/>
+    <line x1="5.5" y1="6" x2="10.5" y2="6"/>
+    <path d="M5,10 L11,10 L10,14 Q8,15 6,14 Z"/>
+  </svg>`,
+  Ammunition: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <line x1="3" y1="13" x2="12" y2="4"/>
+    <path d="M9.5,2 L14,2 L14,6.5"/>
+    <line x1="3" y1="13" x2="5" y2="11"/>
+    <line x1="3" y1="13" x2="2" y2="11"/>
+  </svg>`,
+  Quest: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="4" y="3" width="8" height="11" rx="1.5"/>
+    <line x1="6.5" y1="6.5" x2="9.5" y2="6.5"/>
+    <line x1="6.5" y1="9" x2="9.5" y2="9"/>
+    <line x1="6.5" y1="11.5" x2="8" y2="11.5"/>
+    <path d="M4,3 Q4,1 6,1 Q6,3 4,3" stroke-linejoin="round"/>
+  </svg>`,
+  Other: `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+    <circle cx="8" cy="8" r="5.5"/>
+    <path d="M6.5,6.5 Q6.5,5 8,5 Q9.5,5 9.5,6.5 Q9.5,8 8,8 L8,9.5" stroke-linejoin="round"/>
+    <circle cx="8" cy="11.5" r="0.6" fill="currentColor" stroke="none"/>
+  </svg>`,
+};
+
+function itemTypeIcon(type) {
+  const svg = ITEM_TYPE_ICONS[type] || ITEM_TYPE_ICONS.Other;
+  return `<span class="item-type-icon" title="${type}">${svg}<span class="icon-tip">${type}</span></span>`;
+}
+
+function buildLoadout() {
+  const grid = document.getElementById('loadoutGrid');
+  grid.innerHTML = LOADOUT_ITEMS.map(item => {
+    const isEquipped = item.equipped;
+    return `<div class="loadout-item">
+      ${itemTypeIcon(item.type)}
+      <span class="loadout-name">${item.name}</span>
+      <button class="equip-toggle${isEquipped?' active':''}" onclick="toggleEquip(this)" title="${isEquipped?'Equipped — click to unequip':'Unequipped — click to equip'}">
+        ${isEquipped?'✓':'○'}
+      </button>
+    </div>`;
+  }).join('');
+}
+function toggleEquip(btn) {
+  const active = btn.classList.toggle('active');
+  btn.textContent = active ? '✓' : '○';
+  btn.title = active ? 'Equipped — click to unequip' : 'Unequipped — click to equip';
+}
+
+/* ════════════════════════════════════════
+   TABS
+════════════════════════════════════════ */
+function switchTab(name) {
+  document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.s-tab').forEach(t=>t.classList.remove('active'));
+  const content = document.getElementById('tab-'+name);
+  const tab = document.getElementById('tab'+name.charAt(0).toUpperCase()+name.slice(1));
+  if(content) content.classList.add('active');
+  if(tab) tab.classList.add('active');
+}
+
+function switchProfileTab(name, btn) {
+  document.querySelectorAll('.profile-tab').forEach(t=>t.classList.remove('active'));
+  btn.classList.add('active');
+  const content = document.getElementById('profileTabContent');
+  if(name==='persona') {
+    content.innerHTML='<p style="margin-bottom:16px"><em>Eoghan never intended to make a pact.</em> The sword appeared on the night his unit was slaughtered — an obsidian blade jutting from the mud, humming with a warmth that shouldn\'t have been there. He picked it up to survive. The Hexblade accepted the deal without words.</p><p>He tells himself he controls it. The blade tells him nothing at all.</p>';
+  } else if(name==='inventory') {
+    content.innerHTML='<div style="font-family:var(--font-u);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Weapons & Equipment</div>'+
+    LOADOUT_ITEMS.map(i=>`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border)">${itemTypeIcon(i.type)}<span style="font-family:var(--font-b);font-size:15px;color:var(--text);flex:1">${i.name}</span></div>`).join('');
+  } else if(name==='combat') {
+    content.innerHTML='<div style="font-family:var(--font-u);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--text-muted);margin-bottom:12px">Combat Reference</div>'+
+    WEAPONS.map(w=>`<div style="padding:8px 0;border-bottom:1px solid var(--border);font-family:var(--font-b);font-size:15px;color:var(--text)">${w.name} <span style="font-family:var(--font-u);font-size:10px;color:var(--text-muted)">${w.meta}</span></div>`).join('');
+  } else {
+    content.innerHTML='<div style="font-family:var(--font-b);font-style:italic;font-size:14px;color:var(--text-muted)">Map not available in Profile mode. Switch to Session → Map sub-tab.</div>';
+  }
+}
+
+/* ════════════════════════════════════════
+   MODE TOGGLE
+════════════════════════════════════════ */
+function setMode(mode) {
+  STATE.mode = mode;
+  const sessionView = document.getElementById('sessionView');
+  const profileView = document.getElementById('profileView');
+  const segP = document.getElementById('segProfile');
+  const segS = document.getElementById('segSession');
+
+  if(mode==='session') {
+    sessionView.style.display='';
+    profileView.style.display='none';
+    segP.classList.remove('active'); segP.setAttribute('aria-pressed','false');
+    segS.classList.add('active');    segS.setAttribute('aria-pressed','true');
+    document.getElementById('topBarName').textContent='Eoghan';
+  } else {
+    sessionView.style.display='none';
+    profileView.style.display='';
+    segP.classList.add('active');    segP.setAttribute('aria-pressed','true');
+    segS.classList.remove('active'); segS.setAttribute('aria-pressed','false');
+  }
+
+  // update ctrl btns
+  document.querySelectorAll('#ctrlPanel .ctrl-group:first-child .ctrl-btn').forEach(b=>{
+    b.classList.toggle('active', b.textContent.toLowerCase()===mode);
+  });
+}
+
+/* ════════════════════════════════════════
+   CONTROL PANEL ACTIONS
+════════════════════════════════════════ */
+function setHPState(state) {
+  const hpStates = {full:{current:44,max:44,temp:5},bloodied:{current:22,max:44,temp:0},critical:{current:7,max:44,temp:0},down:{current:0,max:44,temp:0}};
+  const s = hpStates[state];
+  STATE.hp = {...s};
+  updateHP();
+  // mark ctrl btn active
+  markCtrlActive(1, state==='full'?0:state==='bloodied'?1:state==='critical'?2:3);
+}
+
+function setTurn(turn) {
+  STATE.turn = turn;
+  renderInitiative();
+  renderParty();
+  markCtrlActive(2, turn==='mine'?0:turn==='aragorn'?1:2);
+}
+
+function setPartyState(state) {
+  if(state==='full')     { STATE.party.aragorn = {hp:24,hpMax:24,state:'full'}; }
+  if(state==='bloodied') { STATE.party.aragorn = {hp:12,hpMax:24,state:'bloodied'}; }
+  if(state==='down')     { STATE.party.aragorn = {hp:0, hpMax:24,state:'down'}; }
+  renderParty();
+  markCtrlActive(3, state==='full'?0:state==='bloodied'?1:2);
+}
+
+function setEnemyGlow(glow) {
+  STATE.enemyGlow = glow;
+  renderInitiative();
+  markCtrlActive(4, glow==='bloodied'?0:glow==='neardeath'?1:2);
+}
+
+function setConcen(on) {
+  STATE.concentration = on;
+  if(on && !STATE.concSpell) STATE.concSpell='Hex';
+  if(!on) STATE.concSpell='';
+  updateConcentration();
+  markCtrlActive(5, on?0:1);
+}
+
+function markCtrlActive(groupIdx, btnIdx) {
+  const groups = document.querySelectorAll('#ctrlBody .ctrl-group');
+  if(!groups[groupIdx]) return;
+  const btns = groups[groupIdx].querySelectorAll('.ctrl-btn');
+  btns.forEach((b,i) => b.classList.toggle('active', i===btnIdx));
+}
+
+function toggleCtrl() {
+  const body = document.getElementById('ctrlBody');
+  body.style.display = body.style.display==='none' ? '' : 'none';
+}
+</script>
+</body>
+</html>

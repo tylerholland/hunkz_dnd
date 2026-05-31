@@ -2,6 +2,28 @@ import { useRef, useState, useEffect, useCallback } from "react";
 import PdfCanvas from "./PdfCanvas";
 import { isPdfMap } from "./mapFiles";
 
+export const ZOOM_LOCK_STORAGE_KEY = "dnd_map_free_zoom";
+
+function isApplePlatform() {
+  if (typeof navigator === "undefined") return false;
+  const platform = navigator.userAgentData?.platform || navigator.platform || navigator.userAgent || "";
+  return /mac|iphone|ipad|ipod/i.test(platform);
+}
+
+export function getMapZoomModifierLabel() {
+  return isApplePlatform() ? "Cmd" : "Ctrl";
+}
+
+export function readMapFreeZoomPreference() {
+  if (typeof sessionStorage === "undefined") return false;
+  return sessionStorage.getItem(ZOOM_LOCK_STORAGE_KEY) === "true";
+}
+
+export function writeMapFreeZoomPreference(value) {
+  if (typeof sessionStorage === "undefined") return;
+  sessionStorage.setItem(ZOOM_LOCK_STORAGE_KEY, String(Boolean(value)));
+}
+
 export default function MapViewer({
   imageUrl,
   name,
@@ -12,6 +34,7 @@ export default function MapViewer({
   allowResetToPublished = false,
   resetLabel = "DM View",
   onViewChange,
+  freeZoom,
 }) {
   const containerRef = useRef(null);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
@@ -20,12 +43,15 @@ export default function MapViewer({
   const [hintFaded, setHintFaded] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
   const [pageCount, setPageCount] = useState(1);
+  const [internalFreeZoom] = useState(readMapFreeZoomPreference);
 
   const dragRef = useRef(null);
   const pinchRef = useRef(null);
   const stateRef = useRef({ translate: { x: 0, y: 0 }, scale: 1 });
   const pdfMode = isPdfMap({ imageUrl, contentType, name });
   const lastPublishedTokenRef = useRef(null);
+  const modifierKeyLabel = getMapZoomModifierLabel();
+  const zoomUnlocked = typeof freeZoom === "boolean" ? freeZoom : internalFreeZoom;
   const handlePdfLoad = useCallback(({ numPages }) => {
     setPageCount(numPages);
     setPageNumber((value) => Math.min(Math.max(1, value), numPages));
@@ -109,6 +135,10 @@ export default function MapViewer({
   const handleMouseUp = useCallback(() => { dragRef.current = null; }, []);
 
   const handleWheel = useCallback((e) => {
+    const modifierHeld = isApplePlatform() ? e.metaKey : e.ctrlKey;
+    if (!zoomUnlocked && !modifierHeld) {
+      return;
+    }
     e.preventDefault();
     dismissHint();
     const rect = containerRef.current.getBoundingClientRect();
@@ -125,7 +155,7 @@ export default function MapViewer({
     stateRef.current.translate = next;
     setScale(nextScale);
     setTranslate({ ...next });
-  }, [dismissHint]);
+  }, [dismissHint, zoomUnlocked]);
 
   // Touch events
   const handleTouchStart = useCallback((e) => {
@@ -192,6 +222,9 @@ export default function MapViewer({
   const controlBorder = "rgba(200,220,235,0.18)";
   const controlText = pal.accentBright || pal.text;
   const controlMutedText = pal.text || pal.accentBright;
+  const zoomHintText = zoomUnlocked
+    ? "Drag to pan · Scroll or pinch to zoom"
+    : `Drag to pan · ${modifierKeyLabel} + scroll or pinch to zoom`;
 
   if (!imageUrl) {
     return (
@@ -273,7 +306,7 @@ export default function MapViewer({
             transition: "opacity 0.4s",
             opacity: hintFaded ? 0 : 1,
           }}>
-            Drag to pan · Scroll to zoom
+            {zoomHintText}
           </div>
         )}
       </div>

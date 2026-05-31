@@ -1,0 +1,1979 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Portrait Treatment Options — Design Prototype</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Ocean palette ── */
+    :root {
+      --bg: #0d0f14;
+      --surface: rgba(13,18,26,0.85);
+      --surface-solid: #0d1219;
+      --border: rgba(106,143,168,0.22);
+      --border-vis: rgba(106,143,168,0.38);
+      --accent: #6a8fa8;
+      --accent-bright: #a0c0d0;
+      --accent-dim: rgba(26,52,74,0.5);
+      --text: #c8bfaf;
+      --text-body: #b0a898;
+      --text-muted: #3a5a6a;
+      --gem: #8ab4c8;
+      --gem-low: rgba(40,70,100,0.3);
+      --font-display: 'Cinzel', Georgia, serif;
+      --font-body: 'Crimson Text', Georgia, serif;
+      --font-ui: 'IM Fell English', Georgia, serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 0%, rgba(20,45,80,0.4) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, rgba(15,35,60,0.3) 0%, transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+      padding: 48px 40px 100px;
+    }
+
+    /* ── Page header ── */
+    .page-header {
+      margin-bottom: 12px;
+    }
+
+    .page-title {
+      font-family: var(--font-display);
+      font-size: 26px;
+      letter-spacing: 0.1em;
+      color: var(--accent-bright);
+      margin-bottom: 6px;
+    }
+
+    .page-meta {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 4px;
+    }
+
+    .page-desc {
+      font-family: var(--font-body);
+      font-style: italic;
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* ── Toggle bar ── */
+    .toggle-bar {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      margin: 28px 0 40px;
+      padding: 14px 20px;
+      background: rgba(106,143,168,0.06);
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+    }
+
+    .toggle-bar-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-right: 4px;
+    }
+
+    .toggle-group {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .toggle-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 16px;
+      border-radius: 3px;
+      border: 1px solid var(--border-vis);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: border-color 0.18s, background 0.18s, color 0.18s;
+      min-height: 44px;
+    }
+
+    .toggle-btn:hover {
+      border-color: var(--accent);
+      color: var(--accent-bright);
+    }
+
+    .toggle-btn.active {
+      background: var(--accent-dim);
+      border-color: var(--accent);
+      color: var(--accent-bright);
+    }
+
+    .toggle-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      border: 1.5px solid currentColor;
+      transition: background 0.18s;
+    }
+
+    .toggle-btn.active .toggle-dot {
+      background: var(--accent-bright);
+    }
+
+    .toggle-sep {
+      width: 1px;
+      height: 28px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+
+    .toggle-hp-btn.active {
+      border-color: rgba(192,96,96,0.6);
+      background: rgba(192,60,60,0.1);
+      color: #d08080;
+    }
+    .toggle-hp-btn.active .toggle-dot {
+      background: #c06060;
+      border-color: #c06060;
+    }
+
+    /* ── Four-column comparison layout ── */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 320px);
+      gap: 32px;
+      align-items: start;
+    }
+
+    /* ── Column wrapper ── */
+    .variant-col {
+      display: flex;
+      flex-direction: column;
+      align-items: stretch;
+    }
+
+    .variant-label {
+      font-family: var(--font-display);
+      font-size: 12px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-align: center;
+      margin-bottom: 16px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .variant-caption {
+      font-family: var(--font-ui);
+      font-style: italic;
+      font-size: 11px;
+      letter-spacing: 0.05em;
+      color: var(--text-muted);
+      text-align: center;
+      margin-top: 14px;
+      line-height: 1.5;
+      opacity: 0.8;
+    }
+
+    /* ── Callout annotation system ── */
+    .callout {
+      position: absolute;
+      background: rgba(160,192,208,0.12);
+      border: 1px solid rgba(160,192,208,0.35);
+      border-radius: 3px;
+      color: #a0c0d0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      padding: 4px 9px;
+      pointer-events: none;
+      text-transform: uppercase;
+      white-space: nowrap;
+      z-index: 20;
+    }
+
+    /* ══════════════════════════════════════════
+       CARD BASE — shared across all variants
+    ══════════════════════════════════════════ */
+    .cc-card {
+      position: relative;
+      border-radius: 6px;
+      border: 1px solid rgba(106,143,168,0.28);
+      background: rgba(13,18,26,0.85);
+      overflow: visible;
+      margin-bottom: 16px;
+      transition: box-shadow 0.25s ease, border-color 0.25s ease;
+    }
+
+    /* Baseline (Variant 0) — slightly desaturated */
+    .cc-card.variant-baseline {
+      filter: saturate(0.78) brightness(0.92);
+    }
+
+    /* Active-turn state */
+    .cc-card.state-active-turn {
+      box-shadow:
+        0 0 0 1px rgba(138,180,200,0.35),
+        0 4px 24px rgba(106,143,168,0.2),
+        0 2px 0 0 rgba(138,180,200,0.55) inset;
+      border-color: rgba(106,143,168,0.55);
+      transform: translateY(-2px);
+    }
+
+    /* 0HP / dying state */
+    .cc-card.state-zero-hp {
+      border-color: rgba(192,80,80,0.45);
+      animation: deathGlow 3.5s ease-in-out infinite;
+    }
+
+    @keyframes deathGlow {
+      0%, 100% { box-shadow: 0 0 8px 2px rgba(192,80,80,0.18); }
+      50%       { box-shadow: 0 0 22px 6px rgba(192,80,80,0.42); }
+    }
+
+    /* Active-turn bottom bar */
+    .cc-turn-bar {
+      position: absolute;
+      bottom: -3px;
+      left: 10px;
+      right: 10px;
+      height: 3px;
+      border-radius: 2px;
+      background: linear-gradient(90deg, transparent, var(--gem), transparent);
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    .cc-card.state-active-turn .cc-turn-bar { opacity: 1; }
+
+    /* ── Left accent stripe ── */
+    .cc-stripe {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 6px 0 0 6px;
+      background: var(--accent);
+      z-index: 0;
+    }
+
+    /* ── Header grid — baseline ── */
+    .cc-header-grid {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      gap: 10px;
+      padding: 12px 14px 4px 18px;
+      align-items: start;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Portrait — baseline ── */
+    .cc-portrait {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: var(--surface-solid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+    }
+
+    .cc-portrait-initial {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.04em;
+      color: var(--gem);
+      line-height: 1;
+      user-select: none;
+    }
+
+    /* ── Identity column ── */
+    .cc-identity {
+      min-width: 0;
+    }
+
+    .cc-name-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 2px;
+    }
+
+    .cc-name {
+      font-family: var(--font-display);
+      font-size: 17px;
+      letter-spacing: 0.06em;
+      color: var(--accent-bright);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .cc-kebab {
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      border: 1px solid rgba(106,143,168,0.28);
+      background: transparent;
+      color: var(--accent-bright);
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      margin-left: auto;
+      line-height: 1;
+    }
+
+    .cc-meta-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .cc-meta {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      min-width: 0;
+    }
+
+    .cc-sheet-link {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      text-decoration: none;
+      white-space: nowrap;
+      flex-shrink: 0;
+      margin-left: auto;
+      opacity: 0.7;
+    }
+
+    /* ── AC badge (baseline: inline with name) ── */
+    .cc-actions-col {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      min-width: 44px;
+    }
+
+    .cc-ac-badge {
+      background: var(--surface-solid);
+      border: 1px solid rgba(106,143,168,0.25);
+      border-radius: 4px;
+      padding: 4px 9px;
+      text-align: center;
+      min-width: 42px;
+    }
+
+    .cc-ac-number {
+      font-family: var(--font-display);
+      font-size: 18px;
+      line-height: 1;
+      color: var(--gem);
+      display: block;
+    }
+
+    .cc-ac-label {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+    }
+
+    /* Notes badge on kebab */
+    .cc-notes-badge {
+      position: relative;
+      display: inline-block;
+    }
+    .cc-notes-pip {
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--gem);
+      border: 1.5px solid var(--surface-solid);
+    }
+
+    /* ── HP block ── */
+    .cc-hp-block {
+      padding: 10px 14px 0 18px;
+    }
+
+    .cc-hp-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 7px;
+    }
+
+    .cc-hp-numbers {
+      display: flex;
+      align-items: baseline;
+      gap: 3px;
+    }
+
+    .cc-hp-current {
+      font-family: var(--font-display);
+      font-size: 26px;
+      line-height: 1;
+      color: var(--gem);
+    }
+
+    .cc-card.state-zero-hp .cc-hp-current {
+      color: #c06060;
+    }
+
+    .cc-hp-sep, .cc-hp-max {
+      font-family: var(--font-display);
+      font-size: 14px;
+      color: var(--text-muted);
+    }
+
+    .cc-step-btn {
+      width: 28px;
+      height: 28px;
+      border-radius: 3px;
+      border: 1px solid rgba(106,143,168,0.25);
+      background: transparent;
+      font-family: var(--font-display);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      color: var(--accent-bright);
+      user-select: none;
+      min-height: 28px;
+      min-width: 28px;
+    }
+
+    .cc-hp-stepper-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-bottom: 6px;
+    }
+
+    .cc-hp-bar-track {
+      flex: 1;
+      height: 6px;
+      border-radius: 3px;
+      overflow: hidden;
+      background: rgba(40,70,100,0.3);
+    }
+
+    .cc-hp-bar-fill {
+      height: 100%;
+      border-radius: 3px;
+    }
+
+    /* HP bar colors */
+    .cc-hp-bar-fill.hp-high { background: linear-gradient(90deg, #4a8a60, #6ab480); }
+    .cc-hp-bar-fill.hp-mid  { background: linear-gradient(90deg, #b08030, #d0a840); }
+    .cc-hp-bar-fill.hp-low  { background: linear-gradient(90deg, #a04040, #c86060); }
+    .cc-hp-bar-fill.hp-zero { background: #802020; }
+
+    /* ── Status row (conditions / conc) ── */
+    .cc-status-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 5px;
+      padding: 2px 14px 8px 18px;
+      min-height: 0;
+    }
+
+    .cc-conc-indicator {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent-bright);
+    }
+
+    .cc-pulse-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-bright);
+      box-shadow: 0 0 5px var(--accent);
+      flex-shrink: 0;
+      animation: pulseAnim 2.2s ease-in-out infinite;
+    }
+
+    @keyframes pulseAnim {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.82); }
+    }
+
+    /* ── Spell slots ── */
+    .cc-slots-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 14px 6px 18px;
+    }
+
+    .cc-slot-group {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .cc-slot-label {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-right: 2px;
+    }
+
+    .cc-slot-pip {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+    }
+    .cc-slot-pip.filled { background: var(--gem); }
+    .cc-slot-pip.empty  { border: 1.5px solid rgba(138,180,200,0.3); background: transparent; }
+
+    /* ── Divider ── */
+    .cc-divider {
+      height: 1px;
+      background: rgba(106,143,168,0.14);
+      margin: 0 14px 0 18px;
+    }
+
+    /* ── Saves strip ── */
+    .cc-saves-strip {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 14px 10px 18px;
+    }
+
+    .cc-save-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+    }
+
+    .cc-save-label {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+
+    .cc-save-value {
+      font-family: var(--font-display);
+      font-size: 13px;
+      color: var(--gem);
+    }
+
+    .cc-save-sep {
+      width: 1px;
+      height: 24px;
+      background: rgba(106,143,168,0.15);
+    }
+
+    /* ── Notes strip ── */
+    .cc-notes-strip {
+      padding: 6px 14px 10px 18px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cc-note-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(106,143,168,0.1);
+      border: 1px solid rgba(106,143,168,0.25);
+      border-radius: 8px;
+      padding: 2px 8px;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+
+    .cc-note-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--gem);
+    }
+
+    /* ── Death saves row ── */
+    .cc-death-saves {
+      padding: 6px 14px 8px 18px;
+      background: rgba(192,60,60,0.07);
+      border-top: 1px solid rgba(192,80,80,0.2);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .cc-death-label {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: #c06060;
+      flex: 1;
+    }
+
+    .cc-save-pips {
+      display: flex;
+      align-items: center;
+      gap: 3px;
+    }
+
+    .cc-save-pip {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      border: 1.5px dashed;
+    }
+    .cc-save-pip.success { border-color: #5a9a5a; background: #5a9a5a; }
+    .cc-save-pip.success-empty { border-color: rgba(90,154,90,0.4); background: transparent; }
+    .cc-save-pip.fail { border-color: #c06060; background: #c06060; }
+    .cc-save-pip.fail-empty { border-color: rgba(192,96,96,0.35); background: transparent; }
+
+    /* ═══════════════════════════════════════════
+       VARIANT 1 — Option B: Embedded Plate
+    ═══════════════════════════════════════════ */
+    .cc-header-grid-b {
+      display: grid;
+      grid-template-columns: 64px 1fr auto;
+      gap: 12px;
+      padding: 14px 14px 10px 18px;
+      align-items: start;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cc-portrait-b {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: var(--surface-solid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+      box-shadow:
+        inset 0 0 0 1px rgba(255,255,255,0.04),
+        0 0 0 4px rgba(0,0,0,0.18);
+    }
+
+    .cc-portrait-b .cc-portrait-initial {
+      font-size: 22px;
+    }
+
+    /* ═══════════════════════════════════════════
+       VARIANT 2 — Option A: Editorial Slip
+    ═══════════════════════════════════════════ */
+    .cc-header-grid-a {
+      display: grid;
+      grid-template-columns: 76px 1fr auto;
+      gap: 14px;
+      padding: 4px 14px 4px 18px;
+      align-items: start;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cc-portrait-a {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+      background: var(--surface-solid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+      margin-top: -10px;
+      box-shadow:
+        0 2px 6px rgba(0,0,0,0.35),
+        0 0 0 4px var(--surface-solid);
+      transition: box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+
+    .cc-portrait-a .cc-portrait-initial {
+      font-size: 26px;
+    }
+
+    .cc-portrait-a img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+      filter: brightness(0.97) saturate(0.92);
+    }
+
+    /* Option A: stripe ::after weld — widens stripe at portrait band */
+    .cc-stripe-a {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 6px 0 0 6px;
+      background: var(--accent);
+      z-index: 0;
+    }
+    .cc-stripe-a::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 2px;
+      height: 60px;
+      background: var(--accent);
+      border-radius: 2px 0 0 0;
+    }
+
+    /* Option A: actions col with AC below kebab */
+    .cc-actions-col-a {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      min-width: 44px;
+    }
+
+    /* Active turn: portrait gem pulse */
+    .cc-card.state-active-turn .cc-portrait-a,
+    .cc-card.state-active-turn .cc-portrait-a-plus {
+      border-color: var(--gem);
+      animation: portraitTurnGlow 2.2s ease-in-out infinite;
+    }
+
+    @keyframes portraitTurnGlow {
+      0%, 100% {
+        box-shadow:
+          0 2px 6px rgba(0,0,0,0.35),
+          0 0 0 4px var(--surface-solid),
+          0 0 10px 2px rgba(138,180,200,0.18);
+      }
+      50% {
+        box-shadow:
+          0 2px 6px rgba(0,0,0,0.35),
+          0 0 0 4px var(--surface-solid),
+          0 0 18px 5px rgba(138,180,200,0.35);
+      }
+    }
+
+    @keyframes portraitTurnGlowPlus {
+      0%, 100% {
+        box-shadow:
+          0 3px 10px rgba(0,0,0,0.5),
+          0 0 0 6px var(--surface-solid),
+          0 0 0 8px rgba(106,143,168,0.25),
+          0 0 10px 2px rgba(138,180,200,0.18);
+      }
+      50% {
+        box-shadow:
+          0 3px 10px rgba(0,0,0,0.5),
+          0 0 0 6px var(--surface-solid),
+          0 0 0 8px rgba(106,143,168,0.25),
+          0 0 22px 6px rgba(138,180,200,0.4);
+      }
+    }
+
+    /* 0HP: portrait red pulse */
+    .cc-card.state-zero-hp .cc-portrait-a {
+      border-color: rgba(192,96,96,0.7);
+      animation: deathGlowPortrait 3.5s ease-in-out infinite;
+    }
+
+    .cc-card.state-zero-hp .cc-portrait-a-plus {
+      border-color: rgba(192,96,96,0.7);
+      animation: deathGlowPortraitPlus 3.5s ease-in-out infinite;
+    }
+
+    @keyframes deathGlowPortrait {
+      0%, 100% {
+        box-shadow:
+          0 2px 6px rgba(0,0,0,0.35),
+          0 0 0 4px var(--surface-solid),
+          0 0 10px 2px rgba(192,80,80,0.25);
+      }
+      50% {
+        box-shadow:
+          0 2px 6px rgba(0,0,0,0.35),
+          0 0 0 4px var(--surface-solid),
+          0 0 22px 6px rgba(192,80,80,0.55);
+      }
+    }
+
+    @keyframes deathGlowPortraitPlus {
+      0%, 100% {
+        box-shadow:
+          0 3px 10px rgba(0,0,0,0.5),
+          0 0 0 6px var(--surface-solid),
+          0 0 0 8px rgba(106,143,168,0.25),
+          0 0 12px 3px rgba(192,80,80,0.3);
+      }
+      50% {
+        box-shadow:
+          0 3px 10px rgba(0,0,0,0.5),
+          0 0 0 6px var(--surface-solid),
+          0 0 0 8px rgba(106,143,168,0.25),
+          0 0 28px 8px rgba(192,80,80,0.6);
+      }
+    }
+
+    /* ═══════════════════════════════════════════
+       VARIANT 3 — Option A+: Generous Bleed
+    ═══════════════════════════════════════════ */
+    .cc-header-grid-a-plus {
+      display: grid;
+      grid-template-columns: 92px 1fr auto;
+      gap: 14px;
+      padding: 2px 14px 4px 18px;
+      align-items: start;
+      position: relative;
+      z-index: 1;
+    }
+
+    .cc-portrait-a-plus {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      border: 3px solid var(--accent);
+      background: var(--surface-solid);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 2;
+      margin-top: -20px;
+      box-shadow:
+        0 3px 10px rgba(0,0,0,0.5),
+        0 0 0 6px var(--surface-solid),
+        0 0 0 8px rgba(106,143,168,0.25);
+      transition: box-shadow 0.22s ease, border-color 0.22s ease;
+    }
+
+    .cc-portrait-a-plus .cc-portrait-initial {
+      font-size: 32px;
+    }
+
+    /* A+: stripe wider at portrait band, dramatic accent weld */
+    .cc-stripe-a-plus {
+      position: absolute;
+      left: 0; top: 0; bottom: 0;
+      width: 3px;
+      border-radius: 6px 0 0 6px;
+      background: var(--accent);
+      z-index: 0;
+    }
+    .cc-stripe-a-plus::after {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 3px;
+      height: 76px;
+      background: var(--accent);
+      border-radius: 3px 0 0 0;
+      box-shadow: 0 0 6px rgba(106,143,168,0.4);
+    }
+
+    /* A+: name font slightly larger */
+    .cc-name-plus {
+      font-size: 19px;
+    }
+
+    .cc-header-grid-a-plus .cc-identity {
+      padding-top: 10px;
+    }
+
+    /* A+: active-turn portrait */
+    .cc-card.state-active-turn .cc-portrait-a-plus {
+      border-color: var(--gem);
+      animation: portraitTurnGlowPlus 2.2s ease-in-out infinite;
+    }
+
+    /* ════════════════════════════════════════
+       State: baseline portrait during 0HP / active turn
+       (baseline has no portrait animation since it's just showing current state)
+    ════════════════════════════════════════ */
+    .cc-card.state-active-turn .cc-portrait {
+      border-color: var(--gem);
+    }
+
+    .cc-card.state-zero-hp .cc-portrait {
+      border-color: rgba(192,96,96,0.6);
+    }
+
+    .cc-card.state-active-turn .cc-portrait-b {
+      border-color: var(--gem);
+      animation: portraitBTurnGlow 2.2s ease-in-out infinite;
+    }
+
+    @keyframes portraitBTurnGlow {
+      0%, 100% {
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.04),
+          0 0 0 4px rgba(0,0,0,0.18),
+          0 0 8px 2px rgba(138,180,200,0.2);
+      }
+      50% {
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.04),
+          0 0 0 4px rgba(0,0,0,0.18),
+          0 0 16px 4px rgba(138,180,200,0.38);
+      }
+    }
+
+    .cc-card.state-zero-hp .cc-portrait-b {
+      border-color: rgba(192,96,96,0.7);
+      animation: deathGlowPortraitB 3.5s ease-in-out infinite;
+    }
+
+    @keyframes deathGlowPortraitB {
+      0%, 100% {
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.04),
+          0 0 0 4px rgba(0,0,0,0.18),
+          0 0 8px 2px rgba(192,80,80,0.22);
+      }
+      50% {
+        box-shadow:
+          inset 0 0 0 1px rgba(255,255,255,0.04),
+          0 0 0 4px rgba(0,0,0,0.18),
+          0 0 18px 5px rgba(192,80,80,0.5);
+      }
+    }
+
+    /* ─── Legend section ─── */
+    .legend-section {
+      margin-top: 60px;
+      padding-top: 24px;
+      border-top: 1px solid var(--border);
+      max-width: 900px;
+    }
+
+    .legend-title {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--accent);
+      margin-bottom: 18px;
+    }
+
+    .legend-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px 40px;
+    }
+
+    .legend-item {
+      display: flex;
+      gap: 10px;
+    }
+
+    .legend-num {
+      font-family: var(--font-display);
+      font-size: 12px;
+      color: var(--accent);
+      flex-shrink: 0;
+      width: 18px;
+      padding-top: 1px;
+    }
+
+    .legend-text {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-body);
+      line-height: 1.55;
+    }
+
+    .legend-text strong {
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Page header ── -->
+  <div class="page-header">
+    <h1 class="page-title">Portrait Treatment Options</h1>
+    <p class="page-meta">DM Dashboard · Character Card · Portrait Comparison</p>
+    <p class="page-desc">Four portrait treatments side by side — two characters stacked per column so adjacency and bleed behaviour are visible. Use the toggles to verify state rendering across all variants simultaneously.</p>
+  </div>
+
+  <!-- ── Toggles ── -->
+  <div class="toggle-bar" role="toolbar" aria-label="State toggles">
+    <span class="toggle-bar-label">Preview states:</span>
+    <div class="toggle-group">
+      <button class="toggle-btn" id="btn-active-turn" onclick="toggleState('active-turn')" aria-pressed="false">
+        <span class="toggle-dot"></span>
+        Active Turn
+      </button>
+      <div class="toggle-sep"></div>
+      <button class="toggle-btn toggle-hp-btn" id="btn-zero-hp" onclick="toggleState('zero-hp')" aria-pressed="false">
+        <span class="toggle-dot"></span>
+        0 HP — Aragorn
+      </button>
+    </div>
+  </div>
+
+  <!-- ── Four-column comparison ── -->
+  <div class="comparison-grid">
+
+    <!-- ════════════════════════════════════════
+         COLUMN 0 — Current (baseline)
+    ════════════════════════════════════════ -->
+    <div class="variant-col">
+      <div class="variant-label">Current — Baseline</div>
+
+      <!-- Card 1: Aragorn (baseline) -->
+      <div class="cc-card variant-baseline" id="v0-aragorn">
+        <div class="cc-stripe"></div>
+        <div class="cc-turn-bar"></div>
+
+        <div class="cc-header-grid">
+          <!-- Portrait: 42×42 baseline -->
+          <div class="cc-portrait" id="v0-aragorn-portrait">
+            <span class="cc-portrait-initial">A</span>
+          </div>
+          <!-- Identity -->
+          <div class="cc-identity">
+            <div class="cc-name-row">
+              <span class="cc-name">Aragorn</span>
+              <div class="cc-notes-badge">
+                <button class="cc-kebab">⋯</button>
+                <span class="cc-notes-pip"></span>
+              </div>
+            </div>
+            <div class="cc-meta-row">
+              <span class="cc-meta">Human · Ranger · Lvl 8</span>
+              <a class="cc-sheet-link" href="#">↗ Sheet</a>
+            </div>
+          </div>
+          <!-- Actions: AC inline -->
+          <div class="cc-actions-col">
+            <div class="cc-ac-badge">
+              <span class="cc-ac-number">17</span>
+              <span class="cc-ac-label">AC</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- HP block -->
+        <div class="cc-hp-block">
+          <div class="cc-hp-row">
+            <div class="cc-hp-numbers">
+              <span class="cc-hp-current" id="v0-aragorn-hp">52</span>
+              <span class="cc-hp-sep"> / </span>
+              <span class="cc-hp-max">60</span>
+            </div>
+          </div>
+          <div class="cc-hp-stepper-row">
+            <button class="cc-step-btn">−</button>
+            <div class="cc-hp-bar-track">
+              <div class="cc-hp-bar-fill hp-high" id="v0-aragorn-bar" style="width:87%"></div>
+            </div>
+            <button class="cc-step-btn">+</button>
+          </div>
+        </div>
+
+        <!-- Status row: empty for Aragorn -->
+        <div class="cc-status-row"></div>
+
+        <div class="cc-divider"></div>
+
+        <!-- Saves strip -->
+        <div class="cc-saves-strip">
+          <div class="cc-save-item">
+            <span class="cc-save-label">Perc</span>
+            <span class="cc-save-value">14</span>
+          </div>
+          <div class="cc-save-sep"></div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Wis</span>
+            <span class="cc-save-value">+1</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Con</span>
+            <span class="cc-save-value">+5</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Dex</span>
+            <span class="cc-save-value">+6</span>
+          </div>
+        </div>
+
+        <!-- Notes strip -->
+        <div class="cc-notes-strip">
+          <span class="cc-note-badge">
+            <span class="cc-note-dot"></span>
+            1 DM Note
+          </span>
+        </div>
+
+        <!-- Death saves (hidden by default) -->
+        <div class="cc-death-saves" id="v0-aragorn-death" style="display:none;">
+          <span class="cc-death-label">Death Saves</span>
+          <div class="cc-save-pips">
+            <span class="cc-save-pip success"></span>
+            <span class="cc-save-pip success-empty"></span>
+            <span class="cc-save-pip success-empty"></span>
+          </div>
+          <span style="font-family:var(--font-ui);font-size:10px;color:var(--text-muted);letter-spacing:0.1em;margin:0 6px;">|</span>
+          <div class="cc-save-pips">
+            <span class="cc-save-pip fail"></span>
+            <span class="cc-save-pip fail-empty"></span>
+            <span class="cc-save-pip fail-empty"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Isolde (baseline) -->
+      <div class="cc-card variant-baseline" id="v0-isolde">
+        <div class="cc-stripe"></div>
+        <div class="cc-turn-bar"></div>
+
+        <div class="cc-header-grid">
+          <div class="cc-portrait" id="v0-isolde-portrait">
+            <span class="cc-portrait-initial">I</span>
+          </div>
+          <div class="cc-identity">
+            <div class="cc-name-row">
+              <span class="cc-name">Isolde</span>
+              <button class="cc-kebab">⋯</button>
+            </div>
+            <div class="cc-meta-row">
+              <span class="cc-meta">Elf · Wizard · Lvl 7</span>
+              <a class="cc-sheet-link" href="#">↗ Sheet</a>
+            </div>
+          </div>
+          <div class="cc-actions-col">
+            <div class="cc-ac-badge">
+              <span class="cc-ac-number">13</span>
+              <span class="cc-ac-label">AC</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cc-hp-block">
+          <div class="cc-hp-row">
+            <div class="cc-hp-numbers">
+              <span class="cc-hp-current" style="color:#d0a840;">28</span>
+              <span class="cc-hp-sep"> / </span>
+              <span class="cc-hp-max">38</span>
+            </div>
+          </div>
+          <div class="cc-hp-stepper-row">
+            <button class="cc-step-btn">−</button>
+            <div class="cc-hp-bar-track">
+              <div class="cc-hp-bar-fill hp-mid" style="width:74%"></div>
+            </div>
+            <button class="cc-step-btn">+</button>
+          </div>
+        </div>
+
+        <div class="cc-status-row">
+          <div class="cc-conc-indicator">
+            <span class="cc-pulse-dot"></span>
+            Concentration
+          </div>
+        </div>
+
+        <!-- Spell slots -->
+        <div class="cc-slots-row">
+          <div class="cc-slot-group">
+            <span class="cc-slot-label">L1</span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip empty"></span>
+          </div>
+          <div class="cc-slot-group">
+            <span class="cc-slot-label">L2</span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip empty"></span>
+          </div>
+        </div>
+
+        <div class="cc-divider"></div>
+
+        <div class="cc-saves-strip">
+          <div class="cc-save-item">
+            <span class="cc-save-label">Perc</span>
+            <span class="cc-save-value">16</span>
+          </div>
+          <div class="cc-save-sep"></div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Wis</span>
+            <span class="cc-save-value">+2</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Con</span>
+            <span class="cc-save-value">+0</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Dex</span>
+            <span class="cc-save-value">+3</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="variant-caption">Baseline 42×42px portrait — no changes from current implementation.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         COLUMN 1 — Option B: Embedded Plate
+    ════════════════════════════════════════ -->
+    <div class="variant-col">
+      <div class="variant-label">Option B — Embedded Plate</div>
+
+      <!-- Card 1: Aragorn (Option B) -->
+      <div class="cc-card" id="v1-aragorn">
+        <div class="cc-stripe"></div>
+        <div class="cc-turn-bar"></div>
+
+        <div class="cc-header-grid-b">
+          <!-- Portrait: 56×56 embedded -->
+          <div class="cc-portrait-b" id="v1-aragorn-portrait">
+            <span class="cc-portrait-initial" style="font-size:22px;">A</span>
+          </div>
+          <!-- Identity -->
+          <div class="cc-identity">
+            <div class="cc-name-row">
+              <span class="cc-name">Aragorn</span>
+              <div class="cc-notes-badge">
+                <button class="cc-kebab">⋯</button>
+                <span class="cc-notes-pip"></span>
+              </div>
+            </div>
+            <div class="cc-meta-row">
+              <span class="cc-meta">Human · Ranger · Lvl 8</span>
+              <a class="cc-sheet-link" href="#">↗ Sheet</a>
+            </div>
+          </div>
+          <!-- Actions: AC inline (Option B keeps AC here) -->
+          <div class="cc-actions-col">
+            <div class="cc-ac-badge">
+              <span class="cc-ac-number">17</span>
+              <span class="cc-ac-label">AC</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cc-hp-block">
+          <div class="cc-hp-row">
+            <div class="cc-hp-numbers">
+              <span class="cc-hp-current" id="v1-aragorn-hp">52</span>
+              <span class="cc-hp-sep"> / </span>
+              <span class="cc-hp-max">60</span>
+            </div>
+          </div>
+          <div class="cc-hp-stepper-row">
+            <button class="cc-step-btn">−</button>
+            <div class="cc-hp-bar-track">
+              <div class="cc-hp-bar-fill hp-high" id="v1-aragorn-bar" style="width:87%"></div>
+            </div>
+            <button class="cc-step-btn">+</button>
+          </div>
+        </div>
+
+        <div class="cc-status-row"></div>
+        <div class="cc-divider"></div>
+
+        <div class="cc-saves-strip">
+          <div class="cc-save-item">
+            <span class="cc-save-label">Perc</span>
+            <span class="cc-save-value">14</span>
+          </div>
+          <div class="cc-save-sep"></div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Wis</span>
+            <span class="cc-save-value">+1</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Con</span>
+            <span class="cc-save-value">+5</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Dex</span>
+            <span class="cc-save-value">+6</span>
+          </div>
+        </div>
+
+        <div class="cc-notes-strip">
+          <span class="cc-note-badge">
+            <span class="cc-note-dot"></span>
+            1 DM Note
+          </span>
+        </div>
+
+        <div class="cc-death-saves" id="v1-aragorn-death" style="display:none;">
+          <span class="cc-death-label">Death Saves</span>
+          <div class="cc-save-pips">
+            <span class="cc-save-pip success"></span>
+            <span class="cc-save-pip success-empty"></span>
+            <span class="cc-save-pip success-empty"></span>
+          </div>
+          <span style="font-family:var(--font-ui);font-size:10px;color:var(--text-muted);letter-spacing:0.1em;margin:0 6px;">|</span>
+          <div class="cc-save-pips">
+            <span class="cc-save-pip fail"></span>
+            <span class="cc-save-pip fail-empty"></span>
+            <span class="cc-save-pip fail-empty"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Isolde (Option B) -->
+      <div class="cc-card" id="v1-isolde">
+        <div class="cc-stripe"></div>
+        <div class="cc-turn-bar"></div>
+
+        <div class="cc-header-grid-b">
+          <div class="cc-portrait-b" id="v1-isolde-portrait">
+            <span class="cc-portrait-initial" style="font-size:22px;">I</span>
+          </div>
+          <div class="cc-identity">
+            <div class="cc-name-row">
+              <span class="cc-name">Isolde</span>
+              <button class="cc-kebab">⋯</button>
+            </div>
+            <div class="cc-meta-row">
+              <span class="cc-meta">Elf · Wizard · Lvl 7</span>
+              <a class="cc-sheet-link" href="#">↗ Sheet</a>
+            </div>
+          </div>
+          <div class="cc-actions-col">
+            <div class="cc-ac-badge">
+              <span class="cc-ac-number">13</span>
+              <span class="cc-ac-label">AC</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cc-hp-block">
+          <div class="cc-hp-row">
+            <div class="cc-hp-numbers">
+              <span class="cc-hp-current" style="color:#d0a840;">28</span>
+              <span class="cc-hp-sep"> / </span>
+              <span class="cc-hp-max">38</span>
+            </div>
+          </div>
+          <div class="cc-hp-stepper-row">
+            <button class="cc-step-btn">−</button>
+            <div class="cc-hp-bar-track">
+              <div class="cc-hp-bar-fill hp-mid" style="width:74%"></div>
+            </div>
+            <button class="cc-step-btn">+</button>
+          </div>
+        </div>
+
+        <div class="cc-status-row">
+          <div class="cc-conc-indicator">
+            <span class="cc-pulse-dot"></span>
+            Concentration
+          </div>
+        </div>
+
+        <div class="cc-slots-row">
+          <div class="cc-slot-group">
+            <span class="cc-slot-label">L1</span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip empty"></span>
+          </div>
+          <div class="cc-slot-group">
+            <span class="cc-slot-label">L2</span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip empty"></span>
+          </div>
+        </div>
+
+        <div class="cc-divider"></div>
+
+        <div class="cc-saves-strip">
+          <div class="cc-save-item">
+            <span class="cc-save-label">Perc</span>
+            <span class="cc-save-value">16</span>
+          </div>
+          <div class="cc-save-sep"></div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Wis</span>
+            <span class="cc-save-value">+2</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Con</span>
+            <span class="cc-save-value">+0</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Dex</span>
+            <span class="cc-save-value">+3</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="variant-caption">56×56px — fully contained, generous inner padding. Safe, no spatial risk. Conservative upgrade.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         COLUMN 2 — Option A: Editorial Slip
+    ════════════════════════════════════════ -->
+    <div class="variant-col">
+      <div class="variant-label">Option A — Editorial Slip</div>
+
+      <!-- Card 1: Aragorn (Option A) -->
+      <div class="cc-card" id="v2-aragorn" style="margin-top: 14px;">
+        <!-- Stripe with portrait weld -->
+        <div class="cc-stripe-a"></div>
+        <div class="cc-turn-bar"></div>
+
+        <div class="cc-header-grid-a">
+          <!-- Portrait: 64×64, bleeds -10px above card top -->
+          <div class="cc-portrait-a" id="v2-aragorn-portrait">
+            <span class="cc-portrait-initial" style="font-size:26px;">A</span>
+          </div>
+          <!-- Identity -->
+          <div class="cc-identity">
+            <div class="cc-name-row">
+              <span class="cc-name">Aragorn</span>
+            </div>
+            <div class="cc-meta-row">
+              <span class="cc-meta">Human · Ranger · Lvl 8</span>
+              <a class="cc-sheet-link" href="#">↗ Sheet</a>
+            </div>
+          </div>
+          <!-- Actions col: kebab row 1, AC row 2 -->
+          <div class="cc-actions-col-a">
+            <div class="cc-notes-badge">
+              <button class="cc-kebab">⋯</button>
+              <span class="cc-notes-pip"></span>
+            </div>
+            <div class="cc-ac-badge">
+              <span class="cc-ac-number">17</span>
+              <span class="cc-ac-label">AC</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cc-hp-block">
+          <div class="cc-hp-row">
+            <div class="cc-hp-numbers">
+              <span class="cc-hp-current" id="v2-aragorn-hp">52</span>
+              <span class="cc-hp-sep"> / </span>
+              <span class="cc-hp-max">60</span>
+            </div>
+          </div>
+          <div class="cc-hp-stepper-row">
+            <button class="cc-step-btn">−</button>
+            <div class="cc-hp-bar-track">
+              <div class="cc-hp-bar-fill hp-high" id="v2-aragorn-bar" style="width:87%"></div>
+            </div>
+            <button class="cc-step-btn">+</button>
+          </div>
+        </div>
+
+        <div class="cc-status-row"></div>
+        <div class="cc-divider"></div>
+
+        <div class="cc-saves-strip">
+          <div class="cc-save-item">
+            <span class="cc-save-label">Perc</span>
+            <span class="cc-save-value">14</span>
+          </div>
+          <div class="cc-save-sep"></div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Wis</span>
+            <span class="cc-save-value">+1</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Con</span>
+            <span class="cc-save-value">+5</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Dex</span>
+            <span class="cc-save-value">+6</span>
+          </div>
+        </div>
+
+        <div class="cc-notes-strip">
+          <span class="cc-note-badge">
+            <span class="cc-note-dot"></span>
+            1 DM Note
+          </span>
+        </div>
+
+        <div class="cc-death-saves" id="v2-aragorn-death" style="display:none;">
+          <span class="cc-death-label">Death Saves</span>
+          <div class="cc-save-pips">
+            <span class="cc-save-pip success"></span>
+            <span class="cc-save-pip success-empty"></span>
+            <span class="cc-save-pip success-empty"></span>
+          </div>
+          <span style="font-family:var(--font-ui);font-size:10px;color:var(--text-muted);letter-spacing:0.1em;margin:0 6px;">|</span>
+          <div class="cc-save-pips">
+            <span class="cc-save-pip fail"></span>
+            <span class="cc-save-pip fail-empty"></span>
+            <span class="cc-save-pip fail-empty"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Isolde (Option A) -->
+      <div class="cc-card" id="v2-isolde" style="margin-top: 14px;">
+        <div class="cc-stripe-a"></div>
+        <div class="cc-turn-bar"></div>
+
+        <div class="cc-header-grid-a">
+          <div class="cc-portrait-a" id="v2-isolde-portrait">
+            <span class="cc-portrait-initial" style="font-size:26px;">I</span>
+          </div>
+          <div class="cc-identity">
+            <div class="cc-name-row">
+              <span class="cc-name">Isolde</span>
+            </div>
+            <div class="cc-meta-row">
+              <span class="cc-meta">Elf · Wizard · Lvl 7</span>
+              <a class="cc-sheet-link" href="#">↗ Sheet</a>
+            </div>
+          </div>
+          <div class="cc-actions-col-a">
+            <button class="cc-kebab">⋯</button>
+            <div class="cc-ac-badge">
+              <span class="cc-ac-number">13</span>
+              <span class="cc-ac-label">AC</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cc-hp-block">
+          <div class="cc-hp-row">
+            <div class="cc-hp-numbers">
+              <span class="cc-hp-current" style="color:#d0a840;">28</span>
+              <span class="cc-hp-sep"> / </span>
+              <span class="cc-hp-max">38</span>
+            </div>
+          </div>
+          <div class="cc-hp-stepper-row">
+            <button class="cc-step-btn">−</button>
+            <div class="cc-hp-bar-track">
+              <div class="cc-hp-bar-fill hp-mid" style="width:74%"></div>
+            </div>
+            <button class="cc-step-btn">+</button>
+          </div>
+        </div>
+
+        <div class="cc-status-row">
+          <div class="cc-conc-indicator">
+            <span class="cc-pulse-dot"></span>
+            Concentration
+          </div>
+        </div>
+
+        <div class="cc-slots-row">
+          <div class="cc-slot-group">
+            <span class="cc-slot-label">L1</span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip empty"></span>
+          </div>
+          <div class="cc-slot-group">
+            <span class="cc-slot-label">L2</span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip empty"></span>
+          </div>
+        </div>
+
+        <div class="cc-divider"></div>
+
+        <div class="cc-saves-strip">
+          <div class="cc-save-item">
+            <span class="cc-save-label">Perc</span>
+            <span class="cc-save-value">16</span>
+          </div>
+          <div class="cc-save-sep"></div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Wis</span>
+            <span class="cc-save-value">+2</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Con</span>
+            <span class="cc-save-value">+0</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Dex</span>
+            <span class="cc-save-value">+3</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="variant-caption">64×64px bleeding 10px above card edge. Accent stripe welds to portrait border. AC moves below kebab.</p>
+    </div>
+
+    <!-- ════════════════════════════════════════
+         COLUMN 3 — Option A+: Generous Bleed
+    ════════════════════════════════════════ -->
+    <div class="variant-col">
+      <div class="variant-label">Option A+ — Generous Bleed</div>
+
+      <!-- Card 1: Aragorn (Option A+) -->
+      <div class="cc-card" id="v3-aragorn" style="margin-top: 24px;">
+        <div class="cc-stripe-a-plus"></div>
+        <div class="cc-turn-bar"></div>
+
+        <div class="cc-header-grid-a-plus">
+          <!-- Portrait: 80×80, bleeds -20px above card top -->
+          <div class="cc-portrait-a-plus" id="v3-aragorn-portrait">
+            <span class="cc-portrait-initial" style="font-size:32px;">A</span>
+          </div>
+          <!-- Identity — name slightly larger -->
+          <div class="cc-identity">
+            <div class="cc-name-row">
+              <span class="cc-name cc-name-plus">Aragorn</span>
+            </div>
+            <div class="cc-meta-row">
+              <span class="cc-meta">Human · Ranger · Lvl 8</span>
+              <a class="cc-sheet-link" href="#">↗ Sheet</a>
+            </div>
+          </div>
+          <!-- Actions col: kebab + AC below -->
+          <div class="cc-actions-col-a">
+            <div class="cc-notes-badge">
+              <button class="cc-kebab">⋯</button>
+              <span class="cc-notes-pip"></span>
+            </div>
+            <div class="cc-ac-badge">
+              <span class="cc-ac-number">17</span>
+              <span class="cc-ac-label">AC</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cc-hp-block">
+          <div class="cc-hp-row">
+            <div class="cc-hp-numbers">
+              <span class="cc-hp-current" id="v3-aragorn-hp">52</span>
+              <span class="cc-hp-sep"> / </span>
+              <span class="cc-hp-max">60</span>
+            </div>
+          </div>
+          <div class="cc-hp-stepper-row">
+            <button class="cc-step-btn">−</button>
+            <div class="cc-hp-bar-track">
+              <div class="cc-hp-bar-fill hp-high" id="v3-aragorn-bar" style="width:87%"></div>
+            </div>
+            <button class="cc-step-btn">+</button>
+          </div>
+        </div>
+
+        <div class="cc-status-row"></div>
+        <div class="cc-divider"></div>
+
+        <div class="cc-saves-strip">
+          <div class="cc-save-item">
+            <span class="cc-save-label">Perc</span>
+            <span class="cc-save-value">14</span>
+          </div>
+          <div class="cc-save-sep"></div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Wis</span>
+            <span class="cc-save-value">+1</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Con</span>
+            <span class="cc-save-value">+5</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Dex</span>
+            <span class="cc-save-value">+6</span>
+          </div>
+        </div>
+
+        <div class="cc-notes-strip">
+          <span class="cc-note-badge">
+            <span class="cc-note-dot"></span>
+            1 DM Note
+          </span>
+        </div>
+
+        <div class="cc-death-saves" id="v3-aragorn-death" style="display:none;">
+          <span class="cc-death-label">Death Saves</span>
+          <div class="cc-save-pips">
+            <span class="cc-save-pip success"></span>
+            <span class="cc-save-pip success-empty"></span>
+            <span class="cc-save-pip success-empty"></span>
+          </div>
+          <span style="font-family:var(--font-ui);font-size:10px;color:var(--text-muted);letter-spacing:0.1em;margin:0 6px;">|</span>
+          <div class="cc-save-pips">
+            <span class="cc-save-pip fail"></span>
+            <span class="cc-save-pip fail-empty"></span>
+            <span class="cc-save-pip fail-empty"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Card 2: Isolde (Option A+) -->
+      <div class="cc-card" id="v3-isolde" style="margin-top: 24px;">
+        <div class="cc-stripe-a-plus"></div>
+        <div class="cc-turn-bar"></div>
+
+        <div class="cc-header-grid-a-plus">
+          <div class="cc-portrait-a-plus" id="v3-isolde-portrait">
+            <span class="cc-portrait-initial" style="font-size:32px;">I</span>
+          </div>
+          <div class="cc-identity">
+            <div class="cc-name-row">
+              <span class="cc-name cc-name-plus">Isolde</span>
+            </div>
+            <div class="cc-meta-row">
+              <span class="cc-meta">Elf · Wizard · Lvl 7</span>
+              <a class="cc-sheet-link" href="#">↗ Sheet</a>
+            </div>
+          </div>
+          <div class="cc-actions-col-a">
+            <button class="cc-kebab">⋯</button>
+            <div class="cc-ac-badge">
+              <span class="cc-ac-number">13</span>
+              <span class="cc-ac-label">AC</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cc-hp-block">
+          <div class="cc-hp-row">
+            <div class="cc-hp-numbers">
+              <span class="cc-hp-current" style="color:#d0a840;">28</span>
+              <span class="cc-hp-sep"> / </span>
+              <span class="cc-hp-max">38</span>
+            </div>
+          </div>
+          <div class="cc-hp-stepper-row">
+            <button class="cc-step-btn">−</button>
+            <div class="cc-hp-bar-track">
+              <div class="cc-hp-bar-fill hp-mid" style="width:74%"></div>
+            </div>
+            <button class="cc-step-btn">+</button>
+          </div>
+        </div>
+
+        <div class="cc-status-row">
+          <div class="cc-conc-indicator">
+            <span class="cc-pulse-dot"></span>
+            Concentration
+          </div>
+        </div>
+
+        <div class="cc-slots-row">
+          <div class="cc-slot-group">
+            <span class="cc-slot-label">L1</span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip empty"></span>
+          </div>
+          <div class="cc-slot-group">
+            <span class="cc-slot-label">L2</span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip filled"></span>
+            <span class="cc-slot-pip empty"></span>
+          </div>
+        </div>
+
+        <div class="cc-divider"></div>
+
+        <div class="cc-saves-strip">
+          <div class="cc-save-item">
+            <span class="cc-save-label">Perc</span>
+            <span class="cc-save-value">16</span>
+          </div>
+          <div class="cc-save-sep"></div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Wis</span>
+            <span class="cc-save-value">+2</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Con</span>
+            <span class="cc-save-value">+0</span>
+          </div>
+          <div class="cc-save-item">
+            <span class="cc-save-label">Dex</span>
+            <span class="cc-save-value">+3</span>
+          </div>
+        </div>
+      </div>
+
+      <p class="variant-caption">80×80px bleeding 20px above card edge. Outer accent glow ring. Most assertive portrait treatment — medallion feel.</p>
+    </div>
+
+  </div><!-- /.comparison-grid -->
+
+  <!-- ── Legend ── -->
+  <div class="legend-section">
+    <h2 class="legend-title">Design Notes</h2>
+    <div class="legend-grid">
+      <div class="legend-item">
+        <span class="legend-num">1</span>
+        <span class="legend-text"><strong>Spacer ring is load-bearing</strong> — the <code>0 0 0 4px/6px surfaceSolid</code> box-shadow layer on bleeding portraits creates a clean ring of card-background color that visually anchors each portrait to its own card. Without it, a portrait reads as floating between the two adjacent cards.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-num">2</span>
+        <span class="legend-text"><strong>Accent stripe weld</strong> — in Options A and A+, a <code>::after</code> pseudo-element on <code>.cc-stripe</code> widens the stripe at the portrait band so it merges visually with the portrait border. Portrait and spine read as one continuous accent element at the top-left corner.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-num">3</span>
+        <span class="legend-text"><strong>AC badge relocation</strong> — Options A and A+ move AC below the ⋯ kebab in the actions column. This is required because at card width the header grid cannot fit portrait + name + meta + AC + kebab all in one row without compression. AC rank drops slightly but remains top-right.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-num">4</span>
+        <span class="legend-text"><strong>16px gutter between cards</strong> — bleed values (-10px, -20px) are applied as <code>margin-top</code> on the portrait element only, not on the card. The card's physical top edge is unchanged. The portrait simply overflows it upward into the gutter, so inter-card layout is not disturbed.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-num">5</span>
+        <span class="legend-text"><strong>State propagation</strong> — portrait borders and glow animations inherit card state (active-turn = gem pulse, 0HP = red death glow). The brief requires this so a bleeding portrait never visually decouples from its card during dramatic states like FALLEN or active combat.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-num">6</span>
+        <span class="legend-text"><strong>Baseline desaturation</strong> — the "Current" column uses <code>filter: saturate(0.78) brightness(0.92)</code> to read as slightly dim relative to the proposed options, making comparison easier. This is a prototype-only annotation device; the actual current implementation is at full saturation.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-num">7</span>
+        <span class="legend-text"><strong>Option A+ outer glow ring</strong> — the third <code>box-shadow</code> layer on the A+ portrait (<code>0 0 0 8px rgba(accent, 0.25)</code>) creates a soft accent halo beyond the spacer ring. This gives the medallion / campaign badge feel requested in the brief. Adjust alpha to taste.</span>
+      </div>
+      <div class="legend-item">
+        <span class="legend-num">8</span>
+        <span class="legend-text"><strong>Column top offset</strong> — Options A and A+ add <code>margin-top: 14px / 24px</code> to the first card in each column to give visual breathing room for the bleed above the first card. In a real scrolling column this space is naturally provided by the DM dashboard chrome above the card list.</span>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // ── State management for toggles ──
+    let activeStates = {
+      'active-turn': false,
+      'zero-hp': false,
+    };
+
+    // Card IDs that are "Aragorn" (affected by 0HP toggle)
+    const aragornCards = ['v0-aragorn', 'v1-aragorn', 'v2-aragorn', 'v3-aragorn'];
+    // All first cards (affected by active-turn toggle)
+    const firstCards = ['v0-aragorn', 'v1-aragorn', 'v2-aragorn', 'v3-aragorn'];
+
+    function toggleState(stateKey) {
+      activeStates[stateKey] = !activeStates[stateKey];
+      const btnId = stateKey === 'active-turn' ? 'btn-active-turn' : 'btn-zero-hp';
+      const btn = document.getElementById(btnId);
+      btn.classList.toggle('active', activeStates[stateKey]);
+      btn.setAttribute('aria-pressed', activeStates[stateKey].toString());
+      applyStates();
+    }
+
+    function applyStates() {
+      // ── Active-turn toggle: affects all Aragorn cards (first card in each column) ──
+      firstCards.forEach(id => {
+        const card = document.getElementById(id);
+        if (!card) return;
+        if (activeStates['active-turn']) {
+          card.classList.add('state-active-turn');
+        } else {
+          card.classList.remove('state-active-turn');
+        }
+      });
+
+      // ── 0HP toggle: affects all Aragorn cards ──
+      aragornCards.forEach(id => {
+        const card = document.getElementById(id);
+        if (!card) return;
+
+        const hpEl = card.querySelector('.cc-hp-current');
+        const barEl = card.querySelector('.cc-hp-bar-fill');
+        const deathEl = document.getElementById(id + '-death');
+
+        if (activeStates['zero-hp']) {
+          card.classList.add('state-zero-hp');
+          if (hpEl) { hpEl.textContent = '0'; hpEl.style.color = '#c06060'; }
+          if (barEl) { barEl.style.width = '0%'; barEl.className = 'cc-hp-bar-fill hp-zero'; }
+          if (deathEl) deathEl.style.display = 'flex';
+          // Remove active-turn if also 0HP (active turn wins visually via CSS order,
+          // but for 0HP we still show death saves regardless)
+        } else {
+          card.classList.remove('state-zero-hp');
+          if (hpEl) { hpEl.textContent = '52'; hpEl.style.color = ''; }
+          if (barEl) { barEl.style.width = '87%'; barEl.className = 'cc-hp-bar-fill hp-high'; }
+          if (deathEl) deathEl.style.display = 'none';
+        }
+      });
+    }
+  </script>
+
+</body>
+</html>

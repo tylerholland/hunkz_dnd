@@ -371,6 +371,52 @@ The HP / Hit Dice / Armor row uses intentionally mixed sizes for readability:
 
 ---
 
+## Death Saves Strip (DM dashboard party card)
+
+A footer-band that mounts below the Notes strip when `hpCurrent === 0`. Colors are universal — not palette-derived — so the strip reads identically on all character palettes.
+
+**Color tokens** (defined as CSS custom properties on `.ds-strip`):
+
+| Token | Value | Use |
+|---|---|---|
+| Success | `#5a9a5a` | Filled success pip |
+| Success rim | `rgba(90,154,90,0.4)` | Empty pip border |
+| Failure | `#c06060` | Filled failure pip; FALLEN label |
+| Failure rim | `rgba(192,96,96,0.35)` | Empty pip border |
+| Failure glow | `rgba(192,96,96,0.55)` | Filled failure pip box-shadow |
+| Strip wash | `rgba(192,96,96,0.07)` | Resting background |
+| Strip wash (FALLEN) | `rgba(192,96,96,0.11)` | Tombstone background |
+| Top border | `rgba(192,96,96,0.45)` | Resting |
+| Top border (FALLEN) | `rgba(192,96,96,0.6)` | Tombstone |
+| Label | `rgba(192,96,96,0.65)` | DEATH SAVES label |
+| Damage label | `rgba(192,96,96,0.75)` | DAMAGE AT 0 label |
+| Inner divider | `rgba(192,96,96,0.18)` | Between pip row and shortcut row |
+| Vertical divider | `rgba(192,96,96,0.25)` | Between success / failure clusters |
+| Chevron | `rgba(192,96,96,0.5)` | Disclosure ⌃/⌄ |
+| FALLEN glyph | `#a04040` | ⨯ prefix in tombstone |
+| No-Fail pill | `var(--pal-text-muted)` | Only palette-derived element |
+
+**Key dimensions:**
+- Strip resting: 40px height; expanded (shortcuts revealed): 89px
+- Pip visible diameter: 12px; pip tap target: 36×40px; gap within cluster: 8px
+- Chevron tap target: 44×40px
+- Pill height: 32px visible / 44px tap target; padding: `8px 12px`; border-radius: 3px
+
+**States:**
+- **Resting**: pip row + chevron at right edge
+- **Expanded**: pip row + 1px inner divider + 48px shortcut row (NAT 20, NAT 1 left-grouped; ✦ STABLE right-aligned)
+- **Damage at 0**: pip row replaced by "+ DAMAGE AT 0" label + "+1 FAIL" / "CRIT +2" / "NO FAIL" pills (12s auto-resolve)
+- **FALLEN**: tombstone row replacing pip row; no chevron; strip darker wash
+- **Stable**: strip unmounts, card dims to 0.85 opacity
+
+**CSS classes** (in `characterCard.css`): `.ds-strip-wrap`, `.ds-strip`, `.ds-pip-row`, `.ds-pip`, `.ds-pip-dot`, `.ds-cluster-divider`, `.ds-chevron-btn`, `.ds-damage-prompt`, `.ds-dmg-pill`, `.ds-inner-divider`, `.ds-shortcut-row`, `.ds-shortcut-pill`, `.ds-tombstone`, `.ds-fallen-label`, `.ds-frozen-cluster`
+
+**New keyframes** (in `dashboard.css`): `dsStripExpand` (shortcut row reveal), `dsTombstoneIn` (tombstone cross-fade), `dsResolveGlow` (green glow pulse on NAT20/Stable/3rd success), `dmgPromptSlideIn` (damage prompt entrance).
+
+**Utility classes**: `.ds-strip.shake` (reuses `dmDeathSaveShake`), `.ds-strip.resolve-glow` (uses `dsResolveGlow`).
+
+---
+
 ## Scrollbar
 
 Thin, subtle, palette-neutral:

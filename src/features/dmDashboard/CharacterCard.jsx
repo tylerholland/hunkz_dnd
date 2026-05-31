@@ -803,7 +803,7 @@ function getHpTone(cardPal, hpPct) {
   };
 }
 
-function NotesStrip({ slug, dmNotes: initialDmNotes, sharedPlayerNotes, dmPassword, pal }) {
+function NotesStrip({ slug, dmNotes: initialDmNotes, sharedPlayerNotes, dmPassword, pal, hasDeathStripBelow = false }) {
   const [open, setOpen] = useState(false);
   const [dmNotes, setDmNotes] = useState(initialDmNotes || []);
   const [inputVal, setInputVal] = useState("");
@@ -864,12 +864,12 @@ function NotesStrip({ slug, dmNotes: initialDmNotes, sharedPlayerNotes, dmPasswo
   const label = hasNotes ? "DM Notes" : "+ Note";
 
   return (
-    <div className="cc-notes-strip" onClick={handleToggle}>
+    <div className={`cc-notes-strip${hasDeathStripBelow ? " has-death-strip-below" : ""}`} onClick={handleToggle}>
       <div
         className="cc-notes-bar"
         style={{
           background: stripBarBg,
-          borderRadius: open ? 0 : "0 0 5px 5px",
+          borderRadius: (open || hasDeathStripBelow) ? 0 : "0 0 5px 5px",
           borderBottom: open ? `1px solid ${pal.border}` : "none",
         }}
         onMouseEnter={(e) => { if (!open && !hasNotes) e.currentTarget.style.background = "rgba(106,143,168,0.07)"; }}
@@ -1033,8 +1033,14 @@ export default function CharacterCard({
   const initialSaves = getDeathSaveCounts(char);
   const [isFallen, setIsFallen] = useState(() => initialSaves.failures >= 3);
   const [isStable, setIsStable] = useState(() => initialSaves.successes >= 3);
-  // Ref to shake the death-save block
+  // Ref to shake the death-save strip
   const deathSavesBlockRef = useRef(null);
+  // Shortcut row disclosure state and 30s inactivity auto-collapse
+  const [deathShortcutsOpen, setDeathShortcutsOpen] = useState(false);
+  const deathShortcutsOpenRef = useRef(false);
+  const shortcutsInactivityRef = useRef(null);
+  // 12-second auto-resolve timer for damage-at-0 prompt
+  const dmgAtZeroTimerRef = useRef(null);
 
   useEffect(() => {
     optimisticHpRef.current = optimisticHp;
@@ -1081,14 +1087,16 @@ export default function CharacterCard({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [char.deathSaves]);
 
-  // When HP rises above 0 (healed), clear prompt and fallen/stable states
+  // When HP rises above 0 (healed), clear prompt, shortcuts, and fallen/stable states
   useEffect(() => {
     if (optimisticHp > 0) {
-      setDamageAtZeroPrompt(false);
+      dismissDmgPrompt();
+      closeDeathShortcuts();
       setIsFallen(false);
       setIsStable(false);
       wasAtZeroRef.current = false;
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [optimisticHp]);
 
   useEffect(() => {
@@ -1105,6 +1113,8 @@ export default function CharacterCard({
   useEffect(() => () => {
     window.clearTimeout(hpFeedbackTimeoutRef.current);
     window.clearTimeout(concentrationFadeTimeoutRef.current);
+    window.clearTimeout(shortcutsInactivityRef.current);
+    window.clearTimeout(dmgAtZeroTimerRef.current);
     removalTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
     removalTimersRef.current.clear();
   }, []);
@@ -1118,10 +1128,11 @@ export default function CharacterCard({
       // Detect damage-at-0 stepper path: HP settles at 0 while already at 0
       // wasAtZeroRef tracks whether the character was at 0 before the gesture started
       if (targetHp === 0 && wasAtZeroRef.current) {
-        setDamageAtZeroPrompt(true);
+        showDmgAtZeroPrompt();
       }
       return patchSession(char.slug, { hpCurrent: targetHp }, dmPassword);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [char.slug, dmPassword]
   );
   const rollbackHp = useCallback((previousServerHp) => {
@@ -1275,23 +1286,63 @@ export default function CharacterCard({
     setTimeout(() => el.classList.remove("shake"), 320);
   }
 
+  function resetShortcutsInactivity() {
+    window.clearTimeout(shortcutsInactivityRef.current);
+    shortcutsInactivityRef.current = window.setTimeout(() => {
+      setDeathShortcutsOpen(false);
+    }, 30000);
+  }
+
+  function openDeathShortcuts() {
+    deathShortcutsOpenRef.current = true;
+    setDeathShortcutsOpen(true);
+    resetShortcutsInactivity();
+  }
+
+  function closeDeathShortcuts() {
+    window.clearTimeout(shortcutsInactivityRef.current);
+    deathShortcutsOpenRef.current = false;
+    setDeathShortcutsOpen(false);
+  }
+
+  function showDmgAtZeroPrompt() {
+    // Collapse shortcuts first if open (180ms), then show prompt
+    if (deathShortcutsOpenRef.current) {
+      closeDeathShortcuts();
+      window.setTimeout(() => _activateDmgPrompt(), 200);
+    } else {
+      _activateDmgPrompt();
+    }
+  }
+
+  function _activateDmgPrompt() {
+    setDamageAtZeroPrompt(true);
+    window.clearTimeout(dmgAtZeroTimerRef.current);
+    dmgAtZeroTimerRef.current = window.setTimeout(() => {
+      setDamageAtZeroPrompt(false);
+    }, 12000);
+  }
+
+  function dismissDmgPrompt() {
+    window.clearTimeout(dmgAtZeroTimerRef.current);
+    setDamageAtZeroPrompt(false);
+  }
+
   // Death save pip tap handlers
   function handleSuccessPip(idx) {
     const current = optimisticDeathSaves.successes;
     let next;
     if (idx < current) {
-      // Tap filled pip → un-fill it and all to its right (correction, instant)
       next = idx;
     } else {
-      // Tap empty pip → fill it and all to its left (fill-up-to)
       next = idx + 1;
     }
     const nextSaves = { ...optimisticDeathSaves, successes: next };
     commitDeathSaves(nextSaves);
-    // 3 successes → stable
     if (next >= 3 && !isStable) {
       setIsStable(true);
-      setDamageAtZeroPrompt(false);
+      dismissDmgPrompt();
+      closeDeathShortcuts();
     }
   }
 
@@ -1299,35 +1350,38 @@ export default function CharacterCard({
     const current = optimisticDeathSaves.failures;
     let next;
     if (idx < current) {
-      // Tap filled pip → correct down (instant, no shake)
       next = idx;
       const nextSaves = { ...optimisticDeathSaves, failures: next };
       commitDeathSaves(nextSaves);
       if (isFallen) setIsFallen(false);
       return;
     } else {
-      // Tap empty pip → fill up-to
       next = idx + 1;
     }
     const nextSaves = { ...optimisticDeathSaves, failures: next };
     commitDeathSaves(nextSaves);
-    // Trigger shake animation on failure mark
     setTimeout(() => triggerDeathSaveShake(), 180);
-    // 3 failures → FALLEN
     if (next >= 3 && !isFallen) {
       setIsFallen(true);
+      closeDeathShortcuts();
     }
   }
 
+  function handleFrozenPipClick(idx) {
+    // Un-fill failures from idx onward → revert from FALLEN to active pip row
+    const nextSaves = { ...optimisticDeathSaves, failures: idx };
+    commitDeathSaves(nextSaves);
+    setIsFallen(false);
+  }
+
   function handleNat20() {
-    // Rules-accurate: HP → 1, clear death saves (single atomic write)
     deathSavesPendingRef.current = true;
     const nextSaves = { successes: 0, failures: 0 };
     setOptimisticDeathSaves(nextSaves);
     setIsFallen(false);
     setIsStable(false);
-    setDamageAtZeroPrompt(false);
-    // Optimistically update HP too
+    dismissDmgPrompt();
+    closeDeathShortcuts();
     serverHpRef.current = 1;
     setOptimisticHp(1);
     commitSessionFields({ hpCurrent: 1, deathSaves: nextSaves })
@@ -1340,10 +1394,12 @@ export default function CharacterCard({
     const nextSaves = { ...optimisticDeathSaves, failures: next };
     deathSavesPendingRef.current = true;
     setOptimisticDeathSaves(nextSaves);
-    // Shake once after staggered fill (60ms stagger in CSS animation + 180ms fill)
     setTimeout(() => triggerDeathSaveShake(), 240);
     commitDeathSaves(nextSaves).finally(() => { deathSavesPendingRef.current = false; });
-    if (next >= 3 && !isFallen) setIsFallen(true);
+    if (next >= 3 && !isFallen) {
+      setIsFallen(true);
+      closeDeathShortcuts();
+    }
   }
 
   function handleStable() {
@@ -1351,7 +1407,8 @@ export default function CharacterCard({
     commitDeathSaves(nextSaves);
     setIsStable(true);
     setIsFallen(false);
-    setDamageAtZeroPrompt(false);
+    dismissDmgPrompt();
+    closeDeathShortcuts();
   }
 
   function handleDamageAtZeroFailure(count) {
@@ -1359,7 +1416,7 @@ export default function CharacterCard({
     const next = Math.min(3, current + count);
     const nextSaves = { ...optimisticDeathSaves, failures: next };
     commitDeathSaves(nextSaves);
-    setDamageAtZeroPrompt(false);
+    dismissDmgPrompt();
     setTimeout(() => triggerDeathSaveShake(), 180);
     if (next >= 3 && !isFallen) setIsFallen(true);
   }
@@ -1422,6 +1479,8 @@ export default function CharacterCard({
       "--turn-color": cardPal.accent,
       "--turn-glow": withAlpha(cardPal.accent, 0.35),
     } : {}),
+    // Portrait outer glow ring — accent at low alpha, palette-aware
+    "--pal-portrait-glow": withAlpha(cardPal.accent, 0.25),
   };
 
   const isHpZero = hasHp && optimisticHp === 0;
@@ -1471,18 +1530,16 @@ export default function CharacterCard({
 
         {/* Character body */}
         <div
-          style={{ minWidth: 0, cursor: onHeaderClick ? "pointer" : "default" }}
+          className="cc-identity"
+          style={{ cursor: onHeaderClick ? "pointer" : "default" }}
           onClick={onHeaderClick}
         >
-          {/* Name + AC row */}
+          {/* Name row — AC badge moved to actions column */}
           <div className="cc-name-row">
             <div
               className="cc-name-text"
               style={{ textShadow: isActiveTurn ? `0 0 10px ${cardPal.accent}55` : "none" }}
             >{char.name || "Unknown"}</div>
-            <div className="cc-ac-badge">
-              AC {char.armorTotal ?? "—"}
-            </div>
           </div>
 
           {/* Race · Class · Level + external link */}
@@ -1502,13 +1559,16 @@ export default function CharacterCard({
           </div>
         </div>
 
-        {/* Actions column: kebab menu + popover */}
+        {/* Actions column: kebab menu + AC badge + popover */}
         <div className="cc-actions-col">
           <button
             onClick={() => setPopoverOpen((value) => !value)}
             className={`cc-kebab-btn${popoverOpen ? " active" : ""}`}
             title="More actions"
           >⋯</button>
+          <div className="cc-ac-badge">
+            AC {char.armorTotal ?? "—"}
+          </div>
 
           {popoverOpen && (
             <QuickActionPopover
@@ -1585,96 +1645,6 @@ export default function CharacterCard({
               <span className="cc-temp-hp-badge">
                 +{char.tempHP} temp
               </span>
-            </div>
-          )}
-
-          {/* Death saves — interactive tracker (Story 19) */}
-          <div
-            ref={deathSavesBlockRef}
-            className={`cc-death-saves${showDeathSaves ? " visible" : ""}${isFallen ? " frozen" : ""}`}
-          >
-            {/* Row 1: DEATH SAVES label + NAT20 / NAT1 shortcuts */}
-            <div className="cc-ds-main-row">
-              <span className="cc-ds-label">Death Saves</span>
-              <div className="cc-ds-shortcuts">
-                <button
-                  className="cc-ds-shortcut nat20"
-                  onClick={(e) => { e.stopPropagation(); handleNat20(); }}
-                  title="Natural 20 — set HP to 1, clear tracker"
-                >Nat 20</button>
-                <button
-                  className="cc-ds-shortcut nat1"
-                  onClick={(e) => { e.stopPropagation(); handleNat1(); }}
-                  title="Natural 1 — +2 failure pips"
-                >Nat 1</button>
-              </div>
-            </div>
-
-            {/* Row 2: pip row (44px touch target height) */}
-            <div className="cc-ds-pip-row">
-              {/* Success cluster */}
-              <div className="cc-ds-pip-cluster">
-                {[0, 1, 2].map((idx) => (
-                  <button
-                    key={`ds-s-${idx}`}
-                    className={`cc-ds-pip ${idx < deathSaves.successes ? "success-filled" : "success-empty"}`}
-                    onClick={(e) => { e.stopPropagation(); handleSuccessPip(idx); }}
-                    title={`Success ${idx + 1}`}
-                  />
-                ))}
-              </div>
-
-              {/* Vertical rule divider */}
-              <div className="cc-ds-divider" />
-
-              {/* Failure cluster */}
-              <div className="cc-ds-pip-cluster">
-                {[0, 1, 2].map((idx) => (
-                  <button
-                    key={`ds-f-${idx}`}
-                    className={`cc-ds-pip ${idx < deathSaves.failures ? "failure-filled" : "failure-empty"}`}
-                    onClick={(e) => { e.stopPropagation(); handleFailurePip(idx); }}
-                    title={`Failure ${idx + 1}`}
-                  />
-                ))}
-              </div>
-            </div>
-
-            {/* FALLEN label — shown when 3 failures */}
-            {isFallen && (
-              <div className="cc-fallen-label">FALLEN</div>
-            )}
-
-            {/* Row 3: Stable sub-line — only shown when not fallen */}
-            {!isFallen && (
-              <div className="cc-ds-stable-row">
-                <button
-                  className="cc-ds-stable-btn"
-                  onClick={(e) => { e.stopPropagation(); handleStable(); }}
-                  title="Stabilized via Medicine check or spell — still at 0 HP"
-                >✦ Stable</button>
-              </div>
-            )}
-          </div>
-
-          {/* Damage-at-0 inline prompt (Story 19) */}
-          {damageAtZeroPrompt && showDeathSaves && (
-            <div className="cc-dmg-at-zero-prompt">
-              <div className="cc-dmg-at-zero-label">Damage at 0 HP — record failure?</div>
-              <div className="cc-dmg-at-zero-btns">
-                <button
-                  className="cc-dmg-at-zero-btn default-focus"
-                  onClick={(e) => { e.stopPropagation(); handleDamageAtZeroFailure(1); }}
-                >+<span className="cc-dmg-btn-num">1</span> Failure</button>
-                <button
-                  className="cc-dmg-at-zero-btn"
-                  onClick={(e) => { e.stopPropagation(); handleDamageAtZeroFailure(2); }}
-                >Crit: +<span className="cc-dmg-btn-num">2</span></button>
-                <button
-                  className="cc-dmg-at-zero-btn no-failure"
-                  onClick={(e) => { e.stopPropagation(); setDamageAtZeroPrompt(false); }}
-                >No Failure</button>
-              </div>
             </div>
           )}
 
@@ -1891,7 +1861,134 @@ export default function CharacterCard({
         sharedPlayerNotes={char.sharedPlayerNotes || []}
         dmPassword={dmPassword}
         pal={cardPal}
+        hasDeathStripBelow={showDeathSaves}
       />
+
+      {/* Death Saves Strip — mounts below Notes when HP = 0 (brief §3a–§3e) */}
+      <div className={`ds-strip-wrap${showDeathSaves ? " mounted" : ""}`}>
+        <div
+          ref={deathSavesBlockRef}
+          className={`ds-strip${isFallen ? " fallen" : ""}`}
+        >
+          {/* Tombstone (FALLEN state — brief §3d) */}
+          {isFallen && (
+            <div className="ds-tombstone visible">
+              <span className="ds-fallen-label">
+                <span className="ds-fallen-glyph">⨯</span>Fallen
+              </span>
+              <div className="ds-frozen-cluster">
+                {[0, 1, 2].map((idx) => (
+                  <button
+                    key={`ds-frozen-${idx}`}
+                    className="ds-pip"
+                    onClick={(e) => { e.stopPropagation(); handleFrozenPipClick(idx); }}
+                    title={`Un-fill failure ${idx + 1} — revert from Fallen`}
+                  >
+                    <div className="ds-pip-dot failure-filled frozen" />
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Pip row (hidden in FALLEN, replaced by damage prompt when active) */}
+          {!isFallen && (
+            <>
+              {/* Damage-at-0 prompt — replaces pip row contents (brief §3c) */}
+              <div className={`ds-damage-prompt${damageAtZeroPrompt ? " visible" : ""}`}>
+                <span className="ds-dmg-label">+ Damage at 0</span>
+                <button
+                  className="ds-dmg-pill fail-one"
+                  onClick={(e) => { e.stopPropagation(); handleDamageAtZeroFailure(1); }}
+                >+1 Fail</button>
+                <button
+                  className="ds-dmg-pill fail-crit"
+                  onClick={(e) => { e.stopPropagation(); handleDamageAtZeroFailure(2); }}
+                >Crit <strong>+2</strong></button>
+                <button
+                  className="ds-dmg-pill no-fail"
+                  onClick={(e) => { e.stopPropagation(); dismissDmgPrompt(); }}
+                >No Fail</button>
+              </div>
+
+              {/* Pip row (hidden while damage prompt is showing) */}
+              {!damageAtZeroPrompt && (
+                <div className="ds-pip-row">
+                  <span className="ds-label">Death Saves</span>
+
+                  {/* Success cluster */}
+                  <div className="ds-pip-cluster">
+                    {[0, 1, 2].map((idx) => (
+                      <button
+                        key={`ds-s-${idx}`}
+                        className="ds-pip"
+                        onClick={(e) => { e.stopPropagation(); handleSuccessPip(idx); }}
+                        title={`Success ${idx + 1}`}
+                      >
+                        <div className={`ds-pip-dot ${idx < deathSaves.successes ? "success-filled" : "success-empty"}`} />
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="ds-cluster-divider" />
+
+                  {/* Failure cluster */}
+                  <div className="ds-pip-cluster">
+                    {[0, 1, 2].map((idx) => (
+                      <button
+                        key={`ds-f-${idx}`}
+                        className="ds-pip"
+                        onClick={(e) => { e.stopPropagation(); handleFailurePip(idx); }}
+                        title={`Failure ${idx + 1}`}
+                      >
+                        <div className={`ds-pip-dot ${idx < deathSaves.failures ? "failure-filled" : "failure-empty"}`} />
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* Disclosure chevron */}
+                  <button
+                    className="ds-chevron-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (deathShortcutsOpen) {
+                        closeDeathShortcuts();
+                      } else {
+                        openDeathShortcuts();
+                      }
+                    }}
+                    title={deathShortcutsOpen ? "Hide shortcuts" : "Show shortcuts (NAT 20 / NAT 1 / Stable)"}
+                  >
+                    <span className={`ds-chevron-glyph${deathShortcutsOpen ? " expanded" : ""}`}>⌃</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Inner divider + shortcut row (brief §3b) */}
+              <div className={`ds-inner-divider${deathShortcutsOpen ? " visible" : ""}`} />
+              <div className={`ds-shortcut-row${deathShortcutsOpen ? " expanded" : ""}`}>
+                <button
+                  className="ds-shortcut-pill nat20"
+                  onClick={(e) => { e.stopPropagation(); handleNat20(); }}
+                  title="Natural 20 — HP → 1, clear saves"
+                >Nat 20</button>
+                <button
+                  className="ds-shortcut-pill nat1"
+                  onClick={(e) => { e.stopPropagation(); handleNat1(); }}
+                  title="Natural 1 — +2 failures"
+                >Nat 1</button>
+                <div className="ds-shortcut-stable">
+                  <button
+                    className="ds-shortcut-pill stable"
+                    onClick={(e) => { e.stopPropagation(); handleStable(); }}
+                    title="Stabilized via Medicine check or spell — HP stays 0"
+                  >✦ Stable</button>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
 
       {modalMode && (
         <DamageHealModal
@@ -1902,9 +1999,8 @@ export default function CharacterCard({
           onOptimisticUpdate={(newHp) => {
             const wasZero = optimisticHp === 0;
             setOptimisticHp(newHp);
-            // Damage-at-0 modal path: if character was already at 0 and damage is applied
             if (modalMode === "damage" && wasZero && newHp === 0) {
-              setDamageAtZeroPrompt(true);
+              showDmgAtZeroPrompt();
             }
           }}
           onSync={onUpdate}

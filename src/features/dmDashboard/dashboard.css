@@ -81,6 +81,33 @@
   100% { box-shadow: 0 0 0 0 rgba(90,154,90,0); }
 }
 
+/* Death saves strip redesign — brief §5 keyframes */
+
+/* Shortcut row reveal: fade in + slight upward translate */
+@keyframes dsStripExpand {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* FALLEN tombstone cross-fade in */
+@keyframes dsTombstoneIn {
+  0%   { opacity: 0; transform: scale(0.97); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+/* Resolve glow: green outer glow pulse on the strip (NAT20 / Stable / 3rd success) */
+@keyframes dsResolveGlow {
+  0%   { box-shadow: 0 0 0 0 rgba(90,154,90,0); }
+  40%  { box-shadow: 0 0 0 4px rgba(90,154,90,0.45), 0 0 14px 4px rgba(90,154,90,0.22); }
+  100% { box-shadow: 0 0 0 0 rgba(90,154,90,0); }
+}
+
+/* Damage prompt slide-in (brief §3c) */
+@keyframes dmgPromptSlideIn {
+  from { opacity: 0; transform: translateY(3px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* HP number heal glow for NAT20 */
 @keyframes hpHealNum {
   0%   { text-shadow: 0 0 0 transparent; }
@@ -130,6 +157,16 @@
 
 .cc-card.stabilize-glow {
   animation: stabilizeGlow 0.4s ease-out;
+}
+
+/* Death saves strip resolve glow class */
+.ds-strip.resolve-glow {
+  animation: dsResolveGlow 400ms ease-out;
+}
+
+/* Death saves strip shake (failure mark) */
+.ds-strip.shake {
+  animation: dmDeathSaveShake 300ms ease-out;
 }
 
 .cc-hp-heal-num {
@@ -218,6 +255,7 @@
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
+  padding-top: 16px;
   align-items: start;
 }
 
@@ -229,6 +267,7 @@
   min-width: 0;
   position: relative;
   z-index: 0;
+  margin-top: 10px;
 }
 
 .dm-prototype-shell {

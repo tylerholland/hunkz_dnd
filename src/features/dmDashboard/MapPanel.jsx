@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
-import MapViewer from "../maps/MapViewer";
+import MapViewer, { getMapZoomModifierLabel, readMapFreeZoomPreference, writeMapFreeZoomPreference } from "../maps/MapViewer";
 import MapLibraryModal from "./MapLibraryModal";
 import { putMapActive, putMapView } from "../../api";
 import { displayMapName } from "./MapUploadModal";
@@ -12,9 +12,11 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     const saved = Number(sessionStorage.getItem("dnd_dm_map_height") || 300);
     return Number.isFinite(saved) ? Math.max(220, Math.min(720, saved)) : 300;
   });
+  const [freeZoom, setFreeZoom] = useState(readMapFreeZoomPreference);
   const bodyRef = useRef(null);
   const [bodyHeight, setBodyHeight] = useState(0);
   const resizeStateRef = useRef(null);
+  const zoomModifierLabel = getMapZoomModifierLabel();
 
   useEffect(() => {
     if (collapsedOverride === null) return;
@@ -30,6 +32,10 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   useEffect(() => {
     sessionStorage.setItem("dnd_dm_map_height", String(mapHeight));
   }, [mapHeight]);
+
+  useEffect(() => {
+    writeMapFreeZoomPreference(freeZoom);
+  }, [freeZoom]);
 
   useLayoutEffect(() => {
     const node = bodyRef.current;
@@ -152,6 +158,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
                 pal={pal}
                 publishedView={publishedView}
                 onViewChange={setViewerState}
+                freeZoom={freeZoom}
               />
               <div
                 onPointerDown={handleResizeStart}
@@ -169,7 +176,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
               >
                 <div style={{ width: 60, height: 3, borderRadius: 999, background: pal.border, boxShadow: `0 0 0 1px ${pal.border}`, opacity: 0.9 }} />
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 4 }}>
+              <div style={{ display: "flex", gap: 8, marginTop: 4, flexWrap: "wrap", alignItems: "center" }}>
                 <button
                   onClick={handlePublishView}
                   style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", textTransform: "uppercase", padding: "5px 12px", cursor: "pointer" }}
@@ -200,6 +207,42 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
                 >
                   Library
                 </button>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "0 4px", marginLeft: "auto" }}>
+                  <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.08em", color: pal.textMuted }}>
+                    {freeZoom ? "Free Zoom" : `${zoomModifierLabel} + Scroll to Zoom`}
+                  </span>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={freeZoom}
+                    aria-label="Toggle free zoom"
+                    onClick={() => setFreeZoom((value) => !value)}
+                    style={{
+                      width: 56,
+                      height: 26,
+                      borderRadius: 999,
+                      border: `1px solid ${freeZoom ? pal.accent : pal.border}`,
+                      background: freeZoom ? pal.accentDim : "rgba(255,255,255,0.05)",
+                      padding: 2,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: freeZoom ? "flex-end" : "flex-start",
+                      transition: "background 0.16s ease, border-color 0.16s ease",
+                    }}
+                  >
+                    <span
+                      style={{
+                        width: 20,
+                        height: 20,
+                        borderRadius: "50%",
+                        background: freeZoom ? pal.accentBright : pal.textMuted,
+                        boxShadow: freeZoom ? `0 0 8px ${pal.accentDim}` : "none",
+                        transition: "background 0.16s ease, box-shadow 0.16s ease",
+                      }}
+                    />
+                  </button>
+                </div>
               </div>
             </>
           ) : (
