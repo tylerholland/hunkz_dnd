@@ -8,7 +8,7 @@ exports.handler = async () => {
   const roster = await getPartyRosterState();
 
   if (roster.exists) {
-    return ok({ exists: true, members: roster.members });
+    return ok({ exists: true, members: roster.members, partyVisibilityEnabled: roster.partyVisibilityEnabled !== false });
   }
 
   const result = await db.send(new ScanCommand({

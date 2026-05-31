@@ -15,7 +15,12 @@ exports.handler = async (event) => {
     .map((value) => value.trim())
     .filter(Boolean);
 
-  await savePartyRosterState({ members });
+  // partyVisibilityEnabled is optional — if omitted it defaults to true in savePartyRosterState
+  const partyVisibilityEnabled = typeof body.partyVisibilityEnabled === "boolean"
+    ? body.partyVisibilityEnabled
+    : undefined;
 
-  return ok({ success: true, members });
+  await savePartyRosterState({ members, partyVisibilityEnabled });
+
+  return ok({ success: true, members, partyVisibilityEnabled: partyVisibilityEnabled !== false });
 };

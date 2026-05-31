@@ -313,6 +313,46 @@ Fixed-position overlay (rgba(0,0,0,0.8) backdrop). Modal panel in `pal.surfaceSo
 
 ---
 
+### Player session mode (`/characters/:slug/session` and `/characters/:slug/profile`)
+
+Characters can now be accessed at two dedicated mode URLs:
+
+- **`/characters/:slug/profile`** — redirects to the full character sheet (`/characters/:slug`) for profile editing. In practice, this just navigates to the existing full-sheet page. (Story 28 will add in-session profile editing directly here.)
+- **`/characters/:slug/session`** — a new in-session two-column layout optimized for live play; no editing, all writes go via `patchSession` without authentication.
+
+**`CharacterModePage.jsx`** (`src/pages/CharacterModePage.jsx`):
+- Route shell that owns data fetching for character data, map library, party status, and initiative public data
+- Derives mode from URL path, falls back to `sessionStorage.dnd_mode_${slug}` or `"profile"`
+- `setMode(newMode)` persists to sessionStorage and navigates via React Router
+- Auto-switches to session mode (once, via `autoSwitchedRef`) when combat is active (entries exist + round > 0) and no stored preference exists
+- Polls: `getCharacter`, `getMapLibrary`, `getPartyStatus`, `getInitiativePublic` via `useAdaptivePolling`
+
+**`CharacterSheetSessionMode.jsx`** (`src/features/characterSheet/CharacterSheetSessionMode.jsx`):
+Session mode (two-column layout):
+- **Left column** (340px sticky, full viewport height): identity strip (portrait circle 56px, 72px + glow on own initiative turn), ability score mod chips (3×2 grid, display only), initiative strip (own entry highlighted with ▸ glyph + "Your Turn", NPC health-tier glow), party status strip (other party members, shows HP bars and palette-colored names)
+- **Right column** (scrollable): concentration banner, HP hero card (big optimistic HP with +/− and Damage/Heal modal), conditions section with Manage button (ConditionPickerModal), spell slots (read-only display), inspiration toggle, four sub-tabs
+- **Sub-tabs**: `combat` (read-only weapon quick-reference — Attack/Damage buttons are Story 28), `loadout` (simplified 2-column name/qty/attunement grid), `map` (MapViewer), `notes` (SessionNotesSection — read/write via patchSession without auth)
+- All session writes via `patchSession(slug, fields, null)` — no auth required
+- Sub-tab state stored in `sessionStorage` as `dnd_session_subtab_${slug}` (default `"combat"`)
+- Mode toggle in top bar: `❡ Profile` / `⚔ Session` pill buttons
+- Mobile-first: single column below 900px with sticky mode row
+
+**New unauthenticated API endpoints**:
+- `GET /party/status` (`getPartyStatus.js`) — returns `{ visible: boolean, members[] }` with player-safe projection (slug, name, palette, portraitUrl, hpCurrent, hpMax, tempHP, conditions, concentration, inspiration, deathSaves); returns `{ visible: false, members: [] }` when `partyVisibilityEnabled` is false on the roster
+- `GET /initiative/public` (`getInitiativePublic.js`) — returns `{ round, activeTurnIndex, entries[] }` with hidden entries stripped, initiative roll values stripped, and NPC health tiers derived from npc-combat data
+
+**DM party visibility control**:
+- `partyVisibilityEnabled` boolean field on the `party-roster` sentinel item (default `true`)
+- `GET /party-roster` now returns `partyVisibilityEnabled` in the response when roster exists
+- `PUT /party-roster` accepts optional `partyVisibilityEnabled` boolean
+- **Manage Party modal** (`ManagePartyModal.jsx`) now has a "Allow players to see party HP and conditions" checkbox that reads/writes `partyVisibilityEnabled` via the party roster endpoint
+
+**sessionStorage keys added**:
+- `dnd_mode_${slug}` — `"profile"` | `"session"`, persists selected mode per character
+- `dnd_session_subtab_${slug}` — `"combat"` | `"loadout"` | `"map"` | `"notes"`, persists sub-tab per character
+
+---
+
 ### DM Campaign (`/dm` — `DmDashboardPage.jsx`)
 
 A dedicated DM session-management view accessible at `/dm`.

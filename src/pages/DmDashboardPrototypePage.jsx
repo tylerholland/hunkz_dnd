@@ -61,6 +61,7 @@ export default function DmDashboardPage() {
   const [party, setParty] = useState([]);
   const [libraryCharacters, setLibraryCharacters] = useState([]);
   const [partyRoster, setPartyRoster] = useState([]);
+  const [partyVisibilityEnabled, setPartyVisibilityEnabled] = useState(true);
   const [initiative, setInitiative] = useState({ entries: [], activeTurnIndex: 0 });
   const [npcCombat, setNpcCombat] = useState({ npcs: [] });
   const [rollHistory, setRollHistory] = useState([]);
@@ -206,6 +207,9 @@ export default function DmDashboardPage() {
     const fallbackMembers = validCharacters.map((character) => character.slug);
     setLibraryCharacters(validCharacters);
     setPartyRoster(rosterData?.exists ? (Array.isArray(rosterData?.members) ? rosterData.members : []) : fallbackMembers);
+    if (rosterData?.exists && typeof rosterData?.partyVisibilityEnabled === "boolean") {
+      setPartyVisibilityEnabled(rosterData.partyVisibilityEnabled);
+    }
   }, []);
 
   const fetchDashboardData = useCallback(async ({ background = false, force = false } = {}) => {
@@ -647,12 +651,15 @@ export default function DmDashboardPage() {
     setActionMenuOpen(false);
   }
 
-  async function handleSavePartyRoster(members) {
+  async function handleSavePartyRoster(members, nextPartyVisibilityEnabled) {
     if (!dmPassword) throw new Error("DM password required");
 
     const nextMembers = [...members];
     setPartyRoster(nextMembers);
     partyRosterExpectedRef.current = nextMembers;
+    if (typeof nextPartyVisibilityEnabled === "boolean") {
+      setPartyVisibilityEnabled(nextPartyVisibilityEnabled);
+    }
 
     setParty((current) => current.filter((character) => nextMembers.includes(character.slug)));
 
@@ -675,7 +682,7 @@ export default function DmDashboardPage() {
     }
 
     try {
-      await putPartyRoster(nextMembers, dmPassword);
+      await putPartyRoster(nextMembers, dmPassword, typeof nextPartyVisibilityEnabled === "boolean" ? nextPartyVisibilityEnabled : partyVisibilityEnabled);
       if (!initiativesEqual(initiative, nextInitiative)) {
         await commitInitiativeUpdate(nextInitiative, { optimistic: false });
       }
@@ -1176,6 +1183,7 @@ export default function DmDashboardPage() {
           <ManagePartyModal
             characters={libraryCharacters}
             rosterMembers={partyRoster}
+            partyVisibilityEnabled={partyVisibilityEnabled}
             onClose={() => setShowManageParty(false)}
             onSave={handleSavePartyRoster}
           />

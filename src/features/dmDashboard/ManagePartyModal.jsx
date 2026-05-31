@@ -9,9 +9,10 @@ function reorder(items, fromIndex, toIndex) {
   return next;
 }
 
-export default function ManagePartyModal({ characters, rosterMembers, onClose, onSave }) {
+export default function ManagePartyModal({ characters, rosterMembers, partyVisibilityEnabled = true, onClose, onSave }) {
   const pal = useContext(PalCtx);
   const [members, setMembers] = useState(rosterMembers);
+  const [visibilityEnabled, setVisibilityEnabled] = useState(partyVisibilityEnabled);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
@@ -54,7 +55,7 @@ export default function ManagePartyModal({ characters, rosterMembers, onClose, o
     setSaving(true);
     setError("");
     try {
-      await onSave(members);
+      await onSave(members, visibilityEnabled);
       onClose();
     } catch {
       setError("Could not save party roster.");
@@ -118,6 +119,16 @@ export default function ManagePartyModal({ characters, rosterMembers, onClose, o
             </div>
           </div>
         </div>
+
+        <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 18, cursor: "pointer", userSelect: "none" }}>
+          <input
+            type="checkbox"
+            checked={visibilityEnabled}
+            onChange={(e) => setVisibilityEnabled(e.target.checked)}
+            style={{ width: 15, height: 15, accentColor: pal.accent, cursor: "pointer" }}
+          />
+          <span style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.text }}>Allow players to see party HP and conditions</span>
+        </label>
 
         {error && (
           <div style={{ marginTop: 12, color: "#c06060", fontFamily: pal.fontBody, fontSize: 14 }}>{error}</div>

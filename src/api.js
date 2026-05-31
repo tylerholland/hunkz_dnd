@@ -85,14 +85,17 @@ export const getDmParty = (dmPassword) =>
 export const getPartyRoster = () =>
   request("/party-roster");
 
-export const putPartyRoster = (members, dmPassword) =>
+export const putPartyRoster = (members, dmPassword, partyVisibilityEnabled) =>
   request("/party-roster", {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
       "x-character-password": dmPassword,
     },
-    body: JSON.stringify({ members }),
+    body: JSON.stringify({
+      members,
+      ...(typeof partyVisibilityEnabled === "boolean" ? { partyVisibilityEnabled } : {}),
+    }),
   });
 
 export const patchSession = (slug, fields, password) =>
@@ -159,6 +162,12 @@ export const postDmRoll = (dmPassword, payload) =>
     },
     body: JSON.stringify(payload),
   }, "dmRollHistoryPost", { success: false, unsupported: true });
+
+export const getPartyStatus = () =>
+  request("/party/status");
+
+export const getInitiativePublic = () =>
+  request("/initiative/public");
 
 export const getMapLibrary = () =>
   request("/maps");

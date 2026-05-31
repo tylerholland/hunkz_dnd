@@ -57,15 +57,19 @@ node scripts/migrate.mjs   # Seeds DynamoDB and uploads portraits to S3 (interac
   - `patchMap(mapId, name, dmPassword)` — PATCH /maps/{mapId}; DM auth; renames map
   - `deleteMap(mapId, dmPassword)` — DELETE /maps/{mapId}; DM auth; removes from DB + S3
 - `src/features/maps/MapViewer.jsx` — reusable pan/zoom image viewer; props: `{ imageUrl, name, height, pal }`; pure CSS transform, no canvas/library; used on character sheet Map tab and DM dashboard MapPanel
-- `src/pages/` — CharactersListPage (index), CharacterPage (view/edit), NewCharacterPage (create flow), DmDashboardPage (`/dm`), MapLibraryPage (`/maps`, DM-only)
+- `src/pages/` — CharactersListPage (index), CharacterPage (view/edit at `/characters/:slug`), CharacterModePage (`/characters/:slug/profile` and `/characters/:slug/session` — owns data fetching for mode-routed character views), NewCharacterPage (create flow), DmDashboardPage (`/dm`), MapLibraryPage (`/maps`, DM-only)
+- `src/features/characterSheet/CharacterSheetSessionMode.jsx` — session mode two-column layout component; profile mode navigates back to `CharacterPage`; all writes via `patchSession` without auth; see `design/app-overview.md` for full layout description
 
 **Backend** (`backend/`) — AWS SAM, Node.js 20.x Lambdas, DynamoDB (PAY_PER_REQUEST, PK: `slug`), S3 for portraits.
 
-- 17 Lambda handlers in `backend/src/handlers/`: `list`, `get`, `create`, `update`, `delete`, `verify`, `portrait`, `session`, `dmParty`, `initiative`, `dmNotes`, `getMapLibrary`, `mapPresign`, `postMap`, `putMapActive`, `patchMap`, `deleteMap`
+- 19 Lambda handlers in `backend/src/handlers/`: `list`, `get`, `create`, `update`, `delete`, `verify`, `portrait`, `session`, `dmParty`, `initiative`, `dmNotes`, `getMapLibrary`, `mapPresign`, `postMap`, `putMapActive`, `patchMap`, `deleteMap`, `getPartyStatus`, `getInitiativePublic`
   - `session.js` — PATCH /characters/{slug}/session; partial update of session fields (hpCurrent, tempHP, spellSlots, conditions, exhaustionLevel, concentration, inspiration, playerNotes); intentionally writable without auth (see ADR-005); DM password accepted via x-character-password
   - `dmParty.js` — GET /dm/party; DM-only; returns projected session-relevant fields for all characters; filters out sentinel slugs (`initiative`, `npc-combat`, `roll-history`, `map-library`) via `filterPublicCharacterItems()`
   - `dmNotes.js` — PATCH /characters/{slug}/dm-notes; DM auth required; accepts `{ action: "add", text }` or `{ action: "delete", id }`; appends/removes from `dmNotes[]` array in DynamoDB
   - `initiative.js` — GET + PUT /initiative; DM-only; stores initiative order as a single DynamoDB item with `slug: "initiative"`
+  - `getPartyStatus.js` — GET /party/status; no auth required; returns `{ visible: boolean, members[] }` with player-safe projection (slug, name, palette, portraitUrl, hpCurrent, hpMax, tempHP, conditions, concentration, inspiration, deathSaves); returns `{ visible: false, members: [] }` when `partyVisibilityEnabled` is false on the party-roster sentinel
+  - `getInitiativePublic.js` — GET /initiative/public; no auth required; returns `{ round, activeTurnIndex, entries[] }` with hidden entries stripped, initiative roll values stripped, and NPC health tiers derived from npc-combat data
+  - `getPartyRoster.js` — GET /party-roster (DM auth); now also returns `partyVisibilityEnabled` boolean in the response when roster exists
   - `getMapLibrary.js` — GET /maps; no auth required; returns `{ activeMapId, maps[] }` from `slug: "map-library"` sentinel item
   - `mapPresign.js` — POST /maps/presign; DM auth; generates UUID, returns presigned S3 PutObject URL for `maps/{uuid}.{ext}` key in `hunkz-dnd-portraits` bucket
   - `postMap.js` — POST /maps; DM auth; appends map entry to `maps[]` array on sentinel item via `list_append`
@@ -79,7 +83,7 @@ node scripts/migrate.mjs   # Seeds DynamoDB and uploads portraits to S3 (interac
 - `backend/template.yaml` — SAM template; DM password hash passed as parameter override from SSM at deploy time
 - S3 bucket `hunkz-dnd` (frontend), `hunkz-dnd-portraits` (portraits + maps under `maps/` prefix)
 
-**Special DynamoDB items**: In addition to character records, the `CharactersTable` stores sentinel items: `slug: "initiative"` (initiative order — now includes `round: number` field, default 1), `slug: "npc-combat"` (NPC HP tracking; NPC object shape: `{ id, name, hpMax, hpCurrent, conditions, initiativeEntryId, notes?, abilities? }` where `abilities: string[]` stores a persistent ability/spell reference list, written via `putNpcCombat`), `slug: "roll-history"` (shared roll feed), `slug: "map-library"` (active map + library). All are filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `specialItems.js`.
+**Special DynamoDB items**: In addition to character records, the `CharactersTable` stores sentinel items: `slug: "initiative"` (initiative order — now includes `round: number` field, default 1), `slug: "npc-combat"` (NPC HP tracking; NPC object shape: `{ id, name, hpMax, hpCurrent, conditions, initiativeEntryId, notes?, abilities? }` where `abilities: string[]` stores a persistent ability/spell reference list, written via `putNpcCombat`), `slug: "roll-history"` (shared roll feed), `slug: "map-library"` (active map + library), `slug: "party-roster"` (ordered party member slugs + `partyVisibilityEnabled: boolean` default `true`; when `false`, `GET /party/status` returns `{ visible: false, members: [] }` so players cannot see party HP/conditions). All are filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `specialItems.js`.
 
 **Auth model**: Two roles — `owner` (per-character bcrypt hash stored in DynamoDB) and `dm` (single hash from `DM_PASSWORD_HASH` env var set via SSM). DM session stored in `sessionStorage`.
 
@@ -137,5 +141,5 @@ Example invocations:
 ## Key conventions
 
 - **Styling**: CSS custom properties (`--pal-*`) set at each component root; children use `var(--pal-*)` via CSS cascade. Utility classes in `src/shared.css`; per-component CSS files alongside each component. Inline `style={}` reserved for truly dynamic values only (HP bar widths, computed threshold colors, toggle positions). No runtime `<style>` tag injection. See ADR-014 for the full variable schema and file map.
-- `sessionStorage` keys: `dnd_palette_${slug}`, `dnd_dm_password`, `dnd_char_${slug}` (per-character password caching), `dnd_tab_${slug}` (active tab; `"loadout"` | `"persona"` | `"combat"` | `"map"`, default `"combat"`), `dnd_dice_open_${slug}` (dice roller section open/closed, default `false`), `dnd_dice_dm_open` (DM dice roller panel open/closed, default `false`).
+- `sessionStorage` keys: `dnd_palette_${slug}`, `dnd_dm_password`, `dnd_char_${slug}` (per-character password caching), `dnd_tab_${slug}` (active tab; `"loadout"` | `"persona"` | `"combat"` | `"map"`, default `"combat"`), `dnd_dice_open_${slug}` (dice roller section open/closed, default `false`), `dnd_dice_dm_open` (DM dice roller panel open/closed, default `false`), `dnd_mode_${slug}` (character page mode; `"profile"` | `"session"`, default `"profile"`), `dnd_session_subtab_${slug}` (session mode sub-tab; `"combat"` | `"loadout"` | `"map"` | `"notes"`, default `"combat"`).
 - Ignore legacy/backup files at `src/_backup_of_eoghan_sundayApp.jsx`, `src/_eoghan3.jsx`, `src/_oldApp.jsx`, etc.

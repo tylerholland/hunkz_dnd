@@ -71,6 +71,7 @@ function normalizePartyRosterRecord(item) {
   return {
     exists: !!item,
     members: Array.isArray(item?.members) ? item.members.filter((value) => typeof value === "string" && value.trim()) : [],
+    partyVisibilityEnabled: item?.partyVisibilityEnabled !== false, // default true
   };
 }
 
@@ -162,9 +163,10 @@ async function getPartyRosterState() {
   return normalizePartyRosterRecord(item);
 }
 
-async function savePartyRosterState({ members }) {
+async function savePartyRosterState({ members, partyVisibilityEnabled }) {
   await putSpecialRecord(PARTY_ROSTER_SLUG, {
     members: Array.isArray(members) ? members : [],
+    partyVisibilityEnabled: partyVisibilityEnabled !== false, // default true
   });
 }
 

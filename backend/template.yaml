@@ -364,6 +364,36 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
 
+  GetPartyStatusFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getPartyStatus.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /party/status
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
+  GetInitiativePublicFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getInitiativePublic.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /initiative/public
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
   GetMapLibraryFunction:
     Type: AWS::Serverless::Function
     Properties:

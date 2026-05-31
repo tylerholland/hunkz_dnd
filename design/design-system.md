@@ -413,6 +413,59 @@ A footer-band that mounts below the Notes strip when `hpCurrent === 0`. Colors a
 
 **New keyframes** (in `dashboard.css`): `dsStripExpand` (shortcut row reveal), `dsTombstoneIn` (tombstone cross-fade), `dsResolveGlow` (green glow pulse on NAT20/Stable/3rd success), `dmgPromptSlideIn` (damage prompt entrance).
 
+---
+
+## Session Mode Layout (`CharacterSheetSessionMode`)
+
+Two-column layout for in-session play, defined in `characterSheet.css` under the `=== SESSION MODE LAYOUT ===` section.
+
+**Two-column grid** (≥900px breakpoint):
+```css
+.cs-session-shell {
+  display: grid;
+  grid-template-columns: 340px 1fr;
+  gap: 0 20px;
+}
+.cs-session-left { position: sticky; top: 48px; height: calc(100vh - 48px); overflow-y: auto; }
+.cs-session-right { /* scrolls independently */ }
+```
+
+**CSS class prefix convention**: `.cs-sm-` for session mode sub-components, `.cs-session-` for top-level layout containers, `.cs-mode-` for the mode toggle strip.
+
+**Key class groups**:
+- `.cs-session-root` — outermost div, sets `--pal-*` variables
+- `.cs-session-topbar` / `.cs-mode-toggle` / `.cs-mode-seg` — top bar + mode pill toggle (Profile / Session)
+- `.cs-mobile-mode-row` — sticky mode row on mobile (hidden at ≥900px)
+- `.cs-sm-identity` / `.cs-sm-portrait` — identity strip + portrait circle in left column
+- `.cs-sm-ability-grid` — 3×2 grid of ability mod chips
+- `.cs-sm-init-*` — initiative strip (own entry, other entries)
+- `.cs-sm-party-*` — party status strip
+- `.cs-sm-hp-hero` — large HP card with optimistic updates
+- `.cs-sm-conc-*` — concentration banner / input
+- `.cs-sm-cond-*` — condition pills section
+- `.cs-sm-slots-*` — spell slots display
+- `.cs-sm-inspo-*` — inspiration toggle
+- `.cs-sm-tabs` / `.cs-sm-tab` / `.cs-sm-tab-panel` — sub-tab strip and panels
+
+**HP bar color utilities** (universal — not palette-derived):
+- `.cs-sm-hp-bar-healthy` — green `#5a9a5a`
+- `.cs-sm-hp-bar-wounded` — amber `#c8903c`
+- `.cs-sm-hp-bar-critical` — red `#c06060`
+
+**Static keyframes** (all in `characterSheet.css` — no runtime injection):
+- `csPartyGlowPulse` — party member avatar ambient pulse
+- `csOwnGlowPulse` — own avatar glow when on active turn
+- `csDeathGlow` — death state slow red pulse
+- `csRoundPulse` — round counter brighten on advance
+- `csYourTurnSlide` — "Your Turn" label slide-in
+- `csInitExpand` — initiative entry height expand
+- `csModeIn` — mode page entrance fade
+- `csToggleHint` — initial toggle hint bounce
+- `csHpFlashDmg` / `csHpFlashHeal` — HP flash on damage/heal
+- `csConcentrationPulse` — concentration banner pulse dot
+
+**`@media (prefers-reduced-motion: reduce)`**: all animation/transition properties set to `none`/`0ms` to disable every animation in this component.
+
 **Utility classes**: `.ds-strip.shake` (reuses `dmDeathSaveShake`), `.ds-strip.resolve-glow` (uses `dsResolveGlow`).
 
 ---
