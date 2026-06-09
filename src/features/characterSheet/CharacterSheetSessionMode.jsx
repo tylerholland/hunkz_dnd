@@ -20,13 +20,15 @@
  *   partyStatus       — { visible: boolean, members: [] }
  *   initiativeData    — { round, activeTurnIndex, entries: [] }
  */
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
 import { modOf, fmtMod, CONDITIONS } from "./constants";
 import { patchSession } from "../../api";
 import DiceRoller from "../../components/DiceRoller";
 import MapViewer from "../maps/MapViewer";
+import { TokenChip } from "../dmDashboard/battleMode/BattleModeController";
+import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
 
 // Stat abbreviation map
@@ -1173,11 +1175,11 @@ export default function CharacterSheetSessionMode({
           {/* ── MAP sub-tab ── */}
           <div className={`cs-sm-tab-panel${sessionSubTab === "map" ? " active" : ""}`}>
             {activeMap ? (
-              <MapViewer
-                imageUrl={activeMap.imageUrl}
-                name={activeMap.name}
-                height={480}
+              <PlayerMapViewer
+                activeMap={activeMap}
                 pal={pal}
+                slug={slug}
+                partyStatus={partyStatus}
               />
             ) : (
               <p className="cs-sm-map-empty">The DM hasn{"'"}t loaded a map yet.</p>
@@ -1324,3 +1326,47 @@ function SessionNotesSection({ char, slug, pal, onSessionSync }) {
     </div>
   );
 }
+
+// ── PlayerMapViewer ────────────────────────────────────────────────────────
+// Read-only token layer for the player's Map sub-tab.
+const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, partyStatus }) {
+  const [viewerState, setViewerState] = useState(null);
+  const tokens = activeMap?.tokens || [];
+  const isBattleMode = activeMap?.mapMode === "battle";
+  const partyVisible = partyStatus?.visible !== false;
+
+  // Determine which tokens this player can see per ADR-017
+  const visibleTokens = isBattleMode ? tokens.filter((t) => {
+    if (t.type === "npc") return true;
+    if (t.sourceId === slug) return true;
+    return partyVisible;
+  }) : [];
+
+  const tokenChips = visibleTokens.map((token) => (
+    <TokenChip
+      key={token.id}
+      token={token}
+      imageW={viewerState?.naturalSize?.w || 1}
+      imageH={viewerState?.naturalSize?.h || 1}
+      party={partyStatus?.members || []}
+      npcCombat={{ npcs: [] }}
+      isDm={false}
+      isOwnToken={token.sourceId === slug}
+      partyVisibilityEnabled={partyVisible}
+      isHeld={false}
+      pal={pal}
+    />
+  ));
+
+  return (
+    <MapViewer
+      imageUrl={activeMap.imageUrl}
+      name={activeMap.name}
+      contentType={activeMap.contentType}
+      height={480}
+      pal={pal}
+      onViewChange={setViewerState}
+      tokenLayerChildren={isBattleMode && visibleTokens.length > 0 ? tokenChips : undefined}
+    />
+  );
+});

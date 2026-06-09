@@ -486,6 +486,21 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
 
+  PatchMapTokensFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/patchMapTokens.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps/{mapId}/tokens
+            Method: patch
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
   DeleteMapFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -35,10 +35,20 @@ export default function MapViewer({
   resetLabel = "DM View",
   onViewChange,
   freeZoom,
+  // Token layer props (all optional — no-op when absent for backward compat)
+  tokens,
+  tokenScale = 1,
+  onImageLoad,
+  onTokenLayerClick,
+  onTokenClick,
+  interactionMode,
+  tokenLayerChildren,
+  containerRefOut,
 }) {
   const containerRef = useRef(null);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
   const [scale, setScale] = useState(1);
+  const [imageNaturalSize, setImageNaturalSize] = useState(null);
   const [showHint, setShowHint] = useState(true);
   const [hintFaded, setHintFaded] = useState(false);
   const [pageNumber, setPageNumber] = useState(1);
@@ -65,8 +75,9 @@ export default function MapViewer({
       translate,
       scale,
       pageNumber,
+      naturalSize: imageNaturalSize,
     });
-  }, [translate, scale, pageNumber, onViewChange]);
+  }, [translate, scale, pageNumber, onViewChange, imageNaturalSize]);
 
   // Reset on imageUrl change
   useEffect(() => {
@@ -74,9 +85,15 @@ export default function MapViewer({
     setScale(1);
     setPageNumber(1);
     setPageCount(1);
+    setImageNaturalSize(null);
     lastPublishedTokenRef.current = null;
     stateRef.current = { translate: { x: 0, y: 0 }, scale: 1 };
   }, [imageUrl]);
+
+  // Expose containerRef to parent if requested
+  useEffect(() => {
+    if (containerRefOut) containerRefOut.current = containerRef.current;
+  });
 
   const applyPublishedView = useCallback(() => {
     if (!publishedView) return;
@@ -274,20 +291,50 @@ export default function MapViewer({
             />
           </div>
         ) : (
-          <img
-            src={imageUrl}
-            alt={name || "Map"}
-            draggable={false}
+          <div
             style={{
               position: "absolute",
               top: 0,
               left: 0,
               transformOrigin: "0 0",
               transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
-              maxWidth: "none",
-              display: "block",
             }}
-          />
+          >
+            <img
+              src={imageUrl}
+              alt={name || "Map"}
+              draggable={false}
+              style={{ maxWidth: "none", display: "block" }}
+              onLoad={(e) => {
+                const w = e.target.naturalWidth;
+                const h = e.target.naturalHeight;
+                setImageNaturalSize({ w, h });
+                onImageLoad?.({ naturalWidth: w, naturalHeight: h });
+              }}
+            />
+            {imageNaturalSize && (tokens || tokenLayerChildren) && (
+              <div
+                className="token-layer"
+                style={{
+                  position: "absolute",
+                  inset: 0,
+                  width: imageNaturalSize.w,
+                  height: imageNaturalSize.h,
+                  "--token-scale-multiplier": tokenScale,
+                  pointerEvents: interactionMode === "dm" ? "auto" : "none",
+                }}
+                onClick={onTokenLayerClick ? (e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  if (!rect.width || !rect.height) return;
+                  const fracX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                  const fracY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+                  onTokenLayerClick({ x: fracX, y: fracY }, e);
+                } : undefined}
+              >
+                {tokenLayerChildren}
+              </div>
+            )}
+          </div>
         )}
 
         {showHint && (

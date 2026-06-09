@@ -212,3 +212,10 @@ export const deleteMap = (mapId, dmPassword) =>
     method: "DELETE",
     headers: { "x-character-password": dmPassword },
   });
+
+export const patchMapTokens = (mapId, payload, dmPassword) =>
+  request(`/maps/${mapId}/tokens`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify(payload),
+  });

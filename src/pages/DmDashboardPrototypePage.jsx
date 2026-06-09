@@ -1034,6 +1034,8 @@ export default function DmDashboardPage() {
               pal={pal}
               collapsedOverride={mapCollapsed}
               onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
+              party={party}
+              npcCombat={npcCombat}
             />
           </div>
 

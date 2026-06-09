@@ -1,0 +1,2592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Battle Map Tokens — Design Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ─── Ember palette ─────────────────────────────────────────────────── */
+:root {
+  --bg: #120d0a;
+  --surface: rgba(50,28,14,0.55);
+  --surface-solid: #2a160a;
+  --border: rgba(160,100,55,0.22);
+  --border-vis: rgba(160,100,55,0.38);
+  --accent: #a06840;
+  --accent-bright: #c89060;
+  --accent-dim: #4a2e12;
+  --text: #d4c4b0;
+  --text-body: #b8a888;
+  --text-muted: #6a4830;
+  --gem: #c8904c;
+  --gem-low: #4a3020;
+  --glow1: rgba(80,40,10,0.35);
+  --glow2: rgba(60,25,5,0.28);
+  --font-d: 'Cinzel', Georgia, serif;
+  --font-b: 'Crimson Text', Georgia, serif;
+  --font-u: 'IM Fell English', Georgia, serif;
+
+  /* PC token ring colors */
+  --ring-aragorn: #c89060;
+  --ring-eoghan: #6a8fa8;
+  --ring-aeryn: #5a8a60;
+
+  /* NPC token fill colors (hash-tinted) */
+  --fill-goblin-a: #2a5a4a;
+  --fill-goblin-b: #4a3a2a;
+  --fill-bandit: #5a2a2a;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-b);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ─── Page header ────────────────────────────────────────────────────── */
+.proto-header {
+  background: rgba(10,6,3,0.95);
+  border-bottom: 1px solid var(--border-vis);
+  backdrop-filter: blur(8px);
+  padding: 14px 28px;
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.proto-header-title {
+  font-family: var(--font-d);
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--accent-bright);
+  flex: 1;
+}
+.proto-header-meta {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+}
+
+/* ─── View switcher tabs ─────────────────────────────────────────────── */
+.view-tabs {
+  display: flex;
+  gap: 8px;
+  padding: 20px 28px 0;
+}
+.view-tab {
+  font-family: var(--font-u);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 6px 18px;
+  border-radius: 3px;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.view-tab.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.view-tab:hover:not(.active) {
+  border-color: var(--accent);
+  color: var(--text-body);
+}
+
+/* ─── Scenario sections ──────────────────────────────────────────────── */
+.scenario-section {
+  padding: 28px 28px 40px;
+  max-width: 980px;
+  margin: 0 auto;
+}
+.scenario-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 6px;
+}
+.scenario-title {
+  font-family: var(--font-d);
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+.scenario-desc {
+  font-family: var(--font-b);
+  font-size: 14px;
+  color: var(--text-body);
+  margin-bottom: 20px;
+  line-height: 1.6;
+}
+
+/* ─── Map panel outer ────────────────────────────────────────────────── */
+.map-panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  overflow: hidden;
+  position: relative;
+}
+
+/* ─── Map panel header ───────────────────────────────────────────────── */
+.map-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 14px;
+  height: 40px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(18,10,5,0.7);
+  flex-shrink: 0;
+}
+.map-panel-header-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+.map-panel-header-name {
+  font-family: var(--font-d);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  flex: 1;
+}
+
+/* ─── Battle Mode toggle pill ────────────────────────────────────────── */
+.battle-toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 12px;
+  height: 32px;
+  border-radius: 16px;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: background 0.18s, border-color 0.18s, color 0.18s;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.battle-toggle.active {
+  background: var(--accent-dim);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+.battle-toggle .bt-icon {
+  font-size: 13px;
+  transition: filter 0.18s;
+}
+.battle-toggle.active .bt-icon {
+  filter: drop-shadow(0 0 4px var(--accent));
+}
+
+/* ─── Gear icon button ───────────────────────────────────────────────── */
+.gear-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+  flex-shrink: 0;
+  position: relative;
+}
+.gear-btn:hover {
+  background: rgba(160,104,64,0.12);
+  border-color: var(--border-vis);
+  color: var(--text-body);
+}
+.gear-btn.active {
+  background: rgba(160,104,64,0.18);
+  border-color: var(--accent);
+  color: var(--accent-bright);
+}
+
+/* ─── Collapse caret ─────────────────────────────────────────────────── */
+.collapse-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+.collapse-btn:hover { color: var(--text-body); }
+
+/* ─── Map viewport ───────────────────────────────────────────────────── */
+.map-viewport {
+  position: relative;
+  height: 420px;
+  overflow: hidden;
+  cursor: default;
+  background: #0a0705;
+  user-select: none;
+}
+
+/* The dungeon-floor pattern (replaces external image) */
+.map-bg {
+  position: absolute;
+  inset: 0;
+  background:
+    /* stone tile grid lines */
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 48px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.03) 0px, rgba(255,255,255,0.03) 1px, transparent 1px, transparent 48px),
+    /* floor color variation patches */
+    radial-gradient(ellipse 280px 180px at 25% 35%, rgba(70,40,20,0.45) 0%, transparent 100%),
+    radial-gradient(ellipse 200px 250px at 75% 60%, rgba(50,30,15,0.5) 0%, transparent 100%),
+    radial-gradient(ellipse 160px 120px at 50% 80%, rgba(40,22,10,0.6) 0%, transparent 100%),
+    /* walls (darker border zones) */
+    linear-gradient(to right, rgba(5,3,2,0.8) 0%, transparent 12%, transparent 88%, rgba(5,3,2,0.8) 100%),
+    linear-gradient(to bottom, rgba(5,3,2,0.7) 0%, transparent 10%, transparent 90%, rgba(5,3,2,0.7) 100%),
+    /* base floor */
+    #1a100a;
+  pointer-events: none;
+}
+
+/* Dungeon room outlines overlay */
+.map-room-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+.map-room {
+  position: absolute;
+  border: 1px solid rgba(180,130,80,0.12);
+  border-radius: 2px;
+}
+
+/* ─── Transform wrapper (tokens live inside this) ────────────────────── */
+.map-transform-wrapper {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  transform-origin: 0 0;
+  /* tokens inside inherit this transform */
+}
+
+/* ─── Token layer ────────────────────────────────────────────────────── */
+.token-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none; /* children set their own pointer-events */
+  --token-scale-multiplier: 1.0;
+}
+
+/* ─── Individual token ───────────────────────────────────────────────── */
+.token-wrap {
+  position: absolute;
+  /* centered on x,y via translate(-50%, -50%) */
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  pointer-events: auto;
+  cursor: pointer;
+  /* token sizing accounts for scale multiplier */
+  --token-px: calc(36px * var(--token-scale-multiplier, 1));
+  z-index: 10;
+}
+
+.token-circle {
+  width: var(--token-px);
+  height: var(--token-px);
+  border-radius: 50%;
+  position: relative;
+  flex-shrink: 0;
+  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              filter 180ms ease-out,
+              opacity 180ms ease-out;
+  overflow: visible;
+}
+
+/* Portrait image inside circle */
+.token-portrait {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 13px;
+  letter-spacing: 0.05em;
+  color: rgba(255,255,255,0.9);
+  font-weight: 500;
+  background: #1a100a;
+  overflow: hidden;
+  position: relative;
+  z-index: 1;
+}
+
+/* Ring around token */
+.token-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid var(--ring-color, rgba(160,104,64,0.6));
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+  z-index: 2;
+  pointer-events: none;
+  transition: border-color 180ms ease-out, box-shadow 180ms ease-out;
+}
+
+/* Outer outline for legibility against terrain */
+.token-outline {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  border: 1px solid rgba(0,0,0,0.4);
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* Token name label */
+/* Bug 1 fix: position:relative + z-index:1 ensures the label's stacking
+   context sits below the .hp-card (z-index:50), which is a sibling of
+   .token-circle positioned absolutely. Without this, applying transform
+   on .expanded creates a new stacking context that paints over hp-card. */
+.token-label {
+  margin-top: 3px;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text);
+  background: rgba(0,0,0,0.55);
+  padding: 1px 5px;
+  border-radius: 2px;
+  max-width: 80px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
+  pointer-events: none;
+  position: relative;
+  z-index: 1;
+  transition: transform 200ms ease-out, opacity 200ms ease-out;
+}
+.token-label.npc {
+  color: var(--text-body);
+}
+
+/* ─── Token states ───────────────────────────────────────────────────── */
+
+/* FALLEN: 0.4 opacity, grayscale ring, red inset shadow */
+.token-wrap.fallen .token-circle {
+  opacity: 0.4;
+  filter: grayscale(0.6);
+}
+.token-wrap.fallen .token-ring {
+  border-color: rgba(120,80,60,0.5);
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.4), inset 0 0 6px rgba(192,96,96,0.4);
+}
+.token-wrap.fallen .token-label {
+  opacity: 0.4;
+}
+
+/* Ghost state (when picked up from map) */
+.token-wrap.ghost .token-circle {
+  opacity: 0.4;
+}
+.token-wrap.ghost .token-label {
+  opacity: 0.4;
+}
+
+/* Drop bounce animation */
+@keyframes tokenDropBounce {
+  0%   { transform: scale(1.0); }
+  40%  { transform: scale(1.08); }
+  65%  { transform: scale(0.97); }
+  85%  { transform: scale(1.02); }
+  100% { transform: scale(1.0); }
+}
+.token-wrap.just-dropped .token-circle {
+  animation: tokenDropBounce 300ms ease-out;
+}
+
+/* Hover-expand: portrait grows, HP card slides in */
+.token-wrap:not(.fallen) .token-circle {
+  transform-origin: center center;
+}
+.token-wrap.expanded .token-circle {
+  transform: scale(calc(48 / 36));
+}
+.token-wrap.expanded .token-label {
+  transform: translateY(14px);
+}
+
+/* ─── HP hover card ──────────────────────────────────────────────────── */
+.hp-card {
+  position: absolute;
+  top: calc(var(--token-px) + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 124px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  padding: 7px 10px 8px;
+  pointer-events: none;
+  opacity: 0;
+  max-height: 0;
+  overflow: hidden;
+  z-index: 50;
+  /* open animation: triggered by .expanded */
+  transition: max-height 200ms cubic-bezier(0.2, 0.8, 0.2, 1) 80ms,
+              opacity 200ms cubic-bezier(0.2, 0.8, 0.2, 1) 80ms;
+}
+.token-wrap.expanded .hp-card {
+  opacity: 1;
+  max-height: 90px;
+  pointer-events: auto;
+}
+/* flip above when .flip-up */
+.token-wrap.flip-up .hp-card {
+  top: auto;
+  bottom: calc(var(--token-px) + 8px);
+}
+
+.hp-card-name {
+  font-family: var(--font-d);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-bottom: 3px;
+}
+.hp-card-name.npc { color: var(--text-body); }
+
+.hp-card-nums {
+  font-family: var(--font-d);
+  font-size: 14px;
+  color: var(--gem);
+  margin-bottom: 4px;
+  line-height: 1;
+}
+.hp-card-nums.hidden-text {
+  font-family: var(--font-b);
+  font-size: 12px;
+  font-style: italic;
+  color: var(--text-muted);
+}
+
+.hp-bar-track {
+  width: 100px;
+  height: 4px;
+  background: var(--gem-low);
+  border-radius: 2px;
+  overflow: hidden;
+  margin: 0 2px 4px;
+}
+.hp-bar-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.3s ease-out;
+}
+.hp-bar-fill.healthy { background: #5a9a5a; }
+.hp-bar-fill.wounded { background: #c8903c; }
+.hp-bar-fill.critical { background: #c06060; }
+
+/* NPC health tier glow line (player view) */
+.hp-tier-glow {
+  width: 100px;
+  height: 3px;
+  border-radius: 2px;
+  margin: 2px 2px 4px;
+}
+.hp-tier-glow.healthy {
+  background: #5a9a5a;
+  box-shadow: 0 0 6px #5a9a5a;
+}
+.hp-tier-glow.wounded {
+  background: #c8903c;
+  box-shadow: 0 0 6px #c8903c;
+}
+.hp-tier-glow.critical {
+  background: #c06060;
+  box-shadow: 0 0 6px #c06060;
+}
+
+/* Remove button (DM, FALLEN tokens only) */
+.hp-card-remove {
+  margin-top: 4px;
+  width: 100%;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--border);
+  padding: 4px 0 0;
+  color: var(--text-muted);
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-align: center;
+  cursor: pointer;
+  pointer-events: auto;
+  transition: color 0.15s;
+}
+.hp-card-remove:hover { color: #c06060; }
+
+/* ─── Held-token floater (fixed, outside transform) ──────────────────── */
+#held-floater {
+  position: fixed;
+  pointer-events: none;
+  z-index: 1000;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  transform: translate(-50%, -50%);
+  --token-px: 36px;
+}
+#held-floater.active {
+  display: flex;
+}
+
+.floater-circle {
+  width: var(--token-px);
+  height: var(--token-px);
+  border-radius: 50%;
+  position: relative;
+  opacity: 0.88;
+}
+.floater-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 3px solid var(--ring-color, var(--accent));
+  z-index: 2;
+}
+.floater-portrait {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 13px;
+  color: rgba(255,255,255,0.9);
+}
+.floater-label {
+  margin-top: 3px;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text);
+  background: rgba(0,0,0,0.65);
+  padding: 1px 5px;
+  border-radius: 2px;
+}
+
+/* Pulsing glow halo on floater */
+@keyframes glowHaloPulse {
+  0%, 100% { box-shadow: 0 0 8px 4px rgba(160,104,64,0.5), 0 4px 16px rgba(0,0,0,0.5); }
+  50%       { box-shadow: 0 0 16px 8px rgba(160,104,64,0.3), 0 4px 16px rgba(0,0,0,0.5); }
+}
+#held-floater.active .floater-circle {
+  animation: glowHaloPulse 1.2s ease-in-out infinite;
+}
+
+/* ─── Cancel pill ────────────────────────────────────────────────────── */
+#cancel-pill {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  z-index: 100;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  height: 44px;
+  background: rgba(18,10,5,0.88);
+  border: 1px solid var(--border-vis);
+  border-radius: 22px;
+  color: var(--text-muted);
+  font-family: var(--font-u);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+#cancel-pill.visible {
+  display: flex;
+}
+#cancel-pill:hover {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+/* ─── Token tray ─────────────────────────────────────────────────────── */
+.token-tray {
+  height: 0;
+  max-height: 0;
+  overflow: hidden;
+  background: rgba(12,8,4,0.85);
+  border-top: 1px solid transparent;
+  transition: max-height 240ms cubic-bezier(0.2, 0.8, 0.2, 1),
+              border-color 240ms ease,
+              box-shadow 200ms ease;
+  display: flex;
+  flex-direction: column;
+}
+.token-tray.open {
+  max-height: 76px;
+  height: 76px;
+  border-top-color: var(--border);
+}
+/* Bug 3 fix: tray glows when a map-token is held, signalling "drop here to return" */
+.token-tray.return-target {
+  border-top: 1px dashed var(--accent);
+  box-shadow: inset 0 2px 8px rgba(160,104,64,0.18);
+  cursor: copy;
+}
+
+/* Tray inner row */
+.tray-inner {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0 12px;
+  gap: 0;
+  overflow: hidden;
+}
+
+/* PC half / NPC half */
+.tray-pc-half {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding-right: 10px;
+}
+.tray-divider {
+  width: 1px;
+  height: 44px;
+  background: var(--border-vis);
+  flex-shrink: 0;
+  margin: 0 4px;
+}
+.tray-npc-half {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  padding-left: 10px;
+  overflow-x: auto;
+}
+
+/* Tray status label (UNPLACED count + End button row) */
+.tray-status-row {
+  display: none; /* shown when .tray-has-status */
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  height: 22px;
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+.tray-status-row.visible {
+  display: flex;
+}
+.tray-status-label {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.tray-end-btn {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  transition: color 0.15s;
+}
+.tray-end-btn:hover { color: #c06060; }
+
+/* Tray chip (individual token in tray) */
+.tray-chip {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  border: 1px solid transparent;
+  transition: border-color 0.12s, background 0.12s;
+  flex-shrink: 0;
+  /* stagger entrance */
+  opacity: 0;
+  transform: scale(0.7);
+  transition: opacity 180ms ease-out, transform 180ms cubic-bezier(0.34,1.0,0.64,1),
+              border-color 0.12s, background 0.12s;
+}
+.tray-chip.chip-visible {
+  opacity: 1;
+  transform: scale(1);
+}
+.tray-chip.selected {
+  border-color: var(--accent);
+  background: rgba(160,104,64,0.12);
+}
+.tray-chip:hover:not(.selected) {
+  border-color: var(--border-vis);
+  background: rgba(160,104,64,0.06);
+}
+
+.tray-chip-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 12px;
+  color: rgba(255,255,255,0.9);
+  border: 2px solid var(--ring-color, var(--border-vis));
+  position: relative;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.tray-chip-label {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ─── Calibration popover ────────────────────────────────────────────── */
+.calibration-popover {
+  position: absolute;
+  top: 48px;
+  right: 44px;
+  width: 240px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-vis);
+  border-radius: 4px;
+  padding: 14px 16px 16px;
+  z-index: 200;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+}
+.calibration-popover.open {
+  display: block;
+}
+.calib-header {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  margin-bottom: 14px;
+}
+.calib-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-body);
+  margin-bottom: 8px;
+}
+.calib-slider-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.calib-step-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 1px solid var(--border-vis);
+  background: transparent;
+  color: var(--text-body);
+  font-size: 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s, border-color 0.15s;
+  flex-shrink: 0;
+  /* 44px touch target via padding trick */
+  padding: 6px;
+}
+.calib-step-btn:hover {
+  background: rgba(160,104,64,0.12);
+  border-color: var(--accent);
+}
+
+.calib-slider-wrap {
+  flex: 1;
+  position: relative;
+}
+.calib-slider {
+  width: 100%;
+  appearance: none;
+  -webkit-appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--border-vis);
+  outline: none;
+  cursor: pointer;
+}
+.calib-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gem);
+  cursor: pointer;
+  border: 2px solid var(--surface-solid);
+  box-shadow: 0 0 4px rgba(200,144,76,0.5);
+}
+.calib-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gem);
+  cursor: pointer;
+  border: 2px solid var(--surface-solid);
+}
+
+.calib-readout {
+  font-family: var(--font-d);
+  font-size: 14px;
+  color: var(--text);
+  min-width: 34px;
+  text-align: right;
+  flex-shrink: 0;
+}
+.calib-range-labels {
+  display: flex;
+  justify-content: space-between;
+  padding: 0 2px;
+  margin-bottom: 10px;
+}
+.calib-range-label {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+}
+
+.calib-reset-btn {
+  width: 100%;
+  padding: 7px;
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  display: none;
+}
+.calib-reset-btn:hover {
+  border-color: var(--accent);
+  color: var(--text-body);
+}
+.calib-reset-btn.visible {
+  display: block;
+}
+
+/* ─── Zoom controls (map corner) ─────────────────────────────────────── */
+.map-zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 20;
+}
+.zoom-btn {
+  width: 28px;
+  height: 28px;
+  background: rgba(18,10,5,0.85);
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s, border-color 0.15s;
+}
+.zoom-btn:hover {
+  color: var(--text);
+  border-color: var(--accent);
+}
+.zoom-pct {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  background: rgba(18,10,5,0.85);
+  padding: 3px 7px;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+}
+
+/* ─── Callout annotations ────────────────────────────────────────────── */
+.callout {
+  position: relative;
+  background: rgba(40,20,5,0.92);
+  border: 1px solid rgba(160,100,55,0.35);
+  border-radius: 3px;
+  color: #c8a870;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  padding: 4px 9px;
+  pointer-events: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  display: inline-block;
+  margin: 4px 4px;
+}
+.callout-inline {
+  display: inline-block;
+  background: rgba(40,20,5,0.92);
+  border: 1px solid rgba(160,100,55,0.35);
+  border-radius: 3px;
+  color: #c8a870;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  padding: 3px 8px;
+  white-space: nowrap;
+}
+
+.annotation-band {
+  padding: 8px 14px;
+  margin-top: 10px;
+  border-left: 3px solid var(--accent);
+  background: rgba(40,20,5,0.4);
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-body);
+  line-height: 1.6;
+}
+
+/* ─── View panels ────────────────────────────────────────────────────── */
+.view-panel {
+  display: none;
+}
+.view-panel.active {
+  display: block;
+}
+
+/* ─── Legend ─────────────────────────────────────────────────────────── */
+.legend {
+  max-width: 980px;
+  margin: 0 auto;
+  padding: 0 28px 60px;
+}
+.legend-title {
+  font-family: var(--font-d);
+  font-size: 15px;
+  letter-spacing: 0.14em;
+  color: var(--text);
+  margin-bottom: 16px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+.legend-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px 24px;
+}
+.legend-item {
+  display: flex;
+  gap: 10px;
+}
+.legend-num {
+  font-family: var(--font-d);
+  font-size: 12px;
+  color: var(--gem);
+  min-width: 18px;
+  flex-shrink: 0;
+  padding-top: 2px;
+}
+.legend-text {
+  font-family: var(--font-b);
+  font-size: 13px;
+  color: var(--text-body);
+  line-height: 1.55;
+}
+
+/* ─── "All tokens placed" status strip ───────────────────────────────── */
+.tray-all-placed {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  background: rgba(12,8,4,0.85);
+  border-top: 1px solid var(--border);
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+/* ─── End Combat confirmation ────────────────────────────────────────── */
+.confirm-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(6,3,1,0.82);
+  z-index: 500;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+.confirm-overlay.open {
+  display: flex;
+}
+.confirm-box {
+  background: var(--surface-solid);
+  border: 1px solid var(--border-vis);
+  border-radius: 4px;
+  padding: 24px 28px;
+  max-width: 300px;
+  text-align: center;
+}
+.confirm-title {
+  font-family: var(--font-d);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  color: var(--text);
+  margin-bottom: 8px;
+}
+.confirm-desc {
+  font-family: var(--font-b);
+  font-size: 13px;
+  color: var(--text-body);
+  margin-bottom: 18px;
+  line-height: 1.5;
+}
+.confirm-row {
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+.confirm-btn {
+  padding: 8px 18px;
+  border-radius: 3px;
+  font-family: var(--font-u);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+}
+.confirm-btn-danger {
+  background: rgba(192,96,96,0.15);
+  border: 1px solid rgba(192,96,96,0.5);
+  color: #c06060;
+}
+.confirm-btn-danger:hover { background: rgba(192,96,96,0.25); }
+.confirm-btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  color: var(--text-muted);
+}
+.confirm-btn-ghost:hover { border-color: var(--accent); color: var(--text-body); }
+
+/* ─── Section divider ────────────────────────────────────────────────── */
+.section-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 32px 0;
+}
+
+/* ─── Player view notice badge ───────────────────────────────────────── */
+.player-view-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(40,20,5,0.6);
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+/* ─── prefers-reduced-motion ─────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0ms !important;
+  }
+}
+
+/* ─── Token appear animation ─────────────────────────────────────────── */
+@keyframes tokenAppear {
+  from { opacity: 0; transform: translate(-50%, -50%) scale(0.7); }
+  to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+}
+.token-wrap.appearing {
+  animation: tokenAppear 180ms ease-out forwards;
+}
+
+/* ─── Chip stagger animation trigger ─────────────────────────────────── */
+.tray-chip:nth-child(1)  { transition-delay: 0ms;   }
+.tray-chip:nth-child(2)  { transition-delay: 40ms;  }
+.tray-chip:nth-child(3)  { transition-delay: 80ms;  }
+.tray-chip:nth-child(4)  { transition-delay: 120ms; }
+.tray-chip:nth-child(5)  { transition-delay: 160ms; }
+.tray-chip:nth-child(6)  { transition-delay: 200ms; }
+.tray-chip:nth-child(7)  { transition-delay: 240ms; }
+
+/* Edge case: no NPCs / no PCs empty states */
+.tray-empty-half {
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+/* ─── Scenario sub-section heading ───────────────────────────────────── */
+.sub-scenario {
+  margin-top: 28px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(160,100,55,0.1);
+}
+.sub-scenario-title {
+  font-family: var(--font-u);
+  font-size: 12px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 12px;
+}
+</style>
+</head>
+<body>
+
+<!-- ─── Held-token floater (outside all panels, fixed to viewport) ─── -->
+<div id="held-floater">
+  <div class="floater-circle" id="floater-circle">
+    <div class="floater-ring" id="floater-ring"></div>
+    <div class="floater-portrait" id="floater-portrait"></div>
+  </div>
+  <div class="floater-label" id="floater-label"></div>
+</div>
+
+<!-- ─── Page header ───────────────────────────────────────────────────── -->
+<header class="proto-header">
+  <div class="proto-header-title">BATTLE MAP TOKENS — Design Prototype</div>
+  <div class="proto-header-meta">Story 29 · Ember Palette · 2026-06-08</div>
+</header>
+
+<!-- ─── View switcher ─────────────────────────────────────────────────── -->
+<div class="view-tabs" role="tablist" aria-label="Prototype view">
+  <button class="view-tab active" id="tab-dm" onclick="switchView('dm')" role="tab" aria-selected="true">⚔ DM View</button>
+  <button class="view-tab" id="tab-player" onclick="switchView('player')" role="tab" aria-selected="false">◉ Player View</button>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     DM VIEW
+════════════════════════════════════════════════════════════════════════ -->
+<div class="view-panel active" id="panel-dm">
+
+  <!-- ─── Scenario 1: Battle Mode OFF ─────────────────────────────────── -->
+  <div class="scenario-section">
+    <div class="scenario-label">Scenario 1</div>
+    <div class="scenario-title">Adventure Mode — Battle Mode Toggle Off</div>
+    <div class="scenario-desc">
+      The default map state. Token tray is hidden; the battle mode pill is a ghost. No token chrome on the map. Clicking the toggle activates Battle Mode.
+    </div>
+
+    <!-- Map Panel: Adventure Mode -->
+    <div class="map-panel" id="map-panel-adventure" style="position:relative;">
+      <!-- Header -->
+      <div class="map-panel-header">
+        <span class="map-panel-header-label">Map</span>
+        <span class="map-panel-header-name">Ruined Hall of the Ember Keep</span>
+        <button class="battle-toggle" id="battle-toggle-adventure" onclick="activateBattleMode()" title="Enable Battle Mode">
+          <span class="bt-icon">⚔</span>
+          <span>Battle Mode</span>
+        </button>
+        <button class="collapse-btn" title="Collapse map">⌃</button>
+      </div>
+
+      <!-- Map viewport (no token layer in adventure mode) -->
+      <div class="map-viewport">
+        <div class="map-bg"></div>
+        <div class="map-room-overlay">
+          <div class="map-room" style="left:8%;top:8%;width:36%;height:30%;"></div>
+          <div class="map-room" style="left:55%;top:10%;width:37%;height:25%;"></div>
+          <div class="map-room" style="left:20%;top:50%;width:55%;height:38%;"></div>
+        </div>
+        <!-- Zoom controls -->
+        <div class="map-zoom-controls">
+          <button class="zoom-btn" title="Zoom in">+</button>
+          <button class="zoom-btn" title="Zoom out">−</button>
+          <button class="zoom-btn" style="font-size:12px;" title="Reset zoom">⟳</button>
+          <span class="zoom-pct">100%</span>
+        </div>
+      </div>
+      <!-- No token tray in adventure mode -->
+    </div>
+
+    <div class="annotation-band">
+      <span class="callout-inline">Ghost pill</span> — battle toggle is transparent with muted text until activated. No tray, no tokens, no extra chrome.
+    </div>
+  </div>
+
+  <!-- ─── Scenario 2: Battle Mode ON — partial placement ───────────────── -->
+  <div class="scenario-section">
+    <div class="scenario-label">Scenario 2 · Primary Scenario</div>
+    <div class="scenario-title">Battle Mode Active — Partial Placement + Interactions</div>
+    <div class="scenario-desc">
+      Battle Mode is on. Aragorn and Goblin A are placed on the map. Eoghan and Aeryn remain in the tray. Goblin B is in the tray in FALLEN state. Bandit is in the tray. Click tray chips to enter HELD state, then click the map to place. Hover placed tokens to see the HP expand card.
+    </div>
+
+    <!-- The main interactive map panel -->
+    <div class="map-panel" id="map-panel-main" style="position:relative;">
+
+      <!-- Header -->
+      <div class="map-panel-header">
+        <span class="map-panel-header-label">Map</span>
+        <span class="map-panel-header-name">Ruined Hall of the Ember Keep</span>
+
+        <button class="battle-toggle active" id="battle-toggle-main" onclick="deactivateBattleMode()" title="Disable Battle Mode">
+          <span class="bt-icon">⚔</span>
+          <span>Battle Mode</span>
+          <span style="font-size:10px;opacity:0.8;">✓</span>
+        </button>
+
+        <!-- Gear (calibration) button — only visible in Battle Mode -->
+        <button class="gear-btn" id="gear-btn-main" onclick="toggleCalibration()" title="Map calibration">⚙</button>
+
+        <button class="collapse-btn" title="Collapse map">⌃</button>
+
+        <!-- Calibration popover -->
+        <div class="calibration-popover" id="calibration-popover">
+          <div class="calib-header">Map Calibration</div>
+          <div class="calib-label">Token size</div>
+          <div class="calib-slider-row">
+            <button class="calib-step-btn" onclick="stepScale(-0.05)" title="Decrease token size">−</button>
+            <div class="calib-slider-wrap">
+              <input type="range" class="calib-slider" id="calib-slider"
+                     min="0.5" max="2.5" step="0.05" value="1.0"
+                     oninput="onScaleSlider(this.value)"
+                     onchange="onScaleCommit(this.value)">
+            </div>
+            <button class="calib-step-btn" onclick="stepScale(0.05)" title="Increase token size">+</button>
+            <span class="calib-readout" id="calib-readout">1.0×</span>
+          </div>
+          <div class="calib-range-labels">
+            <span class="calib-range-label">small</span>
+            <span class="calib-range-label">large</span>
+          </div>
+          <button class="calib-reset-btn" id="calib-reset" onclick="resetScale()">⟳ Reset to 1.0×</button>
+        </div>
+      </div>
+
+      <!-- Map viewport with token layer -->
+      <div class="map-viewport" id="map-vp-main" onclick="onMapClick(event)">
+        <div class="map-bg"></div>
+        <div class="map-room-overlay">
+          <div class="map-room" style="left:8%;top:8%;width:36%;height:30%;"></div>
+          <div class="map-room" style="left:55%;top:10%;width:37%;height:25%;"></div>
+          <div class="map-room" style="left:20%;top:50%;width:55%;height:38%;"></div>
+        </div>
+
+        <!-- Token layer: tokens positioned by % of map dimensions -->
+        <div class="token-layer" id="token-layer-main">
+
+          <!-- Aragorn — placed PC, ember/amber ring -->
+          <div class="token-wrap"
+               id="tok-aragorn"
+               data-token-id="aragorn"
+               data-type="pc"
+               data-name="Aragorn"
+               data-hp="31"
+               data-hp-max="44"
+               style="left:28%;top:25%;--ring-color:#c89060;"
+               onmouseenter="expandToken(this)"
+               onmouseleave="collapseToken(this, event)"
+               onclick="pickUpToken(event, this)">
+            <div class="token-circle">
+              <div class="token-portrait" style="background: radial-gradient(circle at 40% 30%, #3a2010, #1a0c05);">Ar</div>
+              <div class="token-ring"></div>
+              <div class="token-outline"></div>
+              <!-- HP card (DM sees exact HP) -->
+              <div class="hp-card">
+                <div class="hp-card-name">Aragorn</div>
+                <div class="hp-card-nums">31 / 44</div>
+                <div class="hp-bar-track"><div class="hp-bar-fill wounded" style="width:70%;"></div></div>
+              </div>
+            </div>
+            <div class="token-label">Aragorn</div>
+          </div>
+
+          <!-- Goblin A — placed NPC, teal initial -->
+          <div class="token-wrap"
+               id="tok-goblin-a"
+               data-token-id="goblin-a"
+               data-type="npc"
+               data-name="Goblin A"
+               data-hp="8"
+               data-hp-max="12"
+               style="left:65%;top:20%;--ring-color:rgba(160,100,55,0.4);"
+               onmouseenter="expandToken(this)"
+               onmouseleave="collapseToken(this, event)"
+               onclick="pickUpToken(event, this)">
+            <div class="token-circle">
+              <div class="token-portrait" style="background: var(--fill-goblin-a);">G</div>
+              <div class="token-ring"></div>
+              <div class="token-outline"></div>
+              <!-- HP card (DM sees exact HP for NPCs too) -->
+              <div class="hp-card">
+                <div class="hp-card-name npc">Goblin A</div>
+                <div class="hp-card-nums">8 / 12</div>
+                <div class="hp-bar-track"><div class="hp-bar-fill wounded" style="width:67%;"></div></div>
+              </div>
+            </div>
+            <div class="token-label npc">Goblin A</div>
+          </div>
+
+          <!-- Aeryn — placed PC, green ring (pre-placed for richer demo) -->
+          <div class="token-wrap"
+               id="tok-aeryn"
+               data-token-id="aeryn"
+               data-type="pc"
+               data-name="Aeryn"
+               data-hp="38"
+               data-hp-max="38"
+               style="left:42%;top:65%;--ring-color:#5a8a60;"
+               onmouseenter="expandToken(this)"
+               onmouseleave="collapseToken(this, event)"
+               onclick="pickUpToken(event, this)">
+            <div class="token-circle">
+              <div class="token-portrait" style="background: radial-gradient(circle at 40% 30%, #1a3010, #0a1805);">Ae</div>
+              <div class="token-ring"></div>
+              <div class="token-outline"></div>
+              <div class="hp-card">
+                <div class="hp-card-name">Aeryn</div>
+                <div class="hp-card-nums">38 / 38</div>
+                <div class="hp-bar-track"><div class="hp-bar-fill healthy" style="width:100%;"></div></div>
+              </div>
+            </div>
+            <div class="token-label">Aeryn</div>
+          </div>
+
+          <!-- Bandit — placed NPC, FALLEN state -->
+          <div class="token-wrap fallen"
+               id="tok-bandit"
+               data-token-id="bandit"
+               data-type="npc"
+               data-name="Bandit"
+               data-hp="0"
+               data-hp-max="18"
+               style="left:75%;top:62%;--ring-color:rgba(120,60,60,0.5);"
+               onmouseenter="expandToken(this)"
+               onmouseleave="collapseToken(this, event)"
+               onclick="pickUpToken(event, this)">
+            <div class="token-circle">
+              <div class="token-portrait" style="background: var(--fill-bandit);">Ba</div>
+              <div class="token-ring"></div>
+              <div class="token-outline"></div>
+              <!-- FALLEN: DM sees "Remove from map" action -->
+              <div class="hp-card">
+                <div class="hp-card-name npc">Bandit</div>
+                <div class="hp-card-nums" style="color:#c06060;">0 / 18</div>
+                <div class="hp-bar-track"><div class="hp-bar-fill critical" style="width:0%;"></div></div>
+                <button class="hp-card-remove" onclick="removeToken(event,'tok-bandit')">Remove from map</button>
+              </div>
+            </div>
+            <div class="token-label npc">Bandit</div>
+          </div>
+
+        </div><!-- /token-layer -->
+
+        <!-- Zoom controls -->
+        <div class="map-zoom-controls">
+          <button class="zoom-btn" title="Zoom in">+</button>
+          <button class="zoom-btn" title="Zoom out">−</button>
+          <button class="zoom-btn" style="font-size:12px;" title="Reset zoom">⟳</button>
+          <span class="zoom-pct" id="zoom-pct-main">100%</span>
+        </div>
+
+        <!-- Cancel pill (shown during HELD state) -->
+        <button id="cancel-pill" onclick="cancelHeld()">
+          <span style="font-size:14px;">×</span>
+          <span>Cancel</span>
+        </button>
+
+        <!-- End Combat confirm overlay -->
+        <div class="confirm-overlay" id="confirm-overlay">
+          <div class="confirm-box">
+            <div class="confirm-title">Disable Battle Mode?</div>
+            <div class="confirm-desc">This will clear all 4 placed tokens and return to Adventure mode.</div>
+            <div class="confirm-row">
+              <button class="confirm-btn confirm-btn-danger" onclick="confirmEndBattle()">Clear &amp; Disable</button>
+              <button class="confirm-btn confirm-btn-ghost" onclick="cancelEndBattle()">Cancel</button>
+            </div>
+          </div>
+        </div>
+      </div><!-- /map-viewport -->
+
+      <!-- Token tray (slides up when Battle Mode is on)
+           Bug 3 fix: onclick handler returns a map-picked-up token to the tray -->
+      <div class="token-tray open" id="token-tray-main" onclick="onTrayClick(event)">
+        <div class="tray-status-row visible">
+          <span class="tray-status-label" id="tray-unplaced-count">Unplaced · 2</span>
+          <button class="tray-end-btn" onclick="showEndConfirm()">End ▾</button>
+        </div>
+        <div class="tray-inner">
+          <!-- PC half -->
+          <div class="tray-pc-half" id="tray-pc-half">
+            <!-- Eoghan chip — unplaced in tray -->
+            <div class="tray-chip chip-visible" id="chip-eoghan" data-for="eoghan"
+                 onclick="selectTrayChip(this, 'eoghan')"
+                 title="Eoghan — unplaced">
+              <div class="tray-chip-circle" style="--ring-color:#6a8fa8; background: radial-gradient(circle at 40% 30%, #102030, #050f18);">Eo</div>
+              <div class="tray-chip-label">Eoghan</div>
+            </div>
+          </div>
+          <div class="tray-divider"></div>
+          <!-- NPC half -->
+          <div class="tray-npc-half" id="tray-npc-half">
+            <!-- Goblin B chip — in tray, FALLEN visual indicator -->
+            <div class="tray-chip chip-visible" id="chip-goblin-b" data-for="goblin-b"
+                 onclick="selectTrayChip(this, 'goblin-b')"
+                 style="opacity:0.55;"
+                 title="Goblin B — FALLEN (0 HP)">
+              <div class="tray-chip-circle" style="--ring-color:rgba(130,80,60,0.4); background: var(--fill-goblin-b); filter:grayscale(0.5);">G</div>
+              <div class="tray-chip-label" style="color:#6a4030;">Goblin B</div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /token-tray -->
+
+    </div><!-- /map-panel-main -->
+
+    <!-- Annotations -->
+    <div class="annotation-band" style="margin-top:12px;">
+      <strong style="color:var(--text);">How to interact:</strong>
+      Click a <span class="callout-inline">Tray chip</span> → enters HELD state (cursor follows chip).
+      Click the map → places the token with bounce animation.
+      <span class="callout-inline">Hover a token</span> → breathes open with HP card.
+      Click a <span class="callout-inline">placed token</span> → picks it back up (ghost remains).
+      Press Escape or click <span class="callout-inline">× Cancel</span> to cancel.
+      Click anywhere in the <span class="callout-inline">tray strip</span> while holding a map token → returns it to tray.
+      The <span class="callout-inline">⚙ gear</span> opens the calibration popover.
+      The <span class="callout-inline">Bandit</span> token is FALLEN — hover to see "Remove from map".
+    </div>
+
+    <!-- Sub-scenario: all tokens placed state -->
+    <div class="sub-scenario">
+      <div class="sub-scenario-title">Edge Case — All Tokens Placed</div>
+      <div class="scenario-desc" style="font-size:13px;margin-bottom:14px;">
+        When every token is on the map, the tray shows a compact "All placed" status. Clicking it would re-expand the tray.
+      </div>
+      <div class="map-panel" style="max-width:520px;">
+        <div class="map-panel-header">
+          <span class="map-panel-header-label">Map</span>
+          <span class="map-panel-header-name">Ruined Hall</span>
+          <button class="battle-toggle active" style="pointer-events:none;">
+            <span class="bt-icon">⚔</span> <span>Battle Mode</span> <span style="font-size:10px;opacity:0.8;">✓</span>
+          </button>
+          <button class="collapse-btn">⌃</button>
+        </div>
+        <div style="height:80px;background:#0a0705;position:relative;overflow:hidden;">
+          <div class="map-bg"></div>
+        </div>
+        <!-- "All placed" strip -->
+        <div style="
+          height:28px; background:rgba(12,8,4,0.85); border-top:1px solid var(--border);
+          display:flex; align-items:center; justify-content:center;
+          font-family:var(--font-u); font-size:10px; letter-spacing:0.2em;
+          text-transform:uppercase; color:var(--text-muted); cursor:pointer;
+          ">
+          All Tokens Placed · 4
+        </div>
+      </div>
+      <div class="annotation-band" style="margin-top:8px;">
+        <span class="callout-inline">Brief §9</span> — "All placed" tray collapses to 28px strip. Tap to re-expand. Map panel gains 48px height.
+      </div>
+    </div>
+
+    <!-- Sub-scenario: empty NPC tray half -->
+    <div class="sub-scenario">
+      <div class="sub-scenario-title">Edge Case — No NPCs in Combat Tracker</div>
+      <div class="map-panel" style="max-width:520px;">
+        <div class="map-panel-header">
+          <span class="map-panel-header-label">Map</span>
+          <span class="map-panel-header-name">Forest Crossing</span>
+          <button class="battle-toggle active" style="pointer-events:none;">
+            <span class="bt-icon">⚔</span> <span>Battle Mode</span>
+          </button>
+          <button class="collapse-btn">⌃</button>
+        </div>
+        <div style="height:60px;background:#0a0705;position:relative;overflow:hidden;">
+          <div class="map-bg"></div>
+        </div>
+        <div class="token-tray open">
+          <div class="tray-status-row visible">
+            <span class="tray-status-label">Unplaced · 3</span>
+            <button class="tray-end-btn" style="pointer-events:none;">End ▾</button>
+          </div>
+          <div class="tray-inner">
+            <div class="tray-pc-half">
+              <div class="tray-chip chip-visible">
+                <div class="tray-chip-circle" style="--ring-color:#c89060; background: radial-gradient(#3a2010,#1a0c05);">Ar</div>
+                <div class="tray-chip-label">Aragorn</div>
+              </div>
+              <div class="tray-chip chip-visible" style="transition-delay:40ms;">
+                <div class="tray-chip-circle" style="--ring-color:#6a8fa8; background: radial-gradient(#102030,#050f18);">Eo</div>
+                <div class="tray-chip-label">Eoghan</div>
+              </div>
+              <div class="tray-chip chip-visible" style="transition-delay:80ms;">
+                <div class="tray-chip-circle" style="--ring-color:#5a8a60; background: radial-gradient(#1a3010,#0a1805);">Ae</div>
+                <div class="tray-chip-label">Aeryn</div>
+              </div>
+            </div>
+            <div class="tray-divider"></div>
+            <div class="tray-npc-half">
+              <span class="tray-empty-half">No NPCs in combat · Add to tracker →</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-band" style="margin-top:8px;">
+        <span class="callout-inline">Brief §9</span> — NPC half shows empty state with "Add to tracker" prompt. PC tokens still available for placement.
+      </div>
+    </div>
+
+  </div><!-- /scenario-section 2 -->
+
+  <!-- ─── Scenario 3: Hover-expand detail view ─────────────────────────── -->
+  <div class="scenario-section">
+    <div class="scenario-label">Scenario 3</div>
+    <div class="scenario-title">Hover-Expand States — All Token Types</div>
+    <div class="scenario-desc">
+      These tokens are pre-expanded to show the HP card layout across all states. In the live prototype above, hover over placed tokens to trigger the breathe-open animation.
+    </div>
+
+    <div style="display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start;">
+
+      <!-- PC token, full HP -->
+      <div style="text-align:center;">
+        <div style="margin:0 auto 4px;display:inline-block;">
+          <div style="
+            display:flex;flex-direction:column;align-items:center;
+            background:rgba(20,12,6,0.8);padding:16px 14px 12px;border:1px solid var(--border);border-radius:4px;
+            min-width:90px;
+            ">
+            <!-- Portrait grown to 48px -->
+            <div style="
+              width:48px;height:48px;border-radius:50%;
+              background:radial-gradient(circle at 40% 30%, #3a2010, #1a0c05);
+              border:2px solid #c89060; box-shadow:0 0 0 1px rgba(0,0,0,0.4);
+              display:flex;align-items:center;justify-content:center;
+              font-family:var(--font-d);font-size:14px;color:rgba(255,255,255,0.9);
+              margin-bottom:4px;
+              ">Ar</div>
+            <!-- HP card -->
+            <div style="
+              width:124px;background:var(--surface-solid);border:1px solid var(--border-vis);
+              border-radius:3px;padding:7px 10px 8px;
+              ">
+              <div style="font-family:var(--font-d);font-size:12px;color:var(--text);margin-bottom:3px;">Aragorn</div>
+              <div style="font-family:var(--font-d);font-size:14px;color:var(--gem);margin-bottom:4px;">31 / 44</div>
+              <div style="width:100px;height:4px;background:var(--gem-low);border-radius:2px;overflow:hidden;margin:0 2px 4px;">
+                <div style="width:70%;height:100%;background:#c8903c;border-radius:2px;"></div>
+              </div>
+            </div>
+            <div style="font-family:var(--font-u);font-size:11px;letter-spacing:0.12em;color:var(--text);background:rgba(0,0,0,0.55);padding:2px 5px;border-radius:2px;margin-top:3px;">Aragorn</div>
+          </div>
+        </div>
+        <div class="callout">PC · Wounded (70%)</div>
+      </div>
+
+      <!-- NPC token, DM view, exact HP -->
+      <div style="text-align:center;">
+        <div style="margin:0 auto 4px;display:inline-block;">
+          <div style="
+            display:flex;flex-direction:column;align-items:center;
+            background:rgba(20,12,6,0.8);padding:16px 14px 12px;border:1px solid var(--border);border-radius:4px;
+            min-width:90px;
+            ">
+            <div style="
+              width:48px;height:48px;border-radius:50%;
+              background:var(--fill-goblin-a);
+              border:2px solid rgba(160,104,64,0.4); box-shadow:0 0 0 1px rgba(0,0,0,0.4);
+              display:flex;align-items:center;justify-content:center;
+              font-family:var(--font-d);font-size:14px;color:rgba(255,255,255,0.9);
+              margin-bottom:4px;
+              ">G</div>
+            <div style="
+              width:124px;background:var(--surface-solid);border:1px solid var(--border-vis);
+              border-radius:3px;padding:7px 10px 8px;
+              ">
+              <div style="font-family:var(--font-d);font-size:12px;color:var(--text-body);margin-bottom:3px;">Goblin A</div>
+              <div style="font-family:var(--font-d);font-size:14px;color:var(--gem);margin-bottom:4px;">8 / 12</div>
+              <div style="width:100px;height:4px;background:var(--gem-low);border-radius:2px;overflow:hidden;margin:0 2px 4px;">
+                <div style="width:67%;height:100%;background:#c8903c;border-radius:2px;"></div>
+              </div>
+            </div>
+            <div style="font-family:var(--font-u);font-size:11px;letter-spacing:0.12em;color:var(--text-body);background:rgba(0,0,0,0.55);padding:2px 5px;border-radius:2px;margin-top:3px;">Goblin A</div>
+          </div>
+        </div>
+        <div class="callout">NPC · DM exact HP</div>
+      </div>
+
+      <!-- FALLEN token with Remove button -->
+      <div style="text-align:center;">
+        <div style="margin:0 auto 4px;display:inline-block;">
+          <div style="
+            display:flex;flex-direction:column;align-items:center;
+            background:rgba(20,12,6,0.8);padding:16px 14px 12px;border:1px solid var(--border);border-radius:4px;
+            min-width:90px;opacity:0.9;
+            ">
+            <div style="
+              width:48px;height:48px;border-radius:50%;
+              background:var(--fill-bandit);
+              border:2px solid rgba(120,60,60,0.5);
+              box-shadow:0 0 0 1px rgba(0,0,0,0.4), inset 0 0 6px rgba(192,96,96,0.4);
+              display:flex;align-items:center;justify-content:center;
+              font-family:var(--font-d);font-size:14px;color:rgba(255,255,255,0.9);
+              filter:grayscale(0.6);
+              margin-bottom:4px;
+              ">Ba</div>
+            <div style="
+              width:124px;background:var(--surface-solid);border:1px solid var(--border-vis);
+              border-radius:3px;padding:7px 10px 8px;
+              ">
+              <div style="font-family:var(--font-d);font-size:12px;color:var(--text-body);margin-bottom:3px;">Bandit</div>
+              <div style="font-family:var(--font-d);font-size:14px;color:#c06060;margin-bottom:4px;">0 / 18</div>
+              <div style="width:100px;height:4px;background:var(--gem-low);border-radius:2px;overflow:hidden;margin:0 2px 4px;">
+                <div style="width:0%;height:100%;background:#c06060;border-radius:2px;"></div>
+              </div>
+              <button style="
+                margin-top:4px;width:100%;background:transparent;border:none;
+                border-top:1px solid var(--border);padding:4px 0 0;
+                color:#c06060;font-family:var(--font-u);font-size:10px;
+                letter-spacing:0.12em;text-align:center;cursor:pointer;
+                ">Remove from map</button>
+            </div>
+            <div style="font-family:var(--font-u);font-size:11px;letter-spacing:0.12em;color:var(--text-muted);background:rgba(0,0,0,0.55);padding:2px 5px;border-radius:2px;margin-top:3px;opacity:0.5;">Bandit</div>
+          </div>
+        </div>
+        <div class="callout">FALLEN · Remove button visible</div>
+      </div>
+
+      <!-- PC token, critical HP -->
+      <div style="text-align:center;">
+        <div style="margin:0 auto 4px;display:inline-block;">
+          <div style="
+            display:flex;flex-direction:column;align-items:center;
+            background:rgba(20,12,6,0.8);padding:16px 14px 12px;border:1px solid var(--border);border-radius:4px;
+            min-width:90px;
+            ">
+            <div style="
+              width:48px;height:48px;border-radius:50%;
+              background:radial-gradient(circle at 40% 30%, #102030, #050f18);
+              border:2px solid #6a8fa8; box-shadow:0 0 0 1px rgba(0,0,0,0.4);
+              display:flex;align-items:center;justify-content:center;
+              font-family:var(--font-d);font-size:14px;color:rgba(255,255,255,0.9);
+              margin-bottom:4px;
+              ">Eo</div>
+            <div style="
+              width:124px;background:var(--surface-solid);border:1px solid var(--border-vis);
+              border-radius:3px;padding:7px 10px 8px;
+              ">
+              <div style="font-family:var(--font-d);font-size:12px;color:var(--text);margin-bottom:3px;">Eoghan</div>
+              <div style="font-family:var(--font-d);font-size:14px;color:var(--gem);margin-bottom:4px;">6 / 44</div>
+              <div style="width:100px;height:4px;background:var(--gem-low);border-radius:2px;overflow:hidden;margin:0 2px 4px;">
+                <div style="width:14%;height:100%;background:#c06060;border-radius:2px;"></div>
+              </div>
+            </div>
+            <div style="font-family:var(--font-u);font-size:11px;letter-spacing:0.12em;color:var(--text);background:rgba(0,0,0,0.55);padding:2px 5px;border-radius:2px;margin-top:3px;">Eoghan</div>
+          </div>
+        </div>
+        <div class="callout">PC · Critical (&lt;20%)</div>
+      </div>
+
+    </div><!-- /flex row -->
+  </div><!-- /scenario 3 -->
+
+</div><!-- /panel-dm -->
+
+
+<!-- ══════════════════════════════════════════════════════════════════════
+     PLAYER VIEW
+════════════════════════════════════════════════════════════════════════ -->
+<div class="view-panel" id="panel-player">
+
+  <div class="scenario-section">
+    <div class="scenario-label">Player View</div>
+    <div class="scenario-title">Battle Map — Player Read-Only View</div>
+    <div class="scenario-desc">
+      Players see the same tokens but with restricted HP visibility. No tray, no Battle Mode toggle, no gear icon. Hover tokens to see HP cards — NPC tokens show health-tier glow line only, own PC token shows exact HP, other PCs show exact HP (partyVisibilityEnabled = true).
+    </div>
+
+    <div class="player-view-badge">
+      ◉ Player view — Eoghan's session
+    </div>
+
+    <div class="map-panel" id="map-panel-player" style="position:relative;">
+      <!-- Header: no battle mode toggle, no gear -->
+      <div class="map-panel-header">
+        <span class="map-panel-header-label">Map</span>
+        <span class="map-panel-header-name">Ruined Hall of the Ember Keep</span>
+        <!-- no battle toggle, no gear in player view -->
+        <button class="collapse-btn" title="Collapse map">⌃</button>
+      </div>
+
+      <div class="map-viewport" id="map-vp-player" style="cursor:default;">
+        <div class="map-bg"></div>
+        <div class="map-room-overlay">
+          <div class="map-room" style="left:8%;top:8%;width:36%;height:30%;"></div>
+          <div class="map-room" style="left:55%;top:10%;width:37%;height:25%;"></div>
+          <div class="map-room" style="left:20%;top:50%;width:55%;height:38%;"></div>
+        </div>
+
+        <!-- Player token layer: same positions, restricted HP, no pickup -->
+        <div class="token-layer" id="token-layer-player">
+
+          <!-- Aragorn — other PC — exact HP (partyVisibilityEnabled=true) -->
+          <div class="token-wrap"
+               id="ptok-aragorn"
+               data-player-token="true"
+               style="left:28%;top:25%;--ring-color:#c89060;"
+               onmouseenter="expandToken(this)"
+               onmouseleave="collapseToken(this, event)">
+            <div class="token-circle">
+              <div class="token-portrait" style="background: radial-gradient(circle at 40% 30%, #3a2010, #1a0c05);">Ar</div>
+              <div class="token-ring"></div>
+              <div class="token-outline"></div>
+              <!-- Other PC: exact HP shown -->
+              <div class="hp-card">
+                <div class="hp-card-name">Aragorn</div>
+                <div class="hp-card-nums">31 / 44</div>
+                <div class="hp-bar-track"><div class="hp-bar-fill wounded" style="width:70%;"></div></div>
+              </div>
+            </div>
+            <div class="token-label">Aragorn</div>
+          </div>
+
+          <!-- Eoghan — own PC — exact HP always -->
+          <div class="token-wrap"
+               id="ptok-eoghan"
+               data-player-token="true"
+               data-own="true"
+               style="left:48%;top:38%;--ring-color:#6a8fa8;"
+               onmouseenter="expandToken(this)"
+               onmouseleave="collapseToken(this, event)">
+            <div class="token-circle">
+              <div class="token-portrait" style="background: radial-gradient(circle at 40% 30%, #102030, #050f18);">Eo</div>
+              <!-- Own token ring glows slightly -->
+              <div class="token-ring" style="border-color:#6a8fa8;box-shadow:0 0 0 1px rgba(0,0,0,0.4),0 0 6px rgba(106,143,168,0.4);"></div>
+              <div class="token-outline"></div>
+              <!-- Own PC: exact HP -->
+              <div class="hp-card">
+                <div class="hp-card-name" style="color:#6a8fa8;">Eoghan <span style="font-size:9px;letter-spacing:0.08em;color:var(--text-muted);">(you)</span></div>
+                <div class="hp-card-nums">6 / 44</div>
+                <div class="hp-bar-track"><div class="hp-bar-fill critical" style="width:14%;"></div></div>
+              </div>
+            </div>
+            <div class="token-label">Eoghan</div>
+          </div>
+
+          <!-- Aeryn — other PC — exact HP -->
+          <div class="token-wrap"
+               id="ptok-aeryn"
+               data-player-token="true"
+               style="left:42%;top:65%;--ring-color:#5a8a60;"
+               onmouseenter="expandToken(this)"
+               onmouseleave="collapseToken(this, event)">
+            <div class="token-circle">
+              <div class="token-portrait" style="background: radial-gradient(circle at 40% 30%, #1a3010, #0a1805);">Ae</div>
+              <div class="token-ring"></div>
+              <div class="token-outline"></div>
+              <!-- Other PC: exact HP -->
+              <div class="hp-card">
+                <div class="hp-card-name">Aeryn</div>
+                <div class="hp-card-nums">38 / 38</div>
+                <div class="hp-bar-track"><div class="hp-bar-fill healthy" style="width:100%;"></div></div>
+              </div>
+            </div>
+            <div class="token-label">Aeryn</div>
+          </div>
+
+          <!-- Goblin A — NPC — health tier glow only (player view) -->
+          <div class="token-wrap"
+               id="ptok-goblin-a"
+               data-player-token="true"
+               data-is-npc="true"
+               style="left:65%;top:20%;--ring-color:rgba(160,100,55,0.4);"
+               onmouseenter="expandToken(this)"
+               onmouseleave="collapseToken(this, event)">
+            <div class="token-circle">
+              <div class="token-portrait" style="background: var(--fill-goblin-a);">G</div>
+              <div class="token-ring"></div>
+              <div class="token-outline"></div>
+              <!-- NPC player view: tier glow only, no numerals -->
+              <div class="hp-card">
+                <div class="hp-card-name npc">Goblin A</div>
+                <!-- No HP numerals for NPCs in player view -->
+                <div class="hp-tier-glow wounded" style="margin-top:2px;"></div>
+              </div>
+            </div>
+            <div class="token-label npc">Goblin A</div>
+          </div>
+
+          <!-- Bandit — NPC FALLEN — health tier (critical) glow -->
+          <div class="token-wrap fallen"
+               id="ptok-bandit"
+               data-player-token="true"
+               data-is-npc="true"
+               style="left:75%;top:62%;--ring-color:rgba(120,60,60,0.5);"
+               onmouseenter="expandToken(this)"
+               onmouseleave="collapseToken(this, event)">
+            <div class="token-circle">
+              <div class="token-portrait" style="background: var(--fill-bandit);">Ba</div>
+              <div class="token-ring"></div>
+              <div class="token-outline"></div>
+              <!-- NPC FALLEN player view: critical tier glow only, no remove button -->
+              <div class="hp-card">
+                <div class="hp-card-name npc">Bandit</div>
+                <div class="hp-tier-glow critical" style="margin-top:2px;"></div>
+                <!-- no remove button in player view -->
+              </div>
+            </div>
+            <div class="token-label npc">Bandit</div>
+          </div>
+
+        </div><!-- /token-layer-player -->
+
+        <!-- Zoom controls (player can still pan/zoom) -->
+        <div class="map-zoom-controls">
+          <button class="zoom-btn" title="Zoom in">+</button>
+          <button class="zoom-btn" title="Zoom out">−</button>
+          <button class="zoom-btn" style="font-size:12px;" title="Reset zoom">⟳</button>
+          <span class="zoom-pct">100%</span>
+        </div>
+        <!-- No cancel pill, no tray, no gear in player view -->
+      </div>
+      <!-- No token tray in player view -->
+    </div><!-- /map-panel-player -->
+
+    <div class="annotation-band" style="margin-top:12px;">
+      <strong style="color:var(--text);">Player view rules (Brief §13):</strong>
+      <span class="callout-inline">Eoghan (own PC)</span> — exact HP.
+      <span class="callout-inline">Aragorn / Aeryn (other PCs)</span> — exact HP (partyVisibilityEnabled = true).
+      <span class="callout-inline">NPCs</span> — health tier glow line only, no numerals.
+      No tray, no toggle, no gear, no remove button.
+    </div>
+
+    <!-- Sub-scenario: partyVisibilityEnabled = false -->
+    <div class="sub-scenario">
+      <div class="sub-scenario-title">Edge Case — partyVisibilityEnabled = false</div>
+      <div class="scenario-desc" style="font-size:13px;margin-bottom:14px;">
+        When the DM hides party HP from players, other PC tokens are not rendered at all (consistent with ADR-015 contract, per Architect Notes §8 item 9). Only own token and NPC tokens remain visible.
+      </div>
+      <div class="map-panel" style="max-width:520px;">
+        <div class="map-panel-header">
+          <span class="map-panel-header-label">Map</span>
+          <span class="map-panel-header-name">Ruined Hall</span>
+          <button class="collapse-btn">⌃</button>
+        </div>
+        <div class="map-viewport" style="height:160px;cursor:default;">
+          <div class="map-bg"></div>
+          <div class="token-layer">
+            <!-- Own token visible -->
+            <div class="token-wrap" style="left:48%;top:40%;--ring-color:#6a8fa8;pointer-events:none;">
+              <div class="token-circle">
+                <div class="token-portrait" style="background: radial-gradient(#102030,#050f18);">Eo</div>
+                <div class="token-ring" style="border-color:#6a8fa8;box-shadow:0 0 0 1px rgba(0,0,0,0.4),0 0 6px rgba(106,143,168,0.3);"></div>
+                <div class="token-outline"></div>
+              </div>
+              <div class="token-label">Eoghan</div>
+            </div>
+            <!-- NPC still visible -->
+            <div class="token-wrap" style="left:72%;top:28%;--ring-color:rgba(160,100,55,0.4);pointer-events:none;">
+              <div class="token-circle">
+                <div class="token-portrait" style="background: var(--fill-goblin-a);">G</div>
+                <div class="token-ring"></div>
+                <div class="token-outline"></div>
+              </div>
+              <div class="token-label npc">Goblin A</div>
+            </div>
+            <!-- Other PCs hidden — not rendered -->
+          </div>
+          <div class="map-zoom-controls">
+            <button class="zoom-btn">+</button>
+            <button class="zoom-btn">−</button>
+            <span class="zoom-pct">100%</span>
+          </div>
+        </div>
+      </div>
+      <div class="annotation-band" style="margin-top:8px;">
+        <span class="callout-inline">Architect Note §8.9</span> — When partyVisibilityEnabled=false, v1 hides other PC tokens entirely. Eoghan sees only their own token + NPC tokens.
+      </div>
+    </div>
+
+  </div><!-- /scenario-section player -->
+</div><!-- /panel-player -->
+
+
+<!-- ─── Legend ─────────────────────────────────────────────────────────── -->
+<div class="legend">
+  <div class="legend-title">Legend — Design Decisions &amp; Annotations</div>
+  <div class="legend-grid">
+    <div class="legend-item">
+      <div class="legend-num">1</div>
+      <div class="legend-text"><strong>Token layer as sibling div</strong> — lives inside the same transform wrapper as the map image. All tokens inherit CSS transform and scale naturally with zoom. No per-token math during pan/zoom.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">2</div>
+      <div class="legend-text"><strong>Held floater outside transform</strong> — position:fixed element following cursor via JS, lives outside the map panel's overflow:hidden. FLIP-style handoff on drop: floater animates to image-space position then token mounts in place.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">3</div>
+      <div class="legend-text"><strong>Select-then-click placement</strong> — click tray chip → HELD state. Click map → drop with bounce. Clicking the chip again or pressing Escape cancels. Works equally on touch without long-press drag.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">4</div>
+      <div class="legend-text"><strong>Hover-expand breathes open</strong> — portrait scales 36→48px (220ms overshoot cubic), HP card slides in (+80ms, 200ms ease-out), label translates down (+120ms, 200ms ease-out). Collapse is synchronised 160ms ease-in.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">5</div>
+      <div class="legend-text"><strong>--token-scale-multiplier</strong> — CSS variable on the token layer root. Calibration slider writes directly to element style, no re-render needed. Token px = 36px × multiplier × mapZoom.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">6</div>
+      <div class="legend-text"><strong>FALLEN state</strong> — opacity 0.4, filter grayscale(0.6), inset red shadow on ring. Bandit token on map shows this state. In DM view hover-card has "Remove from map" button. Player view shows critical tier glow line.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">7</div>
+      <div class="legend-text"><strong>Tray chip stagger</strong> — nth-child transition-delay at 40ms increments. Chips animate opacity + scale when .chip-visible class is added after tray opens (240ms + stagger per brief §10).</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">8</div>
+      <div class="legend-text"><strong>NPC ring color</strong> — uses --border (neutral gray) per brief §4b. NPC fill colors are hash-tinted: Goblin A = teal (#2a5a4a), Goblin B = brown (#4a3a2a), Bandit = red (#5a2a2a). Three goblins would be visually distinct.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">9</div>
+      <div class="legend-text"><strong>Brief §16 calibration scope</strong> — Architect Notes §1 defers calibration to Story 29b. This prototype includes the full calibration popover UI for design validation; it is marked as deferred in implementation scope.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">10</div>
+      <div class="legend-text"><strong>Fractional coordinates</strong> — Tokens are positioned at percentage of map width/height (e.g. left:28%, top:25%). In production these would be stored as 0.0–1.0 fractions and converted to px via imageNaturalSize × fraction.</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">11</div>
+      <div class="legend-text"><strong>HP card flip</strong> — .flip-up class flips card above the token when token is in the bottom 25% of viewport. Computed via getBoundingClientRect() against the MapViewer container rect (not document).</div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">12</div>
+      <div class="legend-text"><strong>Cancel paths</strong> — Three paths to cancel HELD state: tap source chip again, Escape key, or × Cancel pill (44px touch target at bottom-left of map). All paths call the same cancelHeld() function. Bug 3 adds a fourth: click the tray strip while holding a map token to return it.</div>
+    </div>
+  </div>
+</div>
+
+
+<script>
+// ─── State ─────────────────────────────────────────────────────────────
+let heldToken = null;       // { id, name, type, ringColor, portraitBg, portraitText, fromTray, chipEl, sourceEl }
+let expandedToken = null;   // current expanded token element
+let expandTimer = null;     // 120ms hover delay timer
+let collapseTimer = null;   // 60ms collapse forgiveness timer
+let tokenScale = 1.0;
+
+// ─── View switcher ──────────────────────────────────────────────────────
+function switchView(view) {
+  document.getElementById('panel-dm').classList.toggle('active', view === 'dm');
+  document.getElementById('panel-player').classList.toggle('active', view === 'player');
+  document.getElementById('tab-dm').classList.toggle('active', view === 'dm');
+  document.getElementById('tab-player').classList.toggle('active', view === 'player');
+  // Cancel any held token when switching views
+  if (heldToken) cancelHeld();
+}
+
+// ─── Battle Mode ────────────────────────────────────────────────────────
+function activateBattleMode() {
+  // This demo just scrolls to scenario 2 since the interactive map is there
+  document.getElementById('map-panel-main').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function deactivateBattleMode() {
+  showEndConfirm();
+}
+
+function showEndConfirm() {
+  document.getElementById('confirm-overlay').classList.add('open');
+}
+function cancelEndBattle() {
+  document.getElementById('confirm-overlay').classList.remove('open');
+}
+function confirmEndBattle() {
+  document.getElementById('confirm-overlay').classList.remove('open');
+  // Visual feedback: fade all tokens out and collapse tray
+  const tokens = document.querySelectorAll('#token-layer-main .token-wrap');
+  tokens.forEach((t, i) => {
+    setTimeout(() => {
+      t.style.transition = 'opacity 180ms ease-in, transform 180ms ease-in';
+      t.style.opacity = '0';
+      t.style.transform = 'translate(-50%,-50%) scale(0.8)';
+    }, i * 40);
+  });
+  setTimeout(() => {
+    document.getElementById('token-tray-main').classList.remove('open');
+    document.getElementById('battle-toggle-main').classList.remove('active');
+    document.getElementById('gear-btn-main').style.display = 'none';
+    // restore tokens after demo
+    setTimeout(() => {
+      tokens.forEach(t => {
+        t.style.transition = '';
+        t.style.opacity = '';
+        t.style.transform = '';
+      });
+      document.getElementById('token-tray-main').classList.add('open');
+      document.getElementById('battle-toggle-main').classList.add('active');
+      document.getElementById('gear-btn-main').style.display = '';
+    }, 2000);
+  }, tokens.length * 40 + 200);
+}
+
+// ─── Calibration popover ────────────────────────────────────────────────
+function toggleCalibration() {
+  const pop = document.getElementById('calibration-popover');
+  const btn = document.getElementById('gear-btn-main');
+  const isOpen = pop.classList.toggle('open');
+  btn.classList.toggle('active', isOpen);
+}
+
+// Close popover on outside click
+document.addEventListener('click', (e) => {
+  const pop = document.getElementById('calibration-popover');
+  const gear = document.getElementById('gear-btn-main');
+  if (pop && pop.classList.contains('open') && !pop.contains(e.target) && e.target !== gear) {
+    pop.classList.remove('open');
+    if (gear) gear.classList.remove('active');
+  }
+}, true);
+
+function onScaleSlider(val) {
+  tokenScale = parseFloat(val);
+  applyTokenScale();
+  updateCalibUI();
+}
+
+function onScaleCommit(val) {
+  tokenScale = parseFloat(val);
+  // In production: debounced PATCH /maps/{mapId}/calibration
+}
+
+function stepScale(delta) {
+  tokenScale = Math.min(2.5, Math.max(0.5, Math.round((tokenScale + delta) * 100) / 100));
+  document.getElementById('calib-slider').value = tokenScale;
+  applyTokenScale();
+  updateCalibUI();
+}
+
+function resetScale() {
+  tokenScale = 1.0;
+  document.getElementById('calib-slider').value = 1.0;
+  applyTokenScale();
+  updateCalibUI();
+}
+
+function applyTokenScale() {
+  // Write to CSS variable on the token layer — no re-render
+  const layer = document.getElementById('token-layer-main');
+  if (layer) layer.style.setProperty('--token-scale-multiplier', tokenScale);
+  // Also update held floater size
+  const floater = document.getElementById('held-floater');
+  if (floater) floater.style.setProperty('--token-px', (36 * tokenScale) + 'px');
+}
+
+function updateCalibUI() {
+  document.getElementById('calib-readout').textContent = tokenScale.toFixed(2).replace(/\.?0+$/, '') + '×';
+  const resetBtn = document.getElementById('calib-reset');
+  resetBtn.classList.toggle('visible', Math.abs(tokenScale - 1.0) > 0.001);
+}
+
+// ─── Hover expand ───────────────────────────────────────────────────────
+function expandToken(el) {
+  if (heldToken) return; // don't expand while holding
+  clearTimeout(collapseTimer);
+  // 120ms hover delay
+  expandTimer = setTimeout(() => {
+    if (expandedToken && expandedToken !== el) {
+      collapseTokenImmediate(expandedToken);
+      setTimeout(() => openTokenExpand(el), 40);
+    } else {
+      openTokenExpand(el);
+    }
+  }, 120);
+}
+
+function openTokenExpand(el) {
+  expandedToken = el;
+  el.classList.add('expanded');
+  // Check if token is in bottom 25% of viewport → flip card up
+  const rect = el.getBoundingClientRect();
+  const vpH = window.innerHeight;
+  el.classList.toggle('flip-up', rect.bottom > vpH * 0.75);
+}
+
+// Bug 2 fix: accept the mouseleave event and skip collapse when the mouse
+// is moving into a child of the token-wrap (e.g. from the circle into the
+// overflowing hp-card). Without this, the card collapses before the user
+// can reach the "Remove from map" button inside .hp-card.
+function collapseToken(el, event) {
+  clearTimeout(expandTimer);
+  if (event && event.relatedTarget && el.contains(event.relatedTarget)) return;
+  // 60ms forgiveness delay
+  collapseTimer = setTimeout(() => {
+    collapseTokenImmediate(el);
+  }, 60);
+}
+
+function collapseTokenImmediate(el) {
+  el.classList.remove('expanded');
+  el.classList.remove('flip-up');
+  if (expandedToken === el) expandedToken = null;
+}
+
+// ─── Token pickup from map ──────────────────────────────────────────────
+function pickUpToken(event, el) {
+  if (el.closest('[data-player-token]')) return; // player view: no pickup
+  event.stopPropagation();
+  collapseTokenImmediate(el);
+
+  if (heldToken) {
+    // Already holding — cancel
+    cancelHeld();
+    return;
+  }
+
+  const id = el.dataset.tokenId;
+  const name = el.dataset.name;
+  const type = el.dataset.type;
+  const ringColor = getComputedStyle(el).getPropertyValue('--ring-color').trim();
+  const portrait = el.querySelector('.token-portrait');
+  const portraitBg = portrait ? portrait.style.background : '#1a100a';
+  const portraitText = portrait ? portrait.textContent.trim() : '?';
+
+  // Ghost the source token
+  el.classList.add('ghost');
+
+  enterHeldState({
+    id, name, type, ringColor, portraitBg, portraitText,
+    fromTray: false,
+    chipEl: null,
+    sourceEl: el
+  });
+}
+
+// ─── Tray chip selection ────────────────────────────────────────────────
+function selectTrayChip(chipEl, tokenId) {
+  if (heldToken && heldToken.id === tokenId) {
+    // Tap selected chip again → cancel
+    cancelHeld();
+    return;
+  }
+  if (heldToken) cancelHeld();
+
+  chipEl.classList.add('selected');
+
+  // Get token data from chip
+  const circle = chipEl.querySelector('.tray-chip-circle');
+  const label = chipEl.querySelector('.tray-chip-label');
+  const ringColor = getComputedStyle(circle).getPropertyValue('--ring-color').trim() ||
+                    circle.style.getPropertyValue('--ring-color') || 'var(--border-vis)';
+  const portraitBg = circle.style.background || '#1a100a';
+  const portraitText = circle.textContent.trim();
+  const name = label ? label.textContent.trim() : tokenId;
+  const type = chipEl.closest('.tray-pc-half') ? 'pc' : 'npc';
+
+  enterHeldState({
+    id: tokenId, name, type,
+    ringColor: circle.style.getPropertyValue('--ring-color') || '#a06840',
+    portraitBg, portraitText,
+    fromTray: true,
+    chipEl,
+    sourceEl: null
+  });
+}
+
+// ─── Enter HELD state ───────────────────────────────────────────────────
+function enterHeldState(data) {
+  heldToken = data;
+
+  // Setup floater
+  const floater = document.getElementById('held-floater');
+  const floaterPortrait = document.getElementById('floater-portrait');
+  const floaterRing = document.getElementById('floater-ring');
+  const floaterLabel = document.getElementById('floater-label');
+
+  floaterPortrait.textContent = data.portraitText;
+  floaterPortrait.style.background = data.portraitBg;
+  floaterRing.style.borderColor = data.ringColor;
+  floaterLabel.textContent = data.name;
+  floater.classList.add('active');
+
+  // Show cancel pill
+  document.getElementById('cancel-pill').classList.add('visible');
+
+  // Bug 3 fix: when holding a map token (not from tray), highlight the
+  // tray strip as a drop target to communicate "drop here to return"
+  if (!data.fromTray) {
+    const tray = document.getElementById('token-tray-main');
+    if (tray) tray.classList.add('return-target');
+  }
+
+  // Attach mouse move
+  document.addEventListener('mousemove', onMouseMoveHeld);
+  document.addEventListener('keydown', onKeyDownHeld);
+}
+
+// ─── Mouse tracking for held floater ───────────────────────────────────
+function onMouseMoveHeld(e) {
+  const floater = document.getElementById('held-floater');
+  floater.style.left = e.clientX + 'px';
+  floater.style.top = e.clientY + 'px';
+}
+
+// ─── Keyboard cancel ────────────────────────────────────────────────────
+function onKeyDownHeld(e) {
+  if (e.key === 'Escape') cancelHeld();
+}
+
+// ─── Map click → drop token ─────────────────────────────────────────────
+function onMapClick(e) {
+  if (!heldToken) return;
+  if (e.target.closest('.token-wrap')) return; // clicking a token picks it up, not drops
+
+  const vp = document.getElementById('map-vp-main');
+  const rect = vp.getBoundingClientRect();
+
+  // Compute fractional position (0.0–1.0)
+  const fracX = Math.min(1, Math.max(0, (e.clientX - rect.left) / rect.width));
+  const fracY = Math.min(1, Math.max(0, (e.clientY - rect.top) / rect.height));
+
+  dropToken(fracX, fracY);
+}
+
+// ─── Drop token onto map ────────────────────────────────────────────────
+function dropToken(fracX, fracY) {
+  if (!heldToken) return;
+  const data = { ...heldToken };
+  cancelHeld(true); // cancel without restoring source
+
+  const layer = document.getElementById('token-layer-main');
+
+  // If token came from tray, create new element
+  // If from map (ghost), restore to new position
+  let tokenEl = data.sourceEl;
+
+  if (tokenEl) {
+    // Moving existing token
+    tokenEl.classList.remove('ghost');
+    tokenEl.style.left = (fracX * 100) + '%';
+    tokenEl.style.top = (fracY * 100) + '%';
+  } else {
+    // Placing from tray — create new token element
+    tokenEl = createTokenElement(data, fracX, fracY);
+    layer.appendChild(tokenEl);
+    // Remove tray chip
+    if (data.chipEl) {
+      data.chipEl.style.transition = 'opacity 180ms ease-out, transform 180ms ease-in';
+      data.chipEl.style.opacity = '0';
+      data.chipEl.style.transform = 'scale(0.7)';
+      setTimeout(() => data.chipEl.remove(), 180);
+    }
+    // Update unplaced count
+    updateUnplacedCount();
+  }
+
+  // Bounce animation
+  tokenEl.classList.add('just-dropped');
+  setTimeout(() => tokenEl.classList.remove('just-dropped'), 350);
+
+  // Re-attach hover handlers (Bug 2 fix: pass event to collapseToken)
+  tokenEl.onmouseenter = () => expandToken(tokenEl);
+  tokenEl.onmouseleave = (e) => collapseToken(tokenEl, e);
+  tokenEl.onclick = (e) => pickUpToken(e, tokenEl);
+}
+
+// ─── Bug 3: Return held map-token to tray ──────────────────────────────
+// Called when the user clicks anywhere in the tray strip while holding a
+// token that was picked up from the map (heldToken.fromTray === false).
+function onTrayClick(event) {
+  if (!heldToken || heldToken.fromTray) return;
+  event.stopPropagation(); // don't bubble to map click handler
+  returnHeldToTray();
+}
+
+function returnHeldToTray() {
+  if (!heldToken || heldToken.fromTray) return;
+  const data = { ...heldToken };
+
+  // Remove the ghost token from the map
+  if (data.sourceEl) {
+    data.sourceEl.style.transition = 'opacity 150ms ease-in, transform 150ms ease-in';
+    data.sourceEl.style.opacity = '0';
+    data.sourceEl.style.transform = 'translate(-50%,-50%) scale(0.7)';
+    setTimeout(() => {
+      if (data.sourceEl.parentNode) data.sourceEl.remove();
+      updateUnplacedCount();
+    }, 160);
+  }
+
+  // Dismiss the floater (keepSourceGhost=true so we handle removal above)
+  cancelHeld(true);
+
+  // Re-add a chip for this token to the tray
+  const tokenType = data.type;
+  const halfEl = tokenType === 'pc'
+    ? document.getElementById('tray-pc-half')
+    : document.getElementById('tray-npc-half');
+
+  if (halfEl) {
+    const chip = document.createElement('div');
+    chip.className = 'tray-chip';
+    chip.id = 'chip-' + data.id;
+    chip.dataset.for = data.id;
+    chip.title = data.name + ' — returned to tray';
+    chip.setAttribute('onclick', `selectTrayChip(this, '${data.id}')`);
+
+    chip.innerHTML = `
+      <div class="tray-chip-circle" style="--ring-color:${data.ringColor}; background:${data.portraitBg};">${data.portraitText}</div>
+      <div class="tray-chip-label">${data.name}</div>
+    `;
+
+    halfEl.appendChild(chip);
+    // Entrance animation
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => chip.classList.add('chip-visible'));
+    });
+  }
+
+  // Brief tray flash to confirm the return
+  const tray = document.getElementById('token-tray-main');
+  if (tray) {
+    tray.style.transition = 'background 120ms ease-out';
+    tray.style.background = 'rgba(160,104,64,0.14)';
+    setTimeout(() => {
+      tray.style.background = '';
+      setTimeout(() => { tray.style.transition = ''; }, 200);
+    }, 220);
+  }
+
+  updateUnplacedCount();
+}
+
+// ─── Create a new placed token element ──────────────────────────────────
+function createTokenElement(data, fracX, fracY) {
+  const div = document.createElement('div');
+  const isFallen = data.type === 'npc' && data.id === 'goblin-b'; // Goblin B is pre-fallen
+  div.className = 'token-wrap appearing' + (isFallen ? ' fallen' : '');
+  div.dataset.tokenId = data.id;
+  div.dataset.type = data.type;
+  div.dataset.name = data.name;
+  const hpData = getTokenHpData(data.id);
+  div.dataset.hp = hpData.hp;
+  div.dataset.hpMax = hpData.hpMax;
+  div.style.cssText = `left:${fracX*100}%;top:${fracY*100}%;--ring-color:${data.ringColor};`;
+
+  const isNpc = data.type === 'npc';
+  const hpPct = hpData.hpMax > 0 ? (hpData.hp / hpData.hpMax) : 0;
+  const hpClass = hpPct > 0.5 ? 'healthy' : hpPct > 0.2 ? 'wounded' : 'critical';
+  const hpColor = isFallen ? '#c06060' : 'var(--gem)';
+
+  div.innerHTML = `
+    <div class="token-circle">
+      <div class="token-portrait" style="background:${data.portraitBg};">${data.portraitText}</div>
+      <div class="token-ring"></div>
+      <div class="token-outline"></div>
+      <div class="hp-card">
+        <div class="hp-card-name${isNpc ? ' npc' : ''}">${data.name}</div>
+        <div class="hp-card-nums" style="color:${hpColor};">${hpData.hp} / ${hpData.hpMax}</div>
+        <div class="hp-bar-track"><div class="hp-bar-fill ${hpClass}" style="width:${hpPct*100}%;"></div></div>
+        ${isFallen ? '<button class="hp-card-remove" onclick="removeToken(event,\''+div.id+'\')">Remove from map</button>' : ''}
+      </div>
+    </div>
+    <div class="token-label${isNpc ? ' npc' : ''}">${data.name}</div>
+  `;
+
+  div.id = 'tok-placed-' + data.id;
+  setTimeout(() => div.classList.remove('appearing'), 200);
+  return div;
+}
+
+function getTokenHpData(id) {
+  const map = {
+    'aragorn': { hp: 31, hpMax: 44 },
+    'eoghan': { hp: 6, hpMax: 44 },
+    'aeryn': { hp: 38, hpMax: 38 },
+    'goblin-a': { hp: 8, hpMax: 12 },
+    'goblin-b': { hp: 0, hpMax: 10 },
+    'bandit': { hp: 0, hpMax: 18 },
+  };
+  return map[id] || { hp: 10, hpMax: 10 };
+}
+
+// ─── Cancel HELD state ──────────────────────────────────────────────────
+function cancelHeld(keepSourceGhost = false) {
+  if (!heldToken) return;
+
+  const floater = document.getElementById('held-floater');
+  floater.classList.remove('active');
+
+  document.getElementById('cancel-pill').classList.remove('visible');
+  document.removeEventListener('mousemove', onMouseMoveHeld);
+  document.removeEventListener('keydown', onKeyDownHeld);
+
+  // Remove tray return-target highlight
+  const tray = document.getElementById('token-tray-main');
+  if (tray) tray.classList.remove('return-target');
+
+  // Restore source
+  if (!keepSourceGhost) {
+    if (heldToken.chipEl) {
+      heldToken.chipEl.classList.remove('selected');
+    }
+    if (heldToken.sourceEl) {
+      heldToken.sourceEl.classList.remove('ghost');
+    }
+  }
+
+  heldToken = null;
+}
+
+// ─── Remove a token from map ─────────────────────────────────────────────
+function removeToken(event, tokenId) {
+  event.stopPropagation();
+  const el = document.getElementById(tokenId) ||
+             document.querySelector(`[data-token-id="${tokenId}"]`);
+  if (!el) return;
+
+  // Collapse HP card first
+  collapseTokenImmediate(el);
+
+  // Animate removal
+  el.style.transition = 'opacity 180ms ease-in, transform 180ms ease-in';
+  el.style.opacity = '0';
+  el.style.transform = 'translate(-50%,-50%) scale(0)';
+
+  setTimeout(() => {
+    el.remove();
+    updateUnplacedCount();
+  }, 200);
+}
+
+// ─── Update unplaced count ──────────────────────────────────────────────
+function updateUnplacedCount() {
+  const chips = document.querySelectorAll('#token-tray-main .tray-chip');
+  const count = chips.length;
+  const label = document.getElementById('tray-unplaced-count');
+  if (label) label.textContent = count === 0 ? 'All Placed' : `Unplaced · ${count}`;
+}
+
+// ─── Stagger tray chips on load ──────────────────────────────────────────
+// Chips start invisible (opacity:0, scale:0.7) and get chip-visible class
+// with staggered delays handled by nth-child transition-delay in CSS.
+// They're already marked chip-visible in HTML to show initial state.
+// On a real "Battle Mode ON" event, we'd remove chip-visible then re-add with delay.
+
+// ─── Demo: animate battle mode tray on page load ─────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  // Brief demo of chip entrance on load
+  const chips = document.querySelectorAll('#token-tray-main .tray-chip');
+  chips.forEach(c => c.classList.remove('chip-visible'));
+  setTimeout(() => {
+    chips.forEach(c => c.classList.add('chip-visible'));
+  }, 600);
+
+  // Also animate tokens appearing on the main map
+  const tokens = document.querySelectorAll('#token-layer-main .token-wrap');
+  tokens.forEach((t, i) => {
+    t.style.opacity = '0';
+    t.style.transform = 'translate(-50%,-50%) scale(0.7)';
+    t.style.transition = 'none';
+    setTimeout(() => {
+      t.style.transition = 'opacity 180ms ease-out, transform 180ms cubic-bezier(0.34,1.0,0.64,1)';
+      t.style.opacity = '';
+      t.style.transform = '';
+      setTimeout(() => { t.style.transition = ''; }, 300);
+    }, 400 + i * 60);
+  });
+});
+</script>
+</body>
+</html>
