@@ -430,7 +430,15 @@ A dedicated DM session-management view accessible at `/dm`.
   - `− Init` when already linked into initiative
 - Vellum campaign-theme adjustments also apply to NPC surfaces when the overall campaign theme is light
 - **NPC notes strip**: same collapsible strip pattern as character cards, attached below the action buttons row. NPC notes are stored inline in the NPC object (`notes: [{ id, text }][]`) and written via `putNpcCombat`. Session-scoped: notes are discarded when "End Combat" is triggered. No `sharedWithDm` — no player-sharing section.
-- **NPC ability reference** (Story 23): persistent structured list of abilities/spells on each NPC card. Stored as `abilities: string[]` on the NPC object (optional; absent or old `string` values coerced to array on read). Sits between the conditions row and action buttons row. Three states: (1) empty — quiet "+ Ability reference" affordance; (2) read-collapsed — first 3 entries shown as `◆` list items with "Show all N" + pencil; (3) read-expanded — all entries with "Show less" + pencil; (4) edit mode — removable entry rows + inline add input + Done button. Auto-expands when the NPC is the active initiative turn; auto-collapses on turn-off if not editing. Entries capped at 255 chars; no array-length limit. Written via existing `putNpcCombat` pass-through. No backend changes. DM-only.
+- **NPC ability reference** (Story 23): persistent structured list of abilities/spells on each NPC card. Stored as `abilities: string[]` on the NPC object (optional; absent or old `string` values coerced to array on read). Sits between the conditions row and action buttons row. Three states: (1) empty — quiet "+ Ability reference" affordance; (2) read-collapsed — first 3 entries shown as `◆` list items with "Show all N" + pencil; (3) read-expanded — all entries with "Show less" + pencil; (4) edit mode — uses `AbilitiesListEditor` helper component — removable entry rows + inline add input + Done button. Auto-expands when the NPC is the active initiative turn; auto-collapses on turn-off if not editing. Entries capped at 255 chars; no array-length limit. Written via existing `putNpcCombat` pass-through. No backend changes. DM-only.
+- **NPC library** (Story 24): persistent DM-only library of creature templates stored in sentinel item `slug: "npc-library"` with `templates: [{ id, name, abilities: string[], updatedAt }]`.
+  - **`⋯` overflow menu on each NPC card** (between `+ Init` and `×`): opens `NpcOverflowMenu` popover with `◆ Save to library` and `× Remove enemy`. Name conflict (case-insensitive) surfaces three choices: `Update existing entry`, `Save as new entry`, dismiss. After save: `✓ Saved` flash (220ms) before dismissal.
+  - **`◇ From library` toggle in Add Enemy form**: expands `LibraryPicker` — scrollable MRU-sorted list. Picking pre-fills Name and stages `pickedAbilities` for spawn (HP blank). Search auto-appears above 20 entries. Per-row two-tap delete with 6-second auto-dismiss. `+ New library entry` form at bottom uses `AbilitiesListEditor`.
+  - **`AbilitiesListEditor`** helper component in `NpcCombatSection.jsx`: shared per-entry array editor used by `NpcAbilityRef` edit mode and library creation form.
+  - **MRU**: `updatedAt` stamped per-template at save and at pick; sorted `desc` on each picker open.
+  - **Fetch pattern**: mount-fetch only (`getNpcLibrary`); refetch-on-write (`refetchNpcLibrary`). Not polled.
+  - New API: `GET /npc-library` (DM auth) and `PUT /npc-library` (DM auth, body `{ templates }`).
+  - New slug `npc-library` in `RESERVED_CHARACTER_SLUGS` — automatically excluded from `list.js` and `dmParty.js`.
 
 **Party-wide actions** (top toolbar + bottom of party column):
 - "Short Rest": resets Pact Magic (`isPactMagic`) spell slots for all characters via parallel `patchSession` calls; shows confirmation dialog first
@@ -468,7 +476,7 @@ A dedicated DM session-management view accessible at `/dm`.
 - "+" Upload button at left end; entire strip is a drag-drop zone
 - Drag-and-drop opens `MapUploadModal` pre-loaded with dropped file
 
-**Polling**: `getDmParty`, `getInitiative`, `getNpcCombat`, `getRollHistory`, and `getMapLibrary` are polled adaptively per ADR-011 (`1s` while visible/focused, `5s` while backgrounded). Successful writes queue immediate background refreshes. Polling clears on unmount.
+**Polling**: `getDmParty`, `getInitiative`, `getNpcCombat`, `getRollHistory`, and `getMapLibrary` are polled adaptively per ADR-011 (`1s` while visible/focused, `5s` while backgrounded). Successful writes queue immediate background refreshes. Polling clears on unmount. `getNpcLibrary` is intentionally NOT polled — mount-fetch + refetch-on-write only (single-writer access pattern; see Story 24 ADR-011 opt-out note).
 
 **Visual style**: Ocean palette chrome throughout (`#0d0f14` bg, `#6a8fa8` accent). Responsive: stacks to single column below 900px.
 

@@ -50,6 +50,8 @@ node scripts/migrate.mjs   # Seeds DynamoDB and uploads portraits to S3 (interac
   - `patchDmNote(slug, action, dmPassword)` — PATCH /characters/{slug}/dm-notes; DM auth required; action is `{ action: "add", text }` or `{ action: "delete", id }`
   - `getInitiative(dmPassword)` — GET /initiative; requires DM password
   - `putInitiative(dmPassword, data)` — PUT /initiative; requires DM password
+  - `getNpcLibrary(dmPassword)` — GET /npc-library; DM auth; returns `{ templates: [{ id, name, abilities: string[], updatedAt }] }`
+  - `putNpcLibrary(dmPassword, templates)` — PUT /npc-library; DM auth; full array replacement; body `{ templates }`
   - `getMapLibrary()` — GET /maps; no auth; returns `{ activeMapId, maps[] }`
   - `presignMap(filename, contentType, dmPassword)` — POST /maps/presign; DM auth
   - `postMap(mapData, dmPassword)` — POST /maps; DM auth; registers map after S3 upload
@@ -62,7 +64,7 @@ node scripts/migrate.mjs   # Seeds DynamoDB and uploads portraits to S3 (interac
 
 **Backend** (`backend/`) — AWS SAM, Node.js 20.x Lambdas, DynamoDB (PAY_PER_REQUEST, PK: `slug`), S3 for portraits.
 
-- 19 Lambda handlers in `backend/src/handlers/`: `list`, `get`, `create`, `update`, `delete`, `verify`, `portrait`, `session`, `dmParty`, `initiative`, `dmNotes`, `getMapLibrary`, `mapPresign`, `postMap`, `putMapActive`, `patchMap`, `deleteMap`, `getPartyStatus`, `getInitiativePublic`
+- 21 Lambda handlers in `backend/src/handlers/`: `list`, `get`, `create`, `update`, `delete`, `verify`, `portrait`, `session`, `dmParty`, `initiative`, `dmNotes`, `getMapLibrary`, `mapPresign`, `postMap`, `putMapActive`, `patchMap`, `deleteMap`, `getPartyStatus`, `getInitiativePublic`, `getNpcLibrary`, `putNpcLibrary`
   - `session.js` — PATCH /characters/{slug}/session; partial update of session fields (hpCurrent, tempHP, spellSlots, conditions, exhaustionLevel, concentration, inspiration, playerNotes); intentionally writable without auth (see ADR-005); DM password accepted via x-character-password
   - `dmParty.js` — GET /dm/party; DM-only; returns projected session-relevant fields for all characters; filters out sentinel slugs (`initiative`, `npc-combat`, `roll-history`, `map-library`) via `filterPublicCharacterItems()`
   - `dmNotes.js` — PATCH /characters/{slug}/dm-notes; DM auth required; accepts `{ action: "add", text }` or `{ action: "delete", id }`; appends/removes from `dmNotes[]` array in DynamoDB
@@ -76,14 +78,16 @@ node scripts/migrate.mjs   # Seeds DynamoDB and uploads portraits to S3 (interac
   - `putMapActive.js` — PUT /maps/active; DM auth; sets `activeMapId` on sentinel item (accepts `null` to clear)
   - `patchMap.js` — PATCH /maps/{mapId}; DM auth; renames a map entry by ID
   - `deleteMap.js` — DELETE /maps/{mapId}; DM auth; removes from DynamoDB then deletes S3 object (best-effort, logs on S3 failure)
+  - `getNpcLibrary.js` — GET /npc-library; DM auth; returns normalized `{ templates: [] }` from `slug: "npc-library"` sentinel
+  - `putNpcLibrary.js` — PUT /npc-library; DM auth; validates `Array.isArray(body.templates)`; full array replacement via `saveNpcLibraryState`
 - `backend/src/lib/auth.js` — `verifyPassword(password, item)`: compares against owner hash (DynamoDB) and DM hash (SSM env var `DM_PASSWORD_HASH`)
 - `backend/src/lib/db.js` — DynamoDB client wrapper
-- `backend/src/lib/specialItems.js` — sentinel slug constants (`INITIATIVE_SLUG`, `NPC_COMBAT_SLUG`, `ROLL_HISTORY_SLUG`, `MAP_LIBRARY_SLUG`) and `filterPublicCharacterItems()` — single source of truth for sentinel filtering
-- `backend/src/lib/specialRecords.js` — helpers for reading/writing sentinel items: `getMapLibraryState()`, `saveMapLibraryState()`, `normalizeMapLibraryRecord()`
+- `backend/src/lib/specialItems.js` — sentinel slug constants (`INITIATIVE_SLUG`, `NPC_COMBAT_SLUG`, `ROLL_HISTORY_SLUG`, `MAP_LIBRARY_SLUG`, `NPC_LIBRARY_SLUG`) and `filterPublicCharacterItems()` — single source of truth for sentinel filtering
+- `backend/src/lib/specialRecords.js` — helpers for reading/writing sentinel items: `getMapLibraryState()`, `saveMapLibraryState()`, `normalizeMapLibraryRecord()`, `getNpcLibraryState()`, `saveNpcLibraryState()`, `normalizeNpcLibraryRecord()`
 - `backend/template.yaml` — SAM template; DM password hash passed as parameter override from SSM at deploy time
 - S3 bucket `hunkz-dnd` (frontend), `hunkz-dnd-portraits` (portraits + maps under `maps/` prefix)
 
-**Special DynamoDB items**: In addition to character records, the `CharactersTable` stores sentinel items: `slug: "initiative"` (initiative order — now includes `round: number` field, default 1), `slug: "npc-combat"` (NPC HP tracking; NPC object shape: `{ id, name, hpMax, hpCurrent, conditions, initiativeEntryId, notes?, abilities? }` where `abilities: string[]` stores a persistent ability/spell reference list, written via `putNpcCombat`), `slug: "roll-history"` (shared roll feed), `slug: "map-library"` (active map + library), `slug: "party-roster"` (ordered party member slugs + `partyVisibilityEnabled: boolean` default `true`; when `false`, `GET /party/status` returns `{ visible: false, members: [] }` so players cannot see party HP/conditions). All are filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `specialItems.js`.
+**Special DynamoDB items**: In addition to character records, the `CharactersTable` stores sentinel items: `slug: "initiative"` (initiative order — now includes `round: number` field, default 1), `slug: "npc-combat"` (NPC HP tracking; NPC object shape: `{ id, name, hpMax, hpCurrent, conditions, initiativeEntryId, notes?, abilities? }` where `abilities: string[]` stores a persistent ability/spell reference list, written via `putNpcCombat`), `slug: "roll-history"` (shared roll feed), `slug: "map-library"` (active map + library), `slug: "party-roster"` (ordered party member slugs + `partyVisibilityEnabled: boolean` default `true`; when `false`, `GET /party/status` returns `{ visible: false, members: [] }` so players cannot see party HP/conditions), `slug: "npc-library"` (DM-only creature template library; shape `{ templates: [{ id, name, abilities: string[], updatedAt }] }`; fetched on dashboard mount, not polled; written via `PUT /npc-library` after every save or delete). All are filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `specialItems.js`.
 
 **Auth model**: Two roles — `owner` (per-character bcrypt hash stored in DynamoDB) and `dm` (single hash from `DM_PASSWORD_HASH` env var set via SSM). DM session stored in `sessionStorage`.
 
