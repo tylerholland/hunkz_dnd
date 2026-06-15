@@ -30,7 +30,12 @@
       "Bash(sed -n '66,75p' /Users/tyler/Projects/dnd/src/shared.css)",
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__new_page",
       "mcp__plugin_chrome-devtools-mcp_chrome-devtools__evaluate_script",
-      "Bash(awk '/CharacterCard\\\\.jsx/{found=1} found{print; if\\(/^$/ && count++>2\\) exit}')"
+      "Bash(awk '/CharacterCard\\\\.jsx/{found=1} found{print; if\\(/^$/ && count++>2\\) exit}')",
+      "Bash(git stash *)",
+      "Bash(grep -q BattleModeToggle __TRACKED_VAR__/src/features/dmDashboard/MapPanel.jsx)",
+      "mcp__plugin_chrome-devtools-mcp_chrome-devtools__list_console_messages",
+      "Bash(pkill -f \"vite\")",
+      "WebFetch(domain:example.com)"
     ]
   },
   "enabledPlugins": {

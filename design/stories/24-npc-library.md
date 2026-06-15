@@ -1,5 +1,7 @@
 # Story 24 — NPC Library
 
+**SUPERSEDED by Story 31** — see design/stories/31-npc-library-portraits-hp.md
+
 **Status**: Design complete — Ready for Architect Notes
 **Source**: User direction + RPG Consultant follow-on to Story 23
 
