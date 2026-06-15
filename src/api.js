@@ -148,6 +148,18 @@ export const putNpcCombat = (dmPassword, data) =>
     body: JSON.stringify(data),
   });
 
+export const getNpcLibrary = (dmPassword) =>
+  request("/npc-library", {
+    headers: { "x-character-password": dmPassword },
+  });
+
+export const putNpcLibrary = (dmPassword, templates) =>
+  request("/npc-library", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ templates }),
+  });
+
 export const getRollHistory = (dmPassword) =>
   requestOptional("/roll-history", {
     headers: { "x-character-password": dmPassword },

@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { putNpcCombat } from "../../api";
+import { putNpcCombat, putNpcLibrary } from "../../api";
 import { PALETTES } from "../characterSheet/theme";
 import { useDebouncedOptimisticNumberFlush } from "../../lib/liveSync";
 import ConfirmDialog from "./ConfirmDialog";
@@ -270,6 +270,79 @@ const ABILITY_MAX_LENGTH = 255;
 const ABILITY_COUNTER_THRESHOLD = 30;
 const ABILITY_COLLAPSED_LIMIT = 3;
 
+/**
+ * AbilitiesListEditor — reusable per-entry array editor.
+ * Used by NpcAbilityRef edit mode and LibraryPicker's "+ New library entry" form.
+ * Props: { value: string[], onChange: (newValue: string[]) => void, npcPal }
+ */
+function AbilitiesListEditor({ value, onChange, npcPal, autoFocusInput = false }) {
+  const [addInput, setAddInput] = useState("");
+  const addInputRef = useRef(null);
+
+  const addInputLen = addInput.length;
+  const showCounter = addInputLen >= ABILITY_MAX_LENGTH - ABILITY_COUNTER_THRESHOLD;
+
+  function handleAddEntry() {
+    const text = addInput.trim();
+    if (!text) return;
+    onChange([...value, text]);
+    setAddInput("");
+    setTimeout(() => addInputRef.current?.focus(), 0);
+  }
+
+  function handleRemoveEntry(index) {
+    onChange(value.filter((_, idx) => idx !== index));
+  }
+
+  function handleAddKeyDown(e) {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      handleAddEntry();
+    }
+  }
+
+  return (
+    <>
+      {value.map((entry, idx) => (
+        <div key={idx} className="npc-ability-ref-row">
+          <button
+            className="npc-ability-ref-remove"
+            onClick={() => handleRemoveEntry(idx)}
+            title="Remove"
+          >−</button>
+          <span className="npc-ability-ref-row-text">{entry}</span>
+        </div>
+      ))}
+
+      <div className="npc-ability-add-row">
+        <input
+          ref={addInputRef}
+          className="npc-ability-add-input"
+          type="text"
+          placeholder="+ Add ability or spell…"
+          maxLength={ABILITY_MAX_LENGTH}
+          value={addInput}
+          onChange={(e) => setAddInput(e.target.value)}
+          onKeyDown={handleAddKeyDown}
+          autoComplete="off"
+          autoFocus={autoFocusInput}
+        />
+        <button
+          className="npc-ability-add-btn"
+          onClick={handleAddEntry}
+          disabled={!addInput.trim()}
+          title="Add entry"
+          style={{ background: npcPal ? "rgba(122,112,96,0.15)" : undefined, borderColor: npcPal?.accent, color: npcPal?.bright }}
+        >+</button>
+      </div>
+
+      <div className={`npc-ability-char-counter${showCounter ? " visible" : ""}`}>
+        {ABILITY_MAX_LENGTH - addInputLen} characters remaining
+      </div>
+    </>
+  );
+}
+
 function NpcAbilityRef({ abilities: abilitiesProp, isActiveTurn, npcPal, onSave }) {
   // Backward-compat coercion: string (legacy) → string[], absent → []
   const abilities = Array.isArray(abilitiesProp)
@@ -281,8 +354,6 @@ function NpcAbilityRef({ abilities: abilitiesProp, isActiveTurn, npcPal, onSave 
   const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [draft, setDraft] = useState([]);
-  const [addInput, setAddInput] = useState("");
-  const addInputRef = useRef(null);
 
   // Auto-expand on active turn; guard against editing state
   useEffect(() => {
@@ -293,15 +364,11 @@ function NpcAbilityRef({ abilities: abilitiesProp, isActiveTurn, npcPal, onSave 
 
   function enterEdit() {
     setDraft([...abilities]);
-    setAddInput("");
     setEditing(true);
-    // Focus the add input after paint
-    setTimeout(() => addInputRef.current?.focus(), 60);
   }
 
   function exitEdit() {
     setEditing(false);
-    setAddInput("");
   }
 
   async function commitEdit() {
@@ -313,36 +380,11 @@ function NpcAbilityRef({ abilities: abilitiesProp, isActiveTurn, npcPal, onSave 
     }
   }
 
-  function handleAddEntry() {
-    const text = addInput.trim();
-    if (!text) return;
-    setDraft((current) => [...current, text]);
-    setAddInput("");
-    setTimeout(() => addInputRef.current?.focus(), 0);
-  }
-
-  function handleRemoveEntry(index) {
-    setDraft((current) => current.filter((_, idx) => idx !== index));
-  }
-
-  function handleAddKeyDown(e) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddEntry();
-    }
-    if (e.key === "Escape") {
-      exitEdit();
-    }
-  }
-
   function handleEditKeyDown(e) {
     if (e.key === "Escape") {
       exitEdit();
     }
   }
-
-  const addInputLen = addInput.length;
-  const showCounter = addInputLen >= ABILITY_MAX_LENGTH - ABILITY_COUNTER_THRESHOLD;
 
   // ── Empty state ───────────────────────────────────────────────────────────
   if (abilities.length === 0 && !editing) {
@@ -363,40 +405,7 @@ function NpcAbilityRef({ abilities: abilitiesProp, isActiveTurn, npcPal, onSave 
   if (editing) {
     return (
       <div className="npc-ability-ref" onKeyDown={handleEditKeyDown}>
-        {draft.map((entry, idx) => (
-          <div key={idx} className="npc-ability-ref-row">
-            <button
-              className="npc-ability-ref-remove"
-              onClick={() => handleRemoveEntry(idx)}
-              title="Remove"
-            >−</button>
-            <span className="npc-ability-ref-row-text">{entry}</span>
-          </div>
-        ))}
-
-        <div className="npc-ability-add-row">
-          <input
-            ref={addInputRef}
-            className="npc-ability-add-input"
-            type="text"
-            placeholder="+ Add ability or spell…"
-            maxLength={ABILITY_MAX_LENGTH}
-            value={addInput}
-            onChange={(e) => setAddInput(e.target.value)}
-            onKeyDown={handleAddKeyDown}
-            autoComplete="off"
-          />
-          <button
-            className="npc-ability-add-btn"
-            onClick={handleAddEntry}
-            disabled={!addInput.trim()}
-            title="Add entry"
-          >+</button>
-        </div>
-
-        <div className={`npc-ability-char-counter${showCounter ? " visible" : ""}`}>
-          {ABILITY_MAX_LENGTH - addInputLen} characters remaining
-        </div>
+        <AbilitiesListEditor value={draft} onChange={setDraft} npcPal={npcPal} autoFocusInput />
 
         <div className="npc-ability-ref-actions">
           <button className="npc-ability-cancel-btn" onClick={exitEdit}>Cancel</button>
@@ -450,6 +459,351 @@ function NpcAbilityRef({ abilities: abilitiesProp, isActiveTurn, npcPal, onSave 
   );
 }
 
+/**
+ * LibraryPicker — inline expandable picker inside the Add Enemy form.
+ * Props: { templates, dmPassword, onPick, onDelete, onCreate, npcPal, pal }
+ */
+function LibraryPicker({ templates, onPick, onDelete, onCreate, npcPal, pal }) {
+  const [open, setOpen] = useState(false);
+  const [pendingDelete, setPendingDelete] = useState(null); // template id
+  const deleteTimerRef = useRef(null);
+  const [search, setSearch] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newAbilities, setNewAbilities] = useState([]);
+  const pickerRef = useRef(null);
+
+  // Clear delete timer on unmount or picker close
+  function clearDeleteTimer() {
+    if (deleteTimerRef.current) {
+      window.clearTimeout(deleteTimerRef.current);
+      deleteTimerRef.current = null;
+    }
+  }
+
+  useEffect(() => () => clearDeleteTimer(), []);
+
+  function handleClose() {
+    setOpen(false);
+    setPendingDelete(null);
+    clearDeleteTimer();
+    setSearch("");
+    setCreating(false);
+    setNewName("");
+    setNewAbilities([]);
+  }
+
+  function handleToggle() {
+    if (open) {
+      handleClose();
+    } else {
+      setOpen(true);
+    }
+  }
+
+  function startDelete(id) {
+    clearDeleteTimer();
+    setPendingDelete(id);
+    deleteTimerRef.current = window.setTimeout(() => {
+      setPendingDelete(null);
+      deleteTimerRef.current = null;
+    }, 6000);
+  }
+
+  function cancelDelete() {
+    clearDeleteTimer();
+    setPendingDelete(null);
+  }
+
+  function confirmDelete(id) {
+    clearDeleteTimer();
+    setPendingDelete(null);
+    onDelete(id);
+  }
+
+  function handlePick(template) {
+    // Bump MRU updatedAt on the picked template — pass updated array to parent for write
+    const now = new Date().toISOString();
+    const updatedTemplates = templates.map((t) =>
+      t.id === template.id ? { ...t, updatedAt: now } : t
+    );
+    onPick({ ...template, updatedAt: now }, updatedTemplates);
+    handleClose();
+  }
+
+  function handleCreateSubmit() {
+    const name = newName.trim();
+    if (!name) return;
+    onCreate({ name, abilities: newAbilities });
+    setCreating(false);
+    setNewName("");
+    setNewAbilities([]);
+  }
+
+  // Sort MRU desc
+  const sorted = [...templates].sort((a, b) => {
+    if (!a.updatedAt && !b.updatedAt) return 0;
+    if (!a.updatedAt) return 1;
+    if (!b.updatedAt) return -1;
+    return b.updatedAt.localeCompare(a.updatedAt);
+  });
+
+  const showSearch = templates.length > 20;
+
+  const filtered = showSearch && search.trim()
+    ? sorted.filter((t) => {
+        const q = search.toLowerCase();
+        return (
+          t.name.toLowerCase().includes(q) ||
+          t.abilities.join(" ").toLowerCase().includes(q)
+        );
+      })
+    : sorted;
+
+  const isEmpty = filtered.length === 0 && !creating;
+
+  return (
+    <div style={{ marginTop: 6 }}>
+      <button
+        className="npc-lib-toggle"
+        onClick={handleToggle}
+        data-open={open ? "true" : undefined}
+      >
+        <span style={{ color: npcPal.accent, marginRight: 6 }}>{open ? "◆" : "◇"}</span>
+        {open ? "Hide library" : "From library"}
+      </button>
+
+      {open && (
+        <div
+          ref={pickerRef}
+          className={`npc-lib-picker${isEmpty && !creating ? " npc-lib-picker-empty" : ""}`}
+          data-state={isEmpty && !creating ? "empty" : "filled"}
+        >
+          {showSearch && (
+            <input
+              type="text"
+              className="npc-lib-search"
+              placeholder="Search library…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              autoComplete="off"
+            />
+          )}
+
+          {isEmpty ? (
+            <div className="npc-lib-empty">
+              Library is empty.<br />
+              Save any NPC card from its ⋯ menu to build your library.
+            </div>
+          ) : (
+            filtered.map((template) => {
+              const isPending = pendingDelete === template.id;
+              const previewText = template.abilities.length > 0
+                ? "◆ " + template.abilities.slice(0, 2).join(" · ") + (template.abilities.length > 2 ? ` · +${template.abilities.length - 2} more` : "")
+                : null;
+
+              return (
+                <div
+                  key={template.id}
+                  className="npc-lib-row"
+                  onClick={!isPending ? () => handlePick(template) : undefined}
+                >
+                  <div className="npc-lib-row-name">
+                    <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", flex: 1 }} title={template.name}>{template.name}</span>
+                    <button
+                      className="btn-npc-remove"
+                      style={{ flexShrink: 0, marginLeft: 4 }}
+                      onClick={(e) => { e.stopPropagation(); isPending ? cancelDelete() : startDelete(template.id); }}
+                      title={isPending ? "Cancel" : "Delete from library"}
+                    >×</button>
+                  </div>
+                  {previewText ? (
+                    <div className="npc-lib-row-preview">{previewText}</div>
+                  ) : (
+                    <div className="npc-lib-row-empty-abilities">(no abilities saved)</div>
+                  )}
+                  {isPending && (
+                    <div className="npc-lib-row-delete-confirm" onClick={(e) => e.stopPropagation()}>
+                      <span style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 12, color: pal.textMuted, flex: 1 }}>Remove from library?</span>
+                      <button
+                        style={{ background: "transparent", border: "1px solid rgba(192,96,96,0.4)", borderRadius: 3, color: "#c06060", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", padding: "4px 10px", cursor: "pointer" }}
+                        onClick={(e) => { e.stopPropagation(); confirmDelete(template.id); }}
+                      >Delete</button>
+                      <button
+                        style={{ background: "transparent", border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", padding: "4px 10px", cursor: "pointer" }}
+                        onClick={(e) => { e.stopPropagation(); cancelDelete(); }}
+                      >Cancel</button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+
+          {/* New library entry form */}
+          {creating ? (
+            <div style={{ padding: "10px 12px", borderTop: `1px solid ${npcPal.actionBorder}` }} onClick={(e) => e.stopPropagation()}>
+              <div style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: npcPal.bright, marginBottom: 6 }}>New library entry</div>
+              <input
+                type="text"
+                placeholder="Creature name…"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Escape") { setCreating(false); setNewName(""); setNewAbilities([]); } }}
+                style={{ width: "100%", boxSizing: "border-box", background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 13, padding: "6px 8px", outline: "none", marginBottom: 8 }}
+                autoFocus
+              />
+              <AbilitiesListEditor value={newAbilities} onChange={setNewAbilities} npcPal={npcPal} />
+              <div style={{ display: "flex", gap: 8, marginTop: 8 }}>
+                <button
+                  style={{ flex: 1, background: "transparent", border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", padding: "6px 0", cursor: "pointer" }}
+                  onClick={() => { setCreating(false); setNewName(""); setNewAbilities([]); }}
+                >Cancel</button>
+                <button
+                  style={{ flex: 2, background: "rgba(122,112,96,0.15)", border: `1px solid ${npcPal.accent}`, borderRadius: 3, color: npcPal.bright, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.12em", padding: "6px 0", cursor: "pointer" }}
+                  onClick={handleCreateSubmit}
+                  disabled={!newName.trim()}
+                >Save to library</button>
+              </div>
+            </div>
+          ) : (
+            <div style={{ padding: "6px 12px", borderTop: `1px solid ${npcPal.actionBorder}` }}>
+              <button
+                style={{ background: "none", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", cursor: "pointer", padding: "4px 0", width: "100%", textAlign: "left" }}
+                onClick={(e) => { e.stopPropagation(); setCreating(true); }}
+              >+ New library entry</button>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
+ * NpcOverflowMenu — ⋯ popover anchored to NPC card header.
+ * Props: { npc, libraryTemplates, dmPassword, onLibraryWrite, onRemove, npcPal, pal }
+ */
+function NpcOverflowMenu({ npc, libraryTemplates, dmPassword, onLibraryWrite, onRemove, npcPal, pal }) {
+  const [open, setOpen] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const btnRef = useRef(null);
+
+  // Case-insensitive trimmed name conflict detection
+  const conflictTemplate = libraryTemplates.find(
+    (t) => t.name.trim().toLowerCase() === (npc.name || "").trim().toLowerCase()
+  );
+
+  function openPopover() {
+    setSaveError(false);
+    setOpen(true);
+  }
+
+  function closePopover() {
+    setOpen(false);
+    setSavedFlash(false);
+    setSaveError(false);
+  }
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e) => {
+      if (btnRef.current && (btnRef.current.contains(e.target) || e.target.closest?.(".npc-overflow-popover, .npc-overflow-btn"))) return;
+      closePopover();
+    };
+    const timerId = window.setTimeout(() => document.addEventListener("mousedown", handler), 0);
+    return () => {
+      window.clearTimeout(timerId);
+      document.removeEventListener("mousedown", handler);
+    };
+  }, [open]);
+
+  async function saveToLibrary(mode) {
+    const now = new Date().toISOString();
+    let updatedTemplates;
+
+    if (mode === "update" && conflictTemplate) {
+      updatedTemplates = libraryTemplates.map((t) =>
+        t.id === conflictTemplate.id
+          ? { ...t, name: npc.name, abilities: Array.isArray(npc.abilities) ? [...npc.abilities] : [], updatedAt: now }
+          : t
+      );
+    } else {
+      const newEntry = {
+        id: "lib-" + Date.now() + Math.random().toString(36).slice(2, 6),
+        name: npc.name,
+        abilities: Array.isArray(npc.abilities) ? [...npc.abilities] : [],
+        updatedAt: now,
+      };
+      updatedTemplates = [...libraryTemplates, newEntry];
+    }
+
+    try {
+      await putNpcLibrary(dmPassword, updatedTemplates);
+      setSavedFlash(true);
+      onLibraryWrite(updatedTemplates);
+      window.setTimeout(() => closePopover(), 220);
+    } catch {
+      setSaveError(true);
+    }
+  }
+
+  function handleRemove() {
+    closePopover();
+    onRemove();
+  }
+
+  return (
+    <div style={{ position: "relative" }}>
+      <button
+        ref={btnRef}
+        className="npc-overflow-btn"
+        onClick={open ? closePopover : openPopover}
+        title="More options"
+      >⋯</button>
+      {open && (
+        <div className="npc-overflow-popover">
+          {savedFlash ? (
+            <div style={{ padding: "10px 14px", fontFamily: pal.fontBody, fontSize: 13, color: npcPal.bright }}>✓ Saved</div>
+          ) : conflictTemplate ? (
+            <>
+              <div className="npc-overflow-conflict-label">
+                <div>Already in library:</div>
+                <div style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 13, color: pal.textBody, marginTop: 2 }}>&ldquo;{conflictTemplate.name}&rdquo;</div>
+              </div>
+              <div className="npc-overflow-divider" />
+              <button className="npc-overflow-item" onClick={() => saveToLibrary("update")}>
+                ◆ Update existing entry
+              </button>
+              <button className="npc-overflow-item" onClick={() => saveToLibrary("new")}>
+                ◆ Save as new entry
+              </button>
+            </>
+          ) : (
+            <button className="npc-overflow-item" onClick={() => saveToLibrary("new")}>
+              ◆ Save to library
+            </button>
+          )}
+          {!savedFlash && (
+            <>
+              <div className="npc-overflow-divider" />
+              <button className="npc-overflow-item npc-overflow-item--destructive" onClick={handleRemove}>
+                × Remove enemy
+              </button>
+            </>
+          )}
+          {saveError && (
+            <div style={{ padding: "4px 14px 8px", fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 12, color: "#c06060" }}>
+              Couldn&apos;t save — try again
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function NpcCard({
   npc,
   allNpcsRef,
@@ -460,6 +814,9 @@ function NpcCard({
   onOpenConditions,
   onRemove,
   onToggleInitiative,
+  libraryTemplates,
+  dmPassword,
+  onLibraryWrite,
 }) {
   const pal = useContext(PalCtx);
   const npcPal = getNpcCardPalette(pal);
@@ -620,7 +977,7 @@ function NpcCard({
             {isBloodied && !isDead && <span className="badge-bloodied">Bloodied</span>}
             {isDead && <span className="badge-dead">Dead</span>}
           </div>
-          <div className="flex-row" style={{ gap: 6, flexShrink: 0 }}>
+          <div className="flex-row" style={{ gap: 6, flexShrink: 0, position: "relative" }}>
             {onToggleInitiative && (
               <button
                 onClick={onToggleInitiative}
@@ -639,6 +996,17 @@ function NpcCard({
                 }}
                 title={isInInitiative ? "Remove from initiative" : "Add to initiative"}
               >{isInInitiative ? "− Init" : "+ Init"}</button>
+            )}
+            {libraryTemplates !== undefined && onLibraryWrite && (
+              <NpcOverflowMenu
+                npc={npc}
+                libraryTemplates={libraryTemplates}
+                dmPassword={dmPassword}
+                onLibraryWrite={onLibraryWrite}
+                onRemove={onRemove}
+                npcPal={npcPal}
+                pal={pal}
+              />
             )}
             <button onClick={onRemove} className="btn-npc-remove">×</button>
           </div>
@@ -763,6 +1131,8 @@ export default function NpcCombatSection({
   npcCombat,
   initiative,
   dmPassword,
+  npcLibrary,
+  refetchNpcLibrary,
   onUpdate,
   onCommitNpcCombat,
   onAddNpcToInitiative,
@@ -779,7 +1149,12 @@ export default function NpcCombatSection({
   const [addName, setAddName] = useState("");
   const [addHp, setAddHp] = useState("");
   const [addCount, setAddCount] = useState(1);
+  const [pickedAbilities, setPickedAbilities] = useState([]);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
+
+  const libraryTemplates = npcLibrary?.templates ?? [];
+
+  const addHpInputRef = useRef(null);
 
   const npcs = npcCombat.npcs || [];
   const entries = initiative.entries || [];
@@ -827,6 +1202,7 @@ export default function NpcCombatSection({
     const hpMax = parseInt(addHp, 10);
     if (isNaN(hpMax) || hpMax <= 0) return;
     const count = Math.max(1, Math.min(8, parseInt(addCount, 10) || 1));
+    const abilitiesToAttach = [...pickedAbilities];
     const newNpcs = Array.from({ length: count }, (_, index) => ({
       id: "npc-" + Date.now() + index + Math.random().toString(36).slice(2, 5),
       name: count > 1 ? `${addName.trim()} ${String.fromCharCode(65 + index)}` : addName.trim(),
@@ -834,11 +1210,13 @@ export default function NpcCombatSection({
       hpCurrent: hpMax,
       conditions: [],
       initiativeEntryId: null,
+      abilities: [...abilitiesToAttach],
     }));
     const updated = [...npcs, ...newNpcs];
     setAddName("");
     setAddHp("");
     setAddCount(1);
+    setPickedAbilities([]);
     await commitNpcList(updated);
   }
 
@@ -932,6 +1310,11 @@ export default function NpcCombatSection({
                   onOpenConditions={() => setCondTarget(npc)}
                   onToggleInitiative={() => onRemoveNpcFromInitiative?.(npc.id)}
                   onRemove={() => handleRemoveNpc(npc.id)}
+                  libraryTemplates={libraryTemplates}
+                  dmPassword={dmPassword}
+                  onLibraryWrite={() => {
+                    if (refetchNpcLibrary) refetchNpcLibrary();
+                  }}
                 />
               ))}
             </div>
@@ -954,6 +1337,11 @@ export default function NpcCombatSection({
                   onOpenConditions={() => setCondTarget(npc)}
                   onToggleInitiative={() => onAddNpcToInitiative?.(npc.id)}
                   onRemove={() => handleRemoveNpc(npc.id)}
+                  libraryTemplates={libraryTemplates}
+                  dmPassword={dmPassword}
+                  onLibraryWrite={() => {
+                    if (refetchNpcLibrary) refetchNpcLibrary();
+                  }}
                 />
               ))}
             </div>
@@ -965,7 +1353,7 @@ export default function NpcCombatSection({
         <div className="label-ui" style={{ letterSpacing: "0.28em", marginBottom: 10 }}>Add Enemy</div>
         <div className="npc-add-form-row">
           <input type="text" placeholder="Name…" value={addName} onChange={(e) => setAddName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddNpcs()} style={{ flex: 1, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "7px 10px", outline: "none" }} />
-          <input type="number" placeholder="HP" value={addHp} onChange={(e) => setAddHp(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddNpcs()} style={{ width: 64, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 15, padding: "7px 8px", outline: "none", textAlign: "center" }} />
+          <input ref={addHpInputRef} type="number" placeholder="HP" value={addHp} onChange={(e) => setAddHp(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddNpcs()} style={{ width: 64, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 15, padding: "7px 8px", outline: "none", textAlign: "center" }} />
         </div>
         <div className="npc-add-count-row">
           <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>Count:</span>
@@ -980,6 +1368,38 @@ export default function NpcCombatSection({
         <div style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginTop: 8, letterSpacing: "0.08em" }}>
           Use <span style={{ color: npcPal.bright }}>+ Init</span> on a card to add it to the turn order.
         </div>
+        {refetchNpcLibrary && (
+          <LibraryPicker
+            templates={libraryTemplates}
+            npcPal={npcPal}
+            pal={pal}
+            onPick={(template, updatedTemplates) => {
+              setAddName(template.name);
+              setPickedAbilities(Array.isArray(template.abilities) ? [...template.abilities] : []);
+              // Refetch after the background MRU write resolves
+              if (updatedTemplates) {
+                putNpcLibrary(dmPassword, updatedTemplates).then(() => refetchNpcLibrary()).catch(() => {});
+              }
+              // Focus HP input
+              setTimeout(() => addHpInputRef.current?.focus(), 80);
+            }}
+            onDelete={(templateId) => {
+              const updated = libraryTemplates.filter((t) => t.id !== templateId);
+              putNpcLibrary(dmPassword, updated).then(() => refetchNpcLibrary()).catch(() => {});
+            }}
+            onCreate={({ name, abilities }) => {
+              const now = new Date().toISOString();
+              const newEntry = {
+                id: "lib-" + Date.now() + Math.random().toString(36).slice(2, 6),
+                name,
+                abilities,
+                updatedAt: now,
+              };
+              const updated = [...libraryTemplates, newEntry];
+              putNpcLibrary(dmPassword, updated).then(() => refetchNpcLibrary()).catch(() => {});
+            }}
+          />
+        )}
       </div>
 
       {modalTarget && (

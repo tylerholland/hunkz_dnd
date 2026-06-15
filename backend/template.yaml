@@ -334,6 +334,36 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
 
+  GetNpcLibraryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getNpcLibrary.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /npc-library
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
+  PutNpcLibraryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/putNpcLibrary.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /npc-library
+            Method: put
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
   GetRollHistoryFunction:
     Type: AWS::Serverless::Function
     Properties:

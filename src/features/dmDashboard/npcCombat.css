@@ -917,3 +917,232 @@
 .npc-ability-done-btn:hover {
   background: rgba(122, 112, 96, 0.28);
 }
+
+/* ─── NPC Library Picker (Story 24) ──────────────────────────────────────── */
+
+/* "◇ From library" toggle row */
+.npc-lib-toggle {
+  display: flex;
+  align-items: center;
+  background: none;
+  border: none;
+  padding: 8px 0 2px;
+  min-height: 36px;
+  width: 100%;
+  text-align: left;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--pal-text-muted);
+  transition: color 0.12s;
+}
+
+.npc-lib-toggle:hover,
+.npc-lib-toggle[data-open] {
+  color: var(--npc-bright);
+}
+
+/* Expandable picker container */
+.npc-lib-picker {
+  max-height: min(50vh, 360px);
+  overflow-y: auto;
+  border: 1px solid var(--npc-action-border);
+  border-radius: 4px;
+  margin-top: 6px;
+}
+
+.npc-lib-picker[data-state="empty"] {
+  border-style: dashed;
+}
+
+@media (max-width: 560px) {
+  .npc-lib-picker {
+    max-height: min(50vh, 320px);
+  }
+}
+
+/* Individual template row */
+.npc-lib-row {
+  padding: 10px 12px 8px;
+  border-bottom: 1px solid var(--npc-action-border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+
+.npc-lib-row:last-child {
+  border-bottom: none;
+}
+
+.npc-lib-row:hover {
+  background: var(--npc-chip-bg);
+}
+
+/* Row header: name left, delete × right */
+.npc-lib-row-name {
+  font-family: var(--font-display);
+  font-size: 14px;
+  color: var(--npc-bright);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+  margin-bottom: 3px;
+}
+
+/* Two-line abilities preview */
+.npc-lib-row-preview {
+  font-family: var(--font-body);
+  font-size: 11px;
+  color: var(--pal-text-body);
+  opacity: 0.85;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* "(no abilities saved)" italic muted placeholder */
+.npc-lib-row-empty-abilities {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 11px;
+  color: var(--pal-text-muted);
+}
+
+/* Inline delete confirmation row */
+.npc-lib-row-delete-confirm {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+@media (max-width: 380px) {
+  .npc-lib-row-delete-confirm {
+    flex-wrap: wrap;
+  }
+}
+
+/* Empty state dashed container */
+.npc-lib-empty {
+  border: 1px dashed var(--npc-action-border);
+  padding: 20px 16px;
+  text-align: center;
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--pal-text-muted);
+  line-height: 1.55;
+  margin: 8px;
+  border-radius: 4px;
+}
+
+/* Search input — shown when templates.length > 20 */
+.npc-lib-search {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  background: var(--npc-track, rgba(40, 34, 24, 0.8));
+  border: none;
+  border-bottom: 1px solid var(--npc-action-border);
+  color: var(--pal-text-body);
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding: 7px 12px;
+  outline: none;
+  position: sticky;
+  top: 0;
+}
+
+.npc-lib-search::placeholder {
+  color: var(--pal-text-muted);
+  font-style: italic;
+}
+
+/* ─── NPC Overflow Button and Popover (Story 24) ──────────────────────────── */
+
+/* ⋯ button — same dimensions/feel as .btn-npc-remove */
+.npc-overflow-btn {
+  background: transparent;
+  border: none;
+  color: var(--pal-text-muted);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 3px;
+  line-height: 1;
+  flex-shrink: 0;
+  transition: color 0.15s, background 0.15s;
+  letter-spacing: 0.05em;
+}
+
+.npc-overflow-btn:hover {
+  color: var(--npc-bright);
+  background: rgba(122, 112, 96, 0.12);
+}
+
+/* Popover panel */
+.npc-overflow-popover {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: var(--pal-surface-solid);
+  border: 1px solid var(--npc-action-border);
+  border-radius: 4px;
+  min-width: 200px;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.4);
+  z-index: 50;
+  padding: 4px 0;
+}
+
+@media (max-width: 560px) {
+  .npc-overflow-popover {
+    min-width: 180px;
+  }
+}
+
+/* Individual popover action row */
+.npc-overflow-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--npc-bright);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.12s;
+  white-space: nowrap;
+}
+
+.npc-overflow-item:hover {
+  background: var(--npc-chip-bg);
+}
+
+/* Destructive variant — Remove enemy */
+.npc-overflow-item--destructive {
+  color: #c06060;
+}
+
+/* "Already in library:" label block */
+.npc-overflow-conflict-label {
+  padding: 10px 14px 8px;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--pal-text-muted);
+  pointer-events: none;
+}
+
+/* Divider line inside popover */
+.npc-overflow-divider {
+  height: 1px;
+  background: var(--npc-action-border);
+  margin: 2px 0;
+}
