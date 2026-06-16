@@ -1,0 +1,7 @@
+{
+  "backend": "claude_subagents",
+  "input_tokens": 36500,
+  "output_tokens": 9400,
+  "estimated_cost_usd": 0.0,
+  "note": "Semantic extraction performed by host Claude Code session subagents, not a billed API backend."
+}

@@ -1,0 +1,1582 @@
+{
+  ".obsidian/app.json": {
+    "mtime": 1780108181.866432,
+    "ast_hash": "99914b932bd37a50b983c5e7c90ae93b",
+    "semantic_hash": "99914b932bd37a50b983c5e7c90ae93b"
+  },
+  ".obsidian/appearance.json": {
+    "mtime": 1780108181.879617,
+    "ast_hash": "99914b932bd37a50b983c5e7c90ae93b",
+    "semantic_hash": "99914b932bd37a50b983c5e7c90ae93b"
+  },
+  ".obsidian/core-plugins.json": {
+    "mtime": 1780108180.7906837,
+    "ast_hash": "7c877bea49eaeabb100563bd157b9051",
+    "semantic_hash": "7c877bea49eaeabb100563bd157b9051"
+  },
+  "backend/package.json": {
+    "mtime": 1777322234.0945396,
+    "ast_hash": "f68e5c736207dccfeb4f8bf8d5a8edb0",
+    "semantic_hash": "f68e5c736207dccfeb4f8bf8d5a8edb0"
+  },
+  "backend/src/handlers/create.js": {
+    "mtime": 1777589872.5237749,
+    "ast_hash": "8aa68695abf6ba6d65f383338e33d217",
+    "semantic_hash": "8aa68695abf6ba6d65f383338e33d217"
+  },
+  "backend/src/handlers/delete.js": {
+    "mtime": 1777589872.5985134,
+    "ast_hash": "25eb3aa11215669aefda9dacf163eb10",
+    "semantic_hash": "25eb3aa11215669aefda9dacf163eb10"
+  },
+  "backend/src/handlers/deleteMap.js": {
+    "mtime": 1778357822.9611185,
+    "ast_hash": "63c8be62d71b6a3e438a90a1707ca57a",
+    "semantic_hash": "63c8be62d71b6a3e438a90a1707ca57a"
+  },
+  "backend/src/handlers/dmNotes.js": {
+    "mtime": 1778129865.7666407,
+    "ast_hash": "307b9bd7d137921dbb466e5099860740",
+    "semantic_hash": "307b9bd7d137921dbb466e5099860740"
+  },
+  "backend/src/handlers/dmParty.js": {
+    "mtime": 1778899405.6884842,
+    "ast_hash": "8ce04e7ec35ee03a6ddd6e5173e3e7f5",
+    "semantic_hash": "8ce04e7ec35ee03a6ddd6e5173e3e7f5"
+  },
+  "backend/src/handlers/get.js": {
+    "mtime": 1778129877.5762763,
+    "ast_hash": "cbe8ee08ca6500efe67e831dae7b7a1f",
+    "semantic_hash": "cbe8ee08ca6500efe67e831dae7b7a1f"
+  },
+  "backend/src/handlers/getInitiativePublic.js": {
+    "mtime": 1780260444.722262,
+    "ast_hash": "4577a2e76a5ce039f9040b283820022e",
+    "semantic_hash": "4577a2e76a5ce039f9040b283820022e"
+  },
+  "backend/src/handlers/getMapLibrary.js": {
+    "mtime": 1778170694.7515945,
+    "ast_hash": "59e50f14e88e5be23b5e737dc3899708",
+    "semantic_hash": "59e50f14e88e5be23b5e737dc3899708"
+  },
+  "backend/src/handlers/getNpcCombat.js": {
+    "mtime": 1777676935.7258713,
+    "ast_hash": "ebe79f7c74329fd97804ed0049bc7f40",
+    "semantic_hash": "ebe79f7c74329fd97804ed0049bc7f40"
+  },
+  "backend/src/handlers/getPartyRoster.js": {
+    "mtime": 1780260444.735626,
+    "ast_hash": "caf4910350f656a1bf221517a5124752",
+    "semantic_hash": "caf4910350f656a1bf221517a5124752"
+  },
+  "backend/src/handlers/getPartyStatus.js": {
+    "mtime": 1780260444.7194967,
+    "ast_hash": "e5f8732f2c6b0e1f87fd1aad6ca04891",
+    "semantic_hash": "e5f8732f2c6b0e1f87fd1aad6ca04891"
+  },
+  "backend/src/handlers/getRollHistory.js": {
+    "mtime": 1777681155.2185092,
+    "ast_hash": "4b8ca26bbce289189e3e3f50d12feac1",
+    "semantic_hash": "4b8ca26bbce289189e3e3f50d12feac1"
+  },
+  "backend/src/handlers/initiative.js": {
+    "mtime": 1778899405.6903925,
+    "ast_hash": "59e59bbf6dbf572c66f850e9e4bac02b",
+    "semantic_hash": "59e59bbf6dbf572c66f850e9e4bac02b"
+  },
+  "backend/src/handlers/list.js": {
+    "mtime": 1777676935.5856228,
+    "ast_hash": "be198f3d80ad952f1b576e7be14fe907",
+    "semantic_hash": "be198f3d80ad952f1b576e7be14fe907"
+  },
+  "backend/src/handlers/mapPresign.js": {
+    "mtime": 1778356903.5659153,
+    "ast_hash": "65402b6979a6c1b628ae510418266ba1",
+    "semantic_hash": "65402b6979a6c1b628ae510418266ba1"
+  },
+  "backend/src/handlers/patchMap.js": {
+    "mtime": 1778357828.8382409,
+    "ast_hash": "5a8f9d4f96e481d07f65534508ac0917",
+    "semantic_hash": "5a8f9d4f96e481d07f65534508ac0917"
+  },
+  "backend/src/handlers/patchMapTokens.js": {
+    "mtime": 1780982317.9909859,
+    "ast_hash": "3dd12a0ad00cd9b12134f5ad30a3bc30",
+    "semantic_hash": "3dd12a0ad00cd9b12134f5ad30a3bc30"
+  },
+  "backend/src/handlers/portrait.js": {
+    "mtime": 1777522799.280133,
+    "ast_hash": "112856cfee8a6bb1628de6421102d5e1",
+    "semantic_hash": "112856cfee8a6bb1628de6421102d5e1"
+  },
+  "backend/src/handlers/postCharacterRoll.js": {
+    "mtime": 1777681155.238328,
+    "ast_hash": "650b631a9a3bec2f43237cc73c11d9ed",
+    "semantic_hash": "650b631a9a3bec2f43237cc73c11d9ed"
+  },
+  "backend/src/handlers/postDmRoll.js": {
+    "mtime": 1780019380.9855092,
+    "ast_hash": "d32ef1da826af5c94c68f8fdd8e2ef64",
+    "semantic_hash": "d32ef1da826af5c94c68f8fdd8e2ef64"
+  },
+  "backend/src/handlers/postMap.js": {
+    "mtime": 1778352609.3293698,
+    "ast_hash": "47761d31bfa198cccf5a5e3541795c16",
+    "semantic_hash": "47761d31bfa198cccf5a5e3541795c16"
+  },
+  "backend/src/handlers/putMapActive.js": {
+    "mtime": 1778357836.113553,
+    "ast_hash": "b5682715657a6fa43315503fca4f8044",
+    "semantic_hash": "b5682715657a6fa43315503fca4f8044"
+  },
+  "backend/src/handlers/putMapView.js": {
+    "mtime": 1778357846.9665663,
+    "ast_hash": "b7d3ba245d5a74be7ba4d43c6ffde679",
+    "semantic_hash": "b7d3ba245d5a74be7ba4d43c6ffde679"
+  },
+  "backend/src/handlers/putNpcCombat.js": {
+    "mtime": 1777676935.7557933,
+    "ast_hash": "ae7b5c364b0e9260593e5fd3f5d19d3c",
+    "semantic_hash": "ae7b5c364b0e9260593e5fd3f5d19d3c"
+  },
+  "backend/src/handlers/putPartyRoster.js": {
+    "mtime": 1780260444.7388427,
+    "ast_hash": "2a7f2d15b00f7e638e66881498a7ccc9",
+    "semantic_hash": "2a7f2d15b00f7e638e66881498a7ccc9"
+  },
+  "backend/src/handlers/session.js": {
+    "mtime": 1778899405.6914537,
+    "ast_hash": "a77b7e4166c147a1d62daea7f308dfba",
+    "semantic_hash": "a77b7e4166c147a1d62daea7f308dfba"
+  },
+  "backend/src/handlers/update.js": {
+    "mtime": 1777589872.5646734,
+    "ast_hash": "ae5471c5abb4afc2a4562af84f1957d0",
+    "semantic_hash": "ae5471c5abb4afc2a4562af84f1957d0"
+  },
+  "backend/src/handlers/verify.js": {
+    "mtime": 1777589872.6650033,
+    "ast_hash": "4ab7ed624b21be6922b6370e03fa47c6",
+    "semantic_hash": "4ab7ed624b21be6922b6370e03fa47c6"
+  },
+  "backend/src/lib/auth.js": {
+    "mtime": 1777328349.4188082,
+    "ast_hash": "128558938309d93982699725bc79fdbe",
+    "semantic_hash": "128558938309d93982699725bc79fdbe"
+  },
+  "backend/src/lib/db.js": {
+    "mtime": 1777319217.6509693,
+    "ast_hash": "b75ac69b3c985962e7342bebcc46455a",
+    "semantic_hash": "b75ac69b3c985962e7342bebcc46455a"
+  },
+  "backend/src/lib/response.js": {
+    "mtime": 1777319216.5030732,
+    "ast_hash": "888986505d7308e6664cc4d20165785b",
+    "semantic_hash": "888986505d7308e6664cc4d20165785b"
+  },
+  "backend/src/lib/specialItems.js": {
+    "mtime": 1781501245.2356372,
+    "ast_hash": "7fc5b636486fb919b825e465fa393269",
+    "semantic_hash": "7fc5b636486fb919b825e465fa393269"
+  },
+  "backend/src/lib/specialRecords.js": {
+    "mtime": 1781501245.2372153,
+    "ast_hash": "70945106abb278bc9214064b78c0ef73",
+    "semantic_hash": "70945106abb278bc9214064b78c0ef73"
+  },
+  "characters/eoghan/vite.config.js": {
+    "mtime": 1777310913.1767273,
+    "ast_hash": "8e992ce283d3ccdc89a2169e8ceac54c",
+    "semantic_hash": "8e992ce283d3ccdc89a2169e8ceac54c"
+  },
+  "deploy.sh": {
+    "mtime": 1777661647.4499867,
+    "ast_hash": "f428f7e1006af8a99ea69f324c7c2d87",
+    "semantic_hash": "f428f7e1006af8a99ea69f324c7c2d87"
+  },
+  "eslint.config.js": {
+    "mtime": 1777310913.19806,
+    "ast_hash": "3aa4b57d7f08181d86bde52a4dcb7f22",
+    "semantic_hash": "3aa4b57d7f08181d86bde52a4dcb7f22"
+  },
+  "package.json": {
+    "mtime": 1781501245.309188,
+    "ast_hash": "b775747e8a7af6d0bc79ac9fe65b0fa1",
+    "semantic_hash": "b775747e8a7af6d0bc79ac9fe65b0fa1"
+  },
+  "public/world-guide/toc.json": {
+    "mtime": 1780001852.2431715,
+    "ast_hash": "8da5922b5310877ca700e3717e7dad79",
+    "semantic_hash": "8da5922b5310877ca700e3717e7dad79"
+  },
+  "scripts/migrate.mjs": {
+    "mtime": 1777321388.2599134,
+    "ast_hash": "6a930bb63562ba169c7d42285a92f1ee",
+    "semantic_hash": "6a930bb63562ba169c7d42285a92f1ee"
+  },
+  "scripts/package.json": {
+    "mtime": 1778440417.469392,
+    "ast_hash": "d188b53c61ec04d4609fbd638a26cae8",
+    "semantic_hash": "d188b53c61ec04d4609fbd638a26cae8"
+  },
+  "scripts/pdf_to_markdown.py": {
+    "mtime": 1780003170.4804544,
+    "ast_hash": "0797cbebcb9966a7b3247c42c0286f39",
+    "semantic_hash": "0797cbebcb9966a7b3247c42c0286f39"
+  },
+  "scripts/split_chapters.py": {
+    "mtime": 1780003171.5263224,
+    "ast_hash": "e8bbd00bacf663136d124ea8f8dfc122",
+    "semantic_hash": "e8bbd00bacf663136d124ea8f8dfc122"
+  },
+  "src/App.jsx": {
+    "mtime": 1780260444.753236,
+    "ast_hash": "53b3175f96e89d28a92e30e52b4d98bc",
+    "semantic_hash": "53b3175f96e89d28a92e30e52b4d98bc"
+  },
+  "src/api.js": {
+    "mtime": 1781501245.2429485,
+    "ast_hash": "5d5f05067a5b8eb28e97e6ec00786eaa",
+    "semantic_hash": "5d5f05067a5b8eb28e97e6ec00786eaa"
+  },
+  "src/characters/aesop.json": {
+    "mtime": 1777313612.3329756,
+    "ast_hash": "865e33474b7ea94d3f81b51e29ad7533",
+    "semantic_hash": "865e33474b7ea94d3f81b51e29ad7533"
+  },
+  "src/characters/aragorn.json": {
+    "mtime": 1777310914.827088,
+    "ast_hash": "14e56f79ee2a5d1e01ebce59da53a47a",
+    "semantic_hash": "14e56f79ee2a5d1e01ebce59da53a47a"
+  },
+  "src/characters/eoghan.json": {
+    "mtime": 1777310914.8509436,
+    "ast_hash": "9a5a4e55ff8d81a217600594af651ae9",
+    "semantic_hash": "9a5a4e55ff8d81a217600594af651ae9"
+  },
+  "src/components/CharacterSheet.jsx": {
+    "mtime": 1780021468.0109518,
+    "ast_hash": "d14f7fb59455b6c706987d37d4b1de52",
+    "semantic_hash": "d14f7fb59455b6c706987d37d4b1de52"
+  },
+  "src/components/CharacterSheet.test.jsx": {
+    "mtime": 1777674605.4176755,
+    "ast_hash": "a5a3e523b7cecd2c875c65664dbe3754",
+    "semantic_hash": "a5a3e523b7cecd2c875c65664dbe3754"
+  },
+  "src/components/DiceRoller.jsx": {
+    "mtime": 1778778378.8982997,
+    "ast_hash": "b8ab9b0256f01a6316557ac49e63d79d",
+    "semantic_hash": "b8ab9b0256f01a6316557ac49e63d79d"
+  },
+  "src/components/DmDiceRoller.jsx": {
+    "mtime": 1780019398.925027,
+    "ast_hash": "7763f2144254e285993a010c2db0b4c6",
+    "semantic_hash": "7763f2144254e285993a010c2db0b4c6"
+  },
+  "src/components/DmDiceRoller.test.jsx": {
+    "mtime": 1780019487.632742,
+    "ast_hash": "2e24a22419b28b93d76513da7ecf3f8d",
+    "semantic_hash": "2e24a22419b28b93d76513da7ecf3f8d"
+  },
+  "src/components/RollHistoryList.jsx": {
+    "mtime": 1778559955.3666556,
+    "ast_hash": "42693ff4e5dc583eb68fe6e130664d66",
+    "semantic_hash": "42693ff4e5dc583eb68fe6e130664d66"
+  },
+  "src/features/characterSheet/ChangePasswordForm.jsx": {
+    "mtime": 1777665658.1063604,
+    "ast_hash": "57dbfe475e77677be71b6475a2068b10",
+    "semantic_hash": "57dbfe475e77677be71b6475a2068b10"
+  },
+  "src/features/characterSheet/CharacterSheetEditMode.jsx": {
+    "mtime": 1778768580.0894825,
+    "ast_hash": "9d471db72407c9764f302041404ef8b7",
+    "semantic_hash": "9d471db72407c9764f302041404ef8b7"
+  },
+  "src/features/characterSheet/CharacterSheetPrimitives.jsx": {
+    "mtime": 1777665658.0745394,
+    "ast_hash": "ffc7f3bcc5085e380abcb9277aec5ed9",
+    "semantic_hash": "ffc7f3bcc5085e380abcb9277aec5ed9"
+  },
+  "src/features/characterSheet/CharacterSheetSessionMode.jsx": {
+    "mtime": 1780986763.7945416,
+    "ast_hash": "aa06a3ce6da3eaaf6b75d006a596bf65",
+    "semantic_hash": "aa06a3ce6da3eaaf6b75d006a596bf65"
+  },
+  "src/features/characterSheet/CharacterSheetViewMode.jsx": {
+    "mtime": 1780986160.8485875,
+    "ast_hash": "523574369d36a0c1676d8c9a8aeacad7",
+    "semantic_hash": "523574369d36a0c1676d8c9a8aeacad7"
+  },
+  "src/features/characterSheet/CharacterSheetViewMode.test.jsx": {
+    "mtime": 1777674580.5306568,
+    "ast_hash": "98e3652672c2f59c425a04f3e166fed0",
+    "semantic_hash": "98e3652672c2f59c425a04f3e166fed0"
+  },
+  "src/features/characterSheet/CharacterTalents.jsx": {
+    "mtime": 1777765049.014951,
+    "ast_hash": "d82cb361d166ed59d07f0dca5515c142",
+    "semantic_hash": "d82cb361d166ed59d07f0dca5515c142"
+  },
+  "src/features/characterSheet/CharacterTalents.test.jsx": {
+    "mtime": 1777765079.8474958,
+    "ast_hash": "993c1f78bc5ea062c2376c7fed3f6d91",
+    "semantic_hash": "993c1f78bc5ea062c2376c7fed3f6d91"
+  },
+  "src/features/characterSheet/ItemEditorModal.jsx": {
+    "mtime": 1778768574.6811254,
+    "ast_hash": "6f7ddd149d30d414e82a0830448abcf0",
+    "semantic_hash": "6f7ddd149d30d414e82a0830448abcf0"
+  },
+  "src/features/characterSheet/constants.js": {
+    "mtime": 1778197160.7251172,
+    "ast_hash": "60c74e1463330220d913eabae579b94f",
+    "semantic_hash": "60c74e1463330220d913eabae579b94f"
+  },
+  "src/features/characterSheet/talentCatalog.js": {
+    "mtime": 1777765028.5418024,
+    "ast_hash": "33164038a8ac09abe33425bf84be9423",
+    "semantic_hash": "33164038a8ac09abe33425bf84be9423"
+  },
+  "src/features/characterSheet/theme.jsx": {
+    "mtime": 1780986160.8497808,
+    "ast_hash": "4051c322fde57e0f8f843ab6cf887031",
+    "semantic_hash": "4051c322fde57e0f8f843ab6cf887031"
+  },
+  "src/features/dmDashboard/CharacterCard.jsx": {
+    "mtime": 1780121147.8255897,
+    "ast_hash": "c98a8f1c604781be120e69aa362c1651",
+    "semantic_hash": "c98a8f1c604781be120e69aa362c1651"
+  },
+  "src/features/dmDashboard/ConfirmDialog.jsx": {
+    "mtime": 1777665743.5542276,
+    "ast_hash": "ab9d0c9ef2c74bee3b78f4ecf798b1e5",
+    "semantic_hash": "ab9d0c9ef2c74bee3b78f4ecf798b1e5"
+  },
+  "src/features/dmDashboard/DmAuthLoader.jsx": {
+    "mtime": 1777680496.9445891,
+    "ast_hash": "ee6f6fd4c5894572025f3a3cb590f68d",
+    "semantic_hash": "ee6f6fd4c5894572025f3a3cb590f68d"
+  },
+  "src/features/dmDashboard/DmLoginPrompt.jsx": {
+    "mtime": 1777680501.1545496,
+    "ast_hash": "d2a8c2f6a883478bcc5ec1ea92138377",
+    "semantic_hash": "d2a8c2f6a883478bcc5ec1ea92138377"
+  },
+  "src/features/dmDashboard/DmLoginPrompt.test.jsx": {
+    "mtime": 1777677823.533308,
+    "ast_hash": "828cf10b421ebf8fab2300b27913208b",
+    "semantic_hash": "828cf10b421ebf8fab2300b27913208b"
+  },
+  "src/features/dmDashboard/InitiativeTracker.jsx": {
+    "mtime": 1778906804.3788028,
+    "ast_hash": "1db91416ab47bb44c7b1e2cdafb73258",
+    "semantic_hash": "1db91416ab47bb44c7b1e2cdafb73258"
+  },
+  "src/features/dmDashboard/InitiativeTracker.test.jsx": {
+    "mtime": 1778265412.0933383,
+    "ast_hash": "de06d84eb19f00dab0d5045c862b8f21",
+    "semantic_hash": "de06d84eb19f00dab0d5045c862b8f21"
+  },
+  "src/features/dmDashboard/ManagePartyModal.jsx": {
+    "mtime": 1780260444.7613113,
+    "ast_hash": "66d8f99f04192ac1190739e9a6a58720",
+    "semantic_hash": "66d8f99f04192ac1190739e9a6a58720"
+  },
+  "src/features/dmDashboard/MapLibraryModal.jsx": {
+    "mtime": 1778780923.4910278,
+    "ast_hash": "9dc243f16873f27ebbd6da98e4e65571",
+    "semantic_hash": "9dc243f16873f27ebbd6da98e4e65571"
+  },
+  "src/features/dmDashboard/MapLibraryStrip.jsx": {
+    "mtime": 1778558002.7287958,
+    "ast_hash": "d6662c2c0d0ff79926daded5670c4c81",
+    "semantic_hash": "d6662c2c0d0ff79926daded5670c4c81"
+  },
+  "src/features/dmDashboard/MapPanel.jsx": {
+    "mtime": 1780987996.514772,
+    "ast_hash": "97f62bfeb50463592522647ea55981cc",
+    "semantic_hash": "97f62bfeb50463592522647ea55981cc"
+  },
+  "src/features/dmDashboard/MapPanel.test.jsx": {
+    "mtime": 1780035660.3586173,
+    "ast_hash": "388305a1a765edeea79d0c32ff6ca19a",
+    "semantic_hash": "388305a1a765edeea79d0c32ff6ca19a"
+  },
+  "src/features/dmDashboard/MapUploadModal.jsx": {
+    "mtime": 1778352592.4794767,
+    "ast_hash": "33231cec2ed2dcfbe0d402794b0193e9",
+    "semantic_hash": "33231cec2ed2dcfbe0d402794b0193e9"
+  },
+  "src/features/dmDashboard/NpcCombatSection.jsx": {
+    "mtime": 1781501245.245339,
+    "ast_hash": "736527ef17e61fad2f5cf289d7950e69",
+    "semantic_hash": "736527ef17e61fad2f5cf289d7950e69"
+  },
+  "src/features/dmDashboard/NpcCombatSection.test.jsx": {
+    "mtime": 1779395404.0473912,
+    "ast_hash": "50d3ef1aa73b11b3c7d5f0cf075485bf",
+    "semantic_hash": "50d3ef1aa73b11b3c7d5f0cf075485bf"
+  },
+  "src/features/dmDashboard/battleMode/BattleModeController.jsx": {
+    "mtime": 1780985908.6320143,
+    "ast_hash": "6da9127a720199b7789ff35bd5855a93",
+    "semantic_hash": "6da9127a720199b7789ff35bd5855a93"
+  },
+  "src/features/dmDashboard/battleMode/BattleModeToggle.jsx": {
+    "mtime": 1780982417.3953655,
+    "ast_hash": "20e5e7a2fe251540f59b720f564a18fd",
+    "semantic_hash": "20e5e7a2fe251540f59b720f564a18fd"
+  },
+  "src/features/dmDashboard/battleMode/TokenTray.jsx": {
+    "mtime": 1780988018.5488172,
+    "ast_hash": "0b0a1f7ae1c1f19d657abf24c1ec6307",
+    "semantic_hash": "0b0a1f7ae1c1f19d657abf24c1ec6307"
+  },
+  "src/features/dmDashboard/battleMode/tokenUtils.js": {
+    "mtime": 1780982454.3224826,
+    "ast_hash": "33511f8c0b3080ba517382e392859406",
+    "semantic_hash": "33511f8c0b3080ba517382e392859406"
+  },
+  "src/features/dmDashboard/dashboardShared.js": {
+    "mtime": 1778899405.698548,
+    "ast_hash": "29f4f266a94893b21647afb27af733c3",
+    "semantic_hash": "29f4f266a94893b21647afb27af733c3"
+  },
+  "src/features/maps/MapThumbnail.jsx": {
+    "mtime": 1778352500.8446872,
+    "ast_hash": "87243624c9e719e51c6280a7b4ce8fe9",
+    "semantic_hash": "87243624c9e719e51c6280a7b4ce8fe9"
+  },
+  "src/features/maps/MapViewer.jsx": {
+    "mtime": 1780986583.9800646,
+    "ast_hash": "a7c55f401679dbd022bc9b5ab2d2d63c",
+    "semantic_hash": "a7c55f401679dbd022bc9b5ab2d2d63c"
+  },
+  "src/features/maps/MapViewer.test.jsx": {
+    "mtime": 1780035647.3586762,
+    "ast_hash": "4a779d35a37c20d79e3f601a50d17243",
+    "semantic_hash": "4a779d35a37c20d79e3f601a50d17243"
+  },
+  "src/features/maps/PdfCanvas.jsx": {
+    "mtime": 1778352687.7434576,
+    "ast_hash": "2e09a7b21b378b23ebcd060226d0508e",
+    "semantic_hash": "2e09a7b21b378b23ebcd060226d0508e"
+  },
+  "src/features/maps/mapFiles.js": {
+    "mtime": 1778352475.001007,
+    "ast_hash": "044d9b84ce1a7dfbb1f7434caa988332",
+    "semantic_hash": "044d9b84ce1a7dfbb1f7434caa988332"
+  },
+  "src/features/maps/mapFiles.test.js": {
+    "mtime": 1778352651.9980347,
+    "ast_hash": "9a8d9455bd0c1ae9deec06c87491e5d6",
+    "semantic_hash": "9a8d9455bd0c1ae9deec06c87491e5d6"
+  },
+  "src/features/worldGuide/WorldGuideDrawer.jsx": {
+    "mtime": 1780019387.6439745,
+    "ast_hash": "7c0ee7b24c52044b683debb2302fb2bd",
+    "semantic_hash": "7c0ee7b24c52044b683debb2302fb2bd"
+  },
+  "src/features/worldGuide/WorldGuideDrawer.test.jsx": {
+    "mtime": 1780020259.8420417,
+    "ast_hash": "40fefcdde3562b744b820afe49fe8eb0",
+    "semantic_hash": "40fefcdde3562b744b820afe49fe8eb0"
+  },
+  "src/features/worldGuide/WorldGuideTrigger.jsx": {
+    "mtime": 1780021272.288375,
+    "ast_hash": "6bf3e0a0f99fc29e99676b7f5c3f94c9",
+    "semantic_hash": "6bf3e0a0f99fc29e99676b7f5c3f94c9"
+  },
+  "src/lib/liveSync.js": {
+    "mtime": 1777675608.7086217,
+    "ast_hash": "a8ac0088873709d24b0042d69065710f",
+    "semantic_hash": "a8ac0088873709d24b0042d69065710f"
+  },
+  "src/lib/rollHistory.js": {
+    "mtime": 1780019324.5227776,
+    "ast_hash": "42c6f580a9dc739c0a2511697a5cc580",
+    "semantic_hash": "42c6f580a9dc739c0a2511697a5cc580"
+  },
+  "src/lib/rollHistory.test.jsx": {
+    "mtime": 1777683747.7201164,
+    "ast_hash": "a0536386b16f52b6777fce67ff57b87a",
+    "semantic_hash": "a0536386b16f52b6777fce67ff57b87a"
+  },
+  "src/lib/useHoldToRepeat.js": {
+    "mtime": 1778556188.7891514,
+    "ast_hash": "5514e16568c4a7f8cffb1704b6a9b43b",
+    "semantic_hash": "5514e16568c4a7f8cffb1704b6a9b43b"
+  },
+  "src/main.jsx": {
+    "mtime": 1778736797.8870437,
+    "ast_hash": "7c1a996263c410ebb45d606924ae4944",
+    "semantic_hash": "7c1a996263c410ebb45d606924ae4944"
+  },
+  "src/original_App.jsx": {
+    "mtime": 1777310914.8577752,
+    "ast_hash": "cd56544ef84672246b9eebbde5b73d5b",
+    "semantic_hash": "cd56544ef84672246b9eebbde5b73d5b"
+  },
+  "src/pages/CharacterModePage.jsx": {
+    "mtime": 1780260444.7279685,
+    "ast_hash": "239a394cbb40642126a5fefb191e277a",
+    "semantic_hash": "239a394cbb40642126a5fefb191e277a"
+  },
+  "src/pages/CharacterPage.jsx": {
+    "mtime": 1778780923.4808128,
+    "ast_hash": "a6156044abd61ea211ab4a7607ab534f",
+    "semantic_hash": "a6156044abd61ea211ab4a7607ab534f"
+  },
+  "src/pages/CharacterPage.test.jsx": {
+    "mtime": 1777674062.236118,
+    "ast_hash": "1dd0fdf44b18ddbaad8ec69eeea2d3bb",
+    "semantic_hash": "1dd0fdf44b18ddbaad8ec69eeea2d3bb"
+  },
+  "src/pages/CharactersListPage.jsx": {
+    "mtime": 1778780923.4715495,
+    "ast_hash": "7788c40ea29d59d1169ddf9b64b83a63",
+    "semantic_hash": "7788c40ea29d59d1169ddf9b64b83a63"
+  },
+  "src/pages/CharactersListPage.test.jsx": {
+    "mtime": 1778266578.48092,
+    "ast_hash": "7742cfc0a2ed7f661a9d67ccf517e93d",
+    "semantic_hash": "7742cfc0a2ed7f661a9d67ccf517e93d"
+  },
+  "src/pages/DmDashboardPage.jsx": {
+    "mtime": 1781501245.2478936,
+    "ast_hash": "78335a13b53b869ad9f431c2d07c746f",
+    "semantic_hash": "78335a13b53b869ad9f431c2d07c746f"
+  },
+  "src/pages/DmDashboardPage.test.jsx": {
+    "mtime": 1778266573.0592988,
+    "ast_hash": "44b316be9d2a9992129d331205aef2b9",
+    "semantic_hash": "44b316be9d2a9992129d331205aef2b9"
+  },
+  "src/pages/DmDashboardPrototypePage.jsx": {
+    "mtime": 1780986690.374291,
+    "ast_hash": "47fa593c5b20a10bbd921ca2e727df3e",
+    "semantic_hash": "47fa593c5b20a10bbd921ca2e727df3e"
+  },
+  "src/pages/DmDashboardPrototypePage.test.jsx": {
+    "mtime": 1779471310.4820797,
+    "ast_hash": "6c24ec6775288ca8ffe4d1c73ad2f51a",
+    "semantic_hash": "6c24ec6775288ca8ffe4d1c73ad2f51a"
+  },
+  "src/pages/MapLibraryPage.jsx": {
+    "mtime": 1778357955.8565085,
+    "ast_hash": "f697dfc0472f06eeaec4bb69b12736aa",
+    "semantic_hash": "f697dfc0472f06eeaec4bb69b12736aa"
+  },
+  "src/pages/MapViewerPage.jsx": {
+    "mtime": 1778557253.520335,
+    "ast_hash": "bb8b976286884e2301c5928b3a159ad1",
+    "semantic_hash": "bb8b976286884e2301c5928b3a159ad1"
+  },
+  "src/pages/NewCharacterPage.jsx": {
+    "mtime": 1778780923.4762816,
+    "ast_hash": "a01bb1e7c71fb61a3c8aced831cea1b6",
+    "semantic_hash": "a01bb1e7c71fb61a3c8aced831cea1b6"
+  },
+  "supabase/.temp/linked-project.json": {
+    "mtime": 1778959666.9331114,
+    "ast_hash": "8406fb61400a9cbf9c23abf02a2bf30b",
+    "semantic_hash": "8406fb61400a9cbf9c23abf02a2bf30b"
+  },
+  "vite.config.js": {
+    "mtime": 1777674053.7116816,
+    "ast_hash": "43b33658b260fa0d07934c3a24a605dc",
+    "semantic_hash": "43b33658b260fa0d07934c3a24a605dc"
+  },
+  "vitest.setup.js": {
+    "mtime": 1777673969.9589667,
+    "ast_hash": "f7373484c586d85febc4abc4bc5e5f1b",
+    "semantic_hash": "f7373484c586d85febc4abc4bc5e5f1b"
+  },
+  "CLAUDE.md": {
+    "mtime": 1781501245.3069012,
+    "ast_hash": "03c1b73e22fddd96be8b5ebe98d123ed",
+    "semantic_hash": "03c1b73e22fddd96be8b5ebe98d123ed"
+  },
+  "CODEX.md": {
+    "mtime": 1779395001.252669,
+    "ast_hash": "4b58c61aa59cd2c98324f101f0fba749",
+    "semantic_hash": "4b58c61aa59cd2c98324f101f0fba749"
+  },
+  "Notes from Noa.md": {
+    "mtime": 1780988802.8259528,
+    "ast_hash": "8ba17f13b92dbe564a41a2e98ff44b57",
+    "semantic_hash": "8ba17f13b92dbe564a41a2e98ff44b57"
+  },
+  "README.md": {
+    "mtime": 1777312537.4546416,
+    "ast_hash": "a28dc4cb878325f3e9e5649f3e1469ac",
+    "semantic_hash": "a28dc4cb878325f3e9e5649f3e1469ac"
+  },
+  "Untitled.md": {
+    "mtime": 1777485470.5174282,
+    "ast_hash": "d41d8cd98f00b204e9800998ecf8427e",
+    "semantic_hash": "d41d8cd98f00b204e9800998ecf8427e"
+  },
+  "backend/template.yaml": {
+    "mtime": 1781501245.2380047,
+    "ast_hash": "58e1548f627d3777ad573475cb3c6085",
+    "semantic_hash": "58e1548f627d3777ad573475cb3c6085"
+  },
+  "design/app-overview.md": {
+    "mtime": 1781501245.2409103,
+    "ast_hash": "a7edd59d120e30c4b932e0a3a23b6e70",
+    "semantic_hash": "a7edd59d120e30c4b932e0a3a23b6e70"
+  },
+  "design/architecture/css-migration-checklist.md": {
+    "mtime": 1778780923.51815,
+    "ast_hash": "b70bdf1899abf6fd9dd10c5ba92dc0a3",
+    "semantic_hash": "b70bdf1899abf6fd9dd10c5ba92dc0a3"
+  },
+  "design/architecture/decisions.md": {
+    "mtime": 1780986160.8452764,
+    "ast_hash": "bc4faaef3e8eeb3ab1a2d2858d002ac5",
+    "semantic_hash": "bc4faaef3e8eeb3ab1a2d2858d002ac5"
+  },
+  "design/architecture/realtime-sync-strategy.md": {
+    "mtime": 1778780781.4481218,
+    "ast_hash": "9b4f0cf93febbdbd22fa34f8037052b8",
+    "semantic_hash": "9b4f0cf93febbdbd22fa34f8037052b8"
+  },
+  "design/architecture/refactor-backlog.md": {
+    "mtime": 1778119436.078013,
+    "ast_hash": "e59750c2ad1688655c7f1f285ddab901",
+    "semantic_hash": "e59750c2ad1688655c7f1f285ddab901"
+  },
+  "design/briefs/battle-map-tokens-brief.md": {
+    "mtime": 1780978798.3479075,
+    "ast_hash": "7982e6a9673665d47f4eced0a5a40ac9",
+    "semantic_hash": "7982e6a9673665d47f4eced0a5a40ac9"
+  },
+  "design/briefs/character-card-portrait-brief.md": {
+    "mtime": 1780109012.9337382,
+    "ast_hash": "ac8909326f1c0d92dd9e9588446a67a6",
+    "semantic_hash": "ac8909326f1c0d92dd9e9588446a67a6"
+  },
+  "design/briefs/concentration-mobile-brief.md": {
+    "mtime": 1780112351.9882705,
+    "ast_hash": "ee0595f77ebb7bb4dfe8cb5a926afa45",
+    "semantic_hash": "ee0595f77ebb7bb4dfe8cb5a926afa45"
+  },
+  "design/briefs/counter-wheels-brief.md": {
+    "mtime": 1781500854.6724563,
+    "ast_hash": "f76b36aad506a52788de62c4abd60727",
+    "semantic_hash": "f76b36aad506a52788de62c4abd60727"
+  },
+  "design/briefs/death-saves-round-tracking-brief.md": {
+    "mtime": 1778894821.3279498,
+    "ast_hash": "ca998795bb19cd23e5797e2f26b165d5",
+    "semantic_hash": "ca998795bb19cd23e5797e2f26b165d5"
+  },
+  "design/briefs/death-saves-strip-brief.md": {
+    "mtime": 1780111929.2919736,
+    "ast_hash": "675aba9f40f18493b1aa4f21c2fca7b6",
+    "semantic_hash": "675aba9f40f18493b1aa4f21c2fca7b6"
+  },
+  "design/briefs/dm-dashboard-brief.md": {
+    "mtime": 1778640046.2485554,
+    "ast_hash": "ac5ef9b8238c14c90513b604d58a3887",
+    "semantic_hash": "ac5ef9b8238c14c90513b604d58a3887"
+  },
+  "design/briefs/npc-ability-reference-brief.md": {
+    "mtime": 1779325621.261049,
+    "ast_hash": "c91b3a1260aaf0d81086b2ae4f091b8a",
+    "semantic_hash": "c91b3a1260aaf0d81086b2ae4f091b8a"
+  },
+  "design/briefs/npc-library-brief.md": {
+    "mtime": 1779390437.6281812,
+    "ast_hash": "54a861dbd821ef075412c1a6724dbd0d",
+    "semantic_hash": "54a861dbd821ef075412c1a6724dbd0d"
+  },
+  "design/briefs/npc-library-portraits-brief.md": {
+    "mtime": 1781325210.557957,
+    "ast_hash": "175b34f7a9a6a141b5282b10c45b8132",
+    "semantic_hash": "175b34f7a9a6a141b5282b10c45b8132"
+  },
+  "design/briefs/party-intelligence-brief.md": {
+    "mtime": 1779311739.118533,
+    "ast_hash": "db7a75d07f471446c51684ee1d74d04c",
+    "semantic_hash": "db7a75d07f471446c51684ee1d74d04c"
+  },
+  "design/briefs/player-sheet-session-mode-brief.md": {
+    "mtime": 1780180656.096643,
+    "ast_hash": "b76c185ea609f7e0c6643c04d9c4f979",
+    "semantic_hash": "b76c185ea609f7e0c6643c04d9c4f979"
+  },
+  "design/briefs/world-guide-browser-brief.md": {
+    "mtime": 1780001281.235333,
+    "ast_hash": "290c4a03bd71bc1a33fa009d2e420bdf",
+    "semantic_hash": "290c4a03bd71bc1a33fa009d2e420bdf"
+  },
+  "design/design-system.md": {
+    "mtime": 1780260444.7504582,
+    "ast_hash": "f3c129a7988c0fe3ad5aa05d6d181d08",
+    "semantic_hash": "f3c129a7988c0fe3ad5aa05d6d181d08"
+  },
+  "design/prototypes/26-world-guide-browser.html": {
+    "mtime": 1780002746.3959882,
+    "ast_hash": "420fc79a27d2135ba900649557d14c26",
+    "semantic_hash": "420fc79a27d2135ba900649557d14c26"
+  },
+  "design/prototypes/character-card-portrait-options.html": {
+    "mtime": 1780110086.7147677,
+    "ast_hash": "d3c008b4e5b1ef06903ffce061381722",
+    "semantic_hash": "d3c008b4e5b1ef06903ffce061381722"
+  },
+  "design/prototypes/coin-tracking.html": {
+    "mtime": 1778179396.3722818,
+    "ast_hash": "3d813e46c40a9179f90b02782e5ec17a",
+    "semantic_hash": "3d813e46c40a9179f90b02782e5ec17a"
+  },
+  "design/prototypes/combat-view-page.html": {
+    "mtime": 1777426685.5125604,
+    "ast_hash": "30166421eb28e35ada2dbdad0238fcd0",
+    "semantic_hash": "30166421eb28e35ada2dbdad0238fcd0"
+  },
+  "design/prototypes/combat-view-tab.html": {
+    "mtime": 1777515318.2252345,
+    "ast_hash": "dd4f560bd23998aee350d122ab50fb62",
+    "semantic_hash": "dd4f560bd23998aee350d122ab50fb62"
+  },
+  "design/prototypes/current-state.html": {
+    "mtime": 1777425022.2748637,
+    "ast_hash": "324a32e84508beeb9993ada0a9e44259",
+    "semantic_hash": "324a32e84508beeb9993ada0a9e44259"
+  },
+  "design/prototypes/death-saves-round-tracking.html": {
+    "mtime": 1778896935.6676793,
+    "ast_hash": "30ba37d7831d8edd28ce8cde8f5dc910",
+    "semantic_hash": "30ba37d7831d8edd28ce8cde8f5dc910"
+  },
+  "design/prototypes/death-saves-strip.html": {
+    "mtime": 1780113109.0580082,
+    "ast_hash": "648f3b47d66b935fea2c6fbd23fd29f6",
+    "semantic_hash": "648f3b47d66b935fea2c6fbd23fd29f6"
+  },
+  "design/prototypes/dice-roller.html": {
+    "mtime": 1777516925.935119,
+    "ast_hash": "7cc2fcc9cdf4f166dbb466ab392fddd9",
+    "semantic_hash": "7cc2fcc9cdf4f166dbb466ab392fddd9"
+  },
+  "design/prototypes/dm-dashboard.html": {
+    "mtime": 1778648774.8399189,
+    "ast_hash": "730625bf58bc022088feea0009a2760c",
+    "semantic_hash": "730625bf58bc022088feea0009a2760c"
+  },
+  "design/prototypes/dm-dice-roller.html": {
+    "mtime": 1777579823.8523548,
+    "ast_hash": "d50b13d628e8642a36a769223ad0feed",
+    "semantic_hash": "d50b13d628e8642a36a769223ad0feed"
+  },
+  "design/prototypes/dm-party-card.html": {
+    "mtime": 1778624612.4893215,
+    "ast_hash": "84687d444a86c91f9f659a6bd7c75b6b",
+    "semantic_hash": "84687d444a86c91f9f659a6bd7c75b6b"
+  },
+  "design/prototypes/hit-dice-tracker.html": {
+    "mtime": 1778179438.0254118,
+    "ast_hash": "52f7a3aee173ba071fef255ea2012d0e",
+    "semantic_hash": "52f7a3aee173ba071fef255ea2012d0e"
+  },
+  "design/prototypes/inventory-improvements.html": {
+    "mtime": 1778555590.1060624,
+    "ast_hash": "fddef583b13d26ee9ae27e6c2b90238e",
+    "semantic_hash": "fddef583b13d26ee9ae27e6c2b90238e"
+  },
+  "design/prototypes/loadout-tab.html": {
+    "mtime": 1777515347.7143364,
+    "ast_hash": "442ce8be8159fb2afffb9f9d30c201fa",
+    "semantic_hash": "442ce8be8159fb2afffb9f9d30c201fa"
+  },
+  "design/prototypes/maps.html": {
+    "mtime": 1778170456.4200997,
+    "ast_hash": "f2b03a53ba0a9011bf1a379b715d6734",
+    "semantic_hash": "f2b03a53ba0a9011bf1a379b715d6734"
+  },
+  "design/prototypes/notes.html": {
+    "mtime": 1778122580.8188164,
+    "ast_hash": "dcba260ec74ca6f75de35a77864ce126",
+    "semantic_hash": "dcba260ec74ca6f75de35a77864ce126"
+  },
+  "design/prototypes/npc-combat-tracker.html": {
+    "mtime": 1777620016.4979234,
+    "ast_hash": "3d139d1ab1a17bb962f64487bbb47a21",
+    "semantic_hash": "3d139d1ab1a17bb962f64487bbb47a21"
+  },
+  "design/prototypes/npc-library.html": {
+    "mtime": 1779389133.138509,
+    "ast_hash": "f75a5a680d21ee67e8b67602356925c9",
+    "semantic_hash": "f75a5a680d21ee67e8b67602356925c9"
+  },
+  "design/prototypes/persona-tab.html": {
+    "mtime": 1777515328.60123,
+    "ast_hash": "48f8ef9fde52b99af9da48a46dc1db5d",
+    "semantic_hash": "48f8ef9fde52b99af9da48a46dc1db5d"
+  },
+  "design/prototypes/player-sheet-improvements.html": {
+    "mtime": 1778353793.080607,
+    "ast_hash": "f52b7be7e4b45bbdac306cb52e98aad3",
+    "semantic_hash": "f52b7be7e4b45bbdac306cb52e98aad3"
+  },
+  "design/prototypes/player-sheet-session-mode-experiment1.html": {
+    "mtime": 1780186250.8070946,
+    "ast_hash": "7150c5dd605d67e26eced43a636d79f6",
+    "semantic_hash": "7150c5dd605d67e26eced43a636d79f6"
+  },
+  "design/prototypes/player-sheet-session-mode.html": {
+    "mtime": 1780986160.8459013,
+    "ast_hash": "4e0026c37a71081f128864c4c5b162d1",
+    "semantic_hash": "4e0026c37a71081f128864c4c5b162d1"
+  },
+  "design/prototypes/revised.html": {
+    "mtime": 1777425127.7666059,
+    "ast_hash": "eea1d21083390d168079b422786c86a6",
+    "semantic_hash": "eea1d21083390d168079b422786c86a6"
+  },
+  "design/prototypes/xp-tracking.html": {
+    "mtime": 1778179269.7830315,
+    "ast_hash": "f525672fccc646ceb0f5ad8ae6146cbd",
+    "semantic_hash": "f525672fccc646ceb0f5ad8ae6146cbd"
+  },
+  "design/rpg-consultant-addendum.md": {
+    "mtime": 1777426144.0171356,
+    "ast_hash": "ab3cc0492779f474163d98a572df8fc3",
+    "semantic_hash": "ab3cc0492779f474163d98a572df8fc3"
+  },
+  "design/rpg-consultant-review.md": {
+    "mtime": 1777424741.6202705,
+    "ast_hash": "14ec9c1c255e1309578b6fa18bbf553b",
+    "semantic_hash": "14ec9c1c255e1309578b6fa18bbf553b"
+  },
+  "design/stories/01-hp-tracking.md": {
+    "mtime": 1777427364.2654321,
+    "ast_hash": "697a02516c3945f37842266dce2a3f57",
+    "semantic_hash": "697a02516c3945f37842266dce2a3f57"
+  },
+  "design/stories/02-spell-slot-tracker.md": {
+    "mtime": 1777426521.470972,
+    "ast_hash": "4f74a8dcab28afee71d6507e852073d7",
+    "semantic_hash": "4f74a8dcab28afee71d6507e852073d7"
+  },
+  "design/stories/03-condition-tracking.md": {
+    "mtime": 1777426536.0092642,
+    "ast_hash": "9e441f242d9004244d483c60ba6f50fc",
+    "semantic_hash": "9e441f242d9004244d483c60ba6f50fc"
+  },
+  "design/stories/04-in-play-tab.md": {
+    "mtime": 1777447262.4049668,
+    "ast_hash": "fb703a4bc3a0f226f8b1aab415210735",
+    "semantic_hash": "fb703a4bc3a0f226f8b1aab415210735"
+  },
+  "design/stories/05-dm-dashboard.md": {
+    "mtime": 1778638694.1482468,
+    "ast_hash": "53c98cb617d2a8d049c1a119f44ee899",
+    "semantic_hash": "53c98cb617d2a8d049c1a119f44ee899"
+  },
+  "design/stories/07-dice-roller.md": {
+    "mtime": 1777524614.414853,
+    "ast_hash": "b51af5e7fa4476588b52eca69e45c713",
+    "semantic_hash": "b51af5e7fa4476588b52eca69e45c713"
+  },
+  "design/stories/08-dm-dice-roller.md": {
+    "mtime": 1777580171.0338063,
+    "ast_hash": "560e8006c66f487c384d9f83c4807339",
+    "semantic_hash": "560e8006c66f487c384d9f83c4807339"
+  },
+  "design/stories/09-dm-dashboard-nav-and-quick-actions.md": {
+    "mtime": 1777599092.0843627,
+    "ast_hash": "a303818477c6ff4513e2b7f60903536a",
+    "semantic_hash": "a303818477c6ff4513e2b7f60903536a"
+  },
+  "design/stories/10-npc-combat-tracker.md": {
+    "mtime": 1777620264.542055,
+    "ast_hash": "f65ae9e8055de97852e5e4dd4419910c",
+    "semantic_hash": "f65ae9e8055de97852e5e4dd4419910c"
+  },
+  "design/stories/11-notes.md": {
+    "mtime": 1778123092.1994364,
+    "ast_hash": "aa80d3b9089c446349a438a85cf84981",
+    "semantic_hash": "aa80d3b9089c446349a438a85cf84981"
+  },
+  "design/stories/12-maps.md": {
+    "mtime": 1778170360.604257,
+    "ast_hash": "fac20f3e4ea44cf2a15a7e57bdc0b654",
+    "semantic_hash": "fac20f3e4ea44cf2a15a7e57bdc0b654"
+  },
+  "design/stories/13-xp-tracking.md": {
+    "mtime": 1778196744.550154,
+    "ast_hash": "c555d69bb85b2c2e9a989f0d882df46d",
+    "semantic_hash": "c555d69bb85b2c2e9a989f0d882df46d"
+  },
+  "design/stories/14-coin-tracking.md": {
+    "mtime": 1778179650.460373,
+    "ast_hash": "5ad39cb00bce905e36fd49aa6a769e5c",
+    "semantic_hash": "5ad39cb00bce905e36fd49aa6a769e5c"
+  },
+  "design/stories/15-hit-dice-tracker.md": {
+    "mtime": 1778179689.1035335,
+    "ast_hash": "e9a657951d1bd0d2087c742389cfeb35",
+    "semantic_hash": "e9a657951d1bd0d2087c742389cfeb35"
+  },
+  "design/stories/16-party-card-redesign.md": {
+    "mtime": 1778624658.947699,
+    "ast_hash": "81f8c4c4a8a2788594efef12923d2f17",
+    "semantic_hash": "81f8c4c4a8a2788594efef12923d2f17"
+  },
+  "design/stories/17-player-sheet-improvements.md": {
+    "mtime": 1778353125.557822,
+    "ast_hash": "9023caaacca8f3b36a73049657e2bc84",
+    "semantic_hash": "9023caaacca8f3b36a73049657e2bc84"
+  },
+  "design/stories/18-inventory-improvements.md": {
+    "mtime": 1778556086.7599921,
+    "ast_hash": "b03438d69fcbb7b1af9f8d2e7fcc9371",
+    "semantic_hash": "b03438d69fcbb7b1af9f8d2e7fcc9371"
+  },
+  "design/stories/19-death-saves-and-round-tracking.md": {
+    "mtime": 1778898672.6623147,
+    "ast_hash": "90b2b55877519e09f6e97d64d06d68b9",
+    "semantic_hash": "90b2b55877519e09f6e97d64d06d68b9"
+  },
+  "design/stories/20-party-intelligence-panel.md": {
+    "mtime": 1779312688.409892,
+    "ast_hash": "7c042680dba3c5c48a4fac81610c5c56",
+    "semantic_hash": "7c042680dba3c5c48a4fac81610c5c56"
+  },
+  "design/stories/21-combat-efficiency.md": {
+    "mtime": 1778822019.0765288,
+    "ast_hash": "2525b387514f143fa60e35bc8003d79e",
+    "semantic_hash": "2525b387514f143fa60e35bc8003d79e"
+  },
+  "design/stories/22-dice-transition-polish.md": {
+    "mtime": 1779313856.8357143,
+    "ast_hash": "bb33fa98d4fdc3a10bd2689fe22a8fb8",
+    "semantic_hash": "bb33fa98d4fdc3a10bd2689fe22a8fb8"
+  },
+  "design/stories/23-npc-ability-reference.md": {
+    "mtime": 1779390632.218066,
+    "ast_hash": "e1df80b8dbd318e78d4ad568e60c9d2c",
+    "semantic_hash": "e1df80b8dbd318e78d4ad568e60c9d2c"
+  },
+  "design/stories/24-npc-library.md": {
+    "mtime": 1781244457.3451245,
+    "ast_hash": "64f621bec168f8aa81c86fd3c54dc9b6",
+    "semantic_hash": "64f621bec168f8aa81c86fd3c54dc9b6"
+  },
+  "design/stories/25-world-guide.md": {
+    "mtime": 1779985872.052085,
+    "ast_hash": "1a164c1abd1206e305405c4e454acd95",
+    "semantic_hash": "1a164c1abd1206e305405c4e454acd95"
+  },
+  "design/stories/26-world-guide-browser.md": {
+    "mtime": 1780019438.2027042,
+    "ast_hash": "a81cc354025b9e46677e8ff5cf0e8d84",
+    "semantic_hash": "a81cc354025b9e46677e8ff5cf0e8d84"
+  },
+  "design/stories/27-player-sheet-layout-and-session-modes.md": {
+    "mtime": 1780986160.8464618,
+    "ast_hash": "b25653bcb84e72c1abf51c6e6607d900",
+    "semantic_hash": "b25653bcb84e72c1abf51c6e6607d900"
+  },
+  "design/stories/29b-battle-map-token-polish.md": {
+    "mtime": 1781244452.3519223,
+    "ast_hash": "4eb22e3f78700576565c709bed116f6e",
+    "semantic_hash": "4eb22e3f78700576565c709bed116f6e"
+  },
+  "design/stories/30-counter-wheels.md": {
+    "mtime": 1781500861.2643943,
+    "ast_hash": "145c30d848dc5706ecee1bd132fcb3b6",
+    "semantic_hash": "145c30d848dc5706ecee1bd132fcb3b6"
+  },
+  "design/stories/31-npc-library-portraits-hp.md": {
+    "mtime": 1781325192.9286056,
+    "ast_hash": "fb10fb5b7050cac400d5e9d856ea26ab",
+    "semantic_hash": "fb10fb5b7050cac400d5e9d856ea26ab"
+  },
+  "index.html": {
+    "mtime": 1777310913.19818,
+    "ast_hash": "61c08cb5a52607bdbcc46c91fc08cb11",
+    "semantic_hash": "61c08cb5a52607bdbcc46c91fc08cb11"
+  },
+  "public/world-guide/01-greyhawks-world.md": {
+    "mtime": 1779988139.2331638,
+    "ast_hash": "4d626d7dfc9a94926b38609100e1b60a",
+    "semantic_hash": "4d626d7dfc9a94926b38609100e1b60a"
+  },
+  "public/world-guide/02-folk/baklunish.md": {
+    "mtime": 1780001384.2369828,
+    "ast_hash": "6b4e16a495237b0fcc9ee449cabcf9ae",
+    "semantic_hash": "6b4e16a495237b0fcc9ee449cabcf9ae"
+  },
+  "public/world-guide/02-folk/dwarves.md": {
+    "mtime": 1780001384.237499,
+    "ast_hash": "7a9bef8a9e404dfbd01353f2a0c17fe5",
+    "semantic_hash": "7a9bef8a9e404dfbd01353f2a0c17fe5"
+  },
+  "public/world-guide/02-folk/elves.md": {
+    "mtime": 1780001384.237438,
+    "ast_hash": "359f5bfca403bafde6dc90825b0a25d1",
+    "semantic_hash": "359f5bfca403bafde6dc90825b0a25d1"
+  },
+  "public/world-guide/02-folk/flan.md": {
+    "mtime": 1780001384.2370791,
+    "ast_hash": "a86e7d1a953f4ee01476e33d69f7c66e",
+    "semantic_hash": "a86e7d1a953f4ee01476e33d69f7c66e"
+  },
+  "public/world-guide/02-folk/gnolls.md": {
+    "mtime": 1780001384.237702,
+    "ast_hash": "67291771d0c51ffce3a837b8a7696f94",
+    "semantic_hash": "67291771d0c51ffce3a837b8a7696f94"
+  },
+  "public/world-guide/02-folk/gnomes.md": {
+    "mtime": 1780001384.237565,
+    "ast_hash": "35dc940ba521bb84a6c6763c4d6ed882",
+    "semantic_hash": "35dc940ba521bb84a6c6763c4d6ed882"
+  },
+  "public/world-guide/02-folk/goblins.md": {
+    "mtime": 1780001384.237895,
+    "ast_hash": "ec987bb73d0ba275d6b612eaff4e0840",
+    "semantic_hash": "ec987bb73d0ba275d6b612eaff4e0840"
+  },
+  "public/world-guide/02-folk/halflings.md": {
+    "mtime": 1780001384.2376401,
+    "ast_hash": "452f00e218e1d1c965633a2a3ca851d3",
+    "semantic_hash": "452f00e218e1d1c965633a2a3ca851d3"
+  },
+  "public/world-guide/02-folk/hobgoblins.md": {
+    "mtime": 1780001384.2377636,
+    "ast_hash": "765aa31b019aa2465fcf76b7fa4a5754",
+    "semantic_hash": "765aa31b019aa2465fcf76b7fa4a5754"
+  },
+  "public/world-guide/02-folk/index.md": {
+    "mtime": 1780001384.2381785,
+    "ast_hash": "5ea9923d654167432359e4943fd2411d",
+    "semantic_hash": "5ea9923d654167432359e4943fd2411d"
+  },
+  "public/world-guide/02-folk/kobolds.md": {
+    "mtime": 1780001384.2379959,
+    "ast_hash": "0918584593030c9aefbc3391db7fce2b",
+    "semantic_hash": "0918584593030c9aefbc3391db7fce2b"
+  },
+  "public/world-guide/02-folk/languages.md": {
+    "mtime": 1780001384.2380986,
+    "ast_hash": "eb1e1dfd6ac3b52657d385fbcc08cc39",
+    "semantic_hash": "eb1e1dfd6ac3b52657d385fbcc08cc39"
+  },
+  "public/world-guide/02-folk/oeridians.md": {
+    "mtime": 1780001384.2371569,
+    "ast_hash": "fd339f9d52e64f0a940c8b7a6135663a",
+    "semantic_hash": "fd339f9d52e64f0a940c8b7a6135663a"
+  },
+  "public/world-guide/02-folk/olman.md": {
+    "mtime": 1780001384.237227,
+    "ast_hash": "03238c1b874dc3d0835abaeb06b7da05",
+    "semantic_hash": "03238c1b874dc3d0835abaeb06b7da05"
+  },
+  "public/world-guide/02-folk/orcs.md": {
+    "mtime": 1780001384.2378237,
+    "ast_hash": "4b742b08d69c5843ba3a62575600f970",
+    "semantic_hash": "4b742b08d69c5843ba3a62575600f970"
+  },
+  "public/world-guide/02-folk/rhennee.md": {
+    "mtime": 1780001384.2373009,
+    "ast_hash": "3ba980b11bf43389534b6b392622dc13",
+    "semantic_hash": "3ba980b11bf43389534b6b392622dc13"
+  },
+  "public/world-guide/02-folk/suloise.md": {
+    "mtime": 1780001384.2373726,
+    "ast_hash": "156856a90fd23a99aed3d3a6e40a8954",
+    "semantic_hash": "156856a90fd23a99aed3d3a6e40a8954"
+  },
+  "public/world-guide/03-history-of-the-flanaess.md": {
+    "mtime": 1779988139.3586636,
+    "ast_hash": "1285881e63689e198599d26e9cd910b0",
+    "semantic_hash": "1285881e63689e198599d26e9cd910b0"
+  },
+  "public/world-guide/04-gazetteer/_index.md": {
+    "mtime": 1779988139.8395066,
+    "ast_hash": "190ef248864718b093d429e0b1810157",
+    "semantic_hash": "190ef248864718b093d429e0b1810157"
+  },
+  "public/world-guide/04-gazetteer/ahlissa.md": {
+    "mtime": 1779988139.8781745,
+    "ast_hash": "47bf1d3947f8709ae6f20eaefcf4fcd1",
+    "semantic_hash": "47bf1d3947f8709ae6f20eaefcf4fcd1"
+  },
+  "public/world-guide/04-gazetteer/bandit-kingdoms.md": {
+    "mtime": 1779988139.9387462,
+    "ast_hash": "7d6da3b8ea8aacebc974acccdfaf59e4",
+    "semantic_hash": "7d6da3b8ea8aacebc974acccdfaf59e4"
+  },
+  "public/world-guide/04-gazetteer/bissel.md": {
+    "mtime": 1779988139.9491065,
+    "ast_hash": "424779f45776d39be4b289f5ae7c2c6c",
+    "semantic_hash": "424779f45776d39be4b289f5ae7c2c6c"
+  },
+  "public/world-guide/04-gazetteer/blackmoor.md": {
+    "mtime": 1779988139.9672267,
+    "ast_hash": "d7455d8a0ace99bf8a81f1153b20693e",
+    "semantic_hash": "d7455d8a0ace99bf8a81f1153b20693e"
+  },
+  "public/world-guide/04-gazetteer/bone-march.md": {
+    "mtime": 1779988139.9866636,
+    "ast_hash": "e012e15dc2f673dcf28f5c85aa277c87",
+    "semantic_hash": "e012e15dc2f673dcf28f5c85aa277c87"
+  },
+  "public/world-guide/04-gazetteer/bright-lands.md": {
+    "mtime": 1779988139.999844,
+    "ast_hash": "a65797dde12d0d2a33069970d17f0a5b",
+    "semantic_hash": "a65797dde12d0d2a33069970d17f0a5b"
+  },
+  "public/world-guide/04-gazetteer/celene.md": {
+    "mtime": 1779988140.016096,
+    "ast_hash": "78313d18474145910a03053c22c951ea",
+    "semantic_hash": "78313d18474145910a03053c22c951ea"
+  },
+  "public/world-guide/04-gazetteer/dyvers.md": {
+    "mtime": 1779988140.034178,
+    "ast_hash": "62a875054425ed68777bbe85acd2c971",
+    "semantic_hash": "62a875054425ed68777bbe85acd2c971"
+  },
+  "public/world-guide/04-gazetteer/ekbir.md": {
+    "mtime": 1779988140.042837,
+    "ast_hash": "e26f6ecf2c4e0c8c793a948bdd67d285",
+    "semantic_hash": "e26f6ecf2c4e0c8c793a948bdd67d285"
+  },
+  "public/world-guide/04-gazetteer/frost-barbarians.md": {
+    "mtime": 1779988140.0620012,
+    "ast_hash": "944dc586e175ebdaa5e34382b2e93d48",
+    "semantic_hash": "944dc586e175ebdaa5e34382b2e93d48"
+  },
+  "public/world-guide/04-gazetteer/furyondy.md": {
+    "mtime": 1779988140.0760674,
+    "ast_hash": "e92d576e847bc85829e265880feeff5a",
+    "semantic_hash": "e92d576e847bc85829e265880feeff5a"
+  },
+  "public/world-guide/04-gazetteer/geoff.md": {
+    "mtime": 1779988140.0961924,
+    "ast_hash": "ba2471e51c1ab3f448f331732a63c659",
+    "semantic_hash": "ba2471e51c1ab3f448f331732a63c659"
+  },
+  "public/world-guide/04-gazetteer/gran-march.md": {
+    "mtime": 1779988140.1163151,
+    "ast_hash": "c6a8b3f8e513d43a5aa33822d40c2e7b",
+    "semantic_hash": "c6a8b3f8e513d43a5aa33822d40c2e7b"
+  },
+  "public/world-guide/04-gazetteer/greyhawk.md": {
+    "mtime": 1779988140.1242867,
+    "ast_hash": "cd55606a8051d4ebdd41f64d34ae3bce",
+    "semantic_hash": "cd55606a8051d4ebdd41f64d34ae3bce"
+  },
+  "public/world-guide/04-gazetteer/highfolk.md": {
+    "mtime": 1779988140.144301,
+    "ast_hash": "b9e7ebbfb61c879adacac1c0041f4815",
+    "semantic_hash": "b9e7ebbfb61c879adacac1c0041f4815"
+  },
+  "public/world-guide/04-gazetteer/ice-barbarians.md": {
+    "mtime": 1779988140.153774,
+    "ast_hash": "2d77cce6f8cb292981eb7568642122fe",
+    "semantic_hash": "2d77cce6f8cb292981eb7568642122fe"
+  },
+  "public/world-guide/04-gazetteer/irongate.md": {
+    "mtime": 1779988140.1834292,
+    "ast_hash": "3a0124582d2e8d62b6b4aa6b0c91c140",
+    "semantic_hash": "3a0124582d2e8d62b6b4aa6b0c91c140"
+  },
+  "public/world-guide/04-gazetteer/iuz-empire-of.md": {
+    "mtime": 1779988140.2237418,
+    "ast_hash": "8dc6aa41fa8826ab7fa3919bd5579d23",
+    "semantic_hash": "8dc6aa41fa8826ab7fa3919bd5579d23"
+  },
+  "public/world-guide/04-gazetteer/keoland.md": {
+    "mtime": 1779988140.2524796,
+    "ast_hash": "3a924ab7cef83ae4587e04d8225ba505",
+    "semantic_hash": "3a924ab7cef83ae4587e04d8225ba505"
+  },
+  "public/world-guide/04-gazetteer/ket.md": {
+    "mtime": 1779988140.2833624,
+    "ast_hash": "3b9fb37ba31e5a1fa69a3acb77ea1f7b",
+    "semantic_hash": "3b9fb37ba31e5a1fa69a3acb77ea1f7b"
+  },
+  "public/world-guide/04-gazetteer/lendore-isles.md": {
+    "mtime": 1779988140.299193,
+    "ast_hash": "7e2d406d52fe77bc852c72dcbc749dfb",
+    "semantic_hash": "7e2d406d52fe77bc852c72dcbc749dfb"
+  },
+  "public/world-guide/04-gazetteer/lordship-of-the-isles.md": {
+    "mtime": 1779988140.3182917,
+    "ast_hash": "57b447af9237f743b96a5634715ad33d",
+    "semantic_hash": "57b447af9237f743b96a5634715ad33d"
+  },
+  "public/world-guide/04-gazetteer/north-kingdom.md": {
+    "mtime": 1779988140.3382678,
+    "ast_hash": "1dd645a66860f19fb89e79efd9c35e1d",
+    "semantic_hash": "1dd645a66860f19fb89e79efd9c35e1d"
+  },
+  "public/world-guide/04-gazetteer/nyrond.md": {
+    "mtime": 1779988140.3765335,
+    "ast_hash": "8b0d5db8449caf3f937d79261eef7a17",
+    "semantic_hash": "8b0d5db8449caf3f937d79261eef7a17"
+  },
+  "public/world-guide/04-gazetteer/onnwal.md": {
+    "mtime": 1779988140.3868582,
+    "ast_hash": "b6a272b60bd9eef47e05a451c98c63d4",
+    "semantic_hash": "b6a272b60bd9eef47e05a451c98c63d4"
+  },
+  "public/world-guide/04-gazetteer/pale.md": {
+    "mtime": 1779988140.4161992,
+    "ast_hash": "1694a2a18b9f243eae61b44f57b4ac60",
+    "semantic_hash": "1694a2a18b9f243eae61b44f57b4ac60"
+  },
+  "public/world-guide/04-gazetteer/paynims-plains-of-the.md": {
+    "mtime": 1779988140.4349854,
+    "ast_hash": "df72f6ece5a69ebd14d49bd3e59366a4",
+    "semantic_hash": "df72f6ece5a69ebd14d49bd3e59366a4"
+  },
+  "public/world-guide/04-gazetteer/perrenland.md": {
+    "mtime": 1779988140.4439218,
+    "ast_hash": "af86d182901bdc1bfa5fd93a4fe0f18c",
+    "semantic_hash": "af86d182901bdc1bfa5fd93a4fe0f18c"
+  },
+  "public/world-guide/04-gazetteer/pomarj.md": {
+    "mtime": 1779988140.4662693,
+    "ast_hash": "f679d820f8601287a547c959eeada657",
+    "semantic_hash": "f679d820f8601287a547c959eeada657"
+  },
+  "public/world-guide/04-gazetteer/ratik.md": {
+    "mtime": 1779988140.4941251,
+    "ast_hash": "8b34ebefbd27ee1658b7b4bc3a454c92",
+    "semantic_hash": "8b34ebefbd27ee1658b7b4bc3a454c92"
+  },
+  "public/world-guide/04-gazetteer/rel-astra-and-the-solnor-compact.md": {
+    "mtime": 1779988140.5223522,
+    "ast_hash": "ce144c85115fd573840297efd678c7d1",
+    "semantic_hash": "ce144c85115fd573840297efd678c7d1"
+  },
+  "public/world-guide/04-gazetteer/rovers-of-the-barrens.md": {
+    "mtime": 1779988140.5324059,
+    "ast_hash": "1f70694fb79b9b76816afb4cf638e5b3",
+    "semantic_hash": "1f70694fb79b9b76816afb4cf638e5b3"
+  },
+  "public/world-guide/04-gazetteer/scarlet-brotherhood.md": {
+    "mtime": 1779988140.552778,
+    "ast_hash": "a90667d95f871499ddd728fdea577ae8",
+    "semantic_hash": "a90667d95f871499ddd728fdea577ae8"
+  },
+  "public/world-guide/04-gazetteer/sea-barons.md": {
+    "mtime": 1779988140.5710652,
+    "ast_hash": "914e101d2fc2ba21a296d3fe6ff058d7",
+    "semantic_hash": "914e101d2fc2ba21a296d3fe6ff058d7"
+  },
+  "public/world-guide/04-gazetteer/sea-princes.md": {
+    "mtime": 1779988140.5908911,
+    "ast_hash": "22e715722604b0d50dabb12ce6a0b9d1",
+    "semantic_hash": "22e715722604b0d50dabb12ce6a0b9d1"
+  },
+  "public/world-guide/04-gazetteer/shield-lands.md": {
+    "mtime": 1779988140.6188552,
+    "ast_hash": "88a3e82dd792d8238af42bf9a8a50a94",
+    "semantic_hash": "88a3e82dd792d8238af42bf9a8a50a94"
+  },
+  "public/world-guide/04-gazetteer/snow-barbarians.md": {
+    "mtime": 1779988140.627278,
+    "ast_hash": "aa8fd8b38b6ae3540e945063b2e05da8",
+    "semantic_hash": "aa8fd8b38b6ae3540e945063b2e05da8"
+  },
+  "public/world-guide/04-gazetteer/sterich.md": {
+    "mtime": 1779988140.6481361,
+    "ast_hash": "e32732bdc2603b66f8269edbb83d3f87",
+    "semantic_hash": "e32732bdc2603b66f8269edbb83d3f87"
+  },
+  "public/world-guide/04-gazetteer/stonehold.md": {
+    "mtime": 1779988140.6767964,
+    "ast_hash": "e8144d188a24723674a54c0362c1f7a7",
+    "semantic_hash": "e8144d188a24723674a54c0362c1f7a7"
+  },
+  "public/world-guide/04-gazetteer/sunndi.md": {
+    "mtime": 1779988140.699094,
+    "ast_hash": "a50b16b44d86d180fe27b9c700451788",
+    "semantic_hash": "a50b16b44d86d180fe27b9c700451788"
+  },
+  "public/world-guide/04-gazetteer/tenh.md": {
+    "mtime": 1779988140.7156618,
+    "ast_hash": "5b1c25601894b0d9616f2d264dc72573",
+    "semantic_hash": "5b1c25601894b0d9616f2d264dc72573"
+  },
+  "public/world-guide/04-gazetteer/tiger-nomads.md": {
+    "mtime": 1779988140.729726,
+    "ast_hash": "b6c6cf40ba19123230d9c7206c86d502",
+    "semantic_hash": "b6c6cf40ba19123230d9c7206c86d502"
+  },
+  "public/world-guide/04-gazetteer/tusmit.md": {
+    "mtime": 1779988140.7451174,
+    "ast_hash": "46e9940d615b488031024025afa810d8",
+    "semantic_hash": "46e9940d615b488031024025afa810d8"
+  },
+  "public/world-guide/04-gazetteer/ulek-county-of.md": {
+    "mtime": 1779988140.7558882,
+    "ast_hash": "27091192d79b86d6f615336adca8c215",
+    "semantic_hash": "27091192d79b86d6f615336adca8c215"
+  },
+  "public/world-guide/04-gazetteer/ulek-duchy-of.md": {
+    "mtime": 1779988140.7778537,
+    "ast_hash": "3f1efa856e5aac799929b73d5eaaceea",
+    "semantic_hash": "3f1efa856e5aac799929b73d5eaaceea"
+  },
+  "public/world-guide/04-gazetteer/ulek-principality-of.md": {
+    "mtime": 1779988140.8018155,
+    "ast_hash": "d59d34ebd45260b992115a85d5eff364",
+    "semantic_hash": "d59d34ebd45260b992115a85d5eff364"
+  },
+  "public/world-guide/04-gazetteer/ull.md": {
+    "mtime": 1779988140.8116817,
+    "ast_hash": "2114f908151491cc69b0855eb9d6a81a",
+    "semantic_hash": "2114f908151491cc69b0855eb9d6a81a"
+  },
+  "public/world-guide/04-gazetteer/urnst-county-of.md": {
+    "mtime": 1779988140.82562,
+    "ast_hash": "d66069dc7709ce41c686312ac3854e32",
+    "semantic_hash": "d66069dc7709ce41c686312ac3854e32"
+  },
+  "public/world-guide/04-gazetteer/urnst-duchy-of.md": {
+    "mtime": 1779988140.8486586,
+    "ast_hash": "0109bf76d4a742f4b2da0b376f71bee8",
+    "semantic_hash": "0109bf76d4a742f4b2da0b376f71bee8"
+  },
+  "public/world-guide/04-gazetteer/valley-of-the-mage.md": {
+    "mtime": 1779988140.8707404,
+    "ast_hash": "62d22dc68d9c596e22a7aec87de7528e",
+    "semantic_hash": "62d22dc68d9c596e22a7aec87de7528e"
+  },
+  "public/world-guide/04-gazetteer/veluna.md": {
+    "mtime": 1779988140.8951368,
+    "ast_hash": "e07ca5a1f0adc7fe444d6900d47ec478",
+    "semantic_hash": "e07ca5a1f0adc7fe444d6900d47ec478"
+  },
+  "public/world-guide/04-gazetteer/verbobonc.md": {
+    "mtime": 1779988140.915519,
+    "ast_hash": "3511683f599d1476427d8e1ba16ac9aa",
+    "semantic_hash": "3511683f599d1476427d8e1ba16ac9aa"
+  },
+  "public/world-guide/04-gazetteer/wolf-nomads.md": {
+    "mtime": 1779988140.9259067,
+    "ast_hash": "3108a7500e7b08b74b063df63a13aad6",
+    "semantic_hash": "3108a7500e7b08b74b063df63a13aad6"
+  },
+  "public/world-guide/04-gazetteer/yeomanry.md": {
+    "mtime": 1779988140.9514554,
+    "ast_hash": "013155a62970279174dc5094eca43b37",
+    "semantic_hash": "013155a62970279174dc5094eca43b37"
+  },
+  "public/world-guide/04-gazetteer/zeif.md": {
+    "mtime": 1779988140.9715521,
+    "ast_hash": "61053387eaa0e8a7dcb9c83554fe8efc",
+    "semantic_hash": "61053387eaa0e8a7dcb9c83554fe8efc"
+  },
+  "public/world-guide/05-geography/forests.md": {
+    "mtime": 1780001384.2391138,
+    "ast_hash": "62d07666e3a046665e1a7f02061d0c09",
+    "semantic_hash": "62d07666e3a046665e1a7f02061d0c09"
+  },
+  "public/world-guide/05-geography/hills.md": {
+    "mtime": 1780001384.23951,
+    "ast_hash": "580bb8ebbc879375220df032988941f6",
+    "semantic_hash": "580bb8ebbc879375220df032988941f6"
+  },
+  "public/world-guide/05-geography/index.md": {
+    "mtime": 1780001384.241498,
+    "ast_hash": "cf4f06ce15e155e8c976575334888a78",
+    "semantic_hash": "cf4f06ce15e155e8c976575334888a78"
+  },
+  "public/world-guide/05-geography/islands.md": {
+    "mtime": 1780001384.2398782,
+    "ast_hash": "46eed9facca515e6a99a1f856e9900a7",
+    "semantic_hash": "46eed9facca515e6a99a1f856e9900a7"
+  },
+  "public/world-guide/05-geography/mountains.md": {
+    "mtime": 1780001384.2392392,
+    "ast_hash": "a7004b5625db61a57f1815e046db79bc",
+    "semantic_hash": "a7004b5625db61a57f1815e046db79bc"
+  },
+  "public/world-guide/05-geography/rivers.md": {
+    "mtime": 1780001384.2405968,
+    "ast_hash": "67e81368852452f5d6285e8744da2bcc",
+    "semantic_hash": "67e81368852452f5d6285e8744da2bcc"
+  },
+  "public/world-guide/05-geography/seas-lakes.md": {
+    "mtime": 1780001384.2402582,
+    "ast_hash": "4f6635ecb1b72c2a5690ba304630f63c",
+    "semantic_hash": "4f6635ecb1b72c2a5690ba304630f63c"
+  },
+  "public/world-guide/05-geography/wastelands.md": {
+    "mtime": 1780001384.2410047,
+    "ast_hash": "2b8b5f527712d494595f4e5da42b483a",
+    "semantic_hash": "2b8b5f527712d494595f4e5da42b483a"
+  },
+  "public/world-guide/05-geography/wetlands.md": {
+    "mtime": 1780001384.2407148,
+    "ast_hash": "5dbe008c9ac9be5991c369aee0df49f1",
+    "semantic_hash": "5dbe008c9ac9be5991c369aee0df49f1"
+  },
+  "public/world-guide/06-power-groups/circle-of-eight.md": {
+    "mtime": 1780001852.2411675,
+    "ast_hash": "81c249f89b16a855eaf2a9b14b798dab",
+    "semantic_hash": "81c249f89b16a855eaf2a9b14b798dab"
+  },
+  "public/world-guide/06-power-groups/horned-society.md": {
+    "mtime": 1780001852.241262,
+    "ast_hash": "26f5287b5d5ef5b5969e6b9ba2c14ef7",
+    "semantic_hash": "26f5287b5d5ef5b5969e6b9ba2c14ef7"
+  },
+  "public/world-guide/06-power-groups/index.md": {
+    "mtime": 1780001852.2421472,
+    "ast_hash": "8112c9e20327de3e34c3f37506e9b7bf",
+    "semantic_hash": "8112c9e20327de3e34c3f37506e9b7bf"
+  },
+  "public/world-guide/06-power-groups/knight-protectors-of-the-great-kingdom.md": {
+    "mtime": 1780001852.2413385,
+    "ast_hash": "bbb604a303ab7da7697e6cc93e853864",
+    "semantic_hash": "bbb604a303ab7da7697e6cc93e853864"
+  },
+  "public/world-guide/06-power-groups/knights-of-holy-shielding.md": {
+    "mtime": 1780001852.2414703,
+    "ast_hash": "fe0240cf5996955fadaee5461677ecd9",
+    "semantic_hash": "fe0240cf5996955fadaee5461677ecd9"
+  },
+  "public/world-guide/06-power-groups/knights-of-luna.md": {
+    "mtime": 1780001852.2415328,
+    "ast_hash": "487be79e311f4cd38a53ba8dcf4e7288",
+    "semantic_hash": "487be79e311f4cd38a53ba8dcf4e7288"
+  },
+  "public/world-guide/06-power-groups/knights-of-the-hart.md": {
+    "mtime": 1780001852.241405,
+    "ast_hash": "68fb453efda54ed5a33cad815e92d364",
+    "semantic_hash": "68fb453efda54ed5a33cad815e92d364"
+  },
+  "public/world-guide/06-power-groups/knights-of-the-watch.md": {
+    "mtime": 1780001852.2417505,
+    "ast_hash": "29f0923db3aa9a7249962f592796d36c",
+    "semantic_hash": "29f0923db3aa9a7249962f592796d36c"
+  },
+  "public/world-guide/06-power-groups/mouqollad-consortium.md": {
+    "mtime": 1780001852.241813,
+    "ast_hash": "67e29522760e5743bd532dcb409ea0ac",
+    "semantic_hash": "67e29522760e5743bd532dcb409ea0ac"
+  },
+  "public/world-guide/06-power-groups/old-faith.md": {
+    "mtime": 1780001852.2418785,
+    "ast_hash": "09e9fc96f137b21ee1724686a7e66aae",
+    "semantic_hash": "09e9fc96f137b21ee1724686a7e66aae"
+  },
+  "public/world-guide/06-power-groups/old-lore.md": {
+    "mtime": 1780001852.2419434,
+    "ast_hash": "19caf6848776364658c01af9de0ccd38",
+    "semantic_hash": "19caf6848776364658c01af9de0ccd38"
+  },
+  "public/world-guide/06-power-groups/people-of-the-testing.md": {
+    "mtime": 1780001852.242007,
+    "ast_hash": "dac965429cb5415536def9ff6e1ea9d2",
+    "semantic_hash": "dac965429cb5415536def9ff6e1ea9d2"
+  },
+  "public/world-guide/06-power-groups/silent-ones-of-keoland.md": {
+    "mtime": 1780001852.2420669,
+    "ast_hash": "69e731097995c8a55d6ef61c71e401e3",
+    "semantic_hash": "69e731097995c8a55d6ef61c71e401e3"
+  },
+  "public/world-guide/07-gods/gods-a-h.md": {
+    "mtime": 1780001384.2458658,
+    "ast_hash": "ec83fd4fd936880538b9ae0c90d0d77d",
+    "semantic_hash": "ec83fd4fd936880538b9ae0c90d0d77d"
+  },
+  "public/world-guide/07-gods/gods-i-m.md": {
+    "mtime": 1780001384.247499,
+    "ast_hash": "04220f705ca94c6a3db00cdb5e259b28",
+    "semantic_hash": "04220f705ca94c6a3db00cdb5e259b28"
+  },
+  "public/world-guide/07-gods/gods-n-p.md": {
+    "mtime": 1780001384.2477167,
+    "ast_hash": "bacd656cc16a2d28977001efe9a52935",
+    "semantic_hash": "bacd656cc16a2d28977001efe9a52935"
+  },
+  "public/world-guide/07-gods/gods-r-u.md": {
+    "mtime": 1780001384.247856,
+    "ast_hash": "d2cdb592b774868a5408ac31ad0e1153",
+    "semantic_hash": "d2cdb592b774868a5408ac31ad0e1153"
+  },
+  "public/world-guide/07-gods/gods-v-z.md": {
+    "mtime": 1780001384.248203,
+    "ast_hash": "56f4bc06156e9a573bc46409f89df4f4",
+    "semantic_hash": "56f4bc06156e9a573bc46409f89df4f4"
+  },
+  "public/world-guide/07-gods/index.md": {
+    "mtime": 1780001384.2483025,
+    "ast_hash": "2e216d5b74e8f4ef6781fa49a82b4d06",
+    "semantic_hash": "2e216d5b74e8f4ef6781fa49a82b4d06"
+  },
+  "public/world-guide/08-appendix.md": {
+    "mtime": 1779988139.8131783,
+    "ast_hash": "32f6341e6ac3f24a6694c8f04c472e0d",
+    "semantic_hash": "32f6341e6ac3f24a6694c8f04c472e0d"
+  },
+  "root-index.html": {
+    "mtime": 1777310914.7295084,
+    "ast_hash": "bab40e4aa730193199a544a386b65cbc",
+    "semantic_hash": "bab40e4aa730193199a544a386b65cbc"
+  },
+  "design/prototypes/character-card-portrait-options-top.png": {
+    "mtime": 1780109665.9811378,
+    "ast_hash": "d741f9f5fddf63339de739f036a31ad0",
+    "semantic_hash": "d741f9f5fddf63339de739f036a31ad0"
+  },
+  "dm-dashboard-combat.png": {
+    "mtime": 1778821389.1865613,
+    "ast_hash": "e5b82c5fd2331fa97fd007ec0f2d6571",
+    "semantic_hash": "e5b82c5fd2331fa97fd007ec0f2d6571"
+  },
+  "dm-dashboard-noncombat.png": {
+    "mtime": 1778821405.8563364,
+    "ast_hash": "dac993bf86e6620826f79f6b19b889c5",
+    "semantic_hash": "dac993bf86e6620826f79f6b19b889c5"
+  },
+  "favicon.svg": {
+    "mtime": 1777661656.592945,
+    "ast_hash": "73165c8b8734925a7aff68d8c6828c84",
+    "semantic_hash": "73165c8b8734925a7aff68d8c6828c84"
+  },
+  "src/assets/eoghan-narrow.png": {
+    "mtime": 1777310914.7564986,
+    "ast_hash": "7fb86092633e9b726139bbefe51512a0",
+    "semantic_hash": "7fb86092633e9b726139bbefe51512a0"
+  },
+  "src/assets/eoghan.png": {
+    "mtime": 1777310914.7868686,
+    "ast_hash": "7c9d4fcec4204cc8e4787accc3acd153",
+    "semantic_hash": "7c9d4fcec4204cc8e4787accc3acd153"
+  },
+  "src/assets/hero.png": {
+    "mtime": 1777310914.7926817,
+    "ast_hash": "aead493361b27e7510691c5d7072dfc1",
+    "semantic_hash": "aead493361b27e7510691c5d7072dfc1"
+  },
+  "src/assets/loading_monster.gif": {
+    "mtime": 1777677503.255542,
+    "ast_hash": "9c57963532bf4a1c00eaa9da069b3fca",
+    "semantic_hash": "9c57963532bf4a1c00eaa9da069b3fca"
+  },
+  "src/assets/react.svg": {
+    "mtime": 1777310914.7938333,
+    "ast_hash": "f0402b67b6ce880f65666bb49e841696",
+    "semantic_hash": "f0402b67b6ce880f65666bb49e841696"
+  },
+  "src/assets/vite.svg": {
+    "mtime": 1777310914.7954252,
+    "ast_hash": "9960a24288958394ac50e57ff638b036",
+    "semantic_hash": "9960a24288958394ac50e57ff638b036"
+  }
+}
