@@ -8,6 +8,7 @@ import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
 import InitiativeTracker from "../features/dmDashboard/InitiativeTracker";
 import NpcCombatSection from "../features/dmDashboard/NpcCombatSection";
 import MapPanel from "../features/dmDashboard/MapPanel";
+import CounterWheelsPanel from "../features/dmDashboard/CounterWheelsPanel";
 import MapLibraryStrip from "../features/dmDashboard/MapLibraryStrip";
 import ManagePartyModal from "../features/dmDashboard/ManagePartyModal";
 import WorldGuideDrawer from "../features/worldGuide/WorldGuideDrawer";
@@ -55,6 +56,7 @@ export default function DmDashboardPage() {
   const [combatLayoutActive, setCombatLayoutActive] = useState(initialCombatMode);
   const [diceLayoutActive, setDiceLayoutActive] = useState(initialCombatMode);
   const [diceVisible, setDiceVisible] = useState(true);
+  const [wheelsVisible, setWheelsVisible] = useState(true);
   const [cardsCompact, setCardsCompact] = useState(initialCombatMode);
   const [combatPanelsVisible, setCombatPanelsVisible] = useState(initialCombatMode);
   const [nonCombatChromeVisible, setNonCombatChromeVisible] = useState(!initialCombatMode);
@@ -744,6 +746,7 @@ export default function DmDashboardPage() {
       setMapCollapsed(true);
       setNonCombatChromeVisible(false);
       setDiceVisible(false);
+      setWheelsVisible(false);
       queueTransitionStep(() => {
         triggerCardFlip(true);
       }, MAP_TRANSITION_MS);
@@ -757,12 +760,18 @@ export default function DmDashboardPage() {
       queueTransitionStep(() => {
         setDiceVisible(true);
       }, MAP_TRANSITION_MS + CARD_FLIP_MS + 120);
+      queueTransitionStep(() => {
+        setWheelsVisible(true);
+      }, MAP_TRANSITION_MS + CARD_FLIP_MS + 180);
       return;
     }
 
     setCombatMode(false);
     setCombatPanelsVisible(false);
     setDiceVisible(false);
+    queueTransitionStep(() => {
+      setWheelsVisible(false);
+    }, 60);
     queueTransitionStep(() => {
       setDiceLayoutActive(false);
       setCardsCompact(false);
@@ -772,6 +781,7 @@ export default function DmDashboardPage() {
     }, DICE_EXIT_MS + CARD_COMPACT_MS);
     queueTransitionStep(() => {
       setDiceVisible(true);
+      setWheelsVisible(true);
     }, DICE_EXIT_MS + CARD_COMPACT_MS + 120);
     queueTransitionStep(() => {
       setMapCollapsed(false);
@@ -1044,6 +1054,7 @@ export default function DmDashboardPage() {
             data-combat={combatLayoutActive ? "true" : "false"}
             data-dice-combat={diceLayoutActive ? "true" : "false"}
             data-dice-visible={diceVisible ? "true" : "false"}
+            data-wheels-visible={wheelsVisible ? "true" : "false"}
             data-chrome={nonCombatChromeVisible ? "true" : "false"}
             data-panels={combatPanelsVisible ? "true" : "false"}
           >
@@ -1092,6 +1103,14 @@ export default function DmDashboardPage() {
                   onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(200,160,64,0.3)"; e.currentTarget.style.color = "rgba(200,160,64,0.75)"; }}
                 >Distribute Coin</button>
               </div>
+            </div>
+
+            <div className="dm-prototype-wheels-wrapper">
+              <CounterWheelsPanel
+                pal={pal}
+                dmPassword={dmPassword}
+                initiativeEntries={initiative.entries}
+              />
             </div>
 
             <div className="dm-prototype-dice-panel">

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, getInitiative, putInitiative, getNpcCombat, putNpcCombat, getRollHistory, getMapLibrary, listCharacters, getPartyRoster, putPartyRoster } from "../api";
+import { getDmParty, patchSession, getInitiative, putInitiative, getNpcCombat, putNpcCombat, getRollHistory, getMapLibrary, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
 import CharacterCard, { AwardXpModal, DistributeCoinModal } from "../features/dmDashboard/CharacterCard";
 import ConfirmDialog from "../features/dmDashboard/ConfirmDialog";
@@ -10,6 +10,7 @@ import NpcCombatSection from "../features/dmDashboard/NpcCombatSection";
 import MapPanel from "../features/dmDashboard/MapPanel";
 import MapLibraryStrip from "../features/dmDashboard/MapLibraryStrip";
 import ManagePartyModal from "../features/dmDashboard/ManagePartyModal";
+import CounterWheelsPanel from "../features/dmDashboard/CounterWheelsPanel";
 import {
   PalCtx,
   initiativesEqual,
@@ -31,6 +32,7 @@ export default function DmDashboardClassicPage() {
   const [partyRoster, setPartyRoster] = useState([]);
   const [initiative, setInitiative] = useState({ entries: [], activeTurnIndex: 0 });
   const [npcCombat, setNpcCombat] = useState({ npcs: [] });
+  const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
   const [rollHistory, setRollHistory] = useState([]);
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -486,9 +488,17 @@ export default function DmDashboardClassicPage() {
       });
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const refetchNpcLibrary = useCallback(() => {
+    if (!dmPassword) return;
+    getNpcLibrary(dmPassword).then(setNpcLibrary).catch(() => {});
+  }, [dmPassword]);
+
   useEffect(() => {
-    if (authed) fetchDashboardData({ background: true, force: true });
-  }, [authed, fetchDashboardData]);
+    if (authed) {
+      fetchDashboardData({ background: true, force: true });
+      refetchNpcLibrary();
+    }
+  }, [authed, fetchDashboardData, refetchNpcLibrary]);
 
   useEffect(() => {
     if (!authed) return;
@@ -660,6 +670,11 @@ export default function DmDashboardClassicPage() {
               pal={pal}
               onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
             />
+            <CounterWheelsPanel
+              pal={pal}
+              dmPassword={dmPassword}
+              initiativeEntries={initiative.entries}
+            />
             <div className="label-ui" style={{ marginBottom: 14 }}>Party</div>
 
             {(() => {
@@ -742,6 +757,8 @@ export default function DmDashboardClassicPage() {
                 npcCombat={npcCombat}
                 initiative={initiative}
                 dmPassword={dmPassword}
+                npcLibrary={npcLibrary}
+                refetchNpcLibrary={refetchNpcLibrary}
                 onUpdate={() => queueDashboardRefresh(0)}
                 onCommitNpcCombat={commitNpcCombatUpdate}
                 onAddNpcToInitiative={handleAddNpcToInitiative}

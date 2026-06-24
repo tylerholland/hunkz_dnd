@@ -33,7 +33,7 @@ A D&D character sheet web app for a small group of players (currently 3 characte
 - `Campaign` link navigates directly to `/dm`
 - `Maps` link navigates directly to `/maps` (shown alongside Campaign when DM-authenticated)
 - "New Character" card at the end of the grid: dashed border, navigates to `/characters/new`
-- Library rendering filters internal sentinel records such as `initiative`, `npc-combat`, `roll-history`, `map-library`, and `party-roster`
+- Library rendering filters internal sentinel records such as `initiative`, `npc-combat`, `roll-history`, `map-library`, `party-roster`, `npc-library`, and `counter-wheels`
 
 ---
 
@@ -455,6 +455,18 @@ A dedicated DM session-management view accessible at `/dm`.
   - large total on the far right, tinted to the character palette
 - `QuickActionPopover` contains: Add Condition, Set Temp HP, Drop Concentration (conditional), Short Rest, Long Rest. Short Rest / Long Rest from the popover bubble up as string action tokens (`"shortRest"` / `"longRest"`) through `onUpdate` to the main page which shows the confirm dialog.
 - `CharacterCard` accepts `onRegisterOpen` prop to register an external open-with-damage callback (used by DmDiceRoller "Apply to…"); dashboard holds callbacks in a `Map<slug, fn>` ref
+
+**Counter Wheels panel** (`CounterWheelsPanel.jsx` — below Map Panel, above party card strip):
+- Collapsible panel for tracking Blades-in-the-Dark-style progress clocks during play
+- **Collapse behavior**: mode-aware default — expanded when initiative has entries (combat mode); collapsed otherwise unless ≥1 wheel exists (auto-expands on load if wheels exist). Last manual toggle wins, persisted as `sessionStorage.dnd_wheels_open`
+- **Header**: clock glyph (◷), "Counter Wheels" label, count badge (`N active`) when wheels exist but panel is collapsed, `+ Add` shortcut (expands panel and opens create form), collapse chevron
+- **SVG wheels**: rendered declaratively from `filledCount` (0..segments). Each wheel is a full pie-slice radial with a center hub ring. Fill model: fill-to-here clockwise (Blades-classic) — tap segment N fills all 1..N; tap a filled segment N to set filledCount = N-1. Segment separators are `<line>` elements at each boundary. `<radialGradient>` uses CSS custom props `var(--pal-accent-bright)` → `var(--pal-accent)` for filled segments; completed wheels switch to fixed gold stops (`#f2e8d2` → `#c8ae84`)
+- **Wheel states**: empty segments → `var(--pal-surface-solid)`; filled → gradient + drop-shadow glow; completed (N/N) → gold gradient + completion pulse animation (`wheelCompletePulseScale` on wrapper, `wheelCompletePulse` on SVG)
+- **Per-wheel ⋯ menu**: Rename (inline input, autofocus, commit on Enter/blur, Esc reverts), Reset (clockwise de-fill sweep, 25ms stagger), divider, Remove (no confirm, red `#c06060`). One menu open at a time; closes on outside click or Esc. Flip-up near panel bottom edge
+- **Inline creation form**: shown at grid start (spans full width), not a modal. Name input (autofocus, defaults `Counter N` on empty), segment stepper 1–12 default 6, live mini-preview SVG, Cancel/Create Wheel
+- **Animations** (all disabled under `prefers-reduced-motion`): cell entrance (0.2s ease-out scale), cell exit (0.14s ease-out scale+opacity), reset sweep (25ms/segment stagger), completion pulse (0.42s ease-in-out)
+- **Activity log**: wheel creation appends a `type: "wheel"` entry to the shared roll-history feed via the PUT handler. Rendered by `RollHistoryRow` as: `◷` glyph in `pal.accent` + italic name + muted `— N segments`; no numeric total
+- **Data**: `{ id, name, segments, filledCount }` per wheel; stored as `slug: "counter-wheels"` sentinel; NOT cleared by End Combat; fetched on mount + written after every change (debounced 300ms); optimistic update with rollback on failure
 
 **Map panel** (top of party column, collapsible):
 - Collapsible header showing "Map" label + active map name when collapsed; pulsing green dot when a map is active
