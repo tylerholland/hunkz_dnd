@@ -525,17 +525,31 @@ export default function CounterWheelsPanel({ pal, dmPassword, initiativeEntries 
   }
 
   function handleTapSegment(wheelId, segN) {
-    setWheels((current) => {
-      const next = current.map((w) => {
-        if (w.id !== wheelId) return w;
-        const wasFilled = segN <= w.filledCount;
-        const newCount = wasFilled ? segN - 1 : segN;
-        return { ...w, filledCount: newCount };
+    const wheel = latestWheelsRef.current.find((w) => w.id === wheelId);
+    if (!wheel) return;
+    const wasFilled = segN <= wheel.filledCount;
+    const to = wasFilled ? segN - 1 : segN;
+    const from = wheel.filledCount;
+    if (from === to) return;
+
+    const direction = to > from ? 1 : -1;
+    const steps = Math.abs(to - from);
+    let step = 0;
+
+    const sweep = () => {
+      if (step >= steps) return;
+      step += 1;
+      setWheels((current) => {
+        const next = current.map((w) =>
+          w.id === wheelId ? { ...w, filledCount: w.filledCount + direction } : w
+        );
+        latestWheelsRef.current = next;
+        return next;
       });
-      latestWheelsRef.current = next;
-      schedulePut(next);
-      return next;
-    });
+      if (step < steps) setTimeout(sweep, 25);
+      else schedulePut(latestWheelsRef.current);
+    };
+    sweep();
   }
 
   function handleRename(wheelId, newName) {
