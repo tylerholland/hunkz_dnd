@@ -17,7 +17,54 @@ function badgeStyle(kind) {
   };
 }
 
+export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  return (
+    <div
+      style={{
+        display: "flex",
+        alignItems: "center",
+        gap: 8,
+        padding: "7px 0",
+        borderBottom: showDivider ? `1px solid ${pal.border}` : "none",
+        opacity,
+        transition: "opacity 0.4s",
+      }}
+    >
+      <span style={{ color: pal.accent, fontSize: 13, flexShrink: 0 }}>◷</span>
+      <span
+        style={{
+          fontFamily: pal.fontBody,
+          fontStyle: "italic",
+          fontSize: 14,
+          color: pal.text,
+          minWidth: 0,
+          overflow: "hidden",
+          textOverflow: "ellipsis",
+          whiteSpace: "nowrap",
+        }}
+      >
+        {entry.name}
+      </span>
+      <span
+        style={{
+          fontFamily: pal.fontUI,
+          fontSize: 11,
+          color: pal.textMuted,
+          letterSpacing: "0.06em",
+          flexShrink: 0,
+        }}
+      >
+        — {entry.segments} segments
+      </span>
+    </div>
+  );
+}
+
 export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  // Branch on type: "wheel" entries render differently from dice rows
+  if (entry.type === "wheel") {
+    return <WheelHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider} />;
+  }
   const actionLabel = normalizeRollActionLabel(entry.label);
   const nameColor = entry.nameColor || pal.accentBright;
   const totalAccentColor = entry.totalAccentColor || pal.gem;

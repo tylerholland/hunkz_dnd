@@ -470,6 +470,59 @@ Two-column layout for in-session play, defined in `characterSheet.css` under the
 
 ---
 
+## Counter Wheels panel (`CounterWheelsPanel.jsx` + `counterWheels.css`)
+
+Radial progress clock component, Tier 2 (ambient/peripheral). Below Map Panel, above party card strip.
+
+**SVG wheel anatomy**:
+- Full pie-slice annular sectors from center hub to rim (NOT thin arcs — maximizes tap target)
+- Hub ring: 18% of outer radius (`hubR = rOuter * 0.18`); `fill: var(--pal-bg)`, `stroke: var(--pal-accent)` at `stroke-opacity: 0.3`
+- Separator gaps: `<line>` elements at each sector boundary, `stroke="var(--pal-bg)"`, `strokeWidth={1.5}`, `strokeLinecap="butt"`; constant width from hub to rim (no angular gap in the path itself)
+- Single-segment wheel: rendered as full annular ring with a notch `<line>` at 12 o'clock (2–3° gap)
+- Fill math: `polar(cx, cy, r, angleDeg)` — 0° = 12 o'clock; `segPath(cx, cy, rOuter, rInner, startDeg, endDeg)` — annular arc path string
+
+**Segment fill states**:
+| State | Fill | Filter |
+|---|---|---|
+| Empty | `var(--pal-surface-solid)` | none |
+| Filled | `url(#wfg-${id})` radialGradient | `drop-shadow(0 0 3px rgba(138,180,200,0.45))` |
+| Completed (N/N) | `url(#wfg-gold-${id})` radialGradient | `drop-shadow(0 0 7px rgba(228,211,181,0.65))` |
+
+**Gradient stops**:
+- Normal fill: inner `var(--pal-accent-bright)` (0.15) → outer `var(--pal-accent)` (1.0); palette-aware via CSS custom props in SVG `stop-color`
+- Completed gold: inner `#f2e8d2` (0.15) → outer `#c8ae84` (1.0); intentionally fixed warm gold
+
+**CSS class prefix**: `.wheels-*` (panel chrome), `.wheel-*` (per-cell), `.wcf-*` (creation form)
+
+**Key classes**:
+- `.wheels-panel` / `.wheels-panel.expanded` — collapse state toggle
+- `.wheels-body` — `max-height: 0` collapsed, `max-height: min(40vh, 360px)` expanded with `overflow-y: auto`
+- `.wheels-grid` — `repeat(auto-fill, minmax(96px, 1fr))` desktop; `minmax(110px, 1fr)` mobile (≤900px)
+- `.wheel-cell` — flex column, `animation: wheelCellIn 0.2s ease-out` on mount
+- `.wheel-cell.full` — triggers `wheelCompletePulseScale` on `.wheel-svg-wrap`, `wheelCompletePulse` on `svg`
+- `.wheel-cell.removing` — `animation: wheelCellOut 0.14s ease-out forwards`
+- `.wheel-menu-trigger` — absolute top-right, `opacity: 0` at rest, `opacity: 1` on parent hover or `.menu-open`; `opacity: 0.5` persistent on touch (`hover: none`)
+- `.wheel-menu-popover` — `display: none` → `display: block` via `.wheel-cell.menu-open`; `.flip-up` variant
+
+**Keyframes** (all in `counterWheels.css`):
+- `wheelCellIn` — `opacity 0 → 1, scale 0.7 → 1`, 200ms ease-out
+- `wheelCellOut` — `opacity 1 → 0, scale 1 → 0.8`, 140ms ease-out
+- `wheelCompletePulse` — filter drop-shadow: `3px → 14px → 7px`, 420ms ease-in-out (on SVG element)
+- `wheelCompletePulseScale` — `scale 1 → 1.05 → 1`, 420ms ease-in-out (on wrapper, separate from SVG)
+- `wheelBadgeIn` — `opacity 0, translateX(-6px) → 1, 0`, 150ms ease-out
+- `wheelFormIn` — `opacity 0 → 1`, 180ms ease-out
+- `wheelSegFillIn` — `scale 0.92 → 1`, 160ms ease-out (CSS class `.fill-anim` added reactively)
+
+**sessionStorage key**: `dnd_wheels_open` — `"true"` | `"false"` | absent (use mode-aware default)
+
+**Roll history entry** (`type: "wheel"`):
+```js
+{ id, type: "wheel", name, segments, createdAt }
+```
+Rendered by `RollHistoryRow` as: `◷` (in `pal.accent`) + italic name (in `pal.text`) + `— N segments` (in `pal.textMuted`). No numeric total. No dice badge.
+
+---
+
 ## Scrollbar
 
 Thin, subtle, palette-neutral:

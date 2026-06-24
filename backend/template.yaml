@@ -548,6 +548,36 @@ Resources:
         - S3WritePolicy:
             BucketName: !Ref PortraitsBucket
 
+  GetCounterWheelsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getCounterWheels.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /counter-wheels
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
+  PutCounterWheelsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/putCounterWheels.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /counter-wheels
+            Method: put
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
 Outputs:
   ApiUrl:
     Description: HTTP API endpoint URL

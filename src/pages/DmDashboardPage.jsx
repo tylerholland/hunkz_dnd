@@ -10,6 +10,7 @@ import NpcCombatSection from "../features/dmDashboard/NpcCombatSection";
 import MapPanel from "../features/dmDashboard/MapPanel";
 import MapLibraryStrip from "../features/dmDashboard/MapLibraryStrip";
 import ManagePartyModal from "../features/dmDashboard/ManagePartyModal";
+import CounterWheelsPanel from "../features/dmDashboard/CounterWheelsPanel";
 import {
   PalCtx,
   initiativesEqual,
@@ -668,6 +669,11 @@ export default function DmDashboardClassicPage() {
               dmPassword={dmPassword}
               pal={pal}
               onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
+            />
+            <CounterWheelsPanel
+              pal={pal}
+              dmPassword={dmPassword}
+              initiativeEntries={initiative.entries}
             />
             <div className="label-ui" style={{ marginBottom: 14 }}>Party</div>
 

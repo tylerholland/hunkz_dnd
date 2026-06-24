@@ -1,6 +1,6 @@
 const { GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { db, TABLE } = require("./db");
-const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG } = require("./specialItems");
+const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG } = require("./specialItems");
 
 const ROLL_HISTORY_LIMIT = 500;
 
@@ -196,6 +196,29 @@ async function saveNpcLibraryState({ templates }) {
   await putSpecialRecord(NPC_LIBRARY_SLUG, { templates: Array.isArray(templates) ? templates : [] });
 }
 
+function normalizeCounterWheelsRecord(item) {
+  const rawWheels = Array.isArray(item?.wheels) ? item.wheels : [];
+  return {
+    wheels: rawWheels
+      .filter((w) => typeof w?.id === "string" && w.id.trim())
+      .map((w) => ({
+        id: w.id,
+        name: typeof w.name === "string" ? w.name : "",
+        segments: Number.isFinite(w.segments) ? Math.max(1, Math.min(12, Math.round(w.segments))) : 6,
+        filledCount: Number.isFinite(w.filledCount) ? Math.max(0, Math.round(w.filledCount)) : 0,
+      })),
+  };
+}
+
+async function getCounterWheelsState() {
+  const item = await getSpecialRecord(COUNTER_WHEELS_SLUG);
+  return normalizeCounterWheelsRecord(item);
+}
+
+async function saveCounterWheelsState({ wheels }) {
+  await putSpecialRecord(COUNTER_WHEELS_SLUG, { wheels: Array.isArray(wheels) ? wheels : [] });
+}
+
 module.exports = {
   normalizeInitiativeRecord,
   normalizeNpcCombatRecord,
@@ -204,6 +227,7 @@ module.exports = {
   normalizeMapView,
   normalizePartyRosterRecord,
   normalizeNpcLibraryRecord,
+  normalizeCounterWheelsRecord,
   ROLL_HISTORY_LIMIT,
   getInitiativeState,
   saveInitiativeState,
@@ -218,4 +242,6 @@ module.exports = {
   savePartyRosterState,
   getNpcLibraryState,
   saveNpcLibraryState,
+  getCounterWheelsState,
+  saveCounterWheelsState,
 };
