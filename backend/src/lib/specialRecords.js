@@ -182,6 +182,8 @@ function normalizeNpcLibraryRecord(item) {
         id: t.id,
         name: typeof t.name === "string" ? t.name : "",
         abilities: Array.isArray(t.abilities) ? t.abilities : [],
+        hpMax: Number.isFinite(t.hpMax) ? t.hpMax : null,
+        portraitUrl: typeof t.portraitUrl === "string" ? t.portraitUrl : null,
         updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : null,
       })),
   };
