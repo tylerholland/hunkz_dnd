@@ -478,3 +478,72 @@ Thin, subtle, palette-neutral:
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
 ```
+
+---
+
+## NPC Library UI patterns (Story 31)
+
+### EnemiesGalleryModal
+
+**File**: `src/features/dmDashboard/EnemiesGalleryModal.jsx`  
+**CSS**: `src/features/dmDashboard/enemiesGallery.css` (class prefix: `eg-`)
+
+**Layout**: Fixed-position full-screen overlay (`z-index: 1200`). Panel is centered, `max-width: 860px`, `max-height: 90vh`, scale+fade entrance animation (200ms). Two-pane layout:
+- **List rail** (220px): MRU-sorted template list, search input (> 20 entries), `+ New` button, `⧉ Duplicate`, two-step delete confirm (6s auto-dismiss)
+- **Entry editor** (flex: 1): portrait upload zone (64px circle; presign→S3 PUT→URL), name input (`.eg-name-input`), HP number input, `AbilitiesListEditor`
+
+**Mobile** (≤720px): single-pane drill-in — list visible by default, `isMobileDrilled` state hides list and shows editor with `← Back`. Controlled via `.eg-modal-panel[data-mobile-drilled]`.
+
+**Key CSS classes**:
+- `.eg-modal-overlay` — full-screen backdrop (`rgba(0,0,0,0.72)`)
+- `.eg-modal-panel` — centered panel, scale+fade in/out
+- `.eg-list-rail` / `.eg-list-entry` / `.eg-list-entry[data-selected]` — list pane
+- `.eg-editor-pane` — right pane
+- `.eg-portrait-zone` — 64px upload circle with `◆` icon when empty
+- `.eg-name-input` / `.eg-hp-input` — text/number inputs
+- `.eg-save-btn` / `.eg-close-btn` — primary action buttons
+- `.eg-dirty-guard` — inline dirty-close confirmation
+- `.eg-saved-flash` — `✓ Saved` flash overlay
+
+**Dirty guard**: if unsaved changes exist (`isDirty`), `onClose` renders an inline `showDirtyGuard` confirm panel instead of closing immediately.
+
+### NPC card overflow menu
+
+**`NpcThumb`** helper (in `NpcCombatSection.jsx`): circular portrait/initials avatar. Props: `{ portraitUrl, name, size, npcPal }`. Falls back to first letter of name in a colored circle when no portrait. Handles `img` error (falls back to initials on broken URL).
+
+**`NpcOverflowMenu`** (in `NpcCombatSection.jsx`): popover menu anchored to `⋯` button. Opens with CSS transition (opacity + translateY). CSS classes in `npcCombat.css`:
+- `.btn-npc-overflow` — the ⋯ trigger button (28px min, hover: `--npc-bright` + `--npc-chip-bg`)
+- `.npc-overflow-wrap` — relative wrapper for position context
+- `.npc-overflow-popover` — hidden popover (opacity 0, translateY −6px)
+- `.npc-overflow-popover.npc-overflow-popover-open` — visible (opacity 1, translateY 0)
+- `.npc-overflow-item` — action button rows (hover: `--npc-chip-bg` background)
+- `.npc-overflow-item-destructive` — red destructive variant (`#c06060`)
+- `.npc-overflow-item-muted` — non-interactive info row
+
+### Library picker (inside Add Enemy form)
+
+Inline expandable panel below the Add Enemy form. Toggle via `◆ From library` / `Hide library` button. Panel sections: optional search input (>20 entries), scrollable row list, `⚙ Enemies Gallery` footer link. No new CSS classes — all inline styles using `npcPal.*` values.
+
+### NPC library data model
+
+```js
+// Sentinel item slug: "npc-library"
+{
+  templates: [{
+    id: string,           // "tpl-{timestamp}{random}"
+    name: string,
+    abilities: string[],  // 255 char cap per entry
+    hpMax: number | null,
+    portraitUrl: string | null,  // S3 URL at npc-portraits/{uuid}.{ext}
+    updatedAt: string,    // ISO timestamp; used for MRU sort
+  }]
+}
+```
+
+### NPC combat object additions (Story 31)
+
+Spawned NPCs now carry optional provenance fields written at spawn time:
+- `portraitUrl?: string` — S3 URL from library template; shown in card header via `NpcThumb`
+- `librarySourceId?: string` — `template.id` from library; used by `NpcOverflowMenu` for conflict detection (check `t.id === npc.librarySourceId` before falling back to name match)
+
+These fields pass through `normalizeNpcCombatRecord` transparently (`...npc` spread).

@@ -84,6 +84,7 @@ Resources:
             Resource:
               - !Sub "${PortraitsBucket.Arn}/portraits/*"
               - !Sub "${PortraitsBucket.Arn}/maps/*"
+              - !Sub "${PortraitsBucket.Arn}/npc-portraits/*"
 
   # ── Lambda functions ──────────────────────────────────────────────────────────
   ListFunction:
@@ -514,6 +515,53 @@ Resources:
             ApiId: !Ref CharactersApi
       Policies:
         - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+        - S3WritePolicy:
+            BucketName: !Ref PortraitsBucket
+
+  GetNpcLibraryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getNpcLibrary.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /npc-library
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
+  PutNpcLibraryFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/putNpcLibrary.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /npc-library
+            Method: put
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
+  NpcPortraitPresignFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/npcPortraitPresign.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /npc-library/portraits/presign
+            Method: post
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
             TableName: !Ref CharactersTable
         - S3WritePolicy:
             BucketName: !Ref PortraitsBucket

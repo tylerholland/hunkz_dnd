@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, getInitiative, putInitiative, getNpcCombat, putNpcCombat, getRollHistory, getMapLibrary, listCharacters, getPartyRoster, putPartyRoster } from "../api";
+import { getDmParty, patchSession, getInitiative, putInitiative, getNpcCombat, putNpcCombat, getRollHistory, getMapLibrary, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
 import CharacterCard, { AwardXpModal, DistributeCoinModal } from "../features/dmDashboard/CharacterCard";
 import ConfirmDialog from "../features/dmDashboard/ConfirmDialog";
@@ -10,6 +10,7 @@ import NpcCombatSection from "../features/dmDashboard/NpcCombatSection";
 import MapPanel from "../features/dmDashboard/MapPanel";
 import MapLibraryStrip from "../features/dmDashboard/MapLibraryStrip";
 import ManagePartyModal from "../features/dmDashboard/ManagePartyModal";
+import EnemiesGalleryModal from "../features/dmDashboard/EnemiesGalleryModal";
 import WorldGuideDrawer from "../features/worldGuide/WorldGuideDrawer";
 import {
   PalCtx,
@@ -66,6 +67,8 @@ export default function DmDashboardPage() {
   const [npcCombat, setNpcCombat] = useState({ npcs: [] });
   const [rollHistory, setRollHistory] = useState([]);
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
+  const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
+  const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [restNotice, setRestNotice] = useState("");
   const [palKey, setPalKey] = useState(() => sessionStorage.getItem("dnd_dm_palette") || "ocean");
@@ -584,6 +587,57 @@ export default function DmDashboardPage() {
     }
   }, [dmPassword, initiative, npcCombat, queueDashboardRefresh]);
 
+  // handleSaveToLibrary — called by NpcCombatSection with up to 4 args:
+  //   (npc, existingEntry)           — save/update from ⋯ overflow menu
+  //   (null, null, bumpedTemplate)   — MRU bump on library picker select
+  //   (null, null, null, deleteId)   — delete from library picker
+  const handleSaveToLibrary = useCallback(async (npc, existingEntry, bumpedTemplate, deleteId) => {
+    if (!dmPassword) return;
+    const now = new Date().toISOString();
+    const current = npcLibrary.templates || [];
+    let nextTemplates;
+
+    if (deleteId) {
+      // Delete a template by id
+      nextTemplates = current.filter((t) => t.id !== deleteId);
+    } else if (bumpedTemplate) {
+      // MRU bump: update updatedAt for the selected template
+      nextTemplates = current.map((t) =>
+        t.id === bumpedTemplate.id ? { ...t, updatedAt: bumpedTemplate.updatedAt || now } : t
+      );
+    } else if (existingEntry) {
+      // Update existing template from ⋯ overflow
+      nextTemplates = current.map((t) =>
+        t.id === existingEntry.id
+          ? {
+              ...t,
+              name: npc.name ?? t.name,
+              hpMax: Number.isFinite(npc.hpMax) ? npc.hpMax : t.hpMax,
+              abilities: Array.isArray(npc.abilities) ? npc.abilities : t.abilities,
+              portraitUrl: typeof npc.portraitUrl === "string" ? npc.portraitUrl : t.portraitUrl,
+              updatedAt: now,
+            }
+          : t
+      );
+    } else if (npc) {
+      // Create new template from ⋯ overflow (fresh save)
+      const newEntry = {
+        id: "tpl-" + Date.now() + Math.random().toString(36).slice(2, 6),
+        name: npc.name || "Unnamed",
+        hpMax: Number.isFinite(npc.hpMax) ? npc.hpMax : null,
+        abilities: Array.isArray(npc.abilities) ? npc.abilities : [],
+        portraitUrl: typeof npc.portraitUrl === "string" ? npc.portraitUrl : null,
+        updatedAt: now,
+      };
+      nextTemplates = [newEntry, ...current];
+    } else {
+      return;
+    }
+
+    setNpcLibrary({ templates: nextTemplates });
+    await putNpcLibrary(dmPassword, nextTemplates);
+  }, [dmPassword, npcLibrary]);
+
   const handleCardUpdate = useCallback((action) => {
     if (action === "shortRest") {
       setConfirmDialog({
@@ -630,6 +684,13 @@ export default function DmDashboardPage() {
     if (!authed) return;
     fetchRosterContext().catch(() => {});
   }, [authed, fetchRosterContext]);
+
+  useEffect(() => {
+    if (!authed || !dmPassword) return;
+    getNpcLibrary(dmPassword)
+      .then((data) => setNpcLibrary(data || { templates: [] }))
+      .catch(() => {});
+  }, [authed, dmPassword]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useAdaptivePolling({
     enabled: authed,
@@ -947,6 +1008,10 @@ export default function DmDashboardPage() {
                     onClick={() => { setActionMenuOpen(false); setGuideOpen(true); }}
                     style={{ width: "100%", background: "transparent", border: "none", color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
                   >World Guide</button>
+                  <button
+                    onClick={() => { setActionMenuOpen(false); setShowEnemiesGallery(true); }}
+                    style={{ width: "100%", background: "transparent", border: "none", color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
+                  >Enemies Gallery</button>
                   <div style={{ height: 1, background: pal.border, margin: "6px 0" }} />
                   <div style={{ padding: "4px 10px 6px", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: pal.textMuted }}>
                     Text Size
@@ -1125,6 +1190,9 @@ export default function DmDashboardPage() {
                   onAddNpcToInitiative={handleAddNpcToInitiative}
                   onRemoveNpcFromInitiative={handleRemoveNpcFromInitiative}
                   showEndCombatButton={false}
+                  npcLibrary={npcLibrary}
+                  onSaveToLibrary={handleSaveToLibrary}
+                  onOpenEnemiesGallery={() => setShowEnemiesGallery(true)}
                 />
               </div>
             </div>
@@ -1188,6 +1256,17 @@ export default function DmDashboardPage() {
             partyVisibilityEnabled={partyVisibilityEnabled}
             onClose={() => setShowManageParty(false)}
             onSave={handleSavePartyRoster}
+          />
+        )}
+
+        {showEnemiesGallery && (
+          <EnemiesGalleryModal
+            templates={npcLibrary.templates || []}
+            dmPassword={dmPassword}
+            onClose={() => setShowEnemiesGallery(false)}
+            onTemplatesChange={(nextTemplates) => {
+              setNpcLibrary({ templates: nextTemplates });
+            }}
           />
         )}
       </div>

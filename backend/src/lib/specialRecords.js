@@ -1,6 +1,6 @@
 const { GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { db, TABLE } = require("./db");
-const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG } = require("./specialItems");
+const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG } = require("./specialItems");
 
 const ROLL_HISTORY_LIMIT = 500;
 
@@ -173,6 +173,31 @@ async function savePartyRosterState({ members, partyVisibilityEnabled }) {
   });
 }
 
+function normalizeNpcLibraryRecord(item) {
+  const rawTemplates = Array.isArray(item?.templates) ? item.templates : [];
+  return {
+    templates: rawTemplates
+      .filter((t) => typeof t?.id === "string" && t.id.trim())
+      .map((t) => ({
+        id: t.id,
+        name: typeof t.name === "string" ? t.name : "",
+        abilities: Array.isArray(t.abilities) ? t.abilities : [],
+        hpMax: Number.isFinite(t.hpMax) ? t.hpMax : null,
+        portraitUrl: typeof t.portraitUrl === "string" ? t.portraitUrl : null,
+        updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : null,
+      })),
+  };
+}
+
+async function getNpcLibraryState() {
+  const item = await getSpecialRecord(NPC_LIBRARY_SLUG);
+  return normalizeNpcLibraryRecord(item);
+}
+
+async function saveNpcLibraryState({ templates }) {
+  await putSpecialRecord(NPC_LIBRARY_SLUG, { templates: Array.isArray(templates) ? templates : [] });
+}
+
 module.exports = {
   normalizeInitiativeRecord,
   normalizeNpcCombatRecord,
@@ -180,6 +205,7 @@ module.exports = {
   normalizeMapLibraryRecord,
   normalizeMapView,
   normalizePartyRosterRecord,
+  normalizeNpcLibraryRecord,
   ROLL_HISTORY_LIMIT,
   getInitiativeState,
   saveInitiativeState,
@@ -192,4 +218,6 @@ module.exports = {
   saveMapLibraryState,
   getPartyRosterState,
   savePartyRosterState,
+  getNpcLibraryState,
+  saveNpcLibraryState,
 };

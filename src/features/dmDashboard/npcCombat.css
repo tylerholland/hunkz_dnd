@@ -917,3 +917,114 @@
 .npc-ability-done-btn:hover {
   background: rgba(122, 112, 96, 0.28);
 }
+
+/* ─── NPC Overflow Menu (⋯ button + popover) ─────────────────────────────── */
+
+.btn-npc-overflow {
+  background: none;
+  border: none;
+  color: var(--pal-text-muted);
+  font-size: 16px;
+  line-height: 1;
+  padding: 2px 5px;
+  min-width: 28px;
+  min-height: 28px;
+  cursor: pointer;
+  border-radius: 3px;
+  transition: color 0.12s, background 0.12s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.btn-npc-overflow:hover {
+  color: var(--npc-bright);
+  background: var(--npc-chip-bg);
+}
+
+.npc-overflow-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.npc-overflow-popover {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 120;
+  min-width: 200px;
+  background: #1a1510;
+  border: 1px solid var(--npc-action-border);
+  border-radius: 4px;
+  box-shadow: 0 6px 24px rgba(0,0,0,0.5);
+  overflow: hidden;
+  opacity: 0;
+  transform: translateY(-6px) scale(0.97);
+  pointer-events: none;
+  transition: opacity 0.12s ease, transform 0.12s ease;
+}
+
+.npc-overflow-popover.npc-overflow-popover-open {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+  pointer-events: auto;
+}
+
+.npc-overflow-item {
+  display: block;
+  width: 100%;
+  background: none;
+  border: none;
+  text-align: left;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--pal-text-body);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: background 0.1s, color 0.1s;
+  line-height: 1.45;
+  white-space: nowrap;
+}
+
+.npc-overflow-item:hover {
+  background: var(--npc-chip-bg);
+  color: var(--npc-bright);
+}
+
+.npc-overflow-item + .npc-overflow-item {
+  border-top: 1px solid var(--npc-action-border);
+}
+
+.npc-overflow-item-destructive {
+  color: #c06060;
+}
+
+.npc-overflow-item-destructive:hover {
+  background: rgba(192, 96, 96, 0.1);
+  color: #e08080;
+}
+
+.npc-overflow-item-muted {
+  color: var(--pal-text-muted);
+  font-style: italic;
+}
+
+.npc-overflow-item-muted:hover {
+  color: var(--pal-text-muted);
+  background: none;
+  cursor: default;
+}
+
+.npc-overflow-saved-flash {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 14px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: #88c888;
+  border-top: 1px solid var(--npc-action-border);
+}
