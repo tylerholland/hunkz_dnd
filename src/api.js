@@ -244,18 +244,6 @@ export const putCounterWheels = (dmPassword, wheels, wheelEvent) =>
     body: JSON.stringify({ wheels, ...(wheelEvent ? { wheelEvent } : {}) }),
   });
 
-export const getNpcLibrary = (dmPassword) =>
-  request("/npc-library", {
-    headers: { "x-character-password": dmPassword },
-  });
-
-export const putNpcLibrary = (dmPassword, templates) =>
-  request("/npc-library", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
-    body: JSON.stringify({ templates }),
-  });
-
 export const presignNpcPortrait = (filename, contentType, size, dmPassword) =>
   request("/npc-library/portraits/presign", {
     method: "POST",
