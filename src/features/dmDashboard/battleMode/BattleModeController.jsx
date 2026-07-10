@@ -62,6 +62,8 @@ export const HeldTokenFloater = forwardRef(function HeldTokenFloater(
   );
 });
 
+const LONG_PRESS_MS = 480;
+
 // ── TokenChip ────────────────────────────────────────────────────────────────
 // Used by MapPanel (DM view) and CharacterSheetSessionMode (player view).
 export const TokenChip = memo(function TokenChip({
@@ -78,12 +80,24 @@ export const TokenChip = memo(function TokenChip({
   onRemoveToken,
   viewerContainerRef,
   pal,
+  labelHidden,
+  calibTween,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [flipCard, setFlipCard] = useState(false);
+  const [portraitError, setPortraitError] = useState(false);
+  const [longPress, setLongPress] = useState("idle"); // idle | charging | menu
+  const [removing, setRemoving] = useState(false);
+  // State (not a ref) so the mount-gate can be read safely during render —
+  // false on the very first paint (no transition class), flips true right
+  // after via the effect below so the token's first position is instant.
+  const [hasMounted, setHasMounted] = useState(false);
   const chipRef = useRef(null);
   const hoverTimerRef = useRef(null);
   const collapseTimerRef = useRef(null);
+  const longPressTimerRef = useRef(null);
+  const longPressMenuTimerRef = useRef(null);
+  const suppressClickRef = useRef(false);
 
   const member = token.type === "character"
     ? (party || []).find((m) => m.slug === token.sourceId)
@@ -99,6 +113,18 @@ export const TokenChip = memo(function TokenChip({
     : (pal?.border || "rgba(160,100,55,0.38)");
   const fillColor = npc ? npcInitialColor(npc.id) : ringColor;
   const initials = npc ? npcInitials(npc.name) : (name[0] || "?").toUpperCase();
+  const portraitUrl = token.type === "character" ? member?.portraitUrl : npc?.portraitUrl;
+  const showPortrait = !!portraitUrl && !portraitError;
+
+  useEffect(() => {
+    setPortraitError(false);
+  }, [portraitUrl]);
+
+  // Mark mounted after first commit — the poll-animated class only applies
+  // on renders AFTER this, so the token's first paint is always instant.
+  useEffect(() => {
+    setHasMounted(true);
+  }, []);
 
   // HP data — member uses hpCurrent + hp (from dmParty projection); npc uses hpCurrent + hpMax
   const hpCurrent = member?.hpCurrent ?? npc?.hpCurrent ?? null;
@@ -156,6 +182,13 @@ export const TokenChip = memo(function TokenChip({
   }, []);
 
   const handleClick = useCallback((e) => {
+    if (suppressClickRef.current) {
+      // A long-press just fired (menu surfaced) — swallow the trailing click
+      // that pointerup would otherwise generate.
+      suppressClickRef.current = false;
+      e.stopPropagation();
+      return;
+    }
     if (onTokenClick) {
       e.stopPropagation();
       onTokenClick(token.id, e);
@@ -163,6 +196,69 @@ export const TokenChip = memo(function TokenChip({
     // If no onTokenClick (e.g. during HELD state), let the click propagate to
     // the token layer so placement fires at this position.
   }, [token.id, onTokenClick]);
+
+  // ── Long-press remove (Pointer Events, DM-only) ─────────────────────────
+  // Uses Pointer Events (not mouse events) so this works identically for
+  // mouse, touch, and stylus in one path — mousedown/mouseup would never
+  // fire on touch, which is the entire point of this gesture.
+  const clearLongPressCharge = useCallback(() => {
+    if (longPressTimerRef.current) {
+      clearTimeout(longPressTimerRef.current);
+      longPressTimerRef.current = null;
+    }
+    setLongPress((current) => (current === "charging" ? "idle" : current));
+  }, []);
+
+  const handlePointerDown = useCallback((e) => {
+    if (!isDm || isHeld) return;
+    if (e.pointerType === "mouse" && e.button !== 0) return;
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    setLongPress("charging");
+    longPressTimerRef.current = setTimeout(() => {
+      suppressClickRef.current = true;
+      setLongPress("menu");
+    }, LONG_PRESS_MS);
+  }, [isDm, isHeld]);
+
+  // Dismiss the menu on outside pointerdown, Escape, or after 4s idle.
+  useEffect(() => {
+    if (longPress !== "menu") return undefined;
+    function handleOutside(e) {
+      if (chipRef.current && !chipRef.current.contains(e.target)) {
+        setLongPress("idle");
+      }
+    }
+    function handleKeyDown(e) {
+      if (e.key === "Escape") setLongPress("idle");
+    }
+    document.addEventListener("pointerdown", handleOutside);
+    document.addEventListener("keydown", handleKeyDown);
+    longPressMenuTimerRef.current = setTimeout(() => setLongPress("idle"), 4000);
+    return () => {
+      document.removeEventListener("pointerdown", handleOutside);
+      document.removeEventListener("keydown", handleKeyDown);
+      clearTimeout(longPressMenuTimerRef.current);
+    };
+  }, [longPress]);
+
+  useEffect(() => {
+    return () => {
+      if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
+      if (longPressMenuTimerRef.current) clearTimeout(longPressMenuTimerRef.current);
+    };
+  }, []);
+
+  const handleConfirmRemove = useCallback((e) => {
+    e.stopPropagation();
+    setLongPress("idle");
+    setRemoving(true);
+    setTimeout(() => { onRemoveToken?.(token.id); }, 180);
+  }, [onRemoveToken, token.id]);
+
+  const handleCancelLongPress = useCallback((e) => {
+    e.stopPropagation();
+    setLongPress("idle");
+  }, []);
 
   const left = token.x * imageW;
   const top = token.y * imageH;
@@ -172,6 +268,14 @@ export const TokenChip = memo(function TokenChip({
     token.type === "character" ? "token-chip--pc" : "token-chip--npc",
     isFallen ? "token-chip--fallen" : "",
     isHeld ? "token-chip--ghost" : "",
+    // Player-only, and only after the token's first paint — the very first
+    // render must NOT carry this class or the token would appear to slide
+    // in from (0,0) on mount.
+    !isDm && hasMounted ? "token-chip--poll-animated" : "",
+    !isDm && !hasMounted ? "token-chip--appearing" : "",
+    labelHidden ? "token-chip--label-hidden" : "",
+    calibTween ? "token-chip--calib-tween" : "",
+    removing ? "token-chip--removing" : "",
   ].filter(Boolean).join(" ");
 
   return (
@@ -180,27 +284,37 @@ export const TokenChip = memo(function TokenChip({
       className={chipClasses}
       data-expanded={expanded ? "true" : "false"}
       style={{
-        left,
-        top,
+        "--token-x": `${left}px`,
+        "--token-y": `${top}px`,
         "--token-ring-color": ringColor,
         "--token-fill-color": fillColor,
         "--pal-border": pal?.border,
         "--pal-text": pal?.text,
         "--pal-text-muted": pal?.textMuted,
         "--pal-gem": pal?.gem,
+        "--pal-accent": pal?.accent,
         "--pal-surface-solid": pal?.surfaceSolid || pal?.surface,
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
+      onPointerDown={handlePointerDown}
+      onPointerUp={clearLongPressCharge}
+      onPointerCancel={clearLongPressCharge}
+      onPointerLeave={clearLongPressCharge}
     >
-      {/* Portrait or initial */}
-      {token.type === "character" && member?.portraitUrl ? (
+      {/* Portrait or initial — NPC portraits (Story 29b) use the same
+          element/classes as PC portraits; the ring stays neutral grey via
+          the .token-chip--npc selector regardless of portrait presence. */}
+      {showPortrait ? (
         <img
           className="token-chip__portrait"
-          src={member.portraitUrl}
+          src={portraitUrl}
           alt={name}
           draggable={false}
+          loading="lazy"
+          decoding="async"
+          onError={() => setPortraitError(true)}
         />
       ) : (
         <div className="token-chip__initial">
@@ -251,6 +365,36 @@ export const TokenChip = memo(function TokenChip({
           </button>
         )}
       </div>
+
+      {/* Long-press remove — ring-sweep charge cue + micro-menu (DM only) */}
+      {isDm && longPress !== "idle" && (
+        <>
+          <svg className={`token-longpress-ring${longPress === "charging" ? " charging" : ""}`} viewBox="0 0 44 44">
+            <circle className="track" cx="22" cy="22" r="19" />
+            <circle
+              className="fill"
+              cx="22"
+              cy="22"
+              r="19"
+              style={{
+                strokeDasharray: 119.4,
+                strokeDashoffset: longPress === "charging" ? 0 : 119.4,
+              }}
+            />
+          </svg>
+          <div className="token-longpress-hold-label">Hold to remove</div>
+        </>
+      )}
+      {isDm && longPress === "menu" && (
+        <div className="token-longpress-menu" onClick={(e) => e.stopPropagation()}>
+          <button type="button" className="token-longpress-menu-item token-longpress-menu-item--remove" onClick={handleConfirmRemove}>
+            ✕ Remove
+          </button>
+          <button type="button" className="token-longpress-menu-item token-longpress-menu-item--cancel" onClick={handleCancelLongPress}>
+            Cancel
+          </button>
+        </div>
+      )}
     </div>
   );
 });

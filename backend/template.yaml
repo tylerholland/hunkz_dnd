@@ -533,6 +533,21 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
 
+  PatchMapCalibrationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/patchMapCalibration.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps/{mapId}/calibration
+            Method: patch
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
   DeleteMapFunction:
     Type: AWS::Serverless::Function
     Properties:

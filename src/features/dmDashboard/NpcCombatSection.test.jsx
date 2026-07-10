@@ -180,6 +180,9 @@ describe("NpcCombatSection Story 23 ability reference", () => {
       initiative: { activeTurnIndex: 0, entries: [] },
     });
 
+    // Inactive NPCs collapse by default (Story 29b) — expand to see the ability block.
+    fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
+
     expect(screen.getByText("Hex Bolt +5, 2d6 necrotic")).toBeInTheDocument();
     expect(screen.getByTitle("Edit abilities")).toBeInTheDocument();
   });
@@ -201,6 +204,9 @@ describe("NpcCombatSection Story 23 ability reference", () => {
       },
       initiative: { activeTurnIndex: 0, entries: [] },
     });
+
+    // Inactive NPCs collapse by default (Story 29b) — expand to see the ability block.
+    fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
 
     expect(screen.getByText("Magic Missile")).toBeInTheDocument();
     expect(screen.getByText("Shield")).toBeInTheDocument();
@@ -284,6 +290,9 @@ describe("NpcCombatSection Story 23 ability reference", () => {
       onCommitNpcCombat,
     });
 
+    // Inactive NPCs collapse by default (Story 29b) — expand to reach the ability block.
+    fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
+
     fireEvent.click(screen.getByTitle("Edit abilities"));
     fireEvent.change(screen.getByPlaceholderText("+ Add ability or spell…"), {
       target: { value: "Counterspell" },
@@ -316,6 +325,9 @@ describe("NpcCombatSection Story 23 ability reference", () => {
       initiative: { activeTurnIndex: 0, entries: [] },
       onCommitNpcCombat,
     });
+
+    // Inactive NPCs collapse by default (Story 29b) — expand to reach the ability block.
+    fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
 
     fireEvent.click(screen.getByTitle("Edit abilities"));
     fireEvent.click(screen.getByTitle("Remove"));
@@ -365,6 +377,9 @@ describe("NpcCombatSection Story 23 ability reference", () => {
       initiative: { activeTurnIndex: 0, entries: [] },
       onCommitNpcCombat,
     });
+
+    // Inactive NPCs collapse by default (Story 29b) — expand to reach the ability block.
+    fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
 
     fireEvent.click(screen.getByTitle("Edit abilities"));
     fireEvent.click(screen.getByTitle("Remove"));

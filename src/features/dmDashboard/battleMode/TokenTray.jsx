@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
 
 /**
@@ -25,6 +25,20 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
   const unplacedNpcs = (npcCombat?.npcs || []).filter((n) => !placedSourceIds.has(n.id));
 
   const totalUnplaced = unplacedPcs.length + unplacedNpcs.length;
+  const totalAll = (party || []).length + (npcCombat?.npcs || []).length;
+  const allPlaced = totalUnplaced === 0 && totalAll > 0;
+
+  // Collapse to a slim status strip once everything is placed; auto-expand
+  // the instant a token returns to unplaced (or the DM taps the strip).
+  const [manuallyExpanded, setManuallyExpanded] = useState(false);
+  const prevAllPlacedRef = useRef(allPlaced);
+  useEffect(() => {
+    if (prevAllPlacedRef.current && !allPlaced) {
+      setManuallyExpanded(false);
+    }
+    prevAllPlacedRef.current = allPlaced;
+  }, [allPlaced]);
+  const collapsed = allPlaced && !manuallyExpanded;
 
   const palVars = {
     "--pal-border": pal.border,
@@ -34,6 +48,28 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
     "--pal-text-muted": pal.textMuted,
     "--pal-surface-solid": pal.surfaceSolid || pal.surface,
   };
+
+  if (collapsed) {
+    return (
+      <div
+        className={`token-tray token-tray--collapsed${isMapHeld ? " token-tray--drop-target" : ""}`}
+        style={palVars}
+        onClick={isMapHeld ? (e) => { e.stopPropagation(); onDropToTray?.(); } : () => setManuallyExpanded(true)}
+      >
+        <div className="tray-collapsed-strip">
+          <span className="tray-collapsed-check">✓</span>
+          <span className="tray-collapsed-label">All tokens placed · {totalAll}</span>
+          <button
+            type="button"
+            className="tray-collapsed-chevron"
+            onClick={(e) => { e.stopPropagation(); setManuallyExpanded(true); }}
+          >
+            ⌃ open
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
