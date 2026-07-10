@@ -254,6 +254,24 @@ Per-card palette scoping works: each `.card[style]` root can set different `--pa
 
 ---
 
+## ADR-015 · Battle-map token polish (Story 29b): reuses Story 31's NPC-portrait presign, per-map `tokenScale`, shared `TokenChip`
+
+**Context**: Story 29 shipped the token layer with a `tokenScale` field and a shared `TokenChip` component but no NPC portraits. Story 31 (NPC Library with HP + Portraits) separately shipped a dedicated `npcPortraitPresign.js` handler (`POST /npc-library/portraits/presign`, `npc-portraits/` S3 prefix, public-read bucket policy already granted) used from the Enemies Gallery library editor. Story 29b adds portrait upload directly on the *live combat tracker card* (before an NPC is ever saved to the library), a calibration control for `tokenScale`, and token-layer motion polish.
+
+**Decisions**:
+
+1. **NPC portrait upload on the combat card reuses Story 31's existing `/npc-library/portraits/presign` endpoint and `npc-portraits/` prefix — not a new endpoint or the `maps/` prefix.** The bucket policy already grants public `s3:GetObject` on `npc-portraits/*`, and `api.js` already exports `presignNpcPortrait(filename, contentType, size, dmPassword)` calling it. The combat-card upload (`NpcCardPortrait` in `NpcCombatSection.jsx`) calls this existing function directly; no new presign wrapper was added. Render reuses the existing `NpcThumb` component (portrait-or-initials, `onError` fallback) rather than a parallel render implementation — the upload affordance is a camera-overlay wrapper composed *around* `NpcThumb`, not a replacement for it.
+
+2. **Per-map token scale is a single `tokenScale` number on each `map-library` map entry**, clamped 0.5–2.5, default 1.0, already enforced in `normalizeMapLibraryRecord`. New in this story: `PATCH /maps/{mapId}/calibration` (`patchMapCalibration.js`, cloned from `patchMap.js`'s read-modify-write pattern, preserves `activeMapView`) and a ⚙ gear-popover UI (`CalibrationPopover.jsx`) in the DM map panel header, debounced 600ms.
+
+3. **One shared `TokenChip`** (`src/features/dmDashboard/battleMode/BattleModeController.jsx`) renders both DM and player tokens and both PC and NPC portraits, branching on `isDm`/`isOwnToken`. Player-only poll-move animation (`transform`/translate-based, 280ms, mount-gated so it never fires on first paint) is gated inside this shared component, not forked into a second component. DM-only long-press remove uses Pointer Events (not mouse events) so it works identically for mouse, touch, and stylus.
+
+4. **`prefers-reduced-motion: reduce`** — a single authoritative block at the bottom of `battleMode.css` covers every motion point in the token layer (drop bounce, hover-expand, HP card slide-in, poll-move, tray collapse, long-press charge ring). Strategy is replace-don't-merely-delete: transitions snap to instant end-state rather than being removed outright where the motion carries meaning (e.g. long-press charge becomes a static "Hold to remove" label). The upload progress ring in `npcCombat.css` is deliberately exempt — it reflects genuine upload progress, not decoration.
+
+**Revisit when**: Per-token scale, grid snapping, or token image processing is wanted, or a second story needs the same "upload before it has a permanent home" pattern this establishes for NPC portraits.
+
+---
+
 ## Feature Index
 
 This is a navigation aid for humans and future agents. It mirrors the feature language in `design/app-overview.md` and points to the primary code locations for each area.

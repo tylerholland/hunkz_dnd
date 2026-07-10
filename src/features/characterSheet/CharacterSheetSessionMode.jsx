@@ -1334,6 +1334,8 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
   const tokens = activeMap?.tokens || [];
   const isBattleMode = activeMap?.mapMode === "battle";
   const partyVisible = partyStatus?.visible !== false;
+  const tokenScale = activeMap?.tokenScale ?? 1;
+  const labelsHidden = tokenScale * (viewerState?.scale ?? 1) < 0.6;
 
   // Determine which tokens this player can see per ADR-017
   const visibleTokens = isBattleMode ? tokens.filter((t) => {
@@ -1355,6 +1357,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
       partyVisibilityEnabled={partyVisible}
       isHeld={false}
       pal={pal}
+      labelHidden={labelsHidden}
     />
   ));
 
@@ -1366,6 +1369,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
       height={480}
       pal={pal}
       onViewChange={setViewerState}
+      tokenScale={tokenScale}
       tokenLayerChildren={isBattleMode && visibleTokens.length > 0 ? tokenChips : undefined}
     />
   );

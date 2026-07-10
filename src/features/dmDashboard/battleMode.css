@@ -11,20 +11,66 @@
 }
 
 /* ── Token chip base ──────────────────────────────────────────────────── */
+/* Position is carried as --token-x / --token-y (inline, per-token, dynamic —
+   ADR-014) so it composes into a single `transform` alongside the centering
+   offset and scale. This keeps positional updates on the compositor
+   (transform) instead of layout (left/top), which is required for the
+   smooth player-side poll-move transition (Story 29b §5) — see
+   .token-chip--poll-animated below. No base transition here: DM placement
+   stays instant (Story 29's deliberate drop behaviour), matching pre-29b. */
 .token-chip {
   position: absolute;
+  left: 0;
+  top: 0;
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  transform: translate(-50%, -50%);
   cursor: pointer;
   pointer-events: auto;
   user-select: none;
-  /* scale multiplier applied via inline --token-scale-multiplier on wrapper */
-  transform: translate(-50%, -50%) scale(var(--token-scale-multiplier, 1));
+  transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(var(--token-scale-multiplier, 1));
   transform-origin: center;
-  transition: transform 220ms cubic-bezier(0.34, 1.56, 0.64, 1);
   z-index: 10;
+}
+
+/* Player-side poll-move: applied only when !isDm and after first mount
+   (TokenChip gates this via a hasMountedRef so the class is absent on the
+   token's very first paint — it must appear at its committed position, not
+   slide in from 0,0). */
+.token-chip--poll-animated {
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+/* First-mount appearance (player-side only) — fades/scales in at the
+   token's committed position rather than sliding from the origin. */
+@keyframes token-chip-appear {
+  from {
+    opacity: 0;
+    transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 0.78));
+  }
+  to {
+    opacity: 1;
+    transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(var(--token-scale-multiplier, 1));
+  }
+}
+
+.token-chip--appearing {
+  animation: token-chip-appear 180ms ease-out;
+}
+
+/* Brief tween applied per-chip while the DM steps calibration via the ±
+   buttons (not while dragging the slider, which resizes 1:1 live). See
+   MapPanel's calibTweening state, threaded down as the calibTween prop. */
+.token-chip--calib-tween {
+  transition: transform 120ms ease-out;
+}
+
+/* Name label hidden below the tokenScale × zoom legibility threshold
+   (Story 29b §4.2). The name still surfaces in the HP hover-card
+   regardless, so "returns on hover-expand" needs no extra rule here. */
+.token-chip--label-hidden .token-chip__label {
+  opacity: 0;
+  pointer-events: none;
 }
 
 /* Portrait circle */
@@ -258,9 +304,9 @@
 
 /* ── Drop bounce keyframe ─────────────────────────────────────────────── */
 @keyframes token-drop-bounce {
-  0%   { transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 1)); }
-  50%  { transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 1.08)); }
-  100% { transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 1)); }
+  0%   { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 1)); }
+  50%  { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 1.08)); }
+  100% { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 1)); }
 }
 
 .token-chip--bounce {
@@ -553,8 +599,387 @@
   color: #e08080;
 }
 
+/* ── Long-press remove (Pointer Events, DM-only) ─────────────────────── */
+/* Ring-sweep "charge" cue drawn as an SVG overlay inset around the chip. */
+.token-longpress-ring {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.token-longpress-ring.charging {
+  opacity: 1;
+}
+
+.token-longpress-ring circle.track {
+  fill: none;
+  stroke: rgba(160, 100, 55, 0.2);
+  stroke-width: 3;
+}
+
+.token-longpress-ring circle.fill {
+  fill: none;
+  stroke: var(--pal-accent, #a06840);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transform-origin: center;
+  transform: rotate(-90deg);
+  transition: stroke-dashoffset 480ms linear;
+}
+
+/* Static reduced-motion substitute for the ring sweep — surfaces at ~120ms */
+.token-longpress-hold-label {
+  position: absolute;
+  bottom: -20px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--pal-text-muted, #6a4830);
+  background: rgba(0, 0, 0, 0.7);
+  padding: 2px 6px;
+  border-radius: 2px;
+  opacity: 0;
+  pointer-events: none;
+  display: none;
+}
+
+.token-longpress-ring.charging ~ .token-longpress-hold-label {
+  opacity: 1;
+}
+
+/* Remove micro-menu (✕ Remove / Cancel) */
+.token-longpress-menu {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%) scale(0.94);
+  width: 140px;
+  background: var(--pal-surface-solid, #2a160a);
+  border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.38));
+  border-radius: 4px;
+  overflow: hidden;
+  z-index: 200;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  animation: token-longpress-menu-surface 140ms ease-out forwards;
+}
+
+@keyframes token-longpress-menu-surface {
+  from { opacity: 0; transform: translateX(-50%) scale(0.94); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+.token-longpress-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 11px 14px;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.token-longpress-menu-item + .token-longpress-menu-item {
+  border-top: 1px solid var(--pal-border, rgba(160, 100, 55, 0.22));
+}
+
+.token-longpress-menu-item--remove {
+  color: #c06060;
+}
+
+.token-longpress-menu-item--remove:hover {
+  background: rgba(192, 96, 96, 0.1);
+}
+
+.token-longpress-menu-item--cancel {
+  color: var(--pal-text-muted, #6a4830);
+}
+
+.token-longpress-menu-item--cancel:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Token scaling to 0 on confirmed remove */
+@keyframes token-chip-remove {
+  from { opacity: 1; transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(var(--token-scale-multiplier, 1)); }
+  to   { opacity: 0; transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(0); }
+}
+
+.token-chip--removing {
+  animation: token-chip-remove 180ms ease-in forwards;
+  pointer-events: none;
+}
+
+/* ── Calibration gear button + popover (Battle Mode header) ─────────── */
+.btn-gear {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--pal-text-muted, #6a4830);
+  transition: color 150ms ease, background 150ms ease;
+  flex-shrink: 0;
+}
+
+.btn-gear:hover {
+  color: var(--pal-accent, #a06840);
+  background: var(--pal-accent-dim, rgba(160, 104, 64, 0.14));
+}
+
+.btn-gear svg {
+  width: 18px;
+  height: 18px;
+  fill: currentColor;
+}
+
+.calib-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 240px;
+  background: var(--pal-surface-solid, #2a160a);
+  border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.38));
+  border-radius: 4px;
+  padding: 16px;
+  z-index: 100;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.calib-title {
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted, #6a4830);
+  margin-bottom: 12px;
+}
+
+.calib-subtitle {
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  color: var(--pal-text-muted, #6a4830);
+  margin-bottom: 8px;
+}
+
+.calib-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.calib-step-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.38));
+  color: var(--pal-text-muted, #6a4830);
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 120ms ease-out, color 120ms ease-out;
+}
+
+.calib-step-btn:hover {
+  border-color: var(--pal-accent, #a06840);
+  color: var(--pal-accent, #a06840);
+}
+
+.calib-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  flex: 1;
+  height: 4px;
+  background: linear-gradient(
+    to right,
+    var(--pal-accent, #a06840) 0%,
+    var(--pal-accent, #a06840) calc(var(--slider-pct, 45) * 1%),
+    var(--pal-border, rgba(160, 100, 55, 0.38)) calc(var(--slider-pct, 45) * 1%),
+    var(--pal-border, rgba(160, 100, 55, 0.38)) 100%
+  );
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+
+.calib-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--pal-gem, #c8904c);
+  border: none;
+  box-shadow: 0 0 0 3px rgba(200, 144, 76, 0.2);
+  cursor: grab;
+}
+
+.calib-slider::-webkit-slider-thumb:active {
+  cursor: grabbing;
+}
+
+.calib-slider::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--pal-gem, #c8904c);
+  border: none;
+  cursor: grab;
+}
+
+.calib-readout {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 14px;
+  color: var(--pal-gem, #c8904c);
+  min-width: 42px;
+  text-align: right;
+}
+
+.calib-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--pal-text-muted, #6a4830);
+  padding: 0 4px;
+  margin-bottom: 12px;
+}
+
+.calib-reset-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.22));
+  border-radius: 3px;
+  color: var(--pal-text-muted, #6a4830);
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding: 8px;
+  cursor: pointer;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+
+.calib-reset-btn:hover {
+  border-color: var(--pal-accent, #a06840);
+  color: var(--pal-accent-bright, #c89060);
+}
+
+@media (max-width: 360px) {
+  .calib-popover {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    width: auto;
+    border-radius: 8px 8px 0 0;
+  }
+}
+
+/* ── Tray collapse ("all placed" status strip) ───────────────────────── */
+.token-tray {
+  transition: min-height 220ms ease-out, background 140ms ease, border-color 140ms ease;
+}
+
+.token-tray--collapsed {
+  min-height: 28px;
+  padding: 0;
+  cursor: pointer;
+}
+
+.tray-collapsed-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 0 10px;
+  height: 28px;
+  animation: tray-collapsed-fade-in 180ms ease-out 40ms both;
+}
+
+@keyframes tray-collapsed-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.tray-collapsed-check {
+  color: var(--pal-accent, #a06840);
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.tray-collapsed-label {
+  flex: 1;
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted, #6a4830);
+}
+
+.tray-collapsed-chevron {
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--pal-text-muted, #6a4830);
+  min-height: 28px;
+  min-width: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  transition: color 150ms ease;
+}
+
+.token-tray--collapsed:hover .tray-collapsed-chevron {
+  color: var(--pal-accent, #a06840);
+}
+
+.token-tray__half,
+.token-tray__divider,
+.token-tray__actions {
+  animation: tray-full-fade-in 180ms ease-out;
+}
+
+@keyframes tray-full-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
 /* ── prefers-reduced-motion ──────────────────────────────────────────── */
+/* Single authoritative block covering every motion point in the token layer
+ * — both Story 29's original animations and everything 29b added. Strategy
+ * is replace, don't merely delete, where the motion carries meaning: state
+ * still updates, only the glide/tween/sweep is suppressed. See the story's
+ * reduced-motion audit table for the full point-by-point mapping. */
 @media (prefers-reduced-motion: reduce) {
+  /* Drop bounce (29), hover-expand breathe (29), HP card slide-in (29),
+   * name-label fade (29), tray-chip hover (29), battle-mode toggle
+   * hover (29) — all instant, no transition/animation. */
   .token-chip,
   .token-chip__portrait,
   .token-chip__initial,
@@ -572,6 +997,70 @@
   }
 
   .token-chip--bounce {
+    animation: none;
+  }
+
+  /* Poll-move (29b §5) — instant snap, no glide. */
+  .token-chip--poll-animated {
+    transition: none;
+  }
+
+  /* Poll appear / first mount (29b §5) — instant appear at final position
+   * and size, no fade-in-from-scaled-down. */
+  .token-chip--appearing {
+    animation: none;
+    opacity: 1;
+  }
+
+  /* Calibration ± / drag tween (29b §4) — instant resize. */
+  .token-chip--calib-tween {
+    transition: none;
+  }
+
+  /* Long-press ring sweep (29b §6) — replaced by a static "Hold to remove"
+   * label so the gesture stays usable; the 480ms threshold itself is
+   * unaffected, only the animated sweep cue is suppressed. */
+  .token-longpress-ring {
+    display: none;
+  }
+
+  .token-longpress-hold-label {
+    display: block;
+    opacity: 1;
+  }
+
+  /* Remove micro-menu (29b §6) — appears instantly, no scale/opacity
+   * entrance; the token still disappears on confirm, just without the
+   * scale-to-0 motion. */
+  .token-longpress-menu {
+    animation: none;
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+
+  .token-chip--removing {
+    animation: none;
+    opacity: 0;
+  }
+
+  /* Tray collapse / expand (29b §7) — instant state swap, no height tween
+   * or chip-row/label crossfade. */
+  .token-tray {
+    transition: none;
+  }
+
+  .tray-collapsed-strip,
+  .token-tray__half,
+  .token-tray__divider,
+  .token-tray__actions {
+    animation: none;
+    opacity: 1;
+  }
+
+  /* NPC portrait upload progress ring (29b §3) — kept as a static
+   * indicator (real system state, not decorative motion) rather than
+   * suppressed entirely; only the spin is removed. */
+  .npc-portrait-uploading-ring {
     animation: none;
   }
 }

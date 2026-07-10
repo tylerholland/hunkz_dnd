@@ -1,5 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { putNpcCombat } from "../../api";
+import { putNpcCombat, presignNpcPortrait } from "../../api";
 import { PALETTES } from "../characterSheet/theme";
 import { useDebouncedOptimisticNumberFlush } from "../../lib/liveSync";
 import ConfirmDialog from "./ConfirmDialog";
@@ -47,6 +47,89 @@ function NpcThumb({ portraitUrl, name, size = 32, npcPal }) {
     );
   }
   return <div style={style}>{initials}</div>;
+}
+
+const PORTRAIT_MAX_SIZE_BYTES = 5 * 1024 * 1024;
+
+/* ── NPC card portrait upload — camera-glyph overlay on the identity circle
+ * itself (direct manipulation — "tap the face to give it a face"), not the
+ * ⋯ menu. Reuses the existing NpcThumb for render/fallback and the existing
+ * /npc-library/portraits/presign pipeline (Story 31) for upload. Writes
+ * portraitUrl via onCommitNpcs immediately — no separate save step. */
+function NpcCardPortrait({ npc, allNpcsRef, onCommitNpcs, dmPassword, npcPal }) {
+  const [localPreview, setLocalPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const fileInputRef = useRef(null);
+  const localPreviewRef = useRef(null);
+
+  useEffect(() => () => {
+    if (localPreviewRef.current) URL.revokeObjectURL(localPreviewRef.current);
+  }, []);
+
+  async function handleFileSelect(e) {
+    const file = e.target.files?.[0];
+    if (fileInputRef.current) fileInputRef.current.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      setUploadError("Only image files are supported.");
+      return;
+    }
+    if (file.size > PORTRAIT_MAX_SIZE_BYTES) {
+      setUploadError("Portrait must be 5 MB or smaller.");
+      return;
+    }
+    setUploadError("");
+    setUploading(true);
+    const objectUrl = URL.createObjectURL(file);
+    localPreviewRef.current = objectUrl;
+    setLocalPreview(objectUrl);
+    try {
+      const { uploadUrl, portraitUrl } = await presignNpcPortrait(file.name, file.type, file.size, dmPassword);
+      await fetch(uploadUrl, { method: "PUT", body: file, headers: { "Content-Type": file.type } });
+      const updatedNpcs = (allNpcsRef.current || []).map((entry) =>
+        entry.id === npc.id ? { ...entry, portraitUrl } : entry
+      );
+      const success = await onCommitNpcs(updatedNpcs);
+      if (success === false) throw new Error("Failed to save portrait");
+    } catch {
+      setUploadError("Couldn't upload — try again");
+    } finally {
+      URL.revokeObjectURL(objectUrl);
+      localPreviewRef.current = null;
+      setLocalPreview(null);
+      setUploading(false);
+    }
+  }
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", flexShrink: 0 }}>
+      <div
+        className="npc-identity-circle"
+        onClick={() => fileInputRef.current?.click()}
+        title="Tap to upload portrait"
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); fileInputRef.current?.click(); } }}
+      >
+        <NpcThumb portraitUrl={localPreview || npc.portraitUrl} name={npc.name} size={36} npcPal={npcPal} />
+        <div className="npc-camera-overlay">
+          <svg viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
+            <path d="M7 1l-1.5 2H2C.9 3 0 3.9 0 5v9c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-3.5L13 1H7zm3 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 1.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z" />
+          </svg>
+        </div>
+        {uploading && <div className="npc-portrait-uploading-ring" />}
+      </div>
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp"
+        style={{ display: "none" }}
+        onChange={handleFileSelect}
+      />
+      {uploadError && <div className="npc-portrait-upload-error">{uploadError}</div>}
+    </div>
+  );
 }
 
 const NPC_ACCENT = "#7a7060";
@@ -607,6 +690,9 @@ function NpcCard({
   onToggleInitiative,
   libraryTemplates,
   onSaveToLibrary,
+  dmPassword,
+  collapsed = false,
+  onToggleCollapse = null,
 }) {
   const pal = useContext(PalCtx);
   const npcPal = getNpcCardPalette(pal);
@@ -776,7 +862,7 @@ function NpcCard({
       <div className="npc-header">
         <div className="npc-name-row">
           <div style={{ display: "flex", alignItems: "flex-start", gap: 7, flex: 1, minWidth: 0 }}>
-            <NpcThumb portraitUrl={npc.portraitUrl} name={npc.name} size={36} npcPal={npcPal} />
+            <NpcCardPortrait npc={npc} allNpcsRef={allNpcsRef} onCommitNpcs={onCommitNpcs} dmPassword={dmPassword} npcPal={npcPal} />
             <div className="npc-name-group">
               <span className="npc-name" style={{ color: isDead ? pal.textMuted : npcPal.bright, textDecoration: isDead ? "line-through" : "none" }}>{npc.name}</span>
               {isBloodied && !isDead && <span className="badge-bloodied">Bloodied</span>}
@@ -821,6 +907,18 @@ function NpcCard({
                 />
               )}
             </div>
+            {onToggleCollapse && (
+              <button
+                onClick={onToggleCollapse}
+                className="btn-npc-collapse-toggle"
+                title={collapsed ? "Expand" : "Collapse"}
+                aria-label={collapsed ? "Expand card" : "Collapse card"}
+              >
+                <svg width="10" height="7" viewBox="0 0 10 7" fill="none" style={{ transform: collapsed ? "rotate(0deg)" : "rotate(180deg)" }}>
+                  <path d="M1 1.5L5 5.5L9 1.5" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+              </button>
+            )}
             <button onClick={onRemove} className="btn-npc-remove">×</button>
           </div>
         </div>
@@ -902,30 +1000,36 @@ function NpcCard({
         )}
       </div>
 
-      <NpcAbilityRef
-        abilities={npc.abilities}
-        isActiveTurn={isActiveTurn}
-        npcPal={npcPal}
-        onSave={async (nextAbilities) => {
-          const updatedNpcs = (allNpcsRef.current || []).map((entry) =>
-            entry.id === npc.id ? { ...entry, abilities: nextAbilities } : entry
-          );
-          return onCommitNpcs(updatedNpcs);
-        }}
-      />
+      {!collapsed && (
+        <NpcAbilityRef
+          abilities={npc.abilities}
+          isActiveTurn={isActiveTurn}
+          npcPal={npcPal}
+          onSave={async (nextAbilities) => {
+            const updatedNpcs = (allNpcsRef.current || []).map((entry) =>
+              entry.id === npc.id ? { ...entry, abilities: nextAbilities } : entry
+            );
+            return onCommitNpcs(updatedNpcs);
+          }}
+        />
+      )}
 
-      <div className="npc-actions" style={{ borderTop: `1px solid ${npcPal.actionBorder}` }}>
-        {isDead ? (
-          <button onClick={() => onOpenModal("heal")} className="btn-npc-action btn-npc-heal">Revive</button>
-        ) : (
-          <>
-            <button onClick={() => onOpenModal("damage")} className="btn-npc-action btn-npc-dmg">⚔ Dmg</button>
-            <button onClick={() => onOpenModal("heal")} className="btn-npc-action btn-npc-heal">✦ Heal</button>
-            <button onClick={onOpenConditions} className="btn-npc-action btn-npc-cond" style={{ "--npc-accent": npcPal.accent, "--npc-bright": npcPal.bright, "--npc-chip-bg": npcPal.chipBg }}>+ Cond</button>
-          </>
-        )}
-      </div>
-      <NpcNotesStrip npc={npc} allNpcsRef={allNpcsRef} onCommitNpcs={onCommitNpcs} pal={pal} npcPal={npcPal} />
+      {!collapsed && (
+        <div className="npc-actions" style={{ borderTop: `1px solid ${npcPal.actionBorder}` }}>
+          {isDead ? (
+            <button onClick={() => onOpenModal("heal")} className="btn-npc-action btn-npc-heal">Revive</button>
+          ) : (
+            <>
+              <button onClick={() => onOpenModal("damage")} className="btn-npc-action btn-npc-dmg">⚔ Dmg</button>
+              <button onClick={() => onOpenModal("heal")} className="btn-npc-action btn-npc-heal">✦ Heal</button>
+              <button onClick={onOpenConditions} className="btn-npc-action btn-npc-cond" style={{ "--npc-accent": npcPal.accent, "--npc-bright": npcPal.bright, "--npc-chip-bg": npcPal.chipBg }}>+ Cond</button>
+            </>
+          )}
+        </div>
+      )}
+      {!collapsed && (
+        <NpcNotesStrip npc={npc} allNpcsRef={allNpcsRef} onCommitNpcs={onCommitNpcs} pal={pal} npcPal={npcPal} />
+      )}
     </div>
   );
 }
@@ -990,6 +1094,43 @@ export default function NpcCombatSection({
   });
   const activeNpcs = npcWithLinks.filter((value) => value.isInInitiative).sort((a, b) => a.initiativeIndex - b.initiativeIndex);
   const inactiveNpcs = npcWithLinks.filter((value) => !value.isInInitiative);
+
+  // Inactive NPCs collapse to name + HP by default so a 5–10+ enemy queue
+  // stays scannable. Active NPCs (in initiative) always show the full card.
+  // Local UI state only — not persisted to putNpcCombat.
+  const [collapsedSet, setCollapsedSet] = useState(
+    () => new Set(inactiveNpcs.map(({ npc }) => npc.id))
+  ); // eslint-disable-line react-hooks/exhaustive-deps -- intentional: mount-only initializer
+
+  const toggleCardCollapse = useCallback((npcId) => {
+    setCollapsedSet((prev) => {
+      const next = new Set(prev);
+      if (next.has(npcId)) next.delete(npcId); else next.add(npcId);
+      return next;
+    });
+  }, []);
+
+  const handleAddToInitiative = useCallback((npcId) => {
+    // Transitioning to active auto-expands the card.
+    setCollapsedSet((prev) => {
+      if (!prev.has(npcId)) return prev;
+      const next = new Set(prev);
+      next.delete(npcId);
+      return next;
+    });
+    onAddNpcToInitiative?.(npcId);
+  }, [onAddNpcToInitiative]);
+
+  const handleRemoveFromInitiative = useCallback((npcId) => {
+    // Turn's over — collapse it back down into the inactive queue.
+    setCollapsedSet((prev) => {
+      if (prev.has(npcId)) return prev;
+      const next = new Set(prev);
+      next.add(npcId);
+      return next;
+    });
+    onRemoveNpcFromInitiative?.(npcId);
+  }, [onRemoveNpcFromInitiative]);
 
   const commitNpcList = useCallback(async (updatedNpcs) => {
     allNpcsRef.current = updatedNpcs;
@@ -1171,10 +1312,11 @@ export default function NpcCombatSection({
                   onCommitNpcs={commitNpcList}
                   onOpenModal={(mode) => setModalTarget({ npc, mode })}
                   onOpenConditions={() => setCondTarget(npc)}
-                  onToggleInitiative={() => onRemoveNpcFromInitiative?.(npc.id)}
+                  onToggleInitiative={() => handleRemoveFromInitiative(npc.id)}
                   onRemove={() => handleRemoveNpc(npc.id)}
                   libraryTemplates={npcLibrary?.templates}
                   onSaveToLibrary={onSaveToLibrary}
+                  dmPassword={dmPassword}
                 />
               ))}
             </div>
@@ -1195,10 +1337,13 @@ export default function NpcCombatSection({
                   onCommitNpcs={commitNpcList}
                   onOpenModal={(mode) => setModalTarget({ npc, mode })}
                   onOpenConditions={() => setCondTarget(npc)}
-                  onToggleInitiative={() => onAddNpcToInitiative?.(npc.id)}
+                  onToggleInitiative={() => handleAddToInitiative(npc.id)}
                   onRemove={() => handleRemoveNpc(npc.id)}
                   libraryTemplates={npcLibrary?.templates}
                   onSaveToLibrary={onSaveToLibrary}
+                  dmPassword={dmPassword}
+                  collapsed={collapsedSet.has(npc.id)}
+                  onToggleCollapse={() => toggleCardCollapse(npc.id)}
                 />
               ))}
             </div>

@@ -232,6 +232,13 @@ export const patchMapTokens = (mapId, payload, dmPassword) =>
     body: JSON.stringify(payload),
   });
 
+export const putMapCalibration = (mapId, tokenScale, dmPassword) =>
+  request(`/maps/${mapId}/calibration`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ tokenScale }),
+  });
+
 export const getCounterWheels = (dmPassword) =>
   request("/counter-wheels", {
     headers: { "x-character-password": dmPassword },

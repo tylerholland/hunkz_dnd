@@ -1028,3 +1028,106 @@
   color: #88c888;
   border-top: 1px solid var(--npc-action-border);
 }
+
+/* ─── NPC card portrait upload overlay (Story 29b) ────────────────────────
+ * Wraps the existing NpcThumb (portrait/initials render) with a click
+ * target + camera-glyph overlay. NpcThumb itself is unchanged — this only
+ * adds upload chrome as absolutely-positioned children. */
+
+.npc-identity-circle {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+/* Camera glyph overlay — hover-revealed on pointer devices, persistent at
+ * 0.6 opacity on touch. */
+.npc-camera-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 120ms ease;
+  pointer-events: none;
+}
+
+.npc-identity-circle:hover .npc-camera-overlay {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .npc-camera-overlay {
+    opacity: 0.6;
+  }
+}
+
+.npc-camera-overlay svg {
+  width: 13px;
+  height: 13px;
+  fill: var(--npc-bright);
+}
+
+/* Determinate-feeling upload ring — real system state, kept under
+ * reduced-motion (spinner reflects genuine upload progress, not decoration). */
+.npc-portrait-uploading-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  border-top-color: var(--npc-bright);
+  border-right-color: var(--npc-bright);
+  animation: npc-portrait-ring-spin 0.9s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes npc-portrait-ring-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.npc-portrait-upload-error {
+  font-family: var(--font-body);
+  font-style: italic;
+  font-size: 10px;
+  color: #c06060;
+  text-align: center;
+  margin-top: 3px;
+  max-width: 70px;
+  line-height: 1.3;
+}
+
+/* ─── Inactive-queue collapsed card (Story 29b) ───────────────────────────── */
+
+.btn-npc-collapse-toggle {
+  background: none;
+  border: none;
+  color: var(--pal-text-muted);
+  font-size: 13px;
+  line-height: 1;
+  padding: 3px 4px;
+  min-width: 24px;
+  min-height: 24px;
+  cursor: pointer;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: color 0.12s, background 0.12s;
+}
+
+.btn-npc-collapse-toggle:hover {
+  color: var(--npc-bright);
+  background: var(--npc-chip-bg);
+}
+
+.btn-npc-collapse-toggle svg {
+  transition: transform 150ms ease;
+}

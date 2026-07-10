@@ -2,7 +2,8 @@ import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react
 import { createPortal } from "react-dom";
 import MapViewer, { getMapZoomModifierLabel, readMapFreeZoomPreference, writeMapFreeZoomPreference } from "../maps/MapViewer";
 import MapLibraryModal from "./MapLibraryModal";
-import { putMapActive, putMapView, patchMapTokens } from "../../api";
+import { putMapActive, putMapView, patchMapTokens, putMapCalibration } from "../../api";
+import CalibrationPopover from "./battleMode/CalibrationPopover";
 import { displayMapName } from "./MapUploadModal";
 import { isPdfMap } from "../maps/mapFiles";
 import TokenTray from "./battleMode/TokenTray";
@@ -38,6 +39,13 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const rafRef = useRef(null);
   const viewerContainerRef = useRef(null);
 
+  // Calibration state (token scale)
+  const [localTokenScale, setLocalTokenScale] = useState(null); // null = use server state
+  const [calibOpen, setCalibOpen] = useState(false);
+  const [calibTweening, setCalibTweening] = useState(false);
+  const calibWriteTimerRef = useRef(null);
+  const calibTweenTimerRef = useRef(null);
+
   useEffect(() => {
     if (collapsedOverride === null) return;
     setCollapsed(Boolean(collapsedOverride));
@@ -54,6 +62,10 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
 
   // Effective tokens: local optimistic state overrides server state
   const effectiveTokens = localTokens !== null ? localTokens : (activeMap?.tokens || []);
+  // Effective token scale: local optimistic state overrides server state
+  const tokenScale = localTokenScale !== null ? localTokenScale : (activeMap?.tokenScale ?? 1);
+  const viewerZoom = viewerState?.scale ?? 1;
+  const labelsHidden = tokenScale * viewerZoom < 0.6;
 
   // Reset local optimistic state only when the active map itself changes.
   // Do NOT depend on activeMap?.tokens — that reference changes every poll tick
@@ -63,7 +75,14 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     setLocalMapMode(null);
     setHeldSourceId(null);
     setHeldType(null);
+    setLocalTokenScale(null);
+    setCalibOpen(false);
   }, [activeMapId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => {
+    if (calibWriteTimerRef.current) clearTimeout(calibWriteTimerRef.current);
+    if (calibTweenTimerRef.current) clearTimeout(calibTweenTimerRef.current);
+  }, []);
 
   useEffect(() => {
     sessionStorage.setItem("dnd_dm_map_height", String(mapHeight));
@@ -166,6 +185,22 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       await patchMapTokens(activeMap.id, payload, dmPassword);
       onLibraryChange();
     } catch { /* ignore — optimistic state holds until next poll */ }
+  }, [activeMap, dmPassword, onLibraryChange]);
+
+  const handleScaleChange = useCallback((nextScale, opts) => {
+    if (!activeMap) return;
+    const clamped = Math.min(2.5, Math.max(0.5, nextScale));
+    setLocalTokenScale(clamped);
+    // ± steppers / reset get a brief 120ms tween; slider drag stays 1:1 instant.
+    if (opts?.tween) {
+      setCalibTweening(true);
+      if (calibTweenTimerRef.current) clearTimeout(calibTweenTimerRef.current);
+      calibTweenTimerRef.current = setTimeout(() => setCalibTweening(false), 140);
+    }
+    if (calibWriteTimerRef.current) clearTimeout(calibWriteTimerRef.current);
+    calibWriteTimerRef.current = setTimeout(() => {
+      putMapCalibration(activeMap.id, clamped, dmPassword).then(onLibraryChange).catch(() => { /* ignore — optimistic state holds */ });
+    }, 600);
   }, [activeMap, dmPassword, onLibraryChange]);
 
   const handleToggleBattleMode = useCallback(async () => {
@@ -289,6 +324,8 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       onRemoveToken={handleRemoveToken}
       viewerContainerRef={viewerContainerRef}
       pal={pal}
+      labelHidden={labelsHidden}
+      calibTween={calibTweening}
     />
   )) : null;
 
@@ -314,6 +351,30 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
             onClick={(e) => { e.stopPropagation(); handleToggleBattleMode(); }}
             pal={pal}
           />
+        )}
+        {activeMap && isBattleMode && (
+          <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
+            <button
+              type="button"
+              className="btn-gear"
+              onClick={() => setCalibOpen((v) => !v)}
+              title="Token scale calibration"
+              aria-label="Token scale calibration"
+              style={{ "--pal-accent": pal.accent, "--pal-accent-dim": pal.accentDim, "--pal-text-muted": pal.textMuted }}
+            >
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.3.07-.61.07-.93 0-.32-.03-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.3-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.09-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.3-.07.63-.07.94s.03.64.07.94l-2.03 1.58c-.18.14-.23.4-.12.6l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.09.47 0 .59-.22l1.92-3.32c.12-.21.07-.47-.12-.6l-2.01-1.58z" />
+              </svg>
+            </button>
+            {calibOpen && (
+              <CalibrationPopover
+                tokenScale={tokenScale}
+                onChange={handleScaleChange}
+                onClose={() => setCalibOpen(false)}
+                pal={pal}
+              />
+            )}
+          </div>
         )}
         <div style={{ fontFamily: pal.fontUI, fontSize: 11, color: pal.textMuted }}>{collapsed ? "▼" : "▲"}</div>
       </div>
@@ -341,6 +402,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
                   publishedView={publishedView}
                   onViewChange={setViewerState}
                   freeZoom={freeZoom}
+                  tokenScale={tokenScale}
                   interactionMode={isBattleMode ? "dm" : undefined}
                   onTokenLayerClick={isBattleMode && heldSourceId ? handleTokenLayerClick : undefined}
                   onTokenClick={isBattleMode ? handleTokenClick : undefined}
