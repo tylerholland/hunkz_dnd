@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react";
 import { postCharacterRoll } from "../api";
 import RollHistoryList from "./RollHistoryList";
 import { buildCharacterRollPayload, buildDiceExprLabel, buildLocalRollHistoryEntry } from "../lib/rollHistory";
@@ -81,7 +81,7 @@ const STAT_NAMES = ["Strength", "Dexterity", "Constitution", "Wisdom", "Intellig
 const STAT_SHORT = { Strength: "STR", Dexterity: "DEX", Constitution: "CON", Wisdom: "WIS", Intelligence: "INT", Charisma: "CHA" };
 
 // ── DiceRoller component ───────────────────────────────────────────────────────
-export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
+const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pal, slug }, ref) {
   const [isOpen, setIsOpen] = useState(() => {
     if (!slug) return true;
     return sessionStorage.getItem(`dnd_dice_open_${slug}`) !== "false";
@@ -147,6 +147,24 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
       rolledGroups[0].rolls[0] = advKept;
     }
 
+    // 2d6 ability check adv/dis: roll a third d6, keep top 2 (adv) or bottom 2 (dis)
+    const isAbility2d6 = groups.length === 1 && groups[0].sides === 6 && groups[0].count === 2;
+    let keptRolls = null, droppedRoll = null;
+    if (isAbility2d6 && advMode !== "normal") {
+      const r3 = rollDie(6);
+      const all3 = [...rolledGroups[0].rolls, r3].sort((a, b) => a - b);
+      if (advMode === "advantage") {
+        // keep top 2
+        keptRolls = [all3[1], all3[2]];
+        droppedRoll = all3[0];
+      } else {
+        // keep bottom 2
+        keptRolls = [all3[0], all3[1]];
+        droppedRoll = all3[2];
+      }
+      rolledGroups[0].rolls = keptRolls;
+    }
+
     const diceTotal = rolledGroups.reduce((sum, g) => sum + g.rolls.reduce((s, r) => s + r, 0), 0);
     const total = diceTotal + flat;
     const rawRoll = isSingleD20 ? rolledGroups[0].rolls[0] : null;
@@ -171,12 +189,13 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
       const resultObj = {
         groups: rolledGroups, flat, total, isCrit, isFumble,
         label, advKept, advDiscarded, isMultiGroup,
+        keptRolls, droppedRoll,
       };
       resultObj.exprLabel = buildDiceExprLabel(groups, flat);
 
       setRollState({ rolling: false, result: resultObj });
 
-      const modeTag = isD20Attack && advMode !== "normal"
+      const modeTag = advMode !== "normal" && (isD20Attack || isAbility2d6)
         ? (advMode === "advantage" ? " (adv)" : " (dis)") : "";
 
       setHistory(prev => [
@@ -211,10 +230,15 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
     executeRoll({ groups: parsed.groups, flat: parsed.flat, label: `${weapon.name} DMG`, isD20Attack: false });
   };
 
-  const rollAbility = (stat) => {
+  const rollAbility = useCallback((statOrName) => {
+    const stat = typeof statOrName === "string"
+      ? (stats || []).find(s => s.name === statOrName) || { name: statOrName, score: 10, mods: [] }
+      : statOrName;
     const mod = getAbilityMod(stat);
-    executeRoll({ groups: [{ count: 1, sides: 20 }], flat: mod, label: `${stat.name} Check`, isD20Attack: true });
-  };
+    executeRoll({ groups: [{ count: 2, sides: 6 }], flat: mod, label: `${stat.name} Check`, isD20Attack: false });
+  }, [stats, executeRoll]);
+
+  useImperativeHandle(ref, () => ({ rollAbility }), [rollAbility]);
 
   const rollFree = () => {
     let groups, flat;
@@ -318,7 +342,7 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
 
           {/* Advantage strip */}
           <div className="flex-row" style={{ gap: 6, marginBottom: 2 }}>
-            <span className="label-ui-sm" style={{ marginBottom: 0, marginRight: 4 }}>d20 mode</span>
+            <span className="label-ui-sm" style={{ marginBottom: 0, marginRight: 4 }}>Roll mode</span>
             {["normal", "advantage", "disadvantage"].map(mode => {
               const isActive = advMode === mode;
               // Dynamic: three distinct color sets for the active state
@@ -530,9 +554,10 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
                   {!result.isMultiGroup && (() => {
                     const g = result.groups[0];
                     const hasAdv = result.advKept !== null && result.advDiscarded !== null;
+                    const has2d6Adv = result.droppedRoll != null && Array.isArray(result.keptRolls);
                     const hasFlat = result.flat !== 0;
                     const hasMultiRolls = g?.rolls?.length > 1;
-                    if (!hasAdv && !hasFlat && !hasMultiRolls) return null;
+                    if (!hasAdv && !has2d6Adv && !hasFlat && !hasMultiRolls) return null;
 
                     const chipStyle = (variant) => ({
                       fontFamily: pal.fontDisplay, fontSize: 13,
@@ -549,6 +574,13 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
                     if (hasAdv) {
                       chips.push(<span key="kept" style={chipStyle("used")} title="kept">{result.advKept}</span>);
                       chips.push(<span key="disc" style={{ ...chipStyle("discarded"), textDecoration: "line-through", opacity: 0.38 }} title="discarded">{result.advDiscarded}</span>);
+                    } else if (has2d6Adv) {
+                      result.keptRolls.forEach((r, i) => {
+                        chips.push(<span key={`k${i}`} style={chipStyle("used")} title="kept">{r}</span>);
+                        if (i < result.keptRolls.length - 1) chips.push(sep(`ks${i}`));
+                      });
+                      chips.push(sep("ds"));
+                      chips.push(<span key="dropped" style={chipStyle("discarded")} title="dropped">{result.droppedRoll}</span>);
                     } else if (hasMultiRolls) {
                       g.rolls.forEach((r, i) => {
                         chips.push(<span key={`r${i}`} style={chipStyle("normal")}>{r}</span>);
@@ -721,4 +753,6 @@ export default function DiceRoller({ weapons = [], stats = [], pal, slug }) {
       )}
     </div>
   );
-}
+});
+
+export default DiceRoller;

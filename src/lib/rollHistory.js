@@ -22,6 +22,11 @@ export function flattenRollValues(groups = []) {
 }
 
 export function extractRollValues(result) {
+  // 2d6 keep-2 path: keptRolls + droppedRoll carry all three dice
+  if (Array.isArray(result?.keptRolls) && result?.droppedRoll != null) {
+    return [...result.keptRolls, result.droppedRoll];
+  }
+  // d20 adv/dis path
   if (result?.advKept !== null && result?.advKept !== undefined && result?.advDiscarded !== null && result?.advDiscarded !== undefined) {
     return [result.advKept, result.advDiscarded];
   }

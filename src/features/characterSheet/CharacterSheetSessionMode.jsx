@@ -335,6 +335,7 @@ export default function CharacterSheetSessionMode({
   const hpServerRef = useRef(char?.hpCurrent ?? 0);
   const hpFlushRef = useRef(null);
   const [hpFlash, setHpFlash] = useState(null); // "dmg" | "heal" | null
+  const diceRollerRef = useRef(null);
 
   useEffect(() => {
     const incoming = initialData?.hpCurrent ?? 0;
@@ -694,7 +695,13 @@ export default function CharacterSheetSessionMode({
           <span className="cs-sm-label">Abilities</span>
           <div className="cs-sm-ability-grid">
             {abilityMods.map((a) => (
-              <div key={a.name} className="cs-sm-ability-chip">
+              <div
+                key={a.name}
+                className="cs-sm-ability-chip"
+                style={{ cursor: "pointer" }}
+                title={`Roll ${a.abbr} check (2d6)`}
+                onClick={() => diceRollerRef.current?.rollAbility(a.name)}
+              >
                 <span className="cs-sm-ability-mod" style={{ color: pal.gem }}>
                   {fmtMod(a.mod)}
                 </span>
@@ -1193,6 +1200,7 @@ export default function CharacterSheetSessionMode({
 
           {/* Dice roller */}
           <DiceRoller
+            ref={diceRollerRef}
             weapons={weapons}
             stats={stats}
             pal={pal}
