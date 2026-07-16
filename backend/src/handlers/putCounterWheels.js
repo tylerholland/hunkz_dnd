@@ -12,7 +12,8 @@ exports.handler = async (event) => {
 
   await saveCounterWheelsState({ wheels: body.wheels });
 
-  // If a wheel creation event was included, append it to roll history.
+  // If a wheel creation or fill-change event was included, append it to
+  // roll history. filledCount present = fill change; absent = creation.
   if (body.wheelEvent && typeof body.wheelEvent.name === "string") {
     const ev = body.wheelEvent;
     await appendRollHistoryEvent({
@@ -20,6 +21,7 @@ exports.handler = async (event) => {
       type: "wheel",
       name: ev.name,
       segments: Number.isFinite(ev.segments) ? ev.segments : 6,
+      ...(Number.isFinite(ev.filledCount) ? { filledCount: ev.filledCount } : {}),
       createdAt: new Date().toISOString(),
     });
   }

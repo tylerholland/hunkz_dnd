@@ -18,6 +18,7 @@ function badgeStyle(kind) {
 }
 
 export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  const isFillChange = Number.isFinite(entry.filledCount);
   return (
     <div
       style={{
@@ -54,7 +55,7 @@ export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false }
           flexShrink: 0,
         }}
       >
-        — {entry.segments} segments
+        {isFillChange ? `— ${entry.filledCount}/${entry.segments} filled` : `— ${entry.segments} segments`}
       </span>
     </div>
   );

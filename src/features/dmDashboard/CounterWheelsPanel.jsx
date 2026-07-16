@@ -547,7 +547,7 @@ export default function CounterWheelsPanel({ pal, dmPassword, initiativeEntries 
         return next;
       });
       if (step < steps) setTimeout(sweep, 25);
-      else schedulePut(latestWheelsRef.current);
+      else schedulePut(latestWheelsRef.current, { name: wheel.name, segments: wheel.segments, filledCount: to });
     };
     sweep();
   }
@@ -581,7 +581,7 @@ export default function CounterWheelsPanel({ pal, dmPassword, initiativeEntries 
       if (step < total) setTimeout(sweep, 25);
       else {
         // After sweep completes, debounce the write
-        schedulePut(latestWheelsRef.current);
+        schedulePut(latestWheelsRef.current, { name: wheel.name, segments: wheel.segments, filledCount: 0 });
       }
     };
     setTimeout(sweep, 90); // initial delay before sweep begins
