@@ -417,6 +417,15 @@
 
 .dm-prototype-shell[data-combat="true"] .dm-prototype-side-panel {
   grid-row: 1 / span 2;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+
+/* Pin rows to their content size so a tall side panel (many NPCs) can't
+   push counter wheels and dice roller apart. Spanning items (cards col 1,
+   side panel col 3) scroll within the grid area instead of inflating rows. */
+.dm-prototype-shell[data-combat="true"] {
+  grid-template-rows: min-content min-content;
 }
 
 .dm-prototype-shell[data-panels="true"] .dm-prototype-side-panel {
