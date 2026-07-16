@@ -1,19 +1,33 @@
 # Player Sheet — Profile / Session Mode Brief
 
 > Story 27. The player-facing character sheet evolves from a single narrow column into a context-aware surface with two clearly named modes — Profile (the booklet) and Session (the combat reference card). On desktop, Session mode unfolds into a two-column command surface anchored by a party status strip and live initiative. On mobile, the same two modes are reachable through a single, persistent toggle.
-> Produced by design-strategist. Revised pass 2 incorporating owner feedback on avatar size, dice shapes, weapon roll integration, and single-surface aesthetic.
+> Produced by design-strategist. **Revised pass 3** — incorporates the player's Design Direction (map as collapsible right-column panel, compact left-column HP, dedicated Recovery & Damage action zone) validated by the RPG Consultant Review. Pass-2 decisions on the mode toggle, party/initiative strips, dice/weapon integration, and single-surface aesthetic are preserved except where the Design Direction overrides them.
+
+---
+
+## 0. What changed in pass 3 (read this first)
+
+Three structural decisions from the player's Design Direction supersede pass 2. Everything else in this brief stands.
+
+1. **Map is a collapsible panel, not a sub-tab.** It lives at the **top of the right column**, always present, player-collapsible. The COMBAT / LOADOUT / NOTES sub-tabs live *below* it and are independent of whether the map is open or closed. There is no MAP sub-tab anymore.
+
+2. **HP moves to the left column, compact.** The 40px "HP hero" elevated card in the right column is **removed**. HP becomes a compact block in the left column, directly below the identity strip and above the ability chips — `28–32px` Cinzel current number, thin bar, inline `± 1` steppers. It stays visible regardless of which right-column tab (or map state) is active.
+
+3. **Recovery & Damage is a dedicated action zone** — separate from the passive HP readout. It contains **Take Damage**, **Receive Healing**, and **Spend Hit Die**, plus a contextual **concentration-check nudge**. The symmetric `[⚔ Damage] [✦ Heal]` button pair is retired. Potion healing stays in the Loadout `Use` button — it is *not* duplicated here.
+
+The reasoning, per the RPG Consultant Review: the player reads their own single HP number (which they roughly know already) — it never needed hero-size weight. The battle map is the dominant shared reference during combat and deserves the right column's width. And the three HP-change events at a real table (record DM-called damage, record ally/DM healing, spend hit dice on a rest) are asymmetric self-service actions, not a mirrored damage/heal pair.
 
 ---
 
 ## 1. Design intent
 
-The player at the table has two distinct jobs. Between sessions they are an **author** — reading their backstory, leveling up, updating equipment, planning spells. During play they are an **operator** — tracking HP under pressure, watching whose turn it is, calling for healing, deciding whether to burn a slot. The current sheet treats these jobs identically, which means the operator has to scroll past 800px of authorial content to find their HP bar.
+The player at the table has two distinct jobs. Between sessions they are an **author** — reading their backstory, leveling up, updating equipment, planning spells. During play they are an **operator** — tracking HP under pressure, watching whose turn it is, reading the battle map, calling for healing, deciding whether to burn a slot. The current sheet treats these jobs identically, which means the operator scrolls past 800px of authorial content to find their HP.
 
-The emotional goal is **mode confidence** — the player should always know which mode they are in, and switching should feel like turning the page of a notebook, not opening a new app. The functional goal is **zero-scroll session play** — on any device, the moment a player opens their sheet during combat they see their HP, their party's status, the current turn, and their dice tray without touching the screen.
+The emotional goal is **mode confidence** — the player should always know which mode they are in, and switching should feel like turning the page of a notebook, not opening a new app. The functional goal is **glance-able session play**: the moment a player opens their sheet during combat they can see their HP, their party's status, the current turn, the battle map, and their dice tray — and HP in particular stays pinned regardless of what they're looking at on the right.
 
-The mental model: **Profile is the booklet, Session is the combat card.** Same character, same data, different surface. On desktop, Session mode also becomes the first time the player sees their party as a unit — mirroring the DM dashboard's spatial model so the table now shares a common visual language for "who's hurt, whose turn, what round."
+The mental model: **the left column is "who I am and how I'm doing"; the right column is "what I'm looking at and doing."** HP lives on the left because "how I'm doing" is a persistent identity-level fact. The map and the combat/loadout/notes work surfaces live on the right because they are *what you're currently working with*. The vertical rule between columns is the seam between state and action.
 
-The aesthetic reference is the **DM dashboard** — one surface divided by lines, not a collection of floating card widgets. Depth comes from typography contrast (Cinzel vs. IM Fell English), palette washes, and a single elevated card for the HP hero. Everything else lives on the surface.
+The aesthetic reference is the **DM dashboard** — one surface divided by lines, not a collection of floating card widgets. Depth comes from typography contrast (Cinzel vs. IM Fell English), the palette wash on the left column, and selective glow used to communicate state.
 
 ---
 
@@ -21,666 +35,434 @@ The aesthetic reference is the **DM dashboard** — one surface divided by lines
 
 ### Profile mode = everything that exists today, untouched
 
-Profile mode is the current narrow single-column sheet. It contains:
-- The full portrait image (full-bleed) + tagline
-- The character details grid (race/class/subclass/alignment/background/origin)
-- The full stats block (HP/Hit Dice/Armor headline, ability score circles with flyouts, skills/spells/special abilities badges, XP/coin)
-- The four-tab strip (Inventory · Persona · Combat · Map) — all tabs available
-- The collections/sections backstory viewer below the stats block
+Profile mode is the current narrow single-column sheet: full-bleed portrait + tagline, character details grid, full stats block (ability circles with flyouts, skills/spells/special-ability badges, XP/coin), the four-tab strip (Inventory · Persona · Combat · Map), and the backstory collections viewer. **Nothing changes in Profile mode.** It is correct for reading, editing, leveling, and showing your character off.
 
-Nothing changes in Profile mode. It is correct for reading, editing, leveling, and showing your character off.
+### Session mode = the combat reference surface
 
-### Session mode = the combat reference card
+Session mode collapses or hides everything Profile-only and promotes session-critical fields. Session mode is view-only; editing always exits to Profile (gated behind unlock + edit as today).
 
-Session mode is a new layout that **collapses or hides everything Profile-only** and **promotes session-critical fields to the top of the surface**. Session mode is view-only — editing always exits to Profile (and is gated behind unlock + edit button as today).
+**What Session mode hides:** full portrait image (→ identity-strip portrait circle), character details grid, backstory collections, Persona/roleplay traits, the four-tab strip, and the chrome-level edit entry (still reachable via the top-bar `⋯` overflow).
 
-**What Session mode hides:**
-- Full portrait image (replaced by 56px portrait circle in the identity strip)
-- Character details grid (race/class/subclass/etc.)
-- Backstory collections viewer
-- Persona tab content (roleplay traits — these live in Profile only)
-- The four-tab strip (replaced by a smaller session-only tab control — see §4)
-- Edit mode entrypoint (still reachable via overflow menu, but not chrome-level)
-
-**What Session mode promotes (always visible, no scroll on desktop):**
-- Compact identity strip (portrait circle + name + class/level + AC + speed)
-- Tier-1: HP block (current/max/temp, ±1 stepper, Damage/Heal buttons)
-- Tier-1: Active conditions row (only active conditions; manager opens on tap)
-- Tier-1: Concentration banner (when active)
-- Tier-1: Spell slots row (when configured)
-- Tier-1: Party status strip + initiative strip (see §5/§6)
-- Tier-2: Inspiration toggle
-- Tier-2: Weapons + spells with inline roll buttons (Combat sub-tab — see §3b)
-- Tier-2: Session Notes (NOTES sub-tab)
-- Tier-2: Dice roller — **expanded by default** in Session mode
-- Tier-3: Map (MAP sub-tab — gets full right column in non-combat; see §4)
-- Tier-3: Compact ability-score modifier strip (six chips; tap to roll)
+**What Session mode promotes:**
+- **Left column (state):** identity strip → **compact HP block** → **Recovery & Damage action zone** → ability mod chips → initiative strip → party status strip.
+- **Right column (action):** **collapsible Map panel (top)** → concentration banner (when active) → conditions row → spell slots → inspiration → **COMBAT / LOADOUT / NOTES sub-tabs** → dice roller (pinned bottom, expanded by default).
 
 ### Where does Inventory live?
 
-Profile mode keeps the existing Inventory tab in full. Session mode exposes a **"Loadout" sub-tab** for the full grid (attunement toggles, equipped toggles, qty steppers, potion Use button, Drop Item). Session mode also shows abridged Weapons quick-reference in the Combat sub-tab with inline roll buttons. Both pull from the same `weapons[]` / `equipment[]` data — no duplication.
+Profile keeps the full Inventory tab. Session exposes a **LOADOUT sub-tab** for the full grid (attunement, equipped toggles, qty steppers, potion `Use`, Drop Item). The COMBAT sub-tab shows the abridged weapons/spells roll surface. Both read the same `weapons[]` / `equipment[]` data — no duplication.
 
 ---
 
 ## 3. The mode toggle
 
-### Placement
+Unchanged from pass 2.
 
-A single persistent control: a **two-state segmented pill** labeled `PROFILE | SESSION`, IM Fell English 12px uppercase, `letterSpacing: 0.2em`, in the same visual family as the existing tab strip.
+A two-state segmented pill labeled `❡ PROFILE | ⚔ SESSION`, IM Fell English 12px uppercase, `letterSpacing: 0.2em`, in the same visual family as the tab strip.
 
-- **Mobile and narrow desktop (<900px)**: pinned to the top of the sheet, immediately below the top bar. Full-width segmented control, 44px tall.
-- **Desktop ≥900px**: anchored top-left inside the left column, just above the identity strip. Always reachable without scrolling.
+- **<900px:** sticky at the top of the sheet, immediately below the top bar. Full-width, 44px tall.
+- **≥900px:** top of the left column (spanning its 340px width), just above the identity strip. Always reachable without scrolling.
 
-The active segment uses the existing active-tab treatment (`pal.accentDim` background, `pal.accent` border, `pal.accentBright` text). Inactive segment is transparent with `pal.border` and `pal.textMuted`.
+Active segment uses the existing active-tab treatment (`pal.accentDim` bg, `pal.accent` border, `pal.accentBright` text). Inactive is transparent with `pal.border` / `pal.textMuted`.
 
-### Labels
+**Persistence:** `sessionStorage.dnd_mode_${slug}` ∈ `"profile" | "session"`, default `"profile"`.
 
-`PROFILE` and `SESSION`. Each segment has a small leading glyph: ❡ for Profile, ⚔ for Session.
-
-### Persistence
-
-Stored as `sessionStorage.dnd_mode_${slug}` with values `"profile"` or `"session"`. Default on first visit is **Profile**.
-
-### Auto-switch behavior
-
-If `initiative.entries.length > 0` AND `round > 0` AND no stored preference, the page opens in Session mode with a 180ms accent-border pulse on the toggle. Explicit player override always wins — no re-auto-switch.
+**Auto-switch:** if `initiative.entries.length > 0 AND round > 0 AND` no stored preference → open in Session with a 400ms `accentBright` border pulse on the pill. Explicit player override always wins.
 
 ---
 
-## 3b. Weapon and spell roll integration
+## 3a. Compact HP block (left column) — NEW PLACEMENT
 
-The Combat sub-tab shows weapons and spells not as a read-only reference but as a **roll surface** — every row has direct attack and damage buttons. The player should never need to manually configure the dice roller for a weapon they use every turn. All rolls flow into the shared dice roller history.
+The HP block sits in the left column directly below the identity strip and above the ability chips. It is a **passive readout with a light self-service stepper** — not the action zone (that's §3b). Keeping it in the left column means it is **always visible**: when the player is reading the battle map or flipping to Loadout on the right, a DM's "you take 12" still lands on a number that's on screen.
 
-### The two-step roll model
-
-D&D's attack rhythm is: declare → roll attack → DM calls AC → roll damage. The UI mirrors this. **Two buttons per row**: `[ ⚔ Attack ]` and `[ ✦ Damage ]`, always visible. They are separate, not combined — combining them hides the miss case and doesn't match how the game is played.
-
-After an Attack roll, the Damage button **brightens and pulses** (240ms accent pulse, then settles to an elevated state for 8 seconds) to signal "your attack landed — now roll damage." The player can still tap Damage independently when they don't need the to-hit check (auto-hits, follow-up DM calls). After 8 seconds, the Damage button decays back to its secondary weight.
-
-### Three behavior classes
-
-**1. Attack-roll items** (weapons, eldritch blast, ray of frost): `[ ⚔ Attack ]` + `[ ✦ Damage ]`. Default shape.
-
-**2. Save-DC spells** (fireball, hold person): `[ ✦ Cast (DC 15) ]` + `[ ✦ Damage ]`. Cast does not roll d20 — it announces the spell, consumes the slot, and prints `Cast Fireball at L3 · DC 15` into history. The target's save happens on the DM/target side.
-
-**3. Utility / duration spells** (hex, hunter's mark, bless): `[ ✦ Cast ]` only. No damage roll. If the spell requires concentration, casting automatically sets the concentration banner.
-
-### Spell slot auto-consume
-
-When a leveled spell is cast (Attack, Cast, or Damage — whichever fires first), the highest available slot of that spell's level is **decremented automatically**. The dice roller result card shows `Slot L2 used` in IM Fell English 11px tracked, with an `Undo` ghost link that stays live for 8 seconds, then fades.
-
-If no slot of the spell's level is available: the action buttons render in `pal.textMuted`, labelled `No L2 slot`, and are non-interactive. The row's expand chevron still works for reading the description.
-
-### Cantrips
-
-Cantrips show `Cantrip` instead of a level pill, never consume a slot, and never show the slot-used line in the result.
-
-### Result display — shared dice roller history
-
-All rolls — from weapon rows, ability chip taps, and the dice roller's own controls — write to the **same roll history in the dice roller**. No floating result cards, no per-row inline result. History is the single bulletin board.
-
-History entry format for weapon/spell rolls includes a source label:
+### Anatomy
 
 ```
-Hex Blade · Attack    1d20+7 → 18
-Hex Blade · Damage    1d8+4  → 9 slashing
-Fireball  · Cast      L3 slot used · DC 15
-Fireball  · Damage    8d6    → 28 fire
+┌──────────────────────────────────────┐
+│ ① HP   ② 32 / 45   ③ +5 temp   ④[−][+]│
+│ ⑤ [██████████████░░░░░] 4px bar       │
+└──────────────────────────────────────┘
 ```
 
-Source label: IM Fell English 10px tracked `pal.textMuted`. On mobile, a row-initiated roll triggers auto-scroll to the history entry (320ms smooth scroll), followed by a 220ms `pal.accentBright` border pulse on the new entry.
+① **"HP" label** — IM Fell English 11px uppercase tracked `pal.textMuted`.
+② **Current / max** — `current` in **Cinzel 28px** `pal.gem` (drops to wounded amber `#c8a840` <50%, danger red `#c06060` ≤20%); ` / max` in Cinzel 16px `pal.textMuted`.
+③ **Temp HP badge** — only when `tempHP > 0`. IM Fell English 11px tracked `pal.accentBright`, faint bordered pill. Absent (not greyed) when zero.
+④ **± 1 steppers** — two 32px circle steppers (44px tap target), right-aligned. Hold-to-repeat (500ms delay, 80ms repeat), floating `+N/−N` delta indicator in `pal.gem`, 300ms debounced flush via `patchSession`. Minor nudges only.
+⑤ **HP bar** — full block width, **4px tall**. Color thresholds: healthy `#5a9a5a` >50%, wounded `#c8a840` 20–50%, critical `#c06060` ≤20%. 280ms width transition; damage flash red 180ms / heal flash green 180ms on change.
 
-### Advantage / disadvantage
+**Block height:** ~52px. No card border, no elevation — lives on the tinted left-column surface, separated from neighbors by a hairline rule + label.
 
-A **per-row adv/dis chip** (24×24px) sits between the row metadata and the action buttons. Single-tap cycles `·` (inherit global) → `▲` (advantage) → `▼` (disadvantage) → `·`. When set to non-normal, the chip glows `pal.accentBright`. The override applies to the next Attack roll from this row only, then resets to `·`.
+### 0 HP / unconscious state
 
-The global adv/dis toggle in the dice roller also resets to Normal after each row-initiated roll (matching the DM dice roller behavior).
+Number area replaces `0 / 45` with **"UNCONSCIOUS"** in Cinzel 20px `#c06060`. Bar sits at 0% in `#c06060`. Whole region gets `deathGlow` slow red pulse (1.4s). Death-save pips render passively below the bar (display-only v1): three success pips (`#5a9a5a`) + three failure pips (`#c06060`), filled per `deathSaves`. ± steppers remain.
 
-### Row anatomy
+---
+
+## 3b. Recovery & Damage action zone — NEW SECTION
+
+A dedicated, clearly-labeled action region that models the **actual asymmetric HP-change events at the table**.
+
+### Placement
+
+Left column, directly below the compact HP block. Rationale: cause (action) and effect (number moving) are in the same eye-fixation. Keeps all HP management always-visible regardless of right-column tab/map state.
+
+### Anatomy
+
+```
+┌──────────────────────────────────────┐
+│ ── RECOVERY & DAMAGE ──               │
+│  ① [ ⚔ Take Damage ]  ② [ ✦ Heal ]    │
+│  ③ [ ◈ Spend Hit Die · 3 left ]       │
+│  ④ ⚠ Concentration: DC 12 save        │  ← contextual only
+└──────────────────────────────────────┘
+```
+
+① **Take Damage** — primary, most-used. Ghost button; hovers to faint danger tint. Tapping reveals an **inline number stepper + confirm**: number field, `−/+` steppers, six preset jumps (3 · 5 · 8 · 10 · 15 · 20), `Apply` confirm. Applies negative delta via `patchSession`; temp HP consumed first. Escape / re-tap cancels. Preferred form is in-column inline expansion (not modal); `DamageHealModal` is the fallback — flag for architect (§15.6).
+
+② **Heal (Receive Healing)** — secondary weight. Same inline stepper pattern; positive delta clamped to `hpMax`. Label: **`✦ Heal`**.
+
+③ **Spend Hit Die** — full-width ghost button. Label shows remaining: **`◈ Spend Hit Die · 3 left`**. Tapping rolls one hit die + CON mod, applies to `hpCurrent` (clamped to max), decrements count, prints to shared dice history (`Spend Hit Die  1d8+1 → 6 regained`). When no dice remain: `◈ No hit dice left`, 0.4 opacity, non-interactive. Uses `hitDiceCurrent` + CON modifier; die size parses from `hitDice` (e.g. `"4d10"` → d10). Flag absent-field fallback for architect.
+
+④ **Concentration-check nudge** — contextual only. Appears after Take Damage is applied while `concentration.active` is true: **`⚠ Concentration: DC {max(10, floor(dmg/2))} save`** in IM Fell English 11px, amber `#c8a840`. Auto-dismisses after 10 seconds or next HP change / concentration drop. Not a button — display only.
+
+### Section header
+
+`── RECOVERY & DAMAGE ──` — IM Fell English 11px uppercase tracked `pal.textMuted`, hairline rule above.
+
+### What this section deliberately excludes
+
+- **Potion healing** — stays in the Loadout `Use` button (extended to also apply HP via `patchSession`).
+- **Long rest** — DM-applied via the dashboard.
+- **Death saves, conditions, inspiration** — remain where they are.
+
+---
+
+## 3c. Weapon and spell roll integration
+
+Unchanged from pass 2.
+
+- **Two-step roll model:** `[ ⚔ Attack ]` + `[ ✦ Damage ]` per attack-roll row, always visible and separate. After an Attack roll, the Damage button brightens and pulses (240ms pulse, hold 8s, 320ms decay).
+- **Three behavior classes:** attack-roll items; save-DC spells (`✦ Cast (DC 15)` + `✦ Damage`); utility/duration spells (`✦ Cast` only, sets concentration banner if applicable).
+- **Spell-slot auto-consume:** casting decrements the highest available slot of that level; result card shows `Slot L2 used` with 8s `Undo` ghost link. No slot → `No L2 slot` in `pal.textMuted`, non-interactive. Cantrips show `Cantrip`, never consume.
+- **Shared history:** every roll (weapon rows, ability chips, dice-roller, **Spend Hit Die**) writes to the single dice-roller history with a source label (IM Fell English 10px tracked).
+- **Per-row adv/dis chip:** 24×24px, cycles `·` → `▲` → `▼` → `·`; glows `pal.accentBright` when set; applies to next Attack from that row only, then resets.
+- **DieShape SVGs required:** all dice reuse existing `DieShape` polygon SVGs from `DiceRoller.jsx`.
+
+Row anatomy:
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
 │ Hex Blade                 1d8+4 · +7 hit              ⌄        │
 │ [ ⚔ Attack ]  [ ✦ Damage ]   [·]                               │
 └────────────────────────────────────────────────────────────────┘
-
 ┌────────────────────────────────────────────────────────────────┐
 │ Fireball  (L3)            8d6 fire · DC 15            ⌄        │
 │ [ ✦ Cast (DC 15) ]  [ ✦ Damage ]   [·]                         │
 └────────────────────────────────────────────────────────────────┘
-
 ┌────────────────────────────────────────────────────────────────┐
 │ Hex  (L1)                 Concentration · BA          ⌄        │
 │ [ ✦ Cast ]   [·]                                               │
 └────────────────────────────────────────────────────────────────┘
 ```
 
-- **Name**: 15px Crimson Text `pal.text`. Level pill `(L3)` in IM Fell English 11px tracked `pal.accent`. Cantrips: `(Cant.)` in `pal.textMuted`.
-- **Metadata**: 12px IM Fell English `pal.textMuted`. Format: `Xd Y · +N hit` / `Xd Y · DC N` / `Concentration · BA`.
-- **Expand chevron**: 24×24px tap target. Toggles description row.
-- **Action buttons**: 36px tall. Attack uses ⚔, Damage/Cast use ✦. `.btn-ghost` at rest; Damage brightens for 8s after Attack roll.
-- **Per-row adv/dis chip**: 24×24px. Cycles `·` → `▲` → `▼`.
-- **Row height**: 56px. No card chrome — rows are separated by `1px solid pal.border` on the surface.
+---
 
-### Dice visual treatment — existing DieShape components required
+## 4. The Map panel — NEW: collapsible right-column panel, not a tab
 
-All dice rendered in the Session mode dice roller, weapon row roll triggers, and ability chip roll triggers **must reuse the existing `DieShape` polygon SVG components** from `src/components/DiceRoller.jsx` (d4 triangle, d6 square, d8 diamond, d10 kite, d12 pentagon, d20 near-circle, d100 octagon). Square/rectangular die buttons are a regression — the shaped dice are a distinctive app feature. Do not redraw them.
+### Behavior
+
+- **Lives at the top of the right column**, above the concentration banner and above the sub-tab strip. Always present (when a map is active), **always independent of the COMBAT / LOADOUT / NOTES tabs** below it.
+- **Collapsible by the player.** Header: `▾ MAP · {map name}` with a pulsing green dot when active. State persisted in `sessionStorage.dnd_map_open_${slug}`. Default: **open** when an active map exists AND combat is active; **collapsed** otherwise.
+- **Expanded height:** `min(46vh, 460px)` on desktop; `min(42vh, 360px)` on mobile. `MapViewer` (existing component) fills it.
+- **No active map:** collapses to a single quiet inert line — `MAP · the DM hasn't set a map yet` italic Crimson 13px `pal.textMuted`. Brightens live when the DM activates one (220ms ease-in + green dot fade-in).
+
+### Anatomy
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ ▾ MAP · Goblin Warren  ●                          [collapse] │
+│ ┌─────────────────────────────────────────────────────────┐ │
+│ │              MapViewer (pan / zoom)                     │ │
+│ │              min(46vh,460px)                            │ │
+│ └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+── (concentration banner, if active) ──
+── (conditions · slots · inspiration) ──
+── [ COMBAT | LOADOUT | NOTES ]  sub-tabs ──
+── Dice Roller (expanded) ──
+```
+
+### Why a panel beats a tab
+
+A tab forces either/or: map *or* weapons. A collapsible panel above the tabs lets the player keep the map open while weapon rows sit just below — both in one scroll. On their turn they just look down. Collapsing reclaims space for the combat surface.
+
+### Sub-tab strip
+
+**COMBAT · LOADOUT · NOTES** (three tabs; MAP removed). COMBAT is default. Persona unreachable in Session by design.
 
 ---
 
-## 4. Desktop two-column layout (≥900px breakpoint)
+## 5. Desktop two-column layout (≥900px)
 
-### Single-surface model (most important design principle)
+### Single-surface model
 
-The Session view is **one dark surface divided into two columns by a vertical rule** — not two floating panels. This is what makes the DM dashboard feel premium: one object, not a collection of card widgets. Apply the same restraint here.
+One dark surface divided into two columns by a vertical rule — not floating panels. Sections within columns separated by horizontal rules, IM Fell English labels, and spacing — not bordered boxes.
 
-Sections inside each column are separated by:
-- **Horizontal rules** (`1px solid pal.border`, `margin: 20px 0`)
-- **IM Fell English section labels** (11px uppercase tracked `pal.textMuted`) above each region
-- **Spacing** (12–24px vertical) within regions
+**Elevated cards (only):** the Map panel body (1px border + faint inset, no drop shadow), modals, and the dice roller. Compact HP block and Recovery & Damage zone are **not** cards.
 
-**Sections that ARE elevated cards** (floating above the surface, `pal.surface` background, 1px border, subtle box-shadow):
-- **The HP hero block** — the most important interactive element earns its own elevation
-- **Modals** (Damage/Heal, Condition Manager)
-- **The dice roller** — keeps its existing chrome
-
-**Everything else lives on the surface** — identity strip, ability chips, initiative strip, party strip, conditions row, spell slots, inspiration toggle, weapon/spell rows, sub-tab content. No individual bordered boxes. No drop shadows on these elements. Rhythm comes from rules, labels, and typography.
-
-### Left column palette wash
-
-The left column receives a very subtle palette-tinted wash: `background: linear-gradient(180deg, rgba(pal.accent, 0.05) 0%, rgba(pal.accent, 0.02) 100%)`. The right column stays on the page background (no tint). The vertical rule between columns is the meeting line between the tinted "who and when" side and the neutral "what you do" side.
-
-### HP hero — scaled back
-
-The prototype's HP hero was too dominant. Revised scale:
-- **Current HP**: Cinzel **40px**, `pal.gem`
-- **Slash + max HP**: Cinzel 24px, `pal.textMuted`
-- **Temp HP badge**: 13px IM Fell English tracked, `pal.accentBright`
-- **HP bar**: **6px tall**, full card width, color-coded
-- **Buttons**: `[−] [+]` are 32px circle steppers; `[⚔ Damage] [✦ Heal]` are 36px tall `.btn-ghost`
-- **Card total height**: ~96px. Still the most prominent element in the right column, but no longer dominating.
+Left column: subtle `linear-gradient(180deg, rgba(pal.accent,0.05) 0%, rgba(pal.accent,0.02) 100%)`. Right column: page background, no tint.
 
 ### Column anatomy
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│ ① Top bar: ← All Characters · World Guide · Export · ⋯               │
-├────────────────────────────────────────────────────────────────────────┤
-│ ② [❡ PROFILE | ⚔ SESSION] toggle                                      │
+│ ① Top bar: ← All Characters · World Guide · Export · ⋯                 │
 ├──────────────────────────┬─────────────────────────────────────────────┤
+│ ② [❡ PROFILE | ⚔ SESSION] (spans left col, top)                        │
+├──────────────────────────┼─────────────────────────────────────────────┤
 │ LEFT (tinted wash)       │ RIGHT (neutral surface)                     │
-│ 340px sticky             │ flex, max ~720px, scrolls                   │
+│ 340px sticky             │ flex, max ~760px, scrolls                   │
 │                          │                                             │
-│ ③ Identity strip         │ ── ⑦ Concentration banner (when active) ── │
-│  [56/72px portrait]      │                                             │
-│  Name · Class · Lvl      │ ⑧ HP HERO  [ elevated card ]               │
-│  AC  Spd  badges         │   40  /44    +5 temp                        │
-│                          │   [────────────░] 6px bar                   │
-│ ── ABILITIES ──          │   [−][+]   [⚔ Damage]  [✦ Heal]            │
-│ ④ Ability mod chips      │                                             │
-│  3×2 grid                │ ── CONDITIONS ──                            │
-│                          │ ⑨ Active conditions row  [+ Manage]         │
-│ ── INITIATIVE ──         │                                             │
-│ ⑤ Initiative entries     │ ── SPELL SLOTS ──                           │
-│  (full list, always)     │ ⑩ Per-level pip rows                        │
-│                          │                                             │
-│ ── PARTY ──              │ ── ⑪ Inspiration ──                         │
-│ ⑥ Party member rows      │                                             │
-│  44px / 56px+glow active │ ── ⑫ Session sub-tabs ──                    │
-│                          │   COMBAT | LOADOUT | MAP | NOTES  38px      │
-│                          │                                             │
-│                          │ ⑬ Sub-tab content                           │
-│                          │   (Map expands to fill in non-combat)       │
-│                          │                                             │
-│                          │ ⑭ Dice roller  [ own card chrome ]          │
+│ ③ Identity strip         │ ⑩ MAP PANEL (collapsible, top)              │
+│  [56/72px portrait]      │   ▾ MAP · name  ●                           │
+│  Name · Class · Lvl      │   [ MapViewer  min(46vh,460px) ]            │
+│  AC  Spd  badges         │                                             │
+│ ── HP ──                 │ ── (⑪ Concentration banner, when active) ── │
+│ ④ Compact HP block       │                                             │
+│  HP 32/45 +temp [−][+]   │ ── CONDITIONS ──                            │
+│  [████████░░] 4px        │ ⑫ Active conditions row  [+ Manage]         │
+│ ── RECOVERY & DAMAGE ──  │                                             │
+│ ⑤ [⚔ Take Damage][✦ Heal]│ ── SPELL SLOTS ──                           │
+│   [◈ Spend Hit Die ·3]   │ ⑬ Per-level pip rows                        │
+│   ⚠ Conc DC (contextual) │                                             │
+│ ── ABILITIES ──          │ ── ⑭ Inspiration ──                         │
+│ ⑥ Ability mod chips 3×2  │                                             │
+│ ── INITIATIVE ──         │ ── ⑮ [ COMBAT | LOADOUT | NOTES ] ── 38px   │
+│ ⑦ Initiative entries     │                                             │
+│ ── PARTY ──              │ ⑯ Sub-tab content (weapons/loadout/notes)   │
+│ ⑧ Party member rows      │                                             │
+│                          │ ⑰ Dice roller  [ own card chrome, open ]    │
 └──────────────────────────┴─────────────────────────────────────────────┘
          ▲ single 1px pal.border vertical rule, full height
 ```
 
-### Numbered legend
+### Widths & breakpoints
 
-① **Top bar** — unchanged from today. Full-width, above mode toggle.
-
-② **Mode toggle** — top-left, ~220px wide. Always visible without scrolling.
-
-③ **Identity strip** — 56px portrait circle at rest; grows to **72px and glows** when it's the player's own turn (see §5). Name Cinzel 20px, "Class · Lvl N" IM Fell English 11px tracked. AC and Speed as small badges. No card border — lives on the tinted surface.
-
-④ **Ability mod chips** — 3×2 grid. Stat name IM Fell English 10px, modifier Cinzel 22px `pal.gem`. Tap to shortcut a roll into the dice roller.
-
-⑤ **Initiative strip** — full list always visible. See §6.
-
-⑥ **Party strip** — 44px resting / 56px active-turn avatars with palette ring glow. See §5.
-
-⑦ **Concentration banner** — full right-column width. Inline on the surface (no card chrome). Hidden when not concentrating. `+ Concentration` ghost button in its place when inactive.
-
-⑧ **HP hero** — elevated card as described in "HP hero — scaled back" above. Only elevated card in the page body.
-
-⑨–⑪ **Right column sections** — live on the surface, separated by horizontal rules and IM Fell English labels. No individual card borders.
-
-⑫ **Session sub-tabs** — 38px strip: COMBAT (default in combat / when map is inactive), LOADOUT, MAP (auto-selected in non-combat when active map exists), NOTES.
-
-⑬ **Sub-tab content** — scrolls within the right column. **Map panel option**: when no initiative is active and a map is set, MAP tab is auto-selected and the content area expands to fill available height between the inspiration row and the dice roller (~480–640px). MapViewer fills this space. Combat sub-tab (and others) have their natural content height only.
-
-⑭ **Dice roller** — pinned to bottom of right column, expanded by default. Keeps its own chrome (self-contained component). All weapon row and ability chip rolls append to this history.
-
-### Column widths and breakpoints
-
-- **<900px**: single column (see §8)
-- **900–1199px**: left 320px, right flexes; names truncate, party HP bars ~80px
-- **≥1200px**: left 340px, right max ~720px, left-aligned
-- **≥1600px**: additional width is whitespace
-
-### Does the tab bar survive?
-
-**No.** The Profile four-tab strip is replaced in Session mode by the mode toggle + Session sub-tab strip. Persona tab is unreachable in Session mode by design.
+- **<900px:** single column.
+- **900–1199px:** left 320px, right flexes; map panel `min(44vh, 420px)`.
+- **≥1200px:** left 340px, right max ~760px.
+- **≥1600px:** extra width is whitespace (map-as-third-column is out of scope for v1).
 
 ### Scroll behavior
 
-Right column scrolls only. Left column is sticky below the top bar + mode toggle. If party + initiative + chips overflow viewport height, the party strip becomes internally scrollable; identity and initiative stay anchored.
+Right column scrolls only; left column sticky. If left column overflows viewport height, the **party strip** becomes internally scrollable; identity, HP, and Recovery & Damage stay anchored at the top.
 
 ---
 
-## 5. Party status strip
+## 6. Turn indicator: avatar grow + glow
 
-The party strip is the player's ambient awareness of the rest of the table. **Avatars are the dominant signal** — larger than in a typical strip, with the active-turn member's avatar grown and glowing as the primary turn indicator.
+Avatars are the dominant turn signal. The `⚔` glyph indicator is removed.
 
-### Avatar sizing
-
-- **Resting**: **44px** portrait circles
-- **Active turn**: **56px** — the avatar of the character whose initiative turn it currently is grows to this size. This is the primary turn indicator. Animated: 220ms ease-out scale on enter, 180ms ease-in on exit.
-- **Active-turn ring glow**: `box-shadow: 0 0 0 2px pal.accent, 0 0 12px 4px rgba(pal.accent, 0.45)`, pulsing at 1.8s cycle (spread 4px→8px→4px, opacity 0.45→0.65→0.45). In that character's own palette accent.
-
-The `⚔` glyph turn indicator from earlier designs is **removed** — avatar size + glow is the indicator.
-
-### Identity strip portrait — own turn
-
-When it's the **current player's own turn**, their portrait in the identity strip (top of left column) also grows and glows:
-- Grows from resting 56px to **72px**
-- Same `pal.accent` ring glow, 1.8s pulse
-- 220ms ease-out scale on enter
-
-This ensures "YOUR TURN" is felt at the identity level — their own face on the page signals the turn before any text is read. The initiative strip `· YOUR TURN` label remains for reinforcement.
-
-### Row anatomy
-
-```
-Resting (44px portrait):
-│ [◉Ar 44px]  Aragorn   18/24  [██████░░]  [Prone]  │
-
-Active turn (56px portrait + ring glow):
-│ [◉Ar 56px🔆]  Aragorn   18/24  [██████░░]  [Prone]  │
-```
-
-- **Portrait**: 44/56px circle, in that character's palette color. Initial letter if no portrait.
-- **Name**: Cinzel 14px, in that character's `pal.accent` color.
-- **HP numerals**: `current/max` Cinzel 14px. Red when below 20%.
-- **HP bar**: 80–100px wide, 6px tall, proportional fill with standard color thresholds.
-- **Active conditions**: up to 2 inline chips; `+N` overflow.
-- **Bloodied state**: row border brightens to `pal.accent` at <50%; `#c06060` at ≤20%; `deathGlow` red pulse at 0 HP.
-- **Concentration dot**: small pulsing gem dot between name and HP when concentrating.
-- **Inspiration dot**: small gem dot next to name when inspired.
-
-### HP display: exact
-
-Show both numerals AND bar. Exact numbers matter to the healer planning spell slots.
-
-### What is NOT shown
-
-- Spell slots, inventory, full stats, AC, ability mods, DM notes
-- Death save pip count — row shows "DOWN" at 0 HP, "FALLEN" in `#c06060` Cinzel at 3 failures
-
-### Self-card omitted
-
-Strip shows only other party members. Own HP is the right-column hero card.
-
-### Read-only
-
-Tapping a row does nothing. Ambient communication, not action surface.
-
-### Data source — **architect concern (§14.1)**
-
-Needs `GET /dm/party` equivalent. New player-accessible endpoint required.
-
-### Mobile delta
-
-44px resting / 56px active on mobile too. At 320–360px, HP bars shrink to ~60px to preserve the 56px active avatar without truncating names.
+- **Party avatars:** 44px resting → **56px on active turn**, `box-shadow: 0 0 0 2px pal.accent, 0 0 12px 4px rgba(pal.accent,0.45)` pulsing 1.8s cycle. 220ms ease-out grow / 180ms ease-in shrink.
+- **Own identity portrait:** on own turn, 56px → **72px** with same ring glow + 1.8s pulse. `· YOUR TURN` label reinforces it.
 
 ---
 
-## 6. Initiative strip
+## 7. Party status strip
 
-### Anatomy
+Each row: portrait circle (44/56px, palette-colored) + name in character's `pal.accent` + exact HP numerals (Cinzel 14px, red <20%) + proportional HP bar (6px, 80–100px) + up to 2 condition chips. Bloodied border brightens <50%; `#c06060` ≤20%; `deathGlow` at 0. Concentration/inspiration gem dots near name. **Self-card omitted. Read-only.**
 
-```
-┌─────────────────────────────────────┐
-│ INITIATIVE             Round 3      │
-├─────────────────────────────────────┤
-│  ▸ Eoghan       (you)  · YOUR TURN │  ← active + self
-│    Goblin Scout                     │  ← npc, plain
-│    Aragorn                          │  ← pc, palette dot
-│    Goblin B                         │
-│    Aesop                            │
-└─────────────────────────────────────┘
-```
-
-### Header
-
-- "INITIATIVE" label: IM Fell English 11px uppercase tracked, `pal.textMuted`
-- Round counter: Cinzel 13px `pal.accentBright`. On advance: 400ms brighten pulse.
-- Empty state: "No initiative set" italic Crimson Text 13px `pal.textMuted`.
-
-### Each entry
-
-- **Active turn**: `▸` glyph `pal.accentBright`, name brightened, 2px left border `pal.accentBright`, subtle `pal.accentDim` row background.
-- **Player's own turn** (active): same + `· YOUR TURN` in 11px IM Fell English tracked, with 600ms accent-glow pulse.
-- **Player's own entry** (not active): name in own `pal.accent` color.
-- **Other PC entries**: name in that PC's `pal.accent` color + 16px palette-colored dot to the left.
-- **NPC/enemy entries**: name in `pal.textBody`, no leading dot — plainer than PC rows by design.
-- **NPC/enemy health tier glow**: when wounded, the enemy row carries a soft glow — **yellow** (`box-shadow: 0 0 6px rgba(200,168,64,0.4)`, amber 2px left border) below 50% HP; **red** (`box-shadow: 0 0 8px rgba(192,96,96,0.5)`, danger 2px left border) below 25% HP. No bar, no numerals — glow only. DM-configurable toggle in session settings; default **on**.
-
-### Hidden enemies
-
-The DM controls show/hide per NPC initiative entry **globally** (not per-player). Entries marked hidden are omitted entirely from all player views — no placeholder. Future addition (flag only): a "Hidden" boolean on the initiative entry shape visible on the DM's own view (greyed/marked) but omitted from player-facing views.
-
-### Initiative roll values
-
-**Not shown** — order only. See §14.2.
-
-### Read-only
-
-Tapping an entry does nothing.
-
-### Data source — **architect concern (§14.1)**
-
-Reuses `GET /initiative` — currently DM-only auth. Must be accessible from the player sheet.
+Data source: `GET /party/status` (unauthenticated). When DM disabled: `Party status hidden by DM` italic Crimson 13px.
 
 ---
 
-## 7. Edge cases and empty states
+## 8. Initiative strip
 
-### Solo character (no party, no initiative)
+Full order always visible on desktop; collapsed to one active-turn line + `▼ Show order` on mobile. Header: `INITIATIVE` + round counter (Cinzel 13px `pal.accentBright`, 400ms pulse on advance). Active entry: `▸` glyph, brightened name, 2px `pal.accentBright` left border. Own active turn adds `· YOUR TURN` (600ms glow pulse). Own non-active: name in own `pal.accent`. Other PCs: name in their `pal.accent` + 16px palette dot. NPCs: `pal.textBody`, no dot. NPC health-tier glow (amber <50%, red <25%) — no bars or numerals for enemies. Hidden entries omitted. Roll values not shown. Read-only.
 
-Left column shows quiet placeholder lines: "No initiative set." and "Solo adventure — no other party members." Italic Crimson 13px `pal.textMuted`, no card chrome.
-
-### Healthy no-combat session
-
-HP shows `44/44` in normal `pal.gem`. Conditions row absent. Concentration absent. Map sub-tab auto-selected and expanded if active map exists. Screen is calm and sparse — the dice roller is the dominant interactive element.
-
-### Combat active, player healthy, ally at low HP
-
-Hero is normal-state. Party strip shows the bloodied ally's row in red — the one demanding element on the page.
-
-### Player's own HP at 0
-
-HP hero card gets `deathGlow` red pulse. "UNCONSCIOUS" label replaces HP numerals. Death save pips shown passively (display-only v1 — see §14.3).
-
-### DM has disabled party visibility
-
-Party strip slot renders: "Party status hidden by DM" italic Crimson 13px. Initiative still shows PC names and turn order.
-
-### No active map, Map sub-tab selected
-
-Sub-tab dimmed (opacity 0.4, `cursor: not-allowed`). Brightens with 220ms ease-out when DM activates a map.
-
-### Player has not unlocked the sheet
-
-Mode toggle, party strip, initiative strip do not render without unlock.
+Data source: `GET /initiative/public` (unauthenticated).
 
 ---
 
-## 8. Mobile behavior
+## 9. Mobile behavior (<900px)
 
-### Profile mode on mobile (<900px)
-
-**Unchanged from today.** Only addition: `PROFILE | SESSION` toggle at the very top, just above the portrait.
-
-### Session mode on mobile (<900px)
-
-Single column. **Same single-surface model as desktop** — sections separated by horizontal rules and IM Fell English labels, not individual card borders. HP hero is the only elevated card. The identity region receives the subtle palette-tinted wash (`rgba(pal.accent, 0.05)`); below identity the surface is neutral.
+### Session mode stacking order
 
 ```
 ┌───────────────────────────────┐
-│ ← All Chars · ⌃ · ⤴ · ✎      │ ← top bar
+│ ← All Chars · ⌃ · ⤴ · ✎      │
 ├───────────────────────────────┤
-│ [ ❡ PROFILE | ⚔ SESSION ]     │ ← mode toggle (sticky)
-├──── tinted wash ──────────────┤
-│ [◉ 56px / 72px on your turn]  │ ← identity strip (sticky)
-│  Eoghan                        │
-│  Warlock · Lvl 5  AC15 Spd30  │
+│ [ ❡ PROFILE | ⚔ SESSION ]     │ ← sticky
+├───────────────────────────────┤
+│ [◉ 56/72px on your turn]      │ ← identity (sticky)
+│  Eoghan · Warlock Lvl5 AC13   │
+├──── HP ───────────────────────┤
+│  HP 31/44  +5 temp   [−][+]   │ ← compact, sticky-eligible
+│  [████████░░] 4px bar         │
+├──── RECOVERY & DAMAGE ────────┤
+│  [⚔ Take Damage] [✦ Heal]     │
+│  [◈ Spend Hit Die · 3 left]   │
+│  ⚠ Concentration: DC 12 save  │
 ├──── ABILITIES ────────────────┤
-│ STR−1 DEX+3 CON+1 WIS+0 INT+2 │
-│ CHA+4                          │
-├──── HP ───────────────────────┤  ← only elevated card
-│  ┌──────────────────────────┐  │
-│  │  40  /44    +5 temp      │  │
-│  │  [────────░░] 6px bar    │  │
-│  │  [−][+]  [⚔ Dmg][✦ Heal] │  │
-│  └──────────────────────────┘  │
+│  STR−1 DEX+3 CON+1 …          │
 ├──── INITIATIVE ───────────────┤
-│ Round 3 · Eoghan · YOUR TURN  │
-│ ▼ Show order                  │
+│  Round 3 · Eoghan · YOUR TURN │
+│  ▼ Show order                 │
 ├──── PARTY ────────────────────┤
-│ [◉44] Aragorn  18/24 [████░]  │
-│ [◉56🔆] Aesop 12/12 [████]    │ ← active turn: 56px + glow
-├──── CONDITIONS / SLOTS ───────┤
-│ [Prone] [+ Manage]            │
-│ L1 ●●○○  L2 ●○○               │
-│ ◆ Inspiration                  │
+│  [◉44] Aragorn 18/24 [████░]  │
+│  [◉56🔆] Aesop 12/12 [████]   │
 ├───────────────────────────────┤
-│ [COMBAT|LOADOUT|MAP|NOTES]    │ ← session sub-tabs, 44px
+│ ▾ MAP · Goblin Warren  ●      │ ← collapsed by default unless combat+map
+│ [ MapViewer min(42vh,360px) ] │
+├──── CONDITIONS / SLOTS ───────┤
+│  [Prone] [+ Manage]           │
+│  L1 ●●○○  L2 ●○○   ◆ Inspire  │
+├───────────────────────────────┤
+│ [ COMBAT | LOADOUT | NOTES ]  │ ← 44px
 │ (sub-tab content)             │
 ├───────────────────────────────┤
-│ DICE ROLLER  [ card chrome ]  │ ← expanded by default
+│ DICE ROLLER  [ open ]         │
 └───────────────────────────────┘
 ```
 
-Key mobile decisions:
-
-- **Mode toggle is sticky** at the top — always one tap away.
-- **Section labels** (ABILITIES, HP, INITIATIVE, PARTY, CONDITIONS/SLOTS) replace card borders as section delimiters.
-- **HP hero is the only elevated card** — `pal.surface` background, 1px `pal.border`, 4px border-radius, subtle elevation shadow.
-- **Identity strip portrait** grows to 72px + palette ring glow when it's the player's own turn.
-- **Party strip avatars**: 44px resting / 56px + glow on active turn. At 320–360px, HP bars shrink to ~60px.
-- **Initiative collapsed** to one active-turn line by default; `▼ Show order` expands inline with 220ms max-height transition. Auto-collapses when the active turn changes.
-- **Tab bar transformation**: Profile four-tab strip completely replaced by Session sub-tab strip. Persona unreachable in Session mode.
-- **No sticky columns** — everything scrolls vertically. Sticky: top bar, mode toggle, identity strip.
+Sticky stack: top bar + mode toggle + identity. Compact HP is sticky-eligible (~52px) — if pinning both identity + HP costs too much on smallest screens, identity stays sticky and HP scrolls (flag for architect §15.6). Map panel after party strip, collapsed by default unless combat+map active.
 
 ### Smallest mobile (320–360px)
 
-- Initiative names truncate at ~14 chars
-- Party names truncate at ~12 chars; HP bars ~60px
-- AC and Speed in identity collapse to one line: "AC 15 · Spd 30"
-- Round counter compacts to "R3"
-- HP hero current-HP drops from 40px to 36px
+Names truncate ~14 chars; HP number 28px → 26px; map panel `min(40vh, 300px)`.
 
 ---
 
-## 9. Information hierarchy in Session mode
+## 10. Information hierarchy in Session mode
 
-Ranked by visual weight, most prominent first:
+1. **Active-turn indicators** — avatar grow + glow. Readable within 200ms of a glance.
+2. **Bloodied / down party members** — red border + red HP numerals + `deathGlow`.
+3. **The battle map** (when open) — largest media surface on screen.
+4. **Compact HP block** — small but always-present; color-coded.
+5. **Concentration banner** (when active) — full-width, pulsing dot.
+6. **Recovery & Damage actions** — quiet at rest; deliberately accessed.
+7. **Identity, ability chips, initiative, healthy party rows** — ambient anchors.
+8. **Conditions, spell slots, inspiration, sub-tab content, dice controls** — interactive surfaces.
 
-1. **HP HERO** — elevated card, largest number on the surface. Color-codes safe / wounded / critical.
-2. **Active turn indicator** — party avatar grows + glows; identity portrait grows + glows on own turn. Readable within 200ms of glancing at the screen.
-3. **Bloodied/down party members** — red border + red HP numbers + `deathGlow` pull peripheral attention.
-4. **Concentration banner** (when active) — full-width, pulsing dot.
-5. **Identity + ability mod chips** — quiet anchors; referenced intentionally.
-6. **Initiative full list, party strip healthy members** — ambient, scanned not stared at.
-7. **Inspiration, spell slots** — referenced when planning.
-8. **Session sub-tabs, weapon/spell rows, dice roller controls** — interactive surfaces.
-
-The HP hero in Session mode is roughly **2× the visual weight** of Profile mode's HP number (40px vs ~18px in the stats panel), supported by its elevated card and color-coded bar — prominent but no longer dominating.
+HP earns its place by *persistence and color*, not bulk. Map and turn indicators carry the room's attention.
 
 ---
 
-## 10. Motion & animation spec
+## 11. Motion & animation spec
 
 | Event | Animation | Duration |
 |---|---|---|
-| Profile → Session switch | Profile content fades out (160ms); Session layout fades in (200ms), desktop right column slides in from right (240ms translateX +24px→0) | 280ms total |
-| Session → Profile switch | Reverse; right column slides out | 280ms total |
-| Auto-switch to Session on page load | Session renders immediately; mode toggle receives 400ms accent-border-bright pulse | 400ms |
-| HP change (own) | Number cross-fade 160ms; bar 280ms; red flash on damage / green flash on heal (180ms); danger-border ramp 320ms + 480ms pulse on crossing 20% | 280–480ms |
-| HP change (party strip) | Bar animates 280ms; border brightens on bloodied/critical (220ms); deathGlow at 0 | 220–480ms |
-| Active turn changes | Old entry fades out (140–180ms); new entry fades in (160–200ms); `YOUR TURN` slides in (240ms) + 600ms glow pulse | 220–600ms |
+| Profile → Session switch | Profile fades out (160ms); Session fades in (200ms); desktop right column slides in from right (240ms) | 280ms |
+| Session → Profile switch | Reverse | 280ms |
+| Auto-switch to Session on load | Renders immediately; toggle gets 400ms `accentBright` border pulse | 400ms |
+| HP change (compact block) | Number cross-fade 160ms; bar width 280ms; red/green flash 180ms; color ramp 320ms on threshold cross | 280–320ms |
+| Take Damage / Heal inline expand | Stepper area max-height 0→natural (180ms ease-out); collapses 160ms | 160–180ms |
+| Spend Hit Die | Count decrements (instant); roll prints to history with 220ms border pulse; HP animates as heal | 220ms + HP |
+| Concentration nudge appears | slide+fade in (opacity 0→1, translateY 4→0, 180ms); auto-dismiss fade 220ms | 180ms / 220ms |
+| Map panel collapse/expand | max-height transition 240ms ease-in-out; header chevron rotates 180° (180ms) | 240ms |
+| Map activates | Dead line brightens (220ms) + green dot fades in (220ms) | 220ms |
+| HP at 0 | Block enters `deathGlow` (1.4s loop); number → "UNCONSCIOUS" (160ms); death-save pips fade in (180ms) | 180ms + loop |
+| Active turn changes | Old entry fades (140–180ms); new fades in (160–200ms); `YOUR TURN` slides in (240ms) + 600ms glow | 220–600ms |
 | Round increments | Number cross-fade 140ms + 400ms brighten pulse | 400ms |
-| Party member drops to 0 HP | Row enters deathGlow; HP numerals red (160ms); "DOWN" slides in (180ms) | 180ms + ongoing |
-| **Active turn — party avatar grows** | scale 1.0 → 1.27 (44→56px), ring glow fades in | 220ms ease-out |
-| **Active turn — party avatar shrinks** | scale 1.27 → 1.0, ring glow fades out | 180ms ease-in |
-| **Active turn — own identity portrait grows** | scale 1.0 → 1.29 (56→72px), ring glow fades in | 220ms ease-out |
-| **Avatar ring glow pulse (ongoing)** | box-shadow spread 4→8→4px, opacity 0.45→0.65→0.45 | 1.8s cycle ease-in-out |
-| **Weapon row Attack button tapped** | dice roller shake + spin + settle (existing animation) | ~1000ms total |
-| **Damage button brightens after Attack** | bg pulse to pal.accentBright, settles to accentDim hold | 240ms pulse + 8s hold |
-| **Damage button decays** | bg fades from accentDim to transparent | 320ms ease-out |
-| **Spell slot consumed** | just-used pip scales 1.0→0.7→1.0 then state = empty | 220ms |
-| **Slot Undo link fade** | opacity 1→0 after 8s idle hover | 8s hold, 220ms fade |
-| **History entry pulse (row-initiated roll)** | new entry receives 220ms border pulse in pal.accentBright | 220ms |
-| **Mobile auto-scroll to history** | smooth window scroll to new history entry | 320ms ease-out |
-| **Per-row adv/dis chip cycle** | text/icon cross-fade | 120ms |
-| **Per-row adv/dis chip reset after roll** | scale 1.0→0.85→1.0 + color fade to textMuted | 180ms |
-| Mode toggle first-visit hint | 1.6s breathing pulse on toggle, stops after first interaction or 3 cycles | — |
-| Sub-tab change | Outgoing opacity 1→0 (100ms), incoming 0→1 (140ms) | 240ms |
-| Initiative expand on mobile | List max-height 0→natural (220ms ease-out cubic); ▼ rotates 180° (180ms) | 220ms |
+| Party member → 0 HP | Row enters `deathGlow`; HP red (160ms); "DOWN" slides in (180ms) | 180ms + loop |
+| Active-turn party avatar grows | 44→56px; ring glow fades in | 220ms |
+| Own identity portrait grows | 56→72px; ring glow fades in | 220ms |
+| Avatar ring glow pulse (ongoing) | box-shadow spread 4→8→4px | 1.8s loop |
+| Weapon Attack tapped | Dice-roller shake + spin + settle (existing) | ~1000ms |
+| Damage button brightens | bg pulse to accentBright, hold 8s, then fade | 240ms + 8s + 320ms |
+| Spell slot consumed | Just-used pip scale 1.0→0.7→1.0 then empty | 220ms |
+| Sub-tab change | Outgoing opacity 0→1 (100ms), incoming 0→1 (140ms) | 240ms |
+| Initiative expand (mobile) | max-height 0→natural (220ms); ▼ rotates 180° | 220ms |
 | `prefers-reduced-motion` | All animations instant; color states remain | — |
 
-**No animation on:** tapping party strip row, tapping enemy initiative entry, toggling own conditions chip.
-
 ---
 
-## 11. Interaction model
+## 12. Interaction model
 
 ### Mode toggle
-- Tap inactive segment: switches mode, stores to sessionStorage, triggers animation.
-- Tap active segment: no-op.
-- Keyboard: Tab reaches toggle; Enter/Space switches.
+Tap inactive segment → switch + store + animate. Keyboard: Tab reaches it; Enter/Space switches.
 
-### HP hero block
-- ±1 stepper: 500ms initial delay, 80ms repeat; floating delta indicator; 300ms debounced flush.
-- Damage / Heal buttons: open `DamageHealModal`. Backdrop or Escape cancels.
+### Compact HP block (§3a)
+- `± 1` steppers: hold-to-repeat, 300ms debounced `patchSession`. Minor nudges only.
 - Max HP changes require Profile → Edit.
 
-### Active conditions row
-- Tap chip or `+ Manage`: opens condition manager modal (14-condition grid + exhaustion stepper).
+### Recovery & Damage (§3b)
+- **Take Damage:** tap → inline expand → enter amount → Apply. Temp HP consumed first. Escape / re-tap cancels. Concentration nudge appears if applicable.
+- **Heal:** same inline pattern, positive delta clamped to max.
+- **Spend Hit Die:** single tap rolls + applies. Non-interactive when 0 dice.
+- **Concentration nudge:** display-only, auto-dismisses.
 
-### Party strip rows
-- Tap: no-op.
+### Map panel (§4)
+- Tap header → collapse/expand; persisted `dnd_map_open_${slug}`. No active map → header inert.
+- MapViewer pan/zoom unchanged.
 
-### Initiative strip entries
-- Tap: no-op.
-
-### Session sub-tabs
-- Tap: switches sub-tab. Stored as `sessionStorage.dnd_session_subtab_${slug}` (default `"combat"`).
+### Sub-tabs
+Stored `dnd_session_subtab_${slug}` ∈ `"combat" | "loadout" | "notes"`, default `"combat"`. *(MAP is no longer a valid value.)*
 
 ### Loadout sub-tab
-- All today's Loadout interactions preserved: attunement, equipped, qty steppers, potion Use, Drop Item. No edit-mode entry.
+All existing interactions preserved. Potion `Use` extended to also apply healing to `hpCurrent` in the same `patchSession`.
 
 ### Concentration banner
-- "Drop Concentration": instant write, no confirmation.
-- `+ Concentration` ghost button: reveals input inline on tap. Auto-populates when a concentration spell is cast from the Combat sub-tab.
+`Drop Concentration`: instant write. `+ Concentration` ghost: reveals inline input.
 
 ### Dice roller
-- Identical to `DiceRoller.jsx`. Expanded by default in Session mode (writes `dnd_dice_open_${slug} = "true"` once on first Session-mode entry). Profile mode behavior unchanged.
-- **DieShape polygon SVGs required** — d4 triangle, d6 square, d8 diamond, d10 kite, d12 pentagon, d20 near-circle. Reuse existing component from `DiceRoller.jsx`. No square buttons.
-
-### Weapon / spell row — Attack button
-- Tap: dice-roller shake/spin/settle animation. Writes `<Name> · Attack` to history. Damage button brightens for 8s. Global and per-row adv/dis resets to Normal.
-
-### Weapon / spell row — Damage button
-- Tap: same animation. Writes `<Name> · Damage` to history.
-
-### Weapon / spell row — Cast button
-- Tap: no d20 roll. Writes `Cast <Name> at L<N> · DC <N>` to history. Consumes highest available slot. Sets concentration banner if applicable. Undo link in history for 8s.
-
-### Weapon / spell row — per-row adv/dis chip
-- Single tap: cycles `·` → `▲` → `▼` → `·`. Resets to `·` after next Attack roll.
-
-### Weapon / spell row — disabled (no slot)
-- Tap Attack/Damage/Cast: no-op. Expand chevron still works.
-
-### Ability mod chips
-- Tap: shortcut roll into dice roller. Writes `<STAT> check → <result>` to history.
+Identical to `DiceRoller.jsx`; expanded by default in Session.
 
 ---
 
-## 12. Coexistence with existing features
+## 13. Edge cases and empty states
 
-| Feature | Profile mode | Session mode |
+- **Solo, no combat:** initiative → `No initiative set.`; party → `Solo adventure — no other party members.` Italic Crimson 13px.
+- **Healthy, no combat:** HP block normal; Recovery & Damage present but calm; map panel collapsed by default; dice roller dominant interactive element.
+- **Combat, player healthy, ally low:** HP normal; party strip shows bloodied ally's red row.
+- **Player at 0 HP:** compact HP block → `deathGlow` + "UNCONSCIOUS" + passive death-save pips. ± steppers remain.
+- **No hit dice left:** Spend Hit Die at 0.4 opacity, `◈ No hit dice left`, non-interactive.
+- **Concentrating, take damage:** DC nudge appears and auto-dismisses.
+- **DM disabled party visibility:** `Party status hidden by DM`; initiative still shows PC turns.
+- **No active map:** map panel collapses to inert line; brightens live when DM activates one.
+
+---
+
+## 14. Mobile vs desktop delta
+
+| Element | Mobile (<900px) | Desktop (≥900px) |
 |---|---|---|
-| Session Notes | Combat tab | NOTES sub-tab |
-| Concentration banner | Combat tab | Top of right column, above HP hero. **Auto-set when a concentration spell is cast from Combat sub-tab.** |
-| Inspiration toggle | Combat tab | Below spell slots in right column |
-| XP / Coin | Inventory tab | LOADOUT sub-tab, bottom |
-| Skills/Spells/Special Abilities badges | Stats panel | **Not displayed** — switch to Profile |
-| Concentration set input | Combat tab | Ghost `+ Concentration` button inline |
-| Edit mode entry | Top bar | Overflow `⋯` menu in top bar |
-| World Guide | Top bar | Top bar (mode-independent) |
-| **Weapon / spell rolls** | Read-only quick-reference | **Inline Attack / Damage / Cast buttons; results flow into shared dice roller history. Auto-consume slots for leveled spells.** |
+| Layout | Single column | Two columns: left 340px, right flex (max ~760px) |
+| Mode toggle | Sticky top, full-width, 44px | Top of left column, spans 340px |
+| Identity strip | Sticky | Top of left column, sticky |
+| **Compact HP block** | Below identity; sticky-eligible | Left column, below identity |
+| **Recovery & Damage** | Below HP, inline steppers | Left column, below HP |
+| Ability chips | Below recovery, 3×2 | Left column, 3×2 |
+| Initiative | Collapsed 1 line + ▼ | Full list always |
+| Party strip | Below initiative | Bottom of left column |
+| **Map panel** | After party strip; collapsed by default unless combat+map; `min(42vh,360px)` | **Top of right column**; open by default in combat+map; `min(46vh,460px)` |
+| Concentration banner | Below map panel | Below map panel, full right width |
+| **Sub-tabs** | COMBAT · LOADOUT · NOTES, 44px | COMBAT · LOADOUT · NOTES, 38px |
+| Dice roller | Bottom, expanded | Pinned bottom of right column, expanded |
 
 ---
 
-## 13. Mobile vs desktop delta
+## 15. Open questions
 
-| Element | Mobile / narrow (<900px) | Desktop (≥900px) |
-|---|---|---|
-| Layout | Single column | Two columns: left 340px, right flex |
-| Surface model | Single surface, horizontal rules | Single surface, vertical rule between columns |
-| Left column wash | Tinted top (identity region only) | Full left column tinted |
-| Mode toggle | Sticky top, full-width, 44px | Top-left, ~220px |
-| Identity strip | Full-width row, sticky | Top of left column, sticky |
-| Ability chip strip | Below identity, 3×2 | Left column, 3×2 |
-| HP hero | Elevated card, below chips | Elevated card, top of right column |
-| Concentration banner | Above HP hero | Full right-column width, above HP hero |
-| Initiative strip | Collapsed to 1 line + ▼ Show order | Full list always visible in left column |
-| Party strip | Below initiative, full-width | Bottom of left column |
-| Party portrait (resting) | 44px | 44px |
-| Party portrait (active turn) | 56px + ring glow | 56px + ring glow |
-| Identity portrait (own turn) | 72px + ring glow | 72px + ring glow |
-| Active conditions | Below HP hero | Right column |
-| Spell slots | Below conditions | Right column |
-| Inspiration | Below spell slots | Right column |
-| Session sub-tabs | Below inspiration, full-width, 44px | Right column, 38px |
-| Map sub-tab | Full-width sub-tab content | Expands to fill right column in non-combat |
-| Sub-tab content | Single column | Right column |
-| Dice roller | Below sub-tab content, expanded, card chrome | Pinned bottom of right column, expanded, card chrome |
-| Sticky behavior | Top bar + toggle + identity | Top bar + toggle; left column sticky; right scrolls |
-| Party HP bar | ~80px (60px at ≤360px) | ~100px |
-| Initiative name truncation | ~14 chars | ~28 chars |
-| Round counter | Inline in collapsed initiative line | Top-right of initiative header |
-| Session sub-tab height | 44px | 38px |
-| HP current number size | 40px (36px at ≤360px) | 40px |
-
----
-
-## 14. Open questions
-
-1. **Party + initiative endpoint auth (architect required before implementation)**: `GET /dm/party` and `GET /initiative` currently require DM auth. Session mode needs both. Options: (a) new unauthenticated `GET /party/status` endpoint returning only session-visible projection, (b) character-password-gated, (c) new player-auth model. **Recommendation**: option (a) — matches ADR-005 no-auth philosophy.
-
-2. **Initiative roll values shown?** Brief defaults to no (order only). Trivial change later.
-
-3. **Player-controlled death save pips on player sheet?** v1 = display-only; v2 = let player tap a pip to write. Race condition with DM writes needs architect review.
-
-4. **Map as third column on very wide desktops (≥1400px)?** Not for v1.
-
-5. **Profile mode wide-desktop layout?** Leave Profile alone for v1.
-
-6. **Auto-switch threshold**: `entries.length > 0 AND round > 0` to avoid auto-switching during pre-loaded-between-sessions case.
-
-7. **Mode toggle glyphs**: ❡ (profile) and ⚔ (session) proposed. Labels alone are clear if glyphs feel heavy.
-
-8. **Active-turn haptic/audible cue on mobile?** Not for v1.
-
-9. **Damage button auto-brighten duration**: 8 seconds set in brief. Adjust after playtest if too short/long.
-
-10. **Per-row adv/dis chip vs. global toggle**: if per-row chip proves confusing in playtesting, fall back to global-only.
-
-11. **Slot auto-consume on Cast vs. on Damage**: for attack-roll spells, missing the attack still costs the slot (RAW). Confirm against table's house rules before implementation.
+1. **Endpoints** — resolved. `GET /party/status` and `GET /initiative/public` exist (unauthenticated). No backend work needed.
+2. **Initiative roll values** — hidden (order only). Trivial later change.
+3. **Player-controlled death-save pips** — v1 display-only; v2 = tap-to-write.
+4. **Map as third column on ultra-wide (≥1400px)** — out of scope for v1.
+5. **Profile mode wide-desktop layout** — leave Profile alone for v1.
+6. **Take Damage / Heal: inline expansion vs. reuse `DamageHealModal`** — preferred = in-column inline expansion. If over budget, reuse `DamageHealModal` as fallback. Architect to confirm. Also confirm: (a) `hitDiceCurrent` absent-field fallback; (b) whether pinning both identity + HP sticky on smallest mobile is affordable; (c) shared dice history accepts a "recovery" source row.
+7. **Spend Hit Die history entry** — prints to shared dice history; confirm history entry shape accepts non-d20, non-weapon "recovery" source label.
+8. **Concentration nudge dismissal** — 10s auto-dismiss; adjust after playtest.
+9. **Potion `Use` healing** — extend existing Loadout potion `Use` to apply healing value to `hpCurrent` in same `patchSession`. Confirm potions carry a parseable healing mod; if not, `Use` decrements qty only (current behavior).
+10. **Map default-open heuristic** — open when `activeMapId` exists AND `initiative.entries.length > 0`; collapsed otherwise. Last manual toggle always wins.
+11. **Damage button auto-brighten (8s) and per-row adv/dis chip** — carry-over playtest flags from pass 2.
+12. **Slot auto-consume on Cast for attack-roll spells** — missing attack still costs slot (RAW).
 
 ---
 
 ## Files to touch (for code-architect annotation)
 
-**Frontend only — no backend implementation until §14.1 is resolved.**
-
-- `src/components/CharacterSheet.jsx` — mode state, Session layout, desktop two-column, party/initiative strips, weapon roll integration (behind feature flag until endpoint exists)
-- `src/features/characterSheet/characterSheet.css` — Session mode layout rules, two-column breakpoints, HP hero card, party/initiative strip styles, weapon row styles, avatar grow animations
-- `src/api.js` — new `getPartyStatus()` and `getInitiativePublic()` calls (pending architect decision)
-- `src/pages/CharacterPage.jsx` or equivalent — top-level layout wrapper for two-column session view
+- `src/features/characterSheet/CharacterSheetSessionMode.jsx` — restructure: move HP to compact left-column block; add Recovery & Damage zone to left column; convert Map from sub-tab into collapsible right-column panel above sub-tab strip; reduce sub-tabs to COMBAT · LOADOUT · NOTES; wire Spend Hit Die + ability/weapon rolls into shared dice history.
+- `src/features/characterSheet/characterSheet.css` — new `.cs-sm-hp-compact-*`; new `.cs-sm-recovery-*`; new `.cs-sm-map-panel-*`; remove `.cs-sm-hp-hero` weight; left-column sticky regions.
+- `src/pages/CharacterModePage.jsx` — pass map state + `dnd_map_open_${slug}` into session mode; default-open heuristic.
+- `src/components/CharacterSheet.jsx` — extend Loadout potion `Use` to apply healing; reuse `parseDiceExpr` / `rollDie` for Spend Hit Die.
+- `src/components/DiceRoller.jsx` — confirm shared history accepts a "recovery" source row.
+- `src/api.js` — no new endpoints required.

@@ -231,16 +231,118 @@ A new DM-level setting is needed to control whether party HP/status is visible t
 
 ---
 
+## Design Direction (player feedback — refined after rpg-consultant review)
+
+The following notes supersede the original UX Design brief and should be used by the design-strategist to revise it.
+
+1. **Map placement**: The map is NOT a tab. It gets its own collapsible section at the top of the right column, always present and independent of the Combat / Loadout / Notes tabs below it. When expanded it is large enough to be useful during combat (tokens visible); the player can collapse it to free vertical space. The tabs for Combat, Loadout, Notes, etc. live below the map section and are unaffected by whether the map is open or closed.
+
+2. **HP display — compact, left column, always visible**: Replace the 56px "HP hero" with a compact representation in the left column, below name/class details and above the ability scores. Keeping HP in the left column means it stays visible regardless of which right-column tab is active — critical when the DM calls out damage while you're looking at the map.  The HP display should have quick ± controls for minor adjustments directly on it.
+
+3. **Recovery & Damage — a dedicated section, not part of the HP bar**: Take Damage, Receive Healing, and Spend Hit Die belong in their own clearly named section (suggested: "Recovery & Damage"). This section lives either in the left column below HP/above ability scores, or in the right column above the tabs — somewhere that makes it feel like an action zone rather than part of the passive HP display. Rationale:
+   - **Take Damage**: player always records their own damage. Core self-service action.
+   - **Receive Healing**: player records healing called out by the DM or another player (spell heal, etc.). Lightweight number input.
+   - **Spend Hit Die**: short rest self-healing — player rolls their hit die + CON mod to regain HP. Show remaining hit dice count. This is the primary player-controlled healing mechanic.
+   - **Concentration nudge**: when Take Damage is used while a concentration spell is active, surface a contextual reminder of the concentration check DC (max(10, damage/2)) — not a standalone button, just a smart inline prompt.
+   - Potion healing stays in the inventory "Use" button — not duplicated here.
+   - Death saves, inspiration, conditions remain where they are.
+
+---
+
 ## UX Design
 
-Brief written at `design/briefs/player-sheet-session-mode-brief.md`.
+Brief written at `design/briefs/player-sheet-session-mode-brief.md`. Pass 3 — supersedes all prior brief iterations.
 
-Key decisions in the brief:
+Key decisions:
 - **PROFILE / SESSION segmented pill toggle** — IM Fell English 12px, sticky on mobile, top-left on desktop. Stored in `sessionStorage.dnd_mode_${slug}`. Auto-switches to Session on page load when `initiative.entries.length > 0 AND round > 0` and no stored preference.
-- **Desktop two-column (≥900px)** — 340px left column (identity → ability mod chips → initiative strip → party strip, all sticky); right column flexes to ~720px max (concentration banner → HP hero 56px Cinzel → conditions → slots → inspiration → session sub-tabs → dice roller pinned bottom, expanded by default).
-- **Party status strip** — each row: 32px palette-colored portrait dot + name in character's `pal.accent` + turn indicator glyph + exact HP numerals + proportional HP bar (6px, 80–100px) + up to 2 condition chips. Row border brightens at bloodied (<50%) and critical (≤20%) thresholds; `deathGlow` at 0. Self-card omitted. Read-only — no tap target.
-- **Initiative strip** — full order always visible on desktop; collapsed to one-line + ▼ expand on mobile. PC entries get palette-colored leading dot; NPC entries have none. Initiative roll values not shown (order only). Hidden entries omitted entirely.
-- **Session sub-tabs** — COMBAT (weapons quick-ref, default) · LOADOUT (full inventory grid, all interactions preserved) · MAP · NOTES. Replaces the four-tab Profile strip entirely in Session mode.
-- **HP hero** — `current / max` in Cinzel 56px, 12px bar, ±1 stepper, Damage/Heal buttons. ~3× the visual weight of Profile mode's HP number.
-- **Persona tab** — unreachable in Session mode by design (Profile-only content).
-- **Backend blocker**: `GET /dm/party` and `GET /initiative` are DM-auth-only. Brief recommends a new unauthenticated `GET /party/status` endpoint (filtered projection, no DM-private fields, no enemy HP). **Implementation must not start until the architect resolves §14.1.**
+- **Desktop two-column (≥900px)** — 340px left column (sticky: identity → compact HP block → Recovery & Damage zone → ability mod chips → initiative strip → party strip); right column flexes to ~760px max (map panel → concentration banner → conditions → slots → inspiration → sub-tabs → dice roller pinned bottom, expanded by default).
+- **Map panel** — collapsible panel at the **top of the right column**, above the sub-tab strip and independent of it. Header: `▾ MAP · {name} ●`. Height `min(46vh, 460px)` when open. `sessionStorage.dnd_map_open_${slug}`. Default open when active map + combat; collapsed otherwise. No active map → quiet inert line. MAP is **no longer a sub-tab**.
+- **Compact HP block (left column)** — replaces the 56px HP hero. `HP  32/45` in Cinzel 28px, 4px bar, inline ±1 steppers. Always visible in left column below identity, above ability chips. Color-coded (healthy/wounded/critical thresholds). Not a card — lives on the tinted left-column surface.
+- **Recovery & Damage zone (left column)** — dedicated action section below compact HP block. Contains: `[⚔ Take Damage]` (inline stepper + presets + confirm), `[✦ Heal]` (inline stepper), `[◈ Spend Hit Die · N left]` (rolls + applies), and a contextual concentration-check nudge after damage while concentrating. Potion healing stays in Loadout `Use` — not duplicated here.
+- **Sub-tabs** — COMBAT · LOADOUT · NOTES (three tabs; MAP removed). COMBAT default.
+- **Party status strip** — each row: 44px palette-colored portrait circle + name in character's `pal.accent` + exact HP numerals + proportional HP bar (6px) + up to 2 condition chips. Bloodied/critical border brightens; `deathGlow` at 0. Self-card omitted. Read-only.
+- **Initiative strip** — full order always visible on desktop; collapsed to one-line + ▼ expand on mobile. Active turn: avatar grow 44→56px + ring glow pulse 1.8s. Own turn: 56→72px + `· YOUR TURN`. Roll values not shown; hidden entries omitted.
+- **Persona tab** — unreachable in Session mode by design.
+- **Backend blocker**: resolved. `GET /party/status` and `GET /initiative/public` both exist as unauthenticated endpoints.
+
+---
+
+## RPG Consultant Review
+
+_Evaluating the three Design Direction notes from the player against D&D table conventions and live-play reality._
+
+---
+
+### 1. Map placement
+
+**Player's position**: The map feels too small in the left sidebar. It should be at the top of the right column — large enough to be actually useful for spatial awareness.
+
+**Table reality verdict: The player is right, with one important qualification.**
+
+At a physical table, the battle map is the single most-referenced shared object during combat. It is the center of the table. Every tactical decision — movement, spell placement, cover, flanking — flows from it. A player who cannot see the map clearly is playing half a game: they are rolling dice without knowing the spatial context those dice operate in.
+
+The brief's original placement (map as a sub-tab buried in the right column's tab strip, equally weighted with COMBAT, LOADOUT, and NOTES) already represents an improvement over the current single-tab system, but the player has identified a real hierarchy problem: during active combat, the map is not one-of-four options — it is the dominant reference surface. The left sidebar placement of the brief is even worse: a 340px-wide column that also contains identity, ability mods, initiative strip, and party strip will compress the map to something unusable.
+
+However, the important qualification is this: the map is only dominant during the DM's descriptive phases and other players' turns. When it is *your* turn, your attention shifts immediately to your own resources — HP, spell slots, weapons. The map and the combat stats are co-primary, not sequential.
+
+**Recommendation**: Move the map to the top of the right column as the player requests, but implement it as a collapsible panel rather than a fixed block. When the MAP sub-tab is active, the map takes the top of the right column at a meaningful height (roughly 40–50% of viewport height, not the tiny thumbnail the left column would permit). The COMBAT/LOADOUT/NOTES sub-tabs remain below it or replace the map area when active. On desktop at full width, a third column for the map becomes viable (the original story's open question 3) — but if two-column is the implementation target, the right column top is the correct placement, not the left.
+
+The left column should remain what the brief intended it to be: the stable identity anchor (portrait, ability mods, initiative strip, party strip). Squeezing a map viewer into that column alongside all of that content would make every element unusable.
+
+---
+
+### 2. HP meter size and placement
+
+**Player's position**: 56px Cinzel HP is too visually dominant. Prefer compact HP in the left column, below name/class details, above ability scores.
+
+**Table reality verdict: The player is right that 56px is too large, but the left column placement needs scrutiny.**
+
+Consider the actual frequency of HP glances during a session. A player checks their HP in three distinct scenarios:
+
+1. **After taking damage**: immediate — they need to know if they are bloodied, critically low, or fine. This is the most urgent HP check.
+2. **When deciding whether to use a healing resource**: a deliberate, slightly slower check — "do I need to use this potion now or can I hold it?"
+3. **When the DM asks "what's your HP?"**: rare at a table with good combat flow; more common in looser groups.
+
+None of these scenarios requires a 56px number. The DM dashboard uses large HP numerals because the DM is reading *across* multiple character cards from a distance and needs to pattern-match at a glance. The player is reading *their own single number*, which they already roughly know. A compact display — something in the 28–32px range — is entirely sufficient for all three scenarios. The 56px treatment was designed to give HP visual primacy in the layout hierarchy, which is a defensible design goal, but it overshoots what the mechanic actually needs.
+
+On the left column placement: this is more nuanced. Placing HP below name/class but above ability scores in the left column means HP sits in the identity strip rather than in the session-resource area. That is a conceptually awkward split — the left column is the "who am I" column, and HP is "how am I doing right now." They are different information types. However, the player's instinct is correct in one respect: a compact HP readout in the left column keeps it *always visible* regardless of which sub-tab is active on the right. If the player is on the MAP sub-tab looking at the battle map, they still need to glance at their HP when they take a hit.
+
+**Recommendation**: Keep HP in the left column below the identity strip (name/class/level/AC row), but do not give it hero-size treatment. A compact row showing `HP  32 / 45` in a 28px Cinzel number, with a thin proportional bar beneath it, is immediately scannable and never gets in the way. The ±1 stepper can live here too. The Damage/Heal modal buttons (discussed below) can be small secondary affordances on this row — they do not need to be the dominant element. This placement means HP is always visible regardless of sub-tab, which is the actual need.
+
+---
+
+### 3. Damage and Heal buttons
+
+**Player's position**: Both buttons may not be needed. Potion healing should have a "Use" button in inventory. "Take Damage" seems more plausible as a self-service action. The player is questioning who actually initiates HP changes at a real table.
+
+**Table reality verdict: The player has identified the correct frame. This is the most important of the three points.**
+
+Let me break down every HP change event in 5e play and who initiates it:
+
+**Damage events:**
+- The DM calls out how much damage a monster's attack dealt. The player subtracts it from their HP. This is entirely player-recorded — the player is the bookkeeper of their own damage. A "Take Damage" entry field is legitimate here.
+- Area-of-effect spells targeting multiple characters: the DM calls the damage; each affected player records it. Same model.
+- Environmental damage (falling, traps): DM calls it; player records it.
+
+In every damage scenario, the player is the one physically writing the number down (or tapping it in). The DM does not typically reach across the table to mark damage on someone else's sheet. A "Take Damage" workflow is therefore the most grounded self-service HP interaction in the game.
+
+**Healing events:**
+- **Potion (player-initiated)**: The player declares "I drink a healing potion" on their turn, rolls the healing die, adds it to HP. This is fully player-initiated. An inventory "Use" button that decrements quantity and prompts for the roll result — or better, that auto-applies the potion's configured modifier — is the right model. The existing potion "Use" button that decrements qty is already partially there; it just needs to actually apply HP. This is the clearest case for a player self-service healing action.
+- **Healing Word / Cure Wounds from another PC**: The casting player rolls the dice and calls out the total. The receiving player records the gain. The receiving player types in the number — a "Receive Healing" or "Heal" entry is reasonable, but it is less urgent than potion healing because it happens on someone else's turn and the player has time.
+- **Healing from the DM (NPC healer, magic item)**: Same as above — DM calls it, player records it. The DM's dashboard already has a Heal button on each character card, so the DM can apply it directly if they choose. If the DM applies it via the dashboard, the player sheet will update via polling without the player needing to do anything.
+- **Short rest hit dice**: Player rolls their hit dice and adds the result. Self-initiated. A "Spend Hit Die" flow would handle this — not a generic Heal button, but a specific short-rest workflow.
+- **Long rest**: Full restoration. Currently handled by the DM via the party-wide Long Rest button on the dashboard. The player sheet does not need an independent control for this.
+
+**The specific problem with "Damage" and "Heal" as parallel buttons**: They imply a symmetry that does not exist at the table. Damage is always player-recorded (no one else does it for you, and the DM dashboard can also apply it as an override). Healing has multiple sources with different initiation models — potion (player), spell from ally (player records result called by ally), DM via dashboard (automatic). Presenting them as equivalent modal buttons misrepresents the actual flow.
+
+**Recommendation**: Replace the symmetric Damage/Heal button pair with a more accurate set of self-service HP controls:
+
+1. **Take Damage**: number entry + confirm. Clear, accurate, player-initiated. Applies a negative delta to `hpCurrent`. This maps directly to the most common HP bookkeeping action in the game.
+
+2. **Potion "Use" button in Inventory**: Already exists for qty decrement. Extend it to also apply the potion's healing value to `hpCurrent` via `patchSession` in the same write. If the potion has a configured Damage mod (e.g., `2d4+2`), the player sheet can roll it and apply it. This is the correct place for player-initiated healing — not a generic "Heal" button on the combat surface.
+
+3. **Receive Healing**: A lightweight secondary affordance (not a prominent button — perhaps a small "+ Heal" link near the HP display) for recording healing received from spells or DM-applied effects when the DM does not apply it via the dashboard. This should not be as prominent as Take Damage because it is less frequently the player's responsibility to initiate.
+
+The DM dashboard's Heal button on each character card covers the "DM applies healing" case. There is no need for the player sheet to duplicate that with equal visual weight. Removing the symmetric Heal button from the player sheet combat surface and redirecting healing to inventory (potion Use) and a lightweight receive-heal affordance better models what actually happens at the table.
+
+**One nuance for this app specifically**: Because `patchSession` allows unauthenticated writes, any player can adjust any character's HP if they know the URL. This means the "correct" initiator model is not strictly enforced — a player helping their friend could technically apply damage or healing to another character's sheet. This is fine for a small trusted group. The design should optimize for the most common honest case (player self-service), not try to enforce turn-order accuracy via UI restriction.
