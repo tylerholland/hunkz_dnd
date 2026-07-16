@@ -1,0 +1,2400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Battle Map Token Polish — Design Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ─── Ocean palette (DM dashboard) ───────────────────────────────────── */
+:root {
+  --bg: #0d0f14;
+  --surface: rgba(20,30,45,0.55);
+  --surface-solid: #141e2c;
+  --border: rgba(100,140,168,0.18);
+  --border-vis: rgba(100,140,168,0.32);
+  --accent: #6a8fa8;
+  --accent-bright: #a0c0d0;
+  --accent-dim: rgba(106,143,168,0.15);
+  --text: #c8bfaf;
+  --text-body: #9ab0bc;
+  --text-muted: #3a5a6a;
+  --gem: #8ab4c8;
+  --gem-low: #1a3040;
+  --glow1: rgba(40,70,100,0.28);
+  --glow2: rgba(20,40,70,0.22);
+  --font-d: 'Cinzel', Georgia, serif;
+  --font-b: 'Crimson Text', Georgia, serif;
+  --font-u: 'IM Fell English', Georgia, serif;
+
+  /* PC palette accent rings */
+  --ring-ocean:  #6a8fa8;   /* Eoghan / default */
+  --ring-ember:  #c0784a;   /* Aragorn */
+  --ring-forest: #5a9a5a;   /* Aeryn */
+
+  /* NPC neutral ring */
+  --ring-npc: rgba(140,140,140,0.55);
+
+  /* Danger */
+  --danger: #c06060;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%,  var(--glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-b);
+  -webkit-font-smoothing: antialiased;
+}
+
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ─── Page header ─────────────────────────────────────────────────────── */
+.proto-header {
+  background: rgba(8,11,18,0.96);
+  border-bottom: 1px solid var(--border-vis);
+  backdrop-filter: blur(8px);
+  padding: 14px 28px;
+  position: sticky;
+  top: 0;
+  z-index: 300;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.proto-header-title {
+  font-family: var(--font-d);
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--accent-bright);
+  flex: 1;
+}
+.proto-header-meta {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+.proto-header-badge {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--accent);
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  padding: 3px 8px;
+}
+
+/* Reduced-motion toggle in header */
+.rm-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.rm-toggle input { cursor: pointer; accent-color: var(--accent); }
+.rm-toggle.active { color: var(--accent); }
+
+/* ─── Page body ───────────────────────────────────────────────────────── */
+.page-body {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 48px 32px 100px;
+}
+
+/* ─── Section wrappers ────────────────────────────────────────────────── */
+.proto-section {
+  margin-bottom: 72px;
+}
+.proto-section-header {
+  margin-bottom: 24px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--border);
+}
+.proto-section-num {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.3em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+.proto-section-title {
+  font-family: var(--font-d);
+  font-size: 20px;
+  letter-spacing: 0.08em;
+  color: var(--accent-bright);
+  margin-bottom: 4px;
+}
+.proto-section-desc {
+  font-family: var(--font-b);
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+}
+
+/* ─── Scenario tiles ──────────────────────────────────────────────────── */
+.scenario-row {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+  align-items: flex-start;
+}
+.scenario-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 20px;
+  flex: 1;
+  min-width: 260px;
+  position: relative;
+}
+.scenario-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+/* ─── Callout annotations ─────────────────────────────────────────────── */
+.callout {
+  position: absolute;
+  background: rgba(160,192,208,0.10);
+  border: 1px solid rgba(160,192,208,0.32);
+  border-radius: 3px;
+  color: #a0c0d0;
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.15em;
+  padding: 4px 9px;
+  pointer-events: none;
+  text-transform: uppercase;
+  white-space: nowrap;
+  z-index: 10;
+}
+
+/* ─── Buttons ─────────────────────────────────────────────────────────── */
+.btn-ghost {
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-u);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: border-color 0.18s, color 0.18s;
+  min-height: 44px;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent-bright); }
+.btn-primary {
+  background: rgba(18,58,78,0.5);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  color: var(--accent-bright);
+  font-family: var(--font-u);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  padding: 7px 16px;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  min-height: 44px;
+}
+.btn-primary:hover { background: rgba(18,58,78,0.75); border-color: var(--accent-bright); }
+.btn-danger {
+  background: rgba(192,96,96,0.12);
+  border: 1px solid rgba(192,96,96,0.4);
+  border-radius: 3px;
+  color: var(--danger);
+  font-family: var(--font-u);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s;
+  min-height: 44px;
+}
+.btn-danger:hover { background: rgba(192,96,96,0.22); }
+.btn-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-top: 16px;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 1 — NPC Portrait Upload
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* NPC combat card */
+.npc-card {
+  background: var(--surface);
+  border: 1px solid var(--border-vis);
+  border-radius: 4px;
+  overflow: hidden;
+  width: 100%;
+  max-width: 420px;
+}
+
+.npc-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  min-height: 52px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* Identity circle */
+.npc-identity-circle {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  cursor: pointer;
+  /* ensure 44px tap target via negative margin trick + padding */
+}
+.npc-identity-circle-inner {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1.5px solid var(--ring-npc);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  background: #1a2a38;
+  transition: border-color 0.15s;
+}
+.npc-identity-circle:hover .npc-identity-circle-inner {
+  border-color: var(--accent);
+}
+
+/* Initials fallback */
+.npc-initials {
+  font-family: var(--font-d);
+  font-size: 13px;
+  letter-spacing: 0.04em;
+  color: var(--accent-bright);
+  line-height: 1;
+  pointer-events: none;
+}
+
+/* Portrait image (hidden until uploaded) */
+.npc-portrait-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+  pointer-events: none;
+}
+.npc-portrait-img.visible { display: block; }
+
+/* Camera glyph overlay */
+.npc-camera-overlay {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(0,0,0,0.50);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.12s ease;
+  pointer-events: none;
+}
+.npc-identity-circle:hover .npc-camera-overlay {
+  opacity: 1; /* hover-revealed on pointer devices */
+}
+/* Touch-persistent camera at 0.6 opacity */
+@media (hover: none) {
+  .npc-camera-overlay { opacity: 0.6; }
+}
+.npc-camera-overlay svg {
+  width: 14px;
+  height: 14px;
+  fill: var(--accent-bright);
+}
+
+/* Progress ring overlay (shown during upload) */
+.npc-progress-ring {
+  position: absolute;
+  inset: -2px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.18s;
+}
+.npc-progress-ring.uploading { opacity: 1; }
+.npc-progress-ring svg { width: 100%; height: 100%; }
+
+/* Shimmer overlay */
+.npc-shimmer {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: linear-gradient(90deg,
+    transparent 0%,
+    rgba(160,192,208,0.18) 40%,
+    rgba(160,192,208,0.28) 50%,
+    rgba(160,192,208,0.18) 60%,
+    transparent 100%);
+  background-size: 200% 100%;
+  animation: shimmerSlide 1.1s linear infinite;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.npc-shimmer.uploading { opacity: 1; }
+@keyframes shimmerSlide {
+  from { background-position: 200% 0; }
+  to   { background-position: -200% 0; }
+}
+
+/* Upload error text */
+.npc-upload-error {
+  font-family: var(--font-b);
+  font-style: italic;
+  font-size: 12px;
+  color: var(--danger);
+  padding: 4px 12px 8px;
+  display: none;
+}
+.npc-upload-error.visible { display: block; }
+
+/* NPC card name + HP */
+.npc-card-name {
+  font-family: var(--font-b);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+.npc-card-hp {
+  font-family: var(--font-d);
+  font-size: 13px;
+  color: var(--gem);
+  letter-spacing: 0.06em;
+}
+.npc-card-actions {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+.npc-btn-small {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  min-height: 36px;
+}
+.npc-btn-small:hover { color: var(--accent); border-color: var(--accent); }
+
+/* Token in map — portrait fill demo */
+.token-demo-row {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.token-circle {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 2px solid var(--ring-npc);
+  outline: 1px solid rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 14px;
+  color: #fff;
+  flex-shrink: 0;
+}
+.token-circle img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  position: absolute;
+  inset: 0;
+}
+.token-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  margin-top: 4px;
+  text-align: center;
+}
+.token-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+/* Number badge */
+.token-badge {
+  position: absolute;
+  bottom: 1px;
+  right: 1px;
+  width: 16px;
+  height: 16px;
+  background: rgba(10,15,22,0.85);
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 50%;
+  font-family: var(--font-d);
+  font-size: 9px;
+  color: var(--accent-bright);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 2 — Token Scale Calibration
+   ═══════════════════════════════════════════════════════════════════════ */
+.map-panel-chrome {
+  background: var(--surface);
+  border: 1px solid var(--border-vis);
+  border-radius: 5px;
+  overflow: visible;
+  max-width: 520px;
+}
+.map-panel-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--border);
+}
+.map-panel-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+.map-panel-name {
+  font-family: var(--font-b);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  flex: 1;
+}
+.map-battle-badge {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  border-radius: 3px;
+  padding: 3px 8px;
+}
+
+/* Gear icon button — visible in Battle Mode only */
+.btn-gear {
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-muted);
+  transition: color 0.15s, background 0.15s;
+  position: relative;
+}
+.btn-gear:hover { color: var(--accent); background: var(--accent-dim); }
+.btn-gear svg { width: 18px; height: 18px; fill: currentColor; }
+
+/* Calibration popover */
+.calib-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 240px;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-vis);
+  border-radius: 4px;
+  padding: 16px;
+  z-index: 100;
+  display: none;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+}
+.calib-popover.open { display: block; }
+
+.calib-title {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.25em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+}
+.calib-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+.calib-step-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--border-vis);
+  color: var(--text-muted);
+  font-family: var(--font-d);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s ease-out, color 0.12s ease-out;
+  flex-shrink: 0;
+}
+.calib-step-btn:hover { border-color: var(--accent); color: var(--accent); }
+.calib-slider {
+  -webkit-appearance: none;
+  flex: 1;
+  height: 4px;
+  background: linear-gradient(to right,
+    var(--accent) 0%,
+    var(--accent) calc((var(--slider-pct, 45%)) * 1%),
+    var(--border-vis) calc((var(--slider-pct, 45%)) * 1%),
+    var(--border-vis) 100%);
+  border-radius: 2px;
+  outline: none;
+  cursor: pointer;
+}
+.calib-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--gem);
+  border: none;
+  box-shadow: 0 0 0 3px rgba(138,180,200,0.2);
+  cursor: grab;
+  transition: transform 0.08s;
+}
+.calib-slider:active::-webkit-slider-thumb { cursor: grabbing; transform: scale(1.15); }
+.calib-readout {
+  font-family: var(--font-d);
+  font-size: 14px;
+  color: var(--gem);
+  min-width: 38px;
+  text-align: right;
+  letter-spacing: 0.04em;
+}
+.calib-range-labels {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  padding: 0 4px;
+  margin-bottom: 12px;
+}
+.calib-reset-btn {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--border);
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  padding: 8px;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+  display: none;
+}
+.calib-reset-btn.visible { display: block; }
+.calib-reset-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
+
+/* Simulated map with tokens (for calibration demo) */
+.demo-map {
+  background: #0a1520;
+  border-top: 1px solid var(--border);
+  height: 180px;
+  position: relative;
+  overflow: hidden;
+}
+.demo-map-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(106,143,168,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(106,143,168,0.06) 1px, transparent 1px);
+  background-size: 36px 36px;
+}
+
+/* Map token — uses CSS variable for scale */
+.map-token {
+  position: absolute;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  color: #fff;
+  font-size: 12px;
+  outline: 1px solid rgba(0,0,0,0.4);
+  pointer-events: none;
+  /* --token-scale-multiplier is set on demo-map, default 1.0 */
+  width: calc(36px * var(--token-scale-multiplier, 1.0));
+  height: calc(36px * var(--token-scale-multiplier, 1.0));
+  transform-origin: center center;
+}
+.map-token-label {
+  position: absolute;
+  bottom: calc(-16px - 2px * (1 - var(--token-scale-multiplier, 1.0)));
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  color: var(--text);
+  white-space: nowrap;
+  background: rgba(10,15,22,0.75);
+  padding: 1px 5px;
+  border-radius: 2px;
+  /* hide below scale threshold — JS toggles a class */
+  opacity: 1;
+  transition: opacity 0.18s;
+}
+.map-token-label.hidden { opacity: 0; }
+
+/* PC token ring colours */
+.token-pc-ocean  { border: 2px solid var(--ring-ocean); background: #1a3045; }
+.token-pc-ember  { border: 2px solid var(--ring-ember); background: #3a1a0a; }
+.token-pc-forest { border: 2px solid var(--ring-forest); background: #0a2015; }
+/* NPC tokens */
+.token-npc-a { border: 2px solid var(--ring-npc); background: #1a3028; }
+.token-npc-b { border: 2px solid var(--ring-npc); background: #28201a; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 3 — Smooth Poll-Move
+   ═══════════════════════════════════════════════════════════════════════ */
+.poll-map {
+  background: #0a1520;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  height: 220px;
+  position: relative;
+  overflow: hidden;
+}
+.poll-map-grid {
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(106,143,168,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(106,143,168,0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* The poll-moving token */
+.poll-token {
+  position: absolute;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 13px;
+  color: #fff;
+  outline: 1px solid rgba(0,0,0,0.4);
+  /* NOT transitioning on mount; JS adds .has-mounted to enable glide */
+}
+.poll-token.has-mounted {
+  transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+/* First-mount: fade in at position, no slide from origin */
+@keyframes tokenFadeIn {
+  from { opacity: 0; transform: scale(0.78); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.poll-token.mounting {
+  animation: tokenFadeIn 180ms ease-out forwards;
+}
+
+/* Player-map indicator strip */
+.player-map-tag {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  background: rgba(10,15,22,0.7);
+  padding: 2px 7px;
+  border-radius: 2px;
+  text-transform: uppercase;
+}
+
+/* Move path ghost line */
+.move-ghost {
+  position: absolute;
+  border: 1px dashed rgba(106,143,168,0.25);
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+  width: 40px;
+  height: 40px;
+}
+.move-ghost.visible { opacity: 1; }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 4 — Long-Press Remove
+   ═══════════════════════════════════════════════════════════════════════ */
+.longpress-map {
+  background: #0a1520;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  height: 200px;
+  position: relative;
+  overflow: visible; /* so the micro-menu can escape */
+}
+.longpress-map-grid {
+  position: absolute;
+  inset: 0;
+  border-radius: 4px;
+  overflow: hidden;
+  background-image:
+    linear-gradient(rgba(106,143,168,0.06) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(106,143,168,0.06) 1px, transparent 1px);
+  background-size: 40px 40px;
+}
+
+/* The long-press token */
+.lp-token {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 14px;
+  color: #fff;
+  cursor: pointer;
+  outline: 1px solid rgba(0,0,0,0.4);
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Ring-sweep charge cue (SVG approach) */
+.lp-charge-ring {
+  position: absolute;
+  inset: -4px;
+  width: calc(100% + 8px);
+  height: calc(100% + 8px);
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.lp-charge-ring.charging { opacity: 1; }
+.lp-charge-ring circle.track {
+  fill: none;
+  stroke: rgba(106,143,168,0.15);
+  stroke-width: 3;
+}
+.lp-charge-ring circle.fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 163.4; /* circumference of ~26px radius */
+  stroke-dashoffset: 163.4;
+  transition: stroke-dashoffset 480ms linear;
+  transform-origin: center;
+  transform: rotate(-90deg);
+}
+.lp-charge-ring.charging .fill {
+  stroke-dashoffset: 0;
+}
+
+/* "Hold to remove" label for reduced-motion */
+.lp-hold-label {
+  position: absolute;
+  bottom: -24px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: var(--font-u);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  white-space: nowrap;
+  background: rgba(10,15,22,0.8);
+  padding: 2px 7px;
+  border-radius: 2px;
+  opacity: 0;
+  transition: opacity 0.12s;
+  pointer-events: none;
+}
+.lp-token.holding .lp-hold-label { opacity: 1; }
+
+/* Remove micro-menu */
+.lp-menu {
+  position: absolute;
+  background: var(--surface-solid);
+  border: 1px solid var(--border-vis);
+  border-radius: 4px;
+  width: 140px;
+  overflow: hidden;
+  display: none;
+  box-shadow: 0 8px 20px rgba(0,0,0,0.5);
+  z-index: 200;
+  /* origin scale: 0.94→1 + opacity */
+}
+.lp-menu.open {
+  display: block;
+  animation: menuSurface 140ms ease-out forwards;
+}
+@keyframes menuSurface {
+  from { opacity: 0; transform: scale(0.94); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.lp-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  font-family: var(--font-u);
+  font-size: 13px;
+  letter-spacing: 0.1em;
+  cursor: pointer;
+  min-height: 44px;
+  transition: background 0.12s;
+}
+.lp-menu-item:not(:last-child) { border-bottom: 1px solid var(--border); }
+.lp-menu-item.remove { color: var(--danger); }
+.lp-menu-item.remove:hover { background: rgba(192,96,96,0.1); }
+.lp-menu-item.cancel { color: var(--text-muted); }
+.lp-menu-item.cancel:hover { background: rgba(255,255,255,0.04); }
+
+/* Remove token animation */
+@keyframes tokenRemove {
+  from { opacity: 1; transform: scale(1); }
+  to   { opacity: 0; transform: scale(0); }
+}
+.lp-token.removing {
+  animation: tokenRemove 180ms ease-in forwards;
+}
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 5 — Tray Collapse
+   ═══════════════════════════════════════════════════════════════════════ */
+.tray-panel {
+  background: var(--surface);
+  border: 1px solid var(--border-vis);
+  border-radius: 4px;
+  overflow: hidden;
+  max-width: 520px;
+  position: relative;
+}
+
+/* Full tray (76px) */
+.tray-full {
+  max-height: 76px;
+  overflow: hidden;
+  transition: max-height 220ms ease-out;
+}
+.tray-full.collapsed { max-height: 28px; }
+
+.tray-header-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 12px;
+  height: 28px;
+  flex-shrink: 0;
+}
+.tray-count-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  flex: 1;
+}
+.tray-end-btn {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.tray-end-btn:hover { color: var(--accent); }
+
+.tray-chips-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  padding: 0 12px 8px;
+  overflow-x: auto;
+  height: 48px;
+  opacity: 1;
+  transition: opacity 180ms ease-out;
+}
+.tray-chips-row.faded { opacity: 0; }
+
+/* Tray chip */
+.tray-chip {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 12px;
+  color: #fff;
+  outline: 1px solid rgba(0,0,0,0.3);
+  flex-shrink: 0;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.tray-chip:hover { transform: scale(1.08); }
+
+/* Collapsed strip — "ALL PLACED" */
+.tray-all-placed {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  height: 28px;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease-out 40ms;
+}
+.tray-all-placed.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+.tray-check-glyph {
+  color: var(--accent);
+  font-size: 13px;
+}
+.tray-placed-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  flex: 1;
+}
+.tray-chevron-btn {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  min-width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 4px;
+  padding: 0 4px;
+  margin-right: -4px;
+  transition: color 0.15s;
+}
+.tray-chevron-btn:hover { color: var(--accent); }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 6 — PC Ring Colours
+   ═══════════════════════════════════════════════════════════════════════ */
+.ring-demo-grid {
+  display: flex;
+  gap: 24px;
+  flex-wrap: wrap;
+  align-items: flex-end;
+}
+.ring-demo-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.ring-demo-token {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-d);
+  font-size: 15px;
+  color: #fff;
+  outline: 1px solid rgba(0,0,0,0.4);
+}
+.ring-demo-label {
+  font-family: var(--font-u);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  text-align: center;
+}
+.ring-demo-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  vertical-align: middle;
+  margin-right: 4px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LEGEND
+   ═══════════════════════════════════════════════════════════════════════ */
+.legend {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  padding: 24px 28px;
+  margin-top: 60px;
+}
+.legend-title {
+  font-family: var(--font-d);
+  font-size: 14px;
+  letter-spacing: 0.18em;
+  color: var(--accent-bright);
+  margin-bottom: 18px;
+  text-transform: uppercase;
+}
+.legend-items {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 32px;
+}
+@media (max-width: 600px) { .legend-items { grid-template-columns: 1fr; } }
+.legend-item {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.legend-num {
+  font-family: var(--font-d);
+  font-size: 13px;
+  color: var(--accent);
+  flex-shrink: 0;
+  min-width: 20px;
+}
+.legend-text {
+  font-family: var(--font-b);
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.55;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   REDUCED-MOTION GLOBAL OVERRIDE
+   ═══════════════════════════════════════════════════════════════════════ */
+body.reduced-motion *,
+body.reduced-motion *::before,
+body.reduced-motion *::after {
+  animation: none !important;
+  transition-duration: 0ms !important;
+}
+/* In reduced-motion: upload ring stays as static determinate indicator (real state) */
+body.reduced-motion .npc-shimmer { display: none !important; }
+
+/* In reduced-motion: hold-label replaces charge-ring sweep immediately */
+body.reduced-motion .lp-charge-ring { display: none !important; }
+body.reduced-motion .lp-token.holding .lp-hold-label { opacity: 1 !important; }
+
+/* Tray: instant state swap in reduced-motion (handled by removing transition above) */
+
+@media (prefers-reduced-motion: reduce) {
+  /* This fires when the OS preference is set (separate from the JS toggle) */
+  *, *::before, *::after {
+    animation: none !important;
+    transition-duration: 0ms !important;
+  }
+  .npc-shimmer { display: none !important; }
+  .lp-charge-ring { display: none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ─── Page header ────────────────────────────────────────────────────── -->
+<header class="proto-header">
+  <div class="proto-header-title">Battle Map Token Polish — Design Prototype</div>
+  <div class="proto-header-meta">Story 29b · 2026-06-27</div>
+  <div class="proto-header-badge">Ocean Palette</div>
+
+  <!-- Reduced-motion toggle (simulates OS preference) -->
+  <label class="rm-toggle" id="rmToggleLabel">
+    <input type="checkbox" id="rmToggle" />
+    Reduced Motion
+  </label>
+</header>
+
+<div class="page-body">
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 1 — NPC Portrait Upload
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="proto-section">
+  <div class="proto-section-header">
+    <div class="proto-section-num">Section 1 of 6</div>
+    <div class="proto-section-title">NPC Portrait Upload</div>
+    <div class="proto-section-desc">
+      Camera-glyph overlay on the NPC identity circle. Hover-revealed on pointer devices (0→1, 120ms);
+      persistent at 0.6 opacity on touch. Tap → file picker → local preview + determinate progress ring → portrait.
+      Error state and token rendering (portrait vs. initials fallback) also shown.
+    </div>
+  </div>
+
+  <div class="scenario-row">
+    <!-- State A: No portrait (initials fallback) -->
+    <div class="scenario-card">
+      <div class="scenario-label">State A — No portrait (initials fallback)</div>
+
+      <div class="npc-card">
+        <div class="npc-card-header">
+
+          <!-- Identity circle — tap/hover to reveal camera -->
+          <div class="npc-identity-circle" id="npcCircleA" title="Tap to upload portrait" onclick="startUploadA()">
+            <div class="npc-identity-circle-inner">
+              <!-- Initials -->
+              <span class="npc-initials" id="initialsA">GS</span>
+              <!-- Portrait image (hidden) -->
+              <img class="npc-portrait-img" id="portraitImgA" src="" alt="" />
+              <!-- Camera overlay -->
+              <div class="npc-camera-overlay">
+                <!-- Camera SVG glyph -->
+                <svg viewBox="0 0 20 16" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M7 1l-1.5 2H2C.9 3 0 3.9 0 5v9c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2h-3.5L13 1H7zm3 3a4 4 0 1 1 0 8 4 4 0 0 1 0-8zm0 1.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z"/>
+                </svg>
+              </div>
+              <!-- Progress ring (during upload) -->
+              <div class="npc-progress-ring" id="progressRingA">
+                <svg viewBox="0 0 44 44" style="width:44px;height:44px;position:absolute;inset:-4px;">
+                  <circle class="track" cx="22" cy="22" r="19" fill="none" stroke="rgba(106,143,168,0.18)" stroke-width="3"/>
+                  <circle class="fill" id="progressFillA" cx="22" cy="22" r="19"
+                    fill="none" stroke="#6a8fa8" stroke-width="3" stroke-linecap="round"
+                    stroke-dasharray="119.4" stroke-dashoffset="119.4"
+                    transform="rotate(-90 22 22)"
+                    style="transition: stroke-dashoffset 1.4s linear;"/>
+                </svg>
+              </div>
+              <!-- Shimmer scrim -->
+              <div class="npc-shimmer" id="shimmerA"></div>
+            </div>
+          </div>
+
+          <div class="npc-card-name">Goblin Shaman</div>
+          <div class="npc-card-hp">♥ 27/27</div>
+          <div class="npc-card-actions">
+            <button class="npc-btn-small">+ Init</button>
+            <button class="npc-btn-small">⋯</button>
+            <button class="npc-btn-small" style="color:var(--danger);border-color:rgba(192,96,96,0.25)">×</button>
+          </div>
+        </div>
+        <!-- Hidden file input -->
+        <input type="file" id="fileInputA" accept="image/png,image/jpeg,image/webp"
+          style="display:none" onchange="handleFileSelectA(event)" />
+        <!-- Upload error -->
+        <div class="npc-upload-error" id="uploadErrorA">Couldn't upload — try again</div>
+      </div>
+
+      <!-- Callout -->
+      <div class="callout" style="bottom:-28px;left:0">① Hover circle → camera glyph</div>
+
+      <div class="btn-row" style="margin-top:40px">
+        <button class="btn-primary" onclick="startUploadA()">Simulate File Pick</button>
+        <button class="btn-ghost" onclick="simulateUploadFailA()">Simulate Fail</button>
+        <button class="btn-ghost" onclick="resetPortraitA()">Reset</button>
+      </div>
+    </div>
+
+    <!-- State B: Portrait set — token rendering payoff -->
+    <div class="scenario-card">
+      <div class="scenario-label">State B — Token rendering (portrait vs. fallback)</div>
+
+      <div style="margin-bottom:14px">
+        <div style="font-family:var(--font-b);font-size:13px;color:var(--text-muted);margin-bottom:12px;line-height:1.5;">
+          NPC tokens: portrait fill when set, hash-tinted initials when absent. Ring stays neutral grey
+          in both states — grey ring = faction signal (NPC). Story 31 number badge sits over the portrait.
+        </div>
+      </div>
+
+      <div class="token-demo-row">
+        <!-- Goblin 1 — no portrait -->
+        <div class="token-wrap">
+          <div class="token-circle token-npc-a" style="background:#1a3028;">
+            <span style="font-family:var(--font-d);font-size:13px;">G</span>
+            <div class="token-badge">1</div>
+          </div>
+          <div class="token-label">Goblin 1<br>No portrait</div>
+        </div>
+        <!-- Goblin 2 — no portrait, different tint -->
+        <div class="token-wrap">
+          <div class="token-circle token-npc-b" style="background:#2a1e14;">
+            <span style="font-family:var(--font-d);font-size:13px;">G</span>
+            <div class="token-badge">2</div>
+          </div>
+          <div class="token-label">Goblin 2<br>No portrait</div>
+        </div>
+        <!-- Goblin Shaman — with portrait -->
+        <div class="token-wrap">
+          <div class="token-circle" style="border:2px solid var(--ring-npc);background:#1a2830;padding:0;overflow:hidden;">
+            <!-- Using a stable placeholder that won't 404 -->
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Crect width='44' height='44' fill='%231a3040'/%3E%3Ccircle cx='22' cy='16' r='8' fill='%236a8fa8' opacity='0.7'/%3E%3Cellipse cx='22' cy='36' rx='12' ry='9' fill='%236a8fa8' opacity='0.5'/%3E%3C/svg%3E"
+              alt="" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+          </div>
+          <div class="token-label">Shaman<br>Portrait set</div>
+        </div>
+        <!-- Bandit Captain — with portrait -->
+        <div class="token-wrap">
+          <div class="token-circle" style="border:2px solid var(--ring-npc);background:#1a1020;padding:0;overflow:hidden;">
+            <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Crect width='44' height='44' fill='%23200a28'/%3E%3Ccircle cx='22' cy='16' r='8' fill='%23a06060' opacity='0.8'/%3E%3Cellipse cx='22' cy='36' rx='12' ry='9' fill='%23804040' opacity='0.6'/%3E%3C/svg%3E"
+              alt="" style="width:100%;height:100%;object-fit:cover;display:block;"/>
+          </div>
+          <div class="token-label">Bandit Cap.<br>Portrait set</div>
+        </div>
+      </div>
+
+      <!-- Annotation: onError fallback -->
+      <div style="margin-top:20px;font-family:var(--font-b);font-style:italic;font-size:13px;color:var(--text-muted);">
+        Note: <code style="font-style:normal;font-size:12px;color:var(--accent)">onError</code> always
+        falls back to initials. Never a broken-image glyph.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 2 — Token Scale Calibration
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="proto-section">
+  <div class="proto-section-header">
+    <div class="proto-section-num">Section 2 of 6</div>
+    <div class="proto-section-title">Per-Map Token Scale Calibration</div>
+    <div class="proto-section-desc">
+      ⚙ gear icon visible in Battle Mode only. Opens 240px anchored popover with 0.5×–2.5× slider,
+      ± steppers, numeric readout. Slider drag → instant live resize (1:1). ± click → 120ms ease-out tween.
+      Reset ghost button appears only when scale ≠ 1.0×. Tray chips do NOT scale.
+    </div>
+  </div>
+
+  <div class="scenario-row">
+    <div class="scenario-card" style="max-width:540px;position:relative;overflow:visible;">
+      <div class="scenario-label">Battle Mode active — ⚙ visible in header</div>
+
+      <div class="map-panel-chrome">
+        <div class="map-panel-header">
+          <div style="display:flex;flex-direction:column;gap:2px;flex:1">
+            <div class="map-panel-label">Map</div>
+            <div class="map-panel-name">Forest Crossing</div>
+          </div>
+          <div class="map-battle-badge">⚔ BATTLE MODE ✓</div>
+
+          <!-- ⚙ gear button (Battle Mode only) -->
+          <div style="position:relative">
+            <button class="btn-gear" id="gearBtn" onclick="toggleCalibPopover()" title="Token scale calibration">
+              <!-- Gear SVG -->
+              <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                <path d="M12 15.5A3.5 3.5 0 0 1 8.5 12 3.5 3.5 0 0 1 12 8.5a3.5 3.5 0 0 1 3.5 3.5 3.5 3.5 0 0 1-3.5 3.5m7.43-2.92c.04-.3.07-.61.07-.93 0-.32-.03-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.3-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.09-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.04.3-.07.63-.07.94s.03.64.07.94l-2.03 1.58c-.18.14-.23.4-.12.6l1.92 3.32c.12.22.37.3.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.09.47 0 .59-.22l1.92-3.32c.12-.21.07-.47-.12-.6l-2.01-1.58z"/>
+              </svg>
+            </button>
+
+            <!-- Calibration popover (anchored to gear btn) -->
+            <div class="calib-popover" id="calibPopover">
+              <div class="calib-title">Map Calibration</div>
+              <div style="font-family:var(--font-u);font-size:11px;letter-spacing:0.15em;color:var(--text-muted);margin-bottom:8px;">Token size</div>
+              <div class="calib-row">
+                <button class="calib-step-btn" onclick="stepCalib(-1)" title="Decrease">−</button>
+                <input class="calib-slider" type="range" id="calibSlider"
+                  min="50" max="250" step="5" value="140"
+                  oninput="onCalibSlider(this.value)"
+                  style="--slider-pct:45" />
+                <button class="calib-step-btn" onclick="stepCalib(1)" title="Increase">+</button>
+                <div class="calib-readout" id="calibReadout">1.4×</div>
+              </div>
+              <div class="calib-range-labels">
+                <span>small</span>
+                <span>large</span>
+              </div>
+              <button class="calib-reset-btn" id="calibResetBtn" onclick="resetCalib()">⟳ Reset to 1.0×</button>
+            </div>
+          </div>
+
+          <button style="font-family:var(--font-u);font-size:12px;color:var(--text-muted);background:transparent;border:none;cursor:pointer;padding:4px;font-size:16px;">⌃</button>
+        </div>
+
+        <!-- Simulated map — tokens resize live -->
+        <div class="demo-map" id="demoMap" style="--token-scale-multiplier:1.4">
+          <div class="demo-map-grid"></div>
+
+          <!-- PC tokens -->
+          <div class="map-token token-pc-ember" style="left:42px;top:45px;" id="mapTokAragorn">
+            Ar
+            <div class="map-token-label" id="labelAragorn">Aragorn</div>
+          </div>
+          <div class="map-token token-pc-ocean" style="left:110px;top:100px;" id="mapTokEoghan">
+            Eo
+            <div class="map-token-label" id="labelEoghan">Eoghan</div>
+          </div>
+          <!-- NPC tokens -->
+          <div class="map-token token-npc-a" style="left:200px;top:50px;" id="mapTokGob1">
+            G<div class="token-badge" style="position:absolute;bottom:1px;right:1px;width:14px;height:14px;font-size:8px;">1</div>
+            <div class="map-token-label" id="labelGob1">Goblin</div>
+          </div>
+          <div class="map-token token-npc-b" style="left:240px;top:110px;" id="mapTokGob2">
+            G<div class="token-badge" style="position:absolute;bottom:1px;right:1px;width:14px;height:14px;font-size:8px;">2</div>
+            <div class="map-token-label" id="labelGob2">Goblin</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Callout annotations -->
+      <div class="callout" style="right:50px;top:-14px">⚙ battle-mode only</div>
+
+      <div style="margin-top:16px;font-family:var(--font-b);font-size:13px;color:var(--text-muted);">
+        Current scale: <strong id="currentScaleDisplay" style="color:var(--gem);font-family:var(--font-d);">1.4×</strong>
+        &nbsp;·&nbsp; Drag the slider — tokens resize instantly. ± buttons give 120ms ease-out step.
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 3 — Smooth Player-Side Poll Move
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="proto-section">
+  <div class="proto-section-header">
+    <div class="proto-section-num">Section 3 of 6</div>
+    <div class="proto-section-title">Smooth Player-Side Poll Move</div>
+    <div class="proto-section-desc">
+      "Simulate poll update" moves a token to a new position with
+      <code style="font-size:12px;color:var(--accent)">transform 280ms cubic-bezier(0.2,0.8,0.2,1)</code>.
+      Fires only when the position <em>changes</em>, never on first mount.
+      "First mount" adds a fresh token that fades in at its committed position (180ms ease-out) — no slide from origin.
+    </div>
+  </div>
+
+  <div class="scenario-row">
+    <div class="scenario-card" style="flex:2;min-width:320px">
+      <div class="scenario-label">Player MapViewer — poll-driven movement</div>
+
+      <div class="poll-map" id="pollMap">
+        <div class="poll-map-grid"></div>
+        <div class="player-map-tag">Player View</div>
+
+        <!-- Ghost at destination (shows where token is heading) -->
+        <div class="move-ghost" id="moveGhost" style="left:0;top:0;"></div>
+
+        <!-- Eoghan token (ocean palette ring) -->
+        <div class="poll-token token-pc-ocean" id="pollTokEoghan"
+          style="transform: translate(40px, 60px);">
+          Eo
+        </div>
+
+        <!-- Aesop token (forest palette ring) -->
+        <div class="poll-token token-pc-forest" id="pollTokAesop"
+          style="transform: translate(110px, 130px);">
+          As
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-primary" id="pollMoveBtn" onclick="simulatePollMove()">Simulate Poll Update</button>
+        <button class="btn-ghost" id="addTokenBtn" onclick="addFreshToken()">First Mount (new token)</button>
+        <button class="btn-ghost" onclick="resetPollMap()">Reset</button>
+      </div>
+      <div style="margin-top:10px;font-family:var(--font-b);font-style:italic;font-size:13px;color:var(--text-muted)" id="pollStatus">
+        Click "Simulate Poll Update" to move Eoghan's token across the room.
+      </div>
+    </div>
+
+    <!-- Annotation card -->
+    <div class="scenario-card" style="min-width:220px;max-width:240px">
+      <div class="scenario-label">Motion spec</div>
+      <div style="font-family:var(--font-b);font-size:13px;color:var(--text-muted);line-height:1.7;">
+        <p style="margin-bottom:10px">
+          <strong style="color:var(--accent-bright)">Poll move:</strong><br>
+          <code style="font-size:12px;color:var(--accent)">transform 280ms cubic-bezier(0.2,0.8,0.2,1)</code>
+          — slow enough to read, fast enough to resolve before next 1s poll tick.
+        </p>
+        <p style="margin-bottom:10px">
+          <strong style="color:var(--accent-bright)">First mount:</strong><br>
+          <code style="font-size:12px;color:var(--accent)">opacity+scale 0→1, 180ms ease-out</code>
+          — appears at committed position. No slide from (0,0).
+        </p>
+        <p>
+          <strong style="color:var(--accent-bright)">Gate:</strong><br>
+          <code style="font-size:12px;color:var(--accent)">.has-mounted</code> class
+          applied after first paint via a mounted flag. Transition class not present on first render.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 4 — Long-Press Remove
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="proto-section">
+  <div class="proto-section-header">
+    <div class="proto-section-num">Section 4 of 6</div>
+    <div class="proto-section-title">Long-Press Remove (Touch / Mouse Hold)</div>
+    <div class="proto-section-desc">
+      Hold a placed token for 480ms → clockwise ring-sweep charge cue → <code style="font-size:12px;color:var(--accent)">✕ Remove / Cancel</code> micro-menu.
+      Releasing before 480ms cancels and resets the ring. Menu scales in 0.94→1 + opacity (140ms ease-out).
+      Remove: token scales to 0 + fades (180ms ease-in). Works with mousedown/mouseup and touchstart/touchend.
+      DM-only: players have no token interaction.
+    </div>
+  </div>
+
+  <div class="scenario-row">
+    <div class="scenario-card" style="flex:2;min-width:300px;position:relative">
+      <div class="scenario-label">DM map — hold any token for 480ms</div>
+
+      <div class="longpress-map" id="longpressMap">
+        <div class="longpress-map-grid"></div>
+
+        <!-- Token A — Bandit Captain -->
+        <div class="lp-token token-npc-b" id="lpTokenA"
+          style="left:60px;top:70px;">
+          BC
+          <!-- Charge ring SVG -->
+          <div class="lp-charge-ring" id="chargeRingA">
+            <svg viewBox="0 0 56 56" style="width:56px;height:56px;display:block;">
+              <circle class="track" cx="28" cy="28" r="25" />
+              <circle class="fill" cx="28" cy="28" r="25"
+                style="stroke-dasharray:157.1;stroke-dashoffset:157.1;"/>
+            </svg>
+          </div>
+          <!-- Hold label (reduced-motion substitute) -->
+          <div class="lp-hold-label">Hold to remove</div>
+        </div>
+
+        <!-- Token B — Goblin 3 -->
+        <div class="lp-token token-npc-a" id="lpTokenB"
+          style="left:170px;top:110px;">
+          G3
+          <div class="lp-charge-ring" id="chargeRingB">
+            <svg viewBox="0 0 56 56" style="width:56px;height:56px;display:block;">
+              <circle class="track" cx="28" cy="28" r="25" />
+              <circle class="fill" cx="28" cy="28" r="25"
+                style="stroke-dasharray:157.1;stroke-dashoffset:157.1;"/>
+            </svg>
+          </div>
+          <div class="lp-hold-label">Hold to remove</div>
+        </div>
+
+        <!-- Token C — a PC (for context) -->
+        <div class="lp-token token-pc-ember" id="lpTokenC"
+          style="left:100px;top:30px;cursor:default;opacity:0.7;" title="PC tokens are not interactive">
+          Ar
+        </div>
+
+        <!-- Remove micro-menu (dynamically positioned) -->
+        <div class="lp-menu" id="lpMenu">
+          <div class="lp-menu-item remove" id="lpRemoveBtn" onclick="confirmRemove()">✕ Remove</div>
+          <div class="lp-menu-item cancel" onclick="cancelRemove()">Cancel</div>
+        </div>
+      </div>
+
+      <div style="margin-top:12px;font-family:var(--font-b);font-style:italic;font-size:13px;color:var(--text-muted);" id="lpStatus">
+        Hold the Bandit Captain or Goblin 3 token for 480ms.
+      </div>
+
+      <div class="btn-row">
+        <button class="btn-ghost" onclick="resetLpMap()">Reset tokens</button>
+      </div>
+    </div>
+
+    <div class="scenario-card" style="min-width:220px;max-width:240px">
+      <div class="scenario-label">Gesture spec</div>
+      <div style="font-family:var(--font-b);font-size:13px;color:var(--text-muted);line-height:1.7;">
+        <p style="margin-bottom:10px">
+          <strong style="color:var(--accent-bright)">480ms hold</strong><br>
+          Distinct from 280ms hover-expand. At ~280ms the hover-expand card cross-fades out (120ms) as the menu takes over.
+        </p>
+        <p style="margin-bottom:10px">
+          <strong style="color:var(--accent-bright)">Ring sweep</strong><br>
+          Clockwise arc fills over 480ms linear. Reduced-motion: static "Hold to remove" label instead.
+        </p>
+        <p style="margin-bottom:10px">
+          <strong style="color:var(--accent-bright)">Menu: 140ms</strong><br>
+          <code style="font-size:12px;color:var(--accent)">scale 0.94→1 + opacity</code>, ease-out
+        </p>
+        <p>
+          <strong style="color:var(--accent-bright)">Auto-dismiss</strong><br>
+          Menu closes after 4s if no action taken.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 5 — Tray Collapse
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="proto-section">
+  <div class="proto-section-header">
+    <div class="proto-section-num">Section 5 of 6</div>
+    <div class="proto-section-title">Tray Collapse — All Tokens Placed</div>
+    <div class="proto-section-desc">
+      When <code style="font-size:12px;color:var(--accent)">unplacedCount === 0 &amp;&amp; total &gt; 0</code>,
+      the 76px tray animates to a 28px ✓ ALL TOKENS PLACED status strip
+      (220ms height + 180ms content crossfade). Re-expands when a token returns to unplaced or DM taps the strip.
+    </div>
+  </div>
+
+  <div class="scenario-row">
+    <div class="scenario-card" style="max-width:560px">
+      <div class="scenario-label">Token tray — place / remove tokens to trigger collapse</div>
+
+      <div style="position:relative">
+        <div class="tray-panel" id="trayPanel">
+
+          <!-- ALL PLACED overlay strip (absolutely positioned, cross-fades in) -->
+          <div class="tray-all-placed" id="trayAllPlaced" onclick="expandTray()">
+            <span class="tray-check-glyph">✓</span>
+            <span class="tray-placed-label" id="trayPlacedLabel">All Tokens Placed · 7</span>
+            <button class="tray-chevron-btn" title="Expand tray">⌃ open</button>
+          </div>
+
+          <!-- Full tray content -->
+          <div class="tray-full" id="trayFull">
+            <div class="tray-header-row">
+              <div class="tray-count-label" id="trayCountLabel">Unplaced · <span id="trayUnplacedCount">4</span></div>
+              <button class="tray-end-btn">End ▾</button>
+            </div>
+            <div class="tray-chips-row" id="trayChipsRow">
+              <!-- Unplaced chips (will be dynamically managed) -->
+              <div class="tray-chip token-pc-ocean" id="chip-Eo" title="Eoghan">Eo</div>
+              <div class="tray-chip token-npc-a" id="chip-Gb2" title="Goblin 2">G2</div>
+              <div class="tray-chip token-npc-a" id="chip-Gb3" title="Goblin 3">G3</div>
+              <div class="tray-chip token-npc-b" id="chip-Bs" title="Bandit Shaman">BS</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:20px">
+        <button class="btn-primary" onclick="placeAllTokens()">Place All (collapse tray)</button>
+        <button class="btn-ghost" onclick="removeOneToken()">Remove One (re-expand)</button>
+        <button class="btn-ghost" onclick="resetTray()">Reset</button>
+      </div>
+
+      <div style="margin-top:10px;font-family:var(--font-b);font-style:italic;font-size:13px;color:var(--text-muted)" id="trayStatus">
+        Tray shows 4 unplaced tokens.
+      </div>
+    </div>
+
+    <div class="scenario-card" style="min-width:200px;max-width:220px">
+      <div class="scenario-label">Animation spec</div>
+      <div style="font-family:var(--font-b);font-size:13px;color:var(--text-muted);line-height:1.7;">
+        <p style="margin-bottom:10px">
+          <strong style="color:var(--accent-bright)">Collapse</strong><br>
+          max-height 76→28px · 220ms ease-out<br>
+          Chip row: opacity→0 · 180ms<br>
+          "ALL PLACED": opacity 0→1 · 180ms + 40ms delay
+        </p>
+        <p style="margin-bottom:10px">
+          <strong style="color:var(--accent-bright)">Expand</strong><br>
+          max-height 28→76px · 220ms ease-out<br>
+          Reverse crossfade
+        </p>
+        <p>
+          <strong style="color:var(--accent-bright)">Empty tray edge case</strong><br>
+          total === 0 → shows Story 29 empty state. "ALL PLACED" requires total &gt; 0.
+        </p>
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     SECTION 6 — PC Ring Colours + Reduced-Motion Summary
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="proto-section">
+  <div class="proto-section-header">
+    <div class="proto-section-num">Section 6 of 6</div>
+    <div class="proto-section-title">PC Ring Colours &amp; Reduced-Motion Audit</div>
+    <div class="proto-section-desc">
+      Each PC token ring uses that character's <code style="font-size:12px;color:var(--accent)">--pal-accent</code>
+      applied as a per-token <code style="font-size:12px;color:var(--accent)">--token-ring</code> CSS variable.
+      NPC rings stay neutral grey — the grey ring is the faction signal.
+      Toggle "Reduced Motion" in the page header to observe the OS-preference audit.
+    </div>
+  </div>
+
+  <div class="scenario-row">
+    <div class="scenario-card">
+      <div class="scenario-label">PC token ring colours (palette-derived)</div>
+      <div class="ring-demo-grid">
+        <!-- Ocean — Eoghan -->
+        <div class="ring-demo-item">
+          <div class="ring-demo-token" style="border:2.5px solid #6a8fa8;background:#0d1e2c;">Eo</div>
+          <div class="ring-demo-label">
+            <span class="ring-demo-swatch" style="background:#6a8fa8"></span>Ocean<br>
+            <code style="font-size:10px;color:var(--accent)">#6a8fa8</code>
+          </div>
+        </div>
+        <!-- Ember — Aragorn -->
+        <div class="ring-demo-item">
+          <div class="ring-demo-token" style="border:2.5px solid #c0784a;background:#2a100a;">Ar</div>
+          <div class="ring-demo-label">
+            <span class="ring-demo-swatch" style="background:#c0784a"></span>Ember<br>
+            <code style="font-size:10px;color:var(--accent)">#c0784a</code>
+          </div>
+        </div>
+        <!-- Forest — Aeryn -->
+        <div class="ring-demo-item">
+          <div class="ring-demo-token" style="border:2.5px solid #5a9a5a;background:#0a200a;">Ae</div>
+          <div class="ring-demo-label">
+            <span class="ring-demo-swatch" style="background:#5a9a5a"></span>Forest<br>
+            <code style="font-size:10px;color:var(--accent)">#5a9a5a</code>
+          </div>
+        </div>
+        <!-- Hoarfrost example -->
+        <div class="ring-demo-item">
+          <div class="ring-demo-token" style="border:2.5px solid #8aaac8;background:#0a1428;">Rx</div>
+          <div class="ring-demo-label">
+            <span class="ring-demo-swatch" style="background:#8aaac8"></span>Hoarfrost<br>
+            <code style="font-size:10px;color:var(--accent)">#8aaac8</code>
+          </div>
+        </div>
+        <!-- NPC — neutral grey ring -->
+        <div class="ring-demo-item">
+          <div class="ring-demo-token" style="border:2.5px solid rgba(140,140,140,0.55);background:#1a2a2a;">GS</div>
+          <div class="ring-demo-label">
+            <span class="ring-demo-swatch" style="background:rgba(140,140,140,0.55)"></span>NPC (neutral)<br>
+            <code style="font-size:10px;color:var(--accent)">grey faction</code>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Reduced-motion audit matrix -->
+    <div class="scenario-card" style="min-width:280px">
+      <div class="scenario-label">Reduced-motion audit</div>
+      <div style="overflow-x:auto">
+        <table style="width:100%;border-collapse:collapse;font-size:12px;font-family:var(--font-b);">
+          <thead>
+            <tr>
+              <th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-family:var(--font-u);font-size:10px;letter-spacing:0.15em;border-bottom:1px solid var(--border);">Motion</th>
+              <th style="text-align:left;padding:5px 8px;color:var(--text-muted);font-family:var(--font-u);font-size:10px;letter-spacing:0.15em;border-bottom:1px solid var(--border);">Reduced</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:5px 8px;color:var(--text-body);border-bottom:1px solid var(--border)">Poll move glide</td><td style="padding:5px 8px;color:var(--text-muted);border-bottom:1px solid var(--border)">Instant snap</td></tr>
+            <tr><td style="padding:5px 8px;color:var(--text-body);border-bottom:1px solid var(--border)">First mount fade</td><td style="padding:5px 8px;color:var(--text-muted);border-bottom:1px solid var(--border)">Instant appear</td></tr>
+            <tr><td style="padding:5px 8px;color:var(--text-body);border-bottom:1px solid var(--border)">Long-press sweep</td><td style="padding:5px 8px;color:var(--text-muted);border-bottom:1px solid var(--border)">"Hold to remove" label</td></tr>
+            <tr><td style="padding:5px 8px;color:var(--text-body);border-bottom:1px solid var(--border)">Tray collapse</td><td style="padding:5px 8px;color:var(--text-muted);border-bottom:1px solid var(--border)">Instant state swap</td></tr>
+            <tr><td style="padding:5px 8px;color:var(--text-body);border-bottom:1px solid var(--border)">Upload shimmer</td><td style="padding:5px 8px;color:var(--text-muted);border-bottom:1px solid var(--border)">Hidden (static ring kept)</td></tr>
+            <tr><td style="padding:5px 8px;color:var(--text-body);border-bottom:1px solid var(--border)">Calibration ±</td><td style="padding:5px 8px;color:var(--text-muted);border-bottom:1px solid var(--border)">Instant resize</td></tr>
+            <tr><td style="padding:5px 8px;color:var(--text-body);border-bottom:1px solid var(--border)">Remove confirm</td><td style="padding:5px 8px;color:var(--text-muted);border-bottom:1px solid var(--border)">Instant disappear</td></tr>
+            <tr><td style="padding:5px 8px;color:var(--text-body)">Conc. dot / FALLEN</td><td style="padding:5px 8px;color:var(--text-muted)">Static end-state</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div style="margin-top:10px;font-family:var(--font-b);font-style:italic;font-size:12px;color:var(--text-muted);">
+        Strategy: <em>replace, don't delete</em> where motion carries meaning.
+        The upload progress ring is kept as a static determinate indicator (real system state, not decoration).
+      </div>
+    </div>
+  </div>
+</section>
+
+
+<!-- ─── Legend ─────────────────────────────────────────────────────────── -->
+<div class="legend">
+  <div class="legend-title">Legend</div>
+  <div class="legend-items">
+    <div class="legend-item">
+      <div class="legend-num">①</div>
+      <div class="legend-text">
+        <strong>Camera overlay placement</strong> — lives on the identity circle, not in ⋯ menu.
+        Direct manipulation: tap the face to give it a face. Zero horizontal space cost.
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">②</div>
+      <div class="legend-text">
+        <strong>Upload flow</strong> — local object-URL preview shows immediately on file selection.
+        Progress ring tracks bytes (determinate). On success: shimmer fades (180ms), ring completes + fades.
+        Writes <code>portraitUrl</code> to the live NPC combat object via <code>putNpcCombat</code> with no separate save step.
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">③</div>
+      <div class="legend-text">
+        <strong>NPC ring stays neutral grey</strong> with a portrait set. The portrait carries identity;
+        the grey ring carries faction (NPC). Only PC rings are palette-derived.
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">④</div>
+      <div class="legend-text">
+        <strong>Calibration gear (⚙)</strong> — shown only in Battle Mode. A setup-once action does not
+        earn permanent header real estate. Popover is 240px on desktop; full-width bottom sheet below 360px (not shown here).
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">⑤</div>
+      <div class="legend-text">
+        <strong>Slider is live (1:1)</strong> — dragging thumb resizes tokens instantly via
+        <code>--token-scale-multiplier</code> CSS variable on the MapViewer root. No token-list re-render.
+        ± steppers give 120ms ease-out tween. Tray chips never scale.
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">⑥</div>
+      <div class="legend-text">
+        <strong>has-mounted flag</strong> — the poll-move transition class is applied only after the
+        token's first render. Without this gate, a newly-appeared token would slide in from (0,0) origin.
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">⑦</div>
+      <div class="legend-text">
+        <strong>Long-press 480ms</strong> intentionally distinct from the 280ms hover-expand.
+        At ~280ms the hover-expand card cross-fades out (120ms) as the charge ring takes over.
+        Releasing early always cancels; ring resets instantly.
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">⑧</div>
+      <div class="legend-text">
+        <strong>Tray "ALL PLACED" requires total &gt; 0</strong>. An empty tray (0 total tokens) shows
+        Story 29's empty-state copy. Collapse trigger: <code>unplacedCount === 0 &amp;&amp; total &gt; 0</code>.
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">⑨</div>
+      <div class="legend-text">
+        <strong>Reduced-motion strategy</strong> — single authoritative block in <code>tokens.css</code>.
+        Blanket <code>animation: none; transition-duration: 0ms</code> on all token-layer elements.
+        Upload progress ring kept as static determinate indicator (real system state).
+      </div>
+    </div>
+    <div class="legend-item">
+      <div class="legend-num">⑩</div>
+      <div class="legend-text">
+        <strong>Story 31 contract</strong> — <code>portraitUrl</code> is the same field Story 31's library
+        entries store. "Save to library" is a one-way snapshot at save time. Spawning a library entry
+        pre-fills the portrait — no second upload.
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /page-body -->
+
+<!-- ─── JS ────────────────────────────────────────────────────────────── -->
+<script>
+/* ── Reduced-motion toggle ──────────────────────────────────────────── */
+const rmToggle = document.getElementById('rmToggle');
+const rmLabel  = document.getElementById('rmToggleLabel');
+rmToggle.addEventListener('change', () => {
+  document.body.classList.toggle('reduced-motion', rmToggle.checked);
+  rmLabel.classList.toggle('active', rmToggle.checked);
+});
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   SECTION 1 — NPC Portrait Upload
+   ══════════════════════════════════════════════════════════════════════ */
+let uploadTimerA = null;
+
+function startUploadA() {
+  document.getElementById('fileInputA').click();
+}
+
+function handleFileSelectA(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    showUploadErrorA('File too large — max 5MB');
+    return;
+  }
+  const objectUrl = URL.createObjectURL(file);
+  runUploadA(objectUrl);
+  event.target.value = ''; // reset input
+}
+
+function runUploadA(src) {
+  const img       = document.getElementById('portraitImgA');
+  const initials  = document.getElementById('initialsA');
+  const ring      = document.getElementById('progressRingA');
+  const fill      = document.getElementById('progressFillA');
+  const shimmer   = document.getElementById('shimmerA');
+  const error     = document.getElementById('uploadErrorA');
+
+  error.classList.remove('visible');
+
+  // Show preview immediately
+  img.src = src;
+  img.classList.add('visible');
+  initials.style.display = 'none';
+
+  // Start progress ring + shimmer
+  ring.classList.add('uploading');
+  shimmer.classList.add('uploading');
+
+  // Animate ring: stroke-dashoffset 119.4 → 0 over 1.4s
+  requestAnimationFrame(() => {
+    fill.style.transition = 'stroke-dashoffset 1.4s linear';
+    fill.style.strokeDashoffset = '0';
+  });
+
+  // Simulate upload completes after 1.5s
+  uploadTimerA = setTimeout(() => {
+    // Success: shimmer fades (180ms), ring completes + fades
+    shimmer.classList.remove('uploading');
+    setTimeout(() => {
+      ring.classList.remove('uploading');
+      fill.style.transition = 'none';
+      fill.style.strokeDashoffset = '119.4';
+    }, 200);
+  }, 1500);
+}
+
+function simulateUploadFailA() {
+  // Show a brief preview then revert
+  const img      = document.getElementById('portraitImgA');
+  const initials = document.getElementById('initialsA');
+  const ring     = document.getElementById('progressRingA');
+  const fill     = document.getElementById('progressFillA');
+  const shimmer  = document.getElementById('shimmerA');
+  const error    = document.getElementById('uploadErrorA');
+
+  error.classList.remove('visible');
+  // Fake a tiny preview
+  img.src = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='44' height='44'%3E%3Crect width='44' height='44' fill='%231a2030'/%3E%3C/svg%3E";
+  img.classList.add('visible');
+  initials.style.display = 'none';
+
+  ring.classList.add('uploading');
+  shimmer.classList.add('uploading');
+
+  requestAnimationFrame(() => {
+    fill.style.transition = 'stroke-dashoffset 0.6s linear';
+    fill.style.strokeDashoffset = '60'; // partial progress
+  });
+
+  setTimeout(() => {
+    // Fail: revert
+    ring.classList.remove('uploading');
+    shimmer.classList.remove('uploading');
+    fill.style.transition = 'none';
+    fill.style.strokeDashoffset = '119.4';
+    img.classList.remove('visible');
+    img.src = '';
+    initials.style.display = '';
+    error.classList.add('visible');
+  }, 800);
+}
+
+function showUploadErrorA(msg) {
+  const error = document.getElementById('uploadErrorA');
+  error.textContent = msg;
+  error.classList.add('visible');
+}
+
+function resetPortraitA() {
+  const img      = document.getElementById('portraitImgA');
+  const initials = document.getElementById('initialsA');
+  const ring     = document.getElementById('progressRingA');
+  const fill     = document.getElementById('progressFillA');
+  const shimmer  = document.getElementById('shimmerA');
+  const error    = document.getElementById('uploadErrorA');
+
+  clearTimeout(uploadTimerA);
+  img.classList.remove('visible'); img.src = '';
+  initials.style.display = '';
+  ring.classList.remove('uploading');
+  shimmer.classList.remove('uploading');
+  fill.style.transition = 'none';
+  fill.style.strokeDashoffset = '119.4';
+  error.classList.remove('visible');
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   SECTION 2 — Token Scale Calibration
+   ══════════════════════════════════════════════════════════════════════ */
+let calibPopoverOpen = false;
+
+function toggleCalibPopover() {
+  calibPopoverOpen = !calibPopoverOpen;
+  document.getElementById('calibPopover').classList.toggle('open', calibPopoverOpen);
+}
+
+// Close popover when clicking outside
+document.addEventListener('click', (e) => {
+  if (calibPopoverOpen) {
+    const pop = document.getElementById('calibPopover');
+    const btn = document.getElementById('gearBtn');
+    if (!pop.contains(e.target) && !btn.contains(e.target)) {
+      calibPopoverOpen = false;
+      pop.classList.remove('open');
+    }
+  }
+});
+
+function onCalibSlider(rawValue) {
+  applyCalibScale(parseInt(rawValue, 10), false);
+}
+
+function stepCalib(dir) {
+  const slider = document.getElementById('calibSlider');
+  let val = parseInt(slider.value, 10) + dir * 5;
+  val = Math.min(250, Math.max(50, val));
+  slider.value = val;
+  applyCalibScale(val, true); // with 120ms tween
+}
+
+function resetCalib() {
+  const slider = document.getElementById('calibSlider');
+  slider.value = 100; // 1.0×
+  applyCalibScale(100, true); // 180ms
+}
+
+function applyCalibScale(rawValue, withTween) {
+  const scale = rawValue / 100;
+  const pct   = ((rawValue - 50) / 200) * 100; // 0–100% across range
+  const readout = (scale).toFixed(1) + '×';
+
+  document.getElementById('calibReadout').textContent = readout;
+  document.getElementById('currentScaleDisplay').textContent = readout;
+
+  // Update slider fill gradient
+  const slider = document.getElementById('calibSlider');
+  slider.style.setProperty('--slider-pct', pct.toFixed(1));
+
+  // Live resize map tokens via CSS variable
+  const demoMap = document.getElementById('demoMap');
+  if (withTween) {
+    // Calibration ± → 120ms ease-out, reset → 180ms ease-out
+    const dur = rawValue === 100 ? '180ms' : '120ms';
+    demoMap.style.setProperty('transition', `--token-scale-multiplier ${dur} ease-out`);
+    // CSS custom-property transitions don't work in most browsers — apply to width/height directly
+    // We apply inline transition to each token
+    const tokens = demoMap.querySelectorAll('.map-token');
+    tokens.forEach(t => {
+      t.style.transition = `width ${dur} ease-out, height ${dur} ease-out`;
+    });
+    setTimeout(() => {
+      tokens.forEach(t => { t.style.transition = ''; });
+    }, 250);
+  }
+
+  demoMap.style.setProperty('--token-scale-multiplier', scale.toFixed(2));
+
+  // Show/hide reset button (only when scale !== 1.0)
+  const resetBtn = document.getElementById('calibResetBtn');
+  resetBtn.classList.toggle('visible', Math.abs(scale - 1.0) > 0.01);
+
+  // Label hide threshold: scale × mapViewerZoom < 0.6 (zoom = 1 here)
+  const hideLabels = scale < 0.6;
+  ['labelAragorn','labelEoghan','labelGob1','labelGob2'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.toggle('hidden', hideLabels);
+  });
+}
+
+// Initialize calibration slider fill
+document.addEventListener('DOMContentLoaded', () => {
+  applyCalibScale(140, false);
+});
+// Also call immediately since DOMContentLoaded may have already fired
+applyCalibScale(140, false);
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   SECTION 3 — Smooth Poll-Move
+   ══════════════════════════════════════════════════════════════════════ */
+let eoghanPositions = [
+  { x: 40,  y: 60 },
+  { x: 140, y: 100 },
+  { x: 80,  y: 150 },
+  { x: 180, y: 40 },
+];
+let eoghanPosIdx = 0;
+let freshTokenCount = 0;
+
+// Gate: add .has-mounted after first paint so transition doesn't fire on render
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const t = document.getElementById('pollTokEoghan');
+    const a = document.getElementById('pollTokAesop');
+    if (t) t.classList.add('has-mounted');
+    if (a) a.classList.add('has-mounted');
+  }, 50);
+});
+
+function simulatePollMove() {
+  eoghanPosIdx = (eoghanPosIdx + 1) % eoghanPositions.length;
+  const pos = eoghanPositions[eoghanPosIdx];
+  const tok = document.getElementById('pollTokEoghan');
+  const ghost = document.getElementById('moveGhost');
+
+  // Show ghost at new position briefly
+  ghost.style.left = pos.x + 'px';
+  ghost.style.top  = pos.y + 'px';
+  ghost.classList.add('visible');
+
+  // Move token (transition fires because .has-mounted is set)
+  tok.style.transform = `translate(${pos.x}px, ${pos.y}px)`;
+
+  setTimeout(() => { ghost.classList.remove('visible'); }, 320);
+
+  const status = document.getElementById('pollStatus');
+  status.textContent = `Poll update received — Eoghan moved to (${pos.x}, ${pos.y}). Glide: 280ms cubic-bezier(0.2,0.8,0.2,1).`;
+}
+
+function addFreshToken() {
+  freshTokenCount++;
+  const map = document.getElementById('pollMap');
+  const palettes = ['token-pc-forest', 'token-pc-ember'];
+  const names = ['Ar', 'Ae', 'Rx', 'Br'];
+  const pal = palettes[freshTokenCount % palettes.length];
+  const x = 30 + Math.random() * 130;
+  const y = 30 + Math.random() * 140;
+
+  const tok = document.createElement('div');
+  tok.className = `poll-token ${pal} mounting`;
+  tok.id = `freshTok${freshTokenCount}`;
+  tok.style.transform = `translate(${x.toFixed(0)}px, ${y.toFixed(0)}px)`;
+  tok.textContent = names[freshTokenCount % names.length];
+  map.appendChild(tok);
+
+  // After mount animation completes, add has-mounted for future transitions
+  setTimeout(() => {
+    tok.classList.remove('mounting');
+    tok.classList.add('has-mounted');
+  }, 200);
+
+  document.getElementById('pollStatus').textContent =
+    `New token appeared at (${x.toFixed(0)}, ${y.toFixed(0)}) — fades in at position, NO slide from origin.`;
+}
+
+function resetPollMap() {
+  // Remove fresh tokens
+  for (let i = 1; i <= freshTokenCount; i++) {
+    const el = document.getElementById(`freshTok${i}`);
+    if (el) el.remove();
+  }
+  freshTokenCount = 0;
+  eoghanPosIdx = 0;
+
+  const tok = document.getElementById('pollTokEoghan');
+  tok.classList.remove('has-mounted');
+  tok.style.transform = 'translate(40px, 60px)';
+  setTimeout(() => { tok.classList.add('has-mounted'); }, 50);
+
+  document.getElementById('pollStatus').textContent =
+    'Reset. Click "Simulate Poll Update" to move Eoghan\'s token.';
+}
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   SECTION 4 — Long-Press Remove
+   ══════════════════════════════════════════════════════════════════════ */
+let lpTimer = null;
+let lpActiveToken = null;
+let lpMenuAutoDismiss = null;
+const LP_DURATION = 480;
+
+function attachLpListeners(tokenEl, ringEl) {
+  function startHold(e) {
+    e.preventDefault();
+    if (lpTimer) return;
+    if (tokenEl.classList.contains('removing')) return;
+
+    lpActiveToken = tokenEl;
+    tokenEl.classList.add('holding');
+    ringEl.classList.add('charging');
+
+    // Reset ring dashoffset then animate
+    const fill = ringEl.querySelector('.fill');
+    fill.style.transition = 'none';
+    fill.style.strokeDashoffset = '157.1';
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        fill.style.transition = `stroke-dashoffset ${LP_DURATION}ms linear`;
+        fill.style.strokeDashoffset = '0';
+      });
+    });
+
+    document.getElementById('lpStatus').textContent = 'Holding… keep holding for 480ms.';
+
+    lpTimer = setTimeout(() => {
+      surfaceMenu(tokenEl);
+    }, LP_DURATION);
+  }
+
+  function endHold(e) {
+    if (!lpTimer && !lpActiveToken) return;
+    // Released before 480ms — cancel
+    if (lpTimer) {
+      clearTimeout(lpTimer);
+      lpTimer = null;
+    }
+    if (lpActiveToken === tokenEl) {
+      cancelCharge(tokenEl, ringEl);
+    }
+  }
+
+  tokenEl.addEventListener('mousedown',  startHold);
+  tokenEl.addEventListener('mouseup',    endHold);
+  tokenEl.addEventListener('mouseleave', endHold);
+  tokenEl.addEventListener('touchstart', startHold, { passive: false });
+  tokenEl.addEventListener('touchend',   endHold);
+  tokenEl.addEventListener('touchcancel',endHold);
+}
+
+function cancelCharge(tokenEl, ringEl) {
+  tokenEl.classList.remove('holding');
+  ringEl.classList.remove('charging');
+  const fill = ringEl.querySelector('.fill');
+  fill.style.transition = 'none';
+  fill.style.strokeDashoffset = '157.1';
+  lpActiveToken = null;
+  document.getElementById('lpStatus').textContent = 'Released early — cancelled. Ring reset.';
+}
+
+function surfaceMenu(tokenEl) {
+  lpTimer = null;
+  tokenEl.classList.remove('holding');
+
+  const ring = tokenEl.querySelector('.lp-charge-ring');
+  if (ring) ring.classList.remove('charging');
+
+  const menu = document.getElementById('lpMenu');
+  const tokenRect = tokenEl.getBoundingClientRect();
+  const mapRect   = document.getElementById('longpressMap').getBoundingClientRect();
+
+  let left = parseInt(tokenEl.style.left, 10) + 50;
+  let top  = parseInt(tokenEl.style.top, 10) - 8;
+
+  // Keep menu on screen
+  if (left + 150 > mapRect.width) left = parseInt(tokenEl.style.left, 10) - 148;
+  if (top < 0) top = parseInt(tokenEl.style.top, 10) + 56;
+
+  menu.style.left = left + 'px';
+  menu.style.top  = top + 'px';
+  menu.classList.add('open');
+
+  document.getElementById('lpStatus').textContent = '480ms reached — ✕ Remove menu surfaced.';
+
+  // Auto-dismiss after 4s
+  clearTimeout(lpMenuAutoDismiss);
+  lpMenuAutoDismiss = setTimeout(() => {
+    menu.classList.remove('open');
+    lpActiveToken = null;
+    document.getElementById('lpStatus').textContent = 'Menu auto-dismissed (4s timeout).';
+  }, 4000);
+}
+
+function confirmRemove() {
+  clearTimeout(lpMenuAutoDismiss);
+  document.getElementById('lpMenu').classList.remove('open');
+  if (!lpActiveToken) return;
+
+  lpActiveToken.classList.add('removing');
+  const tok = lpActiveToken;
+  lpActiveToken = null;
+
+  document.getElementById('lpStatus').textContent = '✕ Remove confirmed — token scales out (180ms ease-in).';
+
+  setTimeout(() => {
+    tok.style.display = 'none';
+  }, 200);
+}
+
+function cancelRemove() {
+  clearTimeout(lpMenuAutoDismiss);
+  document.getElementById('lpMenu').classList.remove('open');
+  lpActiveToken = null;
+  document.getElementById('lpStatus').textContent = 'Cancel — token stays placed.';
+}
+
+function resetLpMap() {
+  clearTimeout(lpTimer);
+  clearTimeout(lpMenuAutoDismiss);
+  lpTimer = null;
+  lpActiveToken = null;
+  document.getElementById('lpMenu').classList.remove('open');
+
+  ['lpTokenA','lpTokenB'].forEach(id => {
+    const t = document.getElementById(id);
+    if (t) {
+      t.style.display = '';
+      t.classList.remove('holding','removing');
+      const ring = t.querySelector('.lp-charge-ring');
+      if (ring) {
+        ring.classList.remove('charging');
+        const fill = ring.querySelector('.fill');
+        fill.style.transition = 'none';
+        fill.style.strokeDashoffset = '157.1';
+      }
+    }
+  });
+  document.getElementById('lpStatus').textContent = 'Reset. Hold the Bandit Captain or Goblin 3 token for 480ms.';
+}
+
+// Attach listeners
+window.addEventListener('load', () => {
+  attachLpListeners(document.getElementById('lpTokenA'), document.getElementById('chargeRingA'));
+  attachLpListeners(document.getElementById('lpTokenB'), document.getElementById('chargeRingB'));
+});
+
+
+/* ══════════════════════════════════════════════════════════════════════
+   SECTION 5 — Tray Collapse
+   ══════════════════════════════════════════════════════════════════════ */
+let unplacedTokens = ['Eo','Gb2','Gb3','Bs'];
+const totalTokens  = 7; // 4 unplaced + 3 already placed
+
+function updateTrayState() {
+  const trayFull     = document.getElementById('trayFull');
+  const trayAllPlaced = document.getElementById('trayAllPlaced');
+  const trayChipsRow  = document.getElementById('trayChipsRow');
+  const trayCountLabel = document.getElementById('trayUnplacedCount');
+  const trayStatus    = document.getElementById('trayStatus');
+  const trayPlacedLabel = document.getElementById('trayPlacedLabel');
+
+  trayCountLabel.textContent = unplacedTokens.length;
+
+  const isAllPlaced = unplacedTokens.length === 0 && totalTokens > 0;
+
+  if (isAllPlaced) {
+    // Crossfade out chips row
+    trayChipsRow.classList.add('faded');
+    // Collapse height
+    trayFull.classList.add('collapsed');
+    // Crossfade in ALL PLACED strip
+    setTimeout(() => {
+      trayAllPlaced.classList.add('visible');
+    }, 40);
+    trayPlacedLabel.textContent = `All Tokens Placed · ${totalTokens}`;
+    trayStatus.textContent = `All ${totalTokens} tokens placed. Tray collapsed to 28px strip.`;
+  } else {
+    // Expand
+    trayFull.classList.remove('collapsed');
+    trayChipsRow.classList.remove('faded');
+    trayAllPlaced.classList.remove('visible');
+    trayStatus.textContent = `Tray shows ${unplacedTokens.length} unplaced token${unplacedTokens.length !== 1 ? 's' : ''}.`;
+  }
+}
+
+function placeAllTokens() {
+  unplacedTokens = [];
+  // Hide all chips
+  ['chip-Eo','chip-Gb2','chip-Gb3','chip-Bs'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  updateTrayState();
+}
+
+function removeOneToken() {
+  // Return one token to unplaced
+  const returnees = ['Gb3','Bs','Gb2','Eo'];
+  const toReturn = returnees.find(id => !unplacedTokens.includes(id));
+  if (!toReturn) return;
+  unplacedTokens.push(toReturn);
+
+  const el = document.getElementById(`chip-${toReturn}`);
+  if (el) el.style.display = '';
+
+  updateTrayState();
+}
+
+function expandTray() {
+  // DM taps the collapsed strip to re-expand
+  if (unplacedTokens.length === 0) {
+    // Force expand even when all placed (DM wants to see token list)
+    document.getElementById('trayFull').classList.remove('collapsed');
+    document.getElementById('trayChipsRow').classList.remove('faded');
+    document.getElementById('trayAllPlaced').classList.remove('visible');
+    document.getElementById('trayStatus').textContent = 'Tray expanded (tapped ⌃ open chevron).';
+  }
+}
+
+function resetTray() {
+  unplacedTokens = ['Eo','Gb2','Gb3','Bs'];
+  ['chip-Eo','chip-Gb2','chip-Gb3','chip-Bs'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = '';
+  });
+  document.getElementById('trayFull').classList.remove('collapsed');
+  document.getElementById('trayChipsRow').classList.remove('faded');
+  document.getElementById('trayAllPlaced').classList.remove('visible');
+  document.getElementById('trayUnplacedCount').textContent = '4';
+  document.getElementById('trayStatus').textContent = 'Tray shows 4 unplaced tokens.';
+}
+</script>
+
+</body>
+</html>

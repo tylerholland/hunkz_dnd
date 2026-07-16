@@ -254,13 +254,54 @@ Per-card palette scoping works: each `.card[style]` root can set different `--pa
 
 ---
 
-## ADR-015 · Battle-map token polish (Story 29b): reuses Story 31's NPC-portrait presign, per-map `tokenScale`, shared `TokenChip`
+## ADR-015 · Typed (non-roll) entries in the shared roll-history feed
 
-**Context**: Story 29 shipped the token layer with a `tokenScale` field and a shared `TokenChip` component but no NPC portraits. Story 31 (NPC Library with HP + Portraits) separately shipped a dedicated `npcPortraitPresign.js` handler (`POST /npc-library/portraits/presign`, `npc-portraits/` S3 prefix, public-read bucket policy already granted) used from the Enemies Gallery library editor. Story 29b adds portrait upload directly on the *live combat tracker card* (before an NPC is ever saved to the library), a calibration control for `tokenScale`, and token-layer motion polish.
+**Context**: Story 30 (Counter Wheels) requires a creation-only "administrative" note (`◷ [name] — N segments`, no numeric total) to appear in the shared `roll-history` feed alongside dice rolls. The existing feed is implicitly single-shaped: every row is a dice roll. Both write paths (`postCharacterRoll.js`, `postDmRoll.js`) hard-require `exprLabel`, a finite numeric `total`, and a non-empty numeric `rollValues` array; `RollHistoryRow` always renders a numeric total. A wheel note has none of these.
+
+**Decision**: Introduce an explicit `type` discriminator on roll-history events. Existing dice events are `type: "roll"` (treated as the implicit default when `type` is absent — no migration of stored rows needed). New non-roll entries carry `type: "wheel"` (and the pattern extends to future administrative note types). The storage layer (`appendRollHistoryEvent`) already persists arbitrary event objects without schema enforcement, so no change is needed there — the discriminator is enforced at the edges:
+
+- **Write**: do NOT route wheel notes through `postCharacterRoll`/`postDmRoll` (their validation rejects total-less payloads). The wheel creation write appends the note as part of the same DM-auth write that creates the wheel, or via a dedicated minimal append. A wheel event record omits `total`/`rollValues` and instead carries `{ type: "wheel", name, segments, createdAt, id }`.
+- **Render**: `RollHistoryRow` branches on `entry.type`. `"wheel"` (and any non-`"roll"` type) renders the note layout — clock glyph + italic name + muted segment count, no numeric total, no crit/fumble badges. `"roll"`/absent renders the existing dice layout unchanged.
+
+**Constraint**: Keep the discriminator branch shallow — one note layout variant, not a plugin system. The feed is a flat list of mostly-rolls with occasional notes, not a generic event timeline.
+
+**Revisit when**: A third+ entry type is added, or notes need their own filtering/retention separate from rolls. At that point a small per-type render registry replaces the inline branch.
+
+---
+
+## ADR-016 · `counter-wheels` sentinel for campaign-scoped DM scratch state
+
+**Context**: Story 30 needs DM-only counter wheels (progress clocks) that persist across refreshes and survive "End Combat" (unlike `initiative` / `npc-combat`, which are combat-scoped and cleared). This is the first piece of DM state that is campaign-scoped scratch data — not tied to a character, not tied to a combat encounter.
+
+**Decision**: Store wheels in a new `slug: "counter-wheels"` sentinel item, following the established sentinel pattern (ADR-003): add `COUNTER_WHEELS_SLUG` to `specialItems.js` (and to `RESERVED_CHARACTER_SLUGS` so it is filtered from `list.js` / `dmParty.js`), add `getCounterWheelsState()` / `saveCounterWheelsState()` / `normalizeCounterWheelsRecord()` to `specialRecords.js`, and expose `GET /counter-wheels` + `PUT /counter-wheels` (both DM-auth, per ADR-004 one-Lambda-per-op) modeled on the `npc-library` handlers. Stored shape: `{ wheels: [{ id, name, segments, filledCount }] }` where `filledCount: number` (0..segments) — a single count, NOT a boolean array (resolved fill-semantics question: Blades-classic fill-to-here). `PUT` is a full-array replacement (same contract as `putNpcLibrary`).
+
+**Critical constraint**: The `counter-wheels` sentinel MUST NOT be cleared by any "End Combat" / encounter-teardown path. Whatever code clears `initiative` and `npc-combat` must not touch this slug.
+
+**Revisit when**: Multiple campaigns/groups exist (ADR-005 trigger) — at that point campaign-scoped sentinels need a campaign partition key rather than a single fixed slug.
+
+---
+
+## ADR-017 · Dedicated NPC-portrait presign endpoint; per-purpose presign handlers over a shared one
+
+**Context**: Story 31 (NPC Library with HP + Portraits) needs NPC creature portraits uploaded to S3. Two existing presign handlers were candidates to reuse: `portrait.js` (character portraits, requires a character `slug` + owner/DM auth, `portraits/` prefix) and `mapPresign.js` (DM-auth, `maps/` prefix, 50MB cap, accepts `application/pdf`). Neither fits: NPC portraits are DM-owned (not per-character), are image-only (no PDF), and warrant a tighter size cap than a full-page battle map.
+
+**Decision**: Add a dedicated `POST /npc-library/portraits/presign` handler (`npcPortraitPresign.js`), cloned from `mapPresign.js` but with: an `npc-portraits/` S3 key prefix, image-only `contentType` validation (reject anything not `image/*`), and a 5MB declared-size cap enforced at the Lambda. DM auth via the `x-character-password` header (ADR-005/ADR-007). Reuses the existing `hunkz-dnd-portraits` bucket — no new bucket. This follows ADR-004 (one Lambda per operation) and ADR-008 (direct S3 upload via presigned PUT, no binary through Lambda). **This shipped as part of Story 31** — `npcPortraitPresign.js`, the `npc-portraits/` bucket-policy grant, and `api.js`'s `presignNpcPortrait()` are all real and in use from the Enemies Gallery library editor.
+
+**Rationale**: Per-purpose presign handlers keep each one's validation honest to its actual constraints (auth model, prefix, cap, content types). A single shared presign that branches on a `purpose` param would accumulate conditional validation and blur ownership semantics. At the current handler count the extra Lambda is cheap.
+
+**Also recorded here — sentinel-shape expansion is additive and backwards-compatible**: Story 31 expands the existing `npc-library` sentinel (ADR-003) template shape from `{ id, name, abilities, updatedAt }` to add `hpMax?` and `portraitUrl?`. The rule: when widening a sentinel shape, the corresponding `normalize*Record` function in `specialRecords.js` MUST be updated in the same change — it projects each record field-by-field, so any new field is silently dropped on read until the normalizer passes it through. Older records without the new fields normalize to `null`/absent and are valid (no migration).
+
+**Revisit when**: If image processing (resize/thumbnail generation) is wanted, an S3-event-triggered Lambda is the path (per ADR-008), not piping through the presign endpoint. If a third image-upload purpose appears with the same DM-auth + image-only + small-cap profile, consolidating the NPC and that purpose into one handler may be worth it — but not before.
+
+---
+
+## ADR-018 · Battle-map token polish (Story 29b): reuses ADR-017's NPC-portrait presign, per-map `tokenScale`, shared `TokenChip`
+
+**Context**: Story 29 shipped the token layer with a `tokenScale` field and a shared `TokenChip` component but no NPC portraits. Story 31 separately shipped the dedicated NPC-portrait presign path (ADR-017), used from the Enemies Gallery library editor. Story 29b adds portrait upload directly on the *live combat tracker card* (before an NPC is ever saved to the library), a calibration control for `tokenScale`, and token-layer motion polish.
 
 **Decisions**:
 
-1. **NPC portrait upload on the combat card reuses Story 31's existing `/npc-library/portraits/presign` endpoint and `npc-portraits/` prefix — not a new endpoint or the `maps/` prefix.** The bucket policy already grants public `s3:GetObject` on `npc-portraits/*`, and `api.js` already exports `presignNpcPortrait(filename, contentType, size, dmPassword)` calling it. The combat-card upload (`NpcCardPortrait` in `NpcCombatSection.jsx`) calls this existing function directly; no new presign wrapper was added. Render reuses the existing `NpcThumb` component (portrait-or-initials, `onError` fallback) rather than a parallel render implementation — the upload affordance is a camera-overlay wrapper composed *around* `NpcThumb`, not a replacement for it.
+1. **NPC portrait upload on the combat card reuses ADR-017's existing `/npc-library/portraits/presign` endpoint and `npc-portraits/` prefix — not a new endpoint and not the `maps/` prefix.** An earlier draft of this story planned to reuse `mapPresign.js`/`maps/` instead, on the assumption that Story 31 had not yet built a dedicated presign path; by the time 29b was implemented Story 31 had already shipped ADR-017 in full (bucket policy included), so 29b's combat-card upload calls the existing `presignNpcPortrait()` directly. The combat-card upload (`NpcCardPortrait` in `NpcCombatSection.jsx`) reuses the existing `NpcThumb` component (portrait-or-initials, `onError` fallback) rather than a parallel render implementation — the upload affordance is a camera-overlay wrapper composed *around* `NpcThumb`, not a replacement for it.
 
 2. **Per-map token scale is a single `tokenScale` number on each `map-library` map entry**, clamped 0.5–2.5, default 1.0, already enforced in `normalizeMapLibraryRecord`. New in this story: `PATCH /maps/{mapId}/calibration` (`patchMapCalibration.js`, cloned from `patchMap.js`'s read-modify-write pattern, preserves `activeMapView`) and a ⚙ gear-popover UI (`CalibrationPopover.jsx`) in the DM map panel header, debounced 600ms.
 
@@ -337,6 +378,7 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - **Shared dice roller CSS + keyframes**: `src/components/diceRoller.css`
 - DM dice roller spec: `src/components/DmDiceRoller.test.jsx`
 - Shared roll history row renderer: `src/components/RollHistoryList.jsx`
+- Counter wheels panel (Story 30): `src/features/dmDashboard/` (new slice) + `src/pages/DmDashboardPage.jsx` (orchestration), CSS in `src/features/dmDashboard/`
 
 ### Backend Character APIs
 
@@ -356,5 +398,6 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - DM roll history fetch: `backend/src/handlers/getRollHistory.js`
 - Reserved internal record definitions and public filters: `backend/src/lib/specialItems.js`
 - Shared initiative / NPC combat / roll-history record facade: `backend/src/lib/specialRecords.js`
+- Counter wheels read/write (Story 30): `backend/src/handlers/getCounterWheels.js`, `backend/src/handlers/putCounterWheels.js`
 - Shared auth/db/response helpers: `backend/src/lib/auth.js`, `backend/src/lib/db.js`, `backend/src/lib/response.js`
 - Backend reserved-record specs: `backend/src/lib/specialItems.test.cjs`, `backend/src/lib/specialRecords.test.cjs`, `backend/src/handlers/list.test.cjs`, `backend/src/handlers/get.test.cjs`
