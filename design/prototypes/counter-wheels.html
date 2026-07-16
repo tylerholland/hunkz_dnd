@@ -1,0 +1,1076 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Counter Wheels — Design Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ─── Keyframes ─────────────────────────────────────────────────────── */
+@keyframes mapDotPulse {
+  0%,100% { opacity:1; transform: scale(1); }
+  50%      { opacity:0.6; transform: scale(0.85); }
+}
+@keyframes wheelCellIn {
+  from { opacity:0; transform: scale(0.7); }
+  to   { opacity:1; transform: scale(1); }
+}
+@keyframes wheelCellOut {
+  from { opacity:1; transform: scale(1); }
+  to   { opacity:0; transform: scale(0.8); }
+}
+@keyframes wheelCompletePulse {
+  /* filter-only — no transform, so perspective tilt on the svg is never overridden */
+  0%   { filter: drop-shadow(0 0 3px rgba(228,211,181,0.5)); }
+  40%  { filter: drop-shadow(0 0 14px rgba(228,211,181,1.0)); }
+  100% { filter: drop-shadow(0 0 7px rgba(228,211,181,0.7)); }
+}
+@keyframes wheelCompletePulseScale {
+  /* scale lives on the wrapper, above the svg perspective transform */
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+@keyframes badgeIn {
+  from { opacity:0; transform: translateX(-6px); }
+  to   { opacity:1; transform: translateX(0); }
+}
+@keyframes menuTriggerIn {
+  from { opacity:0; }
+  to   { opacity:1; }
+}
+@keyframes panelBodyIn {
+  from { opacity:0; }
+  to   { opacity:1; }
+}
+@keyframes historySlideIn {
+  from { opacity:0; transform: translateY(-8px); }
+  to   { opacity:1; transform: translateY(0); }
+}
+@keyframes segFillIn {
+  0%   { transform: scale(0.92); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Reset & base ───────────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --bg:#0d0f14; --surface:rgba(18,32,48,0.6); --surface-solid:#111e2c;
+  --border:rgba(100,130,160,0.18); --border-vis:rgba(100,130,160,0.3);
+  --accent:#6a8fa8; --accent-bright:#a0c0d0; --accent-dim:rgba(30,58,78,0.45);
+  --text:#c8bfaf; --text-body:#b0a898; --text-muted:#3a5a6a;
+  --gem:#8ab4c8; --glow1:rgba(20,45,80,0.4); --glow2:rgba(15,35,60,0.3);
+  /* ── wheel fill gradient — edit these to tune ── */
+  --wheel-grad-inner: #bfd4e0;  /* near hub */
+  --wheel-grad-outer: #5c8ba4;  /* rim */
+  --wheel-grad-gold-inner: #f2e8d2; /* completed: near hub */
+  --wheel-grad-gold-outer: #c8ae84; /* completed: rim */
+  --font-d:'Cinzel',Georgia,serif; --font-b:'Crimson Text',Georgia,serif; --font-u:'IM Fell English',Georgia,serif;
+}
+body {
+  background: radial-gradient(ellipse at 50% 0%,var(--glow1),transparent 60%),
+              radial-gradient(ellipse at 80% 100%,var(--glow2),transparent 55%), var(--bg);
+  min-height:100vh; color:var(--text); font-family:var(--font-b);
+  -webkit-font-smoothing:antialiased;
+}
+::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(128,128,128,0.2);border-radius:3px}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+/* ─── Prototype header ───────────────────────────────────────────────── */
+.proto-header {
+  background:rgba(10,15,20,0.92); border-bottom:1px solid rgba(100,130,160,0.15);
+  padding:14px 24px; display:flex; flex-direction:column; gap:4px;
+}
+.proto-title { font-family:var(--font-d); font-size:18px; letter-spacing:0.14em; color:var(--accent-bright); }
+.proto-note  { font-family:var(--font-b); font-style:italic; font-size:13px; color:var(--text-muted); }
+
+/* ─── Page sections ──────────────────────────────────────────────────── */
+.page-section { max-width:1100px; margin:0 auto; padding:36px 20px 8px; }
+.section-title { font-family:var(--font-d); font-size:17px; letter-spacing:0.1em; color:var(--accent-bright); margin-bottom:6px; }
+.section-desc { font-family:var(--font-b); font-style:italic; font-size:13px; color:var(--text-muted); margin-bottom:18px; border-bottom:1px solid var(--border); padding-bottom:14px; }
+.scenario-row { display:flex; gap:28px; flex-wrap:wrap; align-items:flex-start; }
+.scenario-col { display:flex; flex-direction:column; gap:8px; }
+.scenario-label { font-family:var(--font-u); font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted); }
+
+/* ─── Dashboard column context (~480px, matches DM left column width) ── */
+.dash-col-frame {
+  width:480px; background:rgba(8,11,15,0.4); border:1px solid rgba(255,255,255,0.04);
+  border-radius:6px; padding:14px; position:relative;
+}
+.dash-col-frame.mobile { width:340px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   COUNTER WHEELS PANEL
+   ═══════════════════════════════════════════════════════════════════════ */
+.wheels-panel {
+  background:var(--surface); border:1px solid var(--border); border-radius:5px;
+  overflow:hidden; margin-bottom:16px; position:relative;
+}
+.wheels-header {
+  padding:10px 14px; display:flex; align-items:center; gap:8px; cursor:pointer;
+  border-bottom:1px solid transparent; transition:border-color 0.18s; min-height:44px;
+}
+.wheels-panel.expanded .wheels-header { border-bottom-color:var(--border); }
+.wheels-glyph { font-size:13px; color:var(--accent); flex-shrink:0; line-height:1; }
+.wheels-label { font-family:var(--font-u); font-size:12px; letter-spacing:0.22em; text-transform:uppercase; color:var(--text-muted); }
+.wheels-count-badge {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.08em; color:var(--accent-bright);
+  background:var(--accent-dim); border:1px solid var(--accent); border-radius:3px;
+  padding:2px 8px; margin-left:2px; animation:badgeIn 0.15s ease-out;
+}
+.wheels-header-spacer { flex:1; }
+.wheels-add-shortcut {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.1em; color:var(--accent);
+  background:transparent; border:none; cursor:pointer; padding:14px 8px; margin:-14px 0;
+  display:flex; align-items:center; transition:color 0.15s;
+}
+.wheels-add-shortcut:hover { color:var(--accent-bright); }
+.wheels-toggle {
+  font-family:var(--font-u); font-size:13px; color:var(--text-muted); flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; width:44px; height:44px; margin:-12px -8px -12px 0;
+  transition:color 0.15s, transform 0.22s ease-out; cursor:pointer;
+}
+.wheels-toggle:hover { color:var(--accent); }
+.wheels-panel.expanded .wheels-toggle { transform:rotate(180deg); }
+
+.wheels-body {
+  max-height:0; opacity:0; overflow:hidden;
+  transition: max-height 0.22s ease-out, opacity 0.22s ease-out;
+}
+.wheels-panel.expanded .wheels-body {
+  max-height:min(40vh, 360px); opacity:1; overflow-y:auto;
+}
+.wheels-body-inner { padding:14px; }
+
+.wheels-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap:14px;
+}
+
+/* ─── Wheel cell ──────────────────────────────────────────────────────── */
+.wheel-cell {
+  position:relative; display:flex; flex-direction:column; align-items:center;
+  animation: wheelCellIn 0.2s ease-out;
+  z-index:1;
+}
+.wheel-cell.removing { animation: wheelCellOut 0.14s ease-out forwards; }
+.wheel-cell.menu-open { z-index:30; }
+.wheel-svg-wrap { position:relative; width:100%; max-width:96px; aspect-ratio:1/1; }
+.wheel-svg-wrap svg { width:100%; height:100%; display:block; cursor:pointer; }
+
+.wheel-seg-empty { fill: var(--surface-solid); stroke: none; transition: fill 0.11s ease-in; }
+.wheel-seg-filled { stroke: none; filter: drop-shadow(0 0 3px rgba(138,180,200,0.45)); transition: fill 0.16s ease-out, filter 0.16s ease-out; transform-origin:center; }
+.wheel-seg-filled.fill-anim { animation: segFillIn 0.16s ease-out; }
+.wheel-hub { fill: var(--bg); stroke: var(--accent); stroke-opacity:0.3; stroke-width:1; }
+
+.wheel-cell.full .wheel-svg-wrap { animation: wheelCompletePulseScale 0.42s ease-in-out; }
+.wheel-cell.full .wheel-svg-wrap svg { animation: wheelCompletePulse 0.42s ease-in-out; }
+.wheel-cell.full .wheel-seg-filled { fill: url(#wfg-gold); filter: drop-shadow(0 0 7px rgba(228,211,181,0.65)); }
+
+
+.wheel-menu-trigger {
+  position:absolute; top:-6px; right:-6px; width:24px; height:24px;
+  display:flex; align-items:center; justify-content:center;
+  background:rgba(8,12,18,0.85); border:1px solid var(--border-vis); border-radius:50%;
+  color:var(--text-muted); font-size:13px; cursor:pointer; opacity:0;
+  transition: opacity 0.12s ease-out, color 0.12s, border-color 0.12s;
+  z-index:5;
+}
+.wheel-cell:hover .wheel-menu-trigger,
+.wheel-cell.menu-open .wheel-menu-trigger { opacity:1; }
+.wheel-menu-trigger:hover { color:var(--accent-bright); border-color:var(--accent); }
+/* expand visual hit area to 44px without visual bloat */
+.wheel-menu-trigger::after { content:''; position:absolute; inset:-10px; }
+
+.wheel-label-wrap { margin-top:8px; width:100%; text-align:center; min-height:36px; }
+.wheel-label {
+  font-family:var(--font-d); font-size:13px; color:var(--text); line-height:1.25;
+  display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;
+  text-overflow:ellipsis; word-break:break-word; cursor:default;
+}
+.wheel-count {
+  font-family:var(--font-u); font-size:11px; color:var(--text-muted); margin-top:3px; transition:color 0.2s;
+}
+.wheel-cell.full .wheel-count { color:var(--accent-bright); }
+
+.wheel-rename-input {
+  width:100%; background:var(--surface); border:1px solid var(--accent); border-radius:3px;
+  color:var(--text); font-family:var(--font-b); font-size:13px; text-align:center;
+  padding:3px 4px; outline:none;
+}
+
+/* ─── Per-wheel menu popover ──────────────────────────────────────────── */
+.wheel-menu-popover {
+  position:absolute; top:18px; right:-6px; min-width:128px;
+  background:var(--surface-solid); border:1px solid var(--border-vis); border-radius:4px;
+  padding:5px; z-index:40; display:none; box-shadow:0 8px 24px rgba(0,0,0,0.4);
+}
+.wheel-cell.menu-open .wheel-menu-popover { display:block; }
+.wheel-menu-popover.flip-up { top:auto; bottom:18px; }
+.wheel-menu-row {
+  display:flex; align-items:center; gap:8px; padding:0 10px; height:38px; border-radius:3px;
+  font-family:var(--font-u); font-size:12px; letter-spacing:0.05em; color:var(--text-body);
+  cursor:pointer; transition: background 0.12s;
+  min-height:44px;
+}
+.wheel-menu-row:hover { background:rgba(255,255,255,0.05); }
+.wheel-menu-row .glyph { width:14px; text-align:center; flex-shrink:0; }
+.wheel-menu-divider { height:1px; background:var(--border); margin:3px 4px; }
+.wheel-menu-row.danger { color:#c06060; }
+.wheel-menu-row.danger:hover { background:rgba(192,96,96,0.1); }
+
+/* ─── Add tile ────────────────────────────────────────────────────────── */
+.wheel-add-tile {
+  width:100%; max-width:96px; aspect-ratio:1/1; margin:0 auto;
+  border:1.5px dashed var(--border-vis); border-radius:4px; background:transparent;
+  display:flex; align-items:center; justify-content:center; cursor:pointer;
+  color:var(--text-muted); font-size:26px; font-family:var(--font-u);
+  transition: border-color 0.15s, color 0.15s;
+}
+.wheel-add-tile:hover { border-color:var(--accent); color:var(--accent-bright); }
+.wheel-add-cell { display:flex; flex-direction:column; align-items:center; }
+.wheel-add-cell .add-tile-label { margin-top:8px; font-family:var(--font-u); font-size:11px; letter-spacing:0.12em; color:var(--text-muted); text-align:center; min-height:36px; }
+
+/* ─── Inline creation form ───────────────────────────────────────────── */
+.wheel-create-form {
+  grid-column: 1 / -1;
+  background:rgba(0,0,0,0.22); border:1px solid var(--border-vis); border-radius:5px;
+  padding:14px; margin-bottom:4px; animation: panelBodyIn 0.18s ease-out;
+}
+.wcf-header { display:flex; align-items:center; margin-bottom:12px; }
+.wcf-title { font-family:var(--font-u); font-size:12px; letter-spacing:0.2em; text-transform:uppercase; color:var(--accent-bright); flex:1; }
+.wcf-close { background:none; border:none; color:var(--text-muted); font-size:18px; cursor:pointer; width:44px; height:44px; display:flex; align-items:center; justify-content:center; margin:-12px -10px -12px 0; transition:color 0.15s; }
+.wcf-close:hover { color:var(--text); }
+.wcf-name-input {
+  width:100%; background:var(--surface); border:1px solid var(--border-vis); border-radius:3px;
+  color:var(--text); font-family:var(--font-b); font-size:15px; padding:9px 12px; outline:none;
+  transition:border-color 0.15s; margin-bottom:14px;
+}
+.wcf-name-input:focus { border-color:var(--accent); }
+.wcf-row { display:flex; align-items:center; gap:14px; flex-wrap:wrap; margin-bottom:14px; }
+.wcf-seg-label { font-family:var(--font-u); font-size:11px; letter-spacing:0.18em; text-transform:uppercase; color:var(--text-muted); }
+.wcf-stepper-group { display:flex; align-items:center; gap:10px; }
+.btn-stepper {
+  width:32px; height:32px; border-radius:50%; border:1px solid var(--border-vis); background:transparent;
+  color:var(--text-muted); font-family:var(--font-d); font-size:16px; cursor:pointer; flex-shrink:0;
+  display:flex; align-items:center; justify-content:center; transition:border-color 0.15s, color 0.15s, opacity 0.15s;
+}
+.btn-stepper:hover:not(:disabled) { border-color:var(--accent); color:var(--accent-bright); }
+.btn-stepper:disabled { opacity:0.4; cursor:default; }
+.wcf-seg-count { font-family:var(--font-d); font-size:20px; color:var(--gem); min-width:24px; text-align:center; }
+.wcf-preview-wrap { display:flex; align-items:center; gap:8px; margin-left:auto; }
+.wcf-preview-label { font-family:var(--font-u); font-size:10px; letter-spacing:0.1em; color:var(--text-muted); }
+.wcf-preview-svg { width:40px; height:40px; flex-shrink:0; }
+.wcf-divider { height:1px; background:var(--border); margin-bottom:12px; }
+.wcf-actions { display:flex; justify-content:flex-end; gap:10px; }
+.btn-ghost {
+  background:transparent; border:1px solid var(--border-vis); border-radius:3px; color:var(--text-muted);
+  font-family:var(--font-u); font-size:12px; letter-spacing:0.12em; padding:9px 16px; cursor:pointer;
+  transition:border-color 0.15s, color 0.15s; min-height:38px;
+}
+.btn-ghost:hover { border-color:var(--accent); color:var(--accent-bright); }
+.btn-primary {
+  background:rgba(18,58,78,0.5); border:1px solid var(--accent); border-radius:3px; color:var(--accent-bright);
+  font-family:var(--font-u); font-size:13px; letter-spacing:0.08em; padding:9px 18px; cursor:pointer;
+  transition:background 0.15s, border-color 0.15s; min-height:38px;
+}
+.btn-primary:hover { background:rgba(40,86,108,0.6); border-color:var(--accent-bright); }
+
+@media (max-width: 420px) {
+  .wcf-row { flex-direction:column; align-items:flex-start; gap:12px; }
+  .wcf-preview-wrap { margin-left:0; }
+}
+
+/* ─── Mobile relax (within frame, simulates <900px stack) ───────────── */
+.dash-col-frame.mobile .wheels-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+.dash-col-frame.mobile .wheel-svg-wrap, .dash-col-frame.mobile .wheel-add-tile { max-width:110px; }
+.dash-col-frame.mobile .wheel-menu-trigger { opacity:0.5; }
+
+/* ─── Activity log mock ──────────────────────────────────────────────── */
+.activity-log {
+  background:var(--surface); border:1px solid var(--border); border-radius:5px; padding:10px 14px;
+  margin-top:16px; max-width:480px;
+}
+.activity-log-title { font-family:var(--font-u); font-size:11px; letter-spacing:0.2em; text-transform:uppercase; color:var(--text-muted); margin-bottom:8px; padding-bottom:8px; border-bottom:1px solid var(--border); }
+.activity-row { display:flex; align-items:baseline; gap:8px; font-family:var(--font-u); font-size:12px; padding:4px 0; animation:historySlideIn 0.18s ease-out; }
+.activity-row.wheel-row .a-glyph { color:var(--accent); }
+.activity-row.wheel-row .a-name { color:var(--text); font-family:var(--font-b); font-style:italic; }
+.activity-row.wheel-row .a-meta { color:var(--text-muted); }
+.activity-row.dice-row .a-expr { color:var(--text-muted); letter-spacing:0.08em; }
+.activity-row.dice-row .a-val { color:var(--text); font-family:var(--font-d); margin-left:auto; }
+
+/* ─── Callouts & legend ──────────────────────────────────────────────── */
+.callout {
+  position:absolute; background:rgba(160,192,208,0.12); border:1px solid rgba(160,192,208,0.35);
+  border-radius:3px; color:#a0c0d0; font-family:var(--font-u); font-size:11px;
+  letter-spacing:0.15em; padding:4px 9px; pointer-events:none; text-transform:uppercase;
+  white-space:nowrap; z-index:60;
+}
+.legend { border-top:1px solid var(--border); margin:40px 20px 0; padding:24px 0 60px; max-width:1100px; margin-left:auto; margin-right:auto; }
+.legend-title { font-family:var(--font-d); font-size:14px; letter-spacing:0.2em; color:var(--accent-bright); margin-bottom:16px; text-transform:uppercase; }
+.legend-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:12px 24px; }
+.legend-item { display:flex; gap:10px; align-items:start; }
+.legend-num { font-family:var(--font-d); font-size:12px; color:var(--accent); flex-shrink:0; width:24px; }
+.legend-text { font-family:var(--font-b); font-style:italic; font-size:13px; color:var(--text-muted); line-height:1.5; }
+.ambiguity-note {
+  font-family:var(--font-b); font-style:italic; font-size:12px; color:#c8a858;
+  background:rgba(200,168,88,0.08); border:1px solid rgba(200,168,88,0.3); border-radius:3px;
+  padding:8px 12px; margin-top:14px; max-width:480px;
+}
+</style>
+</head>
+<body>
+
+<!-- Prototype header -->
+<div class="proto-header">
+  <span class="proto-title">Counter Wheels (Progress Clocks) — Design Prototype</span>
+  <span class="proto-note">Story 30 · DM Campaign Dashboard, left column panel, below Map Panel / above Party strip. Tap segments to fill clockwise (Blades-classic), use ⋯ for Rename/Reset/Remove, collapse via header.</span>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCENARIO 1 — Collapsed, zero wheels (sparse-first default)
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="page-section">
+  <div class="section-title">Scenario 1 — Collapsed, Zero Wheels (Adventure Mode Default)</div>
+  <div class="section-desc">Lowest-footprint state. Just the header row. The "+ Add" shortcut is reachable while collapsed — clicking it expands the panel and opens the creation form immediately.</div>
+  <div class="scenario-row">
+    <div class="scenario-col">
+      <span class="scenario-label">Desktop (~480px column)</span>
+      <div class="dash-col-frame" style="position:relative;">
+        <div class="wheels-panel" id="panel-s1">
+          <div class="wheels-header" onclick="toggleWheelsPanel('s1')">
+            <span class="wheels-glyph">◷</span>
+            <span class="wheels-label">Counter Wheels</span>
+            <span class="wheels-header-spacer"></span>
+            <button class="wheels-add-shortcut" onclick="event.stopPropagation(); openCreateForm('s1', true)">+ Add</button>
+            <span class="wheels-toggle">⌄</span>
+          </div>
+          <div class="wheels-body">
+            <div class="wheels-body-inner">
+              <div class="wheels-grid" id="grid-s1"></div>
+            </div>
+          </div>
+        </div>
+        <div class="callout" style="top:-10px; left:170px;">+ Add reachable while collapsed</div>
+        <div class="callout" style="top:54px; right:8px;">Collapse chevron, 44px target</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCENARIO 2 — Collapsed, wheels active (count badge)
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="page-section">
+  <div class="section-title">Scenario 2 — Collapsed With Active Wheels (Count Badge)</div>
+  <div class="section-desc">Wheels exist but the DM manually collapsed the panel (last-manual-toggle-wins). The count badge is the passive nudge that clocks are running. Click header to re-expand.</div>
+  <div class="scenario-row">
+    <div class="scenario-col">
+      <span class="scenario-label">Desktop (~480px column)</span>
+      <div class="dash-col-frame" style="position:relative;">
+        <div class="wheels-panel" id="panel-s2">
+          <div class="wheels-header" onclick="toggleWheelsPanel('s2')">
+            <span class="wheels-glyph">◷</span>
+            <span class="wheels-label">Counter Wheels</span>
+            <span class="wheels-count-badge">3 active</span>
+            <span class="wheels-header-spacer"></span>
+            <button class="wheels-add-shortcut" onclick="event.stopPropagation(); openCreateForm('s2', true)">+ Add</button>
+            <span class="wheels-toggle">⌄</span>
+          </div>
+          <div class="wheels-body">
+            <div class="wheels-body-inner">
+              <div class="wheels-grid" id="grid-s2"></div>
+            </div>
+          </div>
+        </div>
+        <div class="callout" style="top:-10px; left:230px;">Count badge — passive nudge</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCENARIO 3 — Expanded, populated grid (the common live state)
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="page-section">
+  <div class="section-title">Scenario 3 — Expanded, Populated Grid (Common Live State)</div>
+  <div class="section-desc">Combat mode default (expanded), or adventure mode with wheels present. Click any wheel segment to fill clockwise to that point (Blades-classic fill-to-here); click a filled segment to unfill from there. Hover a wheel to reveal its ⋯ menu. Try filling "Bridge Holds" to 6/6 to see the one-time completion pulse.</div>
+  <div class="scenario-row">
+    <div class="scenario-col" style="flex:1; min-width:480px;">
+      <span class="scenario-label">Desktop (~480–600px column, 4–6 wheels/row)</span>
+      <div class="dash-col-frame" style="width:560px; position:relative;">
+        <div class="wheels-panel expanded" id="panel-s3">
+          <div class="wheels-header" onclick="toggleWheelsPanel('s3')">
+            <span class="wheels-glyph">◷</span>
+            <span class="wheels-label">Counter Wheels</span>
+            <span class="wheels-header-spacer"></span>
+            <button class="wheels-add-shortcut" onclick="event.stopPropagation(); openCreateForm('s3', false)">+ Add</button>
+            <span class="wheels-toggle">⌃</span>
+          </div>
+          <div class="wheels-body">
+            <div class="wheels-body-inner">
+              <div class="wheels-grid" id="grid-s3"></div>
+            </div>
+          </div>
+        </div>
+        <div class="callout" style="top:88px; left:8px;">Filled arc reads first</div>
+        <div class="callout" style="top:88px; right:8px;">⋯ hidden until hover</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="activity-log">
+    <div class="activity-log-title">Activity Log (shared roll-history feed)</div>
+    <div class="activity-row dice-row"><span class="a-expr">2d6+4</span><span class="a-val">11</span></div>
+    <div class="activity-row wheel-row"><span class="a-glyph">◷</span><span class="a-name">Bridge Holds</span><span class="a-meta">— 6 segments</span></div>
+    <div class="activity-row dice-row"><span class="a-expr">1d20+7</span><span class="a-val">19</span></div>
+    <div class="activity-row wheel-row"><span class="a-glyph">◷</span><span class="a-name">The Ritual Completes</span><span class="a-meta">— 8 segments</span></div>
+  </div>
+  <div class="ambiguity-note">Note: the brief specifies the wheel-creation log row format and type discriminator but doesn't show its exact visual weight relative to dice rows in a mixed feed. Implemented here as same row height, no numeric total, muted glyph + italic name — distinct enough to scan past without competing with roll values.</div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCENARIO 4 — Inline creation form
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="page-section">
+  <div class="section-title">Scenario 4 — Inline Creation Form</div>
+  <div class="section-desc">Opens in place at the top of the grid (no modal). Segment stepper ranges 1–12 (default 6). Step down to 1 to see the notched-ring binary clock preview.</div>
+  <div class="scenario-row">
+    <div class="scenario-col">
+      <span class="scenario-label">Desktop</span>
+      <div class="dash-col-frame" style="width:560px; position:relative;">
+        <div class="wheels-panel expanded">
+          <div class="wheels-header">
+            <span class="wheels-glyph">◷</span>
+            <span class="wheels-label">Counter Wheels</span>
+            <span class="wheels-header-spacer"></span>
+            <span class="wheels-toggle">⌃</span>
+          </div>
+          <div class="wheels-body" style="max-height:600px; opacity:1;">
+            <div class="wheels-body-inner">
+              <div class="wheels-grid">
+                <div class="wheel-create-form">
+                  <div class="wcf-header">
+                    <span class="wcf-title">New Counter Wheel</span>
+                    <button class="wcf-close" onclick="this.closest('.wheel-create-form').style.display='none'">✕</button>
+                  </div>
+                  <input class="wcf-name-input" id="demoNameInput" type="text" placeholder="Name (e.g. The Ritual Completes)" />
+                  <div class="wcf-row">
+                    <span class="wcf-seg-label">Segments</span>
+                    <div class="wcf-stepper-group">
+                      <button class="btn-stepper" onclick="demoStep(-1)">−</button>
+                      <span class="wcf-seg-count" id="demoSegCount">6</span>
+                      <button class="btn-stepper" onclick="demoStep(1)">+</button>
+                    </div>
+                    <div class="wcf-preview-wrap">
+                      <span class="wcf-preview-label">Preview</span>
+                      <svg class="wcf-preview-svg" id="demoPreviewSvg" viewBox="0 0 40 40"></svg>
+                    </div>
+                  </div>
+                  <div class="wcf-divider"></div>
+                  <div class="wcf-actions">
+                    <button class="btn-ghost">Cancel</button>
+                    <button class="btn-primary">Create Wheel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="callout" style="top:96px; left:8px;">Live mini-preview updates with stepper</div>
+        <div class="callout" style="top:170px; left:8px;">Steppers disable at 2 / 12 bounds</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCENARIO 5 — Per-wheel menu popover
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="page-section">
+  <div class="section-title">Scenario 5 — Per-Wheel Menu (Rename / Reset / Remove)</div>
+  <div class="section-desc">Click the ⋯ on any wheel below to open its menu. Rename converts the label to an inline input (try it). Reset performs a clockwise de-fill sweep. Remove deletes immediately — no confirmation, per the resolved open question.</div>
+  <div class="scenario-row">
+    <div class="scenario-col">
+      <span class="scenario-label">Desktop</span>
+      <div class="dash-col-frame" style="width:300px; position:relative; overflow:visible;">
+        <div class="wheels-grid" id="grid-s5" style="overflow:visible;"></div>
+        <div class="callout" style="top:-10px; right:30px;">Popover anchored to ⋯, flips up near bottom</div>
+        <div class="callout" style="top:130px; left:-4px;">Divider isolates destructive Remove</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCENARIO 6 — Edge cases
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="page-section">
+  <div class="section-title">Scenario 6 — Edge Cases</div>
+  <div class="section-desc">Single-segment notched ring · full wheel steady glow · long multi-word label wrap/ellipsis · many wheels with internal scroll · zero wheels expanded (Add tile only).</div>
+  <div class="scenario-row">
+    <div class="scenario-col" style="flex:1; min-width:560px;">
+      <span class="scenario-label">Single-segment / full-wheel / long-label edge cases</span>
+      <div class="dash-col-frame" style="width:560px;">
+        <div class="wheels-grid" id="grid-s6edge"></div>
+      </div>
+    </div>
+  </div>
+  <div class="scenario-row" style="margin-top:24px;">
+    <div class="scenario-col" style="flex:1; min-width:560px;">
+      <span class="scenario-label">Many wheels (8) — internal scroll caps at min(40vh, 360px)</span>
+      <div class="dash-col-frame" style="width:560px;">
+        <div class="wheels-panel expanded">
+          <div class="wheels-header">
+            <span class="wheels-glyph">◷</span>
+            <span class="wheels-label">Counter Wheels</span>
+            <span class="wheels-header-spacer"></span>
+            <span class="wheels-toggle">⌃</span>
+          </div>
+          <div class="wheels-body" style="max-height:min(40vh, 360px); opacity:1; overflow-y:auto;">
+            <div class="wheels-body-inner">
+              <div class="wheels-grid" id="grid-s6many"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="scenario-row" style="margin-top:24px;">
+    <div class="scenario-col">
+      <span class="scenario-label">Zero wheels, expanded (calm intentional empty state)</span>
+      <div class="dash-col-frame">
+        <div class="wheels-panel expanded">
+          <div class="wheels-header">
+            <span class="wheels-glyph">◷</span>
+            <span class="wheels-label">Counter Wheels</span>
+            <span class="wheels-header-spacer"></span>
+            <button class="wheels-add-shortcut">+ Add</button>
+            <span class="wheels-toggle">⌃</span>
+          </div>
+          <div class="wheels-body" style="max-height:200px; opacity:1;">
+            <div class="wheels-body-inner">
+              <div class="wheels-grid">
+                <div class="wheel-add-cell">
+                  <button class="wheel-add-tile" onclick="alert('Opens inline creation form')">+</button>
+                  <span class="add-tile-label">Add Counter</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════════════════════════════
+     SCENARIO 7 — Mobile width (~320px)
+     ════════════════════════════════════════════════════════════════════ -->
+<div class="page-section">
+  <div class="section-title">Scenario 7 — Mobile (~340px, Single-Column Stack)</div>
+  <div class="section-desc">Grid relaxes to 2–3 wheels/row with larger wheels (~110px) so 12-segment slices keep ≥44px tap zones. The ⋯ trigger has no hover state on touch — rendered persistently at 0.5 opacity instead.</div>
+  <div class="scenario-row">
+    <div class="scenario-col">
+      <span class="scenario-label">Mobile (340px)</span>
+      <div class="dash-col-frame mobile" style="position:relative;">
+        <div class="wheels-panel expanded">
+          <div class="wheels-header">
+            <span class="wheels-glyph">◷</span>
+            <span class="wheels-label">Counter Wheels</span>
+            <span class="wheels-header-spacer"></span>
+            <span class="wheels-toggle">⌃</span>
+          </div>
+          <div class="wheels-body" style="max-height:600px; opacity:1;">
+            <div class="wheels-body-inner">
+              <div class="wheels-grid" id="grid-mobile"></div>
+            </div>
+          </div>
+        </div>
+        <div class="callout" style="top:60px; right:4px; font-size:10px;">⋯ persistent-faint, no hover</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ─── Legend ──────────────────────────────────────────────────────────── -->
+<div class="legend">
+  <div class="legend-title">Design Notes</div>
+  <div class="legend-grid">
+    <div class="legend-item"><span class="legend-num">①</span><span class="legend-text">Fill model: fill-to-here clockwise (Blades-classic). Tapping segment N sets `filledCount = N` if empty, or `filledCount = N-1` if already filled and you tap it again. Stored as a single number, not a boolean array.</span></div>
+    <div class="legend-item"><span class="legend-num">②</span><span class="legend-text">Each wheel is full pie slices (center-to-rim), not thin arcs — maximizes tap target and bold fill read at small sizes. Constant 2–3° gaps regardless of segment count keep the "clock" read consistent from 2 to 12 segments.</span></div>
+    <div class="legend-item"><span class="legend-num">③</span><span class="legend-text">Segment fill: 160ms ease-out (color + glow bloom + 0.92→1.0 scale). Unfill: 200ms ease-in (90ms glow collapse then 110ms fade-out). Full-wheel completion: one-time 420ms ease-in-out pulse (0.45→0.9→0.6 opacity, 1.0→1.04→1.0 scale), then holds at steady elevated glow.</span></div>
+    <div class="legend-item"><span class="legend-num">④</span><span class="legend-text">Reset performs a clockwise de-fill sweep, each filled slice emptying staggered 25ms from 12 o'clock — implemented via incremental setTimeout per segment, total duration 90ms + 25ms × filledCount.</span></div>
+    <div class="legend-item"><span class="legend-num">⑤</span><span class="legend-text">Single-segment wheel (Scenario 6) renders as a full ring with a 2–3° notch at 12 o'clock. Tap toggles between filledCount 0 and 1 — a binary clock.</span></div>
+    <div class="legend-item"><span class="legend-num">⑥</span><span class="legend-text">Mode-aware expand/collapse default is simulated via two static scenario panels (collapsed vs. expanded) rather than a live mode toggle, since the brief's "combat mode" trigger lives outside this panel's scope (initiative state). The manual-toggle-wins persistence (`dnd_wheels_open`) is demonstrated by each panel's header click toggling independently.</span></div>
+    <div class="legend-item"><span class="legend-num">⑦</span><span class="legend-text">Remove has no confirmation (resolved open question) — single click deletes, separated from Rename/Reset by a divider and styled in universal error red `#c06060` so it isn't tapped by accident.</span></div>
+    <div class="legend-item"><span class="legend-num">⑧</span><span class="legend-text">Activity log entries fire only on creation, formatted `◷ [name] — N segments` with no numeric total — visually distinct from dice rows so the feed doesn't read as "another roll."</span></div>
+    <div class="legend-item"><span class="legend-num">⑨</span><span class="legend-text">Panel body caps at `min(40vh, 360px)` with internal scroll once wheels exceed the visible row count, so Counter Wheels (Tier 2) never crowds out the Tier-1 party card strip below it.</span></div>
+    <div class="legend-item"><span class="legend-num">⑩</span><span class="legend-text">Implied by design-system conventions (not explicit in brief): the wheel cell itself has a 150ms hover-independent entrance via `wheelCellIn` for new wheels; the menu popover close-on-outside-click is standard popover behavior matching the party-card ⋯ pattern.</span></div>
+  </div>
+</div>
+
+<script>
+/* ════════════════════════════════════════════════════════════════════
+   STATE
+   ════════════════════════════════════════════════════════════════════ */
+let nextWheelId = 100;
+const GAP_DEG = 3; // constant-degree gap between segments
+
+const wheelStores = {
+  s1: [],
+  s2: [
+    { id: 1, name: 'Alarm Raised', segments: 6, filledCount: 0 },
+    { id: 2, name: "The Ritual Completes", segments: 8, filledCount: 4 },
+    { id: 3, name: 'Bridge Holds', segments: 6, filledCount: 6 }
+  ],
+  s3: [
+    { id: 1, name: 'Alarm Raised', segments: 6, filledCount: 0 },
+    { id: 2, name: "The Ritual Completes", segments: 8, filledCount: 4 },
+    { id: 3, name: 'Bridge Holds', segments: 6, filledCount: 5 },
+    { id: 4, name: "Duke's Patience", segments: 4, filledCount: 2 }
+  ],
+  s5: [
+    { id: 1, name: 'Test Wheel', segments: 6, filledCount: 3 },
+    { id: 2, name: 'Try Renaming Me', segments: 8, filledCount: 1 }
+  ],
+  s6edge: [
+    { id: 1, name: 'Trapdoor Trigger', segments: 1, filledCount: 0 },
+    { id: 2, name: 'Vault Seal Failing', segments: 6, filledCount: 6 },
+    { id: 3, name: 'The Cult Finishes Summoning the Elder Thing Beneath the Chapel', segments: 10, filledCount: 6 },
+    { id: 4, name: 'Guard Suspicion', segments: 4, filledCount: 1 }
+  ],
+  s6many: Array.from({ length: 8 }, (_, i) => ({
+    id: i + 1,
+    name: ['Alarm Raised','The Ritual Completes','Bridge Holds',"Duke's Patience",'Tide Rises','Cult Awakens','Garrison Arrives','Plague Spreads'][i],
+    segments: [6,8,6,4,5,12,3,10][i],
+    filledCount: [0,4,6,2,1,9,2,5][i]
+  })),
+  mobile: [
+    { id: 1, name: 'Alarm Raised', segments: 6, filledCount: 2 },
+    { id: 2, name: 'Ritual Clock', segments: 12, filledCount: 7 },
+    { id: 3, name: 'Bridge Holds', segments: 6, filledCount: 6 }
+  ]
+};
+
+let openMenuKey = null; // "store:id" currently open
+
+/* ════════════════════════════════════════════════════════════════════
+   SVG WHEEL CONSTRUCTION
+   ════════════════════════════════════════════════════════════════════ */
+function polar(cx, cy, r, angleDeg) {
+  const rad = (angleDeg - 90) * Math.PI / 180; // start at 12 o'clock
+  return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+}
+
+function segPath(cx, cy, rOuter, rInner, startDeg, endDeg) {
+  const p1 = polar(cx, cy, rOuter, startDeg);
+  const p2 = polar(cx, cy, rOuter, endDeg);
+  const largeArc = (endDeg - startDeg) > 180 ? 1 : 0;
+  if (rInner <= 0.01) {
+    return `M ${cx} ${cy} L ${p1.x} ${p1.y} A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${p2.x} ${p2.y} Z`;
+  }
+  const p3 = polar(cx, cy, rInner, endDeg);
+  const p4 = polar(cx, cy, rInner, startDeg);
+  return `M ${p1.x} ${p1.y} A ${rOuter} ${rOuter} 0 ${largeArc} 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${rInner} ${rInner} 0 ${largeArc} 0 ${p4.x} ${p4.y} Z`;
+}
+
+function buildWheelSVG(segments, filledCount, opts) {
+  opts = opts || {};
+  const size = 100, cx = 50, cy = 50, rOuter = 47, hubR = rOuter * 0.18;
+  const sweep = 360 / segments;
+  const gap = segments === 1 ? GAP_DEG : Math.min(GAP_DEG, sweep * 0.25);
+  let svg = `<svg viewBox="0 0 ${size} ${size}" preserveAspectRatio="xMidYMid meet">`;
+  svg += `<defs>
+    <radialGradient id="wfg" cx="${cx}" cy="${cy}" r="${rOuter}" fx="${cx}" fy="${cy}" gradientUnits="userSpaceOnUse">
+      <stop offset="0.15" stop-color="var(--wheel-grad-inner)"/>
+      <stop offset="1"    stop-color="var(--wheel-grad-outer)"/>
+    </radialGradient>
+    <radialGradient id="wfg-gold" cx="${cx}" cy="${cy}" r="${rOuter}" fx="${cx}" fy="${cy}" gradientUnits="userSpaceOnUse">
+      <stop offset="0.15" stop-color="var(--wheel-grad-gold-inner)"/>
+      <stop offset="1"    stop-color="var(--wheel-grad-gold-outer)"/>
+    </radialGradient>
+  </defs>`;
+
+  if (segments === 1) {
+    // notched full ring, binary clock — annular with a thin gap at 12 o'clock
+    const filled = filledCount >= 1;
+    const notch = GAP_DEG;
+    const start = notch / 2, end = 360 - notch / 2;
+    svg += `<path class="${filled ? 'wheel-seg-filled' : 'wheel-seg-empty'}" data-seg="1"${filled ? ' fill="url(#wfg)"' : ''} d="${segPath(cx, cy, rOuter, hubR, start, end)}"></path>`;
+    // notch separator line at 12 o'clock
+    const n1 = polar(cx, cy, hubR, 0), n2 = polar(cx, cy, rOuter, 0);
+    svg += `<line x1="${n1.x}" y1="${n1.y}" x2="${n2.x}" y2="${n2.y}" stroke="var(--bg)" stroke-width="1.5" stroke-linecap="butt"/>`;
+  } else {
+    // annular sectors — no angular gap; separator lines provide the visual division
+    for (let i = 0; i < segments; i++) {
+      const segIndex = i + 1;
+      const start = i * sweep;
+      const end = (i + 1) * sweep;
+      const filled = segIndex <= filledCount;
+      svg += `<path class="${filled ? 'wheel-seg-filled' : 'wheel-seg-empty'}" data-seg="${segIndex}"${filled ? ' fill="url(#wfg)"' : ''} d="${segPath(cx, cy, rOuter, hubR, start, end)}"></path>`;
+    }
+    // separator lines at each boundary — constant 1.5px width from hub to rim
+    for (let i = 0; i < segments; i++) {
+      const angle = i * sweep;
+      const p1 = polar(cx, cy, hubR, angle), p2 = polar(cx, cy, rOuter, angle);
+      svg += `<line x1="${p1.x}" y1="${p1.y}" x2="${p2.x}" y2="${p2.y}" stroke="var(--bg)" stroke-width="1.5" stroke-linecap="butt"/>`;
+    }
+  }
+  // hub
+  svg += `<circle class="wheel-hub" cx="${cx}" cy="${cy}" r="${hubR}"></circle>`;
+  svg += `</svg>`;
+  return svg;
+}
+
+function buildMiniPreviewSVG(segments) {
+  return buildWheelSVG(segments, 0);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   RENDER A GRID
+   ════════════════════════════════════════════════════════════════════ */
+function renderGrid(storeKey, opts) {
+  opts = opts || {};
+  const el = document.getElementById('grid-' + storeKey);
+  if (!el) return;
+  const wheels = wheelStores[storeKey];
+  el.innerHTML = '';
+  wheels.forEach(w => el.appendChild(buildWheelCell(storeKey, w)));
+  if (!opts.noAddTile) {
+    const addCell = document.createElement('div');
+    addCell.className = 'wheel-add-cell';
+    addCell.innerHTML = `<button class="wheel-add-tile" onclick="openCreateForm('${storeKey}', false)">+</button><span class="add-tile-label">Add Counter</span>`;
+    el.appendChild(addCell);
+  }
+}
+
+function buildWheelCell(storeKey, w) {
+  const cell = document.createElement('div');
+  cell.className = 'wheel-cell' + (w.filledCount === w.segments ? ' full' : '');
+  cell.id = `cell-${storeKey}-${w.id}`;
+  cell.innerHTML = `
+    <div class="wheel-svg-wrap">
+      ${buildWheelSVG(w.segments, w.filledCount)}
+      <button class="wheel-menu-trigger" onclick="event.stopPropagation(); toggleWheelMenu('${storeKey}', ${w.id})">⋯</button>
+      <div class="wheel-menu-popover" id="menu-${storeKey}-${w.id}">
+        <div class="wheel-menu-row" onclick="startRename('${storeKey}', ${w.id})"><span class="glyph">✎</span> Rename</div>
+        <div class="wheel-menu-row" onclick="resetWheel('${storeKey}', ${w.id})"><span class="glyph">↺</span> Reset</div>
+        <div class="wheel-menu-divider"></div>
+        <div class="wheel-menu-row danger" onclick="removeWheel('${storeKey}', ${w.id})"><span class="glyph">✕</span> Remove</div>
+      </div>
+    </div>
+    <div class="wheel-label-wrap" id="labelwrap-${storeKey}-${w.id}">
+      <div class="wheel-label" id="label-${storeKey}-${w.id}">${escapeHtml(w.name)}</div>
+      <div class="wheel-count" id="count-${storeKey}-${w.id}">${w.filledCount}/${w.segments}</div>
+    </div>
+  `;
+  const svgEl = cell.querySelector('svg');
+  svgEl.addEventListener('click', (e) => handleSegmentClick(storeKey, w.id, e));
+  return cell;
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   SEGMENT TOGGLE (fill-to-here clockwise)
+   ════════════════════════════════════════════════════════════════════ */
+function handleSegmentClick(storeKey, id, evt) {
+  const target = evt.target.closest('[data-seg]');
+  if (!target) return;
+  const segN = parseInt(target.getAttribute('data-seg'), 10);
+  const w = wheelStores[storeKey].find(x => x.id === id);
+  if (!w) return;
+  const wasFilled = segN <= w.filledCount;
+  const prevFilled = w.filledCount;
+
+  if (wasFilled) {
+    // unfill: cascade down from prevFilled to segN-1, one segment per 25ms
+    let step = prevFilled;
+    const cascade = () => {
+      if (step <= segN - 1) return;
+      step -= 1;
+      w.filledCount = step;
+      updateWheelVisual(storeKey, w, step + 1);
+      if (step > segN - 1) setTimeout(cascade, 25);
+    };
+    cascade();
+  } else {
+    // fill: staggered cascade, one segment per 25ms — mirrors reset in reverse
+    let step = prevFilled;
+    const cascade = () => {
+      if (step >= segN) return;
+      step += 1;
+      w.filledCount = step;
+      updateWheelVisual(storeKey, w, step - 1);
+      if (step < segN) setTimeout(cascade, 25);
+    };
+    cascade();
+  }
+}
+
+function updateWheelVisual(storeKey, w, prevFilledCount) {
+  const cell = document.getElementById(`cell-${storeKey}-${w.id}`);
+  if (!cell) return;
+  const wrap = cell.querySelector('.wheel-svg-wrap');
+  const oldSvg = wrap.querySelector('svg');
+  const becameFull = w.filledCount === w.segments && prevFilledCount !== w.segments;
+  const newSvgHtml = buildWheelSVG(w.segments, w.filledCount);
+  oldSvg.outerHTML = newSvgHtml;
+  const svgEl = wrap.querySelector('svg');
+  svgEl.addEventListener('click', (e) => handleSegmentClick(storeKey, w.id, e));
+
+  // animate newly filled segment(s)
+  if (w.filledCount > prevFilledCount) {
+    svgEl.querySelectorAll('.wheel-seg-filled').forEach(p => {
+      const n = parseInt(p.getAttribute('data-seg'), 10);
+      if (n > prevFilledCount && n <= w.filledCount) p.classList.add('fill-anim');
+    });
+  }
+
+  cell.classList.toggle('full', w.filledCount === w.segments);
+  if (becameFull) {
+    cell.classList.remove('full');
+    requestAnimationFrame(() => cell.classList.add('full'));
+  }
+
+  const countEl = document.getElementById(`count-${storeKey}-${w.id}`);
+  if (countEl) countEl.textContent = `${w.filledCount}/${w.segments}`;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   PER-WHEEL MENU
+   ════════════════════════════════════════════════════════════════════ */
+function toggleWheelMenu(storeKey, id) {
+  const key = `${storeKey}:${id}`;
+  const cell = document.getElementById(`cell-${storeKey}-${id}`);
+  if (openMenuKey === key) {
+    closeAllMenus();
+    return;
+  }
+  closeAllMenus();
+  openMenuKey = key;
+  cell.classList.add('menu-open');
+
+  // flip-up if near panel bottom
+  const popover = document.getElementById(`menu-${storeKey}-${id}`);
+  const rect = cell.getBoundingClientRect();
+  const spaceBelow = window.innerHeight - rect.bottom;
+  if (spaceBelow < 160) popover.classList.add('flip-up');
+  else popover.classList.remove('flip-up');
+}
+
+function closeAllMenus() {
+  if (!openMenuKey) return;
+  const [storeKey, id] = openMenuKey.split(':');
+  const cell = document.getElementById(`cell-${storeKey}-${id}`);
+  if (cell) cell.classList.remove('menu-open');
+  document.querySelectorAll('.wheel-menu-popover').forEach(p => p.classList.remove('flip-up'));
+  openMenuKey = null;
+}
+
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.wheel-menu-popover') && !e.target.closest('.wheel-menu-trigger')) {
+    closeAllMenus();
+  }
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') closeAllMenus();
+});
+
+/* ════════════════════════════════════════════════════════════════════
+   RENAME
+   ════════════════════════════════════════════════════════════════════ */
+function startRename(storeKey, id) {
+  closeAllMenus();
+  const w = wheelStores[storeKey].find(x => x.id === id);
+  if (!w) return;
+  const labelWrap = document.getElementById(`labelwrap-${storeKey}-${id}`);
+  const prevName = w.name;
+  labelWrap.innerHTML = `<input class="wheel-rename-input" value="${escapeHtml(prevName)}" />`;
+  const input = labelWrap.querySelector('input');
+  input.focus();
+  input.select();
+
+  function commit() {
+    const val = input.value.trim();
+    w.name = val.length ? val : prevName;
+    restoreLabel();
+  }
+  function cancel() {
+    w.name = prevName;
+    restoreLabel();
+  }
+  function restoreLabel() {
+    labelWrap.innerHTML = `<div class="wheel-label" id="label-${storeKey}-${id}">${escapeHtml(w.name)}</div><div class="wheel-count" id="count-${storeKey}-${id}">${w.filledCount}/${w.segments}</div>`;
+  }
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+    else if (e.key === 'Escape') { e.preventDefault(); input.removeEventListener('blur', commit); cancel(); }
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   RESET (clockwise de-fill sweep, staggered 25ms/segment)
+   ════════════════════════════════════════════════════════════════════ */
+function resetWheel(storeKey, id) {
+  closeAllMenus();
+  const w = wheelStores[storeKey].find(x => x.id === id);
+  if (!w || w.filledCount === 0) return;
+  const cell = document.getElementById(`cell-${storeKey}-${id}`);
+  cell.classList.remove('full');
+  const total = w.filledCount;
+  let step = 0;
+  const sweep = () => {
+    if (step >= total) return;
+    w.filledCount -= 1;
+    updateWheelVisual(storeKey, w, w.filledCount + 1);
+    step += 1;
+    setTimeout(sweep, 25);
+  };
+  setTimeout(sweep, 90);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   REMOVE (no confirmation)
+   ════════════════════════════════════════════════════════════════════ */
+function removeWheel(storeKey, id) {
+  closeAllMenus();
+  const cell = document.getElementById(`cell-${storeKey}-${id}`);
+  if (!cell) return;
+  cell.classList.add('removing');
+  setTimeout(() => {
+    wheelStores[storeKey] = wheelStores[storeKey].filter(w => w.id !== id);
+    renderGrid(storeKey);
+  }, 140);
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   PANEL EXPAND / COLLAPSE
+   ════════════════════════════════════════════════════════════════════ */
+function toggleWheelsPanel(suffix) {
+  const panel = document.getElementById('panel-' + suffix);
+  const toggle = panel.querySelector('.wheels-toggle');
+  panel.classList.toggle('expanded');
+  toggle.textContent = panel.classList.contains('expanded') ? '⌃' : '⌄';
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   CREATE FORM (panels s1/s2/s3 — inline insertion at grid start)
+   ════════════════════════════════════════════════════════════════════ */
+function openCreateForm(suffix, expandFirst) {
+  const panel = document.getElementById('panel-' + suffix);
+  if (expandFirst && panel && !panel.classList.contains('expanded')) {
+    panel.classList.add('expanded');
+    panel.querySelector('.wheels-toggle').textContent = '⌃';
+  }
+  const grid = document.getElementById('grid-' + suffix);
+  if (!grid) return;
+  // remove existing form if present
+  const existing = grid.querySelector('.wheel-create-form');
+  if (existing) { existing.remove(); }
+
+  let segCount = 6;
+  const form = document.createElement('div');
+  form.className = 'wheel-create-form';
+  form.innerHTML = `
+    <div class="wcf-header">
+      <span class="wcf-title">New Counter Wheel</span>
+      <button class="wcf-close">✕</button>
+    </div>
+    <input class="wcf-name-input" type="text" placeholder="Name (e.g. The Ritual Completes)" />
+    <div class="wcf-row">
+      <span class="wcf-seg-label">Segments</span>
+      <div class="wcf-stepper-group">
+        <button class="btn-stepper minus">−</button>
+        <span class="wcf-seg-count">6</span>
+        <button class="btn-stepper plus">+</button>
+      </div>
+      <div class="wcf-preview-wrap">
+        <span class="wcf-preview-label">Preview</span>
+        <svg class="wcf-preview-svg" viewBox="0 0 100 100"></svg>
+      </div>
+    </div>
+    <div class="wcf-divider"></div>
+    <div class="wcf-actions">
+      <button class="btn-ghost cancel-btn">Cancel</button>
+      <button class="btn-primary create-btn">Create Wheel</button>
+    </div>
+  `;
+  grid.insertBefore(form, grid.firstChild);
+
+  const nameInput = form.querySelector('.wcf-name-input');
+  const segCountEl = form.querySelector('.wcf-seg-count');
+  const minusBtn = form.querySelector('.minus');
+  const plusBtn = form.querySelector('.plus');
+  const previewSvg = form.querySelector('.wcf-preview-svg');
+
+  function updatePreview() {
+    previewSvg.outerHTML = buildMiniPreviewSVG(segCount).replace('<svg ', '<svg class="wcf-preview-svg" ');
+    form.querySelector('.minus').disabled = segCount <= 1;
+    form.querySelector('.plus').disabled = segCount >= 12;
+  }
+  updatePreview();
+  nameInput.focus();
+
+  form.querySelector('.minus').addEventListener('click', () => {
+    if (segCount > 2) { segCount--; form.querySelector('.wcf-seg-count').textContent = segCount; updatePreview(); }
+  });
+  form.querySelector('.plus').addEventListener('click', () => {
+    if (segCount < 12) { segCount++; form.querySelector('.wcf-seg-count').textContent = segCount; updatePreview(); }
+  });
+  form.querySelector('.wcf-close').addEventListener('click', () => form.remove());
+  form.querySelector('.cancel-btn').addEventListener('click', () => form.remove());
+  form.querySelector('.create-btn').addEventListener('click', () => {
+    const name = nameInput.value.trim();
+    const finalName = name.length ? name : `Counter ${wheelStores[suffix].length + 1}`;
+    const newWheel = { id: nextWheelId++, name: finalName, segments: segCount, filledCount: 0 };
+    wheelStores[suffix].push(newWheel);
+    form.remove();
+    renderGrid(suffix);
+    // log it (visual confirmation only, console for demo)
+    console.log(`◷ ${finalName} — ${segCount} segments`);
+  });
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   STANDALONE CREATE-FORM DEMO (Scenario 4)
+   ════════════════════════════════════════════════════════════════════ */
+
+let demoSeg = 6;
+function demoStep(delta) {
+  demoSeg = Math.max(1, Math.min(12, demoSeg + delta));
+  document.getElementById('demoSegCount').textContent = demoSeg;
+  renderDemoPreview();
+}
+function renderDemoPreview() {
+  const svg = document.getElementById('demoPreviewSvg');
+  svg.innerHTML = buildMiniPreviewSVG(demoSeg).replace(/<svg[^>]*>/, '').replace('</svg>', '');
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   INIT
+   ════════════════════════════════════════════════════════════════════ */
+renderGrid('s1');
+renderGrid('s2');
+renderGrid('s3');
+renderGrid('s5');
+renderGrid('s6edge');
+renderGrid('s6many', { noAddTile: false });
+renderGrid('mobile');
+renderDemoPreview();
+</script>
+
+</body>
+</html>

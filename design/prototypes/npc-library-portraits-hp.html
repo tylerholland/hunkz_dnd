@@ -1,0 +1,2807 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>NPC Library with Portraits &amp; HP — Design Prototype (Story 31)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+    /* ── Ocean palette (dashboard chrome) ── */
+    :root {
+      --bg: #0d0f14;
+      --surface: rgba(18,32,48,0.6);
+      --surface-solid: #111e2c;
+      --border: rgba(100,130,160,0.18);
+      --border-vis: rgba(100,130,160,0.32);
+      --accent: #6a8fa8;
+      --accent-bright: #a0c0d0;
+      --accent-dim: #1e3a4e;
+      --text: #c8bfaf;
+      --text-body: #b0a898;
+      --text-muted: #3a5a6a;
+      --glow1: rgba(20,45,80,0.4);
+      --glow2: rgba(15,35,60,0.3);
+      --gem: #8ab4c8;
+      --font-display: 'Cinzel', Georgia, serif;
+      --font-body: 'Crimson Text', Georgia, serif;
+      --font-ui: 'IM Fell English', Georgia, serif;
+
+      /* NPC neutral palette */
+      --npc-accent: #7a7060;
+      --npc-bright: #b0a080;
+      --npc-surface: rgba(30,26,20,0.6);
+      --npc-surface-solid: #1e1a14;
+      --npc-border: rgba(120,110,90,0.3);
+      --npc-border-vis: rgba(120,110,90,0.45);
+      --npc-gem: #a09080;
+      --npc-chip-bg: rgba(40,36,28,0.7);
+      --npc-action-border: rgba(120,110,90,0.35);
+      --npc-track: rgba(40,36,28,0.85);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background:
+        radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+        radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+        var(--bg);
+      min-height: 100vh;
+      color: var(--text);
+      font-family: var(--font-body);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+    /* ── Prototype page header ── */
+    .proto-header {
+      background: rgba(8,12,18,0.95);
+      border-bottom: 1px solid var(--border-vis);
+      padding: 18px 32px 14px;
+      position: sticky;
+      top: 0;
+      z-index: 400;
+    }
+    .proto-header-inner { max-width: 1180px; margin: 0 auto; display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap; }
+    .proto-title {
+      font-family: var(--font-display);
+      font-size: 16px;
+      letter-spacing: 0.1em;
+      color: var(--accent-bright);
+    }
+    .proto-meta {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+    }
+    .proto-date { margin-left: auto; }
+
+    .callout-new {
+      background: rgba(20,50,80,0.88);
+      border: 1px solid rgba(80,140,200,0.48);
+      border-radius: 3px;
+      color: #80c8f0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      padding: 4px 9px;
+      display: inline-block;
+      margin: 0 4px 4px 0;
+    }
+    .callout-new::before { content: "★ "; opacity: 0.8; color: #a0d8f0; }
+
+    .callout {
+      display: inline-block;
+      background: rgba(160,192,208,0.09);
+      border: 1px solid rgba(160,192,208,0.3);
+      border-radius: 3px;
+      color: #a0c0d0;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      padding: 4px 9px;
+      text-transform: uppercase;
+      white-space: nowrap;
+      margin: 0 4px 4px 0;
+    }
+
+    /* ── Scenario section layout ── */
+    .page-body { max-width: 1180px; margin: 0 auto; padding: 36px 32px 80px; }
+
+    .scenario-section { margin-bottom: 64px; }
+    .scenario-heading {
+      font-family: var(--font-display);
+      font-size: 18px;
+      letter-spacing: 0.12em;
+      color: var(--accent-bright);
+      margin-bottom: 6px;
+    }
+    .scenario-desc {
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+      line-height: 1.6;
+    }
+    .scenario-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+
+    .scenario-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 32px;
+      align-items: start;
+    }
+    @media (max-width: 800px) {
+      .scenario-grid { grid-template-columns: 1fr; }
+    }
+
+    .scenario-card-wrap { position: relative; }
+    .scenario-label {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+
+    /* Top dashboard bar mock — shows Enemies Gallery entry point */
+    .dash-topbar {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      background: rgba(14,18,26,0.85);
+      border: 1px solid var(--border-vis);
+      border-radius: 5px;
+      padding: 10px 16px;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+    }
+    .dash-topbar-title {
+      font-family: var(--font-display);
+      font-size: 13px;
+      letter-spacing: 0.1em;
+      color: var(--accent-bright);
+      margin-right: auto;
+    }
+    .dash-topbar-btn {
+      background: transparent;
+      border: 1px solid var(--border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.1em;
+      padding: 6px 12px;
+      min-height: 32px;
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+      white-space: nowrap;
+    }
+    .dash-topbar-btn:hover { border-color: var(--accent); color: var(--accent-bright); background: rgba(106,143,168,0.1); }
+    .dash-topbar-btn.gallery { border-color: var(--npc-accent); color: var(--npc-bright); }
+    .dash-topbar-btn.gallery:hover { background: rgba(122,112,96,0.15); }
+
+    /* ═══════════════════════════════════════
+       ADD ENEMY FORM
+    ═══════════════════════════════════════ */
+    .add-npc-form {
+      background: rgba(30,26,20,0.4);
+      border: 1px dashed rgba(120,110,90,0.35);
+      border-radius: 5px;
+      padding: 14px;
+    }
+    .add-npc-title {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.28em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+    }
+    .add-npc-fields { display: flex; gap: 8px; margin-bottom: 10px; }
+    .npc-text-input {
+      flex: 1;
+      background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 14px;
+      padding: 7px 10px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .npc-text-input:focus { border-color: var(--npc-accent); }
+    .npc-num-input {
+      width: 72px;
+      background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-display);
+      font-size: 15px;
+      padding: 7px 8px;
+      outline: none;
+      text-align: center;
+      transition: border-color 0.15s;
+      -moz-appearance: textfield;
+    }
+    .npc-num-input::-webkit-outer-spin-button,
+    .npc-num-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .npc-num-input:focus { border-color: var(--npc-accent); }
+    .npc-num-input.flash-prefill { animation: prefillFlash 420ms ease-out; }
+    @keyframes prefillFlash {
+      0% { background: rgba(122,112,96,0.32); }
+      100% { background: rgba(18,14,10,0.6); }
+    }
+
+    .count-stepper-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .count-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.14em;
+      color: var(--text-muted);
+    }
+    .count-btn {
+      width: 26px;
+      height: 26px;
+      border-radius: 3px;
+      border: 1px solid var(--npc-border-vis);
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-display);
+      font-size: 16px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color 0.12s, color 0.12s;
+    }
+    .count-btn:hover { border-color: var(--npc-accent); color: var(--npc-bright); }
+    .count-val {
+      font-family: var(--font-display);
+      font-size: 16px;
+      color: var(--text);
+      min-width: 20px;
+      text-align: center;
+    }
+
+    /* Number-them toggle */
+    .number-toggle-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-left: auto;
+      opacity: 0;
+      max-width: 0;
+      overflow: hidden;
+      transition: opacity 140ms ease-out;
+      white-space: nowrap;
+    }
+    .number-toggle-wrap.visible { opacity: 1; max-width: 400px; }
+    .number-toggle-checkbox {
+      width: 14px;
+      height: 14px;
+      accent-color: var(--npc-accent);
+      cursor: pointer;
+    }
+    .number-toggle-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .number-toggle-preview {
+      color: var(--npc-bright);
+      font-style: italic;
+    }
+
+    .add-npc-btn {
+      width: 100%;
+      background: rgba(122,112,96,0.15);
+      border: 1px solid var(--npc-accent);
+      border-radius: 3px;
+      color: var(--npc-bright);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      padding: 9px 0;
+      cursor: pointer;
+      transition: background 0.15s;
+      margin-bottom: 10px;
+    }
+    .add-npc-btn:hover { background: rgba(122,112,96,0.28); }
+
+    .form-helper-text {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-bottom: 8px;
+    }
+
+    /* ── Library toggle ── */
+    .lib-toggle {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: none;
+      border: none;
+      padding: 8px 0 4px;
+      cursor: pointer;
+      user-select: none;
+      transition: color 0.12s;
+    }
+    .lib-toggle:hover .lib-toggle-label { color: var(--npc-bright); }
+    .lib-toggle:hover .lib-toggle-diamond { color: var(--npc-accent); }
+    .lib-toggle-diamond {
+      font-size: 11px;
+      color: var(--npc-accent);
+      transition: transform 0.09s ease-out, color 0.09s ease-out;
+      line-height: 1;
+      flex-shrink: 0;
+    }
+    .lib-toggle-diamond.open { transform: rotate(45deg); }
+    .lib-toggle-label {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      transition: color 0.09s ease-out;
+    }
+
+    /* ── Library picker panel ── */
+    .lib-picker-wrap {
+      overflow: hidden;
+      max-height: 0;
+      opacity: 0;
+      transition: max-height 160ms ease-in, opacity 160ms ease-in;
+    }
+    .lib-picker-wrap.open {
+      max-height: 520px;
+      opacity: 1;
+      transition: max-height 220ms cubic-bezier(0.34, 1.0, 0.64, 1), opacity 220ms ease-out;
+    }
+
+    .lib-picker {
+      margin-top: 6px;
+      background: rgba(22,18,13,0.85);
+      border: 1px solid var(--npc-action-border);
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .lib-picker-search-wrap { padding: 8px 10px 0; }
+    .lib-picker-search {
+      width: 100%;
+      background: rgba(18,14,10,0.6);
+      border: 1px solid var(--npc-border);
+      border-radius: 3px;
+      color: var(--text);
+      font-family: var(--font-body);
+      font-size: 12px;
+      padding: 6px 9px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .lib-picker-search:focus { border-color: var(--npc-accent); }
+    .lib-picker-search::placeholder { color: var(--text-muted); font-style: italic; }
+
+    .lib-picker-header {
+      display: flex;
+      align-items: center;
+      justify-content: flex-end;
+      padding: 6px 10px 5px;
+      border-bottom: 1px solid var(--npc-action-border);
+    }
+    .lib-picker-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.14em;
+      cursor: pointer;
+      padding: 4px 0;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      transition: color 0.12s;
+    }
+    .lib-picker-close:hover { color: var(--text); }
+
+    .lib-picker-rows {
+      max-height: 360px;
+      overflow-y: auto;
+    }
+
+    /* ── Library row ── */
+    .lib-row {
+      position: relative;
+      border-bottom: 1px solid var(--npc-action-border);
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(-2px);
+      transition: background 0.12s;
+    }
+    .lib-row:last-child { border-bottom: none; }
+    .lib-row.lib-row-visible { animation: rowFadeIn 120ms ease-out forwards; }
+    @keyframes rowFadeIn {
+      from { opacity: 0; transform: translateY(-2px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes rowReveal {
+      from { opacity: 0; max-height: 0; transform: translateY(-4px); }
+      to   { opacity: 1; max-height: 110px; transform: translateY(0); }
+    }
+    .lib-row.lib-row-new-entry { animation: rowReveal 220ms ease-out forwards; }
+
+    .lib-row-main {
+      display: flex;
+      align-items: flex-start;
+      padding: 10px 12px 10px;
+      cursor: pointer;
+      gap: 10px;
+    }
+    .lib-row:hover .lib-row-main { background: var(--npc-chip-bg); }
+    .lib-row-text { flex: 1; min-width: 0; }
+
+    /* ── Portrait thumbnail (picker, 32px) ── */
+    .lib-thumb {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--npc-chip-bg);
+      border: 1px solid var(--npc-action-border);
+      font-family: var(--font-display);
+      font-size: 12px;
+      color: var(--npc-bright);
+      letter-spacing: 0.02em;
+    }
+    .lib-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .lib-row-name-line { display: flex; align-items: baseline; gap: 6px; margin-bottom: 3px; }
+    .lib-row-name {
+      font-family: var(--font-display);
+      font-size: 14px;
+      letter-spacing: 0.04em;
+      color: var(--npc-bright);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex: 1;
+      min-width: 0;
+    }
+    .lib-hp-chip {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      color: var(--npc-accent);
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .lib-hp-chip .heart { color: #b06868; margin-right: 1px; }
+
+    .lib-row-preview {
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--text-body);
+      line-height: 1.65;
+      opacity: 0.85;
+    }
+    .lib-row-preview.empty {
+      font-style: italic;
+      color: var(--text-muted);
+      -webkit-line-clamp: unset;
+      overflow: visible;
+    }
+    .lib-row-preview-line {
+      display: block;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      font-family: var(--font-body);
+      font-size: 11px;
+      color: var(--text-body);
+      line-height: 1.65;
+    }
+    .lib-row-preview-line .diamond { color: var(--npc-accent); font-size: 11px; margin-right: 3px; }
+    .lib-row-preview-more {
+      display: block;
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.1em;
+      color: var(--text-muted);
+      font-style: italic;
+      margin-top: 1px;
+    }
+
+    .lib-row-del-btn {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 13px;
+      cursor: pointer;
+      padding: 2px 4px;
+      min-width: 32px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      flex-shrink: 0;
+      transition: color 0.12s, background 0.12s;
+      line-height: 1;
+    }
+    .lib-row-del-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+
+    .lib-row-confirm {
+      max-height: 0;
+      opacity: 0;
+      overflow: hidden;
+      transition: max-height 180ms ease-in, opacity 180ms ease-in;
+    }
+    .lib-row-confirm.open {
+      max-height: 40px;
+      opacity: 1;
+      transition: max-height 180ms ease-out, opacity 180ms ease-out;
+    }
+    .lib-row-confirm-inner {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 12px 8px;
+    }
+    .lib-confirm-prompt {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-style: italic;
+      color: var(--text-muted);
+      flex: 1;
+    }
+    .lib-confirm-del-btn {
+      background: transparent;
+      border: 1px solid rgba(192,96,96,0.4);
+      border-radius: 3px;
+      color: #c06060;
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 5px 10px;
+      min-height: 32px;
+      cursor: pointer;
+      transition: background 0.12s, border-color 0.12s;
+    }
+    .lib-confirm-del-btn:hover { background: rgba(192,96,96,0.12); border-color: rgba(192,96,96,0.7); }
+    .lib-confirm-cancel-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 12px;
+      letter-spacing: 0.1em;
+      padding: 5px 8px;
+      min-height: 32px;
+      cursor: pointer;
+      transition: color 0.12s;
+    }
+    .lib-confirm-cancel-btn:hover { color: var(--text); }
+
+    /* ── Library empty state ── */
+    .lib-empty {
+      padding: 20px 16px;
+      text-align: center;
+      border: 1px dashed var(--npc-action-border);
+      border-radius: 4px;
+      margin: 8px;
+    }
+    .lib-empty-text {
+      font-family: var(--font-body);
+      font-size: 13px;
+      font-style: italic;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* Gallery link at bottom of picker */
+    .lib-gallery-link-row { border-top: 1px solid var(--npc-action-border); }
+    .lib-gallery-link-btn {
+      display: block;
+      width: 100%;
+      background: transparent;
+      border: none;
+      text-align: left;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      padding: 10px 12px;
+      min-height: 44px;
+      cursor: pointer;
+      transition: color 0.12s;
+    }
+    .lib-gallery-link-btn:hover { color: var(--npc-bright); }
+    .lib-gallery-link-btn .gear { color: var(--npc-accent); margin-right: 4px; }
+
+    /* ═══════════════════════════════════════
+       NPC CARD
+    ═══════════════════════════════════════ */
+    .npc-card {
+      background: var(--npc-surface);
+      border: 1px solid var(--npc-border);
+      border-radius: 5px;
+      position: relative;
+      transition: border-color 0.15s;
+    }
+    .npc-card:hover { border-color: var(--npc-accent); }
+    .npc-card-inner { position: relative; padding: 12px 12px 0 14px; }
+
+    .npc-card.bloodied { border-color: rgba(180,100,40,0.5); }
+    .npc-card.bloodied .npc-card-inner::before {
+      content: '';
+      position: absolute;
+      left: 0; top: 0; bottom: 0; width: 3px;
+      border-radius: 5px 0 0 5px;
+      background: linear-gradient(180deg, #c07030, #a05020);
+    }
+
+    .npc-card-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    /* Card portrait (40px) sits left of name */
+    .npc-card-head { display: flex; align-items: flex-start; gap: 8px; flex: 1; min-width: 0; }
+    .npc-portrait-thumb {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--npc-chip-bg);
+      border: 1px solid var(--npc-action-border);
+      font-family: var(--font-display);
+      font-size: 14px;
+      color: var(--npc-bright);
+      margin-top: 1px;
+    }
+    .npc-portrait-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+    .npc-name-row { display: flex; align-items: center; gap: 8px; flex: 1; min-width: 0; flex-wrap: wrap; }
+    .npc-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      letter-spacing: 0.05em;
+      color: var(--npc-bright);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .npc-status-badge {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 8px;
+      flex-shrink: 0;
+      background: rgba(180,100,40,0.18);
+      border: 1px solid rgba(180,100,40,0.45);
+      color: #d09050;
+    }
+
+    .npc-card-btns { display: flex; align-items: center; gap: 4px; flex-shrink: 0; }
+    .npc-init-btn {
+      background: transparent;
+      border: 1px solid var(--npc-border-vis);
+      border-radius: 3px;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.12em;
+      padding: 3px 7px;
+      min-height: 28px;
+      cursor: pointer;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+      white-space: nowrap;
+    }
+    .npc-init-btn:hover { border-color: var(--accent); color: var(--accent-bright); background: rgba(106,143,168,0.1); }
+
+    .npc-overflow-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-family: var(--font-ui);
+      font-size: 16px;
+      letter-spacing: 0.12em;
+      cursor: pointer;
+      padding: 2px 6px;
+      min-width: 32px;
+      min-height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 3px;
+      transition: color 0.12s, background 0.12s;
+      line-height: 1;
+    }
+    .npc-overflow-btn:hover { color: var(--npc-bright); background: rgba(122,112,96,0.15); }
+    .npc-overflow-btn.active { color: var(--npc-bright); background: rgba(122,112,96,0.2); }
+
+    .npc-remove-btn {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      cursor: pointer;
+      padding: 2px 4px;
+      min-width: 28px;
+      min-height: 28px;
+      border-radius: 3px;
+      line-height: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.12s, background 0.12s;
+      flex-shrink: 0;
+    }
+    .npc-remove-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+
+    /* ── Overflow popover ── */
+    .npc-overflow-wrap { position: relative; }
+    .npc-overflow-popover {
+      position: absolute;
+      right: 0;
+      top: calc(100% + 4px);
+      z-index: 50;
+      background: var(--npc-surface-solid);
+      border: 1px solid var(--npc-action-border);
+      border-radius: 4px;
+      min-width: 220px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.4);
+      overflow: hidden;
+      opacity: 0;
+      transform: scale(0.94);
+      transform-origin: top right;
+      pointer-events: none;
+      transition: opacity 100ms ease-in, transform 100ms ease-in;
+    }
+    .npc-overflow-popover.open {
+      opacity: 1;
+      transform: scale(1);
+      pointer-events: auto;
+      transition: opacity 140ms ease-out, transform 140ms cubic-bezier(0.34, 1.0, 0.64, 1);
+    }
+
+    .popover-conflict-label { padding: 10px 14px 8px; border-bottom: 1px solid var(--npc-action-border); }
+    .popover-conflict-tag {
+      font-family: var(--font-ui);
+      font-size: 10px;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      display: block;
+      margin-bottom: 2px;
+    }
+    .popover-conflict-name { font-family: var(--font-body); font-size: 13px; font-style: italic; color: var(--text-body); }
+
+    .npc-overflow-item {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      width: 100%;
+      background: transparent;
+      border: none;
+      padding: 10px 14px;
+      cursor: pointer;
+      font-family: var(--font-body);
+      font-size: 14px;
+      color: var(--npc-bright);
+      text-align: left;
+      transition: background 0.12s;
+    }
+    .npc-overflow-item:hover { background: var(--npc-chip-bg); }
+    .npc-overflow-item .item-diamond { color: var(--npc-accent); font-size: 11px; flex-shrink: 0; margin-top: 3px; }
+    .npc-overflow-item.destructive { color: #c06060; border-top: 1px solid var(--npc-action-border); }
+    .npc-overflow-item.destructive:hover { background: rgba(192,96,96,0.08); }
+    .npc-overflow-item .item-x { font-size: 12px; flex-shrink: 0; margin-top: 2px; }
+
+    .overflow-item-text { display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0; }
+    .overflow-item-main { color: var(--npc-bright); }
+    .overflow-item-preview {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-family: var(--font-ui);
+      font-size: 11px;
+      color: var(--text-muted);
+      letter-spacing: 0.02em;
+    }
+    .overflow-item-preview .preview-thumb {
+      width: 18px; height: 18px; border-radius: 50%;
+      overflow: hidden; flex-shrink: 0;
+      background: var(--npc-chip-bg);
+      border: 1px solid var(--npc-action-border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 8px; color: var(--npc-bright);
+    }
+    .overflow-item-preview .preview-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .overflow-item-preview .delta-old { text-decoration: line-through; opacity: 0.6; }
+    .overflow-item-preview .delta-arrow { color: var(--npc-accent); }
+    .overflow-item-preview .delta-new { color: var(--npc-bright); }
+
+    .npc-overflow-item.saved-state { color: var(--npc-bright); cursor: default; pointer-events: none; }
+    .npc-overflow-item.saved-state .item-check { color: var(--npc-bright); }
+
+    /* ── HP row ── */
+    .npc-hp-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+    .npc-hp-nums { display: flex; align-items: baseline; gap: 2px; }
+    .npc-hp-cur { font-family: var(--font-display); font-size: 20px; line-height: 1; color: var(--npc-gem); }
+    .npc-card.bloodied .npc-hp-cur { color: #c07830; }
+    .npc-hp-sep { font-family: var(--font-display); font-size: 12px; color: var(--text-muted); }
+    .npc-hp-max { font-family: var(--font-display); font-size: 12px; color: var(--text-muted); }
+    .npc-step-btn {
+      width: 26px; height: 16px; border-radius: 3px;
+      border: 1px solid var(--npc-border); background: transparent;
+      color: var(--text-muted); font-family: var(--font-display);
+      font-size: 14px; line-height: 1; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; padding: 0;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      user-select: none;
+    }
+    .npc-step-btn:hover { border-color: var(--npc-accent); color: var(--npc-bright); background: rgba(122,112,96,0.18); }
+    .npc-bar-wrap { flex: 1; padding: 0 5px; }
+    .npc-bar-track { height: 5px; border-radius: 3px; overflow: hidden; background: rgba(40,34,24,0.8); }
+    .npc-bar-fill { height: 100%; border-radius: 3px; transition: width 0.3s ease; background: linear-gradient(90deg, var(--npc-accent) 0%, var(--npc-bright) 100%); }
+
+    /* ── Conditions ── */
+    .npc-conditions { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    .npc-cond {
+      font-family: var(--font-ui); font-size: 9px;
+      letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 2px 8px; border-radius: 8px;
+      background: rgba(200,80,80,0.13); border: 1px solid rgba(200,80,80,0.36); color: #d08080;
+    }
+    .npc-cond.charmed { background: rgba(140,80,180,0.14); border-color: rgba(140,80,180,0.38); color: #c098e0; }
+
+    /* ── Ability reference block ── */
+    .npc-section-divider { border: none; border-top: 1px solid var(--npc-border); margin: 4px 0; }
+    .npc-ability-ref { padding: 8px 10px 6px; }
+    .npc-ability-ref-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 4px; }
+    .npc-ability-show-toggle {
+      background: none; border: none;
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.16em;
+      text-transform: uppercase; color: var(--npc-accent);
+      cursor: pointer; padding: 2px 0; min-height: 28px;
+      display: flex; align-items: center; transition: color 0.12s;
+    }
+    .npc-ability-show-toggle:hover { color: var(--npc-bright); }
+    .npc-ability-edit-btn {
+      background: none; border: none; color: var(--npc-accent);
+      font-size: 13px; cursor: pointer; padding: 4px 6px;
+      min-width: 32px; min-height: 32px; border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      transition: color 0.12s, background 0.12s;
+    }
+    .npc-ability-edit-btn:hover { color: var(--npc-bright); background: rgba(122,112,96,0.15); }
+
+    /* ── Quick action row ── */
+    .npc-quick-actions {
+      display: flex; align-items: center; gap: 5px;
+      padding: 6px 0 8px; border-top: 1px solid var(--npc-border);
+      margin: 0 -12px 0 -14px;
+      padding-left: 14px; padding-right: 12px;
+    }
+    .nqa-btn {
+      flex: 1; background: transparent; border: 1px solid var(--npc-border);
+      border-radius: 3px; color: var(--text-muted);
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.14em;
+      text-transform: uppercase; padding: 5px 0; cursor: pointer;
+      transition: background 0.12s, border-color 0.12s, color 0.12s;
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+    }
+    .nqa-btn:hover { border-color: var(--npc-accent); color: var(--npc-bright); background: rgba(122,112,96,0.12); }
+    .nqa-btn.dmg:hover { border-color: rgba(192,96,96,0.5); color: #d08080; background: rgba(192,96,96,0.08); }
+    .nqa-btn.heal:hover { border-color: rgba(80,160,80,0.5); color: #88c888; background: rgba(80,160,80,0.08); }
+
+    .npc-notes-strip {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 5px 12px 5px 14px; border-top: 1px solid var(--npc-border);
+      color: var(--text-muted); font-family: var(--font-ui);
+      font-size: 10px; letter-spacing: 0.14em;
+    }
+
+    /* ── Structured ability list ── */
+    .ability-list { margin: 0; padding: 0; list-style: none; }
+    .ability-list-item {
+      display: flex; align-items: flex-start; gap: 6px;
+      padding: 3px 10px; max-height: 60px; overflow: hidden;
+      transition: max-height 160ms ease-in, opacity 160ms ease-in;
+    }
+    .ability-list-item.removing { max-height: 0 !important; opacity: 0; }
+    .ability-list-item-diamond { font-family: var(--font-display); font-size: 11px; color: var(--npc-accent); flex-shrink: 0; margin-top: 2px; }
+    .ability-list-item-text { font-family: var(--font-body); font-size: 13px; color: var(--text-body); line-height: 1.6; flex: 1; word-break: break-word; }
+    .ability-remove-btn {
+      background: none; border: none; color: var(--text-muted);
+      font-family: var(--font-ui); font-size: 13px; cursor: pointer;
+      padding: 0 2px; min-width: 24px; min-height: 24px;
+      display: flex; align-items: center; justify-content: center;
+      border-radius: 3px; flex-shrink: 0; opacity: 0;
+      transition: opacity 0.12s, color 0.12s, background 0.12s;
+    }
+    .ability-list-item:hover .ability-remove-btn { opacity: 1; }
+    .ability-remove-btn:hover { color: #c06060; background: rgba(192,96,96,0.1); }
+
+    .ability-add-row { display: flex; align-items: stretch; gap: 6px; padding: 6px 10px 4px; }
+    .ability-add-input {
+      flex: 1; background: rgba(18,14,10,0.6); border: 1px solid var(--npc-border);
+      border-radius: 3px; color: var(--text-body); font-family: var(--font-body);
+      font-size: 13px; padding: 5px 8px; outline: none;
+      transition: border-color 0.15s; min-height: 32px;
+    }
+    .ability-add-input:focus { border-color: var(--npc-accent); }
+    .ability-add-input::placeholder { color: var(--text-muted); font-style: italic; }
+    .ability-add-input.error { border-color: #c06060; transition: none; }
+    .ability-add-btn {
+      background: rgba(122,112,96,0.15); border: 1px solid var(--npc-accent);
+      border-radius: 3px; color: var(--npc-bright); font-family: var(--font-ui);
+      font-size: 14px; cursor: pointer; padding: 5px 10px; min-width: 32px;
+      transition: background 0.15s; flex-shrink: 0;
+    }
+    .ability-add-btn:hover { background: rgba(122,112,96,0.28); }
+    .ability-char-counter {
+      font-family: var(--font-ui); font-size: 10px; color: var(--text-muted);
+      text-align: right; padding: 0 10px 2px; display: none;
+    }
+    .ability-char-counter.visible { display: block; }
+    .ability-char-counter.limit { color: #c06060; }
+
+    .npc-ability-edit-mode { display: none; }
+    .npc-ability-read-mode { display: block; }
+    .npc-card.editing-abilities .npc-ability-edit-mode { display: block; }
+    .npc-card.editing-abilities .npc-ability-read-mode { display: none; }
+
+    @keyframes inputErrorFlash {
+      0%   { border-color: #c06060; }
+      50%  { border-color: rgba(192,96,96,0.3); }
+      100% { border-color: #c06060; }
+    }
+    .error-flash { animation: inputErrorFlash 300ms ease-in-out 2; }
+
+    /* ═══════════════════════════════════════
+       ADVANCE LIBRARY EDITOR — MODAL (Surface C)
+    ═══════════════════════════════════════ */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 500;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      opacity: 0;
+      transition: opacity 160ms ease-out;
+    }
+    .modal-overlay.open { display: flex; opacity: 1; }
+
+    .editor-panel {
+      background: var(--npc-surface-solid);
+      border: 1px solid var(--npc-action-border);
+      border-radius: 7px;
+      width: 100%;
+      max-width: 720px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.55);
+      transform: scale(0.97);
+      opacity: 0;
+      transition: transform 200ms cubic-bezier(0.34,1.0,0.64,1), opacity 200ms ease-out;
+    }
+    .modal-overlay.open .editor-panel { transform: scale(1); opacity: 1; }
+
+    .editor-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; border-bottom: 1px solid var(--npc-action-border);
+      flex-shrink: 0;
+    }
+    .editor-title { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.12em; color: var(--accent-bright); text-transform: uppercase; }
+    .editor-close-btn {
+      background: none; border: none; color: var(--text-muted);
+      font-size: 18px; cursor: pointer; padding: 4px 8px;
+      min-width: 36px; min-height: 36px; border-radius: 3px;
+      transition: color 0.12s, background 0.12s;
+    }
+    .editor-close-btn:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+    .editor-body { flex: 1; min-height: 0; display: flex; overflow: hidden; }
+
+    /* Desktop: two-pane */
+    .editor-list-pane {
+      width: 260px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--npc-action-border);
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    .editor-list-search-wrap { padding: 10px; flex-shrink: 0; }
+    .editor-list-rows { flex: 1; overflow-y: auto; min-height: 0; }
+
+    .editor-entry-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 9px 12px; cursor: pointer; position: relative;
+      border-bottom: 1px solid rgba(120,110,90,0.14);
+      transition: background 0.12s;
+    }
+    .editor-entry-row:hover { background: var(--npc-chip-bg); }
+    .editor-entry-row.selected { background: var(--npc-chip-bg); }
+    .editor-entry-row.selected::before {
+      content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: var(--npc-accent);
+    }
+    .editor-entry-thumb {
+      width: 30px; height: 30px; border-radius: 50%; flex-shrink: 0;
+      overflow: hidden; display: flex; align-items: center; justify-content: center;
+      background: var(--npc-chip-bg); border: 1px solid var(--npc-action-border);
+      font-family: var(--font-display); font-size: 11px; color: var(--npc-bright);
+    }
+    .editor-entry-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .editor-entry-text { flex: 1; min-width: 0; }
+    .editor-entry-name {
+      font-family: var(--font-display); font-size: 13px; color: var(--npc-bright);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .editor-entry-meta { font-family: var(--font-ui); font-size: 10px; color: var(--text-muted); letter-spacing: 0.04em; }
+    .editor-entry-meta .heart { color: #b06868; }
+    .editor-entry-chevron { color: var(--npc-accent); font-size: 12px; flex-shrink: 0; opacity: 0; transition: opacity 0.12s; }
+    .editor-entry-row.selected .editor-entry-chevron { opacity: 1; }
+
+    .editor-new-entry-row {
+      border-top: 1px dashed var(--npc-action-border);
+      border-bottom: none;
+    }
+    .editor-new-entry-btn {
+      display: block; width: 100%; background: transparent; border: none;
+      text-align: left; font-family: var(--font-ui); font-size: 11px;
+      letter-spacing: 0.16em; text-transform: uppercase; color: var(--npc-accent);
+      padding: 10px 12px; min-height: 44px; cursor: pointer; transition: color 0.12s;
+    }
+    .editor-new-entry-btn:hover { color: var(--npc-bright); }
+
+    .editor-list-footer-actions {
+      display: flex; flex-direction: column; gap: 2px;
+      padding: 6px 4px; border-top: 1px solid var(--npc-action-border); flex-shrink: 0;
+    }
+    .editor-list-action-btn {
+      display: flex; align-items: center; gap: 6px;
+      background: none; border: none; text-align: left;
+      font-family: var(--font-body); font-size: 13px; color: var(--npc-bright);
+      padding: 8px 12px; min-height: 36px; border-radius: 3px; cursor: pointer;
+      transition: background 0.12s, color 0.12s;
+    }
+    .editor-list-action-btn:hover { background: var(--npc-chip-bg); }
+    .editor-list-action-btn.danger { color: #c06060; }
+    .editor-list-action-btn.danger:hover { background: rgba(192,96,96,0.08); }
+    .editor-list-action-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+
+    /* Editor right pane */
+    .editor-detail-pane {
+      flex: 1; min-width: 0; min-height: 0;
+      overflow-y: auto;
+      padding: 20px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .editor-detail-empty {
+      flex: 1; display: flex; align-items: center; justify-content: center;
+      text-align: center; color: var(--text-muted); font-style: italic;
+      font-family: var(--font-body); font-size: 13px; padding: 40px 20px;
+    }
+
+    .editor-portrait-row { display: flex; align-items: flex-start; gap: 16px; }
+    .editor-portrait-circle {
+      width: 84px; height: 84px; border-radius: 50%; flex-shrink: 0;
+      overflow: hidden; position: relative;
+      background: var(--npc-chip-bg); border: 1px solid var(--npc-action-border);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 24px; color: var(--npc-bright);
+    }
+    .editor-portrait-circle img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .editor-portrait-shimmer {
+      position: absolute; inset: 0; border-radius: 50%;
+      background: linear-gradient(115deg, transparent 30%, rgba(255,255,255,0.18) 50%, transparent 70%);
+      background-size: 200% 100%;
+      animation: shimmerSweep 1100ms linear infinite;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 180ms ease-out;
+    }
+    .editor-portrait-shimmer.active { opacity: 1; }
+    @keyframes shimmerSweep { from { background-position: 150% 0; } to { background-position: -50% 0; } }
+    .editor-portrait-progress-ring {
+      position: absolute; inset: -3px; border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: var(--npc-accent);
+      opacity: 0;
+      transition: opacity 180ms ease-out;
+      animation: ringSpin 800ms linear infinite;
+    }
+    .editor-portrait-progress-ring.active { opacity: 1; }
+    @keyframes ringSpin { to { transform: rotate(360deg); } }
+
+    .editor-portrait-actions { display: flex; flex-direction: column; gap: 6px; padding-top: 6px; }
+    .editor-portrait-action-btn {
+      background: transparent; border: none; text-align: left;
+      font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em;
+      text-transform: uppercase; color: var(--npc-accent); cursor: pointer;
+      padding: 4px 0; min-height: 28px; transition: color 0.12s;
+    }
+    .editor-portrait-action-btn:hover { color: var(--npc-bright); }
+    .editor-portrait-action-btn.remove { color: var(--text-muted); }
+    .editor-portrait-action-btn.remove:hover { color: #c06060; }
+    .editor-portrait-error {
+      font-family: var(--font-body); font-style: italic; font-size: 12px;
+      color: #c06060; margin-top: 4px; max-width: 220px;
+    }
+    .editor-portrait-remove-confirm {
+      display: flex; align-items: center; gap: 8px; margin-top: 2px;
+    }
+
+    .editor-field-label {
+      font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.22em;
+      text-transform: uppercase; color: var(--text-muted); margin-bottom: 5px;
+      display: block;
+    }
+    .editor-field-group { display: flex; flex-direction: column; }
+    .editor-name-input, .editor-hp-input {
+      background: rgba(18,14,10,0.6); border: 1px solid var(--npc-border);
+      border-radius: 3px; color: var(--text); font-family: var(--font-body);
+      font-size: 16px; padding: 8px 11px; outline: none;
+      transition: border-color 0.15s;
+    }
+    .editor-name-input:focus, .editor-hp-input:focus { border-color: var(--npc-accent); }
+    .editor-hp-input { width: 120px; font-family: var(--font-display); text-align: left; -moz-appearance: textfield; }
+    .editor-hp-input::-webkit-outer-spin-button, .editor-hp-input::-webkit-inner-spin-button { -webkit-appearance: none; }
+    .editor-hp-hint { font-family: var(--font-ui); font-size: 10px; color: var(--text-muted); font-style: italic; margin-top: 4px; }
+
+    .editor-abilities-counter-row { display: flex; justify-content: flex-end; }
+
+    .editor-save-row { display: flex; align-items: center; gap: 12px; margin-top: auto; padding-top: 8px; }
+    .editor-save-btn {
+      background: rgba(122,112,96,0.15); border: 1px solid var(--npc-accent);
+      border-radius: 3px; color: var(--npc-bright); font-family: var(--font-ui);
+      font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase;
+      padding: 9px 22px; cursor: pointer; transition: background 0.15s, opacity 0.15s;
+    }
+    .editor-save-btn:hover { background: rgba(122,112,96,0.28); }
+    .editor-save-btn:disabled { opacity: 0.35; cursor: default; pointer-events: none; }
+    .editor-saved-flash {
+      font-family: var(--font-ui); font-size: 12px; letter-spacing: 0.1em;
+      color: var(--npc-bright); opacity: 0; transition: opacity 160ms ease-out;
+    }
+    .editor-saved-flash.show { opacity: 1; }
+
+    /* Dirty-guard bar */
+    .editor-dirty-guard {
+      display: none;
+      align-items: center; justify-content: space-between; gap: 12px;
+      padding: 12px 20px; border-top: 1px solid var(--npc-action-border);
+      background: rgba(40,30,20,0.4); flex-shrink: 0;
+    }
+    .editor-dirty-guard.open { display: flex; }
+    .editor-dirty-guard-text { font-family: var(--font-body); font-style: italic; font-size: 13px; color: var(--text-body); }
+    .editor-dirty-guard-actions { display: flex; gap: 8px; flex-shrink: 0; }
+    .dirty-discard-btn {
+      background: transparent; border: 1px solid rgba(192,96,96,0.4);
+      border-radius: 3px; color: #c06060; font-family: var(--font-ui);
+      font-size: 11px; letter-spacing: 0.08em; padding: 7px 12px;
+      min-height: 36px; cursor: pointer; transition: background 0.12s;
+    }
+    .dirty-discard-btn:hover { background: rgba(192,96,96,0.1); }
+    .dirty-keep-btn {
+      background: rgba(122,112,96,0.15); border: 1px solid var(--npc-accent);
+      border-radius: 3px; color: var(--npc-bright); font-family: var(--font-ui);
+      font-size: 11px; letter-spacing: 0.08em; padding: 7px 12px;
+      min-height: 36px; cursor: pointer; transition: background 0.12s;
+    }
+    .dirty-keep-btn:hover { background: rgba(122,112,96,0.28); }
+
+    /* Mobile drill-in */
+    @media (max-width: 720px) {
+      .editor-panel { max-height: 92vh; }
+      .editor-body { position: relative; }
+      .editor-list-pane {
+        width: 100%; border-right: none; position: absolute; inset: 0;
+        transition: transform 220ms ease-out; background: var(--npc-surface-solid);
+        z-index: 2;
+      }
+      .editor-detail-pane {
+        position: absolute; inset: 0;
+        transform: translateX(12px); opacity: 0;
+        transition: transform 220ms ease-out, opacity 220ms ease-out;
+        pointer-events: none; z-index: 1;
+        padding-bottom: 80px;
+      }
+      .editor-body.drilled-in .editor-list-pane { transform: translateX(-100%); }
+      .editor-body.drilled-in .editor-detail-pane { transform: translateX(0); opacity: 1; pointer-events: auto; }
+      .editor-mobile-back {
+        display: none; align-items: center; gap: 6px;
+        font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em;
+        text-transform: uppercase; color: var(--text-muted); cursor: pointer;
+        padding: 8px 0; margin-bottom: 8px; background: none; border: none;
+      }
+      .editor-body.drilled-in .editor-mobile-back { display: flex; }
+      .editor-portrait-circle { width: 72px; height: 72px; }
+      .editor-save-row { position: sticky; bottom: -20px; background: var(--npc-surface-solid); margin: 0 -24px -20px; padding: 12px 24px; }
+    }
+    @media (min-width: 721px) {
+      .editor-mobile-back { display: none; }
+    }
+
+    /* ═══════════════════════════════════════
+       MAP TOKEN + NUMBER BADGE (Surface demo)
+    ═══════════════════════════════════════ */
+    .token-demo-row { display: flex; gap: 28px; flex-wrap: wrap; align-items: flex-end; padding: 20px; background: rgba(8,12,10,0.5); border-radius: 6px; border: 1px solid var(--border); }
+    .token-demo-item { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+    .token-wrap-demo { position: relative; }
+    .token-circle-demo {
+      width: 52px; height: 52px; border-radius: 50%; position: relative;
+      overflow: visible;
+    }
+    .token-portrait-demo {
+      width: 100%; height: 100%; border-radius: 50%; overflow: hidden;
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 16px; color: rgba(255,255,255,0.9);
+      background: #1a100a; position: relative; z-index: 1;
+    }
+    .token-portrait-demo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .token-ring-demo {
+      position: absolute; inset: -2px; border-radius: 50%;
+      border: 2px solid rgba(160,104,64,0.6); box-shadow: 0 0 0 1px rgba(0,0,0,0.4);
+      z-index: 2; pointer-events: none;
+    }
+    .token-number-badge {
+      position: absolute; bottom: -2px; right: -2px;
+      width: 18px; height: 18px; border-radius: 50%;
+      background: var(--npc-surface-solid); border: 1px solid var(--npc-accent);
+      display: flex; align-items: center; justify-content: center;
+      font-family: var(--font-display); font-size: 11px; color: var(--npc-bright);
+      z-index: 3;
+    }
+    .token-label-demo {
+      margin-top: 3px; font-family: var(--font-ui); font-size: 11px;
+      letter-spacing: 0.12em; color: var(--text-body);
+      background: rgba(0,0,0,0.55); padding: 1px 5px; border-radius: 2px;
+    }
+
+    /* ═══════════════════════════════════════
+       LEGEND / ANNOTATIONS
+    ═══════════════════════════════════════ */
+    .legend {
+      background: rgba(14,18,26,0.8);
+      border: 1px solid var(--border-vis);
+      border-radius: 6px;
+      padding: 24px 28px;
+      margin-top: 48px;
+    }
+    .legend-title { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.14em; color: var(--accent-bright); margin-bottom: 18px; }
+    .legend-item { display: grid; grid-template-columns: 24px 1fr; gap: 10px; margin-bottom: 12px; align-items: start; }
+    .legend-num { font-family: var(--font-display); font-size: 13px; color: var(--accent); }
+    .legend-text { font-family: var(--font-body); font-size: 14px; color: var(--text-body); line-height: 1.55; }
+    .legend-text strong { font-weight: 600; color: var(--text); }
+
+    .state-toggle-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .state-toggle-btn {
+      background: transparent; border: 1px solid var(--npc-border-vis);
+      border-radius: 3px; color: var(--text-muted); font-family: var(--font-ui);
+      font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase;
+      padding: 5px 12px; cursor: pointer;
+      transition: border-color 0.12s, color 0.12s, background 0.12s;
+    }
+    .state-toggle-btn:hover, .state-toggle-btn.active {
+      border-color: var(--npc-accent); color: var(--npc-bright); background: rgba(122,112,96,0.12);
+    }
+
+    .lib-row:nth-child(1) .lib-row-visible { animation-delay: 0ms; }
+    .lib-row:nth-child(2) .lib-row-visible { animation-delay: 30ms; }
+    .lib-row:nth-child(3) .lib-row-visible { animation-delay: 60ms; }
+    .lib-row:nth-child(4) .lib-row-visible { animation-delay: 90ms; }
+    .lib-row:nth-child(5) .lib-row-visible { animation-delay: 120ms; }
+    .lib-row:nth-child(6) .lib-row-visible { animation-delay: 150ms; }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+    }
+</style>
+</head>
+<body>
+
+<!-- ── Prototype page header ── -->
+<header class="proto-header">
+  <div class="proto-header-inner">
+    <span class="proto-title">NPC Library — Portraits &amp; HP</span>
+    <span class="proto-meta">Story 31 — Design Prototype</span>
+    <span class="callout-new">Portrait thumbnails everywhere</span>
+    <span class="callout-new">HP chip + spawn pre-fill</span>
+    <span class="callout-new">Advance editor modal</span>
+    <span class="callout-new">⧉ Duplicate</span>
+    <span class="callout-new">Auto-numbering + token badge</span>
+    <span class="proto-meta proto-date">2026-06-16</span>
+  </div>
+</header>
+
+<div class="page-body">
+
+  <!-- ═══════════════════════════════════════════════════════
+       SURFACE A — ADD ENEMY FORM + LIBRARY PICKER
+  ═══════════════════════════════════════════════════════ -->
+  <section class="scenario-section">
+    <h2 class="scenario-heading">Surface A — In-Combat Library Picker</h2>
+    <p class="scenario-desc">
+      Each row now leads with a portrait thumbnail and trails with an HP chip (omitted when no default HP is set).
+      Tapping a row pre-fills Name + HP + abilities + portrait, then moves focus to the Count stepper — HP is
+      already filled, so the DM's next decision is how many. The picker's "⚙ Enemies Gallery" link replaces
+      Story 24's inline new-entry form; creation now routes to the full advance editor (Surface C, below).
+    </p>
+
+    <div class="dash-topbar">
+      <span class="dash-topbar-title">DM Dashboard</span>
+      <button class="dash-topbar-btn">Manage Party</button>
+      <button class="dash-topbar-btn">World Guide</button>
+      <button class="dash-topbar-btn gallery" onclick="openEditorModal()">⚙ Enemies Gallery</button>
+    </div>
+    <div style="margin-bottom:24px;">
+      <span class="callout">Top-bar entry point — quiet, "campaign setup" cluster</span>
+    </div>
+
+    <div class="scenario-grid">
+
+      <!-- A1: Picker collapsed (default) -->
+      <div class="scenario-card-wrap">
+        <div class="scenario-label">A1 — Picker collapsed (default state)</div>
+        <div class="add-npc-form">
+          <div class="add-npc-title">Add Enemy</div>
+          <div class="add-npc-fields">
+            <input class="npc-text-input" type="text" placeholder="Name…" id="name-input-a" />
+            <input class="npc-num-input" type="number" placeholder="HP" id="hp-input-a" />
+          </div>
+          <div class="count-stepper-row">
+            <span class="count-label">Count:</span>
+            <button class="count-btn" onclick="adjustCount('a', -1)">−</button>
+            <span class="count-val" id="count-a">1</span>
+            <button class="count-btn" onclick="adjustCount('a', 1)">+</button>
+            <div class="number-toggle-wrap" id="number-toggle-a">
+              <input type="checkbox" class="number-toggle-checkbox" id="number-checkbox-a" checked onchange="updateNumberPreview('a')" />
+              <label class="number-toggle-label" for="number-checkbox-a">☑ Number them <span class="number-toggle-preview" id="number-preview-a"></span></label>
+            </div>
+          </div>
+          <button class="add-npc-btn" id="add-btn-a">+ Add Enemy</button>
+          <div class="form-helper-text">Use + Init on a card to add it to the turn order.</div>
+
+          <button class="lib-toggle" id="lib-toggle-a" onclick="toggleLibrary('a')" aria-expanded="false">
+            <span class="lib-toggle-diamond" id="lib-diamond-a">◇</span>
+            <span class="lib-toggle-label" id="lib-label-a">From library</span>
+          </button>
+
+          <div class="lib-picker-wrap" id="lib-picker-wrap-a">
+            <div class="lib-picker">
+              <div class="lib-picker-header">
+                <button class="lib-picker-close" onclick="toggleLibrary('a')">× Close</button>
+              </div>
+              <div class="lib-picker-rows" id="lib-rows-a"></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <span class="callout">① Lightest affordance</span>
+          <span class="callout">Last tab-stop in form</span>
+        </div>
+      </div>
+
+      <!-- A2: Empty library state -->
+      <div class="scenario-card-wrap">
+        <div class="scenario-label">A2 — Picker expanded, empty library</div>
+        <div class="add-npc-form">
+          <div class="add-npc-title">Add Enemy</div>
+          <div class="add-npc-fields">
+            <input class="npc-text-input" type="text" placeholder="Name…" />
+            <input class="npc-num-input" type="number" placeholder="HP" />
+          </div>
+          <div class="count-stepper-row">
+            <span class="count-label">Count:</span>
+            <button class="count-btn">−</button>
+            <span class="count-val">1</span>
+            <button class="count-btn">+</button>
+          </div>
+          <button class="add-npc-btn">+ Add Enemy</button>
+          <div class="form-helper-text">Use + Init on a card to add it to the turn order.</div>
+
+          <button class="lib-toggle" style="pointer-events:none;" aria-expanded="true">
+            <span class="lib-toggle-diamond open">◆</span>
+            <span class="lib-toggle-label" style="color:var(--npc-bright);">Hide library</span>
+          </button>
+
+          <div class="lib-picker-wrap open" style="transition:none;">
+            <div class="lib-picker">
+              <div class="lib-picker-header">
+                <button class="lib-picker-close">× Close</button>
+              </div>
+              <div class="lib-picker-rows">
+                <div class="lib-empty">
+                  <p class="lib-empty-text">
+                    Library is empty.<br>
+                    Save an NPC from its ⋯ menu, or build creatures<br>
+                    in advance from ⚙ Enemies Gallery below.
+                  </p>
+                </div>
+                <div class="lib-gallery-link-row">
+                  <button class="lib-gallery-link-btn" style="pointer-events:none;"><span class="gear">⚙</span>Enemies Gallery</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <span class="callout">Instructive empty copy</span>
+          <span class="callout">Gallery link always present</span>
+        </div>
+      </div>
+
+    </div><!-- /scenario-grid -->
+
+    <!-- A3: Full-width — populated picker, interactive -->
+    <div style="margin-top:32px;">
+      <div class="scenario-label">A3 — Picker expanded, populated (interactive — tap rows, delete, search, ⚙ Enemies Gallery, count &gt; 1 numbering)</div>
+      <div style="max-width:480px;">
+        <div class="add-npc-form">
+          <div class="add-npc-title">Add Enemy</div>
+          <div class="add-npc-fields">
+            <input class="npc-text-input" type="text" placeholder="Name…" id="name-input-b" />
+            <input class="npc-num-input" type="number" placeholder="HP" id="hp-input-b" />
+          </div>
+          <div class="count-stepper-row">
+            <span class="count-label">Count:</span>
+            <button class="count-btn" onclick="adjustCount('b', -1)">−</button>
+            <span class="count-val" id="count-b">1</span>
+            <button class="count-btn" onclick="adjustCount('b', 1)">+</button>
+            <div class="number-toggle-wrap" id="number-toggle-b">
+              <input type="checkbox" class="number-toggle-checkbox" id="number-checkbox-b" checked onchange="updateNumberPreview('b')" />
+              <label class="number-toggle-label" for="number-checkbox-b">☑ Number them <span class="number-toggle-preview" id="number-preview-b"></span></label>
+            </div>
+          </div>
+          <button class="add-npc-btn" id="add-btn-b">+ Add Enemy</button>
+          <div class="form-helper-text">Use + Init on a card to add it to the turn order.</div>
+
+          <button class="lib-toggle" id="lib-toggle-b" onclick="toggleLibrary('b')" aria-expanded="false">
+            <span class="lib-toggle-diamond" id="lib-diamond-b">◇</span>
+            <span class="lib-toggle-label" id="lib-label-b">From library</span>
+          </button>
+
+          <div class="lib-picker-wrap" id="lib-picker-wrap-b">
+            <div class="lib-picker">
+              <div class="lib-picker-header">
+                <button class="lib-picker-close" onclick="toggleLibrary('b')">× Close</button>
+              </div>
+              <div class="lib-picker-search-wrap" id="lib-search-wrap-b" style="display:none;">
+                <input class="lib-picker-search" type="text" placeholder="Search name or abilities…" oninput="filterLibraryRows('b', this.value)" />
+              </div>
+              <div class="lib-picker-rows" id="lib-rows-b"></div>
+            </div>
+          </div>
+        </div>
+        <div style="margin-top:8px;">
+          <span class="callout">② Portrait + HP chip per row</span>
+          <span class="callout">③ Pick → focus moves to Count</span>
+          <span class="callout">⑤ Two-tap delete</span>
+          <span class="callout">Search appears &gt;20 entries</span>
+        </div>
+      </div>
+    </div>
+
+  </section>
+
+  <hr class="scenario-divider" />
+
+  <!-- ═══════════════════════════════════════════════════════
+       SURFACE B — NPC CARD WITH ⋯ OVERFLOW SAVE FLOW
+  ═══════════════════════════════════════════════════════ -->
+  <section class="scenario-section">
+    <h2 class="scenario-heading">Surface B — NPC Card ⋯ Overflow Save Flow</h2>
+    <p class="scenario-desc">
+      Saving captures whatever the card already has: name, HP, abilities, and — new in Story 31 — the card's
+      <code>portraitUrl</code>. The save-preview line shows exactly what will be written. The conflict variant
+      shows a delta (♥ 7 → ♥ 27) so the DM sees precisely what an update will overwrite before committing.
+    </p>
+
+    <div class="scenario-grid">
+
+      <!-- B1: card itself, interactive -->
+      <div class="scenario-card-wrap">
+        <div class="scenario-label" style="margin-bottom:8px;">B1 — Live card (interactive ⋯ menu)</div>
+        <div class="state-toggle-row">
+          <button class="state-toggle-btn active" id="fresh-btn" onclick="setPopoverState('fresh')">Fresh save</button>
+          <button class="state-toggle-btn" id="conflict-btn" onclick="setPopoverState('conflict')">Name conflict</button>
+        </div>
+
+        <div class="npc-card bloodied" id="npc-card-main">
+          <div class="npc-card-inner">
+
+            <div class="npc-card-top">
+              <div class="npc-card-head">
+                <div class="npc-portrait-thumb" id="card-portrait-thumb">DP</div>
+                <div class="npc-name-row">
+                  <div class="npc-name">Drow Priestess</div>
+                  <span class="npc-status-badge">Bloodied</span>
+                </div>
+              </div>
+              <div class="npc-card-btns">
+                <button class="npc-init-btn">+ Init</button>
+
+                <div class="npc-overflow-wrap" id="overflow-wrap">
+                  <button class="npc-overflow-btn" id="overflow-btn" onclick="toggleOverflow()" aria-label="More options">⋯</button>
+
+                  <!-- Popover — fresh state -->
+                  <div class="npc-overflow-popover" id="overflow-popover-fresh">
+                    <button class="npc-overflow-item" id="save-btn-fresh" onclick="doSave('fresh')">
+                      <span class="item-diamond">◆</span>
+                      <span class="overflow-item-text">
+                        <span class="overflow-item-main">Save to library</span>
+                        <span class="overflow-item-preview">
+                          <span class="preview-thumb">DP</span>
+                          Drow Priestess · <span class="heart" style="color:#b06868;">♥</span>31 · 7 abl
+                        </span>
+                      </span>
+                    </button>
+                    <button class="npc-overflow-item destructive" onclick="closeOverflow()">
+                      <span class="item-x">×</span>
+                      Remove enemy
+                    </button>
+                  </div>
+
+                  <!-- Popover — conflict state -->
+                  <div class="npc-overflow-popover" id="overflow-popover-conflict" style="display:none;">
+                    <div class="popover-conflict-label">
+                      <span class="popover-conflict-tag">Already in library:</span>
+                      <span class="popover-conflict-name">"Drow Priestess"</span>
+                    </div>
+                    <button class="npc-overflow-item" id="save-btn-update" onclick="doSave('update')">
+                      <span class="item-diamond">◆</span>
+                      <span class="overflow-item-text">
+                        <span class="overflow-item-main">Update existing entry</span>
+                        <span class="overflow-item-preview">
+                          <span class="preview-thumb">DP</span>
+                          <span class="delta-old">♥7</span> <span class="delta-arrow">→</span> <span class="delta-new">♥31</span> · 7 abl
+                        </span>
+                      </span>
+                    </button>
+                    <button class="npc-overflow-item" id="save-btn-new" onclick="doSave('new')">
+                      <span class="item-diamond">◆</span>
+                      Save as new entry
+                    </button>
+                    <button class="npc-overflow-item destructive" onclick="closeOverflow()">
+                      <span class="item-x">×</span>
+                      Remove enemy
+                    </button>
+                  </div>
+                </div>
+
+                <button class="npc-remove-btn" title="Remove enemy">×</button>
+              </div>
+            </div>
+
+            <div class="npc-hp-row">
+              <button class="npc-step-btn">−</button>
+              <div class="npc-hp-nums">
+                <span class="npc-hp-cur">31</span>
+                <span class="npc-hp-sep">&thinsp;/&thinsp;</span>
+                <span class="npc-hp-max">44</span>
+              </div>
+              <div class="npc-bar-wrap">
+                <div class="npc-bar-track"><div class="npc-bar-fill" style="width:70%;"></div></div>
+              </div>
+              <button class="npc-step-btn">+</button>
+            </div>
+
+            <div class="npc-conditions">
+              <span class="npc-cond charmed">Charmed</span>
+              <span class="npc-cond">Frightened</span>
+            </div>
+
+            <hr class="npc-section-divider" />
+            <div class="npc-ability-ref" id="npc-ability-ref-main">
+              <div class="npc-ability-read-mode" id="card-ability-read"></div>
+              <div class="npc-ability-edit-mode" id="card-ability-edit">
+                <ul class="ability-list" id="card-ability-list"></ul>
+                <div class="ability-add-row">
+                  <input class="ability-add-input" type="text" id="card-ability-input" placeholder="+ Add ability or spell…" maxlength="255" autocomplete="off" />
+                  <button class="ability-add-btn" onclick="cardAddAbility()">+</button>
+                </div>
+                <div class="ability-char-counter" id="card-ability-counter"></div>
+              </div>
+            </div>
+
+            <hr class="npc-section-divider" />
+            <div class="npc-quick-actions">
+              <button class="nqa-btn dmg">⚔ Dmg</button>
+              <button class="nqa-btn heal">✦ Heal</button>
+              <button class="nqa-btn">+ Cond</button>
+            </div>
+          </div>
+          <div class="npc-notes-strip">
+            <span>▣ + Note</span>
+            <span style="font-size:14px;">▼</span>
+          </div>
+        </div>
+
+        <div style="margin-top:8px;">
+          <span class="callout">⋯ between + Init and ×</span>
+          <span class="callout">Save preview shows captured portrait</span>
+          <span class="callout">Delta preview on conflict</span>
+        </div>
+      </div>
+
+      <!-- B2: popover states static reference -->
+      <div class="scenario-card-wrap">
+        <div class="scenario-label">B2 — Popover states (static reference)</div>
+
+        <div style="margin-bottom:24px;">
+          <div class="scenario-label" style="margin-bottom:6px;font-size:9px;">Fresh save — no conflict, no portrait set</div>
+          <div class="npc-overflow-popover open" style="position:static;transform:none;opacity:1;pointer-events:none;margin-bottom:8px;">
+            <button class="npc-overflow-item" style="pointer-events:none;">
+              <span class="item-diamond">◆</span>
+              <span class="overflow-item-text">
+                <span class="overflow-item-main">Save to library</span>
+                <span class="overflow-item-preview">
+                  <span class="preview-thumb">G</span>
+                  Goblin · ♥7 · 2 abl
+                </span>
+              </span>
+            </button>
+            <button class="npc-overflow-item destructive" style="pointer-events:none;">
+              <span class="item-x">×</span>
+              Remove enemy
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-bottom:24px;">
+          <div class="scenario-label" style="margin-bottom:6px;font-size:9px;">Update — no material delta (collapses to standard preview)</div>
+          <div class="npc-overflow-popover open" style="position:static;transform:none;opacity:1;pointer-events:none;">
+            <div class="popover-conflict-label">
+              <span class="popover-conflict-tag">Already in library:</span>
+              <span class="popover-conflict-name">"Goblin"</span>
+            </div>
+            <button class="npc-overflow-item" style="pointer-events:none;">
+              <span class="item-diamond">◆</span>
+              <span class="overflow-item-text">
+                <span class="overflow-item-main">Update existing entry</span>
+                <span class="overflow-item-preview"><span class="preview-thumb">G</span>♥7 · 2 abl</span>
+              </span>
+            </button>
+            <button class="npc-overflow-item" style="pointer-events:none;">
+              <span class="item-diamond">◆</span>
+              Save as new entry
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <div class="scenario-label" style="margin-bottom:6px;font-size:9px;">After save — ✓ Saved (220ms before dismiss)</div>
+          <div class="npc-overflow-popover open" style="position:static;transform:none;opacity:1;pointer-events:none;">
+            <button class="npc-overflow-item saved-state" style="pointer-events:none;">
+              <span class="item-check" style="color:var(--npc-bright);">✓</span>
+              Saved
+            </button>
+          </div>
+        </div>
+
+        <div style="margin-top:12px;">
+          <span class="callout">No portrait → initials thumb</span>
+          <span class="callout">Identical → standard preview</span>
+        </div>
+      </div>
+
+    </div><!-- /scenario-grid -->
+  </section>
+
+  <hr class="scenario-divider" />
+
+  <!-- ═══════════════════════════════════════════════════════
+       SURFACE C — ADVANCE LIBRARY EDITOR (preview, opens modal)
+  ═══════════════════════════════════════════════════════ -->
+  <section class="scenario-section">
+    <h2 class="scenario-heading">Surface C — Advance Library Editor</h2>
+    <p class="scenario-desc">
+      Opened from the dashboard's <code>⚙ Enemies Gallery</code> top-bar button (above) or the picker's gallery
+      link. Two-pane on desktop, single-pane drill-in on mobile. The portrait dominates the editor panel — this
+      is where the DM curates the creature's identity.
+    </p>
+    <button class="dash-topbar-btn gallery" onclick="openEditorModal()">⚙ Open Enemies Gallery</button>
+    <div style="margin-top:10px;">
+      <span class="callout">Modal overlay — preserves combat state behind it</span>
+      <span class="callout">Resize window to see mobile drill-in</span>
+    </div>
+  </section>
+
+  <hr class="scenario-divider" />
+
+  <!-- ═══════════════════════════════════════════════════════
+       TOKEN NUMBER BADGE DEMO
+  ═══════════════════════════════════════════════════════ -->
+  <section class="scenario-section">
+    <h2 class="scenario-heading">Map Token — Number Badge</h2>
+    <p class="scenario-desc">
+      A 16–18px badge appears bottom-right of a token only when its name ends in a trailing integer
+      (<code>/\s(\d+)$/</code>). Zero new per-token data — the number is parsed from the existing
+      <code>name</code> field at render time. Malachar and a lone Goblin get no badge.
+    </p>
+    <div class="token-demo-row">
+      <div class="token-demo-item">
+        <div class="token-wrap-demo">
+          <div class="token-circle-demo">
+            <div class="token-portrait-demo" style="background:radial-gradient(circle at 40% 30%, #3a2a18, #1a0f08);">G</div>
+            <div class="token-ring-demo"></div>
+            <div class="token-number-badge">1</div>
+          </div>
+        </div>
+        <div class="token-label-demo">Goblin 1</div>
+      </div>
+      <div class="token-demo-item">
+        <div class="token-wrap-demo">
+          <div class="token-circle-demo">
+            <div class="token-portrait-demo" style="background:radial-gradient(circle at 40% 30%, #3a2a18, #1a0f08);">G</div>
+            <div class="token-ring-demo"></div>
+            <div class="token-number-badge">2</div>
+          </div>
+        </div>
+        <div class="token-label-demo">Goblin 2</div>
+      </div>
+      <div class="token-demo-item">
+        <div class="token-wrap-demo">
+          <div class="token-circle-demo">
+            <div class="token-portrait-demo" style="background:radial-gradient(circle at 40% 30%, #3a2a18, #1a0f08);">G</div>
+            <div class="token-ring-demo"></div>
+            <div class="token-number-badge">4</div>
+          </div>
+        </div>
+        <div class="token-label-demo">Goblin 4</div>
+        <span class="callout" style="margin-top:2px;">Goblin 3 removed — no renumber</span>
+      </div>
+      <div class="token-demo-item">
+        <div class="token-wrap-demo">
+          <div class="token-circle-demo">
+            <div class="token-portrait-demo" style="background:radial-gradient(circle at 40% 30%, #2a1018, #150810);">MV</div>
+            <div class="token-ring-demo"></div>
+            <!-- no badge: count=1, no trailing integer -->
+          </div>
+        </div>
+        <div class="token-label-demo">Malachar the Undying</div>
+        <span class="callout" style="margin-top:2px;">No badge — unique villain</span>
+      </div>
+    </div>
+  </section>
+
+  <hr class="scenario-divider" />
+
+  <!-- ═══════════════════════════════════════════════════════
+       ANIMATION REFERENCE
+  ═══════════════════════════════════════════════════════ -->
+  <section class="scenario-section">
+    <h2 class="scenario-heading">Animation Reference</h2>
+    <p class="scenario-desc">All motions from the brief spec, labeled. All live in the interactive surfaces above.</p>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:16px;" id="anim-ref-grid"></div>
+  </section>
+
+  <!-- ═══════════════════════════════════════════════════════
+       LEGEND
+  ═══════════════════════════════════════════════════════ -->
+  <div class="legend" id="legend-root">
+    <div class="legend-title">Legend</div>
+  </div>
+
+</div><!-- /page-body -->
+
+<!-- ═══════════════════════════════════════════════════════
+     SURFACE C MODAL — ADVANCE LIBRARY EDITOR
+═══════════════════════════════════════════════════════ -->
+<div class="modal-overlay" id="editor-modal-overlay">
+  <div class="editor-panel" id="editor-panel">
+    <div class="editor-header">
+      <span class="editor-title">NPC Library</span>
+      <button class="editor-close-btn" onclick="requestCloseEditor()" aria-label="Close">×</button>
+    </div>
+    <div class="editor-body" id="editor-body">
+      <div class="editor-list-pane">
+        <div class="editor-list-search-wrap" id="editor-search-wrap" style="display:none;">
+          <input class="lib-picker-search" type="text" placeholder="Search name or abilities…" oninput="filterEditorRows(this.value)" />
+        </div>
+        <div class="editor-list-rows" id="editor-list-rows"></div>
+        <div class="editor-list-footer-actions">
+          <button class="editor-list-action-btn" id="editor-duplicate-btn" onclick="duplicateSelectedEntry()" disabled>⧉ Duplicate</button>
+          <button class="editor-list-action-btn danger" id="editor-delete-btn" onclick="startDeleteEntry()" disabled>🗑 Delete</button>
+        </div>
+      </div>
+      <div class="editor-detail-pane" id="editor-detail-pane">
+        <button class="editor-mobile-back" onclick="mobileBackToList()">‹ Enemies Gallery</button>
+        <div id="editor-detail-content"></div>
+      </div>
+    </div>
+    <div class="editor-dirty-guard" id="editor-dirty-guard">
+      <span class="editor-dirty-guard-text">You have unsaved changes.</span>
+      <div class="editor-dirty-guard-actions">
+        <button class="dirty-discard-btn" onclick="discardAndClose()">Discard changes</button>
+        <button class="dirty-keep-btn" onclick="keepEditing()">Keep editing</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  /* ═══════════════════════════════════════════════════════
+     LIBRARY DATA — mock templates (Story 31 shape: + hpMax, portraitUrl)
+  ═══════════════════════════════════════════════════════ */
+  function tplColor(seed) {
+    const palette = ['#3a2a18,#1a0f08', '#1a3010,#0a1805', '#2a1018,#150810', '#10202a,#081218', '#302010,#180f08'];
+    return palette[seed % palette.length];
+  }
+  function initials(name) {
+    const words = name.trim().split(/\s+/).slice(0, 2);
+    return words.map(function(w) { return w[0] ? w[0].toUpperCase() : ''; }).join('');
+  }
+
+  let libraryTemplates = [
+    {
+      id: 'tpl-1', name: 'Drow Priestess', hpMax: 44, portraitUrl: null,
+      abilities: [
+        'Spells (DC 13)',
+        'Sacred Flame — 1d8 radiant, DEX save',
+        'Suggestion — WIS save, charm 1 creature',
+        'Spiritual Weapon — 1d8+3 force, bonus action',
+        'Hold Person — WIS save, paralyzed',
+        'Spider Climb (always active)',
+        'Innate: Darkness 1/day'
+      ],
+      updatedAt: Date.now() - 1000 * 60 * 4
+    },
+    {
+      id: 'tpl-2', name: 'Goblin', hpMax: 7, portraitUrl: 'mock:goblin',
+      abilities: ['Scimitar +4, 1d6+2 slashing', 'Nimble Escape: Disengage or Dash as bonus action'],
+      updatedAt: Date.now() - 1000 * 60 * 30
+    },
+    {
+      id: 'tpl-3', name: 'Bandit Captain', hpMax: 65, portraitUrl: null,
+      abilities: ['Multiattack: 2× scimitar + 1× dagger', 'Parry: +2 AC reaction vs one melee hit'],
+      updatedAt: Date.now() - 1000 * 60 * 60 * 2
+    },
+    {
+      id: 'tpl-4', name: 'Malachar the Undying', hpMax: 187, portraitUrl: 'mock:malachar',
+      abilities: [
+        'Legendary Resistance (3/day): succeeds on failed save',
+        'Paralyzing Touch — CON save or paralyzed 1 min',
+        'Lair Action: darkness fills a 20ft radius',
+        'Multiattack: 2 claw + 1 bite',
+        'Frightful Presence — WIS save or frightened',
+        'Regeneration: 10 HP/turn unless radiant dmg taken'
+      ],
+      updatedAt: Date.now() - 1000 * 60 * 60 * 24
+    },
+    {
+      id: 'tpl-5', name: 'Wraith', hpMax: null, portraitUrl: null,
+      abilities: [],
+      updatedAt: Date.now() - 1000 * 60 * 60 * 48
+    }
+  ];
+  let nextTplCounter = 100;
+
+  function sortLibraryMru() {
+    libraryTemplates.sort(function(a, b) { return b.updatedAt - a.updatedAt; });
+  }
+  sortLibraryMru();
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  /* Render a portrait/initials thumb as inner HTML for a given container size class is handled by caller's classnames */
+  function thumbInner(tpl) {
+    if (tpl.portraitUrl) {
+      const grad = tplColor(tpl.id.length + tpl.name.length);
+      return '<div style="width:100%;height:100%;background:radial-gradient(circle at 40% 30%,' + grad.split(',')[0] + ',' + grad.split(',')[1] + ');display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.85);font-family:var(--font-display);font-size:11px;">' + escapeHtml(initials(tpl.name)) + '</div>';
+    }
+    return escapeHtml(initials(tpl.name));
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     COUNT STEPPER + AUTO-NUMBER TOGGLE
+  ═══════════════════════════════════════════════════════ */
+  const countValues = { a: 1, b: 1 };
+  const numberOn = { a: true, b: true };
+
+  function adjustCount(formId, delta) {
+    countValues[formId] = Math.max(1, Math.min(8, countValues[formId] + delta));
+    document.getElementById('count-' + formId).textContent = countValues[formId];
+    updateNumberToggleVisibility(formId);
+    updateAddBtnLabel(formId);
+  }
+
+  function updateNumberToggleVisibility(formId) {
+    const wrap = document.getElementById('number-toggle-' + formId);
+    if (!wrap) return;
+    if (countValues[formId] > 1) {
+      wrap.classList.add('visible');
+      updateNumberPreview(formId);
+    } else {
+      wrap.classList.remove('visible');
+    }
+  }
+
+  function updateNumberPreview(formId) {
+    const checkbox = document.getElementById('number-checkbox-' + formId);
+    numberOn[formId] = checkbox ? checkbox.checked : true;
+    const preview = document.getElementById('number-preview-' + formId);
+    const nameInput = document.getElementById('name-input-' + formId);
+    const baseName = (nameInput && nameInput.value.trim()) || 'Goblin';
+    const n = countValues[formId];
+    if (preview) {
+      preview.textContent = numberOn[formId] ? ('(' + baseName + ' 1–' + n + ')') : '';
+    }
+    updateAddBtnLabel(formId);
+  }
+
+  function updateAddBtnLabel(formId) {
+    const btn = document.getElementById('add-btn-' + formId);
+    if (!btn) return;
+    const n = countValues[formId];
+    btn.textContent = n > 1 ? ('+ Add ' + n + ' Enemies') : '+ Add Enemy';
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     LIBRARY PICKER (Surface A)
+  ═══════════════════════════════════════════════════════ */
+  const pickerOpen = { a: false, b: false };
+  const deleteConfirmState = {};
+  const deleteTimers = {};
+
+  function buildLibraryRows(containerId, formId, filterText) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = '';
+
+    const searchWrap = document.getElementById('lib-search-wrap-' + formId);
+    if (searchWrap) searchWrap.style.display = libraryTemplates.length > 20 ? '' : 'none';
+
+    const list = (filterText || '').trim().toLowerCase()
+      ? libraryTemplates.filter(function(t) {
+          const hay = (t.name + ' ' + (t.abilities || []).join(' ')).toLowerCase();
+          return hay.indexOf(filterText.trim().toLowerCase()) > -1;
+        })
+      : libraryTemplates;
+
+    if (list.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'lib-empty';
+      empty.innerHTML = '<p class="lib-empty-text">No matches.</p>';
+      container.appendChild(empty);
+    } else {
+      list.forEach(function(tpl, idx) {
+        const row = buildLibraryRow(tpl, formId);
+        container.appendChild(row);
+        (function(r, delay) {
+          setTimeout(function() { r.classList.add('lib-row-visible'); }, delay);
+        })(row, Math.min(idx, 6) * 30);
+      });
+    }
+
+    const galleryRow = document.createElement('div');
+    galleryRow.className = 'lib-gallery-link-row';
+    galleryRow.innerHTML = '<button class="lib-gallery-link-btn" onclick="openEditorModal()"><span class="gear">⚙</span>Enemies Gallery</button>';
+    container.appendChild(galleryRow);
+  }
+
+  function filterLibraryRows(formId, text) {
+    buildLibraryRows('lib-rows-' + formId, formId, text);
+  }
+
+  function buildLibraryRow(tpl, formId) {
+    const row = document.createElement('div');
+    row.className = 'lib-row';
+    row.id = 'row-' + formId + '-' + tpl.id;
+
+    let previewHtml = '';
+    if (!tpl.abilities || tpl.abilities.length === 0) {
+      previewHtml = '<span style="font-style:italic;color:var(--text-muted);font-size:11px;">(no abilities saved)</span>';
+    } else {
+      tpl.abilities.slice(0, 2).forEach(function(ab) {
+        previewHtml += '<span class="lib-row-preview-line"><span class="diamond">◆</span>' + escapeHtml(ab) + '</span>';
+      });
+      if (tpl.abilities.length > 2) {
+        previewHtml += '<span class="lib-row-preview-more">+ ' + (tpl.abilities.length - 2) + ' more…</span>';
+      }
+    }
+
+    const hpChip = tpl.hpMax ? '<span class="lib-hp-chip"><span class="heart">♥</span>' + tpl.hpMax + '</span>' : '';
+
+    row.innerHTML =
+      '<div class="lib-row-main" onclick="selectTemplate(\'' + formId + '\',\'' + tpl.id + '\')">' +
+        '<div class="lib-thumb">' + thumbInner(tpl) + '</div>' +
+        '<div class="lib-row-text">' +
+          '<div class="lib-row-name-line">' +
+            '<div class="lib-row-name" title="' + escapeHtml(tpl.name) + '">' + escapeHtml(tpl.name) + '</div>' +
+            hpChip +
+          '</div>' +
+          '<div class="lib-row-preview">' + previewHtml + '</div>' +
+        '</div>' +
+        '<button class="lib-row-del-btn" onclick="event.stopPropagation(); startDelete(\'' + formId + '\',\'' + tpl.id + '\')" aria-label="Delete entry">×</button>' +
+      '</div>' +
+      '<div class="lib-row-confirm" id="confirm-' + formId + '-' + tpl.id + '">' +
+        '<div class="lib-row-confirm-inner">' +
+          '<span class="lib-confirm-prompt">Remove from library?</span>' +
+          '<button class="lib-confirm-del-btn" onclick="commitDelete(\'' + formId + '\',\'' + tpl.id + '\')">Delete</button>' +
+          '<button class="lib-confirm-cancel-btn" onclick="cancelDelete(\'' + formId + '\',\'' + tpl.id + '\')">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    return row;
+  }
+
+  function toggleLibrary(formId) {
+    pickerOpen[formId] = !pickerOpen[formId];
+    const wrap = document.getElementById('lib-picker-wrap-' + formId);
+    const diamond = document.getElementById('lib-diamond-' + formId);
+    const label = document.getElementById('lib-label-' + formId);
+    const toggle = document.getElementById('lib-toggle-' + formId);
+
+    if (pickerOpen[formId]) {
+      wrap.classList.add('open');
+      diamond.textContent = '◆';
+      diamond.classList.add('open');
+      label.textContent = 'Hide library';
+      label.style.color = 'var(--npc-bright)';
+      toggle.setAttribute('aria-expanded', 'true');
+      buildLibraryRows('lib-rows-' + formId, formId);
+    } else {
+      wrap.classList.remove('open');
+      diamond.textContent = '◇';
+      diamond.classList.remove('open');
+      label.textContent = 'From library';
+      label.style.color = '';
+      toggle.setAttribute('aria-expanded', 'false');
+    }
+  }
+
+  function selectTemplate(formId, tplId) {
+    const tpl = libraryTemplates.find(function(t) { return t.id === tplId; });
+    if (!tpl) return;
+
+    const row = document.getElementById('row-' + formId + '-' + tplId);
+    if (row) {
+      const main = row.querySelector('.lib-row-main');
+      main.style.background = 'var(--npc-chip-bg)';
+      setTimeout(function() { main.style.background = ''; }, 120);
+    }
+
+    const nameInput = document.getElementById('name-input-' + formId);
+    if (nameInput) nameInput.value = tpl.name;
+    const hpInput = document.getElementById('hp-input-' + formId);
+    if (hpInput) {
+      hpInput.value = tpl.hpMax || '';
+      if (tpl.hpMax) {
+        hpInput.classList.remove('flash-prefill');
+        void hpInput.offsetWidth;
+        hpInput.classList.add('flash-prefill');
+      }
+    }
+    updateNumberPreview(formId);
+
+    /* MRU bump (background write) */
+    tpl.updatedAt = Date.now();
+    sortLibraryMru();
+
+    setTimeout(function() {
+      if (pickerOpen[formId]) toggleLibrary(formId);
+      /* Focus returns to Count stepper — HP is pre-filled, Count is the remaining decision */
+      setTimeout(function() {
+        const countBtn = document.querySelector('#count-' + formId);
+        if (countBtn) {
+          const stepper = countBtn.parentElement.querySelector('.count-btn');
+          if (stepper) stepper.focus();
+        }
+      }, 80);
+    }, 80);
+  }
+
+  function startDelete(formId, tplId) {
+    const key = formId + '-' + tplId;
+    const confirmEl = document.getElementById('confirm-' + formId + '-' + tplId);
+    if (!confirmEl) return;
+    Object.keys(deleteConfirmState).forEach(function(k) {
+      if (k !== key && deleteConfirmState[k]) {
+        const parts = k.split('-');
+        cancelDelete(parts[0], parts.slice(1).join('-'));
+      }
+    });
+    deleteConfirmState[key] = true;
+    confirmEl.classList.add('open');
+    clearTimeout(deleteTimers[key]);
+    deleteTimers[key] = setTimeout(function() { cancelDelete(formId, tplId); }, 6000);
+  }
+
+  function cancelDelete(formId, tplId) {
+    const key = formId + '-' + tplId;
+    const confirmEl = document.getElementById('confirm-' + formId + '-' + tplId);
+    if (!confirmEl) return;
+    deleteConfirmState[key] = false;
+    confirmEl.classList.remove('open');
+    clearTimeout(deleteTimers[key]);
+  }
+
+  function commitDelete(formId, tplId) {
+    const key = formId + '-' + tplId;
+    clearTimeout(deleteTimers[key]);
+    deleteConfirmState[key] = false;
+
+    const row = document.getElementById('row-' + formId + '-' + tplId);
+    if (!row) return;
+
+    row.style.transition = 'max-height 220ms ease-in, opacity 220ms ease-in, transform 220ms ease-in';
+    row.style.transform = 'translateX(8px)';
+    row.style.opacity = '0';
+    row.style.maxHeight = row.offsetHeight + 'px';
+    setTimeout(function() { row.style.maxHeight = '0'; }, 10);
+    setTimeout(function() {
+      row.remove();
+      const idx = libraryTemplates.findIndex(function(t) { return t.id === tplId; });
+      if (idx > -1) libraryTemplates.splice(idx, 1);
+      refreshEditorListIfOpen();
+    }, 240);
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     OVERFLOW POPOVER (Surface B)
+  ═══════════════════════════════════════════════════════ */
+  let overflowOpen = false;
+  let currentPopoverMode = 'fresh';
+
+  function toggleOverflow() { overflowOpen ? closeOverflow() : openOverflow(); }
+
+  function openOverflow() {
+    overflowOpen = true;
+    const btn = document.getElementById('overflow-btn');
+    const freshPopover = document.getElementById('overflow-popover-fresh');
+    const conflictPopover = document.getElementById('overflow-popover-conflict');
+    btn.classList.add('active');
+
+    if (currentPopoverMode === 'fresh') {
+      freshPopover.style.display = '';
+      conflictPopover.style.display = 'none';
+      requestAnimationFrame(function() { freshPopover.classList.add('open'); });
+    } else {
+      conflictPopover.style.display = '';
+      freshPopover.style.display = 'none';
+      requestAnimationFrame(function() { conflictPopover.classList.add('open'); });
+    }
+  }
+
+  function closeOverflow() {
+    overflowOpen = false;
+    const btn = document.getElementById('overflow-btn');
+    document.getElementById('overflow-popover-fresh').classList.remove('open');
+    document.getElementById('overflow-popover-conflict').classList.remove('open');
+    btn.classList.remove('active');
+  }
+
+  function doSave(saveType) {
+    const freshPopover = document.getElementById('overflow-popover-fresh');
+    const conflictPopover = document.getElementById('overflow-popover-conflict');
+    const activePopover = currentPopoverMode === 'fresh' ? freshPopover : conflictPopover;
+
+    const savedRow = document.createElement('button');
+    savedRow.className = 'npc-overflow-item saved-state';
+    savedRow.style.pointerEvents = 'none';
+    savedRow.innerHTML = '<span class="item-check" style="color:var(--npc-bright);font-size:13px;">✓</span> Saved';
+
+    const savedPopover = document.createElement('div');
+    savedPopover.className = 'npc-overflow-popover';
+    savedPopover.style.right = '0';
+    savedPopover.style.top = 'calc(100% + 4px)';
+    savedPopover.appendChild(savedRow);
+
+    activePopover.parentNode.insertBefore(savedPopover, activePopover);
+    activePopover.style.display = 'none';
+    requestAnimationFrame(function() { savedPopover.classList.add('open'); });
+
+    setTimeout(function() {
+      savedPopover.classList.remove('open');
+      setTimeout(function() {
+        savedPopover.remove();
+        closeOverflow();
+      }, 120);
+    }, 880);
+  }
+
+  function setPopoverState(mode) {
+    currentPopoverMode = mode;
+    document.getElementById('fresh-btn').classList.toggle('active', mode === 'fresh');
+    document.getElementById('conflict-btn').classList.toggle('active', mode === 'conflict');
+    if (overflowOpen) closeOverflow();
+  }
+
+  document.addEventListener('click', function(e) {
+    if (!overflowOpen) return;
+    const wrap = document.getElementById('overflow-wrap');
+    if (wrap && !wrap.contains(e.target)) closeOverflow();
+  });
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key !== 'Escape') return;
+    if (editorOpen) { requestCloseEditor(); return; }
+    if (overflowOpen) { closeOverflow(); return; }
+    if (pickerOpen.a) { toggleLibrary('a'); return; }
+    if (pickerOpen.b) { toggleLibrary('b'); return; }
+  });
+
+  /* ═══════════════════════════════════════════════════════
+     CARD ABILITY REFERENCE — read + edit (Surface B card)
+  ═══════════════════════════════════════════════════════ */
+  let cardAbilities = [
+    'Spells (DC 13)',
+    'Sacred Flame — 1d8 radiant, DEX save',
+    'Suggestion — WIS save, charm 1 creature',
+    'Spiritual Weapon — 1d8+3 force, bonus action',
+    'Hold Person — WIS save, paralyzed',
+    'Spider Climb (always active)',
+    'Innate: Darkness 1/day'
+  ];
+  let cardAbilityExpanded = false;
+  const CARD_COLLAPSED_MAX = 3;
+
+  function addAbilityItemToList(listEl, text) {
+    const li = document.createElement('li');
+    li.className = 'ability-list-item';
+    li.style.maxHeight = '0';
+    li.style.opacity = '0';
+    li.innerHTML =
+      '<span class="ability-list-item-diamond">◆</span>' +
+      '<span class="ability-list-item-text">' + escapeHtml(text) + '</span>' +
+      '<button class="ability-remove-btn" aria-label="Remove ability">−</button>';
+    li.querySelector('.ability-remove-btn').onclick = function() { removeAbilityItem(li); };
+    listEl.appendChild(li);
+    requestAnimationFrame(function() {
+      requestAnimationFrame(function() {
+        li.style.transition = 'max-height 180ms ease-out, opacity 180ms ease-out';
+        li.style.maxHeight = '60px';
+        li.style.opacity = '1';
+      });
+    });
+  }
+  function removeAbilityItem(li) {
+    li.classList.add('removing');
+    setTimeout(function() { li.remove(); }, 180);
+  }
+
+  function renderCardAbilities() {
+    const readEl = document.getElementById('card-ability-read');
+    if (!readEl) return;
+    if (cardAbilities.length === 0) {
+      readEl.innerHTML = '<div style="padding:6px 10px;"><button class="npc-ability-show-toggle" onclick="cardEnterEdit()" style="color:var(--text-muted);">+ Add abilities</button></div>';
+      return;
+    }
+    const shown = cardAbilityExpanded ? cardAbilities : cardAbilities.slice(0, CARD_COLLAPSED_MAX);
+    let html = '<ul class="ability-list" style="padding-top:4px;">';
+    shown.forEach(function(ab) {
+      html += '<li class="ability-list-item" style="max-height:60px;opacity:1;"><span class="ability-list-item-diamond">◆</span><span class="ability-list-item-text">' + escapeHtml(ab) + '</span></li>';
+    });
+    html += '</ul><div class="npc-ability-ref-footer">';
+    if (cardAbilities.length > CARD_COLLAPSED_MAX) {
+      html += cardAbilityExpanded
+        ? '<button class="npc-ability-show-toggle" onclick="cardCollapseAbilities()">Show less</button>'
+        : '<button class="npc-ability-show-toggle" onclick="cardExpandAbilities()">Show all ' + cardAbilities.length + '</button>';
+    } else {
+      html += '<span></span>';
+    }
+    html += '<button class="npc-ability-edit-btn" title="Edit abilities" onclick="cardEnterEdit()">✎</button></div>';
+    readEl.innerHTML = html;
+  }
+  function cardExpandAbilities() { cardAbilityExpanded = true; renderCardAbilities(); }
+  function cardCollapseAbilities() { cardAbilityExpanded = false; renderCardAbilities(); }
+  function cardEnterEdit() {
+    const listEl = document.getElementById('card-ability-list');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+    cardAbilities.forEach(function(ab) { addAbilityItemToList(listEl, ab); });
+    document.getElementById('npc-card-main').classList.add('editing-abilities');
+    setTimeout(function() {
+      const inp = document.getElementById('card-ability-input');
+      if (inp) inp.focus();
+    }, 80);
+  }
+  function cardAddAbility() {
+    const inp = document.getElementById('card-ability-input');
+    const listEl = document.getElementById('card-ability-list');
+    if (!inp || !listEl) return;
+    const val = inp.value.trim();
+    if (!val) {
+      inp.classList.add('error');
+      setTimeout(function() { inp.classList.remove('error'); }, 400);
+      return;
+    }
+    addAbilityItemToList(listEl, val);
+    inp.value = '';
+    inp.focus();
+  }
+
+  /* ═══════════════════════════════════════════════════════
+     SURFACE C — ADVANCE LIBRARY EDITOR MODAL
+  ═══════════════════════════════════════════════════════ */
+  let editorOpen = false;
+  let selectedEntryId = null;
+  let editorDirty = false;
+  let workingEntry = null; /* shallow-cloned entry under edit */
+
+  function openEditorModal() {
+    editorOpen = true;
+    const overlay = document.getElementById('editor-modal-overlay');
+    overlay.classList.add('open');
+    document.getElementById('editor-search-wrap').style.display = libraryTemplates.length > 20 ? '' : 'none';
+    renderEditorList();
+    if (!selectedEntryId && libraryTemplates.length > 0) {
+      selectEditorEntry(libraryTemplates[0].id);
+    } else if (selectedEntryId) {
+      renderEditorDetail();
+    } else {
+      renderEditorEmptyDetail();
+    }
+  }
+
+  function requestCloseEditor() {
+    if (editorDirty) {
+      document.getElementById('editor-dirty-guard').classList.add('open');
+      return;
+    }
+    closeEditorModal();
+  }
+  function keepEditing() {
+    document.getElementById('editor-dirty-guard').classList.remove('open');
+  }
+  function discardAndClose() {
+    document.getElementById('editor-dirty-guard').classList.remove('open');
+    editorDirty = false;
+    workingEntry = null;
+    closeEditorModal();
+  }
+  function closeEditorModal() {
+    editorOpen = false;
+    document.getElementById('editor-modal-overlay').classList.remove('open');
+    document.getElementById('editor-body').classList.remove('drilled-in');
+  }
+
+  function refreshEditorListIfOpen() {
+    if (editorOpen) renderEditorList();
+  }
+
+  function filterEditorRows(text) { renderEditorList(text); }
+
+  function renderEditorList(filterText) {
+    const container = document.getElementById('editor-list-rows');
+    container.innerHTML = '';
+
+    const list = (filterText || '').trim().toLowerCase()
+      ? libraryTemplates.filter(function(t) {
+          const hay = (t.name + ' ' + (t.abilities || []).join(' ')).toLowerCase();
+          return hay.indexOf(filterText.trim().toLowerCase()) > -1;
+        })
+      : libraryTemplates;
+
+    list.forEach(function(tpl) {
+      const row = document.createElement('div');
+      row.className = 'editor-entry-row' + (tpl.id === selectedEntryId ? ' selected' : '');
+      row.onclick = function() { selectEditorEntry(tpl.id); };
+      const hpPart = tpl.hpMax ? '<span class="heart">♥</span> ' + tpl.hpMax + ' · ' : '';
+      row.innerHTML =
+        '<div class="editor-entry-thumb">' + thumbInner(tpl) + '</div>' +
+        '<div class="editor-entry-text">' +
+          '<div class="editor-entry-name" title="' + escapeHtml(tpl.name) + '">' + escapeHtml(tpl.name) + '</div>' +
+          '<div class="editor-entry-meta">' + hpPart + (tpl.abilities ? tpl.abilities.length : 0) + ' abl</div>' +
+        '</div>' +
+        '<span class="editor-entry-chevron">▸</span>';
+      container.appendChild(row);
+    });
+
+    const newRow = document.createElement('div');
+    newRow.className = 'editor-new-entry-row';
+    newRow.innerHTML = '<button class="editor-new-entry-btn" onclick="createNewEntry()">+ New entry</button>';
+    container.appendChild(newRow);
+
+    document.getElementById('editor-duplicate-btn').disabled = !selectedEntryId;
+    document.getElementById('editor-delete-btn').disabled = !selectedEntryId;
+  }
+
+  function selectEditorEntry(id) {
+    if (editorDirty && selectedEntryId !== id) {
+      /* In a real build this would prompt; prototype keeps it simple and switches, discarding unsaved demo edits */
+      editorDirty = false;
+    }
+    selectedEntryId = id;
+    workingEntry = null;
+    renderEditorList(document.querySelector('#editor-search-wrap input') ? document.querySelector('#editor-search-wrap input').value : '');
+    renderEditorDetail();
+    /* Mobile drill-in */
+    document.getElementById('editor-body').classList.add('drilled-in');
+  }
+
+  function mobileBackToList() {
+    document.getElementById('editor-body').classList.remove('drilled-in');
+  }
+
+  function getWorkingEntry() {
+    if (!workingEntry) {
+      const tpl = libraryTemplates.find(function(t) { return t.id === selectedEntryId; });
+      workingEntry = tpl ? JSON.parse(JSON.stringify(tpl)) : null;
+    }
+    return workingEntry;
+  }
+
+  function renderEditorEmptyDetail() {
+    document.getElementById('editor-detail-content').innerHTML =
+      '<div class="editor-detail-empty">Select an entry, or create one with + New entry.</div>';
+  }
+
+  function renderEditorDetail() {
+    const tpl = getWorkingEntry();
+    const content = document.getElementById('editor-detail-content');
+    if (!tpl) { renderEditorEmptyDetail(); return; }
+
+    const portraitInner = tpl.portraitUrl
+      ? '<div style="width:100%;height:100%;background:radial-gradient(circle at 40% 30%,' + tplColor(tpl.id.length).split(',')[0] + ',' + tplColor(tpl.id.length).split(',')[1] + ');display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.85);font-family:var(--font-display);font-size:22px;">' + escapeHtml(initials(tpl.name)) + '</div>'
+      : escapeHtml(initials(tpl.name));
+
+    content.innerHTML =
+      '<div class="editor-portrait-row">' +
+        '<div class="editor-portrait-circle" id="editor-portrait-circle">' +
+          portraitInner +
+          '<div class="editor-portrait-shimmer" id="editor-portrait-shimmer"></div>' +
+          '<div class="editor-portrait-progress-ring" id="editor-portrait-ring"></div>' +
+        '</div>' +
+        '<div class="editor-portrait-actions" id="editor-portrait-actions">' +
+          '<button class="editor-portrait-action-btn" onclick="simulatePortraitUpload()">Replace</button>' +
+          (tpl.portraitUrl ? '<button class="editor-portrait-action-btn remove" onclick="startRemovePortrait()">Remove</button>' : '') +
+          '<div id="editor-portrait-remove-confirm"></div>' +
+          '<div class="editor-portrait-error" id="editor-portrait-error" style="display:none;"></div>' +
+        '</div>' +
+      '</div>' +
+
+      '<div class="editor-field-group">' +
+        '<label class="editor-field-label">Name</label>' +
+        '<input class="editor-name-input" id="editor-name-input" type="text" value="' + escapeHtml(tpl.name) + '" maxlength="80" oninput="markDirty()" />' +
+      '</div>' +
+
+      '<div class="editor-field-group">' +
+        '<label class="editor-field-label">Default HP</label>' +
+        '<input class="editor-hp-input" id="editor-hp-input" type="number" value="' + (tpl.hpMax || '') + '" placeholder="—" oninput="markDirty()" />' +
+        '<span class="editor-hp-hint">Optional. Empty = no ♥ chip on picker rows, blank pre-fill at spawn.</span>' +
+      '</div>' +
+
+      '<div class="editor-field-group">' +
+        '<label class="editor-field-label">Abilities</label>' +
+        '<ul class="ability-list" id="editor-ability-list"></ul>' +
+        '<div class="ability-add-row">' +
+          '<input class="ability-add-input" type="text" id="editor-ability-input" placeholder="add ability…" maxlength="255" autocomplete="off" />' +
+          '<button class="ability-add-btn" onclick="editorAddAbility()">+</button>' +
+        '</div>' +
+        '<div class="editor-abilities-counter-row"><span class="ability-char-counter" id="editor-ability-counter"></span></div>' +
+      '</div>' +
+
+      '<div class="editor-save-row">' +
+        '<button class="editor-save-btn" id="editor-save-btn" onclick="saveEditorEntry()" disabled>Save changes</button>' +
+        '<span class="editor-saved-flash" id="editor-saved-flash">✓ Saved</span>' +
+      '</div>';
+
+    const listEl = document.getElementById('editor-ability-list');
+    (tpl.abilities || []).forEach(function(ab) { addEditorAbilityItem(listEl, ab); });
+
+    const abilityInput = document.getElementById('editor-ability-input');
+    abilityInput.addEventListener('keydown', function(e) { if (e.key === 'Enter') { e.preventDefault(); editorAddAbility(); } });
+    abilityInput.addEventListener('input', function() {
+      const remaining = 255 - abilityInput.value.length;
+      const counter = document.getElementById('editor-ability-counter');
+      if (remaining <= 30) {
+        counter.textContent = remaining + ' / 255';
+        counter.classList.add('visible');
+        counter.classList.toggle('limit', remaining <= 0);
+      } else {
+        counter.textContent = '';
+        counter.classList.remove('visible');
+      }
+    });
+  }
+
+  function addEditorAbilityItem(listEl, text) {
+    const li = document.createElement('li');
+    li.className = 'ability-list-item';
+    li.style.maxHeight = '60px';
+    li.style.opacity = '1';
+    li.innerHTML =
+      '<span class="ability-list-item-diamond">◆</span>' +
+      '<span class="ability-list-item-text">' + escapeHtml(text) + '</span>' +
+      '<button class="ability-remove-btn" aria-label="Remove ability">−</button>';
+    li.querySelector('.ability-remove-btn').onclick = function() {
+      li.classList.add('removing');
+      setTimeout(function() { li.remove(); markDirty(); }, 180);
+    };
+    listEl.appendChild(li);
+  }
+
+  function editorAddAbility() {
+    const inp = document.getElementById('editor-ability-input');
+    const listEl = document.getElementById('editor-ability-list');
+    const val = inp.value.trim();
+    if (!val) {
+      inp.classList.add('error');
+      setTimeout(function() { inp.classList.remove('error'); }, 400);
+      return;
+    }
+    addEditorAbilityItem(listEl, val);
+    inp.value = '';
+    inp.focus();
+    markDirty();
+  }
+
+  function markDirty() {
+    editorDirty = true;
+    const btn = document.getElementById('editor-save-btn');
+    if (btn) btn.disabled = false;
+  }
+
+  function simulatePortraitUpload() {
+    const circle = document.getElementById('editor-portrait-circle');
+    const shimmer = document.getElementById('editor-portrait-shimmer');
+    const ring = document.getElementById('editor-portrait-ring');
+    const errorEl = document.getElementById('editor-portrait-error');
+    if (!circle) return;
+    errorEl.style.display = 'none';
+    shimmer.classList.add('active');
+    ring.classList.add('active');
+
+    setTimeout(function() {
+      shimmer.classList.remove('active');
+      ring.classList.remove('active');
+      const tpl = getWorkingEntry();
+      tpl.portraitUrl = 'mock:' + tpl.id + '-' + Date.now();
+      const grad = tplColor(tpl.id.length + Date.now() % 5);
+      circle.innerHTML =
+        '<div style="width:100%;height:100%;background:radial-gradient(circle at 40% 30%,' + grad.split(',')[0] + ',' + grad.split(',')[1] + ');display:flex;align-items:center;justify-content:center;color:rgba(255,255,255,0.85);font-family:var(--font-display);font-size:22px;">' + escapeHtml(initials(tpl.name)) + '</div>' +
+        '<div class="editor-portrait-shimmer" id="editor-portrait-shimmer"></div>' +
+        '<div class="editor-portrait-progress-ring" id="editor-portrait-ring"></div>';
+      renderEditorDetail(); /* re-render so Remove button appears */
+      markDirty();
+    }, 1100);
+  }
+
+  function startRemovePortrait() {
+    const confirmHost = document.getElementById('editor-portrait-remove-confirm');
+    confirmHost.innerHTML =
+      '<div class="editor-portrait-remove-confirm">' +
+        '<span style="font-family:var(--font-body);font-size:11px;font-style:italic;color:var(--text-muted);">Remove portrait?</span>' +
+        '<button class="lib-confirm-del-btn" onclick="commitRemovePortrait()">Remove</button>' +
+        '<button class="lib-confirm-cancel-btn" onclick="document.getElementById(\'editor-portrait-remove-confirm\').innerHTML=\'\'">Cancel</button>' +
+      '</div>';
+  }
+  function commitRemovePortrait() {
+    const tpl = getWorkingEntry();
+    tpl.portraitUrl = null;
+    markDirty();
+    renderEditorDetail();
+  }
+
+  function saveEditorEntry() {
+    const tpl = getWorkingEntry();
+    if (!tpl) return;
+    const nameInput = document.getElementById('editor-name-input');
+    const hpInput = document.getElementById('editor-hp-input');
+    const name = nameInput.value.trim();
+    if (!name) {
+      nameInput.classList.remove('error-flash');
+      void nameInput.offsetWidth;
+      nameInput.classList.add('error-flash');
+      nameInput.style.borderColor = '#c06060';
+      return;
+    }
+    const abilities = [];
+    document.querySelectorAll('#editor-ability-list .ability-list-item-text').forEach(function(el) {
+      const txt = el.textContent.trim();
+      if (txt) abilities.push(txt);
+    });
+
+    tpl.name = name;
+    tpl.hpMax = hpInput.value ? parseInt(hpInput.value, 10) : null;
+    tpl.abilities = abilities;
+    tpl.updatedAt = Date.now();
+
+    const idx = libraryTemplates.findIndex(function(t) { return t.id === tpl.id; });
+    if (idx > -1) {
+      libraryTemplates[idx] = tpl;
+    } else {
+      libraryTemplates.push(tpl);
+    }
+    sortLibraryMru();
+
+    editorDirty = false;
+    workingEntry = null;
+    document.getElementById('editor-save-btn').disabled = true;
+
+    const flash = document.getElementById('editor-saved-flash');
+    flash.classList.add('show');
+    setTimeout(function() { flash.classList.remove('show'); }, 1400);
+
+    renderEditorList();
+  }
+
+  function createNewEntry() {
+    nextTplCounter++;
+    const newTpl = { id: 'tpl-' + nextTplCounter, name: '', hpMax: null, portraitUrl: null, abilities: [], updatedAt: Date.now() };
+    libraryTemplates.unshift(newTpl);
+    selectedEntryId = newTpl.id;
+    workingEntry = JSON.parse(JSON.stringify(newTpl));
+    renderEditorList();
+    renderEditorDetail();
+    document.getElementById('editor-body').classList.add('drilled-in');
+    setTimeout(function() {
+      const nameInput = document.getElementById('editor-name-input');
+      if (nameInput) nameInput.focus();
+    }, 60);
+  }
+
+  function duplicateSelectedEntry() {
+    const tpl = libraryTemplates.find(function(t) { return t.id === selectedEntryId; });
+    if (!tpl) return;
+    nextTplCounter++;
+    const copy = JSON.parse(JSON.stringify(tpl));
+    copy.id = 'tpl-' + nextTplCounter;
+    copy.name = tpl.name + ' (copy)';
+    copy.updatedAt = Date.now();
+    /* shares same portraitUrl string per spec; original updatedAt untouched */
+    libraryTemplates.unshift(copy);
+    selectedEntryId = copy.id;
+    workingEntry = null;
+    renderEditorList();
+    renderEditorDetail();
+    setTimeout(function() {
+      const nameInput = document.getElementById('editor-name-input');
+      if (nameInput) { nameInput.focus(); nameInput.select(); }
+    }, 60);
+  }
+
+  function startDeleteEntry() {
+    if (!selectedEntryId) return;
+    const tpl = libraryTemplates.find(function(t) { return t.id === selectedEntryId; });
+    if (!tpl) return;
+    const btn = document.getElementById('editor-delete-btn');
+    btn.outerHTML =
+      '<div style="display:flex;gap:6px;padding:4px 8px;">' +
+        '<button class="editor-list-action-btn danger" style="flex:1;justify-content:center;" onclick="commitDeleteEntry()">Delete</button>' +
+        '<button class="editor-list-action-btn" style="flex:1;justify-content:center;" onclick="renderEditorList()">Cancel</button>' +
+      '</div>';
+  }
+  function commitDeleteEntry() {
+    const idx = libraryTemplates.findIndex(function(t) { return t.id === selectedEntryId; });
+    if (idx > -1) libraryTemplates.splice(idx, 1);
+    selectedEntryId = libraryTemplates.length ? libraryTemplates[0].id : null;
+    workingEntry = null;
+    editorDirty = false;
+    renderEditorList();
+    if (selectedEntryId) renderEditorDetail(); else renderEditorEmptyDetail();
+  }
+
+  document.getElementById('editor-modal-overlay').addEventListener('click', function(e) {
+    if (e.target === this) requestCloseEditor();
+  });
+
+  /* ═══════════════════════════════════════════════════════
+     ANIMATION REFERENCE + LEGEND CONTENT
+  ═══════════════════════════════════════════════════════ */
+  const animRef = [
+    ['Picker expand', 'max-height 0→scrollHeight + opacity 0→1', '220ms cubic-bezier(0.34,1.0,0.64,1)'],
+    ['Picker collapse', 'max-height→0 + opacity→0', '160ms ease-in'],
+    ['Row stagger', 'translateY(−2px)→0 + opacity 0→1', '120ms each, 30ms apart (first 6)'],
+    ['Row tap (pick)', 'flash npcPal.chipBg, picker collapses, Count focused', '120ms flash / 160ms collapse / +80ms focus'],
+    ['Delete confirm row', 'max-height 0→32px + opacity 0→1', '180ms ease-out'],
+    ['Popover bloom', 'scale(0.94)→1 + opacity 0→1, origin top-right', '140ms ease-out'],
+    ['Popover dismiss', 'scale(1)→0.94 + opacity→0', '100ms ease-in'],
+    ['✓ Saved in popover', 'row swaps label, holds, popover dismisses', '220ms hold'],
+    ['Editor modal open', 'overlay fade + panel scale 0.97→1 + opacity', '160ms / 200ms ease-out'],
+    ['Editor list → detail (desktop)', 'right pane cross-fade', '90ms out / 130ms in'],
+    ['Editor list → detail (mobile)', 'pane slides in from right', '220ms ease-out'],
+    ['Duplicate inserted', 'new row max-height 0→auto + opacity 0→1', '180ms ease-out'],
+    ['Portrait upload', 'shimmer + progress ring, fades on success/fail', '180ms fade in/out'],
+    ['Auto-number toggle appear', 'fade in when Count crosses to >1', '140ms ease-out'],
+    ['Map token badge', 'appears with Story 29 token drop', 'static at rest']
+  ];
+  const animGrid = document.getElementById('anim-ref-grid');
+  animRef.forEach(function(item) {
+    const card = document.createElement('div');
+    card.style.cssText = 'background:rgba(18,32,48,0.4);border:1px solid var(--border);border-radius:4px;padding:16px;';
+    card.innerHTML =
+      '<div style="font-family:var(--font-ui);font-size:10px;letter-spacing:0.2em;text-transform:uppercase;color:var(--accent);margin-bottom:8px;">' + item[0] + '</div>' +
+      '<div style="font-family:var(--font-body);font-size:13px;color:var(--text-body);line-height:1.6;">' + item[1] + '<br><strong style="color:var(--text);">' + item[2] + '</strong></div>';
+    animGrid.appendChild(card);
+  });
+
+  const legendItems = [
+    ['①', 'Portrait thumbnail', '32px circle (picker), 40px (card), 84px (editor). Image with 1px npcPal.actionBorder ring, or initials fallback (first letters of first two name words, Cinzel, npcPal.bright on npcPal.chipBg). Never a broken-image glyph — onerror falls back to initials.'],
+    ['②', 'HP preview chip ♥ 27', 'IM Fell English 11px, npcPal.accent. Omitted entirely when hpMax is absent/0 — no placeholder. Spawn HP field stays blank for the DM to fill.'],
+    ['③', 'Row tap → pre-fill', 'Name + HP + abilities + portrait staged for spawn. Picker collapses, focus moves to the Count stepper (changed from Story 24 — HP is now pre-filled, so the next decision is how many). MRU bump fires as a background write.'],
+    ['④', '⚙ Enemies Gallery link', 'Replaces Story 24’s inline “+ New library entry” form — portrait upload needs the full editor’s space. Opens the advance editor modal from the picker or the dashboard top bar.'],
+    ['⑤', 'Row delete ×', 'Two-tap inline confirm, 6-second auto-dismiss, no undo. Unchanged from Story 24.'],
+    ['⑥', 'Save preview line (⋯ menu)', '20px thumb + name + ♥ HP + N abl — shows exactly what Save to library will capture, including the portrait already on the card.'],
+    ['⑦', 'Update delta preview', '♥ 7 → ♥ 27 when HP differs, new portrait thumb when changed. Collapses to the standard preview when nothing material differs.'],
+    ['⑧', 'Advance editor — two-pane', 'List rail (MRU-first, portrait + name + HP chip) + editor panel (portrait dominant, then Name, HP, Abilities). Single-pane drill-in below 720px.'],
+    ['⑨', 'Portrait Replace / Remove', 'Replace → file picker → presign → S3 → URL, local preview + shimmer + progress ring during upload. Remove clears to initials fallback with two-tap confirm.'],
+    ['⑩', '⧉ Duplicate', 'Copies all fields + new id, name suffixed “(copy)”, Name field auto-selected for immediate rename. Shares the same portraitUrl string as the original until replaced. Original’s updatedAt untouched.'],
+    ['⑪', '🗑 Delete (editor)', 'Two-step inline (Delete/Cancel), error red, no undo. Does not affect already-spawned NPCs.'],
+    ['⑫', 'Dirty-guard', 'Closing the editor with unsaved edits shows an inline footer bar — Discard changes / Keep editing. The library never auto-saves a half-built entry.'],
+    ['⑬', '☑ Number them toggle', 'Appears only when Count > 1. Checked by default (opt-out). Live preview text “(Goblin 1–N)”. Unchecking spawns N identically-named cards. Count = 1 never numbers.'],
+    ['⑭', 'Token number badge', '16–18px circle, bottom-right of token, rendered only when the spawned NPC’s name matches /\\s(\\d+)$/. Zero new per-token data — parsed from the existing name field at render time.'],
+    ['★', 'Carried forward from Story 24', 'Picker inline (not modal/native dropdown); save via ⋯; 3-choice name conflict (Update / Save as new / dismiss); MRU sort bumping on save + pick; search above 20 entries; no polling; ✓ Saved 220ms is the only success affirmation.']
+  ];
+  const legendRoot = document.getElementById('legend-root');
+  legendItems.forEach(function(item) {
+    const row = document.createElement('div');
+    row.className = 'legend-item';
+    row.innerHTML = '<span class="legend-num">' + item[0] + '</span><span class="legend-text"><strong>' + item[1] + '</strong> — ' + item[2] + '</span>';
+    legendRoot.appendChild(row);
+  });
+
+  /* ═══════════════════════════════════════════════════════
+     INIT
+  ═══════════════════════════════════════════════════════ */
+  renderCardAbilities();
+  updateNumberToggleVisibility('a');
+  updateNumberToggleVisibility('b');
+</script>
+</body>
+</html>
