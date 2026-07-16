@@ -1170,25 +1170,27 @@ export default function DmDashboardPage() {
               </div>
             </div>
 
-            <div className="dm-prototype-wheels-wrapper">
-              <CounterWheelsPanel
-                pal={pal}
-                dmPassword={dmPassword}
-                initiativeEntries={initiative.entries}
-              />
-            </div>
+            <div className="dm-prototype-col2-stack">
+              <div className="dm-prototype-wheels-wrapper">
+                <CounterWheelsPanel
+                  pal={pal}
+                  dmPassword={dmPassword}
+                  initiativeEntries={initiative.entries}
+                />
+              </div>
 
-            <div className="dm-prototype-dice-panel">
-              <DmDiceRoller
-                pal={pal}
-                party={party.map((character) => ({ slug: character.slug, name: character.name, palette: character.palette }))}
-                npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name }))}
-                dmPassword={dmPassword}
-                onApplyDamage={handleApplyDamage}
-                onApplyNpcDamage={handleApplyNpcDamage}
-                remoteHistory={rollHistory}
-                marginTop={0}
-              />
+              <div className="dm-prototype-dice-panel">
+                <DmDiceRoller
+                  pal={pal}
+                  party={party.map((character) => ({ slug: character.slug, name: character.name, palette: character.palette }))}
+                  npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name }))}
+                  dmPassword={dmPassword}
+                  onApplyDamage={handleApplyDamage}
+                  onApplyNpcDamage={handleApplyNpcDamage}
+                  remoteHistory={rollHistory}
+                  marginTop={0}
+                />
+              </div>
             </div>
 
             <div className="dm-prototype-side-panel">

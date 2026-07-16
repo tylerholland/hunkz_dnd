@@ -291,7 +291,15 @@
 
 .dm-prototype-shell[data-combat="true"] .dm-prototype-cards-panel {
   grid-column: 1;
-  grid-row: 1 / span 2;
+  grid-row: 1;
+}
+
+/* Wraps wheels-wrapper + dice-panel so they stack independently of the
+   other two columns' height. display: contents in adventure mode keeps
+   them as plain grid children of the existing 4-row single-column stack
+   (rows 3/4) — the wrapper itself is invisible to layout there. */
+.dm-prototype-col2-stack {
+  display: contents;
 }
 
 .dm-prototype-combat-grid {
@@ -342,9 +350,13 @@
     transform 240ms cubic-bezier(0.4, 0, 1, 1);
 }
 
-.dm-prototype-shell[data-combat="true"] .dm-prototype-wheels-wrapper {
+.dm-prototype-shell[data-combat="true"] .dm-prototype-col2-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   grid-column: 2;
   grid-row: 1;
+  min-width: 0;
 }
 
 .dm-prototype-dice-panel {
@@ -382,11 +394,6 @@
   overflow: hidden;
 }
 
-.dm-prototype-shell[data-dice-combat="true"] .dm-prototype-dice-panel {
-  grid-column: 2;
-  grid-row: 2;
-}
-
 .dm-prototype-shell[data-dice-visible="false"] .dm-prototype-dice-panel {
   transition:
     max-height 240ms cubic-bezier(0.4, 0, 1, 1),
@@ -416,16 +423,7 @@
 }
 
 .dm-prototype-shell[data-combat="true"] .dm-prototype-side-panel {
-  grid-row: 1 / span 2;
-  overflow-y: auto;
-  overflow-x: hidden;
-}
-
-/* Pin rows to their content size so a tall side panel (many NPCs) can't
-   push counter wheels and dice roller apart. Spanning items (cards col 1,
-   side panel col 3) scroll within the grid area instead of inflating rows. */
-.dm-prototype-shell[data-combat="true"] {
-  grid-template-rows: min-content min-content;
+  grid-row: 1;
 }
 
 .dm-prototype-shell[data-panels="true"] .dm-prototype-side-panel {
@@ -521,6 +519,9 @@
   .dm-prototype-wheels-wrapper {
     grid-column: 1 !important;
     grid-row: auto !important;
+  }
+  .dm-prototype-shell[data-combat="true"] .dm-prototype-col2-stack {
+    display: contents !important;
   }
   .dm-prototype-shell[data-combat="true"] .dm-prototype-cards-panel {
     grid-row: auto !important;
