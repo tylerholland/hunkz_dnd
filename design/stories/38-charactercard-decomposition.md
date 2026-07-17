@@ -1,6 +1,6 @@
 # Refactor Story: CharacterCard Decomposition
 
-**Status**: Approved — Ready to Build
+**Status**: Implemented
 **Source**: Codebase audit 2026-07-16
 
 ---
