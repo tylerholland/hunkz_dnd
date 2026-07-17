@@ -495,6 +495,11 @@ export default function CharacterSheetViewMode({ ctx }) {
           </Link>
           <div className="cs-topbar-actions">
             <WorldGuideTrigger open={guideOpen} onToggle={() => setGuideOpen((o) => !o)} />
+            {slug && (
+              <Link to={`/characters/${slug}/session`} className="cs-toolbar-btn" style={{ textDecoration: "none" }}>
+                ⚔ Session
+              </Link>
+            )}
             <button onClick={exportJSON} className="cs-toolbar-btn">
               Export JSON
             </button>
