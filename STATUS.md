@@ -19,9 +19,13 @@
 
 - **Story 33 — Token Tray Parity** (`design/stories/33-token-tray-parity.md`): Ready for Architect Notes.
 
-## New roadmap (agreed 2026-07-16, not yet storied)
+## PRIORITY (2026-07-17): AWS free-tier pressure
 
-Priority order from architecture/feature review session:
+Account hit **85% of free-tier request quota** — idle browser tabs polling 4-5 endpoints at 1s. Next play session is **Wednesday 2026-07-22**; sync work must land and deploy before then. Stories 35 (consolidation) → 36 (WebSocket nudge) jump the queue; token stories (33, classic-Map-tab parity) deferred. Stopgap until deployed: don't leave app tabs open when not playing.
+
+## Roadmap (agreed 2026-07-16)
+
+Original priority order from architecture/feature review session:
 
 1. **Player-moved tokens** (must-have) — players drag their own PC token only; player-writable move endpoint consistent with ADR-005 trust model. Needs `rpg-consultant` story.
 2. **Sync consolidation → WebSocket nudge** — step 1: single `GET /session-state` Lambda (BatchGetItem all sentinels + party projection) replacing the 5-endpoint polling fan-out; step 2: API Gateway WebSocket "state changed, refetch" ping channel with graceful fallback to slow polling. Full payload-over-WS rejected as not worth it.
