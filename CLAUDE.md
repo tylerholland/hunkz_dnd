@@ -32,17 +32,18 @@ node scripts/migrate.mjs   # Seeds DynamoDB and uploads portraits to S3 (interac
 
 **Frontend** (`src/`) — React 19 + Vite SPA, React Router v7, plain JS, CSS custom properties for theming (no CSS framework). See ADR-001 and ADR-014 in `design/architecture/decisions.md` for the full CSS architecture.
 
-- `src/components/CharacterSheet.jsx` — Single monolithic component (~2500+ lines) containing all character sheet display logic, edit mode, sub-components, and constants. Most frontend work happens here.
-  - `PALETTES` — named color themes; exported and used by pages for theming
-  - `BLANK_CHARACTER` — canonical default shape for new characters; includes `inspiration: false`
-  - `parseModInt` — strict integer parser using `/^[+-]?\d+$/` to reject dice notation (prevents `parseInt("1d8") === 1` false positives)
-  - `ItemEditorModal` — modal for editing weapons/equipment items
+- `src/components/CharacterSheet.jsx` — Orchestrator component (~800 lines): owns sheet state, auth/unlock flow, save/create/import/export, and session sync; delegates rendering to `CharacterSheetViewMode` and `CharacterSheetEditMode`. The old ~2500-line monolith was decomposed into `src/features/characterSheet/`:
+  - `CharacterSheetViewMode.jsx` (~1900 lines) — all view-mode rendering, including the four-tab structure below
+  - `CharacterSheetEditMode.jsx` (~650 lines) — edit-mode form sections
+  - `theme.jsx` — `PALETTES` named color themes; exported and used by pages for theming
+  - `constants.js` — `BLANK_CHARACTER` (canonical default shape for new characters; includes `inspiration: false`), `parseModInt` (strict integer parser using `/^[+-]?\d+$/` to reject dice notation, preventing `parseInt("1d8") === 1` false positives), `MOD_ATTRIBUTES`
+  - `ItemEditorModal.jsx` — modal for editing weapons/equipment items
   - Ability score modifiers are computed on-the-fly as `floor((score-10)/2) + item bonuses`, never stored
   - **Four-tab structure** (view mode): `"loadout"` (Inventory), `"persona"` (Persona), `"combat"` (Combat), `"map"` (Map); active tab stored in `sessionStorage` as `dnd_tab_${slug}`, default `"combat"`. Map tab dimmed/disabled when no active map.
   - **Combat tab**: concentration banner, inspiration toggle, condition grid + exhaustion counter, spell slots, weapons quick-reference, **Session Notes** (player notes with per-note share toggle), dice roller — all writable without auth via `patchSession`
   - **Persona tab**: renders the `inPlay[]` trait list with diamond bullet points
   - **Inventory tab**: two-column weapons + equipment grid (`.loadout-grid`)
-- `src/components/DiceRoller.jsx` — Self-contained dice roller component. Props: `{ weapons, stats, pal, slug }`. Renders at the bottom of the Combat tab. Owns its own state (roll results, history, advantage mode, free picker state). No backend calls — all UI-only. Key internals: `parseDiceExpr(str)` pure parser (named export), `rollDie(sides)` pure RNG (named export), `DieShape` SVG component (named export), CSS keyframe animations injected via `<style>` tag, `sessionStorage` key `dnd_dice_open_${slug}` for collapse state.
+- `src/components/DiceRoller.jsx` — Self-contained dice roller component. Props: `{ weapons, stats, pal, slug }`. Renders at the bottom of the Combat tab. Owns its own state (roll results, history, advantage mode, free picker state). Broadcasts resolved rolls to the shared roll-history feed via `postCharacterRoll` (fire-and-forget; UI never blocks on it). Key internals: `parseDiceExpr(str)` pure parser (named export), `rollDie(sides)` pure RNG (named export), `DieShape` SVG component (named export), `sessionStorage` key `dnd_dice_open_${slug}` for collapse state.
 - `src/components/DmDiceRoller.jsx` — DM-specific dice roller rendered at the bottom of the party column in `DmDashboardPage`. Props: `{ pal, party, onApplyDamage }`. Reuses `parseDiceExpr`, `rollDie`, `DieShape` from `DiceRoller.jsx`. New DM behaviors: ×N repeat (1–8, single 600ms animation then labeled result rows), adv/dis auto-reset to Normal after each roll, "Apply to…" pill row after pure damage rolls (no d20) that calls `onApplyDamage(slug, amount)`. `sessionStorage` key `dnd_dice_dm_open` for collapse state (no slug — DM dashboard has no character context).
 - `src/api.js` — all API calls; uses `VITE_API_URL` env var; password sent via `x-character-password` header
   - `getDmParty(dmPassword)` — GET /dm/party; requires DM password header

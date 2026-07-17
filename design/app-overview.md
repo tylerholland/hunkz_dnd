@@ -441,7 +441,7 @@ A dedicated DM session-management view accessible at `/dm`.
   - **Spawned NPC provenance**: each NPC spawned from a library template carries `portraitUrl`, `abilities`, and `librarySourceId: template.id`. These pass through `normalizeNpcCombatRecord` via `...npc` spread — no backend schema change needed.
   - **`AbilitiesListEditor`** helper component in `NpcCombatSection.jsx`: shared per-entry array editor (255 char cap). Also used inside `EnemiesGalleryModal`.
   - **MRU**: `updatedAt` stamped per-template at save and at pick; sorted `desc` on each picker open.
-  - **Fetch pattern**: mount-fetch only (`getNpcLibrary`); refetch-on-write. Not polled. `handleSaveToLibrary` in `DmDashboardPrototypePage` handles 4-arg dispatch: `(npc, existingEntry)` from overflow, `(null, null, bumpedTemplate)` for MRU bump, `(null, null, null, deleteId)` for delete.
+  - **Fetch pattern**: mount-fetch only (`getNpcLibrary`); refetch-on-write. Not polled. `handleSaveToLibrary` in `DmDashboardPage` handles 4-arg dispatch: `(npc, existingEntry)` from overflow, `(null, null, bumpedTemplate)` for MRU bump, `(null, null, null, deleteId)` for delete.
   - New API: `GET /npc-library` (DM auth), `PUT /npc-library` (DM auth, body `{ templates }`), `POST /npc-library/portraits/presign` (DM auth).
   - Backend normalizer `normalizeNpcLibraryRecord` now passes through `hpMax` and `portraitUrl` (Story 31 fix — earlier version silently stripped these fields).
   - New slug `npc-library` in `RESERVED_CHARACTER_SLUGS` — automatically excluded from `list.js` and `dmParty.js`.
@@ -596,7 +596,6 @@ A right-edge slide-in drawer providing in-session reference to the campaign worl
 
 ## Known gaps (not yet built)
 
-- **Death save tracking**: display-only bubbles shown at 0 HP; write logic not yet implemented (story 06)
 - **No true push multiplayer transport**: live sync uses adaptive polling plus optimistic writes rather than WebSockets/AppSync. Shared updates appear across player sheets and the DM campaign page, but not via a dedicated push channel
 - **No public vs. private view split** (planned feature per memory/project_goals.md)
 - **Skill / spell / special ability tooltips are minimal**: current tooltip content only shows type + name. Rich descriptions, stat effects, and mechanical details are not yet modeled for spells and are only partially modeled for skills / special abilities

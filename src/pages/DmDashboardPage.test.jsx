@@ -1,4 +1,5 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const apiMocks = vi.hoisted(() => ({
@@ -13,6 +14,11 @@ const apiMocks = vi.hoisted(() => ({
   putNpcCombat: vi.fn(),
   getRollHistory: vi.fn(),
   getMapLibrary: vi.fn(),
+  getNpcLibrary: vi.fn(),
+  putNpcLibrary: vi.fn(),
+  getCounterWheels: vi.fn(),
+  putCounterWheels: vi.fn(),
+  presignNpcPortrait: vi.fn(),
 }));
 
 vi.mock("../api", () => ({
@@ -27,6 +33,11 @@ vi.mock("../api", () => ({
   putNpcCombat: apiMocks.putNpcCombat,
   getRollHistory: apiMocks.getRollHistory,
   getMapLibrary: apiMocks.getMapLibrary,
+  getNpcLibrary: apiMocks.getNpcLibrary,
+  putNpcLibrary: apiMocks.putNpcLibrary,
+  getCounterWheels: apiMocks.getCounterWheels,
+  putCounterWheels: apiMocks.putCounterWheels,
+  presignNpcPortrait: apiMocks.presignNpcPortrait,
 }));
 
 vi.mock("../components/DmDiceRoller", () => ({
@@ -35,6 +46,8 @@ vi.mock("../components/DmDiceRoller", () => ({
 
 vi.mock("../features/dmDashboard/CharacterCard", () => ({
   default: () => <div data-testid="character-card" />,
+  AwardXpModal: () => null,
+  DistributeCoinModal: () => null,
 }));
 
 vi.mock("../features/dmDashboard/ConfirmDialog", () => ({
@@ -49,37 +62,59 @@ vi.mock("../features/dmDashboard/NpcCombatSection", () => ({
   default: () => <div data-testid="npc-combat-section" />,
 }));
 
+vi.mock("../features/dmDashboard/MapPanel", () => ({
+  default: () => <div data-testid="map-panel" />,
+}));
+
+vi.mock("../features/dmDashboard/MapLibraryStrip", () => ({
+  default: () => <div data-testid="map-library-strip" />,
+}));
+
+vi.mock("../features/dmDashboard/ManagePartyModal", () => ({
+  default: () => null,
+}));
+
 import DmDashboardPage from "./DmDashboardPage";
 
-describe("DmDashboardPage auth refresh", () => {
+describe("DmDashboardPage text scaling", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     sessionStorage.clear();
+    apiMocks.getDmParty.mockResolvedValue([]);
     apiMocks.listCharacters.mockResolvedValue([]);
     apiMocks.getPartyRoster.mockResolvedValue({ exists: false, members: [] });
+    apiMocks.getInitiative.mockResolvedValue({ entries: [], activeTurnIndex: 0 });
+    apiMocks.getNpcCombat.mockResolvedValue({ npcs: [] });
+    apiMocks.getRollHistory.mockResolvedValue({ rolls: [] });
     apiMocks.getMapLibrary.mockResolvedValue({ activeMapId: null, maps: [] });
+    apiMocks.getNpcLibrary.mockResolvedValue({ templates: [] });
+    apiMocks.getCounterWheels.mockResolvedValue({ wheels: [] });
   });
 
-  it("shows the checking loader instead of the password prompt while stored DM creds are being verified", () => {
+  it("adjusts and persists dashboard text scale from the action menu", async () => {
     sessionStorage.setItem("dnd_dm_password", "swordfish");
-    apiMocks.getDmParty.mockImplementation(() => new Promise(() => {}));
 
-    render(<DmDashboardPage />);
-
-    expect(screen.getByText("Checking DM Access")).toBeInTheDocument();
-    expect(screen.queryByPlaceholderText("Password")).not.toBeInTheDocument();
-  });
-
-  it("falls back to the DM password prompt when stored creds are invalid", async () => {
-    sessionStorage.setItem("dnd_dm_password", "expired");
-    apiMocks.getDmParty.mockRejectedValueOnce(new Error("forbidden"));
-
-    render(<DmDashboardPage />);
+    render(
+      <MemoryRouter>
+        <DmDashboardPage />
+      </MemoryRouter>
+    );
 
     await waitFor(() => {
-      expect(screen.getByPlaceholderText("Password")).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "All Actions" })).toBeInTheDocument();
     });
 
-    expect(sessionStorage.getItem("dnd_dm_password")).toBe(null);
+    fireEvent.click(screen.getByRole("button", { name: "All Actions" }));
+
+    expect(screen.getByText("Text Size")).toBeInTheDocument();
+    expect(screen.getByText("100%")).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Increase text size" }));
+
+    await waitFor(() => {
+      expect(screen.getByText("110%")).toBeInTheDocument();
+    });
+
+    expect(sessionStorage.getItem("dnd_dm_text_scale")).toBe("1.1");
   });
 });

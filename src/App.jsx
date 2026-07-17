@@ -3,7 +3,7 @@ import CharacterPage from "./pages/CharacterPage";
 import CharacterModePage from "./pages/CharacterModePage";
 import CharactersListPage from "./pages/CharactersListPage";
 import NewCharacterPage from "./pages/NewCharacterPage";
-import DmDashboardPage from "./pages/DmDashboardPrototypePage";
+import DmDashboardPage from "./pages/DmDashboardPage";
 import MapLibraryPage from "./pages/MapLibraryPage";
 import MapViewerPage from "./pages/MapViewerPage";
 
@@ -13,8 +13,6 @@ export default function App() {
       <Routes>
         <Route path="/"                          element={<CharactersListPage />} />
         <Route path="/dm"                        element={<DmDashboardPage />} />
-        <Route path="/dm-classic"               element={<Navigate to="/dm" replace />} />
-        <Route path="/dm-prototype"             element={<Navigate to="/dm" replace />} />
         <Route path="/maps"                      element={<MapLibraryPage />} />
         <Route path="/map-view"                  element={<MapViewerPage />} />
         <Route path="/characters/new"            element={<NewCharacterPage />} />

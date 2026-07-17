@@ -1,69 +1,40 @@
-# Project Status — last updated 2026-06-15
+# Project Status — last updated 2026-07-16
 
 ## What just landed on `main`
 
 | Commit | What |
 |---|---|
-| `0a9ba07` | Merge Story 24 — NPC Library (name + abilities) |
-| `104733d` | Design stories 29b, 30, 31 + briefs; Story 30 open questions resolved |
-| `ad0713a` | Story 24 implementation (NPC library, LibraryPicker, ⋯ menu, AbilitiesListEditor) |
-| `765440f` | Story 29 — Battle Map Tokens |
-| `45f1969` | Story 27 — Player Sheet Session Mode |
+| (uncommitted) | Cleanup: dead `DmDashboardPage.jsx` deleted, `DmDashboardPrototypePage.jsx` renamed to `DmDashboardPage.jsx`, `/dm-classic` + `/dm-prototype` routes and "Classic Layout" nav link removed, dashboard test API mocks repaired, doc-truth pass (CLAUDE.md, app-overview.md, this file) |
+| `bce1fb2` | Counter wheel fill changes logged to DM roll history |
+| `977899a` | Story 32 implemented — ability checks roll 2d6 + modifier |
+| `cf4f355` | Combat-mode gap fix between counter wheels and dice roller |
+| `4bb6516` | Session status notes + Noa's feature feedback |
+| `8158a38` | Stories 32 + 33 written |
 
-**Story 24 (NPC Library, name + abilities) is live in the codebase but the backend hasn't been deployed yet.** Run `sam build && sam deploy` from `/backend` to activate the new `GET /npc-library` and `PUT /npc-library` endpoints and the `npc-library` DynamoDB sentinel.
+**Backend deploy state**: verified 2026-07-16 — `/npc-library` and `/counter-wheels` are live (handlers respond with their own auth errors). The Story 24 deploy warning from June is resolved.
 
 ---
 
 ## Pipeline — what's ready to advance
 
-Run `/advance-pipeline` to move these forward. All user questions are resolved; the only gates left are **design review** (after ux-designer) and **build approval** (after code-architect).
+- **Story 33 — Token Tray Parity** (`design/stories/33-token-tray-parity.md`): Ready for Architect Notes.
 
-### → Needs `ux-designer`
-- **Story 30 — Counter Wheels** (`design/stories/30-counter-wheels.md`)
-  - Brief: `design/briefs/counter-wheels-brief.md`
-  - All open questions resolved (fill = clockwise fill-to-here, `filledCount: number`, min 1 segment, no remove confirm, optimistic sync)
+## New roadmap (agreed 2026-07-16, not yet storied)
 
-- **Story 31 — NPC Library with HP and Portraits** (`design/stories/31-npc-library-portraits-hp.md`)
-  - Brief: `design/briefs/npc-library-portraits-brief.md`
-  - Enemies Gallery (top-bar label resolved)
-  - Remaining open questions are architect-level (presign endpoint, provenance) — don't block ux-designer
+Priority order from architecture/feature review session:
 
-### → Needs `design-strategist` (brief + UX Design section)
-- **Story 29b — Battle Map Token Polish** (`design/stories/29b-battle-map-token-polish.md`)
-  - No brief yet; open questions are UX decisions for the strategist to resolve
-
----
-
-## Key decisions made this session
-
-| Topic | Decision |
-|---|---|
-| Counter Wheels fill model | Fill-to-here clockwise (Blades-classic). `filledCount: number`, not `boolean[]` |
-| Counter Wheels segment floor | Minimum 1 (binary clock = notched ring) |
-| Counter Wheels remove confirm | No confirm — hover → menu → click is sufficient gating |
-| Counter Wheels data sentinel | `slug: "counter-wheels"`, NOT wiped by End Combat |
-| NPC Library advance editor label | **Enemies Gallery** (`⚙ Enemies Gallery` in DM dashboard top bar) |
-| Story 24 vs Story 31 | Story 24 merged as foundation; Story 31 builds on it with HP + portraits |
-| Story 24 scope | Name + abilities only (no HP, no portraits — those are Story 31) |
-| NPC Library token badge | Number parsed from trailing integer in name (`/\s(\d+)$/`), zero new token data |
-| NPC Library fill semantics | Auto-number on Count > 1 (opt-out toggle), unique villains (Count = 1) never numbered |
-
----
-
-## Active worktrees (can be cleaned up)
-
-The Story 24 worktree has been merged. These worktrees exist but are no longer needed:
-```
-.claude/worktrees/agent-ac30ad7414fde60ab   ← Story 24 (merged ✓)
-```
-All other `worktree-agent-*` branches are from prior sessions and are safe to prune.
+1. **Player-moved tokens** (must-have) — players drag their own PC token only; player-writable move endpoint consistent with ADR-005 trust model. Needs `rpg-consultant` story.
+2. **Sync consolidation → WebSocket nudge** — step 1: single `GET /session-state` Lambda (BatchGetItem all sentinels + party projection) replacing the 5-endpoint polling fan-out; step 2: API Gateway WebSocket "state changed, refetch" ping channel with graceful fallback to slow polling. Full payload-over-WS rejected as not worth it.
+3. **Shared top nav** — consistent nav/menu design language across player and DM pages. Needs `design-strategist` first.
+4. **CharacterCard.jsx breakup** — 2,041 lines; extract death-saves strip and `DamageHealModal` first. `code-architect` refactor scope, no design stage.
+5. **Rich talent/ability library + admin page** — DM-authored descriptions replacing `Type: Name` tooltips; structural sibling of the NPC library (sentinel + gallery editor). Full pipeline.
+6. **Adventure/arc breakpoints** — begin/end adventure actions that archive arc state (roll history, wheels, XP snapshot) and reset live surfaces. `rpg-consultant` to define the model.
 
 ---
 
 ## Things that need attention (not urgent)
 
-- **Backend deploy**: Story 24 backend is undeployed. `sam build && sam deploy` from `/backend`.
-- **Story 24 status field**: Still says "Design complete — Ready for Architect Notes" (stale). Could update to "Implemented" but low priority since it's superseded.
-- **Old story statuses**: Stories 01–22 have stale status fields (e.g. "Needs architect review") from before consistent status tracking. Don't block anything; cosmetic cleanup only.
-- **Story 23**: Status says "Design updated — needs re-implementation (abilities field changed from string to string[])". This was the NPC ability reference story. Story 23 may have been re-implemented already (commit `0d7fb52`). Worth verifying before advancing.
-- **`/advance-pipeline` skill**: Lives at `~/.claude/skills/advance-pipeline/SKILL.md`. Works well. Next run will show the three actionable stories above.
+- **Old story statuses**: Stories 01–24 have stale status fields from before consistent status tracking. Cosmetic only.
+- **Lint debt**: `npm run lint` reports ~10.5k pre-existing problems repo-wide (legacy/backup files and old rules); files touched recently lint clean. Worth a scoped cleanup or ignore-list pass.
+- **`dist/` is committed and dirty** in git; deploys go via S3 sync, so it can likely be removed from the repo.
+- **`.dm-prototype-*` CSS class names** remain in `dashboard.css` / `DmDashboardPage.jsx` after the rename — functional and self-consistent; rename only if touching those files anyway.

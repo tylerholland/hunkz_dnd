@@ -148,9 +148,6 @@ export default function CharactersListPage() {
               <Link to="/dm" className="btn-ghost" style={{ padding: "5px 12px", textDecoration: "none" }}>
                 Campaign
               </Link>
-              <Link to="/dm-classic" className="btn-ghost" style={{ padding: "5px 12px", textDecoration: "none" }}>
-                Classic Layout
-              </Link>
               <Link to="/maps" className="btn-ghost" style={{ padding: "5px 12px", textDecoration: "none" }}>
                 Maps
               </Link>

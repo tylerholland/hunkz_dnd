@@ -1,6 +1,6 @@
 # Feature Story: Ability Check Dice — 2d6 + Modifier
 
-**Status**: Ready for Architect Notes
+**Status**: Implemented (commit 977899a)
 **Source**: DM ruling
 
 ---
