@@ -331,7 +331,7 @@ Characters can now be accessed at two dedicated mode URLs:
 Session mode (two-column layout):
 - **Left column** (340px sticky, full viewport height): identity strip (portrait circle 56px, 72px + glow on own initiative turn), ability score mod chips (3×2 grid, **tappable** — clicking any chip triggers a 2d6 ability check roll in the Dice Roller panel, which auto-opens and scrolls into view), initiative strip (own entry highlighted with ▸ glyph + "Your Turn", NPC health-tier glow), party status strip (other party members, shows HP bars and palette-colored names)
 - **Right column** (scrollable): concentration banner, HP hero card (big optimistic HP with +/− and Damage/Heal modal), conditions section with Manage button (ConditionPickerModal), spell slots (read-only display), inspiration toggle, four sub-tabs
-- **Sub-tabs**: `combat` (read-only weapon quick-reference — Attack/Damage buttons are Story 28), `loadout` (simplified 2-column name/qty/attunement grid), `map` (MapViewer), `notes` (SessionNotesSection — read/write via patchSession without auth)
+- **Sub-tabs**: `combat` (read-only weapon quick-reference — Attack/Damage buttons are Story 28), `loadout` (simplified 2-column name/qty/attunement grid), `map` (`PlayerMapViewer` — see "Player token drag" below), `notes` (SessionNotesSection — read/write via patchSession without auth)
 - All session writes via `patchSession(slug, fields, null)` — no auth required
 - Sub-tab state stored in `sessionStorage` as `dnd_session_subtab_${slug}` (default `"combat"`)
 - Mode toggle in top bar: `❡ Profile` / `⚔ Session` pill buttons
@@ -518,6 +518,16 @@ DM-only page. Auth gate: checks `sessionStorage.dnd_dm_password`; if missing, sh
 - When a map is active: `MapViewer` at 500px height (or `calc(100vh - 160px)` on mobile ≤560px)
 - When no map is active: quiet "The DM hasn't loaded a map yet." message
 - Active map data comes from `useAdaptivePolling(getMapLibrary)` in `CharacterPage.jsx`, passed as `activeMap` prop through `CharacterSheet` → `CharacterSheetViewMode`
+- Note: this is the classic full-sheet surface (`/characters/:slug`) and currently renders a plain `MapViewer` with no battle-mode token layer at all — the token overlay (below) only exists on the session-mode Map sub-tab (`/characters/:slug/session`)
+
+### Player token drag (session mode Map sub-tab, Story 34)
+
+- On a battle-mode map (`activeMap.mapMode === "battle"`), a player's own PC token (`token.type === "character" && token.sourceId === own slug`) is draggable via Pointer Events; other players' tokens and NPC tokens are not
+- Idle affordance: brighter ring (`--pal-accent-bright`) + `cursor: grab`; while dragging: 1.08 scale, soft shadow, `cursor: grabbing`, no easing (tracks the pointer 1:1)
+- On drop: position clamps to `[0, 1]` and is written optimistically via `moveMapToken`; on failure the token animates back to its last known server position and shows a quiet "Couldn't move token" toast for 3s
+- While dragging, `MapViewer`'s own pan is suppressed via a shared `panSuppressedRef`; incoming polled positions for the own token are ignored until the drag ends and (for a successful write) until the next poll confirms the new position
+- Implemented in the shared `TokenChip` (`BattleModeController.jsx`) so both the DM map and player map share one component; DM-side chips never receive the `ownSlug`/`onMoveToken` props and are completely unaffected
+- The DM dashboard map (`MapPanel.jsx`) picks up the move on its next poll of `GET /maps` — no DM-side changes were needed
 
 ### Map components
 
@@ -552,6 +562,7 @@ Filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `
 | PUT | /maps/active | DM | Sets or clears `activeMapId` |
 | PATCH | /maps/{mapId} | DM | Renames a map entry |
 | DELETE | /maps/{mapId} | DM | Removes from DynamoDB + deletes S3 object (best-effort) |
+| PATCH | /maps/{mapId}/tokens/{tokenId}/position | None (server-enforced ownership) | Story 34 — moves a single character token; body `{ x, y, slug }`; rejects mismatched `slug` or NPC tokens with 403 |
 
 ---
 

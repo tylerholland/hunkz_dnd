@@ -239,6 +239,15 @@ export const putMapCalibration = (mapId, tokenScale, dmPassword) =>
     body: JSON.stringify({ tokenScale }),
   });
 
+// Story 34 — a player drags their own PC token; no auth (server enforces
+// sourceId === slug and token.type === "character").
+export const moveMapToken = (mapId, tokenId, x, y, slug) =>
+  request(`/maps/${mapId}/tokens/${tokenId}/position`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ x, y, slug }),
+  });
+
 export const getCounterWheels = (dmPassword) =>
   request("/counter-wheels", {
     headers: { "x-character-password": dmPassword },

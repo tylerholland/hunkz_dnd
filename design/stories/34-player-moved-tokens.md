@@ -1,6 +1,6 @@
 # Feature Story: Players Move Their Own Token
 
-**Status**: Approved — Ready to Build
+**Status**: Implemented
 **Source**: DM priority list 2026-07-16 (must-have)
 
 ---
@@ -28,7 +28,7 @@ The token layer is currently DM-writes/players-watch. Letting a player move thei
 - **Backend — new handler** `backend/src/handlers/moveMapToken.js`: `PATCH /maps/{mapId}/tokens/{tokenId}/position`, **no auth** (ADR-005 trust model, same as `patchSession`). Body: `{ x, y, slug }`. Validation: x/y numbers clamped to [0,1]; map exists; token exists; `token.type === "character"`; `token.sourceId === body.slug` (reject otherwise with 403). Read-modify-write on the `map-library` sentinel updating only that token's x/y — mirror `patchMapCalibration.js`'s read-modify-write pattern and preserve `activeMapView`/other fields on write. Add to `backend/template.yaml` following the existing map-route pattern.
 - **Do NOT** loosen `patchMapTokens` (full-array replace stays DM-only). The player path is single-token, position-only, by design.
 - **Frontend — API**: add `moveMapToken(mapId, tokenId, x, y, slug)` to `src/api.js` (no password header).
-- **Frontend — components**: the player-side render path is `CharacterSheetSessionMode.jsx` → `PlayerMapViewer` → `MapViewer` + `TokenChip` (`battleMode/BattleModeController.jsx`). Add an `ownSlug` prop threaded to `TokenChip`; when a chip is own-token and draggable, attach the pointer handlers there. `MapViewer` already supports `interactionMode` and `onTokenLayerClick` — extend minimally rather than forking the viewer. The character-sheet Map tab (view mode) uses the same wrapper; both surfaces get the feature via the shared component.
+- **Frontend — components**: the player-side render path is `CharacterSheetSessionMode.jsx` → `PlayerMapViewer` → `MapViewer` + `TokenChip` (`battleMode/BattleModeController.jsx`). Add an `ownSlug` prop threaded to `TokenChip`; when a chip is own-token and draggable, attach the pointer handlers there. `MapViewer` already supports `interactionMode` and `onTokenLayerClick`; extend minimally rather than forking the viewer. The character-sheet Map tab (view mode) uses the same wrapper; both surfaces get the feature via the shared component.
 - **Drag-vs-pan**: suppress MapViewer pan while a token drag is active (a `draggingRef` or callback prop from the token layer is fine; do not introduce global state).
 - **Poll suppression during drag**: PlayerMapViewer already animates poll moves; gate application of polled position for the own token behind `!isDragging`.
 - **Tests**: unit-test the handler validation (wrong slug → 403, NPC token → 403, x/y clamped) following existing backend handler test patterns if present; frontend test that own token renders draggable and others don't (see `MapViewer.test.jsx` for harness patterns).
@@ -46,3 +46,9 @@ The token layer is currently DM-writes/players-watch. Letting a player move thei
 
 - Movement range/grid snapping, movement history, turn-gated movement.
 - Players placing or removing tokens (DM-only).
+
+## Implementation Notes (feature-builder)
+
+- Implemented only on the session-mode Map sub-tab (`CharacterSheetSessionMode.jsx` → `PlayerMapViewer` → shared `TokenChip`), which is the one player-facing surface that already renders the battle-mode token layer.
+- The classic full character sheet's Map tab (`/characters/:slug`, `CharacterSheetViewMode.jsx`) does **not** currently render any token layer at all (no `TokenChip`, no battle-mode overlay, no party/NPC data fetched) — this predates this story. Adding token viewing to that surface from scratch was out of scope for a movement-only story, so it was left untouched. Flagged as a follow-up if that surface is meant to gain battle-mode parity.
+- Reconciliation is implemented as an "optimistic position" held locally in `TokenChip` after drop, cleared once a fresh poll's `token.x/y` matches it (checked at render time, no extra effect) or after a 6s failsafe timeout; on failure it reverts to the pre-drag position and shows the toast for 3s.

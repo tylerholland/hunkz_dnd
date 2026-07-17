@@ -28,7 +28,9 @@
   cursor: pointer;
   pointer-events: auto;
   user-select: none;
-  transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(var(--token-scale-multiplier, 1));
+  /* --token-drag-scale (Story 34) defaults to 1 and is only set by
+     .token-chip--dragging below — every other state is unaffected. */
+  transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-drag-scale, 1)));
   transform-origin: center;
   z-index: 10;
 }
@@ -162,6 +164,76 @@
 .token-chip--ghost {
   opacity: 0.4;
   pointer-events: none;
+}
+
+/* ── Own-token drag affordance (Story 34, player view only) ───────────── */
+/* Idle: a subtle "you can move this" cue — brighter ring + grab cursor,
+   battle-mode maps only (the class is only ever applied there). */
+.token-chip--own-draggable {
+  cursor: grab;
+}
+
+.token-chip--own-draggable .token-chip__portrait,
+.token-chip--own-draggable .token-chip__initial {
+  box-shadow:
+    0 0 0 2px var(--pal-accent-bright, #c89060),
+    0 0 0 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Enlarges the pointer/touch hit area to the 44px minimum without changing
+   the visual 36px chip size — a pseudo-element box counts as part of the
+   element for hit-testing purposes. */
+.token-chip--own-draggable::before {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+}
+
+/* Active drag: scales up, drops a soft shadow, grabbing cursor. Position
+   tracking itself is instant (see .token-chip--poll-animated exclusion in
+   BattleModeController.jsx) — only the scale/shadow are eased here. */
+.token-chip--dragging {
+  --token-drag-scale: 1.08;
+  cursor: grabbing;
+  z-index: 50;
+  transition: transform 90ms ease-out;
+}
+
+.token-chip--dragging .token-chip__portrait,
+.token-chip--dragging .token-chip__initial {
+  box-shadow:
+    0 0 0 2px var(--pal-accent-bright, #c89060),
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 6px 16px rgba(0, 0, 0, 0.5);
+}
+
+/* Quiet failed-move toast (Story 34) — surfaces for 3s next to the token
+   when the server rejects an optimistic move. */
+.token-drag-toast {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(192, 96, 96, 0.4);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  color: #e08080;
+  pointer-events: none;
+  z-index: 60;
+  animation: token-drag-toast-fade 3000ms ease-in-out forwards;
+}
+
+@keyframes token-drag-toast-fade {
+  0%   { opacity: 0; }
+  8%   { opacity: 1; }
+  82%  { opacity: 1; }
+  100% { opacity: 0; }
 }
 
 /* ── Hover-expand animations ─────────────────────────────────────────── */
@@ -1062,5 +1134,13 @@
    * suppressed entirely; only the spin is removed. */
   .npc-portrait-uploading-ring {
     animation: none;
+  }
+
+  /* Own-token drag (Story 34) — scale/shadow appear instantly (already
+   * covered by the broad .token-chip rule above); the failed-move toast
+   * is shown statically for its full duration instead of fading. */
+  .token-drag-toast {
+    animation: none;
+    opacity: 1;
   }
 }

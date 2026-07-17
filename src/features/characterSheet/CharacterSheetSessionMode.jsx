@@ -24,7 +24,7 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
 import { modOf, fmtMod, CONDITIONS } from "./constants";
-import { patchSession } from "../../api";
+import { patchSession, moveMapToken } from "../../api";
 import DiceRoller from "../../components/DiceRoller";
 import MapViewer from "../maps/MapViewer";
 import { TokenChip } from "../dmDashboard/battleMode/BattleModeController";
@@ -1344,6 +1344,16 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
   const partyVisible = partyStatus?.visible !== false;
   const tokenScale = activeMap?.tokenScale ?? 1;
   const labelsHidden = tokenScale * (viewerState?.scale ?? 1) < 0.6;
+  // Story 34 — suppresses MapViewer's own pan while the player is dragging
+  // their own token; a plain ref (not state) so it never triggers a re-render.
+  const panSuppressedRef = useRef(false);
+
+  // Not memoized — this is only invoked on pointerup, not on every render,
+  // so a fresh closure per render costs nothing and keeps it simple.
+  const handleMoveOwnToken = (tokenId, x, y) => {
+    if (!activeMap?.id) return Promise.reject(new Error("no active map"));
+    return moveMapToken(activeMap.id, tokenId, x, y, slug);
+  };
 
   // Determine which tokens this player can see per ADR-017
   const visibleTokens = isBattleMode ? tokens.filter((t) => {
@@ -1366,6 +1376,9 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
       isHeld={false}
       pal={pal}
       labelHidden={labelsHidden}
+      ownSlug={slug}
+      onMoveToken={handleMoveOwnToken}
+      panSuppressedRef={panSuppressedRef}
     />
   ));
 
@@ -1379,6 +1392,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
       onViewChange={setViewerState}
       tokenScale={tokenScale}
       tokenLayerChildren={isBattleMode && visibleTokens.length > 0 ? tokenChips : undefined}
+      panSuppressedRef={panSuppressedRef}
     />
   );
 });
