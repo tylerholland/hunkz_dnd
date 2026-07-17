@@ -548,6 +548,21 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
 
+  MoveMapTokenFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/moveMapToken.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps/{mapId}/tokens/{tokenId}/position
+            Method: patch
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+
   DeleteMapFunction:
     Type: AWS::Serverless::Function
     Properties:

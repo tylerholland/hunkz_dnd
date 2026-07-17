@@ -82,6 +82,11 @@ export const TokenChip = memo(function TokenChip({
   pal,
   labelHidden,
   calibTween,
+  // Story 34 — own-token drag (player view only; absent/undefined for DM
+  // chips, which keeps all existing DM interactions untouched).
+  ownSlug,
+  onMoveToken,
+  panSuppressedRef,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [flipCard, setFlipCard] = useState(false);
@@ -98,6 +103,27 @@ export const TokenChip = memo(function TokenChip({
   const longPressTimerRef = useRef(null);
   const longPressMenuTimerRef = useRef(null);
   const suppressClickRef = useRef(false);
+
+  // ── Story 34 drag state ──────────────────────────────────────────────
+  // isDragging + dragPos track the live pointer-follow position while the
+  // pointer is down. optimisticPos holds the dropped position after
+  // release, overriding the polled token.x/y until the next poll confirms
+  // it (or the write fails, in which case it reverts to dragOrigin).
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragPos, setDragPos] = useState(null);
+  const [optimisticPos, setOptimisticPos] = useState(null);
+  const [dragFailed, setDragFailed] = useState(false);
+  const dragOriginRef = useRef(null);
+  const dragPointerIdRef = useRef(null);
+  const optimisticTimeoutRef = useRef(null);
+
+  const canDrag = !isDm && !!ownSlug && token.type === "character" && token.sourceId === ownSlug;
+
+  useEffect(() => {
+    return () => {
+      if (optimisticTimeoutRef.current) clearTimeout(optimisticTimeoutRef.current);
+    };
+  }, []);
 
   const member = token.type === "character"
     ? (party || []).find((m) => m.slug === token.sourceId)
@@ -209,7 +235,81 @@ export const TokenChip = memo(function TokenChip({
     setLongPress((current) => (current === "charging" ? "idle" : current));
   }, []);
 
+  // ── Own-token drag (Pointer Events, player-only, Story 34) ──────────────
+  // Shares the Pointer Events approach with the DM long-press gesture above
+  // so mouse, touch, and stylus all follow one code path.
+  const startDrag = useCallback((e) => {
+    e.preventDefault();
+    try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    dragPointerIdRef.current = e.pointerId;
+    dragOriginRef.current = { x: token.x, y: token.y };
+    if (panSuppressedRef) panSuppressedRef.current = true;
+    if (optimisticTimeoutRef.current) {
+      clearTimeout(optimisticTimeoutRef.current);
+      optimisticTimeoutRef.current = null;
+    }
+    setDragFailed(false);
+    setOptimisticPos(null);
+    setDragPos({ x: token.x, y: token.y });
+    setIsDragging(true);
+  }, [token.x, token.y, panSuppressedRef]);
+
+  const moveDrag = useCallback((e) => {
+    if (dragPointerIdRef.current !== e.pointerId) return;
+    const layerEl = chipRef.current?.parentElement;
+    if (!layerEl) return;
+    const rect = layerEl.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    const fracX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const fracY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    setDragPos({ x: fracX, y: fracY });
+  }, []);
+
+  const releaseDrag = useCallback((e) => {
+    if (dragPointerIdRef.current !== e.pointerId) return;
+    dragPointerIdRef.current = null;
+    if (panSuppressedRef) panSuppressedRef.current = false;
+    const origin = dragOriginRef.current || { x: token.x, y: token.y };
+    const dropped = dragPos || origin;
+    setIsDragging(false);
+    setDragPos(null);
+
+    // A tap/click without meaningful movement — skip the write entirely.
+    const moved = Math.abs(dropped.x - origin.x) > 0.0015 || Math.abs(dropped.y - origin.y) > 0.0015;
+    if (!moved) return;
+
+    setOptimisticPos(dropped);
+    Promise.resolve(onMoveToken?.(token.id, dropped.x, dropped.y))
+      .then(() => {
+        optimisticTimeoutRef.current = setTimeout(() => setOptimisticPos(null), 6000);
+      })
+      .catch(() => {
+        // Revert with animation back to the last known-good server position —
+        // the .token-chip--poll-animated transition (already applied for
+        // player-side chips) carries the glide.
+        setOptimisticPos(origin);
+        setDragFailed(true);
+        optimisticTimeoutRef.current = setTimeout(() => {
+          setOptimisticPos(null);
+          setDragFailed(false);
+        }, 3000);
+      });
+  }, [dragPos, onMoveToken, token.id, token.x, token.y, panSuppressedRef]);
+
+  const cancelDrag = useCallback((e) => {
+    if (dragPointerIdRef.current !== e.pointerId) return;
+    dragPointerIdRef.current = null;
+    if (panSuppressedRef) panSuppressedRef.current = false;
+    setIsDragging(false);
+    setDragPos(null);
+  }, [panSuppressedRef]);
+
   const handlePointerDown = useCallback((e) => {
+    if (canDrag) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      startDrag(e);
+      return;
+    }
     if (!isDm || isHeld) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
@@ -218,7 +318,34 @@ export const TokenChip = memo(function TokenChip({
       suppressClickRef.current = true;
       setLongPress("menu");
     }, LONG_PRESS_MS);
-  }, [isDm, isHeld]);
+  }, [canDrag, startDrag, isDm, isHeld]);
+
+  const handlePointerMove = useCallback((e) => {
+    if (isDragging) moveDrag(e);
+  }, [isDragging, moveDrag]);
+
+  const handlePointerUp = useCallback((e) => {
+    if (isDragging) {
+      releaseDrag(e);
+      return;
+    }
+    clearLongPressCharge();
+  }, [isDragging, releaseDrag, clearLongPressCharge]);
+
+  const handlePointerCancel = useCallback((e) => {
+    if (isDragging) {
+      cancelDrag(e);
+      return;
+    }
+    clearLongPressCharge();
+  }, [isDragging, cancelDrag, clearLongPressCharge]);
+
+  const handlePointerLeave = useCallback(() => {
+    // Pointer capture keeps the drag active regardless of the pointer
+    // visually leaving the chip's box, so do nothing here while dragging.
+    if (isDragging) return;
+    clearLongPressCharge();
+  }, [isDragging, clearLongPressCharge]);
 
   // Dismiss the menu on outside pointerdown, Escape, or after 4s idle.
   useEffect(() => {
@@ -260,8 +387,22 @@ export const TokenChip = memo(function TokenChip({
     setLongPress("idle");
   }, []);
 
-  const left = token.x * imageW;
-  const top = token.y * imageH;
+  // Rendered position: live drag position while dragging, else the
+  // optimistic post-drop position pending poll confirmation, else the
+  // server/poll-driven token.x/y (Story 34 §"Reconciliation"). Once a fresh
+  // poll delivers a token.x/y matching the optimistic value, this naturally
+  // falls back to trusting props — no extra effect/setState needed to
+  // "release" the override; the failsafe timeout in releaseDrag/catch
+  // clears the state itself for the failure and long-idle cases.
+  const OPTIMISTIC_EPS = 0.0005;
+  const optimisticConfirmed = !!optimisticPos
+    && Math.abs(token.x - optimisticPos.x) < OPTIMISTIC_EPS
+    && Math.abs(token.y - optimisticPos.y) < OPTIMISTIC_EPS;
+  const effectiveOptimisticPos = optimisticConfirmed ? null : optimisticPos;
+  const renderX = dragPos ? dragPos.x : (effectiveOptimisticPos ? effectiveOptimisticPos.x : token.x);
+  const renderY = dragPos ? dragPos.y : (effectiveOptimisticPos ? effectiveOptimisticPos.y : token.y);
+  const left = renderX * imageW;
+  const top = renderY * imageH;
 
   const chipClasses = [
     "token-chip",
@@ -270,12 +411,15 @@ export const TokenChip = memo(function TokenChip({
     isHeld ? "token-chip--ghost" : "",
     // Player-only, and only after the token's first paint — the very first
     // render must NOT carry this class or the token would appear to slide
-    // in from (0,0) on mount.
-    !isDm && hasMounted ? "token-chip--poll-animated" : "",
+    // in from (0,0) on mount. Suppressed during an active drag so the token
+    // tracks the pointer instantly instead of easing behind it.
+    !isDm && hasMounted && !isDragging ? "token-chip--poll-animated" : "",
     !isDm && !hasMounted ? "token-chip--appearing" : "",
     labelHidden ? "token-chip--label-hidden" : "",
     calibTween ? "token-chip--calib-tween" : "",
     removing ? "token-chip--removing" : "",
+    canDrag ? "token-chip--own-draggable" : "",
+    isDragging ? "token-chip--dragging" : "",
   ].filter(Boolean).join(" ");
 
   return (
@@ -293,15 +437,17 @@ export const TokenChip = memo(function TokenChip({
         "--pal-text-muted": pal?.textMuted,
         "--pal-gem": pal?.gem,
         "--pal-accent": pal?.accent,
+        "--pal-accent-bright": pal?.accentBright,
         "--pal-surface-solid": pal?.surfaceSolid || pal?.surface,
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
       onPointerDown={handlePointerDown}
-      onPointerUp={clearLongPressCharge}
-      onPointerCancel={clearLongPressCharge}
-      onPointerLeave={clearLongPressCharge}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      onPointerCancel={handlePointerCancel}
+      onPointerLeave={handlePointerLeave}
     >
       {/* Portrait or initial — NPC portraits (Story 29b) use the same
           element/classes as PC portraits; the ring stays neutral grey via
@@ -394,6 +540,11 @@ export const TokenChip = memo(function TokenChip({
             Cancel
           </button>
         </div>
+      )}
+
+      {/* Failed-move toast (Story 34) — quiet inline note, 3s */}
+      {dragFailed && (
+        <div className="token-drag-toast">Couldn&apos;t move token</div>
       )}
     </div>
   );

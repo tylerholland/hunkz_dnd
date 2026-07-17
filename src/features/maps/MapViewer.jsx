@@ -44,6 +44,9 @@ export default function MapViewer({
   interactionMode,
   tokenLayerChildren,
   containerRefOut,
+  // Story 34 — a ref whose .current is set true by the token layer while a
+  // player is dragging their own token, so pan doesn't fight the drag.
+  panSuppressedRef,
 }) {
   const containerRef = useRef(null);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
@@ -135,10 +138,11 @@ export default function MapViewer({
   // Mouse events
   const handleMouseDown = useCallback((e) => {
     if (e.button !== 0) return;
+    if (panSuppressedRef?.current) return;
     dismissHint();
     dragRef.current = { startX: e.clientX, startY: e.clientY, tx: stateRef.current.translate.x, ty: stateRef.current.translate.y };
     e.preventDefault();
-  }, [dismissHint]);
+  }, [dismissHint, panSuppressedRef]);
 
   const handleMouseMove = useCallback((e) => {
     if (!dragRef.current) return;
@@ -176,6 +180,7 @@ export default function MapViewer({
 
   // Touch events
   const handleTouchStart = useCallback((e) => {
+    if (panSuppressedRef?.current) return;
     dismissHint();
     if (e.touches.length === 1) {
       dragRef.current = {
@@ -195,7 +200,7 @@ export default function MapViewer({
         midY: (e.touches[0].clientY + e.touches[1].clientY) / 2,
       };
     }
-  }, [dismissHint]);
+  }, [dismissHint, panSuppressedRef]);
 
   const handleTouchMove = useCallback((e) => {
     e.preventDefault();
