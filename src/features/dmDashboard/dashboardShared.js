@@ -160,6 +160,64 @@ export function hpBarColor(pct) {
 }
 
 
+export function getDeathSaveCounts(char) {
+  const source = char?.deathSaves || {};
+  const successSource = source.successes ?? source.success ?? source.succeeded ?? 0;
+  const failureSource = source.failures ?? source.failure ?? source.failed ?? 0;
+  return {
+    successes: Math.max(0, Math.min(3, Number(successSource) || 0)),
+    failures: Math.max(0, Math.min(3, Number(failureSource) || 0)),
+  };
+}
+
+export function getSpellSlotGroups(spellSlots = []) {
+  return (spellSlots || [])
+    .filter((slot) => (slot?.max ?? 0) > 0)
+    .map((slot) => ({
+      key: slot.isPactMagic ? `pact-${slot.level}` : `level-${slot.level}`,
+      label: slot.level,
+      isPactMagic: !!slot.isPactMagic,
+      max: slot.max,
+      used: Math.max(0, Math.min(slot.max, slot.used || 0)),
+    }));
+}
+
+export function toTitleCase(value) {
+  if (!value) return "";
+  return String(value)
+    .split(/[\s-]+/)
+    .filter(Boolean)
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1).toLowerCase())
+    .join(" ");
+}
+
+export function getHpTone(cardPal, hpPct) {
+  if (hpPct < 0.25) {
+    return {
+      fill: "#c06060",
+      solid: "#c06060",
+      text: "#d98b8b",
+      border: "rgba(192,96,96,0.42)",
+    };
+  }
+
+  if (hpPct < 0.5) {
+    return {
+      fill: "#c8a040",
+      solid: "#c8a040",
+      text: "#dcc27a",
+      border: "rgba(200,160,64,0.38)",
+    };
+  }
+
+  return {
+    fill: cardPal.gem,
+    solid: cardPal.accent,
+    text: cardPal.gem,
+    border: cardPal.uiBorder,
+  };
+}
+
 export function initiativesEqual(a, b) {
   if (!a || !b) return false;
   if ((a.activeTurnIndex ?? 0) !== (b.activeTurnIndex ?? 0)) return false;
