@@ -1,6 +1,6 @@
 # Feature Story: 35b — Consolidate the Remaining Pollers
 
-**Status**: Approved — Ready to Build
+**Status**: Implemented
 **Source**: Story 35 implementation follow-up (AWS quota pressure, 2026-07-17)
 
 ---

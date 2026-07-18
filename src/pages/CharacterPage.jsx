@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import CharacterSheet, { PALETTES } from "../components/CharacterSheet";
-import { getCharacter, updateCharacter, deleteCharacter, getMapLibrary } from "../api";
+import { updateCharacter, deleteCharacter, getSessionState } from "../api";
 import { useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
 import "./pages.css";
 
@@ -22,7 +22,13 @@ export default function CharacterPage() {
   const spinnerBg      = pal ? `${pal.accent}22` : "rgba(255,255,255,0.08)";
   const spinnerPageBg  = pal ? pal.bg            : "#0d0f14";
 
-  const fetchCharacter = useCallback(async ({ background = false, force = false } = {}) => {
+  // Story 35b — one consolidated request per poll tick instead of two
+  // (character + map library). The cached credential (DM password takes
+  // precedence over the per-character owner password, mirroring the
+  // unlock precedence in CharacterSheet.jsx) is read fresh on every tick
+  // so the owner/DM variant (with playerNotes) kicks in as soon as the
+  // sheet is unlocked mid-session.
+  const fetchSessionState = useCallback(async ({ background = false, force = false } = {}) => {
     if (!slug) return;
     if (background && activeRequestCountRef.current > 0 && !force) return;
 
@@ -34,13 +40,18 @@ export default function CharacterPage() {
     }
 
     try {
-      const d = await getCharacter(slug);
-      if (!Array.isArray(d?.collections)) {
+      const dmPwd = sessionStorage.getItem("dnd_dm_password");
+      const charPwd = sessionStorage.getItem(`dnd_char_${slug}`);
+      const password = dmPwd || charPwd || undefined;
+
+      const d = await getSessionState({ slug, dmPassword: password });
+      if (!Array.isArray(d?.character?.collections)) {
         throw new Error("Invalid character payload");
       }
       if (requestId !== requestSeqRef.current) return;
-      setData(d);
-      if (d?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.palette);
+      setData(d.character);
+      if (d.character?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.character.palette);
+      setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
       setError(null);
     } catch {
       if (requestId !== requestSeqRef.current) return;
@@ -53,29 +64,15 @@ export default function CharacterPage() {
     }
   }, [slug]);
 
-  const queueSessionSync = useQueuedRefresh(fetchCharacter);
+  const queueSessionSync = useQueuedRefresh(fetchSessionState);
 
   useEffect(() => {
-    fetchCharacter();
-  }, [fetchCharacter]);
+    fetchSessionState();
+  }, [fetchSessionState]);
 
   useAdaptivePolling({
     enabled: !!slug,
-    poll: fetchCharacter,
-  });
-
-  const fetchMapLibrary = useCallback(async ({ background: _ = false } = {}) => {
-    try {
-      const data = await getMapLibrary();
-      setMapLibrary(data || { activeMapId: null, activeMapView: null, maps: [] });
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => { fetchMapLibrary(); }, [fetchMapLibrary]);
-
-  useAdaptivePolling({
-    enabled: !!slug,
-    poll: fetchMapLibrary,
+    poll: fetchSessionState,
   });
 
   const activeMap = mapLibrary.maps?.find((m) => m.id === mapLibrary.activeMapId) || null;

@@ -1,6 +1,6 @@
 import { Link, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
-import { getMapLibrary } from "../api";
+import { getSessionState } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import { useAdaptivePolling } from "../lib/liveSync";
 import MapViewer from "../features/maps/MapViewer";
@@ -12,22 +12,24 @@ export default function MapViewerPage() {
   const pal = PALETTES[themeKey] || PALETTES.ocean;
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
 
-  const fetchMapLibrary = useCallback(async () => {
+  // Story 35b — poll the consolidated session-state endpoint (public
+  // variant, no password) instead of the standalone map-library endpoint.
+  const fetchSessionState = useCallback(async () => {
     try {
-      const data = await getMapLibrary();
-      setMapLibrary(data || { activeMapId: null, activeMapView: null, maps: [] });
+      const data = await getSessionState();
+      setMapLibrary(data?.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
     } catch {
       // Keep stale data instead of flashing an error.
     }
   }, []);
 
   useEffect(() => {
-    fetchMapLibrary();
-  }, [fetchMapLibrary]);
+    fetchSessionState();
+  }, [fetchSessionState]);
 
   useAdaptivePolling({
     enabled: true,
-    poll: fetchMapLibrary,
+    poll: fetchSessionState,
   });
 
   const activeMap = mapLibrary.maps?.find((m) => m.id === mapLibrary.activeMapId) || null;

@@ -340,7 +340,7 @@ Session mode (two-column layout):
 **New unauthenticated API endpoints**:
 - `GET /party/status` (`getPartyStatus.js`) — returns `{ visible: boolean, members[] }` with player-safe projection (slug, name, palette, portraitUrl, hpCurrent, hpMax, tempHP, conditions, concentration, inspiration, deathSaves); returns `{ visible: false, members: [] }` when `partyVisibilityEnabled` is false on the roster
 - `GET /initiative/public` (`getInitiativePublic.js`) — returns `{ round, activeTurnIndex, entries[] }` with hidden entries stripped, initiative roll values stripped, and NPC health tiers derived from npc-combat data
-- `GET /session-state` (`getSessionState.js`, Story 35) — the consolidated polling endpoint both `DmDashboardPage.jsx` and `CharacterModePage.jsx` now poll instead of the endpoints above. DM variant (valid DM password): `{ party, initiative, npcCombat, rollHistory, mapLibrary, counterWheels, serverTime }`. Public variant (no/invalid DM password): `{ partyStatus, initiativePublic, mapLibrary, rollHistory, serverTime }`, plus `character` when `?slug=` is supplied (same stripping rules as unauthenticated `GET /characters/{slug}`). The endpoints above remain live and unchanged for one-shot/non-polling callers (e.g. `MapLibraryPage`) — deprecated for polling use, not removed.
+- `GET /session-state` (`getSessionState.js`, Story 35, extended Story 35b) — the consolidated polling endpoint. `DmDashboardPage.jsx`, `CharacterModePage.jsx`, `CharacterPage.jsx` (the classic full sheet at `/characters/:slug`), and `MapViewerPage.jsx` (`/map-view`) all poll this instead of the endpoints above — every polled page in the app now issues exactly one HTTP request per poll tick. DM variant (valid DM password): `{ party, initiative, npcCombat, rollHistory, mapLibrary, counterWheels, serverTime }`. Public variant (no/invalid DM password): `{ partyStatus, initiativePublic, mapLibrary, rollHistory, serverTime }`, plus `character` when `?slug=` is supplied (same stripping rules as unauthenticated `GET /characters/{slug}`, including `playerNotes` visibility keyed off the supplied `x-character-password`). The endpoints above remain live and unchanged for true one-shot/mount-fetch callers (e.g. `MapLibraryPage`, NPC library, counter wheels) — deprecated for polling use, not removed.
 
 **DM party visibility control**:
 - `partyVisibilityEnabled` boolean field on the `party-roster` sentinel item (default `true`)
@@ -518,7 +518,7 @@ DM-only page. Auth gate: checks `sessionStorage.dnd_dm_password`; if missing, sh
 - Fourth tab in the tab strip (`combatTab === "map"`), always rendered
 - When a map is active: `MapViewer` at 500px height (or `calc(100vh - 160px)` on mobile ≤560px)
 - When no map is active: quiet "The DM hasn't loaded a map yet." message
-- Active map data comes from `useAdaptivePolling(getMapLibrary)` in `CharacterPage.jsx`, passed as `activeMap` prop through `CharacterSheet` → `CharacterSheetViewMode`
+- Active map data comes from `CharacterPage.jsx`'s single consolidated `getSessionState({ slug })` poll (Story 35b), passed as `activeMap` prop through `CharacterSheet` → `CharacterSheetViewMode`
 - Note: this is the classic full-sheet surface (`/characters/:slug`) and currently renders a plain `MapViewer` with no battle-mode token layer at all — the token overlay (below) only exists on the session-mode Map sub-tab (`/characters/:slug/session`)
 
 ### Player token drag (session mode Map sub-tab, Story 34)
