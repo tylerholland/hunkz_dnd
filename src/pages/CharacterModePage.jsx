@@ -63,6 +63,13 @@ export default function CharacterModePage() {
     }
   }, [location.pathname, mode, slug]);
 
+  // Interim until Story 42's in-place profile view: profile mode redirects to
+  // the classic sheet. The old placeholder ("Open Full Character Sheet" stub)
+  // read as a blank page.
+  useEffect(() => {
+    if (mode === "profile") navigate(`/characters/${slug}`, { replace: true });
+  }, [mode, slug, navigate]);
+
   // Story 35 — one consolidated request per poll tick instead of 4
   // (character, map library, party status, public initiative).
   const fetchSessionState = useCallback(async ({ background = false, force = false } = {}) => {
