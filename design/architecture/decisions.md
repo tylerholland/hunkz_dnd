@@ -168,6 +168,14 @@ Both pages use a self-scheduling `setTimeout` loop rather than a fixed `setInter
 
 **Revisit when**: Player count exceeds ~20 concurrent sessions, polling traffic becomes material, or the product expands to a public SaaS model where sub-second push latency is a product requirement. At that point, AppSync subscriptions or an API Gateway WebSocket API can replace polling, but only with explicit connection-subscription design and a retained server-authoritative reconciliation path.
 
+**Amendment (Story 35, 2026-07-17) — consolidated polling endpoint + 30s hidden-tab interval**:
+
+Polling traffic became material sooner than "Revisit when" anticipated — idle browser tabs polling 4–5 separate endpoints at 1s pushed the AWS account to 85% of the free-tier request quota well before 20 concurrent sessions. Two changes were made without abandoning the polling model:
+
+- **Consolidated endpoint**: `GET /session-state` replaces the DM dashboard's 5-endpoint poll (`GET /dm/party`, `/initiative`, `/npc-combat`, `/roll-history`, `/maps`) and the player session mode's 4-endpoint poll (`GET /characters/{slug}`, `/party/status`, `/initiative/public`, `/maps`) with a single request per tick. The handler (`backend/src/handlers/getSessionState.js`) branches on DM-vs-public auth from the same `x-character-password` header used elsewhere, does one `BatchGetItem` for the sentinel records and one `BatchGetItem` for party-member characters (keyed off the party roster) — two DynamoDB round trips max, versus five separate Lambda invocations before. `DmDashboardPage.jsx` and `CharacterModePage.jsx` were updated to use a single `useAdaptivePolling` instance calling `getSessionState` and fan the response out to their existing state setters; `useQueuedRefresh`/optimistic-merge semantics are unchanged. The old per-resource endpoints are **not removed** — non-polling one-shot callers (e.g. `MapLibraryPage`) keep using them, and they remain deprecated-for-polling rather than deleted.
+- **Hidden-tab interval raised from 5s to 30s**: `BACKGROUND_POLL_MS` in `src/lib/liveSync.js` moved from `5000` to `30000`. A backgrounded/unfocused tab now polls 6x less often; the 1000ms focused/visible cadence is unchanged.
+- **`CharacterPage.jsx`** (the classic, non-session-mode sheet at `/characters/:slug`) and **`MapViewerPage.jsx`** still poll their own separate per-resource endpoints independently — they were out of scope for Story 35 (not named in the architect notes) but contribute to the same request volume and are a natural next target if quota pressure returns.
+
 ---
 
 ## ADR-012 · Public map library endpoint

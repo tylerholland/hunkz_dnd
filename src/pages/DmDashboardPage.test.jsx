@@ -1,6 +1,7 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { BACKGROUND_POLL_MS } from "../lib/liveSync";
 
 const apiMocks = vi.hoisted(() => ({
   getDmParty: vi.fn(),
@@ -8,17 +9,14 @@ const apiMocks = vi.hoisted(() => ({
   getPartyRoster: vi.fn(),
   putPartyRoster: vi.fn(),
   patchSession: vi.fn(),
-  getInitiative: vi.fn(),
   putInitiative: vi.fn(),
-  getNpcCombat: vi.fn(),
   putNpcCombat: vi.fn(),
-  getRollHistory: vi.fn(),
-  getMapLibrary: vi.fn(),
   getNpcLibrary: vi.fn(),
   putNpcLibrary: vi.fn(),
   getCounterWheels: vi.fn(),
   putCounterWheels: vi.fn(),
   presignNpcPortrait: vi.fn(),
+  getSessionState: vi.fn(),
 }));
 
 vi.mock("../api", () => ({
@@ -27,17 +25,14 @@ vi.mock("../api", () => ({
   getPartyRoster: apiMocks.getPartyRoster,
   putPartyRoster: apiMocks.putPartyRoster,
   patchSession: apiMocks.patchSession,
-  getInitiative: apiMocks.getInitiative,
   putInitiative: apiMocks.putInitiative,
-  getNpcCombat: apiMocks.getNpcCombat,
   putNpcCombat: apiMocks.putNpcCombat,
-  getRollHistory: apiMocks.getRollHistory,
-  getMapLibrary: apiMocks.getMapLibrary,
   getNpcLibrary: apiMocks.getNpcLibrary,
   putNpcLibrary: apiMocks.putNpcLibrary,
   getCounterWheels: apiMocks.getCounterWheels,
   putCounterWheels: apiMocks.putCounterWheels,
   presignNpcPortrait: apiMocks.presignNpcPortrait,
+  getSessionState: apiMocks.getSessionState,
 }));
 
 vi.mock("../components/DmDiceRoller", () => ({
@@ -83,12 +78,17 @@ describe("DmDashboardPage text scaling", () => {
     apiMocks.getDmParty.mockResolvedValue([]);
     apiMocks.listCharacters.mockResolvedValue([]);
     apiMocks.getPartyRoster.mockResolvedValue({ exists: false, members: [] });
-    apiMocks.getInitiative.mockResolvedValue({ entries: [], activeTurnIndex: 0 });
-    apiMocks.getNpcCombat.mockResolvedValue({ npcs: [] });
-    apiMocks.getRollHistory.mockResolvedValue({ rolls: [] });
-    apiMocks.getMapLibrary.mockResolvedValue({ activeMapId: null, maps: [] });
     apiMocks.getNpcLibrary.mockResolvedValue({ templates: [] });
     apiMocks.getCounterWheels.mockResolvedValue({ wheels: [] });
+    apiMocks.getSessionState.mockResolvedValue({
+      party: [],
+      initiative: { entries: [], activeTurnIndex: 0 },
+      npcCombat: { npcs: [] },
+      rollHistory: { rolls: [] },
+      mapLibrary: { activeMapId: null, maps: [] },
+      counterWheels: { wheels: [] },
+      serverTime: "2026-07-17T00:00:00.000Z",
+    });
   });
 
   it("adjusts and persists dashboard text scale from the action menu", async () => {
@@ -116,5 +116,60 @@ describe("DmDashboardPage text scaling", () => {
     });
 
     expect(sessionStorage.getItem("dnd_dm_text_scale")).toBe("1.1");
+  });
+});
+
+describe("DmDashboardPage polling (Story 35 consolidation)", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.useFakeTimers();
+    sessionStorage.clear();
+    apiMocks.getDmParty.mockResolvedValue([]);
+    apiMocks.listCharacters.mockResolvedValue([]);
+    apiMocks.getPartyRoster.mockResolvedValue({ exists: false, members: [] });
+    apiMocks.getNpcLibrary.mockResolvedValue({ templates: [] });
+    apiMocks.getCounterWheels.mockResolvedValue({ wheels: [] });
+    apiMocks.getSessionState.mockResolvedValue({
+      party: [],
+      initiative: { entries: [], activeTurnIndex: 0 },
+      npcCombat: { npcs: [] },
+      rollHistory: { rolls: [] },
+      mapLibrary: { activeMapId: null, maps: [] },
+      counterWheels: { wheels: [] },
+      serverTime: "2026-07-17T00:00:00.000Z",
+    });
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("issues exactly one getSessionState request per poll tick", async () => {
+    sessionStorage.setItem("dnd_dm_password", "swordfish");
+
+    render(
+      <MemoryRouter>
+        <DmDashboardPage />
+      </MemoryRouter>
+    );
+
+    // Flush the mount-time auth check + the initial consolidated fetch.
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    const callsAfterMount = apiMocks.getSessionState.mock.calls.length;
+    expect(callsAfterMount).toBeGreaterThan(0);
+    expect(apiMocks.getSessionState).toHaveBeenLastCalledWith({ dmPassword: "swordfish" });
+
+    // jsdom reports document.hasFocus() === false, so polling runs at the
+    // backgrounded cadence — advance by exactly one tick.
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(BACKGROUND_POLL_MS);
+    });
+
+    expect(apiMocks.getSessionState.mock.calls.length).toBe(callsAfterMount + 1);
   });
 });

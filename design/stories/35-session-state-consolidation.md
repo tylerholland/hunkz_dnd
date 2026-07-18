@@ -1,6 +1,6 @@
 # Feature Story: Consolidated Session-State Endpoint
 
-**Status**: Approved — Ready to Build (build after Stories 34 & 38 merge to avoid churn)
+**Status**: Implemented
 **Source**: Architecture review 2026-07-16
 
 ---

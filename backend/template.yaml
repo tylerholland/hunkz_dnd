@@ -627,6 +627,22 @@ Resources:
         - S3WritePolicy:
             BucketName: !Ref PortraitsBucket
 
+  # Story 35 — consolidated polling endpoint (DM + public variants)
+  GetSessionStateFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/getSessionState.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /session-state
+            Method: get
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBReadPolicy:
+            TableName: !Ref CharactersTable
+
 Outputs:
   ApiUrl:
     Description: HTTP API endpoint URL
