@@ -5,7 +5,8 @@ const { ok, notFound, forbidden } = require("../lib/response");
 const { isReservedCharacterSlug } = require("../lib/specialItems");
 const { notifySessionChanged } = require("../lib/broadcast");
 
-// Session fields are intentionally writable without auth — see ADR-005 and story 05 architect notes
+// Session fields require owner or DM auth. Empty-string passwords are valid
+// for characters explicitly configured with no password gate.
 
 const SESSION_FIELDS = [
   "hpCurrent",
@@ -27,17 +28,19 @@ const SESSION_FIELDS = [
 exports.handler = async (event) => {
   const { slug } = event.pathParameters;
   if (isReservedCharacterSlug(slug)) return notFound();
-  const password = event.headers?.["x-character-password"] || "";
-  const sessionToken = event.headers?.["x-session-token"];
+  const headers = event.headers || {};
+  const password = headers["x-character-password"];
+  const sessionToken = headers["x-session-token"];
   const body = JSON.parse(event.body || "{}");
 
   const result = await db.send(new GetCommand({ TableName: TABLE, Key: { slug } }));
   if (!result.Item) return notFound();
 
-  // Auth: if password header is present, verify it (owner or DM both accepted).
-  // If absent, allow the write — session state is intentionally writable without auth.
-  // x-session-token accepted as valid auth (full token validation in future story).
-  if (password && !sessionToken) {
+  // x-session-token remains a future escape hatch for an authenticated
+  // session-token flow. Otherwise require owner or DM credentials, including
+  // the explicit empty string for intentionally passwordless characters.
+  if (!sessionToken) {
+    if (password === undefined || password === null) return forbidden();
     const auth = await verifyPassword(password, result.Item);
     if (!auth.valid) return forbidden();
   }

@@ -317,6 +317,7 @@ export default function CharacterSheetSessionMode({
   onSessionSync,
   activeMap,
   // activeMapView reserved for map scroll/zoom restoration
+  sessionPassword,
   partyStatus,
   initiativeData,
   wsConnected,
@@ -346,13 +347,13 @@ export default function CharacterSheetSessionMode({
 
   const flushHp = useCallback(async (targetHp) => {
     try {
-      await patchSession(slug, { hpCurrent: targetHp }, null);
+      await patchSession(slug, { hpCurrent: targetHp }, sessionPassword);
       hpServerRef.current = targetHp;
       onSessionSync?.();
     } catch {
       setLocalHp(hpServerRef.current);
     }
-  }, [slug, onSessionSync]);
+  }, [slug, onSessionSync, sessionPassword]);
 
   const changeHp = useCallback((delta) => {
     setLocalHp((prev) => {
@@ -378,13 +379,13 @@ export default function CharacterSheetSessionMode({
     setTimeout(() => setHpFlash(null), 400);
     setHpModal(null);
     try {
-      await patchSession(slug, { hpCurrent: next }, null);
+      await patchSession(slug, { hpCurrent: next }, sessionPassword);
       hpServerRef.current = next;
       onSessionSync?.();
     } catch {
       setLocalHp(hpServerRef.current);
     }
-  }, [char, localHp, slug, onSessionSync]);
+  }, [char, localHp, slug, onSessionSync, sessionPassword]);
 
   // ── Condition manager ─────────────────────────────────────────────────────
   const [condPickerOpen, setCondPickerOpen] = useState(false);
@@ -393,12 +394,12 @@ export default function CharacterSheetSessionMode({
     setChar((prev) => ({ ...prev, conditions }));
     setCondPickerOpen(false);
     try {
-      await patchSession(slug, { conditions }, null);
+      await patchSession(slug, { conditions }, sessionPassword);
       onSessionSync?.();
     } catch {
       setChar((prev) => ({ ...prev, conditions: initialData?.conditions || [] }));
     }
-  }, [slug, onSessionSync, initialData?.conditions]);
+  }, [slug, onSessionSync, initialData?.conditions, sessionPassword]);
 
   // ── Concentration ─────────────────────────────────────────────────────────
   const [concInput, setConcInput] = useState("");
@@ -407,12 +408,12 @@ export default function CharacterSheetSessionMode({
   const dropConcentration = useCallback(async () => {
     setChar((prev) => ({ ...prev, concentration: { active: false, spell: "" } }));
     try {
-      await patchSession(slug, { concentration: { active: false, spell: "" } }, null);
+      await patchSession(slug, { concentration: { active: false, spell: "" } }, sessionPassword);
       onSessionSync?.();
     } catch {
       setChar((prev) => ({ ...prev, concentration: initialData?.concentration }));
     }
-  }, [slug, onSessionSync, initialData?.concentration]);
+  }, [slug, onSessionSync, initialData?.concentration, sessionPassword]);
 
   const setConcentration = useCallback(async (spell) => {
     const conc = { active: true, spell };
@@ -420,24 +421,24 @@ export default function CharacterSheetSessionMode({
     setConcInput("");
     setConcInputOpen(false);
     try {
-      await patchSession(slug, { concentration: conc }, null);
+      await patchSession(slug, { concentration: conc }, sessionPassword);
       onSessionSync?.();
     } catch {
       setChar((prev) => ({ ...prev, concentration: initialData?.concentration }));
     }
-  }, [slug, onSessionSync, initialData?.concentration]);
+  }, [slug, onSessionSync, initialData?.concentration, sessionPassword]);
 
   // ── Inspiration ───────────────────────────────────────────────────────────
   const toggleInspiration = useCallback(async () => {
     const next = !char.inspiration;
     setChar((prev) => ({ ...prev, inspiration: next }));
     try {
-      await patchSession(slug, { inspiration: next }, null);
+      await patchSession(slug, { inspiration: next }, sessionPassword);
       onSessionSync?.();
     } catch {
       setChar((prev) => ({ ...prev, inspiration: !next }));
     }
-  }, [char, slug, onSessionSync]);
+  }, [char, slug, onSessionSync, sessionPassword]);
 
   // ── Session sub-tab state ─────────────────────────────────────────────────
   const storedSubtab = sessionStorage.getItem(`dnd_session_subtab_${slug}`) || "combat";
@@ -1207,7 +1208,7 @@ export default function CharacterSheetSessionMode({
 
           {/* ── NOTES sub-tab ── */}
           <div className={`cs-sm-tab-panel${sessionSubTab === "notes" ? " active" : ""}`}>
-            <SessionNotesSection char={char} slug={slug} pal={pal} onSessionSync={onSessionSync} />
+            <SessionNotesSection char={char} slug={slug} pal={pal} onSessionSync={onSessionSync} sessionPassword={sessionPassword} />
           </div>
 
           {/* Dice roller */}
@@ -1272,8 +1273,8 @@ function ModSegment({ label, glyph, mode, value, setMode }) {
   );
 }
 
-// Session notes section (read/write without auth via patchSession)
-function SessionNotesSection({ char, slug, pal, onSessionSync }) {
+// Session notes section (owner/DM auth enforced by CharacterModePage + API)
+function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }) {
   const [newNote, setNewNote] = useState("");
   const [saving, setSaving] = useState(false);
   const notes = char?.playerNotes || [];
@@ -1286,7 +1287,7 @@ function SessionNotesSection({ char, slug, pal, onSessionSync }) {
       { id: "n" + Date.now(), text: newNote.trim(), sharedWithDm: false, createdAt: new Date().toISOString() },
     ];
     try {
-      await patchSession(slug, { playerNotes: next }, null);
+      await patchSession(slug, { playerNotes: next }, sessionPassword);
       onSessionSync?.();
       setNewNote("");
     } catch { /* ignore */ }

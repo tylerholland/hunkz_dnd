@@ -103,7 +103,7 @@ export const patchSession = (slug, fields, password) =>
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",
-      ...(password ? { "x-character-password": password } : {}),
+      ...(password !== undefined && password !== null ? { "x-character-password": password } : {}),
     },
     body: JSON.stringify(fields),
   });
@@ -275,6 +275,6 @@ export const getSessionState = ({ dmPassword, slug } = {}) => {
   if (slug) params.set("slug", slug);
   const qs = params.toString();
   return request(`/session-state${qs ? `?${qs}` : ""}`, {
-    headers: dmPassword ? { "x-character-password": dmPassword } : {},
+    headers: dmPassword !== undefined && dmPassword !== null ? { "x-character-password": dmPassword } : {},
   });
 };

@@ -5,6 +5,7 @@ import {
   updateCharacter,
   deleteCharacter,
   getSessionState,
+  verifyPassword as apiVerify,
 } from "../api";
 import { useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
@@ -16,6 +17,26 @@ function deriveModeFromPath(pathname) {
   if (pathname.endsWith("/session")) return "session";
   if (pathname.endsWith("/profile")) return "profile";
   return null;
+}
+
+function readStoredCredential(slug) {
+  const dmPwd = sessionStorage.getItem("dnd_dm_password");
+  if (dmPwd !== null) {
+    return {
+      password: dmPwd,
+      onFail: () => sessionStorage.removeItem("dnd_dm_password"),
+    };
+  }
+
+  const charPwd = sessionStorage.getItem(`dnd_char_${slug}`);
+  if (charPwd !== null) {
+    return {
+      password: charPwd,
+      onFail: () => sessionStorage.removeItem(`dnd_char_${slug}`),
+    };
+  }
+
+  return { password: "", onFail: null };
 }
 
 export default function CharacterModePage() {
@@ -35,6 +56,11 @@ export default function CharacterModePage() {
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
   const [partyStatus, setPartyStatus] = useState({ visible: true, members: [] });
   const [initiativeData, setInitiativeData] = useState({ round: 1, activeTurnIndex: 0, entries: [] });
+  const [authState, setAuthState] = useState(() => (slug ? "checking" : "locked"));
+  const [sessionPassword, setSessionPassword] = useState(null);
+  const [unlockInput, setUnlockInput] = useState("");
+  const [unlockError, setUnlockError] = useState(null);
+  const [unlockSubmitting, setUnlockSubmitting] = useState(false);
 
   const requestSeqRef = useRef(0);
   const activeRequestCountRef = useRef(0);
@@ -71,10 +97,52 @@ export default function CharacterModePage() {
     if (mode === "profile") navigate(`/characters/${slug}`, { replace: true });
   }, [mode, slug, navigate]);
 
+  const applyVerifiedAccess = useCallback((password, role) => {
+    setSessionPassword(password);
+    setAuthState("authed");
+    setUnlockError(null);
+    if (role === "dm") sessionStorage.setItem("dnd_dm_password", password);
+    else sessionStorage.setItem(`dnd_char_${slug}`, password);
+  }, [slug]);
+
+  useEffect(() => {
+    if (!slug) {
+      setAuthState("locked");
+      return;
+    }
+
+    let cancelled = false;
+    setAuthState("checking");
+    setSessionPassword(null);
+    setUnlockError(null);
+    setUnlockInput("");
+
+    const { password, onFail } = readStoredCredential(slug);
+
+    (async () => {
+      try {
+        const result = await apiVerify(slug, password);
+        if (cancelled) return;
+        if (result.valid) {
+          applyVerifiedAccess(password, result.role);
+          return;
+        }
+      } catch {}
+
+      if (cancelled) return;
+      onFail?.();
+      setAuthState("locked");
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [applyVerifiedAccess, slug]);
+
   // Story 35 — one consolidated request per poll tick instead of 4
   // (character, map library, party status, public initiative).
   const fetchSessionState = useCallback(async ({ background = false, force = false } = {}) => {
-    if (!slug) return;
+    if (!slug || authState !== "authed") return;
     if (background && activeRequestCountRef.current > 0 && !force) return;
 
     const requestId = ++requestSeqRef.current;
@@ -85,7 +153,7 @@ export default function CharacterModePage() {
     }
 
     try {
-      const d = await getSessionState({ slug });
+      const d = await getSessionState({ slug, dmPassword: sessionPassword });
       if (!Array.isArray(d?.character?.collections)) {
         throw new Error("Invalid character payload");
       }
@@ -106,13 +174,14 @@ export default function CharacterModePage() {
         setLoading(false);
       }
     }
-  }, [slug]);
+  }, [authState, sessionPassword, slug]);
 
   const queueSessionSync = useQueuedRefresh(fetchSessionState);
 
   useEffect(() => {
+    if (authState !== "authed") return;
     fetchSessionState();
-  }, [fetchSessionState]);
+  }, [authState, fetchSessionState]);
 
   // Story 36 — WebSocket nudge channel. When connected, a "changed" push
   // triggers an immediate refetch and the adaptive poll interval relaxes to
@@ -121,7 +190,7 @@ export default function CharacterModePage() {
   const { connected: wsConnected } = useSessionSocket(handleSessionChanged);
 
   useAdaptivePolling({
-    enabled: !!slug,
+    enabled: !!slug && authState === "authed",
     poll: fetchSessionState,
     activeMs: wsConnected ? BACKGROUND_POLL_MS : ACTIVE_POLL_MS,
   });
@@ -158,6 +227,133 @@ export default function CharacterModePage() {
   const activeMapView = activeMap && mapLibrary.activeMapView?.mapId === activeMap.id
     ? mapLibrary.activeMapView
     : null;
+
+  const handleUnlockSubmit = async (e) => {
+    e.preventDefault();
+    setUnlockSubmitting(true);
+    setUnlockError(null);
+
+    try {
+      const result = await apiVerify(slug, unlockInput);
+      if (result.valid) {
+        applyVerifiedAccess(unlockInput, result.role);
+        setUnlockInput("");
+      } else {
+        setAuthState("locked");
+        setUnlockError("Incorrect password.");
+      }
+    } catch {
+      setAuthState("locked");
+      setUnlockError("Could not verify password. Please try again.");
+    } finally {
+      setUnlockSubmitting(false);
+    }
+  };
+
+  if (authState !== "authed") {
+    return (
+      <div className="page-centered" style={{ background: spinnerPageBg, padding: 24 }}>
+        {authState === "checking" ? (
+          <>
+            <div style={{
+              width: 36, height: 36, borderRadius: "50%",
+              border: `2px solid ${spinnerBg}`, borderTopColor: spinnerColor,
+              animation: "spin 0.7s linear infinite",
+            }} />
+            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
+          </>
+        ) : (
+          <form
+            onSubmit={handleUnlockSubmit}
+            style={{
+              width: "100%",
+              maxWidth: 360,
+              background: pal?.surfaceSolid || "#111e2c",
+              border: `1px solid ${pal?.border || "rgba(106,143,168,0.18)"}`,
+              borderRadius: 6,
+              padding: "28px 24px 24px",
+              color: pal?.text || "#c8d8e4",
+            }}
+          >
+            <div style={{
+              fontFamily: pal?.fontUI || "IM Fell English",
+              fontSize: 11,
+              letterSpacing: "0.25em",
+              textTransform: "uppercase",
+              color: pal?.textMuted || "#6a8fa8",
+              marginBottom: 10,
+            }}>
+              Character Session
+            </div>
+            <div style={{
+              fontFamily: pal?.fontDisplay || "Cinzel",
+              fontSize: 24,
+              marginBottom: 8,
+            }}>
+              Password Required
+            </div>
+            <p style={{
+              margin: "0 0 16px",
+              fontFamily: pal?.fontBody || "serif",
+              color: pal?.textBody || pal?.text || "#c8d8e4",
+              lineHeight: 1.6,
+            }}>
+              Enter this character&apos;s password or the DM password to open the session page.
+            </p>
+            <input
+              type="password"
+              autoFocus
+              value={unlockInput}
+              onChange={(e) => setUnlockInput(e.target.value)}
+              placeholder="Character or DM password"
+              style={{
+                width: "100%",
+                background: pal?.surface || "rgba(0,0,0,0.3)",
+                border: `1px solid ${pal?.border || "rgba(106,143,168,0.18)"}`,
+                borderRadius: 3,
+                color: pal?.text || "#c8d8e4",
+                fontFamily: pal?.fontBody || "serif",
+                fontSize: 16,
+                padding: "10px 12px",
+                outline: "none",
+              }}
+            />
+            {unlockError ? (
+              <div style={{
+                marginTop: 10,
+                color: "#d27f7f",
+                fontFamily: pal?.fontBody || "serif",
+                fontSize: 14,
+              }}>
+                {unlockError}
+              </div>
+            ) : null}
+            <button
+              type="submit"
+              disabled={unlockSubmitting}
+              style={{
+                width: "100%",
+                marginTop: 16,
+                background: "transparent",
+                border: `1px solid ${pal?.accent || "#d07a3a"}`,
+                borderRadius: 3,
+                color: pal?.accentBright || pal?.accent || "#d07a3a",
+                fontFamily: pal?.fontUI || "IM Fell English",
+                fontSize: 11,
+                letterSpacing: "0.18em",
+                textTransform: "uppercase",
+                padding: "10px 14px",
+                cursor: unlockSubmitting ? "default" : "pointer",
+                opacity: unlockSubmitting ? 0.65 : 1,
+              }}
+            >
+              {unlockSubmitting ? "Checking..." : "Unlock Session"}
+            </button>
+          </form>
+        )}
+      </div>
+    );
+  }
 
   if (loading) {
     return (
@@ -199,6 +395,7 @@ export default function CharacterModePage() {
       onSessionSync={queueSessionSync}
       activeMap={activeMap}
       activeMapView={activeMapView}
+      sessionPassword={sessionPassword}
       partyStatus={partyStatus}
       initiativeData={initiativeData}
       wsConnected={wsConnected}

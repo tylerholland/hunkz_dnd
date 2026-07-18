@@ -4,7 +4,8 @@
 // steady-state polling to exactly one HTTP request per tick.
 //
 // DM variant (valid DM password): { party, initiative, npcCombat, rollHistory,
-//   mapLibrary, counterWheels, serverTime, buildVersion }
+//   mapLibrary, counterWheels, serverTime, buildVersion } plus an optional
+//   `character` field when `?slug=` is supplied.
 // Public variant (no/invalid DM password): { partyStatus, initiativePublic,
 //   mapLibrary, rollHistory, serverTime, buildVersion } with an optional
 //   `character` field when `?slug=` is supplied (same stripping rules as
@@ -119,8 +120,7 @@ exports.handler = async (event) => {
     const party = orderedMembers
       .filter((slug) => rawItemsBySlug.has(slug))
       .map((slug) => projectDmPartyItem(rawItemsBySlug.get(slug)));
-
-    return ok({
+    const responseBody = {
       party,
       initiative,
       npcCombat,
@@ -129,7 +129,20 @@ exports.handler = async (event) => {
       counterWheels,
       serverTime,
       buildVersion: appMeta.buildVersion,
-    });
+    };
+
+    if (querySlug) {
+      const rawCharacterItem = rawItemsBySlug.get(querySlug);
+      if (rawCharacterItem) {
+        let character = stripPassword(rawCharacterItem);
+        character = await applyPlayerNotesVisibility(character, password, rawCharacterItem);
+        character = normalizeHpFields(character);
+        character.isActiveTurn = computeIsActiveTurn(initiative, querySlug);
+        responseBody.character = character;
+      }
+    }
+
+    return ok(responseBody);
   }
 
   // Public variant

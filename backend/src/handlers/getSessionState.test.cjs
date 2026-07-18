@@ -327,6 +327,33 @@ test("getSessionState public variant with ?slug returns full playerNotes for the
   assert.equal(body.character.playerNotes.length, 2);
 });
 
+test("getSessionState DM variant with ?slug includes the requested character payload", async () => {
+  const send = makeSend({});
+  const { handler } = loadHandlerWithMocks({
+    send,
+    verifyPasswordImpl: async (password, item) => (
+      password === "dm-secret"
+        ? { valid: true, role: "dm" }
+        : (item.passwordHash === "$2b$10$invalid" ? { valid: false } : { valid: false })
+    ),
+  });
+
+  const result = await handler({
+    headers: { "x-character-password": "dm-secret" },
+    queryStringParameters: { slug: "aragorn" },
+  });
+  const body = JSON.parse(result.body);
+
+  assert.equal(result.statusCode, 200);
+  assert.ok(body.character);
+  assert.equal(body.character.slug, "aragorn");
+  assert.equal(body.character.passwordHash, undefined);
+  assert.deepEqual(body.character.playerNotes, [
+    { id: "pn1", text: "Shared note", sharedWithDm: true, createdAt: "2026-01-01" },
+  ]);
+  assert.equal(body.character.isActiveTurn, true);
+});
+
 test("getSessionState public variant respects partyVisibilityEnabled = false", async () => {
   const send = makeSend({ "party-roster": { slug: "party-roster", members: ["aragorn"], partyVisibilityEnabled: false } });
   const { handler } = loadHandlerWithMocks({
