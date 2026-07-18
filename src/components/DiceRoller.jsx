@@ -232,7 +232,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
 
   const rollAbility = useCallback((statOrName) => {
     const stat = typeof statOrName === "string"
-      ? (stats || []).find(s => s.name === statOrName) || { name: statOrName, score: 10, mods: [] }
+      ? (stats || []).find(s => (s.name ?? s.stat) === statOrName) || { name: statOrName, score: 10, mods: [] }
       : statOrName;
     const mod = getAbilityMod(stat);
     executeRoll({ groups: [{ count: 2, sides: 6 }], flat: mod, label: `${stat.name} Check`, isD20Attack: false });
@@ -425,7 +425,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
           <div className="dice-sub-label">Ability Checks</div>
           <div className="flex-row" style={{ gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 8 }}>
             {STAT_NAMES.map(name => {
-              const stat = (stats || []).find(s => s.name === name) || { name, score: 10, mods: [] };
+              const stat = (stats || []).find(s => (s.name ?? s.stat) === name) || { name, score: 10, mods: [] };
               const mod = getAbilityMod(stat);
               const short = STAT_SHORT[name];
               const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
