@@ -27,15 +27,22 @@ API_URL=$(aws cloudformation describe-stacks \
   --query "Stacks[0].Outputs[?OutputKey=='ApiUrl'].OutputValue" \
   --output text)
 
+WS_URL=$(aws cloudformation describe-stacks \
+  --stack-name dnd-character-builder \
+  --region "$REGION" \
+  --query "Stacks[0].Outputs[?OutputKey=='WsUrl'].OutputValue" \
+  --output text)
+
 echo ""
 echo "  API URL: $API_URL"
+echo "  WS URL:  $WS_URL"
 
 # ── Frontend ──────────────────────────────────────────────────────────────────
 echo ""
 echo "► Building frontend..."
 cd "$ROOT"
 
-VITE_API_URL="$API_URL" npm run build
+VITE_API_URL="$API_URL" VITE_WS_URL="$WS_URL" npm run build
 
 echo ""
 echo "► Syncing frontend to s3://$FRONTEND_BUCKET..."
