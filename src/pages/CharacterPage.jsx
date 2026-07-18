@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import CharacterSheet, { PALETTES } from "../components/CharacterSheet";
 import { updateCharacter, deleteCharacter, getSessionState } from "../api";
 import { useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
+import { reportServerBuildVersion } from "../lib/staleClient";
 import "./pages.css";
 
 export default function CharacterPage() {
@@ -52,6 +53,7 @@ export default function CharacterPage() {
       setData(d.character);
       if (d.character?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.character.palette);
       setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
+      reportServerBuildVersion(d.buildVersion);
       setError(null);
     } catch {
       if (requestId !== requestSeqRef.current) return;

@@ -5,7 +5,10 @@ const MAP_LIBRARY_SLUG = "map-library";
 const PARTY_ROSTER_SLUG = "party-roster";
 const NPC_LIBRARY_SLUG = "npc-library";
 const COUNTER_WHEELS_SLUG = "counter-wheels";
-const RESERVED_CHARACTER_SLUGS = new Set([INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG]);
+// Story 36b — stale-client auto-refresh. Written directly by deploy.sh via
+// `aws dynamodb put-item` (no Lambda write path); read by getSessionState.js.
+const APP_META_SLUG = "app-meta";
+const RESERVED_CHARACTER_SLUGS = new Set([INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, APP_META_SLUG]);
 
 function isReservedCharacterSlug(slug) {
   return RESERVED_CHARACTER_SLUGS.has(slug);
@@ -23,6 +26,7 @@ module.exports = {
   PARTY_ROSTER_SLUG,
   NPC_LIBRARY_SLUG,
   COUNTER_WHEELS_SLUG,
+  APP_META_SLUG,
   RESERVED_CHARACTER_SLUGS,
   isReservedCharacterSlug,
   filterPublicCharacterItems,

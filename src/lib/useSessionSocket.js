@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { handleReloadBroadcast } from "./staleClient";
 
 // Story 36 — WebSocket nudge channel.
 //
-// Connects to VITE_WS_URL (an API Gateway WebSocket stage). The socket
-// carries no payload — the only message it ever sends is { type: "changed" },
-// meaning "some session write landed somewhere, go refetch". Callers pass
-// their existing queued-refresh callback as `onChanged`.
+// Connects to VITE_WS_URL (an API Gateway WebSocket stage). Two message
+// shapes travel over the socket: { type: "changed" } — "some session write
+// landed somewhere, go refetch" (callers pass their existing queued-refresh
+// callback as `onChanged`) — and, since Story 36b, { type: "reload" } — an
+// immediate stale-client reload push, handled entirely here via
+// staleClient.js's handleReloadBroadcast() so the safe-moment/loop-guard
+// logic isn't duplicated per caller.
 //
 // If VITE_WS_URL isn't set, this hook is a complete no-op and always returns
 // { connected: false } — callers fall back to today's ADR-011 polling cadence
@@ -69,6 +73,8 @@ export function useSessionSocket(onChanged) {
       }
       if (data?.type === "changed") {
         onChangedRef.current?.();
+      } else if (data?.type === "reload") {
+        handleReloadBroadcast();
       }
     };
 

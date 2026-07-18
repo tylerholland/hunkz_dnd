@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { getSessionState } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import { useAdaptivePolling } from "../lib/liveSync";
+import { reportServerBuildVersion } from "../lib/staleClient";
 import MapViewer from "../features/maps/MapViewer";
 import { displayMapName } from "../features/dmDashboard/MapUploadModal";
 
@@ -18,6 +19,7 @@ export default function MapViewerPage() {
     try {
       const data = await getSessionState();
       setMapLibrary(data?.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
+      reportServerBuildVersion(data?.buildVersion);
     } catch {
       // Keep stale data instead of flashing an error.
     }

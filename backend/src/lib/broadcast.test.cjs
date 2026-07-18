@@ -86,6 +86,32 @@ test("notifySessionChanged posts to every connection and never throws on success
   assert.deepEqual(posted.sort(), ["conn-1", "conn-2"]);
 });
 
+// Story 36b — notifySessionChanged() now accepts an optional payload.
+test("notifySessionChanged defaults to { type: \"changed\" } when called with no payload", async () => {
+  const posted = [];
+  const { notifySessionChanged } = loadBroadcastWithMocks({
+    scanResult: { Items: [{ connectionId: "conn-1" }] },
+    postToConnection: async (input) => { posted.push(JSON.parse(input.Data.toString())); return {}; },
+  });
+
+  await notifySessionChanged();
+
+  assert.deepEqual(posted, [{ type: "changed" }]);
+});
+
+test("notifySessionChanged sends a custom payload (e.g. { type: \"reload\" }) when one is provided", async () => {
+  const posted = [];
+  const { notifySessionChanged } = loadBroadcastWithMocks({
+    scanResult: { Items: [{ connectionId: "conn-1" }, { connectionId: "conn-2" }] },
+    postToConnection: async (input) => { posted.push(JSON.parse(input.Data.toString())); return {}; },
+  });
+
+  await notifySessionChanged({ type: "reload" });
+
+  assert.equal(posted.length, 2);
+  posted.forEach((p) => assert.deepEqual(p, { type: "reload" }));
+});
+
 test("notifySessionChanged prunes connections that return 410 Gone", async () => {
   const deleteCommandCalls = [];
   const goneError = Object.assign(new Error("Gone"), { $metadata: { httpStatusCode: 410 } });

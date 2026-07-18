@@ -1,6 +1,9 @@
 const { GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { db, TABLE } = require("./db");
 const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG } = require("./specialItems");
+// Note: no APP_META_SLUG import here — normalizeAppMetaRecord() (Story 36b)
+// normalizes a generic item and doesn't need the slug constant; the sentinel
+// is written directly by deploy.sh and read directly by getSessionState.js.
 
 const ROLL_HISTORY_LIMIT = 500;
 
@@ -221,6 +224,18 @@ async function saveCounterWheelsState({ wheels }) {
   await putSpecialRecord(COUNTER_WHEELS_SLUG, { wheels: Array.isArray(wheels) ? wheels : [] });
 }
 
+// Story 36b — stale-client auto-refresh. Written directly by deploy.sh via
+// `aws dynamodb put-item` (no Lambda write path/save helper needed here);
+// read by getSessionState.js on every poll tick. Absent sentinel (e.g. before
+// the first 36b deploy) normalizes to buildVersion: null — old clients never
+// see a mismatch and never reload, which keeps this change backward compatible.
+function normalizeAppMetaRecord(item) {
+  return {
+    buildVersion: typeof item?.buildVersion === "string" ? item.buildVersion : null,
+    deployedAt: typeof item?.deployedAt === "string" ? item.deployedAt : null,
+  };
+}
+
 module.exports = {
   normalizeInitiativeRecord,
   normalizeNpcCombatRecord,
@@ -246,4 +261,5 @@ module.exports = {
   saveNpcLibraryState,
   getCounterWheelsState,
   saveCounterWheelsState,
+  normalizeAppMetaRecord,
 };
