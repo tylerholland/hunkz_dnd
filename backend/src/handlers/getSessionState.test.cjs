@@ -107,6 +107,11 @@ function baseSentinelResponses() {
       slug: "counter-wheels",
       wheels: [{ id: "w1", name: "Doom", segments: 6, filledCount: 2 }],
     },
+    "app-meta": {
+      slug: "app-meta",
+      buildVersion: "abc1234",
+      deployedAt: "2026-07-18T00:00:00.000Z",
+    },
   };
 }
 
@@ -213,8 +218,9 @@ test("getSessionState DM variant returns full consolidated payload", async () =>
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(Object.keys(body).sort(), [
-    "counterWheels", "initiative", "mapLibrary", "npcCombat", "party", "rollHistory", "serverTime",
+    "buildVersion", "counterWheels", "initiative", "mapLibrary", "npcCombat", "party", "rollHistory", "serverTime",
   ].sort());
+  assert.equal(body.buildVersion, "abc1234");
 
   assert.equal(body.party.length, 1);
   const partyMember = body.party[0];
@@ -250,8 +256,9 @@ test("getSessionState public variant leaks nothing beyond the old public project
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(Object.keys(body).sort(), [
-    "initiativePublic", "mapLibrary", "partyStatus", "rollHistory", "serverTime",
+    "buildVersion", "initiativePublic", "mapLibrary", "partyStatus", "rollHistory", "serverTime",
   ].sort());
+  assert.equal(body.buildVersion, "abc1234");
 
   // partyStatus — same shape as GET /party/status
   assert.equal(body.partyStatus.visible, true);
@@ -331,4 +338,25 @@ test("getSessionState public variant respects partyVisibilityEnabled = false", a
   const body = JSON.parse(result.body);
 
   assert.deepEqual(body.partyStatus, { visible: false, members: [] });
+});
+
+test("getSessionState returns buildVersion: null when the app-meta sentinel is absent (backward compatible, pre-36b deploy)", async () => {
+  const send = makeSend({ "app-meta": undefined });
+  const { handler: dmHandler } = loadHandlerWithMocks({
+    send,
+    verifyPasswordImpl: async (password, item) => (
+      item.passwordHash === "$2b$10$invalid"
+        ? (password === "dm-secret" ? { valid: true, role: "dm" } : { valid: false })
+        : { valid: false }
+    ),
+  });
+  const dmResult = await dmHandler({ headers: { "x-character-password": "dm-secret" } });
+  assert.equal(JSON.parse(dmResult.body).buildVersion, null);
+
+  const { handler: publicHandler } = loadHandlerWithMocks({
+    send,
+    verifyPasswordImpl: async () => ({ valid: false }),
+  });
+  const publicResult = await publicHandler({ headers: {} });
+  assert.equal(JSON.parse(publicResult.body).buildVersion, null);
 });

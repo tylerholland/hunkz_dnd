@@ -345,6 +345,8 @@ Per-card palette scoping works: each `.card[style]` root can set different `--pa
 
 **Revisit when**: A feature genuinely needs sub-poll-tick *data* (not just a signal) — e.g. cursor-position streaming for a shared pointer, or live typing indicators. At that point a second, purpose-built message type is the right extension point; do not overload `{"type":"changed"}` to also carry a payload.
 
+**Story 36b update**: The socket now carries a second, equally minimal message shape — `{"type":"reload"}` — for the stale-client auto-refresh feature. This does not weaken the "signal, not payload" principle above: `{"type":"reload"}` is still a signal (a direct instruction, "reload now"), not data. `notifySessionChanged()` was generalized to take an optional payload (defaulting to `{"type":"changed"}`, so every existing call site is unchanged) specifically so this second signal type could reuse the exact same connection-scan/post/prune machinery rather than duplicating it. The `{"type":"reload"}` message is sent by a new standalone Lambda, `broadcastReload.js` (no HTTP route — invoked directly via `aws lambda invoke` from `deploy.sh`, after the frontend S3 sync and the `app-meta` version-stamp write both complete), not by any session-write handler. See `src/lib/staleClient.js` for the receiving end (version-compare + reload-broadcast handling share one safe-reload code path).
+
 ---
 
 ## Feature Index

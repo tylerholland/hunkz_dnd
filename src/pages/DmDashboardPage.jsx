@@ -20,6 +20,7 @@ import {
 import { PALETTES } from "../features/characterSheet/theme";
 import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
+import { reportServerBuildVersion } from "../lib/staleClient";
 
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
 const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
@@ -296,6 +297,7 @@ export default function DmDashboardPage() {
       }
       setRollHistory(rollHistoryData.rolls || []);
       setMapLibrary(mapLibraryData || { activeMapId: null, activeMapView: null, maps: [] });
+      reportServerBuildVersion(sessionData.buildVersion);
     } catch {
       // Show stale data rather than error on poll failure.
     } finally {

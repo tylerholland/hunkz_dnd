@@ -12,6 +12,13 @@ const { db } = require("./db");
 // This helper must NEVER throw and must NEVER meaningfully slow the write
 // path it's called from: every failure mode (missing config, a dead
 // connection, a management-API error) is swallowed internally.
+//
+// Story 36b — notifySessionChanged() now takes an optional payload (default
+// stays { type: "changed" }, so every existing call site is unchanged). The
+// only other payload in use is { type: "reload" }, sent by the standalone
+// broadcastReload.js Lambda (invoked from deploy.sh, no HTTP route) to push
+// an immediate stale-client reload — see src/lib/staleClient.js on the
+// frontend.
 
 const CONNECTIONS_TABLE = process.env.WS_CONNECTIONS_TABLE;
 const WS_API_ENDPOINT = process.env.WS_API_ENDPOINT;
@@ -36,7 +43,7 @@ async function pruneConnection(connectionId) {
   }
 }
 
-async function notifySessionChanged() {
+async function notifySessionChanged(payload = { type: "changed" }) {
   if (!CONNECTIONS_TABLE || !WS_API_ENDPOINT) return;
 
   try {
@@ -47,13 +54,13 @@ async function notifySessionChanged() {
     const connections = result.Items || [];
     if (connections.length === 0) return;
 
-    const payload = Buffer.from(JSON.stringify({ type: "changed" }));
+    const data = Buffer.from(JSON.stringify(payload));
 
     await Promise.all(connections.map(async (item) => {
       const connectionId = item?.connectionId;
       if (!connectionId) return;
       try {
-        await client.send(new PostToConnectionCommand({ ConnectionId: connectionId, Data: payload }));
+        await client.send(new PostToConnectionCommand({ ConnectionId: connectionId, Data: data }));
       } catch (err) {
         if (isGoneError(err)) {
           await pruneConnection(connectionId);

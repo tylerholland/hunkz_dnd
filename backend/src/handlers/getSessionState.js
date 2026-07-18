@@ -4,17 +4,22 @@
 // steady-state polling to exactly one HTTP request per tick.
 //
 // DM variant (valid DM password): { party, initiative, npcCombat, rollHistory,
-//   mapLibrary, counterWheels, serverTime }
+//   mapLibrary, counterWheels, serverTime, buildVersion }
 // Public variant (no/invalid DM password): { partyStatus, initiativePublic,
-//   mapLibrary, rollHistory, serverTime } with an optional `character` field
-//   when `?slug=` is supplied (same stripping rules as GET /characters/{slug}
-//   unauthenticated).
+//   mapLibrary, rollHistory, serverTime, buildVersion } with an optional
+//   `character` field when `?slug=` is supplied (same stripping rules as
+//   GET /characters/{slug} unauthenticated).
 //
 // Reads: one BatchGetItem for the sentinel records (initiative, npc-combat,
-// roll-history, map-library, party-roster, counter-wheels — npc-library is
-// intentionally excluded, it is not polled), and — only when there are party
-// members (or a requested ?slug) to resolve — a second BatchGetItem keyed off
-// the roster. Two DynamoDB round trips max.
+// roll-history, map-library, party-roster, counter-wheels, app-meta —
+// npc-library is intentionally excluded, it is not polled), and — only when
+// there are party members (or a requested ?slug) to resolve — a second
+// BatchGetItem keyed off the roster. Two DynamoDB round trips max.
+//
+// buildVersion (Story 36b) comes from the app-meta sentinel, which is
+// written directly by deploy.sh (not by any handler) — absent sentinel
+// normalizes to buildVersion: null, so clients on a pre-36b bundle simply
+// never see a version to compare against and never reload.
 
 const { BatchGetCommand } = require("@aws-sdk/lib-dynamodb");
 const { db, TABLE } = require("../lib/db");
@@ -27,6 +32,7 @@ const {
   MAP_LIBRARY_SLUG,
   PARTY_ROSTER_SLUG,
   COUNTER_WHEELS_SLUG,
+  APP_META_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
 const {
@@ -36,6 +42,7 @@ const {
   normalizeMapLibraryRecord,
   normalizePartyRosterRecord,
   normalizeCounterWheelsRecord,
+  normalizeAppMetaRecord,
 } = require("../lib/specialRecords");
 const { projectDmPartyItem, projectPlayerCharacter } = require("../lib/partyProjection");
 const { buildPublicInitiativePayload } = require("../lib/initiativeProjection");
@@ -53,6 +60,7 @@ const SENTINEL_SLUGS = [
   MAP_LIBRARY_SLUG,
   PARTY_ROSTER_SLUG,
   COUNTER_WHEELS_SLUG,
+  APP_META_SLUG,
 ];
 
 exports.handler = async (event) => {
@@ -81,6 +89,7 @@ exports.handler = async (event) => {
   const mapLibrary = normalizeMapLibraryRecord(sentinelBySlug.get(MAP_LIBRARY_SLUG));
   const roster = normalizePartyRosterRecord(sentinelBySlug.get(PARTY_ROSTER_SLUG));
   const counterWheels = normalizeCounterWheelsRecord(sentinelBySlug.get(COUNTER_WHEELS_SLUG));
+  const appMeta = normalizeAppMetaRecord(sentinelBySlug.get(APP_META_SLUG));
   const serverTime = new Date().toISOString();
 
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.
@@ -119,6 +128,7 @@ exports.handler = async (event) => {
       mapLibrary,
       counterWheels,
       serverTime,
+      buildVersion: appMeta.buildVersion,
     });
   }
 
@@ -140,6 +150,7 @@ exports.handler = async (event) => {
     mapLibrary,
     rollHistory,
     serverTime,
+    buildVersion: appMeta.buildVersion,
   };
 
   if (querySlug) {

@@ -8,6 +8,7 @@ import {
 } from "../api";
 import { useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
+import { reportServerBuildVersion } from "../lib/staleClient";
 import CharacterSheetSessionMode from "../features/characterSheet/CharacterSheetSessionMode";
 import "./pages.css";
 
@@ -87,6 +88,7 @@ export default function CharacterModePage() {
       setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
       setPartyStatus(d.partyStatus || { visible: true, members: [] });
       setInitiativeData(d.initiativePublic || { round: 1, activeTurnIndex: 0, entries: [] });
+      reportServerBuildVersion(d.buildVersion);
       setError(null);
     } catch {
       if (requestId !== requestSeqRef.current) return;

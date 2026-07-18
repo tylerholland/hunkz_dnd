@@ -1,6 +1,6 @@
 # Feature Story: 36b — Stale-Client Auto-Refresh & Deploy Reload Broadcast
 
-**Status**: Approved — Ready to Build
+**Status**: Implemented
 **Source**: DM request 2026-07-18 (follow-up to Story 36)
 
 ---

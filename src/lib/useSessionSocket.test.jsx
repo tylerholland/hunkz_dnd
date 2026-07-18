@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useSessionSocket } from "./useSessionSocket";
+import * as staleClient from "./staleClient";
 
 class MockWebSocket {
   static instances = [];
@@ -89,6 +90,29 @@ describe("useSessionSocket", () => {
     });
     expect(onChanged).toHaveBeenCalledTimes(1);
 
+    unmount();
+  });
+
+  it("delegates a { type: 'reload' } message to staleClient's handleReloadBroadcast, not the onChanged callback", () => {
+    vi.stubEnv("VITE_WS_URL", "wss://example.test/ws");
+    const onChanged = vi.fn();
+    const handleReloadBroadcastSpy = vi.spyOn(staleClient, "handleReloadBroadcast").mockImplementation(() => {});
+
+    const { unmount } = renderHook(() => useSessionSocket(onChanged));
+
+    const socket = MockWebSocket.instances[0];
+    act(() => {
+      socket.triggerOpen();
+    });
+
+    act(() => {
+      socket.triggerMessage({ type: "reload" });
+    });
+
+    expect(handleReloadBroadcastSpy).toHaveBeenCalledTimes(1);
+    expect(onChanged).not.toHaveBeenCalled();
+
+    handleReloadBroadcastSpy.mockRestore();
     unmount();
   });
 
