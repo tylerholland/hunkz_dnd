@@ -266,3 +266,15 @@ export const presignNpcPortrait = (filename, contentType, size, dmPassword) =>
     headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
     body: JSON.stringify({ filename, contentType, size }),
   });
+
+// Story 35 — single consolidated polling endpoint.
+// DM variant (valid dmPassword): { party, initiative, npcCombat, rollHistory, mapLibrary, counterWheels, serverTime }
+// Public variant (no/invalid dmPassword): { partyStatus, initiativePublic, mapLibrary, rollHistory, serverTime, character? }
+export const getSessionState = ({ dmPassword, slug } = {}) => {
+  const params = new URLSearchParams();
+  if (slug) params.set("slug", slug);
+  const qs = params.toString();
+  return request(`/session-state${qs ? `?${qs}` : ""}`, {
+    headers: dmPassword ? { "x-character-password": dmPassword } : {},
+  });
+};

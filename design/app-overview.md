@@ -325,7 +325,7 @@ Characters can now be accessed at two dedicated mode URLs:
 - Derives mode from URL path, falls back to `sessionStorage.dnd_mode_${slug}` or `"profile"`
 - `setMode(newMode)` persists to sessionStorage and navigates via React Router
 - Auto-switches to session mode (once, via `autoSwitchedRef`) when combat is active (entries exist + round > 0) and no stored preference exists
-- Polls: `getCharacter`, `getMapLibrary`, `getPartyStatus`, `getInitiativePublic` via `useAdaptivePolling`
+- Polls (Story 35): a single `getSessionState({ slug })` call via one `useAdaptivePolling` instance, fanned out to `data` (character), `mapLibrary`, `partyStatus`, and `initiativeData` state — replaces four separate polled endpoint calls with one request per tick
 
 **`CharacterSheetSessionMode.jsx`** (`src/features/characterSheet/CharacterSheetSessionMode.jsx`):
 Session mode (two-column layout):
@@ -340,6 +340,7 @@ Session mode (two-column layout):
 **New unauthenticated API endpoints**:
 - `GET /party/status` (`getPartyStatus.js`) — returns `{ visible: boolean, members[] }` with player-safe projection (slug, name, palette, portraitUrl, hpCurrent, hpMax, tempHP, conditions, concentration, inspiration, deathSaves); returns `{ visible: false, members: [] }` when `partyVisibilityEnabled` is false on the roster
 - `GET /initiative/public` (`getInitiativePublic.js`) — returns `{ round, activeTurnIndex, entries[] }` with hidden entries stripped, initiative roll values stripped, and NPC health tiers derived from npc-combat data
+- `GET /session-state` (`getSessionState.js`, Story 35) — the consolidated polling endpoint both `DmDashboardPage.jsx` and `CharacterModePage.jsx` now poll instead of the endpoints above. DM variant (valid DM password): `{ party, initiative, npcCombat, rollHistory, mapLibrary, counterWheels, serverTime }`. Public variant (no/invalid DM password): `{ partyStatus, initiativePublic, mapLibrary, rollHistory, serverTime }`, plus `character` when `?slug=` is supplied (same stripping rules as unauthenticated `GET /characters/{slug}`). The endpoints above remain live and unchanged for one-shot/non-polling callers (e.g. `MapLibraryPage`) — deprecated for polling use, not removed.
 
 **DM party visibility control**:
 - `partyVisibilityEnabled` boolean field on the `party-roster` sentinel item (default `true`)
@@ -494,7 +495,7 @@ A dedicated DM session-management view accessible at `/dm`.
 - "+" Upload button at left end; entire strip is a drag-drop zone
 - Drag-and-drop opens `MapUploadModal` pre-loaded with dropped file
 
-**Polling**: `getDmParty`, `getInitiative`, `getNpcCombat`, `getRollHistory`, and `getMapLibrary` are polled adaptively per ADR-011 (`1s` while visible/focused, `5s` while backgrounded). Successful writes queue immediate background refreshes. Polling clears on unmount. `getNpcLibrary` is intentionally NOT polled — mount-fetch + refetch-on-write only (single-writer access pattern; see Story 24 ADR-011 opt-out note).
+**Polling** (Story 35): a single `getSessionState({ dmPassword })` call via one `useAdaptivePolling` instance replaces separate polls of `getDmParty`, `getInitiative`, `getNpcCombat`, `getRollHistory`, and `getMapLibrary` — one HTTP request per tick instead of five. Cadence is adaptive per ADR-011 (`1s` while visible/focused, `30s` while backgrounded — raised from `5s` in the Story 35 amendment). Successful writes queue immediate background refreshes of the consolidated endpoint. Polling clears on unmount. `getNpcLibrary` and `getCounterWheels` are intentionally NOT polled — mount-fetch + refetch-on-write only (single-writer access pattern; see Story 24 ADR-011 opt-out note). `getCounterWheels`' data is also included in the DM variant of `getSessionState`'s payload for future consumers, but `CounterWheelsPanel` still owns its own mount-fetch/optimistic-write cycle unchanged.
 
 **Visual style**: Ocean palette chrome throughout (`#0d0f14` bg, `#6a8fa8` accent). Responsive: stacks to single column below 900px.
 

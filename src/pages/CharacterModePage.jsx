@@ -2,12 +2,9 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useNavigate, useParams, useLocation } from "react-router-dom";
 import { PALETTES } from "../components/CharacterSheet";
 import {
-  getCharacter,
   updateCharacter,
   deleteCharacter,
-  getMapLibrary,
-  getPartyStatus,
-  getInitiativePublic,
+  getSessionState,
 } from "../api";
 import { useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
 import CharacterSheetSessionMode from "../features/characterSheet/CharacterSheetSessionMode";
@@ -65,8 +62,9 @@ export default function CharacterModePage() {
     }
   }, [location.pathname, mode, slug]);
 
-  // Character data fetch
-  const fetchCharacter = useCallback(async ({ background = false, force = false } = {}) => {
+  // Story 35 — one consolidated request per poll tick instead of 4
+  // (character, map library, party status, public initiative).
+  const fetchSessionState = useCallback(async ({ background = false, force = false } = {}) => {
     if (!slug) return;
     if (background && activeRequestCountRef.current > 0 && !force) return;
 
@@ -78,13 +76,16 @@ export default function CharacterModePage() {
     }
 
     try {
-      const d = await getCharacter(slug);
-      if (!Array.isArray(d?.collections)) {
+      const d = await getSessionState({ slug });
+      if (!Array.isArray(d?.character?.collections)) {
         throw new Error("Invalid character payload");
       }
       if (requestId !== requestSeqRef.current) return;
-      setData(d);
-      if (d?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.palette);
+      setData(d.character);
+      if (d.character?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.character.palette);
+      setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
+      setPartyStatus(d.partyStatus || { visible: true, members: [] });
+      setInitiativeData(d.initiativePublic || { round: 1, activeTurnIndex: 0, entries: [] });
       setError(null);
     } catch {
       if (requestId !== requestSeqRef.current) return;
@@ -97,46 +98,13 @@ export default function CharacterModePage() {
     }
   }, [slug]);
 
-  const queueSessionSync = useQueuedRefresh(fetchCharacter);
+  const queueSessionSync = useQueuedRefresh(fetchSessionState);
 
   useEffect(() => {
-    fetchCharacter();
-  }, [fetchCharacter]);
+    fetchSessionState();
+  }, [fetchSessionState]);
 
-  useAdaptivePolling({ enabled: !!slug, poll: fetchCharacter });
-
-  // Map library fetch
-  const fetchMapLibrary = useCallback(async () => {
-    try {
-      const d = await getMapLibrary();
-      setMapLibrary(d || { activeMapId: null, activeMapView: null, maps: [] });
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => { fetchMapLibrary(); }, [fetchMapLibrary]);
-  useAdaptivePolling({ enabled: !!slug, poll: fetchMapLibrary });
-
-  // Party status fetch (unauthenticated)
-  const fetchPartyStatus = useCallback(async () => {
-    try {
-      const d = await getPartyStatus();
-      setPartyStatus(d || { visible: true, members: [] });
-    } catch { /* ignore — strip will show empty state */ }
-  }, []);
-
-  useEffect(() => { fetchPartyStatus(); }, [fetchPartyStatus]);
-  useAdaptivePolling({ enabled: !!slug, poll: fetchPartyStatus });
-
-  // Initiative public fetch (unauthenticated)
-  const fetchInitiative = useCallback(async () => {
-    try {
-      const d = await getInitiativePublic();
-      setInitiativeData(d || { round: 1, activeTurnIndex: 0, entries: [] });
-    } catch { /* ignore */ }
-  }, []);
-
-  useEffect(() => { fetchInitiative(); }, [fetchInitiative]);
-  useAdaptivePolling({ enabled: !!slug, poll: fetchInitiative });
+  useAdaptivePolling({ enabled: !!slug, poll: fetchSessionState });
 
   // Auto-switch to session mode when initiative is active and no stored preference
   useEffect(() => {

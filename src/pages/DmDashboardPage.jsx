@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, getInitiative, putInitiative, getNpcCombat, putNpcCombat, getRollHistory, getMapLibrary, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary } from "../api";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
 import CharacterCard, { AwardXpModal, DistributeCoinModal } from "../features/dmDashboard/CharacterCard";
 import ConfirmDialog from "../features/dmDashboard/ConfirmDialog";
@@ -225,13 +225,13 @@ export default function DmDashboardPage() {
     activeRequestCountRef.current += 1;
 
     try {
-      const [partyData, initData, npcData, rollHistoryData, mapLibraryData] = await Promise.all([
-        getDmParty(dmPassword),
-        getInitiative(dmPassword),
-        getNpcCombat(dmPassword),
-        getRollHistory(dmPassword),
-        getMapLibrary(),
-      ]);
+      // Story 35 — one consolidated request per poll tick instead of 5.
+      const sessionData = await getSessionState({ dmPassword });
+      const partyData = sessionData.party || [];
+      const initData = sessionData.initiative || { entries: [], activeTurnIndex: 0 };
+      const npcData = sessionData.npcCombat || { npcs: [] };
+      const rollHistoryData = sessionData.rollHistory || { rolls: [] };
+      const mapLibraryData = sessionData.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] };
       if (requestId !== requestSeqRef.current) return;
       const expectedRoster = partyRosterExpectedRef.current;
       let nextPartyData = partyData;

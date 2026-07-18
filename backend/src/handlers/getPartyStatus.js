@@ -3,39 +3,7 @@ const { db, TABLE } = require("../lib/db");
 const { ok } = require("../lib/response");
 const { filterPublicCharacterItems } = require("../lib/specialItems");
 const { getPartyRosterState } = require("../lib/specialRecords");
-
-// Fields visible to players in the party status strip
-const PLAYER_VISIBLE_FIELDS = new Set([
-  "slug",
-  "name",
-  "palette",
-  "portraitUrl",
-  "hpCurrent",
-  "hpMax",
-  "tempHP",
-  "conditions",
-  "concentration",
-  "inspiration",
-  "deathSaves",
-]);
-
-function projectCharacter(item) {
-  const projected = {};
-  for (const field of PLAYER_VISIBLE_FIELDS) {
-    if (field in item) {
-      projected[field] = item[field];
-    }
-  }
-  // Normalise defaults for optional session fields
-  projected.hpCurrent = item.hpCurrent ?? item.hp ?? 0;
-  projected.hpMax = item.hpMax ?? item.hp ?? 0;
-  projected.tempHP = item.tempHP ?? 0;
-  projected.conditions = Array.isArray(item.conditions) ? item.conditions : [];
-  projected.concentration = item.concentration ?? { active: false, spell: "" };
-  projected.inspiration = item.inspiration ?? false;
-  projected.deathSaves = item.deathSaves ?? { successes: 0, failures: 0 };
-  return projected;
-}
+const { projectPlayerCharacter } = require("../lib/partyProjection");
 
 exports.handler = async () => {
   const roster = await getPartyRosterState();
@@ -71,7 +39,7 @@ exports.handler = async () => {
   const members = rawItems
     .filter((item) => memberSet.has(item.slug))
     .sort((a, b) => rosterMembers.indexOf(a.slug) - rosterMembers.indexOf(b.slug))
-    .map(projectCharacter);
+    .map(projectPlayerCharacter);
 
   return ok({ visible: true, members });
 };

@@ -4,6 +4,11 @@ const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden } = require("../lib/response");
 const { filterPublicCharacterItems } = require("../lib/specialItems");
 const { getPartyRosterState } = require("../lib/specialRecords");
+const {
+  DM_PARTY_PROJECTION_EXPRESSION,
+  DM_PARTY_EXPRESSION_ATTRIBUTE_NAMES,
+  projectDmPartyItem,
+} = require("../lib/partyProjection");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -14,15 +19,8 @@ exports.handler = async (event) => {
 
   const result = await db.send(new ScanCommand({
     TableName: TABLE,
-    ProjectionExpression:
-      "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves",
-    ExpressionAttributeNames: {
-      "#n": "name",
-      "#c": "conditions",
-      "#l": "level",
-      "#hp": "hp",
-      "#dmNotes": "dmNotes",
-    },
+    ProjectionExpression: DM_PARTY_PROJECTION_EXPRESSION,
+    ExpressionAttributeNames: DM_PARTY_EXPRESSION_ATTRIBUTE_NAMES,
   }));
 
   const rawItems = filterPublicCharacterItems(result.Items || []);
@@ -37,15 +35,7 @@ exports.handler = async (event) => {
   const items = rawItems
     .filter((item) => memberSet.has(item.slug))
     .sort((a, b) => rosterMembers.indexOf(a.slug) - rosterMembers.indexOf(b.slug))
-    .map((item) => {
-    const { playerNotes, ...rest } = item;
-    const sharedPlayerNotes = (playerNotes || []).filter((note) => note.sharedWithDm === true);
-    return {
-      ...rest,
-      dmNotes: rest.dmNotes || [],
-      sharedPlayerNotes,
-    };
-    });
+    .map(projectDmPartyItem);
 
   return ok(items);
 };

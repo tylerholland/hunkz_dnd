@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useRef } from "react";
 
 export const ACTIVE_POLL_MS = 1000;
-export const BACKGROUND_POLL_MS = 5000;
+// ADR-011 amendment (Story 35): raised from 5s to 30s for backgrounded/hidden
+// tabs to cut idle Lambda + DynamoDB request volume once polling was
+// consolidated to a single endpoint.
+export const BACKGROUND_POLL_MS = 30000;
 
 export function debounce(fn, ms) {
   let timer;
