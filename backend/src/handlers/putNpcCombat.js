@@ -1,6 +1,7 @@
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
 const { saveNpcCombatState } = require("../lib/specialRecords");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -11,6 +12,8 @@ exports.handler = async (event) => {
   if (!Array.isArray(body.npcs)) return badRequest("npcs must be an array");
 
   await saveNpcCombatState({ npcs: body.npcs });
+
+  await notifySessionChanged();
 
   return ok({ success: true });
 };

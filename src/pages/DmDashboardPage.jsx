@@ -18,7 +18,8 @@ import {
   initiativesEqual,
 } from "../features/dmDashboard/dashboardShared";
 import { PALETTES } from "../features/characterSheet/theme";
-import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
+import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
+import { useSessionSocket } from "../lib/useSessionSocket";
 
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
 const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
@@ -303,6 +304,12 @@ export default function DmDashboardPage() {
   }, [dmPassword]);
 
   const queueDashboardRefresh = useQueuedRefresh(fetchDashboardData);
+
+  // Story 36 — WebSocket nudge channel. When connected, a "changed" push
+  // triggers an immediate refetch and the adaptive poll interval relaxes to
+  // the 30s safety net; when not connected, ADR-011 cadence resumes unchanged.
+  const handleSessionChanged = useCallback(() => queueDashboardRefresh(0), [queueDashboardRefresh]);
+  const { connected: wsConnected } = useSessionSocket(handleSessionChanged);
 
   const applyPartyOptimisticUpdates = useCallback((updates) => {
     if (!Array.isArray(updates) || updates.length === 0) return;
@@ -697,6 +704,7 @@ export default function DmDashboardPage() {
   useAdaptivePolling({
     enabled: authed,
     poll: fetchDashboardData,
+    activeMs: wsConnected ? BACKGROUND_POLL_MS : ACTIVE_POLL_MS,
   });
 
   function handleLoginSuccess(pw) {
@@ -966,8 +974,20 @@ export default function DmDashboardPage() {
           backdropFilter: "blur(8px)",
           WebkitBackdropFilter: "blur(8px)",
         }}>
-          <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, letterSpacing: "0.16em", color: pal.accentBright, whiteSpace: "nowrap" }}>Campaign</div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 14, minWidth: 0 }}>            
+          <div style={{ display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap" }}>
+            <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, letterSpacing: "0.16em", color: pal.accentBright }}>Campaign</div>
+            <span
+              title={wsConnected ? "Live — connected for instant sync" : "Polling — reconnecting to live sync"}
+              style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: wsConnected ? "#88c888" : pal.textMuted, opacity: 0.85 }}
+            >
+              <span
+                className={wsConnected ? "dm-pulse-dot" : undefined}
+                style={{ width: 6, height: 6, borderRadius: "50%", background: wsConnected ? "#88c888" : pal.textMuted, boxShadow: wsConnected ? "0 0 5px #88c888" : "none", display: "inline-block" }}
+              />
+              {wsConnected ? "Live" : "Polling"}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 14, minWidth: 0 }}>
             <Link
               to="/"
               style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: pal.textMuted, textDecoration: "none", whiteSpace: "nowrap" }}

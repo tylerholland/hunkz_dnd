@@ -6,7 +6,7 @@ const path = require("node:path");
 const handlerPath = path.resolve(__dirname, "postDmRoll.js");
 const originalLoad = Module._load;
 
-function loadHandlerWithMocks({ verifyPasswordResult, appendRollHistoryEvent }) {
+function loadHandlerWithMocks({ verifyPasswordResult, appendRollHistoryEvent, notifySessionChanged }) {
   Module._load = function mockedLoad(request, parent, isMain) {
     if (request === "../lib/auth" && parent && parent.filename === handlerPath) {
       return {
@@ -17,6 +17,12 @@ function loadHandlerWithMocks({ verifyPasswordResult, appendRollHistoryEvent }) 
     if (request === "../lib/specialRecords" && parent && parent.filename === handlerPath) {
       return {
         appendRollHistoryEvent,
+      };
+    }
+
+    if (request === "../lib/broadcast" && parent && parent.filename === handlerPath) {
+      return {
+        notifySessionChanged: notifySessionChanged || (async () => {}),
       };
     }
 
@@ -49,14 +55,16 @@ test("postDmRoll rejects non-DM requests", async () => {
   assert.match(result.body, /DM password required/);
 });
 
-test("postDmRoll appends a DM-scoped roll-history event", async () => {
+test("postDmRoll appends a DM-scoped roll-history event and broadcasts a nudge", async () => {
   const appended = [];
+  let broadcastCalls = 0;
   const { handler } = loadHandlerWithMocks({
     verifyPasswordResult: { valid: true, role: "dm" },
     appendRollHistoryEvent: async (eventRecord) => {
       appended.push(eventRecord);
       return [eventRecord];
     },
+    notifySessionChanged: async () => { broadcastCalls += 1; },
   });
 
   const result = await handler({
@@ -99,4 +107,5 @@ test("postDmRoll appends a DM-scoped roll-history event", async () => {
     }
   );
   assert.match(appended[0].createdAt, /^\d{4}-\d{2}-\d{2}T/);
+  assert.equal(broadcastCalls, 1);
 });

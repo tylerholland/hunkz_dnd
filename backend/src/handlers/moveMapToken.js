@@ -1,5 +1,6 @@
 const { ok, forbidden, badRequest, notFound } = require("../lib/response");
 const { getMapLibraryState, saveMapLibraryState } = require("../lib/specialRecords");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 // Story 34 — players may drag their own PC token to a new position.
 // Intentionally no-auth (ADR-005 trust model, same as session.js): any request
@@ -41,6 +42,8 @@ exports.handler = async (event) => {
   updatedMaps[mapIdx] = { ...map, tokens: updatedTokens };
 
   await saveMapLibraryState({ activeMapId: state.activeMapId, activeMapView: state.activeMapView, maps: updatedMaps });
+
+  await notifySessionChanged();
 
   return ok({ maps: updatedMaps });
 };

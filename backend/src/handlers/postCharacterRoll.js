@@ -3,6 +3,7 @@ const { db, TABLE } = require("../lib/db");
 const { ok, notFound, badRequest } = require("../lib/response");
 const { isReservedCharacterSlug } = require("../lib/specialItems");
 const { appendRollHistoryEvent } = require("../lib/specialRecords");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 function sanitizeRollValues(values) {
   if (!Array.isArray(values)) return null;
@@ -44,5 +45,6 @@ exports.handler = async (event) => {
   };
 
   await appendRollHistoryEvent(eventRecord);
+  await notifySessionChanged();
   return ok({ success: true });
 };

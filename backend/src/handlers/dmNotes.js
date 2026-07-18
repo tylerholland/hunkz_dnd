@@ -3,6 +3,7 @@ const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok, notFound, forbidden, badRequest } = require("../lib/response");
 const { isReservedCharacterSlug } = require("../lib/specialItems");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 exports.handler = async (event) => {
   const { slug } = event.pathParameters;
@@ -56,6 +57,8 @@ exports.handler = async (event) => {
       ":updatedAt": new Date().toISOString(),
     },
   }));
+
+  await notifySessionChanged();
 
   return ok({ dmNotes: updated });
 };

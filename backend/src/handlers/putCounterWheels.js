@@ -1,6 +1,7 @@
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
 const { saveCounterWheelsState, appendRollHistoryEvent } = require("../lib/specialRecords");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -25,6 +26,8 @@ exports.handler = async (event) => {
       createdAt: new Date().toISOString(),
     });
   }
+
+  await notifySessionChanged();
 
   return ok({ success: true });
 };

@@ -3,6 +3,7 @@ const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok, notFound, forbidden } = require("../lib/response");
 const { isReservedCharacterSlug } = require("../lib/specialItems");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 // Session fields are intentionally writable without auth — see ADR-005 and story 05 architect notes
 
@@ -70,6 +71,8 @@ exports.handler = async (event) => {
     ExpressionAttributeNames: names,
     ExpressionAttributeValues: values,
   }));
+
+  await notifySessionChanged();
 
   return ok({ slug });
 };

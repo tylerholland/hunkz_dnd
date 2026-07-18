@@ -1,6 +1,7 @@
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest, notFound } = require("../lib/response");
 const { getMapLibraryState, saveMapLibraryState } = require("../lib/specialRecords");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 const VALID_TYPES = new Set(["character", "npc"]);
 const MAX_TOKENS = 200;
@@ -49,6 +50,8 @@ exports.handler = async (event) => {
   };
 
   await saveMapLibraryState({ activeMapId: state.activeMapId, activeMapView: state.activeMapView, maps: updatedMaps });
+
+  await notifySessionChanged();
 
   return ok({ maps: updatedMaps });
 };

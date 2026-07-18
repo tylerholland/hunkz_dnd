@@ -1,6 +1,6 @@
 # Feature Story: WebSocket Nudge Channel
 
-**Status**: Blocked on Story 35 (session-state consolidation)
+**Status**: Implemented
 **Source**: Architecture review 2026-07-16
 
 ---
