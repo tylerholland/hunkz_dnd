@@ -3,6 +3,7 @@ const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden } = require("../lib/response");
 const { MAP_LIBRARY_SLUG } = require("../lib/specialItems");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -22,6 +23,8 @@ exports.handler = async (event) => {
       ":now": new Date().toISOString(),
     },
   }));
+
+  await notifySessionChanged();
 
   return ok({ activeMapId: mapId, activeMapView: null });
 };

@@ -1,6 +1,7 @@
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest, notFound } = require("../lib/response");
 const { getMapLibraryState, saveMapLibraryState } = require("../lib/specialRecords");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 2.5;
@@ -28,6 +29,8 @@ exports.handler = async (event) => {
   updatedMaps[idx] = { ...updatedMaps[idx], tokenScale: clampedScale };
 
   await saveMapLibraryState({ activeMapId: state.activeMapId, activeMapView: state.activeMapView, maps: updatedMaps });
+
+  await notifySessionChanged();
 
   return ok({ maps: updatedMaps });
 };

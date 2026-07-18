@@ -1,6 +1,7 @@
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
 const { getInitiativeState, saveInitiativeState } = require("../lib/specialRecords");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 exports.handler = async (event) => {
   const method = event.requestContext?.http?.method;
@@ -26,6 +27,8 @@ exports.handler = async (event) => {
       activeTurnIndex: body.activeTurnIndex ?? 0,
       round: body.round ?? 1,
     });
+
+    await notifySessionChanged();
 
     return ok({ success: true });
   }

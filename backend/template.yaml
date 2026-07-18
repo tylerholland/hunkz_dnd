@@ -19,6 +19,11 @@ Globals:
         TABLE_NAME: !Ref CharactersTable
         PORTRAITS_BUCKET: !Ref PortraitsBucket
         DM_PASSWORD_HASH: !Ref DmPasswordHash
+        # Story 36 — WebSocket nudge channel. Harmless no-ops for functions
+        # that don't call broadcast.js; only the write handlers below are
+        # granted IAM to actually use them.
+        WS_CONNECTIONS_TABLE: !Ref WsConnectionsTable
+        WS_API_ENDPOINT: !Sub "https://${WsApi}.execute-api.${AWS::Region}.amazonaws.com/${WsStage}"
 
 Resources:
 
@@ -86,6 +91,105 @@ Resources:
               - !Sub "${PortraitsBucket.Arn}/maps/*"
               - !Sub "${PortraitsBucket.Arn}/npc/*"
               - !Sub "${PortraitsBucket.Arn}/npc-portraits/*"
+
+  # ── WebSocket nudge channel (Story 36) ──────────────────────────────────────
+  # A tiny push channel: clients connect and are told "changed" whenever any
+  # session write lands, then refetch GET /session-state (Story 35) themselves.
+  # No payload travels over the socket — see ADR-016 for the rationale.
+  WsConnectionsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: dnd-ws-connections
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: connectionId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: connectionId
+          KeyType: HASH
+      TimeToLiveSpecification:
+        AttributeName: ttl
+        Enabled: true
+
+  WsApi:
+    Type: AWS::ApiGatewayV2::Api
+    Properties:
+      Name: dnd-ws-nudge
+      ProtocolType: WEBSOCKET
+      RouteSelectionExpression: "$request.body.action"
+
+  WsStage:
+    Type: AWS::ApiGatewayV2::Stage
+    Properties:
+      ApiId: !Ref WsApi
+      StageName: prod
+      AutoDeploy: true
+
+  WsConnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/wsConnect.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+
+  WsConnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WsApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WsConnectFunction.Arn}/invocations"
+
+  WsConnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WsApi
+      RouteKey: "$connect"
+      Target: !Sub "integrations/${WsConnectIntegration}"
+
+  WsConnectPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WsConnectFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/*"
+
+  WsDisconnectFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/wsDisconnect.handler
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+
+  WsDisconnectIntegration:
+    Type: AWS::ApiGatewayV2::Integration
+    Properties:
+      ApiId: !Ref WsApi
+      IntegrationType: AWS_PROXY
+      IntegrationUri: !Sub "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${WsDisconnectFunction.Arn}/invocations"
+
+  WsDisconnectRoute:
+    Type: AWS::ApiGatewayV2::Route
+    Properties:
+      ApiId: !Ref WsApi
+      RouteKey: "$disconnect"
+      Target: !Sub "integrations/${WsDisconnectIntegration}"
+
+  WsDisconnectPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref WsDisconnectFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/*"
+
+  # Every write-handler Lambda that calls notifySessionChanged() (broadcast.js)
+  # gets two extra Policies entries below: DynamoDBCrudPolicy on
+  # WsConnectionsTable (query + prune gone connections) and an inline
+  # execute-api:ManageConnections statement scoped to WsApi (least-privilege —
+  # only these functions get it, not every Lambda).
 
   # ── Lambda functions ──────────────────────────────────────────────────────────
   ListFunction:
@@ -192,6 +296,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   PortraitUrlFunction:
     Type: AWS::Serverless::Function
@@ -224,6 +334,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   DmNotesFunction:
     Type: AWS::Serverless::Function
@@ -239,6 +355,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   DmPartyFunction:
     Type: AWS::Serverless::Function
@@ -305,6 +427,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   GetNpcCombatFunction:
     Type: AWS::Serverless::Function
@@ -335,6 +463,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   GetNpcLibraryFunction:
     Type: AWS::Serverless::Function
@@ -395,6 +529,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   GetPartyStatusFunction:
     Type: AWS::Serverless::Function
@@ -487,6 +627,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   PutMapViewFunction:
     Type: AWS::Serverless::Function
@@ -532,6 +678,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   PatchMapCalibrationFunction:
     Type: AWS::Serverless::Function
@@ -547,6 +699,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   MoveMapTokenFunction:
     Type: AWS::Serverless::Function
@@ -562,6 +720,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   DeleteMapFunction:
     Type: AWS::Serverless::Function
@@ -609,6 +773,12 @@ Resources:
       Policies:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
   NpcPortraitPresignFunction:
     Type: AWS::Serverless::Function
@@ -649,3 +819,6 @@ Outputs:
     Value: !Sub "https://${CharactersApi}.execute-api.${AWS::Region}.amazonaws.com"
   PortraitsBucketName:
     Value: !Ref PortraitsBucket
+  WsUrl:
+    Description: WebSocket nudge channel URL (set as VITE_WS_URL on the frontend)
+    Value: !Sub "wss://${WsApi}.execute-api.${AWS::Region}.amazonaws.com/${WsStage}"

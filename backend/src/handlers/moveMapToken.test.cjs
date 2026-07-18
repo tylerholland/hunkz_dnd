@@ -6,10 +6,13 @@ const path = require("node:path");
 const handlerPath = path.resolve(__dirname, "moveMapToken.js");
 const originalLoad = Module._load;
 
-function loadHandlerWithMocks({ getMapLibraryState, saveMapLibraryState }) {
+function loadHandlerWithMocks({ getMapLibraryState, saveMapLibraryState, notifySessionChanged }) {
   Module._load = function mockedLoad(request, parent, isMain) {
     if (request === "../lib/specialRecords" && parent && parent.filename === handlerPath) {
       return { getMapLibraryState, saveMapLibraryState };
+    }
+    if (request === "../lib/broadcast" && parent && parent.filename === handlerPath) {
+      return { notifySessionChanged: notifySessionChanged || (async () => {}) };
     }
     return originalLoad.call(this, request, parent, isMain);
   };
@@ -67,11 +70,13 @@ test("moveMapToken rejects moving an NPC token", async () => {
   assert.equal(saved.length, 0);
 });
 
-test("moveMapToken clamps x/y to [0, 1] and persists the new position", async () => {
+test("moveMapToken clamps x/y to [0, 1], persists the new position, and broadcasts a nudge", async () => {
   const saved = [];
+  let broadcastCalls = 0;
   const { handler } = loadHandlerWithMocks({
     getMapLibraryState: async () => ({ activeMapId: "map-1", activeMapView: null, maps: [baseMap()] }),
     saveMapLibraryState: async (payload) => { saved.push(payload); },
+    notifySessionChanged: async () => { broadcastCalls += 1; },
   });
 
   const result = await handler({
@@ -84,6 +89,7 @@ test("moveMapToken clamps x/y to [0, 1] and persists the new position", async ()
   const updatedToken = saved[0].maps[0].tokens.find((t) => t.id === "tok-pc");
   assert.equal(updatedToken.x, 1);
   assert.equal(updatedToken.y, 0);
+  assert.equal(broadcastCalls, 1);
 });
 
 test("moveMapToken succeeds for the owning player and preserves other map fields", async () => {

@@ -2341,6 +2341,11 @@
   50%       { opacity: 1; transform: scale(1.2); }
 }
 
+@keyframes csLivePulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+
 /* ─── Page root ──────────────────────────────────────────────────────────── */
 
 .cs-session-root {
@@ -2372,6 +2377,32 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* ─── Live sync indicator (Story 36) ────────────────────────────────────── */
+
+.cs-live-indicator {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  opacity: 0.85;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.cs-live-indicator span:first-child {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.cs-live-dot {
+  animation: csLivePulse 2.2s ease-in-out infinite;
 }
 
 /* ─── Mode toggle pill ───────────────────────────────────────────────────── */

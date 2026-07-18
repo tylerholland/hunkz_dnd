@@ -319,6 +319,7 @@ export default function CharacterSheetSessionMode({
   // activeMapView reserved for map scroll/zoom restoration
   partyStatus,
   initiativeData,
+  wsConnected,
 }) {
   const navigate = useNavigate();
   const [char, setChar] = useState(initialData);
@@ -630,6 +631,17 @@ export default function CharacterSheetSessionMode({
           }}
         >← All Characters</a>
         <span className="cs-session-topbar-title">{char?.name}</span>
+        <span
+          className="cs-live-indicator"
+          title={wsConnected ? "Live — connected for instant sync" : "Polling — reconnecting to live sync"}
+          style={{ color: wsConnected ? pal.accentBright : pal.textMuted }}
+        >
+          <span
+            className={wsConnected ? "cs-live-dot" : undefined}
+            style={{ background: wsConnected ? pal.accentBright : pal.textMuted, boxShadow: wsConnected ? `0 0 5px ${pal.accentBright}` : "none" }}
+          />
+          {wsConnected ? "Live" : "Polling"}
+        </span>
         {/* Desktop mode toggle in topbar */}
         <div className="cs-session-mode-header" style={{ display: undefined }}>
           <ModToggle mode={mode} setMode={setMode} pal={pal} />

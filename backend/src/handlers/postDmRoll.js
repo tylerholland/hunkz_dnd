@@ -1,6 +1,7 @@
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
 const { appendRollHistoryEvent } = require("../lib/specialRecords");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 function sanitizeRollValues(values) {
   if (!Array.isArray(values)) return null;
@@ -41,5 +42,6 @@ exports.handler = async (event) => {
   };
 
   await appendRollHistoryEvent(eventRecord);
+  await notifySessionChanged();
   return ok({ success: true });
 };

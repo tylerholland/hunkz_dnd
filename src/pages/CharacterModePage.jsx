@@ -6,7 +6,8 @@ import {
   deleteCharacter,
   getSessionState,
 } from "../api";
-import { useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
+import { useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
+import { useSessionSocket } from "../lib/useSessionSocket";
 import CharacterSheetSessionMode from "../features/characterSheet/CharacterSheetSessionMode";
 import "./pages.css";
 
@@ -104,7 +105,17 @@ export default function CharacterModePage() {
     fetchSessionState();
   }, [fetchSessionState]);
 
-  useAdaptivePolling({ enabled: !!slug, poll: fetchSessionState });
+  // Story 36 — WebSocket nudge channel. When connected, a "changed" push
+  // triggers an immediate refetch and the adaptive poll interval relaxes to
+  // the 30s safety net; when not connected, ADR-011 cadence resumes unchanged.
+  const handleSessionChanged = useCallback(() => queueSessionSync(0), [queueSessionSync]);
+  const { connected: wsConnected } = useSessionSocket(handleSessionChanged);
+
+  useAdaptivePolling({
+    enabled: !!slug,
+    poll: fetchSessionState,
+    activeMs: wsConnected ? BACKGROUND_POLL_MS : ACTIVE_POLL_MS,
+  });
 
   // Auto-switch to session mode when initiative is active and no stored preference
   useEffect(() => {
@@ -181,6 +192,7 @@ export default function CharacterModePage() {
       activeMapView={activeMapView}
       partyStatus={partyStatus}
       initiativeData={initiativeData}
+      wsConnected={wsConnected}
     />
   );
 }

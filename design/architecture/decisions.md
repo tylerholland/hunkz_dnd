@@ -321,6 +321,23 @@ Per-card palette scoping works: each `.card[style]` root can set different `--pa
 
 ---
 
+## ADR-019 · WebSocket nudge channel: push a signal, not the payload
+
+**Context**: Story 36. AWS free-tier request quota was at 85% under 1s polling (ADR-011); a true push transport was needed to both cut request volume and shrink latency below one poll tick, without taking on the schema/ordering/replay complexity of streaming actual state deltas over a socket (or a managed service like AppSync).
+
+**Decision**: The WebSocket carries exactly one message shape, `{"type":"changed"}`, and nothing else. Every session-write handler (`session.js`, `initiative.js` PUT, `putNpcCombat.js`, `putCounterWheels.js`, `postCharacterRoll.js`, `postDmRoll.js`, `patchMapTokens.js`, `putMapActive.js`, `patchMapCalibration.js`, `dmNotes.js`, `moveMapToken.js`) calls a shared `notifySessionChanged()` (`backend/src/lib/broadcast.js`) after a successful write, which fans the nudge out to every open connection via `PostToConnectionCommand`. Connected clients react by immediately calling the exact same `GET /session-state` (Story 35) they already poll — there is no separate "apply this delta" code path, no client-side merge logic, and no risk of a client's local state drifting from a socket message arriving out of order relative to a poll response, because both paths converge on the same read.
+
+**Consequences**:
+- The socket is a *cache-invalidation signal*, not a data channel. If a client misses a nudge (dropped connection, brief network blip), the worst case is one extra poll tick of staleness before the connection recovers or the 30s safety-net poll fires — never incorrect state, never a stuck/partial UI.
+- No new client-side reconciliation logic was needed: `queueRefresh(0)`/`fetchSessionState({background:true, force:true})` already existed from Story 35's polling and are reused verbatim as the nudge handler.
+- Connection bookkeeping lives in a dedicated `WsConnectionsTable` (DynamoDB, TTL 12h) rather than a sentinel row on `CharactersTable` — connection churn (dozens of connect/disconnect events per session) is a different access pattern from character/session data and benefits from free TTL cleanup rather than manual pruning logic (`$disconnect` deletion is best-effort; TTL is the real backstop).
+- `notifySessionChanged()` is wrapped so it can never throw or meaningfully block the write path it's called from: a missing `WS_API_ENDPOINT`/`WS_CONNECTIONS_TABLE`, a `410 Gone` connection, or the connections scan itself failing are all swallowed internally. A broadcast failure must never turn into a write failure.
+- IAM for `execute-api:ManageConnections` and CRUD on `WsConnectionsTable` is granted only to the specific write-handler Lambdas that call `broadcast.js` — not globally — keeping the blast radius of a compromised handler unchanged from before this story.
+
+**Revisit when**: A feature genuinely needs sub-poll-tick *data* (not just a signal) — e.g. cursor-position streaming for a shared pointer, or live typing indicators. At that point a second, purpose-built message type is the right extension point; do not overload `{"type":"changed"}` to also carry a payload.
+
+---
+
 ## Feature Index
 
 This is a navigation aid for humans and future agents. It mirrors the feature language in `design/app-overview.md` and points to the primary code locations for each area.
