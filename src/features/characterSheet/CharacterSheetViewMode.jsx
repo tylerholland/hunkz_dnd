@@ -1,8 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { useHoldToRepeat } from "../../lib/useHoldToRepeat";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import DiceRoller from "../../components/DiceRoller";
-import TopNav from "../../components/TopNav";
+import TopNav, { NavSegment } from "../../components/TopNav";
 import { InfoBadge } from "./CharacterTalents";
 import ItemEditorModal, { itemTypeLabel } from "./ItemEditorModal";
 import { HR } from "./CharacterSheetPrimitives";
@@ -418,6 +418,8 @@ export default function CharacterSheetViewMode({ ctx }) {
     activeMapView,
   } = ctx;
 
+  const navigate = useNavigate();
+
   // Close qty stepper when clicking outside the loadout tab
   useEffect(() => {
     if (!qtyStepperOpenId) return;
@@ -494,20 +496,19 @@ export default function CharacterSheetViewMode({ ctx }) {
         showLive={false}
         onBookClick={() => setGuideOpen((o) => !o)}
         bookOpen={guideOpen}
+        center={slug ? (
+          <NavSegment
+            options={[{ key: "profile", label: "❡ Profile" }, { key: "session", label: "⚔ Session" }]}
+            value="profile"
+            onChange={(v) => { if (v === "session") navigate(`/characters/${slug}/session`); }}
+          />
+        ) : null}
         menuItems={[
+          { label: unlockState === "unlocked" ? "Edit Character" : "🔒 Edit Character", onClick: handleEditClick },
           { label: "Export JSON", onClick: exportJSON },
           { label: "All Characters", href: "/" },
-          ...(slug ? [{ label: "⚔ Session", href: `/characters/${slug}/session` }] : []),
         ]}
-      >
-        {/* Edit Character stays in right slot until Story 42 moves it to page body */}
-        <button onClick={handleEditClick} disabled={unlockLoading || unlockChecking} className="cs-toolbar-btn">
-          {unlockLoading
-            ? <><div className="dnd-spinner" style={{ width: 12, height: 12, borderTopColor: pal.textMuted }} /> Checking…</>
-            : unlockState === "unlocked" ? "Edit Character" : "🔒 Edit Character"
-          }
-        </button>
-      </TopNav>
+      />
 
       <div className="cs-content">
 
