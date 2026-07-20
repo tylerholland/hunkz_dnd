@@ -994,12 +994,11 @@ export default function DmDashboardPage() {
             { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
             { divider: true },
             {
-              label: `Text Size: ${roundedTextScalePct}%`,
-              onClick: () => setTextScale((current) => clampTextScale(Number((current + TEXT_SCALE_STEP).toFixed(2)))),
-            },
-            {
-              label: "Decrease Text Size",
-              onClick: () => setTextScale((current) => clampTextScale(Number((current - TEXT_SCALE_STEP).toFixed(2)))),
+              stepper: true,
+              label: "Text Size",
+              value: `${roundedTextScalePct}%`,
+              onDecrement: () => setTextScale((current) => clampTextScale(Number((current - TEXT_SCALE_STEP).toFixed(2)))),
+              onIncrement: () => setTextScale((current) => clampTextScale(Number((current + TEXT_SCALE_STEP).toFixed(2)))),
             },
             { divider: true },
             { label: "Sign Out", onClick: handleEndSession, destructive: true },

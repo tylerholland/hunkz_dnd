@@ -89,6 +89,11 @@ export function NavMenu({ items }) {
     item.onClick?.();
   }, []);
 
+  const handleStepClick = useCallback((e, fn) => {
+    e.stopPropagation();
+    fn?.();
+  }, []);
+
   if (!items || items.length === 0) return null;
 
   return (
@@ -108,6 +113,25 @@ export function NavMenu({ items }) {
         {items.map((item, idx) => {
           if (item.divider) {
             return <div key={idx} className="topnav-menu-divider" />;
+          }
+          if (item.stepper) {
+            return (
+              <div key={idx} className="topnav-menu-stepper">
+                <button
+                  type="button"
+                  className="topnav-menu-stepper-btn"
+                  onClick={(e) => handleStepClick(e, item.onDecrement)}
+                  aria-label={`Decrease ${item.label}`}
+                >−</button>
+                <span className="topnav-menu-stepper-label">{item.label}: {item.value}</span>
+                <button
+                  type="button"
+                  className="topnav-menu-stepper-btn"
+                  onClick={(e) => handleStepClick(e, item.onIncrement)}
+                  aria-label={`Increase ${item.label}`}
+                >+</button>
+              </div>
+            );
           }
           if (item.href) {
             return (
