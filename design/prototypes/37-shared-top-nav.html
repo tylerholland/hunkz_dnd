@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Shared Top Nav — Design Prototype (Story 37)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ─── Keyframes ─────────────────────────────────────────────────────── */
+@keyframes navDotPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.6; transform:scale(0.85); } }
+@keyframes backTap { 0% { transform:scale(1); } 40% { transform:scale(0.82); } 100% { transform:scale(1); } }
+@keyframes calloutIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+
+/* ─── Reset & base ───────────────────────────────────────────────────── */
+*,*::before,*::after { box-sizing:border-box; margin:0; padding:0; }
+:root {
+  --font-d:'Cinzel',Georgia,serif;
+  --font-b:'Crimson Text',Georgia,serif;
+  --font-u:'IM Fell English',Georgia,serif;
+  --page-bg:#0a0c10;
+  --page-text:#c8bfaf;
+  --page-accent:#a0c0d0;
+  --page-border:rgba(100,130,160,0.18);
+}
+body {
+  background:var(--page-bg);
+  min-height:100vh;
+  color:var(--page-text);
+  font-family:var(--font-b);
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:80px;
+}
+::-webkit-scrollbar{width:6px} ::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(128,128,128,0.2);border-radius:3px}
+
+/* ─── Palette tokens (set on each demo frame root) ──────────────────── */
+.pal-ocean {
+  --pal-bg:#0d0f14;
+  --pal-surface:rgba(18,32,48,0.6);
+  --pal-surface-solid:#111e2c;
+  --pal-border:rgba(106,143,168,0.18);
+  --pal-accent:#6a8fa8;
+  --pal-accent-bright:#a0c0d0;
+  --pal-accent-dim:rgba(30,58,78,0.45);
+  --pal-text:#c8bfaf;
+  --pal-text-body:#b0a898;
+  --pal-text-muted:#5a7a8a;
+  --pal-gem:#8ab4c8;
+}
+.pal-vellum {
+  --pal-bg:#f5f0e8;
+  --pal-surface:rgba(122,92,48,0.07);
+  --pal-surface-solid:#ece3d2;
+  --pal-border:rgba(122,92,48,0.28);
+  --pal-accent:#7a5c30;
+  --pal-accent-bright:#4a3418;
+  --pal-accent-dim:rgba(122,92,48,0.14);
+  --pal-text:#2a2018;
+  --pal-text-body:#3a2f22;
+  --pal-text-muted:#9a8060;
+  --pal-gem:#4a3418;
+}
+
+/* ─── Prototype header ───────────────────────────────────────────────── */
+.proto-header {
+  background:rgba(10,15,20,0.92); border-bottom:1px solid var(--page-border);
+  padding:20px 28px;
+}
+.proto-header h1 { font-family:var(--font-d); font-size:19px; letter-spacing:0.08em; color:var(--page-text); margin-bottom:6px; }
+.proto-meta { font-family:var(--font-u); font-size:11px; letter-spacing:0.22em; text-transform:uppercase; color:var(--page-accent); margin-bottom:4px; }
+.proto-meta span { color:var(--page-text); opacity:0.7; }
+.proto-note { font-family:var(--font-b); font-style:italic; font-size:12px; color:rgba(200,191,175,0.55); max-width:760px; line-height:1.5; }
+
+/* ─── Scenario section shell ─────────────────────────────────────────── */
+.scenario-section {
+  padding:36px 28px 44px;
+  border-bottom:1px solid var(--page-border);
+  max-width:1080px;
+}
+.scenario-label {
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.28em; text-transform:uppercase;
+  color:rgba(200,191,175,0.45); margin-bottom:8px;
+}
+.scenario-title { font-family:var(--font-d); font-size:16px; letter-spacing:0.05em; color:var(--page-text); margin-bottom:6px; }
+.scenario-desc { font-family:var(--font-b); font-size:13px; color:rgba(200,191,175,0.62); max-width:680px; line-height:1.6; margin-bottom:18px; }
+
+/* ─── Controls bar (surface switcher) ────────────────────────────────── */
+.switcher-row { display:flex; flex-wrap:wrap; gap:8px; margin-bottom:14px; }
+.switch-tab {
+  font-family:var(--font-u); font-size:12px; letter-spacing:0.1em; text-transform:uppercase;
+  color:rgba(200,191,175,0.55); background:transparent; border:1px solid var(--page-border);
+  border-radius:4px; padding:10px 16px; min-height:44px; cursor:pointer;
+  transition:border-color 150ms ease, color 150ms ease, background 150ms ease;
+}
+.switch-tab:hover { border-color:var(--page-accent); color:var(--page-accent); }
+.switch-tab.active { border-color:var(--page-accent); color:var(--page-accent); background:rgba(160,192,208,0.1); }
+
+.toggles-row { display:flex; flex-wrap:wrap; gap:18px; align-items:center; margin-bottom:22px; }
+.toggle-chip {
+  display:flex; align-items:center; gap:7px; font-family:var(--font-u); font-size:12px;
+  letter-spacing:0.06em; color:rgba(200,191,175,0.7); cursor:pointer; user-select:none;
+  min-height:44px;
+}
+.toggle-chip input { width:15px; height:15px; accent-color:#8ab4c8; cursor:pointer; }
+.toggle-chip.is-disabled { opacity:0.35; cursor:not-allowed; }
+.toggle-chip.is-disabled input { cursor:not-allowed; }
+.toggle-note { font-style:italic; font-size:11px; color:rgba(200,191,175,0.4); }
+
+.ctx-desc-box {
+  background:rgba(160,192,208,0.05); border:1px solid rgba(160,192,208,0.18); border-radius:5px;
+  padding:12px 16px; font-family:var(--font-b); font-size:13px; line-height:1.6;
+  color:rgba(200,191,175,0.82); margin-bottom:20px; max-width:760px;
+}
+
+/* ─── Demo frame ──────────────────────────────────────────────────────── */
+.demo-frame-wrap { position:relative; }
+.demo-frame {
+  container-type: inline-size;
+  width:100%; max-width:900px; border:1px solid var(--pal-border); border-radius:6px;
+  overflow:hidden; background:var(--pal-bg); transition:width 220ms ease-out;
+}
+.demo-frame.w-mobile { width:375px; }
+.frame-caption {
+  font-family:var(--font-u); font-size:10px; letter-spacing:0.18em; text-transform:uppercase;
+  color:rgba(200,191,175,0.4); margin-top:8px;
+}
+
+/* ─── TopNav bar ──────────────────────────────────────────────────────── */
+.topnav {
+  height:52px; position:sticky; top:0; z-index:50;
+  background:var(--pal-bg); border-bottom:1px solid var(--pal-border);
+  display:flex; align-items:center; padding:0 12px; gap:10px;
+}
+.topnav-left { display:flex; align-items:center; gap:2px; min-width:0; flex:0 1 auto; }
+.topnav-back {
+  width:44px; height:44px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-d); font-size:22px; color:var(--pal-text-muted); background:transparent;
+  border:none; border-radius:4px; cursor:pointer; transition:color 150ms ease, background 150ms ease;
+}
+.topnav-back:hover { color:var(--pal-accent-bright); background:rgba(128,128,128,0.08); }
+.topnav-back.pulse-back { animation:backTap 220ms ease-out; color:var(--pal-accent-bright); }
+.topnav-title {
+  font-family:var(--font-d); font-size:15px; font-variant:small-caps; letter-spacing:0.06em;
+  color:var(--pal-text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.topnav-center-pills { display:flex; flex:1 1 auto; justify-content:center; min-width:0; }
+.topnav-mobile-row {
+  display:none; justify-content:center; padding:6px 12px;
+  background:var(--pal-bg); border-bottom:1px solid var(--pal-border);
+}
+
+/* ── Segmented control primitive (mode toggle, and reused elsewhere e.g. map-mode toggle) ──
+   Visual capsule is intentionally short (32px) per DM review — "too tall, make it slicker."
+   The 44px touch target is preserved without growing the visible pill: each segment button
+   gets an invisible ::before that extends 6px above/below its own box (44px tall, centered),
+   so the *hit area* is 44px even though the *paint area* is 32px. This only works because the
+   capsule wrapper does NOT clip with overflow:hidden — the pill shape instead comes from
+   rounding the first/last button's own corners to match the wrapper's radius. */
+.topnav-segment {
+  position:relative;
+  display:inline-flex; align-items:stretch; height:32px;
+  border:1px solid var(--pal-border); border-radius:999px; flex-shrink:0;
+}
+.topnav-seg-btn {
+  position:relative;
+  display:flex; align-items:center; justify-content:center;
+  padding:0 15px; min-width:38px;
+  font-family:var(--font-u); font-size:11px; letter-spacing:0.07em; white-space:nowrap;
+  color:var(--pal-text-muted); background:transparent; border:none; cursor:pointer;
+  transition:background 150ms ease, color 150ms ease;
+}
+.topnav-seg-btn:first-child { border-radius:999px 0 0 999px; }
+.topnav-seg-btn:last-child { border-radius:0 999px 999px 0; }
+/* Invisible extended hit area — 44px tall, does not affect layout or paint. */
+.topnav-seg-btn::before {
+  content:''; position:absolute; left:0; right:0; top:50%;
+  height:44px; transform:translateY(-50%);
+}
+.topnav-seg-btn + .topnav-seg-btn { border-left:1px solid var(--pal-border); }
+.topnav-seg-btn:hover { color:var(--pal-accent); }
+.topnav-seg-btn.active { background:var(--pal-accent-dim); color:var(--pal-text); }
+.topnav-seg-btn.active:hover { color:var(--pal-text); }
+
+.topnav-right { display:flex; align-items:center; gap:2px; margin-left:auto; flex-shrink:0; }
+.topnav-child-btn {
+  font-family:var(--font-u); font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
+  color:var(--pal-text-muted); background:transparent; border:1px solid var(--pal-border);
+  border-radius:3px; padding:0 14px; min-height:44px; display:flex; align-items:center;
+  cursor:pointer; white-space:nowrap; margin-right:6px;
+  transition:border-color 150ms ease, color 150ms ease;
+}
+.topnav-child-btn:hover { border-color:var(--pal-accent); color:var(--pal-accent-bright); }
+
+.topnav-dot-wrap { display:flex; align-items:center; gap:6px; padding:0 8px; flex-shrink:0; }
+.topnav-dot { width:8px; height:8px; border-radius:50%; background:#58c890; flex-shrink:0; animation:navDotPulse 2.2s ease-in-out infinite; }
+.topnav-dot-wrap.polling .topnav-dot { background:#c8903c; animation:none; opacity:0.75; }
+.topnav-dot-label { font-family:var(--font-u); font-size:11px; letter-spacing:0.14em; text-transform:uppercase; color:var(--pal-text-muted); }
+
+.topnav-book {
+  width:44px; height:44px; flex-shrink:0; display:flex; align-items:center; justify-content:center;
+  background:transparent; border:none; border-radius:4px; color:var(--pal-text-muted); cursor:pointer;
+  transition:color 150ms ease, background 150ms ease;
+}
+.topnav-book:hover { color:var(--pal-accent); background:rgba(128,128,128,0.08); }
+.topnav-book.tap-flash { color:var(--pal-accent-bright); }
+
+.topnav-menu-wrap { position:relative; flex-shrink:0; }
+.topnav-menu-trigger {
+  width:44px; height:44px; display:flex; align-items:center; justify-content:center;
+  font-family:var(--font-d); font-size:19px; letter-spacing:0.05em; color:var(--pal-text-muted);
+  background:transparent; border:none; border-radius:4px; cursor:pointer;
+  transition:color 150ms ease, background 150ms ease;
+}
+.topnav-menu-trigger:hover { color:var(--pal-accent-bright); background:rgba(128,128,128,0.08); }
+.topnav-menu-trigger.active { color:var(--pal-accent-bright); background:var(--pal-accent-dim); }
+
+.topnav-menu-popover {
+  position:absolute; top:calc(100% + 8px); right:0; min-width:210px;
+  background:var(--pal-surface-solid); border:1px solid var(--pal-border); border-radius:8px;
+  box-shadow:0 10px 28px rgba(0,0,0,0.4); overflow:hidden;
+  opacity:0; transform:translateY(-6px); pointer-events:none;
+  transition:opacity 150ms ease-out, transform 150ms ease-out; z-index:80;
+}
+.topnav-menu-popover.open { opacity:1; transform:translateY(0); pointer-events:auto; }
+.topnav-menu-item {
+  display:flex; align-items:center; width:100%; min-height:40px; padding:0 16px;
+  background:transparent; border:none; font-family:var(--font-u); font-size:13px;
+  letter-spacing:0.03em; color:var(--pal-text); text-align:left; cursor:pointer;
+  transition:background 120ms ease;
+}
+.topnav-menu-item:hover { background:rgba(128,128,128,0.1); }
+.topnav-menu-item.destructive { color:#c06060; }
+.topnav-menu-item.destructive:hover { background:rgba(192,96,96,0.1); }
+.topnav-menu-divider { height:1px; background:var(--pal-border); margin:4px 0; }
+.topnav-menu-empty {
+  padding:12px 16px; min-height:40px; display:flex; align-items:center;
+  font-family:var(--font-b); font-style:italic; font-size:12px; color:var(--pal-text-muted);
+}
+
+/* Mobile arrangement — container query on the demo-frame's own width, not viewport,
+   so the 375px toggle reflows correctly regardless of the browser window size.
+   Real narrow windows (e.g. an actual phone) get the same behavior for free. */
+@container (max-width: 560px) {
+  .topnav-center-pills { display:none; }
+  .topnav-mobile-row.has-pills { display:flex; }
+  .topnav-child-btn { display:none; }
+  .topnav-dot-label { display:none; }
+  .topnav-title { max-width:150px; }
+}
+/* Fallback for browsers without container-query support: mirror the same rules
+   off the real viewport width so degradation is graceful, not broken. */
+@media (max-width: 560px) {
+  .topnav-center-pills { display:none; }
+  .topnav-mobile-row.has-pills { display:flex; }
+  .topnav-child-btn { display:none; }
+  .topnav-dot-label { display:none; }
+}
+
+/* ─── Placeholder page content (below each demo frame) ──────────────── */
+.placeholder-body { padding:22px 20px 30px; }
+.ph-block { height:14px; border-radius:2px; background:rgba(128,128,128,0.1); margin-bottom:12px; }
+.pal-vellum .ph-block { background:rgba(122,92,48,0.1); }
+.ph-block.head { width:34%; height:16px; background:rgba(128,128,128,0.16); margin-bottom:18px; }
+.pal-vellum .ph-block.head { background:rgba(122,92,48,0.18); }
+.ph-block.w60 { width:60%; } .ph-block.w80 { width:80%; } .ph-block.w45 { width:45%; } .ph-block.w90 { width:90%; }
+.ph-note {
+  margin-top:16px; padding:10px 14px; border:1px dashed var(--pal-border); border-radius:4px;
+  font-family:var(--font-b); font-style:italic; font-size:12px; color:var(--pal-text-muted); line-height:1.5;
+}
+
+/* ─── Callouts ────────────────────────────────────────────────────────── */
+.callout {
+  position:absolute;
+  background:rgba(160,192,208,0.12);
+  border:1px solid rgba(160,192,208,0.35);
+  border-radius:3px;
+  color:#a0c0d0;
+  font-family:'IM Fell English', serif;
+  font-size:11px;
+  letter-spacing:0.1em;
+  padding:4px 9px;
+  pointer-events:none;
+  text-transform:uppercase;
+  white-space:nowrap;
+  z-index:90;
+  animation:calloutIn 200ms ease-out;
+}
+.callout::before { content:''; position:absolute; top:-5px; left:14px; border-left:5px solid transparent; border-right:5px solid transparent; border-bottom:5px solid rgba(160,192,208,0.35); }
+
+/* ─── Legend ──────────────────────────────────────────────────────────── */
+.legend-section { padding:36px 28px 60px; max-width:840px; }
+.legend-item { display:flex; gap:12px; margin-bottom:14px; font-family:var(--font-b); font-size:13px; line-height:1.6; color:rgba(200,191,175,0.8); }
+.legend-num {
+  flex-shrink:0; width:22px; height:22px; border-radius:50%; border:1px solid rgba(160,192,208,0.4);
+  color:#a0c0d0; font-family:var(--font-d); font-size:11px; display:flex; align-items:center; justify-content:center;
+}
+.legend-item strong { color:var(--page-text); font-weight:normal; font-family:var(--font-d); letter-spacing:0.03em; }
+
+/* ─── Ambiguity flags ─────────────────────────────────────────────────── */
+.flag-box {
+  margin-top:16px; padding:10px 14px; border-left:3px solid #c8903c; background:rgba(200,144,60,0.08);
+  font-family:var(--font-b); font-size:12px; font-style:italic; color:rgba(200,191,175,0.8); line-height:1.55; max-width:680px;
+}
+.flag-box b { color:#dba85f; font-style:normal; }
+
+/* ─── Shared-primitive demo box (map-mode toggle) ────────────────────── */
+.primitive-demo-box {
+  display:inline-block; padding:16px 20px; border:1px solid var(--pal-border); border-radius:8px;
+  background:var(--pal-bg);
+}
+.primitive-demo-caption {
+  margin-top:12px; font-family:var(--font-b); font-style:italic; font-size:12px;
+  color:var(--pal-text-muted); max-width:360px; line-height:1.55;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .topnav-dot, .topnav-back, .topnav-book, .topnav-menu-trigger, .topnav-menu-popover, .demo-frame { animation:none !important; transition:none !important; }
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     Prototype header
+═══════════════════════════════════════════════════════════════════ -->
+<header class="proto-header">
+  <h1>Shared Top Nav &amp; Consistent Menu Language</h1>
+  <div class="proto-meta">Story 37 · Design Prototype <span>— revised per DM review feedback</span></div>
+  <div class="proto-note">
+    Executes the Nav audit, Decisions from DM review, and UX Design sections of
+    <code>design/stories/37-shared-top-nav.md</code>. One <code>TopNav</code> component, six contexts.
+    Palette tokens follow <code>design/design-system.md</code> (<code>--pal-*</code> cascade, ADR-014 naming).
+    Mode toggle is a segmented-control capsule, ~32px visual height with a 44px hit area
+    (see Scenario 3 for the same primitive reused as the map-mode toggle).
+  </div>
+</header>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PRIMARY INTERACTIVE DEMO — surface switcher
+═══════════════════════════════════════════════════════════════════ -->
+<section class="scenario-section">
+  <div class="scenario-label">Scenario 1 of 3</div>
+  <div class="scenario-title">Interactive surface switcher</div>
+  <div class="scenario-desc">
+    Swap the same <code>TopNav</code> component across all six contexts it will render on. Try the ⋯ menu,
+    the segmented mode toggle, the back glyph, and the mobile-width toggle in each context.
+  </div>
+
+  <div class="switcher-row" role="tablist" aria-label="Nav context switcher">
+    <button class="switch-tab active" data-ctx="libAnon">Library (anon)</button>
+    <button class="switch-tab" data-ctx="libDm">Library (DM-authed)</button>
+    <button class="switch-tab" data-ctx="charSheet">Character Sheet / Profile</button>
+    <button class="switch-tab" data-ctx="session">Session Mode</button>
+    <button class="switch-tab" data-ctx="dm">DM Dashboard</button>
+    <button class="switch-tab" data-ctx="maps">Map Library</button>
+  </div>
+
+  <div class="toggles-row">
+    <label class="toggle-chip" id="dmToggleChip">
+      <input type="checkbox" id="dmToggle" />
+      DM viewing this character (adds "Campaign" to ⋯)
+    </label>
+    <label class="toggle-chip" id="liveToggleChip">
+      <input type="checkbox" id="liveToggle" />
+      Simulate dropped socket (Live → Polling)
+    </label>
+    <label class="toggle-chip">
+      <input type="checkbox" id="mobileToggle" />
+      Mobile width (375px)
+    </label>
+  </div>
+
+  <div class="ctx-desc-box" id="ctxDesc">—</div>
+
+  <div class="demo-frame-wrap">
+    <div class="demo-frame" id="primaryFrame">
+      <div id="primaryNavMount"></div>
+      <div class="placeholder-body" id="primaryBody">
+        <div class="ph-block head"></div>
+        <div class="ph-block w90"></div>
+        <div class="ph-block w80"></div>
+        <div class="ph-block w60"></div>
+        <div class="ph-note" id="primaryBodyNote"></div>
+      </div>
+    </div>
+  </div>
+  <div class="frame-caption">52px sticky bar · click ⋯ for the context menu · click ‹ for back-glyph feedback</div>
+
+  <div class="flag-box" id="dmMenuFlag" style="display:none;">
+    <b>Flag —</b> the story says the existing "All Actions" dropdown merges into this menu but doesn't enumerate
+    its contents. Shown here: <em>⚙ Enemies Gallery</em> and <em>Palette Theme</em> as representative items
+    (both currently live in the DM dashboard per <code>app-overview.md</code>). Confirm the exact set with the DM
+    before build.
+  </div>
+  <div class="flag-box" id="mapsMenuFlag" style="display:none;">
+    <b>Flag —</b> the story doesn't specify ⋯ contents for Map Library at all (only Character/Library/DM
+    Dashboard are itemized). Upload stays a dedicated bar button (frequent action, same logic as Manage Party);
+    the ⋯ menu is left empty here pending a decision on whether anything belongs in it.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     PALETTE CASCADE — same component, two palettes
+═══════════════════════════════════════════════════════════════════ -->
+<section class="scenario-section">
+  <div class="scenario-label">Scenario 2 of 3</div>
+  <div class="scenario-title">Palette cascade — character (vellum) vs. campaign (ocean)</div>
+  <div class="scenario-desc">
+    Identical markup and CSS, re-tinted purely by the <code>--pal-*</code> custom properties set on each
+    frame's root — nothing else changes. Menus and the segmented mode toggle stay fully interactive in both.
+  </div>
+
+  <div style="display:flex; flex-wrap:wrap; gap:28px;">
+    <div class="demo-frame-wrap" style="flex:1 1 420px; max-width:460px;">
+      <div class="demo-frame pal-vellum" id="cascadeCharFrame" style="position:relative;">
+        <div id="cascadeCharMount"></div>
+        <div class="placeholder-body">
+          <div class="ph-block head"></div>
+          <div class="ph-block w80"></div>
+          <div class="ph-block w60"></div>
+          <div class="ph-block w90"></div>
+          <div class="ph-note">Edit Character now lives in the page body here (Story 42) — it left the top bar entirely per this story's decisions.</div>
+        </div>
+        <div class="callout" style="top:56px; left:6px;">‹ hidden on library root, shown here</div>
+        <div class="callout" style="top:56px; left:150px;">Title = identity, not a button</div>
+        <div class="callout" style="top:56px; right:96px;">⋯ same popover spec everywhere</div>
+      </div>
+      <div class="frame-caption">Character Sheet / Profile — palette: vellum (Aragorn)</div>
+    </div>
+
+    <div class="demo-frame-wrap" style="flex:1 1 420px; max-width:460px;">
+      <div class="demo-frame pal-ocean" id="cascadeDmFrame" style="position:relative;">
+        <div id="cascadeDmMount"></div>
+        <div class="placeholder-body">
+          <div class="ph-block head"></div>
+          <div class="ph-block w90"></div>
+          <div class="ph-block w45"></div>
+          <div class="ph-block w80"></div>
+          <div class="ph-note">Battle Mode toggle stays in-panel below (map area) — not part of the shared nav's center slot. See Scenario 3 for that primitive.</div>
+        </div>
+        <div class="callout" style="top:56px; left:6px;">‹ → Character Library</div>
+        <div class="callout" style="top:56px; right:150px;">Manage Party stays a bar button</div>
+        <div class="callout" style="top:56px; right:12px;">Live dot · polled surface</div>
+      </div>
+      <div class="frame-caption">DM Dashboard — palette: ocean (campaign default)</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     SHARED PRIMITIVE REUSE — map-mode toggle
+═══════════════════════════════════════════════════════════════════ -->
+<section class="scenario-section">
+  <div class="scenario-label">Scenario 3 of 3</div>
+  <div class="scenario-title">Shared primitive reuse — map-mode toggle</div>
+  <div class="scenario-desc">
+    The same segmented-control primitive that renders the ❡ Profile / ⚔ Session mode toggle in the top nav
+    is reused here, unchanged in spec (~32px visual capsule height, 44px hit area, hairline mid-divider,
+    <code>--pal-accent-dim</code> fill on the active half, <code>--pal-text-muted</code> on the inactive half),
+    for the DM dashboard's Adventure / Battle map-mode toggle.
+  </div>
+  <div class="pal-ocean primitive-demo-box">
+    <div id="mapModeMount"></div>
+    <div class="primitive-demo-caption">
+      Lives in the map panel, not the top nav — Battle Mode is shared world state (every player sees the same
+      map mode at once), not a personal per-user navigation choice like Profile/Session.
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════
+     Legend
+═══════════════════════════════════════════════════════════════════ -->
+<section class="legend-section">
+  <div class="scenario-label">Legend — non-obvious decisions</div>
+
+  <div class="legend-item"><div class="legend-num">1</div><div><strong>Back glyph</strong> — quiet <code>‹</code>, 44px target, <code>--pal-text-muted</code> brightening to <code>--pal-accent-bright</code> on hover. Hidden entirely on the library root (no back target exists). Demotes the old shouting <code>← ALL CHARACTERS</code> label.</div></div>
+  <div class="legend-item"><div class="legend-num">2</div><div><strong>Title is identity, not a button</strong> — Cinzel small-caps ~15px, never clickable, never styled as an action. Pairs with the back glyph on the left and survives truncation on mobile via <code>text-overflow:ellipsis</code>.</div></div>
+  <div class="legend-item"><div class="legend-num">3</div><div><strong>Mode toggle is one segmented-control capsule</strong>, not two separate buttons — 1px <code>--pal-border</code> around the whole capsule (radius on the container, not per-segment), a hairline divider between halves, active half filled <code>--pal-accent-dim</code> + <code>--pal-text</code>, inactive half transparent + <code>--pal-text-muted</code>. Revised again per DM review: the visual capsule is now a slimmer ~32px tall (11px label, tighter padding) instead of the original 44px-tall pill — but each segment keeps a 44px-tall invisible <code>::before</code> hit area centered over it, so tap accuracy doesn't shrink even though the pill looks lighter. Only renders on character surfaces. Desktop: centered in the bar. Below 560px (via CSS container query on the demo frame's own width, not the viewport): the whole capsule drops to a second sticky row, still in sync with its desktop twin.</div></div>
+  <div class="legend-item"><div class="legend-num">4</div><div><strong>Live/Polling dot</strong> only appears on the three surfaces that actually poll <code>GET /session-state</code>: Character Sheet, Session Mode, DM Dashboard. Library and Map Library are one-shot fetches — no dot, per <code>app-overview.md</code>.</div></div>
+  <div class="legend-item"><div class="legend-num">5</div><div><strong>World Guide book icon</strong> appears on all six contexts — this is a deliberate reading of "same slots on every page" / "all surfaces incl. session mode." It's new on Session Mode (the story's explicit fix) and also new on both Library states and Map Library, which never had it before. Flagged as an assumption worth confirming, since the nav audit table didn't show a book icon on those three today.</div></div>
+  <div class="legend-item"><div class="legend-num">6</div><div><strong>⋯ context menu</strong> — one spec everywhere: <code>--pal-surface-solid</code> panel, 8px radius, 40px rows, 13px IM Fell English, 1px <code>--pal-border</code> dividers, destructive rows in universal <code>#c06060</code> (not palette-derived). Anchored top-right under the trigger, opens with a 150ms fade + 6px slide, closes on outside click or re-trigger.</div></div>
+  <div class="legend-item"><div class="legend-num">7</div><div><strong>Manage Party / Upload stay dedicated bar buttons</strong> — both are high-frequency actions and explicitly exempted from the ⋯ consolidation. On mobile they're dropped entirely ("nothing else" per the mobile spec) rather than shrunk, matching the same width-pressure lesson that already pulled Short/Long Rest off the DM dashboard bar.</div></div>
+  <div class="legend-item"><div class="legend-num">8</div><div><strong>Export JSON moved into ⋯</strong> (rare action, no longer permanent chrome) and <strong>Edit Character left the bar entirely</strong> for the profile page body (Story 42) — neither appears as nav chrome anywhere in this prototype, by design.</div></div>
+  <div class="legend-item"><div class="legend-num">9</div><div><strong>Palette cascade</strong> — the exact same <code>TopNav</code> markup/CSS re-tints via <code>--pal-*</code> custom properties set once on each surface's root, per ADR-014. Character surfaces get the character's own palette (vellum shown); DM surfaces get campaign Ocean.</div></div>
+  <div class="legend-item"><div class="legend-num">10</div><div><strong>Mobile (&lt;560px)</strong> — only <code>‹</code> + title (left) and dot + book + ⋯ (right) survive; the segmented mode toggle relocates to a second row, page-specific bar buttons (Manage Party / Upload) disappear entirely. Every remaining target stays ≥44×44px (visual capsule may be 32px, but the tap area underneath is not); no horizontal overflow at 375px.</div></div>
+  <div class="legend-item"><div class="legend-num">11</div><div><strong>Segmented control is a shared primitive, not nav-specific markup</strong> (Scenario 3) — the DM dashboard's in-panel Adventure/Battle map-mode toggle reuses the identical <code>.topnav-segment</code>/<code>.topnav-seg-btn</code> spec, sizing, and Ocean tokens, but intentionally stays inside the map panel rather than moving into the shared nav, since map mode is shared world state rather than a per-user navigation choice.</div></div>
+</section>
+
+<script>
+(function () {
+  var BOOK_SVG = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>';
+
+  var CONTEXTS = {
+    libAnon: {
+      palette: 'ocean',
+      back: null,
+      title: 'Character Library',
+      pills: null,
+      live: false,
+      children: [],
+      menu: [ { label: 'DM Login' } ],
+      desc: 'Library root, anonymous visitor. No back glyph — this <em>is</em> the root. No mode toggle (no character context). No live dot (one-shot fetch, not polled). ⋯ menu: DM Login only.',
+      bodyNote: 'Grid of character cards renders below the bar (unchanged from today).'
+    },
+    libDm: {
+      palette: 'ocean',
+      back: null,
+      title: 'Character Library',
+      pills: null,
+      live: false,
+      children: [],
+      menu: [ { label: 'Campaign' }, { label: 'Maps' }, { divider: true }, { label: 'End Session', destructive: true } ],
+      desc: 'Library root, DM-authenticated. Still no back glyph. ⋯ menu replaces the old second-row ghost links entirely — Campaign · Maps · divider · destructive End Session.',
+      bodyNote: 'Same character grid; DM-authed cards also show the "In Party" badge (unchanged).'
+    },
+    charSheet: {
+      palette: 'vellum',
+      back: 'Character Library',
+      title: 'Aragorn',
+      pills: { options: [ { key: 'profile', label: '❡ Profile' }, { key: 'session', label: '⚔ Session' } ], active: 'profile' },
+      live: true,
+      children: [],
+      menuBase: [ { label: 'Export JSON' }, { label: 'All Characters' } ],
+      menuDmExtra: [ { label: 'Campaign' } ],
+      desc: 'Character surface, Profile mode. Back glyph returns to the Library. Title is the character\'s name. Center segmented control switches Profile/Session. Live dot (this page polls <code>GET /session-state</code>). ⋯ menu: Export JSON · All Characters, plus Campaign only when DM-authed.',
+      bodyNote: 'Edit Character now lives in the page body here (Story 42) — no longer nav chrome.'
+    },
+    session: {
+      palette: 'vellum',
+      back: 'Character Library',
+      title: 'Aragorn',
+      pills: { options: [ { key: 'profile', label: '❡ Profile' }, { key: 'session', label: '⚔ Session' } ], active: 'session' },
+      live: true,
+      children: [],
+      menuBase: [ { label: 'Export JSON' }, { label: 'All Characters' } ],
+      menuDmExtra: [ { label: 'Campaign' } ],
+      desc: 'Character surface, Session mode. Same slots as Profile — this is the surface the story explicitly calls out as missing the World Guide book icon today. It\'s now present, in the same fixed right-slot order.',
+      bodyNote: 'Two-column session layout renders below (HP hero, conditions, dice roller, etc. — unchanged).'
+    },
+    dm: {
+      palette: 'ocean',
+      back: 'Character Library',
+      title: 'Campaign',
+      pills: null,
+      live: true,
+      children: [ { label: 'Manage Party' } ],
+      menu: [ { label: '⚙ Enemies Gallery' }, { label: 'Palette Theme' } ],
+      desc: 'DM Campaign dashboard. Back glyph returns to the Library, title reads "Campaign." No mode toggle — single-mode surface (the map panel has its own Adventure/Battle toggle, see Scenario 3). Manage Party keeps its own dedicated bar button (high-frequency); the rest of the old "All Actions" dropdown merges into ⋯.',
+      bodyNote: 'Party card strip + initiative tracker render below (unchanged). Battle Mode toggle stays in the map panel, not the nav.',
+      flag: 'dmMenuFlag'
+    },
+    maps: {
+      palette: 'ocean',
+      back: 'Campaign',
+      title: 'Map Library',
+      pills: null,
+      live: false,
+      children: [ { label: '+ Upload' } ],
+      menu: [],
+      desc: 'Map Library — DM-only management page. Back glyph returns to Campaign (<code>/dm</code>). Not polled, so no live dot. Upload stays a dedicated bar button (frequent action).',
+      bodyNote: 'Thumbnail grid of library maps renders below (unchanged).',
+      flag: 'mapsMenuFlag'
+    }
+  };
+
+  var currentCtx = 'libAnon';
+  var dmAuthed = false;
+  var polling = false;
+  var mobile = false;
+
+  function buildSegmentControl(options, activeKey, instanceId) {
+    var btns = options.map(function (o) {
+      var active = o.key === activeKey ? ' active' : '';
+      return '<button class="topnav-seg-btn' + active + '" data-instance="' + instanceId + '" data-pill="' + o.key + '">' + o.label + '</button>';
+    }).join('');
+    return '<div class="topnav-segment">' + btns + '</div>';
+  }
+
+  function renderPills(pills, instanceId) {
+    if (!pills) return { inline: '', mobileRow: '' };
+    var seg = buildSegmentControl(pills.options, pills.active, instanceId);
+    return {
+      inline: '<div class="topnav-center-pills">' + seg + '</div>',
+      mobileRow: '<div class="topnav-mobile-row has-pills">' + seg + '</div>'
+    };
+  }
+
+  function renderMenu(items) {
+    if (!items || items.length === 0) {
+      return '<div class="topnav-menu-empty">No items yet</div>';
+    }
+    return items.map(function (item) {
+      if (item.divider) return '<div class="topnav-menu-divider"></div>';
+      var cls = 'topnav-menu-item' + (item.destructive ? ' destructive' : '');
+      return '<button class="' + cls + '">' + item.label + '</button>';
+    }).join('');
+  }
+
+  function buildNav(cfg, instanceId) {
+    var backHTML = cfg.back
+      ? '<button class="topnav-back" data-back="' + cfg.back + '" title="Back to ' + cfg.back + '" aria-label="Back to ' + cfg.back + '">‹</button>'
+      : '';
+    var pills = renderPills(cfg.pills, instanceId);
+    var childrenHTML = (cfg.children || []).map(function (c) {
+      return '<button class="topnav-child-btn">' + c.label + '</button>';
+    }).join('');
+    var dotHTML = cfg.live
+      ? '<div class="topnav-dot-wrap' + (polling ? ' polling' : '') + '"><span class="topnav-dot"></span><span class="topnav-dot-label">' + (polling ? 'Polling' : 'Live') + '</span></div>'
+      : '';
+    var menuItems = cfg.menu;
+    if (!menuItems && cfg.menuBase) {
+      menuItems = cfg.menuBase.slice();
+      if (dmAuthed && cfg.menuDmExtra) menuItems = menuItems.concat(cfg.menuDmExtra);
+    }
+    return (
+      '<div class="topnav" data-instance="' + instanceId + '">' +
+        '<div class="topnav-left">' + backHTML + '<div class="topnav-title">' + cfg.title + '</div></div>' +
+        pills.inline +
+        '<div class="topnav-right">' +
+          childrenHTML +
+          dotHTML +
+          '<button class="topnav-book" title="World Guide" aria-label="World Guide">' + BOOK_SVG + '</button>' +
+          '<div class="topnav-menu-wrap">' +
+            '<button class="topnav-menu-trigger" data-menu-trigger="' + instanceId + '" aria-haspopup="true" aria-expanded="false" title="More actions">⋯</button>' +
+            '<div class="topnav-menu-popover" id="menu-' + instanceId + '">' + renderMenu(menuItems) + '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>' +
+      pills.mobileRow
+    );
+  }
+
+  function renderPrimary() {
+    var cfg = CONTEXTS[currentCtx];
+    var frame = document.getElementById('primaryFrame');
+    frame.classList.remove('pal-ocean', 'pal-vellum');
+    frame.classList.add('pal-' + cfg.palette);
+    document.getElementById('primaryNavMount').innerHTML = buildNav(cfg, 'primary');
+    document.getElementById('ctxDesc').innerHTML = cfg.desc;
+    document.getElementById('primaryBodyNote').textContent = cfg.bodyNote;
+
+    // DM-authed toggle only meaningful on character surfaces
+    var dmApplicable = currentCtx === 'charSheet' || currentCtx === 'session';
+    var dmChip = document.getElementById('dmToggleChip');
+    dmChip.classList.toggle('is-disabled', !dmApplicable);
+    document.getElementById('dmToggle').disabled = !dmApplicable;
+
+    // Live toggle only meaningful on polled surfaces
+    var liveApplicable = !!cfg.live;
+    var liveChip = document.getElementById('liveToggleChip');
+    liveChip.classList.toggle('is-disabled', !liveApplicable);
+    document.getElementById('liveToggle').disabled = !liveApplicable;
+
+    // Ambiguity flags
+    ['dmMenuFlag', 'mapsMenuFlag'].forEach(function (id) {
+      document.getElementById(id).style.display = (cfg.flag === id) ? 'block' : 'none';
+    });
+
+    applyMobile();
+  }
+
+  function applyMobile() {
+    document.getElementById('primaryFrame').classList.toggle('w-mobile', mobile);
+  }
+
+  function closeAllMenus() {
+    document.querySelectorAll('.topnav-menu-popover.open').forEach(function (p) { p.classList.remove('open'); });
+    document.querySelectorAll('.topnav-menu-trigger.active').forEach(function (t) {
+      t.classList.remove('active');
+      t.setAttribute('aria-expanded', 'false');
+    });
+  }
+
+  // ── Event delegation for all mounted nav instances (and the standalone map-mode demo) ──
+  document.addEventListener('click', function (e) {
+    var trigger = e.target.closest('[data-menu-trigger]');
+    if (trigger) {
+      var id = trigger.getAttribute('data-menu-trigger');
+      var popover = document.getElementById('menu-' + id);
+      var wasOpen = popover.classList.contains('open');
+      closeAllMenus();
+      if (!wasOpen) {
+        popover.classList.add('open');
+        trigger.classList.add('active');
+        trigger.setAttribute('aria-expanded', 'true');
+      }
+      e.stopPropagation();
+      return;
+    }
+
+    var pillBtn = e.target.closest('[data-pill]');
+    if (pillBtn) {
+      var inst = pillBtn.getAttribute('data-instance');
+      var key = pillBtn.getAttribute('data-pill');
+      document.querySelectorAll('[data-pill][data-instance="' + inst + '"]').forEach(function (b) {
+        b.classList.toggle('active', b.getAttribute('data-pill') === key);
+      });
+      return;
+    }
+
+    var backBtn = e.target.closest('.topnav-back');
+    if (backBtn) {
+      backBtn.classList.add('pulse-back');
+      setTimeout(function () { backBtn.classList.remove('pulse-back'); }, 220);
+      return;
+    }
+
+    var bookBtn = e.target.closest('.topnav-book');
+    if (bookBtn) {
+      bookBtn.classList.add('tap-flash');
+      setTimeout(function () { bookBtn.classList.remove('tap-flash'); }, 260);
+      return;
+    }
+
+    if (!e.target.closest('.topnav-menu-popover')) closeAllMenus();
+  });
+
+  // ── Controls ──
+  document.querySelectorAll('.switch-tab').forEach(function (tab) {
+    tab.addEventListener('click', function () {
+      document.querySelectorAll('.switch-tab').forEach(function (t) { t.classList.remove('active'); });
+      tab.classList.add('active');
+      currentCtx = tab.getAttribute('data-ctx');
+      closeAllMenus();
+      renderPrimary();
+    });
+  });
+  document.getElementById('dmToggle').addEventListener('change', function (e) {
+    dmAuthed = e.target.checked;
+    closeAllMenus();
+    renderPrimary();
+  });
+  document.getElementById('liveToggle').addEventListener('change', function (e) {
+    polling = e.target.checked;
+    renderPrimary();
+  });
+  document.getElementById('mobileToggle').addEventListener('change', function (e) {
+    mobile = e.target.checked;
+    applyMobile();
+  });
+
+  // ── Static palette-cascade instances ──
+  document.getElementById('cascadeCharMount').innerHTML = buildNav(
+    { title: 'Aragorn', back: 'Character Library',
+      pills: { options: [ { key: 'profile', label: '❡ Profile' }, { key: 'session', label: '⚔ Session' } ], active: 'profile' },
+      live: true, children: [], menu: [ { label: 'Export JSON' }, { label: 'All Characters' } ] },
+    'cascade-char'
+  );
+  document.getElementById('cascadeDmMount').innerHTML = buildNav(
+    { title: 'Campaign', back: 'Character Library', pills: null, live: true,
+      children: [ { label: 'Manage Party' } ], menu: [ { label: '⚙ Enemies Gallery' }, { label: 'Palette Theme' } ] },
+    'cascade-dm'
+  );
+
+  // ── Standalone reuse demo: map-mode segmented control (Ocean palette) ──
+  document.getElementById('mapModeMount').innerHTML = buildSegmentControl(
+    [ { key: 'adventure', label: 'Adventure' }, { key: 'battle', label: 'Battle' } ],
+    'adventure',
+    'mapmode'
+  );
+
+  renderPrimary();
+})();
+</script>
+</body>
+</html>
