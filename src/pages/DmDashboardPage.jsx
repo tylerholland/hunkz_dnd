@@ -985,7 +985,7 @@ export default function DmDashboardPage() {
         <TopNav
           backTo="/"
           title="Campaign"
-          center={dmActiveMap ? (
+          center={(
             <NavSegment
               options={[
                 { key: "adventure", label: "Adventure" },
@@ -994,7 +994,7 @@ export default function DmDashboardPage() {
               value={combatMode ? "battle" : "adventure"}
               onChange={(key) => { if ((key === "battle") !== combatMode) toggleCombatMode(); }}
             />
-          ) : null}
+          )}
           showLive={true}
           wsConnected={wsConnected}
           onBookClick={() => setGuideOpen((o) => !o)}
