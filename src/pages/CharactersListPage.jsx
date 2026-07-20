@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { listCharacters, verifyPassword, getPartyRoster } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
+import TopNav from "../components/TopNav";
 import "./pages.css";
 
 const RESERVED_CHARACTER_SLUGS = new Set(["initiative", "npc-combat", "party-roster"]);
@@ -93,6 +94,17 @@ export default function CharactersListPage() {
     "--pal-gem-low":       pal.gemLow,
   };
 
+  const menuItems = dmActive
+    ? [
+        { label: "Campaign", href: "/dm" },
+        { label: "Maps", href: "/maps" },
+        { divider: true },
+        { label: "End Session", onClick: handleDmLogout, destructive: true },
+      ]
+    : [
+        { label: "DM Login", onClick: () => setDmPrompt(true) },
+      ];
+
   return (
     <div style={{
       ...palVars,
@@ -100,68 +112,13 @@ export default function CharactersListPage() {
       background: "#0d0f14",
       color: "#c8bfaf",
       fontFamily: "'Crimson Text', Georgia, serif",
-      padding: "0 32px 80px",
     }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
+      <TopNav
+        title="Character Library"
+        menuItems={menuItems}
+      />
 
-        {/* Top nav */}
-        <div style={{
-          padding: "18px 0 16px",
-          marginBottom: 32,
-          borderBottom: "1px solid rgba(100,130,160,0.2)",
-        }}>
-          <div className="flex-row-spread" style={{ gap: 12, marginBottom: 10 }}>
-            <div style={{
-              fontFamily: "'Cinzel', Georgia, serif",
-              fontWeight: 400,
-              fontSize: "clamp(1.4rem, 4vw, 2rem)",
-              color: "#c8bfaf",
-              letterSpacing: "0.04em",
-            }}>
-              Character Library
-            </div>
-
-            {dmActive ? (
-              <span style={{
-                background: "rgba(18,58,78,0.22)",
-                border: "1px solid rgba(106,143,168,0.4)",
-                borderRadius: 999,
-                color: "#a0c0d0",
-                fontFamily: "'IM Fell English', Georgia, serif",
-                fontSize: 11,
-                letterSpacing: "0.18em",
-                textTransform: "uppercase",
-                padding: "5px 12px",
-                whiteSpace: "nowrap",
-              }}>
-                DM ✓
-              </span>
-            ) : (
-              <button onClick={() => setDmPrompt(true)} className="btn-ghost" style={{ padding: "5px 12px" }}>
-                DM Login
-              </button>
-            )}
-          </div>
-
-          {dmActive && (
-            <div className="flex-row" style={{ gap: 8, flexWrap: "wrap" }}>
-              <Link to="/dm" className="btn-ghost" style={{ padding: "5px 12px", textDecoration: "none" }}>
-                Campaign
-              </Link>
-              <Link to="/maps" className="btn-ghost" style={{ padding: "5px 12px", textDecoration: "none" }}>
-                Maps
-              </Link>
-              <button onClick={handleDmLogout} className="btn-ghost" style={{ padding: "5px 12px", borderColor: "rgba(192,96,96,0.4)", color: "#c06060" }}>
-                End Session
-              </button>
-            </div>
-          )}
-          {!dmActive && (
-            <div className="label-ui" style={{ marginTop: 4 }}>
-              View and manage your party roster
-            </div>
-          )}
-        </div>
+      <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 32px 80px" }}>
 
         {/* DM password modal */}
         {dmPrompt && (

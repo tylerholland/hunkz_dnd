@@ -1,4 +1,4 @@
-import { Link, useSearchParams } from "react-router-dom";
+import { useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useState } from "react";
 import { getSessionState } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
@@ -6,6 +6,7 @@ import { useAdaptivePolling } from "../lib/liveSync";
 import { reportServerBuildVersion } from "../lib/staleClient";
 import MapViewer from "../features/maps/MapViewer";
 import { displayMapName } from "../features/dmDashboard/MapUploadModal";
+import TopNav from "../components/TopNav";
 
 export default function MapViewerPage() {
   const [searchParams] = useSearchParams();
@@ -37,28 +38,33 @@ export default function MapViewerPage() {
   const activeMap = mapLibrary.maps?.find((m) => m.id === mapLibrary.activeMapId) || null;
   const activeMapView = activeMap && mapLibrary.activeMapView?.mapId === activeMap.id ? mapLibrary.activeMapView : null;
 
+  const palVars = {
+    "--pal-bg":            pal.bg,
+    "--pal-surface":       pal.surface,
+    "--pal-surface-solid": pal.surfaceSolid,
+    "--pal-border":        pal.border,
+    "--pal-accent":        pal.accent,
+    "--pal-accent-bright": pal.accentBright,
+    "--pal-accent-dim":    pal.accentDim,
+    "--pal-text":          pal.text,
+    "--pal-text-body":     pal.textBody,
+    "--pal-text-muted":    pal.textMuted,
+    "--pal-glow-1":        pal.glow1,
+    "--pal-glow-2":        pal.glow2,
+  };
+
   return (
     <div style={{
+      ...palVars,
       minHeight: "100vh",
       background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}`,
       color: pal.text,
-      padding: "24px 24px 30px",
     }}>
-      <div style={{ width: "100%" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, marginBottom: 18, flexWrap: "wrap" }}>
-          <Link
-            to="/"
-            style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, textDecoration: "none" }}
-          >
-            ← Close Map Window
-          </Link>
-          {activeMap && (
-            <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, textAlign: "right" }}>
-              {displayMapName(activeMap)}
-            </div>
-          )}
-        </div>
-
+      <TopNav
+        backTo="/"
+        title={activeMap ? displayMapName(activeMap) : "Map Viewer"}
+      />
+      <div style={{ padding: "16px 24px 30px" }}>
         {activeMap ? (
           <MapViewer
             imageUrl={activeMap.imageUrl}

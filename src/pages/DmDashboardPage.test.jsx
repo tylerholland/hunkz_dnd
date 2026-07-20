@@ -101,18 +101,19 @@ describe("DmDashboardPage text scaling", () => {
     );
 
     await waitFor(() => {
-      expect(screen.getByRole("button", { name: "All Actions" })).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument();
     });
 
-    fireEvent.click(screen.getByRole("button", { name: "All Actions" }));
+    fireEvent.click(screen.getByRole("button", { name: "More actions" }));
 
-    expect(screen.getByText("Text Size")).toBeInTheDocument();
-    expect(screen.getByText("100%")).toBeInTheDocument();
+    expect(screen.getByText("Text Size: 100%")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByRole("button", { name: "Increase text size" }));
+    fireEvent.click(screen.getByText("Text Size: 100%"));
 
     await waitFor(() => {
-      expect(screen.getByText("110%")).toBeInTheDocument();
+      // Re-open menu to see updated label
+      fireEvent.click(screen.getByRole("button", { name: "More actions" }));
+      expect(screen.getByText("Text Size: 110%")).toBeInTheDocument();
     });
 
     expect(sessionStorage.getItem("dnd_dm_text_scale")).toBe("1.1");

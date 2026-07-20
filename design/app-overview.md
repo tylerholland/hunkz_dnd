@@ -26,12 +26,8 @@ A D&D character sheet web app for a small group of players (currently 3 characte
 - Hover effect: border brightens to `pal.accent`, card lifts 2px
 - The page is a true library, not automatically the live campaign party roster
 - Characters currently in the active party roster show an `In Party` badge on their library card
-- Top nav replaces the old "The Company" heading; page title is now `Character Library`
-- When not DM-authenticated: top nav shows `DM Login`
-- When DM-authenticated: top nav shows `DM ✓` at top-right plus a second row with `Campaign` and `End Session`
+- Shared `TopNav` component (Story 37): title is `Character Library`; ⋯ menu contains `DM Login` when not authenticated, or `Campaign`, `Maps`, divider, `End Session` (destructive) when DM-authenticated
 - DM login opens a modal password prompt; verifies against the API; stores DM session in `sessionStorage` as `dnd_dm_password`
-- `Campaign` link navigates directly to `/dm`
-- `Maps` link navigates directly to `/maps` (shown alongside Campaign when DM-authenticated)
 - "New Character" card at the end of the grid: dashed border, navigates to `/characters/new`
 - Library rendering filters internal sentinel records such as `initiative`, `npc-combat`, `roll-history`, `map-library`, `party-roster`, `npc-library`, and `counter-wheels`
 
@@ -41,11 +37,12 @@ A D&D character sheet web app for a small group of players (currently 3 characte
 
 The full sheet is hidden behind a password prompt until unlocked. On load, the sheet automatically tries to unlock using the stored DM password (`sessionStorage.dnd_dm_password`) or the stored character password (`sessionStorage.dnd_char_${slug}`), showing a spinner while it checks. If no stored credential matches, a "🔒 Unlock with password" button appears.
 
-The top bar (always visible, no auth required) contains:
-- `← All Characters` link (back to list)
-- World Guide trigger icon (open-book SVG, 44px touch target; opens the World Guide drawer)
-- `Export JSON` button
-- `🔒 Edit Character` / `Edit Character` button (triggers unlock or enters edit mode)
+The shared `TopNav` (always visible, no auth required) contains:
+- `‹` back glyph linking to `/` (Character Library)
+- Title: character name in Cinzel small-caps
+- Right slot: `Edit Character` / `🔒 Edit Character` button (triggers unlock or enters edit mode)
+- World Guide book icon (opens drawer)
+- ⋯ menu: `Export JSON`, `All Characters`, `⚔ Session` (link to session mode)
 
 #### Header (always visible, no auth required)
 
@@ -334,8 +331,8 @@ Session mode (two-column layout):
 - **Sub-tabs**: `combat` (read-only weapon quick-reference — Attack/Damage buttons are Story 28), `loadout` (simplified 2-column name/qty/attunement grid), `map` (`PlayerMapViewer` — see "Player token drag" below), `notes` (SessionNotesSection — read/write via patchSession without auth)
 - All session writes via `patchSession(slug, fields, null)` — no auth required
 - Sub-tab state stored in `sessionStorage` as `dnd_session_subtab_${slug}` (default `"combat"`)
-- Mode toggle in top bar: `❡ Profile` / `⚔ Session` pill buttons
-- Mobile-first: single column below 900px with sticky mode row
+- Shared `TopNav` (Story 37): `‹` back to `/`, title = character name, center slot = `❡ Profile | ⚔ Session` segmented control (hidden in mobile row below 560px), Live/Polling dot, World Guide book icon, ⋯ menu
+- Mobile-first: single column below 900px; segment control in second row below 560px
 
 **New unauthenticated API endpoints**:
 - `GET /party/status` (`getPartyStatus.js`) — returns `{ visible: boolean, members[] }` with player-safe projection (slug, name, palette, portraitUrl, hpCurrent, hpMax, tempHP, conditions, concentration, inspiration, deathSaves); returns `{ visible: false, members: [] }` when `partyVisibilityEnabled` is false on the roster
@@ -378,9 +375,11 @@ A dedicated DM session-management view accessible at `/dm`.
 - If verification fails or there is no stored credential, the DM password prompt is shown
 - On success, stores the DM password and renders the campaign page
 
-**Top bar** (sticky): focuses on navigation/session controls. `Short Rest` and `Long Rest` were removed from the top bar to reduce mobile width pressure; those actions still exist lower on the page in the party-wide actions section. A breadcrumb-style `← Character Library` link sits below the bar.
-- `Manage Party` button opens a DM-only roster modal for choosing which library characters are in the active campaign
-- World Guide trigger icon (between Manage Party and palette select; same open-book icon as character sheet)
+**Top bar** — shared `TopNav` component (Story 37), sticky:
+- Left: `‹` back to `/`, title `Campaign` in Cinzel small-caps
+- Center: `Adventure | Combat` segmented control (only shown when an active map is loaded); clicking toggles the map's `mapMode` via `MapPanel.handleToggleBattleMode` registered through `onRegisterBattleToggle` prop
+- Right: Live/Polling dot, World Guide book icon, ⋯ menu containing: `Start Combat` / `End Combat`, `Manage Party`, `Enemies Gallery`, divider, `Text Size: N%` (click to increase), `Decrease Text Size`, divider, `Sign Out` (destructive)
+- `Short Rest` and `Long Rest` are in the party-wide actions section lower on the page, not in the top bar
 
 **Party roster model**:
 - The campaign party is not implicitly "all characters in the library"
@@ -451,7 +450,7 @@ A dedicated DM session-management view accessible at `/dm`.
   - **`⋯` overflow menu on each NPC card** (`NpcOverflowMenu` — between `+ Init` and `×`): opens a popover showing `◆ Save to library` or name-conflict resolution (`Update existing entry` / `Save as new entry`). Shows HP delta preview on conflict. After save: `✓ Saved` flash (880ms) before auto-close. CSS classes: `.btn-npc-overflow`, `.npc-overflow-popover`, `.npc-overflow-item`, `.npc-overflow-item-destructive` in `npcCombat.css`.
   - **`◇ From library` toggle in Add Enemy form**: expands a library picker panel — MRU-sorted rows (portrait 32px + name + HP chip + first 2 abilities). Picking pre-fills Name and HP, and stages `portraitUrl`, `abilities`, and `librarySourceId` for the spawned NPCs. Search auto-appears above 20 entries. Per-row two-tap delete with 6-second auto-dismiss. `⚙ Enemies Gallery` link at bottom opens the advance editor modal.
   - **`☑ Number them` toggle**: visible in Add Enemy form when `addCount > 1`. When checked (default `true`), spawned NPCs are suffixed `Name 1`, `Name 2`, …, `Name N`. Preview text `(Name 1–N)` shown inline.
-  - **`⚙ Enemies Gallery` modal** (`EnemiesGalleryModal.jsx` in `src/features/dmDashboard/`): advance CRUD editor for the NPC library. Two-pane layout (list rail 220px + entry editor). Features: portrait upload (presign→S3 PUT→store URL), name input, HP input, `AbilitiesListEditor`, ⧉ Duplicate, two-step delete confirm, dirty guard on close. Accessible from `All Actions` dropdown in DM dashboard top bar. CSS prefix: `eg-` in `enemiesGallery.css`. Mobile: single-pane drill-in at 720px breakpoint.
+  - **`⚙ Enemies Gallery` modal** (`EnemiesGalleryModal.jsx` in `src/features/dmDashboard/`): advance CRUD editor for the NPC library. Two-pane layout (list rail 220px + entry editor). Features: portrait upload (presign→S3 PUT→store URL), name input, HP input, `AbilitiesListEditor`, ⧉ Duplicate, two-step delete confirm, dirty guard on close. Accessible from the ⋯ menu in the DM dashboard `TopNav`. CSS prefix: `eg-` in `enemiesGallery.css`. Mobile: single-pane drill-in at 720px breakpoint.
   - **Portrait upload for NPC library** (`npcPortraitPresign.js`): `POST /npc-library/portraits/presign` (DM auth, image-only, 5 MB cap). S3 key `npc-portraits/{uuid}.{ext}` in the `hunkz-dnd-portraits` bucket; public GET via bucket policy on `npc/*`. Returns `{ uploadUrl, id, s3Key, portraitUrl }`.
   - **Spawned NPC provenance**: each NPC spawned from a library template carries `portraitUrl`, `abilities`, and `librarySourceId: template.id`. These pass through `normalizeNpcCombatRecord` via `...npc` spread — no backend schema change needed.
   - **`AbilitiesListEditor`** helper component in `NpcCombatSection.jsx`: shared per-entry array editor (255 char cap). Also used inside `EnemiesGalleryModal`.
@@ -521,7 +520,7 @@ A dedicated DM session-management view accessible at `/dm`.
 
 DM-only page. Auth gate: checks `sessionStorage.dnd_dm_password`; if missing, shows `DmLoginPrompt`. Full-page drag-drop zone: dropping an image file opens the upload modal.
 
-- Page header: "Map Library" in Cinzel + "Upload" button + "← Campaign" breadcrumb link to `/dm`
+- Shared `TopNav` (Story 37): `‹` back to `/dm`, title `Map Library`, right slot has `Upload` button (`.topnav-action-btn`), ⋯ menu with `Campaign` link
 - Primary content: `<MapLibraryModal asPage={true} />` — full thumbnail grid of library maps
 - Each card: thumbnail, name (or filename-derived fallback), Set Active button, Rename (inline), Delete (inline confirm)
 - Upload button opens `MapUploadModal`

@@ -600,3 +600,62 @@ Spawned NPCs now carry optional provenance fields written at spawn time:
 - `librarySourceId?: string` — `template.id` from library; used by `NpcOverflowMenu` for conflict detection (check `t.id === npc.librarySourceId` before falling back to name match)
 
 These fields pass through `normalizeNpcCombatRecord` transparently (`...npc` spread).
+
+---
+
+## Shared TopNav component (Story 37)
+
+`src/components/TopNav.jsx` + `src/components/topNav.css`
+
+Adopted on all six pages: CharactersListPage, CharacterSheetViewMode, CharacterSheetSessionMode, DmDashboardPage, MapLibraryPage, MapViewerPage.
+
+### Layout
+
+52px sticky bar (`position: sticky; top: 0; z-index: 200`). Three slots:
+
+| Slot | Contents |
+|---|---|
+| Left (`.topnav-left`) | `‹` back glyph (`<Link>`) + title span (Cinzel, 15px, small-caps, `--pal-accent-bright`) |
+| Center (`.topnav-center`) | Optional `center` prop (NavSegment); hidden at `<560px`, shown in `.topnav-mobile-row` below the bar instead |
+| Right (`.topnav-right`) | `children` (page-specific action buttons) + Live dot + book icon + ⋯ NavMenu |
+
+Background: `rgba(13,15,20,0.95)` + `backdrop-filter: blur(8px)`. Border-bottom: `1px solid var(--pal-border)`.
+
+### NavSegment
+
+Segmented control pill. Visual height 32px; touch target 44px via `::before` pseudo-element (no `overflow:hidden` on wrapper). Active segment: `var(--pal-accent-bright)` text + `var(--pal-accent-dim)` background + `var(--pal-accent)` border. CSS class: `.topnav-segment` / `.topnav-seg-btn` / `.topnav-seg-btn--active`.
+
+Props: `options: [{key, label}]`, `value: string`, `onChange: (key) => void`
+
+### NavMenu
+
+`⋯` trigger button (28×28px tap target expanded to 44px via `::before`). Popover anchored top-right, `min-width: 200px`, fade+translate-Y animation. Items:
+
+```js
+{ label: string, onClick?: fn, href?: string, destructive?: boolean }
+| { divider: true }
+```
+
+`href` items render as React Router `<Link>`. `destructive` items: `var(--pal-gem-low)` / red text color. Dividers: `1px solid var(--pal-border)`. Closes on outside `mousedown` or `Escape`.
+
+### TopNav props
+
+| Prop | Type | Description |
+|---|---|---|
+| `backTo` | string\|null | URL for `‹` glyph; omit to hide |
+| `title` | string | Page title in Cinzel small-caps |
+| `center` | ReactNode | Center slot content (typically `<NavSegment>`) |
+| `menuItems` | Array | Items for ⋯ NavMenu |
+| `showLive` | boolean | Show Live/Polling dot |
+| `wsConnected` | boolean | True = Live (green pulse), false = Polling |
+| `onBookClick` | function | Called on book icon click (World Guide) |
+| `bookOpen` | boolean | Whether World Guide drawer is open |
+| `children` | ReactNode | Right-slot action buttons (e.g. Upload) |
+
+### `.topnav-action-btn`
+
+Defined in `topNav.css`. Use for page-specific action buttons placed as `children` of `<TopNav>` (e.g. Upload on MapLibraryPage). Equivalent appearance to `.cs-toolbar-btn` in `characterSheet.css` — transparent background, `var(--pal-border)` border, uppercase IM Fell English 10px.
+
+### CSS variable requirements
+
+TopNav uses `--pal-*` and `--font-*` variables. All pages that adopt TopNav must set `--pal-*` on their root element. Use the `palVars` spread pattern (see DmDashboardPage.jsx, MapLibraryPage.jsx).

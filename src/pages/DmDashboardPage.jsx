@@ -18,6 +18,7 @@ import {
   initiativesEqual,
 } from "../features/dmDashboard/dashboardShared";
 import { PALETTES } from "../features/characterSheet/theme";
+import TopNav, { NavSegment } from "../components/TopNav";
 import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { reportServerBuildVersion } from "../lib/staleClient";
@@ -52,7 +53,6 @@ export default function DmDashboardPage() {
   const [showDistributeCoinParty, setShowDistributeCoinParty] = useState(false);
   const [showManageParty, setShowManageParty] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
-  const [actionMenuOpen, setActionMenuOpen] = useState(false);
   const [openCardPopoverSlug, setOpenCardPopoverSlug] = useState(null);
   const [combatMode, setCombatMode] = useState(initialCombatMode);
   const [mapCollapsed, setMapCollapsed] = useState(initialCombatMode);
@@ -83,7 +83,6 @@ export default function DmDashboardPage() {
 
   const cardOpenFnsRef = useRef({});
   const cardItemRefs = useRef(new Map());
-  const actionMenuRef = useRef(null);
   const pendingCardFlipRef = useRef(null);
   const activeCardAnimationsRef = useRef([]);
   const transitionTimersRef = useRef([]);
@@ -98,6 +97,8 @@ export default function DmDashboardPage() {
   const queuedInitiativeRef = useRef(null);
   const npcCombatServerRef = useRef(npcCombat);
   const npcCombatExpectedRef = useRef(null);
+  // Ref to MapPanel's handleToggleBattleMode, registered via onRegisterBattleToggle prop
+  const battleToggleFnRef = useRef(null);
 
   useEffect(() => {
     partyRef.current = party;
@@ -119,15 +120,6 @@ export default function DmDashboardPage() {
     sessionStorage.setItem(TEXT_SCALE_STORAGE_KEY, String(textScale));
   }, [textScale]);
 
-  useEffect(() => {
-    const handlePointerDown = (event) => {
-      if (!actionMenuRef.current?.contains(event.target)) {
-        setActionMenuOpen(false);
-      }
-    };
-    document.addEventListener("pointerdown", handlePointerDown);
-    return () => document.removeEventListener("pointerdown", handlePointerDown);
-  }, []);
 
   useLayoutEffect(() => {
     const pendingFlip = pendingCardFlipRef.current;
@@ -721,7 +713,6 @@ export default function DmDashboardPage() {
     setAuthed(false);
     setAuthState("prompt");
     setShowManageParty(false);
-    setActionMenuOpen(false);
   }
 
   async function handleSavePartyRoster(members, nextPartyVisibilityEnabled) {
@@ -809,7 +800,6 @@ export default function DmDashboardPage() {
   }
 
   function toggleCombatMode() {
-    setActionMenuOpen(false);
     clearTransitionSteps();
 
     if (!combatMode) {
@@ -950,10 +940,30 @@ export default function DmDashboardPage() {
   const canDecreaseTextScale = textScale > TEXT_SCALE_MIN;
   const canIncreaseTextScale = textScale < TEXT_SCALE_MAX;
 
+  // Derived from polled mapLibrary — drives the Adventure | Combat center control
+  const dmActiveMap = (mapLibrary.maps || []).find((m) => m.id === mapLibrary.activeMapId) || null;
+  const isBattleMode = dmActiveMap?.mapMode === "battle";
+
+  const palVars = {
+    "--pal-bg":            pal.bg,
+    "--pal-surface":       pal.surface,
+    "--pal-surface-solid": pal.surfaceSolid,
+    "--pal-border":        pal.border,
+    "--pal-accent":        pal.accent,
+    "--pal-accent-bright": pal.accentBright,
+    "--pal-accent-dim":    pal.accentDim,
+    "--pal-text":          pal.text,
+    "--pal-text-body":     pal.textBody,
+    "--pal-text-muted":    pal.textMuted,
+    "--pal-glow-1":        pal.glow1,
+    "--pal-glow-2":        pal.glow2,
+  };
+
   return (
     <PalCtx.Provider value={pal}>
       <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
       <div style={{
+        ...palVars,
         background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), radial-gradient(ellipse at 80% 100%, ${pal.glow2} 0%, transparent 55%), ${pal.bg}`,
         minHeight: "100vh",
         color: pal.text,
@@ -961,161 +971,40 @@ export default function DmDashboardPage() {
         WebkitFontSmoothing: "antialiased",
         zoom: textScale,
       }}>
-        <div style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          gap: 12,
-          flexWrap: "wrap",
-          padding: "14px 24px",
-          borderBottom: "1px solid rgba(100,130,160,0.32)",
-          position: "sticky",
-          top: 0,
-          zIndex: 100,
-          background: "rgba(13,15,20,0.95)",
-          backdropFilter: "blur(8px)",
-          WebkitBackdropFilter: "blur(8px)",
-        }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, whiteSpace: "nowrap" }}>
-            <div style={{ fontFamily: pal.fontDisplay, fontSize: 18, letterSpacing: "0.16em", color: pal.accentBright }}>Campaign</div>
-            <span
-              title={wsConnected ? "Live — connected for instant sync" : "Polling — reconnecting to live sync"}
-              style={{ display: "flex", alignItems: "center", gap: 5, fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", color: wsConnected ? "#88c888" : pal.textMuted, opacity: 0.85 }}
-            >
-              <span
-                className={wsConnected ? "dm-pulse-dot" : undefined}
-                style={{ width: 6, height: 6, borderRadius: "50%", background: wsConnected ? "#88c888" : pal.textMuted, boxShadow: wsConnected ? "0 0 5px #88c888" : "none", display: "inline-block" }}
-              />
-              {wsConnected ? "Live" : "Polling"}
-            </span>
-          </div>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 14, minWidth: 0 }}>
-            <Link
-              to="/"
-              style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: pal.textMuted, textDecoration: "none", whiteSpace: "nowrap" }}
-              onMouseEnter={(e) => { e.currentTarget.style.color = pal.accentBright; }}
-              onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
-            >← Library</Link>
-            
-            <div style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 12, color: pal.textMuted, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-              {combatMode ? "Combat mode active." : "Adventure mode active."}
-            </div>
-          </div>
-
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginLeft: "auto" }}>
-            <button
-              style={{
-                ...topButtonStyle,
-                borderColor: combatMode ? "rgba(192,96,96,0.5)" : "rgba(90,138,96,0.5)",
-                color: combatMode ? "#e08080" : "#88b888",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.borderColor = combatMode ? "#e08080" : "#88b888";
-                e.currentTarget.style.background = combatMode ? "rgba(40,10,10,0.35)" : "rgba(14,26,18,0.35)";
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.borderColor = combatMode ? "rgba(192,96,96,0.5)" : "rgba(90,138,96,0.5)";
-                e.currentTarget.style.background = "transparent";
-              }}
-              onClick={toggleCombatMode}
-            >{combatMode ? "✕ End Combat" : "⚔ Start Combat"}</button>
-            <div ref={actionMenuRef} style={{ position: "relative" }}>
-              <button
-                style={topButtonStyle}
-                onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
-                onClick={() => setActionMenuOpen((current) => !current)}
-              >All Actions</button>
-              {actionMenuOpen && (
-                <div style={{ position: "absolute", right: 0, top: "calc(100% + 8px)", minWidth: 220, background: pal.surfaceSolid, border: `1px solid ${pal.border}`, borderRadius: 4, boxShadow: "0 12px 30px rgba(0,0,0,0.35)", padding: 8, zIndex: 200 }}>
-                  <button
-                    onClick={toggleCombatMode}
-                    style={{ width: "100%", background: "transparent", border: "none", color: combatMode ? "#e08080" : "#88b888", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
-                  >{combatMode ? "End Combat" : "Start Combat"}</button>
-                  <button
-                    onClick={() => { setActionMenuOpen(false); setShowManageParty(true); }}
-                    style={{ width: "100%", background: "transparent", border: "none", color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
-                  >Manage Party</button>
-                  <button
-                    onClick={() => { setActionMenuOpen(false); setGuideOpen(true); }}
-                    style={{ width: "100%", background: "transparent", border: "none", color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
-                  >World Guide</button>
-                  <button
-                    onClick={() => { setActionMenuOpen(false); setShowEnemiesGallery(true); }}
-                    style={{ width: "100%", background: "transparent", border: "none", color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
-                  >Enemies Gallery</button>
-                  <div style={{ height: 1, background: pal.border, margin: "6px 0" }} />
-                  <div style={{ padding: "4px 10px 6px", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: pal.textMuted }}>
-                    Text Size
-                  </div>
-                  <div style={{ display: "grid", gridTemplateColumns: "36px 1fr 36px", gap: 8, alignItems: "center", padding: "0 10px 8px" }}>
-                    <button
-                      onClick={() => setTextScale((current) => clampTextScale(Number((current - TEXT_SCALE_STEP).toFixed(2))))}
-                      disabled={!canDecreaseTextScale}
-                      aria-label="Decrease text size"
-                      style={{
-                        background: "transparent",
-                        border: `1px solid ${pal.border}`,
-                        borderRadius: 3,
-                        color: canDecreaseTextScale ? pal.text : pal.textMuted,
-                        fontFamily: pal.fontUI,
-                        fontSize: 14,
-                        lineHeight: 1,
-                        padding: "7px 0",
-                        cursor: canDecreaseTextScale ? "pointer" : "not-allowed",
-                        opacity: canDecreaseTextScale ? 1 : 0.45,
-                      }}
-                    >−</button>
-                    <div style={{ textAlign: "center", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", color: pal.text }}>
-                      {roundedTextScalePct}%
-                    </div>
-                    <button
-                      onClick={() => setTextScale((current) => clampTextScale(Number((current + TEXT_SCALE_STEP).toFixed(2))))}
-                      disabled={!canIncreaseTextScale}
-                      aria-label="Increase text size"
-                      style={{
-                        background: "transparent",
-                        border: `1px solid ${pal.border}`,
-                        borderRadius: 3,
-                        color: canIncreaseTextScale ? pal.text : pal.textMuted,
-                        fontFamily: pal.fontUI,
-                        fontSize: 14,
-                        lineHeight: 1,
-                        padding: "7px 0",
-                        cursor: canIncreaseTextScale ? "pointer" : "not-allowed",
-                        opacity: canIncreaseTextScale ? 1 : 0.45,
-                      }}
-                    >+</button>
-                  </div>
-                  <div style={{ padding: "0 10px 8px", fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 11, color: pal.textMuted }}>
-                    Scales this dashboard only.
-                  </div>
-                  <div style={{ height: 1, background: pal.border, margin: "6px 0" }} />
-                  <div style={{ padding: "4px 10px 6px", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.16em", textTransform: "uppercase", color: pal.textMuted }}>
-                    Theme
-                  </div>
-                  <select
-                    value={palKey}
-                    onChange={(e) => {
-                      const nextKey = e.target.value;
-                      setPalKey(nextKey);
-                      sessionStorage.setItem("dnd_dm_palette", nextKey);
-                    }}
-                    style={{ width: "100%", background: "rgba(18,32,48,0.6)", border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.08em", padding: "7px 8px", cursor: "pointer", outline: "none", marginBottom: 8 }}
-                  >
-                    {Object.keys(PALETTES).map((key) => (
-                      <option key={key} value={key}>{key.charAt(0).toUpperCase() + key.slice(1)}</option>
-                    ))}
-                  </select>
-                  <button
-                    onClick={handleEndSession}
-                    style={{ width: "100%", background: "transparent", border: "none", color: "#c06060", fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 10px", textAlign: "left", cursor: "pointer" }}
-                  >Sign Out</button>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+        <TopNav
+          backTo="/"
+          title="Campaign"
+          center={dmActiveMap ? (
+            <NavSegment
+              options={[
+                { key: "adventure", label: "Adventure" },
+                { key: "battle", label: "Combat" },
+              ]}
+              value={isBattleMode ? "battle" : "adventure"}
+              onChange={() => battleToggleFnRef.current?.()}
+            />
+          ) : null}
+          showLive={true}
+          wsConnected={wsConnected}
+          onBookClick={() => setGuideOpen((o) => !o)}
+          bookOpen={guideOpen}
+          menuItems={[
+            { label: combatMode ? "✕ End Combat" : "⚔ Start Combat", onClick: toggleCombatMode },
+            { label: "Manage Party", onClick: () => setShowManageParty(true) },
+            { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
+            { divider: true },
+            {
+              label: `Text Size: ${roundedTextScalePct}%`,
+              onClick: () => setTextScale((current) => clampTextScale(Number((current + TEXT_SCALE_STEP).toFixed(2)))),
+            },
+            {
+              label: "Decrease Text Size",
+              onClick: () => setTextScale((current) => clampTextScale(Number((current - TEXT_SCALE_STEP).toFixed(2)))),
+            },
+            { divider: true },
+            { label: "Sign Out", onClick: handleEndSession, destructive: true },
+          ]}
+        />
 
         <div style={{ maxWidth: 1720, margin: "0 auto", padding: "20px 20px 56px" }}>
           {restNotice && (
@@ -1133,6 +1022,7 @@ export default function DmDashboardPage() {
               onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
               party={party}
               npcCombat={npcCombat}
+              onRegisterBattleToggle={(fn) => { battleToggleFnRef.current = fn; }}
             />
           </div>
 

@@ -1,0 +1,380 @@
+/*
+ * topNav.css
+ *
+ * Shared TopNav component — Story 37.
+ * All palette values via --pal-* CSS custom properties cascaded from the
+ * surface root.  No runtime style injection; no hardcoded hex values.
+ *
+ * ADR-014: static CSS file, --pal-* variables, no <style> tag injection.
+ */
+
+/* ─── Keyframes ─────────────────────────────────────────────────────────── */
+@keyframes topnavDotPulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.82); }
+}
+@keyframes topnavBackTap {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(0.82); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Bar ────────────────────────────────────────────────────────────────── */
+.topnav {
+  height: 52px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--pal-bg);
+  border-bottom: 1px solid var(--pal-border);
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  gap: 8px;
+  /* Subtle backdrop blur for legibility over page content */
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+
+/* ─── Left slot ───────────────────────────────────────────────────────────── */
+.topnav-left {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  min-width: 0;
+  flex: 0 1 auto;
+}
+
+/* Back glyph — ‹ */
+.topnav-back {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 22px;
+  color: var(--pal-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  text-decoration: none;
+  transition: color 150ms ease, background 150ms ease;
+}
+.topnav-back:hover {
+  color: var(--pal-accent-bright);
+  background: rgba(128, 128, 128, 0.08);
+}
+.topnav-back.topnav-back--tapped {
+  animation: topnavBackTap 220ms ease-out;
+  color: var(--pal-accent-bright);
+}
+
+/* Page title */
+.topnav-title {
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  color: var(--pal-text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  /* Constrain to avoid crowding on mobile — real cap via container query below */
+  max-width: 200px;
+}
+
+/* ─── Center slot (segmented mode control) ──────────────────────────────── */
+.topnav-center {
+  display: flex;
+  flex: 1 1 auto;
+  justify-content: center;
+  min-width: 0;
+}
+
+/*
+ * Segmented control primitive
+ * Visual capsule: 32px tall (slim per DM review).
+ * Touch target: each segment gets an invisible ::before extending 6px above/below
+ * (total 44px hit area) — no overflow:hidden on the wrapper so this works.
+ * Corner rounding comes from the individual segment first/last-child rules.
+ */
+.topnav-segment {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  height: 32px;
+  border: 1px solid var(--pal-border);
+  border-radius: 999px;
+  flex-shrink: 0;
+}
+
+.topnav-seg-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 15px;
+  min-width: 38px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.07em;
+  white-space: nowrap;
+  color: var(--pal-text-muted);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background 150ms ease, color 150ms ease;
+}
+.topnav-seg-btn:first-child { border-radius: 999px 0 0 999px; }
+.topnav-seg-btn:last-child  { border-radius: 0 999px 999px 0; }
+
+/* Invisible 44px hit area — does not affect layout or paint */
+.topnav-seg-btn::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 44px;
+  transform: translateY(-50%);
+}
+
+/* Hairline between segments */
+.topnav-seg-btn + .topnav-seg-btn {
+  border-left: 1px solid var(--pal-border);
+}
+
+.topnav-seg-btn:hover { color: var(--pal-accent); }
+.topnav-seg-btn.topnav-seg-btn--active {
+  background: var(--pal-accent-dim);
+  color: var(--pal-text);
+}
+.topnav-seg-btn.topnav-seg-btn--active:hover { color: var(--pal-text); }
+
+/* ─── Right slot ────────────────────────────────────────────────────────── */
+.topnav-right {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+
+/* Child action buttons (e.g. Manage Party, Upload) — hidden on mobile */
+.topnav-child-btn {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  padding: 0 14px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  cursor: pointer;
+  white-space: nowrap;
+  margin-right: 4px;
+  transition: border-color 150ms ease, color 150ms ease;
+}
+.topnav-child-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+/* Live/Polling dot */
+.topnav-dot-wrap {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 6px;
+  flex-shrink: 0;
+}
+.topnav-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #58c890;
+  flex-shrink: 0;
+  animation: topnavDotPulse 2.2s ease-in-out infinite;
+}
+.topnav-dot-wrap--polling .topnav-dot {
+  background: var(--pal-text-muted);
+  animation: none;
+  opacity: 0.75;
+}
+.topnav-dot-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+/* Book icon (World Guide trigger) */
+.topnav-book {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+.topnav-book:hover {
+  color: var(--pal-accent);
+  background: rgba(128, 128, 128, 0.08);
+}
+.topnav-book--open { color: var(--pal-accent-bright); }
+
+/* ⋯ context menu */
+.topnav-menu-wrap {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.topnav-menu-trigger {
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-size: 18px;
+  letter-spacing: 0.05em;
+  color: var(--pal-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: color 150ms ease, background 150ms ease;
+}
+.topnav-menu-trigger:hover {
+  color: var(--pal-accent-bright);
+  background: rgba(128, 128, 128, 0.08);
+}
+.topnav-menu-trigger--open {
+  color: var(--pal-accent-bright);
+  background: var(--pal-accent-dim);
+}
+
+.topnav-menu-popover {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 210px;
+  background: var(--pal-surface-solid);
+  border: 1px solid var(--pal-border);
+  border-radius: 8px;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+  overflow: hidden;
+  z-index: 200;
+  opacity: 0;
+  transform: translateY(-6px);
+  pointer-events: none;
+  transition: opacity 150ms ease-out, transform 150ms ease-out;
+}
+.topnav-menu-popover--open {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.topnav-menu-item {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 40px;
+  padding: 0 16px;
+  background: transparent;
+  border: none;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.03em;
+  color: var(--pal-text);
+  text-align: left;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 120ms ease;
+}
+.topnav-menu-item:hover { background: rgba(128, 128, 128, 0.1); }
+.topnav-menu-item--destructive { color: #c06060; }
+.topnav-menu-item--destructive:hover { background: rgba(192, 96, 96, 0.1); }
+
+.topnav-menu-divider {
+  height: 1px;
+  background: var(--pal-border);
+  margin: 4px 0;
+}
+
+/* ─── Mobile second row (segmented control drops here below 560px) ──────── */
+.topnav-mobile-row {
+  display: none;
+  justify-content: center;
+  padding: 6px 12px;
+  background: var(--pal-bg);
+  border-bottom: 1px solid var(--pal-border);
+}
+
+/* ─── Responsive ─────────────────────────────────────────────────────────── */
+@media (max-width: 560px) {
+  .topnav-center { display: none; }
+  .topnav-mobile-row { display: flex; }
+  .topnav-child-btn { display: none; }
+  .topnav-dot-label { display: none; }
+  .topnav-title { max-width: 140px; }
+}
+
+/* ─── Reduced motion ─────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .topnav-dot,
+  .topnav-back,
+  .topnav-book,
+  .topnav-menu-trigger,
+  .topnav-menu-popover {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ─── Action button (right-slot page-specific buttons) ──────────────────── */
+/*
+ * Use .topnav-action-btn for page-specific action buttons placed as children
+ * of <TopNav> (e.g. Upload on MapLibraryPage).  Mirrors .cs-toolbar-btn from
+ * characterSheet.css so pages that don't import that file still get a
+ * consistent look.
+ */
+.topnav-action-btn {
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 5px 14px;
+  border-radius: 2px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.topnav-action-btn:hover {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+.topnav-action-btn:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}

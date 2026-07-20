@@ -1,6 +1,6 @@
 # Feature Story: Shared Top Nav & Consistent Menu Language
 
-**Status**: Approved — Ready to Build
+**Status**: Implemented (2026-07-20)
 **Source**: DM priority list 2026-07-16
 
 ---

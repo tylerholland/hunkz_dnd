@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
 import { getMapLibrary, putMapActive } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import { PalCtx } from "../features/dmDashboard/dashboardShared";
@@ -7,6 +6,7 @@ import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
 import MapLibraryModal from "../features/dmDashboard/MapLibraryModal";
 import MapUploadModal from "../features/dmDashboard/MapUploadModal";
 import { isSupportedMapContentType } from "../features/maps/mapFiles";
+import TopNav from "../components/TopNav";
 
 export default function MapLibraryPage() {
   const [dmPassword, setDmPassword] = useState(() => sessionStorage.getItem("dnd_dm_password") || "");
@@ -81,10 +81,26 @@ export default function MapLibraryPage() {
     );
   }
 
+  const palVars = {
+    "--pal-bg":            pal.bg,
+    "--pal-surface":       pal.surface,
+    "--pal-surface-solid": pal.surfaceSolid,
+    "--pal-border":        pal.border,
+    "--pal-accent":        pal.accent,
+    "--pal-accent-bright": pal.accentBright,
+    "--pal-accent-dim":    pal.accentDim,
+    "--pal-text":          pal.text,
+    "--pal-text-body":     pal.textBody,
+    "--pal-text-muted":    pal.textMuted,
+    "--pal-glow-1":        pal.glow1,
+    "--pal-glow-2":        pal.glow2,
+  };
+
   return (
     <PalCtx.Provider value={pal}>
       <div
         style={{
+          ...palVars,
           minHeight: "100vh",
           background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}`,
           color: pal.text,
@@ -102,23 +118,18 @@ export default function MapLibraryPage() {
           </div>
         )}
 
-        {/* Top bar */}
-        <div style={{ background: "rgba(11,14,20,0.97)", borderBottom: `1px solid ${pal.border}`, display: "flex", alignItems: "center", gap: 12, padding: "0 24px", height: 48 }}>
-          <div style={{ fontFamily: pal.fontDisplay, fontSize: 15, letterSpacing: "0.12em", color: pal.accentBright, flex: 1 }}>Map Library</div>
+        <TopNav
+          backTo="/dm"
+          title="Map Library"
+          menuItems={[{ label: "Campaign", href: "/dm" }]}
+        >
           <button
             onClick={() => { setUploadFile(null); setUploadOpen(true); }}
-            style={{ background: pal.accentDim, border: `1px solid ${pal.accent}`, borderRadius: 3, color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", padding: "5px 13px", cursor: "pointer" }}
+            className="topnav-action-btn"
           >
             Upload
           </button>
-        </div>
-
-        <div style={{ maxWidth: 900, margin: "0 auto", padding: "12px 24px 0" }}>
-          <Link to="/dm" style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", color: pal.textMuted, textDecoration: "none" }}
-            onMouseEnter={(e) => { e.currentTarget.style.color = pal.accentBright; }}
-            onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
-          >← Campaign</Link>
-        </div>
+        </TopNav>
 
         <div style={{ maxWidth: 900, margin: "0 auto", padding: 24 }}>
           <MapLibraryModal

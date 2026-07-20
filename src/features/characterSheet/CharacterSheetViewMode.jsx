@@ -2,13 +2,13 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { useHoldToRepeat } from "../../lib/useHoldToRepeat";
 import { Link } from "react-router-dom";
 import DiceRoller from "../../components/DiceRoller";
+import TopNav from "../../components/TopNav";
 import { InfoBadge } from "./CharacterTalents";
 import ItemEditorModal, { itemTypeLabel } from "./ItemEditorModal";
 import { HR } from "./CharacterSheetPrimitives";
 import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, HIT_DIE_BY_CLASS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt } from "./constants";
 import { renderInline } from "./theme";
 import MapViewer from "../maps/MapViewer";
-import WorldGuideTrigger from "../worldGuide/WorldGuideTrigger";
 import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
 import "./characterSheet.css";
 
@@ -488,26 +488,28 @@ export default function CharacterSheetViewMode({ ctx }) {
         `,
       }} />
 
+      <TopNav
+        backTo="/"
+        title={char?.name || "Character"}
+        showLive={false}
+        onBookClick={() => setGuideOpen((o) => !o)}
+        bookOpen={guideOpen}
+        menuItems={[
+          { label: "Export JSON", onClick: exportJSON },
+          { label: "All Characters", href: "/" },
+          ...(slug ? [{ label: "⚔ Session", href: `/characters/${slug}/session` }] : []),
+        ]}
+      >
+        {/* Edit Character stays in right slot until Story 42 moves it to page body */}
+        <button onClick={handleEditClick} disabled={unlockLoading || unlockChecking} className="cs-toolbar-btn">
+          {unlockLoading
+            ? <><div className="dnd-spinner" style={{ width: 12, height: 12, borderTopColor: pal.textMuted }} /> Checking…</>
+            : unlockState === "unlocked" ? "Edit Character" : "🔒 Edit Character"
+          }
+        </button>
+      </TopNav>
+
       <div className="cs-content">
-        <div className="cs-topbar">
-          <Link to="/" className="cs-nav-link">
-            ← All Characters
-          </Link>
-          <div className="cs-topbar-actions">
-            <WorldGuideTrigger open={guideOpen} onToggle={() => setGuideOpen((o) => !o)} />
-            {slug && (
-              <Link to={`/characters/${slug}/session`} className="cs-toolbar-btn" style={{ textDecoration: "none" }}>
-                ⚔ Session
-              </Link>
-            )}
-            <button onClick={exportJSON} className="cs-toolbar-btn">
-              Export JSON
-            </button>
-            <button onClick={handleEditClick} disabled={unlockLoading || unlockChecking} className="cs-toolbar-btn">
-              {unlockLoading ? <><div className="dnd-spinner" style={{ width: 12, height: 12, borderTopColor: pal.textMuted }} /> Checking…</> : unlockState === "unlocked" ? "Edit Character" : "🔒 Edit Character"}
-            </button>
-          </div>
-        </div>
 
         {unlockState === "prompting" && (
           <div className="cs-unlock-overlay">

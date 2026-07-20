@@ -8,7 +8,6 @@ import { displayMapName } from "./MapUploadModal";
 import { isPdfMap } from "../maps/mapFiles";
 import TokenTray from "./battleMode/TokenTray";
 import { TokenChip, HeldTokenFloater } from "./battleMode/BattleModeController";
-import BattleModeToggle from "./battleMode/BattleModeToggle";
 import "./battleMode.css";
 
 function genId() {
@@ -16,7 +15,7 @@ function genId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat }) {
+export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, onRegisterBattleToggle }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewerState, setViewerState] = useState(null);
@@ -214,6 +213,12 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     await writeTokens([], newMode);
   }, [activeMap, isPdf, isBattleMode, effectiveTokens, writeTokens]);
 
+  // Register the battle toggle handler with the parent (DmDashboardPage holds a ref)
+  useEffect(() => {
+    onRegisterBattleToggle?.(handleToggleBattleMode);
+    return () => onRegisterBattleToggle?.(null);
+  }, [onRegisterBattleToggle, handleToggleBattleMode]);
+
   // Escape key cancels held state
   useEffect(() => {
     const handleKeyDown = (e) => {
@@ -344,14 +349,6 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
         <div style={{ flex: 1, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", color: activeMap ? pal.accentBright : pal.textMuted }}>
           {activeMap ? `Map: ${activeMapLabel}` : "Map"}
         </div>
-        {activeMap && (
-          <BattleModeToggle
-            active={isBattleMode}
-            disabled={isPdf}
-            onClick={(e) => { e.stopPropagation(); handleToggleBattleMode(); }}
-            pal={pal}
-          />
-        )}
         {activeMap && isBattleMode && (
           <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
             <button

@@ -26,7 +26,9 @@ import { PALETTES } from "./theme";
 import { modOf, fmtMod, CONDITIONS } from "./constants";
 import { patchSession, moveMapToken } from "../../api";
 import DiceRoller from "../../components/DiceRoller";
+import TopNav, { NavSegment } from "../../components/TopNav";
 import MapViewer from "../maps/MapViewer";
+import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
 import { TokenChip } from "../dmDashboard/battleMode/BattleModeController";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
@@ -323,6 +325,7 @@ export default function CharacterSheetSessionMode({
   wsConnected,
 }) {
   const navigate = useNavigate();
+  const [guideOpen, setGuideOpen] = useState(false);
   const [char, setChar] = useState(initialData);
 
   // Keep char in sync when initialData changes (polling)
@@ -513,26 +516,43 @@ export default function CharacterSheetSessionMode({
     }
   }, [mode, slug]);
 
+  const modeOptions = [
+    { key: "profile", label: "❡ Profile" },
+    { key: "session", label: "⚔ Session" },
+  ];
+
+  const modeSegment = (
+    <NavSegment
+      options={modeOptions}
+      value={mode}
+      onChange={setMode}
+    />
+  );
+
+  const sharedPalVars = {
+    "--pal-bg": pal.bg,
+    "--pal-surface": pal.surface,
+    "--pal-surface-solid": pal.surfaceSolid,
+    "--pal-border": pal.border,
+    "--pal-accent": pal.accent,
+    "--pal-accent-bright": pal.accentBright,
+    "--pal-accent-dim": pal.accentDim,
+    "--pal-text": pal.text,
+    "--pal-text-body": pal.textBody,
+    "--pal-text-muted": pal.textMuted,
+    "--pal-gem": pal.gem,
+    "--pal-gem-low": pal.gemLow,
+    "--font-display": pal.fontDisplay,
+    "--font-body": pal.fontBody,
+    "--font-ui": pal.fontUI,
+  };
+
   // ── Profile mode: redirect to the plain CharacterSheet ───────────────────
   if (mode === "profile") {
     return (
       <div
         style={{
-          "--pal-bg": pal.bg,
-          "--pal-surface": pal.surface,
-          "--pal-surface-solid": pal.surfaceSolid,
-          "--pal-border": pal.border,
-          "--pal-accent": pal.accent,
-          "--pal-accent-bright": pal.accentBright,
-          "--pal-accent-dim": pal.accentDim,
-          "--pal-text": pal.text,
-          "--pal-text-body": pal.textBody,
-          "--pal-text-muted": pal.textMuted,
-          "--pal-gem": pal.gem,
-          "--pal-gem-low": pal.gemLow,
-          "--font-display": pal.fontDisplay,
-          "--font-body": pal.fontBody,
-          "--font-ui": pal.fontUI,
+          ...sharedPalVars,
           minHeight: "100vh",
           background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%),
                        radial-gradient(ellipse at 80% 100%, ${pal.glow2} 0%, transparent 55%),
@@ -540,30 +560,20 @@ export default function CharacterSheetSessionMode({
         }}
         className="cs-session-root"
       >
-        {/* Top bar */}
-        <div className="cs-session-topbar">
-          <a
-            href="/"
-            style={{
-              fontFamily: pal.fontUI,
-              fontSize: 10,
-              letterSpacing: "0.18em",
-              textTransform: "uppercase",
-              color: pal.textMuted,
-              textDecoration: "none",
-            }}
-          >← All Characters</a>
-          <span className="cs-session-topbar-title">{char?.name}</span>
-          <ModToggle mode={mode} setMode={setMode} pal={pal} />
-        </div>
-
-        {/* Mobile mode toggle row */}
-        <div className="cs-mobile-mode-row">
-          <div className="cs-mode-toggle" style={{ width: "100%" }}>
-            <ModSegment label="Profile" glyph="❡" mode={mode} value="profile" setMode={setMode} pal={pal} />
-            <ModSegment label="Session" glyph="⚔" mode={mode} value="session" setMode={setMode} pal={pal} />
-          </div>
-        </div>
+        <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
+        <TopNav
+          backTo="/"
+          title={char?.name}
+          center={modeSegment}
+          showLive={true}
+          wsConnected={wsConnected}
+          onBookClick={() => setGuideOpen((o) => !o)}
+          bookOpen={guideOpen}
+          menuItems={[
+            { label: "Export JSON", href: `/characters/${slug}` },
+            { label: "All Characters", href: "/" },
+          ]}
+        />
 
         {/* Profile content — link to the classic character page */}
         <div style={{ maxWidth: 840, margin: "0 auto", padding: "40px 28px 80px" }}>
@@ -596,21 +606,7 @@ export default function CharacterSheetSessionMode({
   return (
     <div
       style={{
-        "--pal-bg": pal.bg,
-        "--pal-surface": pal.surface,
-        "--pal-surface-solid": pal.surfaceSolid,
-        "--pal-border": pal.border,
-        "--pal-accent": pal.accent,
-        "--pal-accent-bright": pal.accentBright,
-        "--pal-accent-dim": pal.accentDim,
-        "--pal-text": pal.text,
-        "--pal-text-body": pal.textBody,
-        "--pal-text-muted": pal.textMuted,
-        "--pal-gem": pal.gem,
-        "--pal-gem-low": pal.gemLow,
-        "--font-display": pal.fontDisplay,
-        "--font-body": pal.fontBody,
-        "--font-ui": pal.fontUI,
+        ...sharedPalVars,
         minHeight: "100vh",
         background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%),
                      radial-gradient(ellipse at 80% 100%, ${pal.glow2} 0%, transparent 55%),
@@ -618,55 +614,27 @@ export default function CharacterSheetSessionMode({
       }}
       className="cs-session-root"
     >
-      {/* ── Top bar ── */}
-      <div className="cs-session-topbar">
-        <a
-          href="/"
-          style={{
-            fontFamily: pal.fontUI,
-            fontSize: 10,
-            letterSpacing: "0.18em",
-            textTransform: "uppercase",
-            color: pal.textMuted,
-            textDecoration: "none",
-          }}
-        >← All Characters</a>
-        <span className="cs-session-topbar-title">{char?.name}</span>
-        <span
-          className="cs-live-indicator"
-          title={wsConnected ? "Live — connected for instant sync" : "Polling — reconnecting to live sync"}
-          style={{ color: wsConnected ? pal.accentBright : pal.textMuted }}
-        >
-          <span
-            className={wsConnected ? "cs-live-dot" : undefined}
-            style={{ background: wsConnected ? pal.accentBright : pal.textMuted, boxShadow: wsConnected ? `0 0 5px ${pal.accentBright}` : "none" }}
-          />
-          {wsConnected ? "Live" : "Polling"}
-        </span>
-        {/* Desktop mode toggle in topbar */}
-        <div className="cs-session-mode-header" style={{ display: undefined }}>
-          <ModToggle mode={mode} setMode={setMode} pal={pal} />
-        </div>
-      </div>
-
-      {/* Mobile mode toggle (sticky, below topbar) */}
-      <div className="cs-mobile-mode-row">
-        <div className="cs-mode-toggle" style={{ width: "100%" }}>
-          <ModSegment label="Profile" glyph="❡" mode={mode} value="profile" setMode={setMode} pal={pal} />
-          <ModSegment label="Session" glyph="⚔" mode={mode} value="session" setMode={setMode} pal={pal} />
-        </div>
-      </div>
+      <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
+      {/* ── Top bar (shared TopNav) ── */}
+      <TopNav
+        backTo="/"
+        title={char?.name}
+        center={modeSegment}
+        showLive={true}
+        wsConnected={wsConnected}
+        onBookClick={() => setGuideOpen((o) => !o)}
+        bookOpen={guideOpen}
+        menuItems={[
+          { label: "Export JSON", href: `/characters/${slug}` },
+          { label: "All Characters", href: "/" },
+        ]}
+      />
 
       {/* ── Two-column shell ── */}
       <div className="cs-session-shell">
 
         {/* ════════════ LEFT COLUMN ════════════ */}
         <div className="cs-session-left">
-
-          {/* Desktop mode toggle at top of left column */}
-          <div style={{ display: "none" }} className="cs-session-mode-header-left">
-            <ModToggle mode={mode} setMode={setMode} pal={pal} />
-          </div>
 
           {/* Identity strip */}
           <div className="cs-sm-identity">
