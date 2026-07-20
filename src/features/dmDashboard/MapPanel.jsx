@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react
 import { createPortal } from "react-dom";
 import MapViewer, { getMapZoomModifierLabel, readMapFreeZoomPreference, writeMapFreeZoomPreference } from "../maps/MapViewer";
 import MapLibraryModal from "./MapLibraryModal";
-import { putMapActive, putMapView, patchMapTokens, putMapCalibration, putNpcCombat } from "../../api";
+import { putMapView, patchMapTokens, putMapCalibration, putNpcCombat } from "../../api";
 import CalibrationPopover from "./battleMode/CalibrationPopover";
 import { displayMapName } from "./MapUploadModal";
 import { isPdfMap } from "../maps/mapFiles";
@@ -15,11 +15,7 @@ function genId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-// sessionStorage keys for dual map state (43b)
-const ADVENTURE_MAP_KEY = "dnd_dm_adventure_map";
-const BATTLE_MAP_KEY = "dnd_dm_battle_map";
-
-export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, onRegisterBattleToggle, onBattleModeChange }) {
+export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, onRegisterBattleToggle }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewerState, setViewerState] = useState(null);
@@ -60,7 +56,9 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const publishedView = activeMap && mapLibrary?.activeMapView?.mapId === activeMap.id ? mapLibrary.activeMapView : null;
   const activeMapLabel = activeMap ? displayMapName(activeMap) : "";
   // Optimistic mapMode: local state overrides server until server confirms
-  const isBattleMode = localMapMode !== null ? localMapMode === "battle" : activeMap?.mapMode === "battle";
+  // combatMode prop is the authoritative page-level state; localMapMode is an optimistic
+  // override for within-panel map-mode flips; server mapMode is the final fallback.
+  const isBattleMode = localMapMode !== null ? localMapMode === "battle" : (combatMode ?? activeMap?.mapMode === "battle");
   const isPdf = activeMap ? isPdfMap({ imageUrl: activeMap.imageUrl, contentType: activeMap.contentType, name: activeMap.name }) : false;
 
   // Effective tokens: local optimistic state overrides server state
@@ -209,42 +207,14 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const handleToggleBattleMode = useCallback(async () => {
     if (!activeMap || isPdf) return;
     const newMode = isBattleMode ? "adventure" : "battle";
-    const outgoingKey = isBattleMode ? BATTLE_MAP_KEY : ADVENTURE_MAP_KEY;
-    const incomingKey = isBattleMode ? ADVENTURE_MAP_KEY : BATTLE_MAP_KEY;
-
-    // Report optimistic mode change upward immediately (43a)
     setLocalMapMode(newMode);
-    onBattleModeChange?.(newMode === "battle");
-
     setHeldSourceId(null);
     setHeldType(null);
-
-    // 43b: record the outgoing mode's active map
-    if (activeMap.id) {
-      sessionStorage.setItem(outgoingKey, activeMap.id);
-    }
-
-    // 43b: look up the incoming mode's last-used map
-    const storedIncomingMapId = sessionStorage.getItem(incomingKey);
-    const incomingMap = storedIncomingMapId
-      ? (mapLibrary?.maps || []).find((m) => m.id === storedIncomingMapId) || null
-      : null;
-
-    if (incomingMap && incomingMap.id !== activeMap.id) {
-      // Switch to the incoming mode's stored map (its own mapMode is already correct)
-      try {
-        await putMapActive(incomingMap.id, dmPassword);
-        onLibraryChange();
-      } catch { /* ignore */ }
-    } else {
-      // No stored map for incoming mode — keep the current map, just flip its mapMode
-      const payload = { tokens: effectiveTokens, mapMode: newMode };
-      try {
-        await patchMapTokens(activeMap.id, payload, dmPassword);
-        onLibraryChange();
-      } catch { /* ignore */ }
-    }
-  }, [activeMap, isPdf, isBattleMode, effectiveTokens, mapLibrary, dmPassword, onLibraryChange, onBattleModeChange]);
+    try {
+      await patchMapTokens(activeMap.id, { tokens: effectiveTokens, mapMode: newMode }, dmPassword);
+      onLibraryChange();
+    } catch { /* ignore — localMapMode holds optimistic state */ }
+  }, [activeMap, isPdf, isBattleMode, effectiveTokens, dmPassword, onLibraryChange]);
 
   // Register the battle toggle handler with the parent (DmDashboardPage holds a ref)
   useEffect(() => {

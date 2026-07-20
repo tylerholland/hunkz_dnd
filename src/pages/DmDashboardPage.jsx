@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, putInitiative, putNpcCombat, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState } from "../api";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
 import CharacterCard, { AwardXpModal, DistributeCoinModal } from "../features/dmDashboard/CharacterCard";
 import ConfirmDialog from "../features/dmDashboard/ConfirmDialog";
@@ -25,6 +25,8 @@ import { reportServerBuildVersion } from "../lib/staleClient";
 
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
 const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
+const ADVENTURE_MAP_KEY = "dnd_dm_adventure_map";
+const BATTLE_MAP_KEY = "dnd_dm_battle_map";
 const TEXT_SCALE_STORAGE_KEY = "dnd_dm_text_scale";
 const MAP_TRANSITION_MS = 320;
 const CARD_FLIP_MS = 460;
@@ -99,20 +101,10 @@ export default function DmDashboardPage() {
   const npcCombatExpectedRef = useRef(null);
   // Ref to MapPanel's handleToggleBattleMode, registered via onRegisterBattleToggle prop
   const battleToggleFnRef = useRef(null);
-  // Optimistic battle mode for NavSegment highlight (43a): lifted from MapPanel so
-  // the segment updates immediately on click instead of waiting for the poll to land.
-  // null = fall back to the server-derived isBattleMode value.
-  const [optimisticIsBattle, setOptimisticIsBattle] = useState(null);
 
   useEffect(() => {
     partyRef.current = party;
   }, [party]);
-
-  // 43a: clear the optimistic battle-mode override once the server confirms the new
-  // mapLibrary state — the NavSegment then reads the authoritative server value.
-  useEffect(() => {
-    setOptimisticIsBattle(null);
-  }, [mapLibrary]);
 
   useEffect(() => () => {
     transitionTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
@@ -812,6 +804,18 @@ export default function DmDashboardPage() {
   function toggleCombatMode() {
     clearTransitionSteps();
 
+    // Dual map memory: record the outgoing mode's active map, restore the incoming mode's
+    const enteringCombat = !combatMode;
+    const outgoingKey = enteringCombat ? ADVENTURE_MAP_KEY : BATTLE_MAP_KEY;
+    const incomingKey = enteringCombat ? BATTLE_MAP_KEY : ADVENTURE_MAP_KEY;
+    const currentActiveMapId = mapLibrary.activeMapId;
+    if (currentActiveMapId) sessionStorage.setItem(outgoingKey, currentActiveMapId);
+    const storedId = sessionStorage.getItem(incomingKey);
+    const incomingMap = storedId ? (mapLibrary.maps || []).find((m) => m.id === storedId) : null;
+    if (incomingMap && incomingMap.id !== currentActiveMapId) {
+      putMapActive(incomingMap.id, dmPassword).then(() => queueDashboardRefresh(0)).catch(() => {});
+    }
+
     if (!combatMode) {
       setCombatMode(true);
       setMapCollapsed(true);
@@ -950,12 +954,6 @@ export default function DmDashboardPage() {
   const canDecreaseTextScale = textScale > TEXT_SCALE_MIN;
   const canIncreaseTextScale = textScale < TEXT_SCALE_MAX;
 
-  // Derived from polled mapLibrary — drives the Adventure | Combat center control
-  const dmActiveMap = (mapLibrary.maps || []).find((m) => m.id === mapLibrary.activeMapId) || null;
-  const serverIsBattleMode = dmActiveMap?.mapMode === "battle";
-  // 43a: prefer the optimistic value lifted from MapPanel; fall back to server value
-  // once a new poll confirms the server state (optimisticIsBattle resets on mapLibrary change below)
-  const isBattleMode = optimisticIsBattle !== null ? optimisticIsBattle : serverIsBattleMode;
 
   const palVars = {
     "--pal-bg":            pal.bg,
@@ -993,8 +991,8 @@ export default function DmDashboardPage() {
                 { key: "adventure", label: "Adventure" },
                 { key: "battle", label: "Combat" },
               ]}
-              value={isBattleMode ? "battle" : "adventure"}
-              onChange={(key) => { if ((key === "battle") !== isBattleMode) battleToggleFnRef.current?.(); }}
+              value={combatMode ? "battle" : "adventure"}
+              onChange={(key) => { if ((key === "battle") !== combatMode) toggleCombatMode(); }}
             />
           ) : null}
           showLive={true}
@@ -1034,8 +1032,8 @@ export default function DmDashboardPage() {
               onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
               party={party}
               npcCombat={npcCombat}
+              combatMode={combatMode}
               onRegisterBattleToggle={(fn) => { battleToggleFnRef.current = fn; }}
-              onBattleModeChange={(isBattle) => setOptimisticIsBattle(isBattle)}
             />
           </div>
 
