@@ -24,8 +24,19 @@ sam build
 echo ""
 echo "► Deploying SAM backend..."
 DM_HASH=$(aws ssm get-parameter --name "/dnd/dm-password-hash" --region "$REGION" --query "Parameter.Value" --output text)
-sam deploy --parameter-overrides "DmPasswordHash=$DM_HASH" || true
+# sam deploy exits non-zero when the stack is already up to date; tolerate only
+# that case — any real failure must abort the deploy, or the frontend would
+# ship against a backend that never landed (this bit us on 2026-07-18).
+set +e
+SAM_OUTPUT=$(sam deploy --parameter-overrides "DmPasswordHash=$DM_HASH" 2>&1)
+SAM_EXIT=$?
+set -e
 unset DM_HASH
+echo "$SAM_OUTPUT" | tail -15
+if [ "$SAM_EXIT" -ne 0 ] && ! echo "$SAM_OUTPUT" | grep -qi "No changes to deploy"; then
+  echo "✗ sam deploy failed (exit $SAM_EXIT) — aborting before frontend sync." >&2
+  exit "$SAM_EXIT"
+fi
 
 API_URL=$(aws cloudformation describe-stacks \
   --stack-name dnd-character-builder \
@@ -83,10 +94,14 @@ aws dynamodb put-item \
 
 echo ""
 echo "► Broadcasting reload to connected clients..."
-aws lambda invoke \
-  --function-name "$BROADCAST_RELOAD_FN" \
-  --region "$REGION" \
-  /dev/null > /dev/null
+if [ -n "$BROADCAST_RELOAD_FN" ]; then
+  aws lambda invoke \
+    --function-name "$BROADCAST_RELOAD_FN" \
+    --region "$REGION" \
+    /dev/null > /dev/null
+else
+  echo "  (skipped — BroadcastReloadFunctionName stack output not found; clients will pick up the new version on their next poll)"
+fi
 
 echo ""
 echo "=== Deploy complete! ==="
