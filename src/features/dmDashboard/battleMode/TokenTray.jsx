@@ -10,12 +10,19 @@ import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
  *   placedTokens — Token[] currently on the map (to compute unplaced set)
  *   heldId       — sourceId of the token currently held (null = none)
  *   onSelect     — (sourceId, type) => void — called when DM picks a token
- *   onEndCombat  — () => void — clears all tokens + flips to adventure mode
- *   onResetTray  — () => void — returns all placed tokens to tray
+ *   onEndCombat   — () => void — clears all tokens + flips to adventure mode
+ *   onResetTray   — () => void — returns all placed tokens to tray
+ *   onClearTokens — () => void — wipes the npc-combat roster (two-step confirm)
  *   pal
  */
-export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSelect, onDropToTray, onEndCombat, onResetTray, pal }) {
+export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSelect, onDropToTray, onEndCombat, onResetTray, onClearTokens, pal }) {
   const [endMenuOpen, setEndMenuOpen] = useState(false);
+  const [clearArmed, setClearArmed] = useState(false);
+
+  // Reset confirm-arm state whenever the menu closes
+  useEffect(() => {
+    if (!endMenuOpen) setClearArmed(false);
+  }, [endMenuOpen]);
 
   const placedSourceIds = new Set((placedTokens || []).map((t) => t.sourceId));
   // A "map-held" token is one being dragged from the map (it's placed, not from tray)
@@ -197,10 +204,40 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
             >
               Reset Tray
             </button>
+            {clearArmed ? (
+              <div className="tray-end-dropdown__confirm-row">
+                <button
+                  type="button"
+                  className="tray-end-dropdown__item tray-end-dropdown__item--danger"
+                  onClick={() => {
+                    setClearArmed(false);
+                    setEndMenuOpen(false);
+                    onClearTokens?.();
+                  }}
+                >
+                  Confirm clear
+                </button>
+                <button
+                  type="button"
+                  className="tray-end-dropdown__item tray-end-dropdown__item--normal"
+                  onClick={() => setClearArmed(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
+              <button
+                type="button"
+                className="tray-end-dropdown__item tray-end-dropdown__item--normal"
+                onClick={() => setClearArmed(true)}
+              >
+                Clear Tokens
+              </button>
+            )}
             <button
               type="button"
               className="tray-end-dropdown__item tray-end-dropdown__item--normal"
-              onClick={() => setEndMenuOpen(false)}
+              onClick={() => { setClearArmed(false); setEndMenuOpen(false); }}
             >
               Cancel
             </button>

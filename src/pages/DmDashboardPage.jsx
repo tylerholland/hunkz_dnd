@@ -99,10 +99,20 @@ export default function DmDashboardPage() {
   const npcCombatExpectedRef = useRef(null);
   // Ref to MapPanel's handleToggleBattleMode, registered via onRegisterBattleToggle prop
   const battleToggleFnRef = useRef(null);
+  // Optimistic battle mode for NavSegment highlight (43a): lifted from MapPanel so
+  // the segment updates immediately on click instead of waiting for the poll to land.
+  // null = fall back to the server-derived isBattleMode value.
+  const [optimisticIsBattle, setOptimisticIsBattle] = useState(null);
 
   useEffect(() => {
     partyRef.current = party;
   }, [party]);
+
+  // 43a: clear the optimistic battle-mode override once the server confirms the new
+  // mapLibrary state — the NavSegment then reads the authoritative server value.
+  useEffect(() => {
+    setOptimisticIsBattle(null);
+  }, [mapLibrary]);
 
   useEffect(() => () => {
     transitionTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
@@ -942,7 +952,10 @@ export default function DmDashboardPage() {
 
   // Derived from polled mapLibrary — drives the Adventure | Combat center control
   const dmActiveMap = (mapLibrary.maps || []).find((m) => m.id === mapLibrary.activeMapId) || null;
-  const isBattleMode = dmActiveMap?.mapMode === "battle";
+  const serverIsBattleMode = dmActiveMap?.mapMode === "battle";
+  // 43a: prefer the optimistic value lifted from MapPanel; fall back to server value
+  // once a new poll confirms the server state (optimisticIsBattle resets on mapLibrary change below)
+  const isBattleMode = optimisticIsBattle !== null ? optimisticIsBattle : serverIsBattleMode;
 
   const palVars = {
     "--pal-bg":            pal.bg,
@@ -981,7 +994,7 @@ export default function DmDashboardPage() {
                 { key: "battle", label: "Combat" },
               ]}
               value={isBattleMode ? "battle" : "adventure"}
-              onChange={() => battleToggleFnRef.current?.()}
+              onChange={(key) => { if ((key === "battle") !== isBattleMode) battleToggleFnRef.current?.(); }}
             />
           ) : null}
           showLive={true}
@@ -1022,6 +1035,7 @@ export default function DmDashboardPage() {
               party={party}
               npcCombat={npcCombat}
               onRegisterBattleToggle={(fn) => { battleToggleFnRef.current = fn; }}
+              onBattleModeChange={(isBattle) => setOptimisticIsBattle(isBattle)}
             />
           </div>
 

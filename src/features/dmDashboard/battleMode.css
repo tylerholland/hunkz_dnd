@@ -671,6 +671,18 @@
   color: #e08080;
 }
 
+/* Two-button inline confirm row inside the End dropdown (43c Clear Tokens) */
+.tray-end-dropdown__confirm-row {
+  display: flex;
+  gap: 0;
+  border-top: 1px solid var(--pal-border, rgba(160, 100, 55, 0.2));
+  border-bottom: 1px solid var(--pal-border, rgba(160, 100, 55, 0.2));
+}
+
+.tray-end-dropdown__confirm-row .tray-end-dropdown__item {
+  flex: 1;
+}
+
 /* ── Long-press remove (Pointer Events, DM-only) ─────────────────────── */
 /* Ring-sweep "charge" cue drawn as an SVG overlay inset around the chip. */
 .token-longpress-ring {
