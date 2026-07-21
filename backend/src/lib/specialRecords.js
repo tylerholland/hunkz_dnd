@@ -138,6 +138,8 @@ async function appendRollHistoryEvent(event, limit = ROLL_HISTORY_LIMIT) {
 function normalizeMapLibraryRecord(item) {
   return {
     activeMapId: item?.activeMapId ?? null,
+    adventureMapId: item?.adventureMapId ?? null,
+    battleMapId: item?.battleMapId ?? null,
     activeMapView: normalizeMapView(item?.activeMapView),
     maps: Array.isArray(item?.maps)
       ? item.maps.map((map) => ({

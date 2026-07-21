@@ -235,7 +235,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
       ? (stats || []).find(s => (s.name ?? s.stat) === statOrName) || { name: statOrName, score: 10, mods: [] }
       : statOrName;
     const mod = getAbilityMod(stat);
-    executeRoll({ groups: [{ count: 2, sides: 6 }], flat: mod, label: `${stat.name} Check`, isD20Attack: false });
+    executeRoll({ groups: [{ count: 2, sides: 6 }], flat: mod, label: `${stat.name ?? stat.stat} Check`, isD20Attack: false });
   }, [stats, executeRoll]);
 
   useImperativeHandle(ref, () => ({ rollAbility }), [rollAbility]);

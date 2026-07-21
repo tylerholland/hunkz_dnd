@@ -13,15 +13,17 @@ exports.handler = async (event) => {
   const body = JSON.parse(event.body || "{}");
   const mapId = body.mapId ?? null;
 
+  // Optional: caller may record which mode this map belongs to at the same time
+  const setParts = ["activeMapId = :mapId", "activeMapView = :view", "updatedAt = :now"];
+  const exprValues = { ":mapId": mapId, ":view": null, ":now": new Date().toISOString() };
+  if (body.adventureMapId !== undefined) { setParts.push("adventureMapId = :advId"); exprValues[":advId"] = body.adventureMapId ?? null; }
+  if (body.battleMapId    !== undefined) { setParts.push("battleMapId = :batId");    exprValues[":batId"] = body.battleMapId    ?? null; }
+
   await db.send(new UpdateCommand({
     TableName: TABLE,
     Key: { slug: MAP_LIBRARY_SLUG },
-    UpdateExpression: "SET activeMapId = :mapId, activeMapView = :view, updatedAt = :now",
-    ExpressionAttributeValues: {
-      ":mapId": mapId,
-      ":view": null,
-      ":now": new Date().toISOString(),
-    },
+    UpdateExpression: `SET ${setParts.join(", ")}`,
+    ExpressionAttributeValues: exprValues,
   }));
 
   await notifySessionChanged();

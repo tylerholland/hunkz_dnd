@@ -198,11 +198,11 @@ export const postMap = (mapData, dmPassword) =>
     body: JSON.stringify(mapData),
   });
 
-export const putMapActive = (mapId, dmPassword) =>
+export const putMapActive = (mapId, dmPassword, modeOpts = {}) =>
   request("/maps/active", {
     method: "PUT",
     headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
-    body: JSON.stringify({ mapId }),
+    body: JSON.stringify({ mapId, ...modeOpts }),
   });
 
 export const putMapView = (mapView, dmPassword) =>

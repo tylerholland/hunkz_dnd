@@ -1,17 +1,27 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { putMapActive } from "../../api";
 import MapUploadModal, { displayMapName } from "./MapUploadModal";
 import MapThumbnail from "../maps/MapThumbnail";
 import { isSupportedMapContentType } from "../maps/mapFiles";
 
-export default function MapLibraryStrip({ mapLibrary, dmPassword, onLibraryChange }) {
+export default function MapLibraryStrip({ mapLibrary, dmPassword, combatMode, onLibraryChange }) {
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [draggingOver, setDraggingOver] = useState(false);
+  const [optimisticActiveId, setOptimisticActiveId] = useState(null);
   const dragCounterRef = useRef(0);
 
   const maps = mapLibrary?.maps || [];
-  const activeMapId = mapLibrary?.activeMapId || null;
+  const serverActiveId = mapLibrary?.activeMapId || null;
+  const activeMapId = optimisticActiveId ?? serverActiveId;
+  const activeLabel = combatMode ? "● Combat Map" : "● Adventure Map";
+
+  // Clear optimistic state once server confirms the same active map
+  useEffect(() => {
+    if (optimisticActiveId && optimisticActiveId === serverActiveId) {
+      setOptimisticActiveId(null);
+    }
+  }, [serverActiveId, optimisticActiveId]);
 
   const accent = "#6a8fa8";
   const accentBright = "#a0c0d0";
@@ -23,10 +33,15 @@ export default function MapLibraryStrip({ mapLibrary, dmPassword, onLibraryChang
   const fontBody = "'Crimson Text', Georgia, serif";
 
   const handleSetActive = async (mapId) => {
+    setOptimisticActiveId(mapId);
+    // Record which mode this map belongs to so toggleCombatMode can find it
+    const modeOpts = combatMode ? { battleMapId: mapId } : { adventureMapId: mapId };
     try {
-      await putMapActive(mapId, dmPassword);
+      await putMapActive(mapId, dmPassword, modeOpts);
       onLibraryChange();
-    } catch { /* ignore */ }
+    } catch {
+      setOptimisticActiveId(null);
+    }
   };
 
   const handleUploaded = (newMap) => {
@@ -137,7 +152,7 @@ export default function MapLibraryStrip({ mapLibrary, dmPassword, onLibraryChang
                 </button>
               )}
               {isActive && (
-                <div style={{ fontFamily: fontUI, fontSize: 10, letterSpacing: "0.1em", color: "#66cc66", textAlign: "center" }}>● Active</div>
+                <div style={{ fontFamily: fontUI, fontSize: 10, letterSpacing: "0.1em", color: "#66cc66", textAlign: "center" }}>{activeLabel}</div>
               )}
             </div>
           );

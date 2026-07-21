@@ -25,8 +25,6 @@ import { reportServerBuildVersion } from "../lib/staleClient";
 
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
 const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
-const ADVENTURE_MAP_KEY = "dnd_dm_adventure_map";
-const BATTLE_MAP_KEY = "dnd_dm_battle_map";
 const TEXT_SCALE_STORAGE_KEY = "dnd_dm_text_scale";
 const MAP_TRANSITION_MS = 320;
 const CARD_FLIP_MS = 460;
@@ -812,23 +810,23 @@ export default function DmDashboardPage() {
   function toggleCombatMode() {
     clearTransitionSteps();
 
-    // Dual map memory: record the outgoing mode's active map, restore the incoming mode's
     const enteringCombat = !combatMode;
-    const outgoingKey = enteringCombat ? ADVENTURE_MAP_KEY : BATTLE_MAP_KEY;
-    const incomingKey = enteringCombat ? BATTLE_MAP_KEY : ADVENTURE_MAP_KEY;
     const currentActiveMapId = mapLibrary.activeMapId;
-    if (currentActiveMapId) sessionStorage.setItem(outgoingKey, currentActiveMapId);
-    const storedId = sessionStorage.getItem(incomingKey);
-    const incomingMap = storedId ? (mapLibrary.maps || []).find((m) => m.id === storedId) : null;
+    // Read adventure/battle map assignments from server (single source of truth)
+    const incomingId = enteringCombat ? mapLibrary.battleMapId : mapLibrary.adventureMapId;
+    const incomingMap = incomingId ? (mapLibrary.maps || []).find((m) => m.id === incomingId) : null;
     if (incomingMap && incomingMap.id !== currentActiveMapId) {
       expectedMapIdRef.current = incomingMap.id;
       setMapSwitching(true);
-      // Stamp mapMode on the incoming map before it goes live so the player
-      // transition fires correctly. Fire-and-forget — never blocks the switch.
       const newMapMode = enteringCombat ? "battle" : "adventure";
+      // Stamp mapMode fire-and-forget so player transition fires
       patchMapTokens(incomingMap.id, { tokens: incomingMap.tokens || [], mapMode: newMapMode }, dmPassword)
         .catch(() => {});
-      putMapActive(incomingMap.id, dmPassword).then(() => queueDashboardRefresh(0)).catch(() => { setMapSwitching(false); });
+      // Switch active map and record both mode assignments atomically
+      putMapActive(incomingMap.id, dmPassword, {
+        adventureMapId: enteringCombat ? currentActiveMapId : incomingMap.id,
+        battleMapId:    enteringCombat ? incomingMap.id : currentActiveMapId,
+      }).then(() => queueDashboardRefresh(0)).catch(() => { setMapSwitching(false); });
     }
 
     if (!combatMode) {
@@ -1170,6 +1168,7 @@ export default function DmDashboardPage() {
             <MapLibraryStrip
               mapLibrary={mapLibrary}
               dmPassword={dmPassword}
+              combatMode={combatMode}
               onLibraryChange={() => fetchDashboardData({ background: true, force: true })}
             />
           </div>
