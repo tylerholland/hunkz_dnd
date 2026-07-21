@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState } from "../api";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, patchMapTokens, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
 import CharacterCard, { AwardXpModal, DistributeCoinModal } from "../features/dmDashboard/CharacterCard";
 import ConfirmDialog from "../features/dmDashboard/ConfirmDialog";
@@ -823,6 +823,11 @@ export default function DmDashboardPage() {
     if (incomingMap && incomingMap.id !== currentActiveMapId) {
       expectedMapIdRef.current = incomingMap.id;
       setMapSwitching(true);
+      // Stamp mapMode on the incoming map before it goes live so the player
+      // transition fires correctly. Fire-and-forget — never blocks the switch.
+      const newMapMode = enteringCombat ? "battle" : "adventure";
+      patchMapTokens(incomingMap.id, { tokens: incomingMap.tokens || [], mapMode: newMapMode }, dmPassword)
+        .catch(() => {});
       putMapActive(incomingMap.id, dmPassword).then(() => queueDashboardRefresh(0)).catch(() => { setMapSwitching(false); });
     }
 

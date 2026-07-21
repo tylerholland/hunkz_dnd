@@ -1,0 +1,179 @@
+/* ── Combat Mode Transition Overlay ──────────────────────────────────────
+   Full-screen dramatic veil shown to players when the DM switches mapMode.
+   Two dark panels slam together (shutter close), text punches in from
+   centre, holds briefly, then panels slide apart to reveal the new state.
+   ──────────────────────────────────────────────────────────────────────── */
+
+.cto {
+  position: fixed;
+  inset: 0;
+  z-index: 9990;
+  overflow: hidden;
+  pointer-events: none;
+  user-select: none;
+}
+
+/* ── Shutter halves ─────────────────────────────────────────────── */
+
+.cto__half {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 50%;
+}
+
+.cto__half--top    { top: 0; }
+.cto__half--bottom { bottom: 0; }
+
+/* ENTERING — deep crimson */
+.cto--entering .cto__half--top {
+  background: linear-gradient(to bottom, #250010 0%, #1a0008 100%);
+}
+.cto--entering .cto__half--bottom {
+  background: linear-gradient(to top,   #250010 0%, #1a0008 100%);
+}
+
+/* LEAVING — dark blue-slate */
+.cto--leaving .cto__half--top {
+  background: linear-gradient(to bottom, #09151f 0%, #060f18 100%);
+}
+.cto--leaving .cto__half--bottom {
+  background: linear-gradient(to top,   #09151f 0%, #060f18 100%);
+}
+
+/* ── Phase IN — panels slam closed ───── */
+.cto--phase-in .cto__half--top {
+  animation: cto-slam-top 260ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+.cto--phase-in .cto__half--bottom {
+  animation: cto-slam-bottom 260ms cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* ── Phase OUT — panels slide apart ──── */
+.cto--phase-out .cto__half--top {
+  animation: cto-open-top 340ms cubic-bezier(0.2, 0.8, 0.2, 1) 150ms forwards;
+}
+.cto--phase-out .cto__half--bottom {
+  animation: cto-open-bottom 340ms cubic-bezier(0.2, 0.8, 0.2, 1) 150ms forwards;
+}
+
+@keyframes cto-slam-top    { from { transform: translateY(-100%); } to { transform: translateY(0); } }
+@keyframes cto-slam-bottom { from { transform: translateY(100%);  } to { transform: translateY(0); } }
+@keyframes cto-open-top    { from { transform: translateY(0); } to { transform: translateY(-100%); } }
+@keyframes cto-open-bottom { from { transform: translateY(0); } to { transform: translateY(100%);  } }
+
+/* ── Text content ───────────────────────────────────────────────── */
+
+.cto__content {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  z-index: 1;
+  width: 100%;
+  padding: 0 24px;
+  box-sizing: border-box;
+}
+
+/* Punch in from centre (delayed until shutters close) */
+.cto--phase-in .cto__content {
+  animation: cto-text-in 280ms cubic-bezier(0.2, 0.8, 0.2, 1) 200ms both;
+}
+
+/* Fade out before shutters open */
+.cto--phase-out .cto__content {
+  animation: cto-text-out 180ms ease-in forwards;
+}
+
+@keyframes cto-text-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.16);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes cto-text-out {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+
+/* ── Title ──────────────────────────────────────────────────────── */
+
+.cto__title {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: clamp(26px, 5.5vw, 56px);
+  font-weight: 700;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  margin: 0 0 12px;
+  line-height: 1.1;
+}
+
+.cto--entering .cto__title {
+  color: #e02020;
+  text-shadow:
+    0 0 24px rgba(220, 30, 30, 0.9),
+    0 0 60px rgba(180, 0,  0,  0.5),
+    0 2px 6px rgba(0,  0,  0,  0.8);
+  /* Subtle breathe during the hold phase */
+  animation: cto-pulse-red 900ms ease-in-out 480ms infinite alternate;
+}
+
+.cto--leaving .cto__title {
+  color: #88bbdd;
+  text-shadow:
+    0 0 22px rgba(100, 170, 230, 0.7),
+    0 2px 6px rgba(0,   0,  0,  0.8);
+}
+
+@keyframes cto-pulse-red {
+  from { text-shadow: 0 0 24px rgba(220,30,30,0.9), 0 0 60px rgba(180,0,0,0.5), 0 2px 6px rgba(0,0,0,.8); }
+  to   { text-shadow: 0 0 34px rgba(240,50,50,1.0), 0 0 90px rgba(200,0,0,0.7), 0 2px 6px rgba(0,0,0,.8); }
+}
+
+/* ── Subtitle ───────────────────────────────────────────────────── */
+
+.cto__subtitle {
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: clamp(13px, 2vw, 18px);
+  letter-spacing: 0.16em;
+  margin: 0;
+  font-style: italic;
+}
+
+.cto--entering .cto__subtitle { color: rgba(200, 100, 100, 0.72); }
+.cto--leaving  .cto__subtitle { color: rgba(100, 155, 205, 0.65); }
+
+/* ── Decorative rule ────────────────────────────────────────────── */
+
+.cto__rule {
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  margin: 14px 0;
+  opacity: 0.45;
+}
+
+.cto--entering .cto__rule { color: #cc3030; }
+.cto--leaving  .cto__rule { color: #5588aa; }
+
+/* ── Reduced-motion: instant crossfade instead of shutters ──────── */
+@media (prefers-reduced-motion: reduce) {
+  .cto--phase-in .cto__half--top,
+  .cto--phase-in .cto__half--bottom,
+  .cto--phase-out .cto__half--top,
+  .cto--phase-out .cto__half--bottom { animation: none; }
+
+  .cto--phase-in  { animation: cto-rm-in  120ms ease forwards; }
+  .cto--phase-out { animation: cto-rm-out 200ms ease forwards; }
+
+  .cto--entering .cto__title,
+  .cto--leaving  .cto__title { animation: none; }
+}
+
+@keyframes cto-rm-in  { from { opacity: 0; } to { opacity: 1; } }
+@keyframes cto-rm-out { from { opacity: 1; } to { opacity: 0; } }

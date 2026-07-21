@@ -30,6 +30,8 @@ import TopNav, { NavSegment } from "../../components/TopNav";
 import MapViewer from "../maps/MapViewer";
 import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
 import { TokenChip } from "../dmDashboard/battleMode/BattleModeController";
+import CombatTransitionOverlay from "./CombatTransitionOverlay";
+import { playCombatEnterSound, playCombatExitSound } from "../../lib/combatSound";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
 
@@ -1320,6 +1322,30 @@ function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }
 // Read-only token layer for the player's Map sub-tab.
 const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, partyStatus }) {
   const [viewerState, setViewerState] = useState(null);
+
+  // Detect mapMode transitions and trigger the dramatic overlay + sound.
+  // undefined = not yet initialized (first render never fires a transition).
+  const prevModeRef = useRef(undefined);
+  const [transitionType, setTransitionType] = useState(null);
+  const transitionTimerRef = useRef(null);
+
+  useEffect(() => {
+    const isCombat = activeMap?.mapMode === "battle";
+    if (prevModeRef.current === undefined) { prevModeRef.current = isCombat; return; }
+    const wasCombat = prevModeRef.current;
+    prevModeRef.current = isCombat;
+    if (isCombat !== wasCombat) {
+      const type = isCombat ? "entering" : "leaving";
+      setTransitionType(type);
+      if (type === "entering") playCombatEnterSound();
+      else playCombatExitSound();
+      clearTimeout(transitionTimerRef.current);
+      transitionTimerRef.current = setTimeout(() => setTransitionType(null), 3200);
+    }
+  }, [activeMap?.id, activeMap?.mapMode]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => () => clearTimeout(transitionTimerRef.current), []);
+
   const tokens = activeMap?.tokens || [];
   const isBattleMode = activeMap?.mapMode === "battle";
   const partyVisible = partyStatus?.visible !== false;
@@ -1364,17 +1390,20 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
   ));
 
   return (
-    <MapViewer
-      imageUrl={activeMap.imageUrl}
-      name={activeMap.name}
-      contentType={activeMap.contentType}
-      height={480}
-      pal={pal}
-      onViewChange={setViewerState}
-      tokenScale={tokenScale}
-      rotation={activeMap?.rotation ?? 0}
-      tokenLayerChildren={isBattleMode && visibleTokens.length > 0 ? tokenChips : undefined}
-      panSuppressedRef={panSuppressedRef}
-    />
+    <>
+      <CombatTransitionOverlay type={transitionType} />
+      <MapViewer
+        imageUrl={activeMap.imageUrl}
+        name={activeMap.name}
+        contentType={activeMap.contentType}
+        height={480}
+        pal={pal}
+        onViewChange={setViewerState}
+        tokenScale={tokenScale}
+        rotation={activeMap?.rotation ?? 0}
+        tokenLayerChildren={isBattleMode && visibleTokens.length > 0 ? tokenChips : undefined}
+        panSuppressedRef={panSuppressedRef}
+      />
+    </>
   );
 });

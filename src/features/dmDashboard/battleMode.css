@@ -1332,3 +1332,57 @@
     transition: none;
   }
 }
+
+/* ── DM mode-switch confirmation toast ─────────────────────────────────────
+   Slide up from bottom-right, hold, auto-dismiss.
+   Entering combat → red variant; leaving → blue variant.
+   ─────────────────────────────────────────────────────────────────────── */
+
+.dm-mode-toast {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 9900;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  white-space: nowrap;
+  pointer-events: none;
+  animation: dm-toast-in 2800ms ease forwards;
+}
+
+.dm-mode-toast--entering {
+  background: rgba(60, 5, 5, 0.92);
+  color: #f08080;
+  border: 1px solid rgba(200, 60, 60, 0.5);
+  box-shadow: 0 4px 20px rgba(180, 0, 0, 0.4);
+}
+
+.dm-mode-toast--leaving {
+  background: rgba(5, 20, 40, 0.92);
+  color: #88bbdd;
+  border: 1px solid rgba(60, 130, 200, 0.5);
+  box-shadow: 0 4px 20px rgba(0, 80, 160, 0.35);
+}
+
+@keyframes dm-toast-in {
+  0%   { opacity: 0; transform: translateY(16px); }
+  12%  { opacity: 1; transform: translateY(0); }
+  75%  { opacity: 1; transform: translateY(0); }
+  100% { opacity: 0; transform: translateY(-8px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .dm-mode-toast {
+    animation: dm-toast-rm 2800ms ease forwards;
+  }
+  @keyframes dm-toast-rm {
+    0%   { opacity: 0; }
+    10%  { opacity: 1; }
+    75%  { opacity: 1; }
+    100% { opacity: 0; }
+  }
+}
