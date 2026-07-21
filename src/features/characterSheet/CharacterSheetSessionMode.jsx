@@ -320,10 +320,11 @@ export default function CharacterSheetSessionMode({
   // onSave and onDelete reserved for Story 28 (in-session profile editing)
   onSessionSync,
   activeMap,
-  // activeMapView reserved for map scroll/zoom restoration
+  activeMapView,
   sessionPassword,
   partyStatus,
   initiativeData,
+  npcCombat,
   wsConnected,
 }) {
   const navigate = useNavigate();
@@ -1167,9 +1168,11 @@ export default function CharacterSheetSessionMode({
             {activeMap ? (
               <PlayerMapViewer
                 activeMap={activeMap}
+                activeMapView={activeMapView}
                 pal={pal}
                 slug={slug}
                 partyStatus={partyStatus}
+                npcCombat={npcCombat}
               />
             ) : (
               <p className="cs-sm-map-empty">The DM hasn{"'"}t loaded a map yet.</p>
@@ -1320,7 +1323,7 @@ function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }
 
 // ── PlayerMapViewer ────────────────────────────────────────────────────────
 // Read-only token layer for the player's Map sub-tab.
-const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, partyStatus }) {
+const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, pal, slug, partyStatus, npcCombat }) {
   const [viewerState, setViewerState] = useState(null);
 
   // Detect mapMode transitions and trigger the dramatic overlay + sound.
@@ -1376,7 +1379,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
       imageW={viewerState?.naturalSize?.w || 1}
       imageH={viewerState?.naturalSize?.h || 1}
       party={partyStatus?.members || []}
-      npcCombat={{ npcs: [] }}
+      npcCombat={npcCombat || { npcs: [] }}
       isDm={false}
       isOwnToken={token.sourceId === slug}
       partyVisibilityEnabled={partyVisible}
@@ -1398,6 +1401,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
         contentType={activeMap.contentType}
         height={480}
         pal={pal}
+        publishedView={activeMapView}
         onViewChange={setViewerState}
         tokenScale={tokenScale}
         rotation={activeMap?.rotation ?? 0}

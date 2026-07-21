@@ -39,6 +39,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const floaterRef = useRef(null);
   const rafRef = useRef(null);
   const viewerContainerRef = useRef(null);
+  const autoPubTimerRef = useRef(null);
 
   // Calibration state (token scale)
   const [localTokenScale, setLocalTokenScale] = useState(null); // null = use server state
@@ -147,6 +148,22 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       onLibraryChange();
     } catch { /* ignore */ }
   };
+
+  // Auto-publish the DM's viewport 800ms after pan/zoom settles so players
+  // always open the map centred on where the DM is looking (Story 47a).
+  useEffect(() => {
+    if (!viewerState || !activeMap?.id || !dmPassword) return;
+    clearTimeout(autoPubTimerRef.current);
+    autoPubTimerRef.current = setTimeout(() => {
+      putMapView({
+        mapId: activeMap.id,
+        translate: viewerState.translate,
+        scale: viewerState.scale,
+        pageNumber: viewerState.pageNumber,
+      }, dmPassword).catch(() => {});
+    }, 800);
+    return () => clearTimeout(autoPubTimerRef.current);
+  }, [viewerState, activeMap?.id, dmPassword]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Resize handle
   useEffect(() => {

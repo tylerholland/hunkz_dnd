@@ -56,6 +56,7 @@ export default function CharacterModePage() {
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
   const [partyStatus, setPartyStatus] = useState({ visible: true, members: [] });
   const [initiativeData, setInitiativeData] = useState({ round: 1, activeTurnIndex: 0, entries: [] });
+  const [npcCombat, setNpcCombat] = useState({ npcs: [] });
   const [authState, setAuthState] = useState(() => (slug ? "checking" : "locked"));
   const [sessionPassword, setSessionPassword] = useState(null);
   const [unlockInput, setUnlockInput] = useState("");
@@ -163,6 +164,7 @@ export default function CharacterModePage() {
       setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
       setPartyStatus(d.partyStatus || { visible: true, members: [] });
       setInitiativeData(d.initiativePublic || { round: 1, activeTurnIndex: 0, entries: [] });
+      setNpcCombat(d.npcCombat || d.npcCombatPublic || { npcs: [] });
       reportServerBuildVersion(d.buildVersion);
       setError(null);
     } catch {
@@ -398,6 +400,7 @@ export default function CharacterModePage() {
       sessionPassword={sessionPassword}
       partyStatus={partyStatus}
       initiativeData={initiativeData}
+      npcCombat={npcCombat}
       wsConnected={wsConnected}
     />
   );

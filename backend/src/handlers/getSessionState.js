@@ -157,9 +157,19 @@ exports.handler = async (event) => {
       }
     : { visible: false, members: [] };
 
+  // Strip to name+portraitUrl only — HP, conditions, notes stay DM-only
+  const npcCombatPublic = {
+    npcs: npcCombat.npcs.map((n) => ({
+      id: n.id,
+      name: n.name,
+      portraitUrl: n.portraitUrl ?? null,
+    })),
+  };
+
   const responseBody = {
     partyStatus,
     initiativePublic: buildPublicInitiativePayload(initiative, npcCombat),
+    npcCombatPublic,
     mapLibrary,
     rollHistory,
     serverTime,
