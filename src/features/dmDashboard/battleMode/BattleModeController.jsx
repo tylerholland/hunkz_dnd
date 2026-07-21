@@ -13,6 +13,26 @@ import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
  * used by both MapPanel (DM view) and CharacterSheetSessionMode (player view).
  */
 
+// ── Per-token size categories (Story 44) ─────────────────────────────────────
+const SIZE_STEPS = [0.5, 1.0, 1.5, 2.0, 3.0];
+const SIZE_LABELS = {
+  0.5: "TINY",
+  1.0: "MEDIUM",
+  1.5: "LARGE",
+  2.0: "HUGE",
+  3.0: "GARGANTUAN",
+};
+
+function nearestSizeIndex(scale) {
+  let best = 0;
+  let bestDist = Infinity;
+  for (let i = 0; i < SIZE_STEPS.length; i++) {
+    const dist = Math.abs(SIZE_STEPS[i] - scale);
+    if (dist < bestDist) { bestDist = dist; best = i; }
+  }
+  return best;
+}
+
 // ── HeldTokenFloater ────────────────────────────────────────────────────────
 export const HeldTokenFloater = forwardRef(function HeldTokenFloater(
   { heldSourceId, heldType, party, npcCombat, pal },
@@ -87,12 +107,16 @@ export const TokenChip = memo(function TokenChip({
   ownSlug,
   onMoveToken,
   panSuppressedRef,
+  // Story 44 — per-token resize (DM view only, NPC tokens only).
+  onResizeToken,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [flipCard, setFlipCard] = useState(false);
   const [portraitError, setPortraitError] = useState(false);
   const [longPress, setLongPress] = useState("idle"); // idle | charging | menu
   const [removing, setRemoving] = useState(false);
+  // Story 44 — resize stepper state
+  const [resizeActive, setResizeActive] = useState(false);
   // State (not a ref) so the mount-gate can be read safely during render —
   // false on the very first paint (no transition class), flips true right
   // after via the effect below so the token's first position is instant.
@@ -186,12 +210,15 @@ export const TokenChip = memo(function TokenChip({
   }, [viewerContainerRef]);
 
   const handleMouseEnter = useCallback(() => {
+    // Story 44 — suppress hover-expand while resize stepper is open so the
+    // HP card doesn't pop over the stepper panel.
+    if (resizeActive) return;
     if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
     hoverTimerRef.current = setTimeout(() => {
       checkFlip();
       setExpanded(true);
     }, 120);
-  }, [checkFlip]);
+  }, [checkFlip, resizeActive]);
 
   const handleMouseLeave = useCallback(() => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
@@ -260,8 +287,14 @@ export const TokenChip = memo(function TokenChip({
     if (!layerEl) return;
     const rect = layerEl.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
-    const fracX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    const fracY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    const vx = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const vy = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+    const rot = parseFloat(getComputedStyle(layerEl).getPropertyValue('--map-rotation')) || 0;
+    let fracX, fracY;
+    if (rot === 90)       { fracX = vy;      fracY = 1 - vx; }
+    else if (rot === 180) { fracX = 1 - vx;  fracY = 1 - vy; }
+    else if (rot === 270) { fracX = 1 - vy;  fracY = vx; }
+    else                  { fracX = vx;      fracY = vy; }
     setDragPos({ x: fracX, y: fracY });
   }, []);
 
@@ -387,6 +420,51 @@ export const TokenChip = memo(function TokenChip({
     setLongPress("idle");
   }, []);
 
+  // ── Story 44 — resize stepper handlers ──────────────────────────────────
+
+  const handleOpenResize = useCallback((e) => {
+    e.stopPropagation();
+    checkFlip();
+    setLongPress("idle");
+    setResizeActive(true);
+  }, [checkFlip]);
+
+  const handleCloseResize = useCallback(() => {
+    setResizeActive(false);
+  }, []);
+
+  const handleStepSize = useCallback((direction) => {
+    const currentScale = Number.isFinite(token.scale) ? token.scale : 1.0;
+    const idx = nearestSizeIndex(currentScale);
+    const nextIdx = Math.max(0, Math.min(SIZE_STEPS.length - 1, idx + direction));
+    const nextScale = SIZE_STEPS[nextIdx];
+    if (nextScale !== currentScale) {
+      onResizeToken?.(token.id, nextScale);
+    }
+  }, [token.id, token.scale, onResizeToken]);
+
+  useEffect(() => {
+    if (!resizeActive) return undefined;
+    function handleKeyDown(e) {
+      if (e.key === "+" || e.key === "=") { e.preventDefault(); handleStepSize(1); }
+      else if (e.key === "-") { e.preventDefault(); handleStepSize(-1); }
+      else if (e.key === "Escape") { e.preventDefault(); handleCloseResize(); }
+    }
+    document.addEventListener("keydown", handleKeyDown);
+    return () => document.removeEventListener("keydown", handleKeyDown);
+  }, [resizeActive, handleStepSize, handleCloseResize]);
+
+  useEffect(() => {
+    if (!resizeActive) return undefined;
+    function handleOutside(e) {
+      if (chipRef.current && !chipRef.current.contains(e.target)) {
+        handleCloseResize();
+      }
+    }
+    document.addEventListener("pointerdown", handleOutside);
+    return () => document.removeEventListener("pointerdown", handleOutside);
+  }, [resizeActive, handleCloseResize]);
+
   // Rendered position: live drag position while dragging, else the
   // optimistic post-drop position pending poll confirmation, else the
   // server/poll-driven token.x/y (Story 34 §"Reconciliation"). Once a fresh
@@ -420,7 +498,13 @@ export const TokenChip = memo(function TokenChip({
     removing ? "token-chip--removing" : "",
     canDrag ? "token-chip--own-draggable" : "",
     isDragging ? "token-chip--dragging" : "",
+    isDm && resizeActive ? "token-chip--resize-active" : "",
   ].filter(Boolean).join(" ");
+
+  // Story 44 — current scale for the stepper readout
+  const currentScale = Number.isFinite(token.scale) ? token.scale : 1.0;
+  const currentSizeIdx = nearestSizeIndex(currentScale);
+  const currentLabel = SIZE_LABELS[SIZE_STEPS[currentSizeIdx]] || "MEDIUM";
 
   return (
     <div
@@ -439,6 +523,8 @@ export const TokenChip = memo(function TokenChip({
         "--pal-accent": pal?.accent,
         "--pal-accent-bright": pal?.accentBright,
         "--pal-surface-solid": pal?.surfaceSolid || pal?.surface,
+        // Story 44 — per-token size multiplier, stacked on global --token-scale-multiplier
+        "--token-size-mult": currentScale,
       }}
       onMouseEnter={handleMouseEnter}
       onMouseLeave={handleMouseLeave}
@@ -533,11 +619,69 @@ export const TokenChip = memo(function TokenChip({
       )}
       {isDm && longPress === "menu" && (
         <div className="token-longpress-menu" onClick={(e) => e.stopPropagation()}>
+          {/* Story 44 — ⤢ Resize row, NPC tokens only */}
+          {token.type === "npc" && onResizeToken && (
+            <button
+              type="button"
+              className="token-longpress-menu-item token-longpress-menu-item--resize"
+              onClick={handleOpenResize}
+            >
+              ⤢ Resize
+            </button>
+          )}
           <button type="button" className="token-longpress-menu-item token-longpress-menu-item--remove" onClick={handleConfirmRemove}>
             ✕ Remove
           </button>
           <button type="button" className="token-longpress-menu-item token-longpress-menu-item--cancel" onClick={handleCancelLongPress}>
             Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Story 44 — Per-token resize stepper panel (DM only, NPC tokens only) */}
+      {isDm && resizeActive && token.type === "npc" && onResizeToken && (
+        <div
+          className={`token-resize-stepper${flipCard ? " token-resize-stepper--flip" : ""}`}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <div className="token-resize-stepper__readout">
+            <span className="token-resize-stepper__label">{currentLabel}</span>
+            <span className="token-resize-stepper__mult">{SIZE_STEPS[currentSizeIdx]}×</span>
+          </div>
+          <div className="token-resize-stepper__track">
+            {SIZE_STEPS.map((step, i) => (
+              <span
+                key={step}
+                className={`token-resize-stepper__notch${i === currentSizeIdx ? " token-resize-stepper__notch--active" : ""}`}
+              />
+            ))}
+          </div>
+          <div className="token-resize-stepper__controls">
+            <button
+              type="button"
+              className="token-resize-stepper__btn"
+              onClick={(e) => { e.stopPropagation(); handleStepSize(-1); }}
+              disabled={currentSizeIdx === 0}
+              aria-label="Decrease token size"
+            >
+              −
+            </button>
+            <button
+              type="button"
+              className="token-resize-stepper__btn"
+              onClick={(e) => { e.stopPropagation(); handleStepSize(1); }}
+              disabled={currentSizeIdx === SIZE_STEPS.length - 1}
+              aria-label="Increase token size"
+            >
+              +
+            </button>
+          </div>
+          <button
+            type="button"
+            className="token-resize-stepper__done"
+            onClick={(e) => { e.stopPropagation(); handleCloseResize(); }}
+          >
+            Done
           </button>
         </div>
       )}

@@ -558,7 +558,13 @@ Stored as a sentinel DynamoDB item `slug: "map-library"`:
 {
   slug: "map-library",
   activeMapId: string | null,
-  maps: [{ id, name, s3Key, imageUrl, uploadedAt }],
+  maps: [{
+    id, name, s3Key, imageUrl, uploadedAt,
+    mapMode: "adventure" | "battle",   // default "adventure"
+    tokenScale: number,                // global token size multiplier 0.5–2.5
+    rotation: 0 | 90 | 180 | 270,     // Story 45 — map rotation in degrees CW
+    tokens: [{ id, type, sourceId, x, y, scale? }]  // Story 44 — scale per token 0.5–3.0
+  }],
   updatedAt: string
 }
 ```
@@ -576,6 +582,9 @@ Filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `
 | PUT | /maps/active | DM | Sets or clears `activeMapId` |
 | PATCH | /maps/{mapId} | DM | Renames a map entry |
 | DELETE | /maps/{mapId} | DM | Removes from DynamoDB + deletes S3 object (best-effort) |
+| PATCH | /maps/{mapId}/tokens | DM | Replaces `tokens[]` array (and optionally `mapMode`); each token shape `{ id, type, sourceId, x, y, scale? }` |
+| PATCH | /maps/{mapId}/calibration | DM | Sets global `tokenScale` (0.5–2.5) for a map |
+| PATCH | /maps/{mapId}/rotation | DM | Sets `rotation` (0\|90\|180\|270 degrees CW); Story 45 |
 | PATCH | /maps/{mapId}/tokens/{tokenId}/position | None (server-enforced ownership) | Story 34 — moves a single character token; body `{ x, y, slug }`; rejects mismatched `slug` or NPC tokens with 403 |
 
 ---

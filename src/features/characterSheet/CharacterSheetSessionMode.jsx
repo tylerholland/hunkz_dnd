@@ -1372,6 +1372,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, pal, slug, pa
       pal={pal}
       onViewChange={setViewerState}
       tokenScale={tokenScale}
+      rotation={activeMap?.rotation ?? 0}
       tokenLayerChildren={isBattleMode && visibleTokens.length > 0 ? tokenChips : undefined}
       panSuppressedRef={panSuppressedRef}
     />

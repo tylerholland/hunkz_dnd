@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react
 import { createPortal } from "react-dom";
 import MapViewer, { getMapZoomModifierLabel, readMapFreeZoomPreference, writeMapFreeZoomPreference } from "../maps/MapViewer";
 import MapLibraryModal from "./MapLibraryModal";
-import { putMapView, patchMapTokens, putMapCalibration, putNpcCombat } from "../../api";
+import { putMapView, patchMapTokens, putMapCalibration, putMapRotation, putNpcCombat } from "../../api";
 import CalibrationPopover from "./battleMode/CalibrationPopover";
 import { displayMapName } from "./MapUploadModal";
 import { isPdfMap } from "../maps/mapFiles";
@@ -15,13 +15,13 @@ function genId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
-export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, onRegisterBattleToggle }) {
+export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, onRegisterBattleToggle }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewerState, setViewerState] = useState(null);
   const [mapHeight, setMapHeight] = useState(() => {
     const saved = Number(sessionStorage.getItem("dnd_dm_map_height") || 300);
-    return Number.isFinite(saved) ? Math.max(220, Math.min(720, saved)) : 300;
+    return Number.isFinite(saved) ? Math.max(220, Math.min(window.innerHeight - 120, saved)) : 300;
   });
   const [freeZoom, setFreeZoom] = useState(readMapFreeZoomPreference);
   const bodyRef = useRef(null);
@@ -44,6 +44,9 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const [calibTweening, setCalibTweening] = useState(false);
   const calibWriteTimerRef = useRef(null);
   const calibTweenTimerRef = useRef(null);
+  const tokenResizeWriteTimerRef = useRef(null); // Story 44
+  const [localRotation, setLocalRotation] = useState(null); // Story 45 — null = use server state
+  const rotationWriteTimerRef = useRef(null); // Story 45
 
   useEffect(() => {
     if (collapsedOverride === null) return;
@@ -78,11 +81,14 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     setHeldType(null);
     setLocalTokenScale(null);
     setCalibOpen(false);
+    setLocalRotation(null);
   }, [activeMapId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => {
     if (calibWriteTimerRef.current) clearTimeout(calibWriteTimerRef.current);
     if (calibTweenTimerRef.current) clearTimeout(calibTweenTimerRef.current);
+    if (tokenResizeWriteTimerRef.current) clearTimeout(tokenResizeWriteTimerRef.current);
+    if (rotationWriteTimerRef.current) clearTimeout(rotationWriteTimerRef.current);
   }, []);
 
   useEffect(() => {
@@ -145,7 +151,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     const handlePointerMove = (event) => {
       const resizeState = resizeStateRef.current;
       if (!resizeState) return;
-      const nextHeight = Math.max(220, Math.min(720, resizeState.startHeight + (event.clientY - resizeState.startY)));
+      const nextHeight = Math.max(220, Math.min(window.innerHeight - 120, resizeState.startHeight + (event.clientY - resizeState.startY)));
       setMapHeight(nextHeight);
     };
 
@@ -203,6 +209,32 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       putMapCalibration(activeMap.id, clamped, dmPassword).then(onLibraryChange).catch(() => { /* ignore — optimistic state holds */ });
     }, 600);
   }, [activeMap, dmPassword, onLibraryChange]);
+
+  // Story 44 — debounced per-token scale write, modelled on handleScaleChange
+  const handleResizeToken = useCallback((tokenId, nextScale) => {
+    if (!activeMap) return;
+    const clamped = Math.min(3.0, Math.max(0.5, nextScale));
+    const next = effectiveTokens.map((t) => t.id === tokenId ? { ...t, scale: clamped } : t);
+    setLocalTokens(next);
+    if (tokenResizeWriteTimerRef.current) clearTimeout(tokenResizeWriteTimerRef.current);
+    tokenResizeWriteTimerRef.current = setTimeout(() => {
+      patchMapTokens(activeMap.id, { tokens: next }, dmPassword).then(onLibraryChange).catch(() => { /* optimistic state holds */ });
+    }, 300);
+  }, [activeMap, effectiveTokens, dmPassword, onLibraryChange]);
+
+  // Story 45 — map rotation
+  const effectiveRotation = localRotation !== null ? localRotation : (activeMap?.rotation ?? 0);
+
+  const handleRotate = useCallback((delta) => {
+    if (!activeMap) return;
+    const current = localRotation !== null ? localRotation : (activeMap?.rotation ?? 0);
+    const next = (current + delta + 360) % 360;
+    setLocalRotation(next);
+    if (rotationWriteTimerRef.current) clearTimeout(rotationWriteTimerRef.current);
+    rotationWriteTimerRef.current = setTimeout(() => {
+      putMapRotation(activeMap.id, next, dmPassword).then(onLibraryChange).catch(() => { /* optimistic state holds */ });
+    }, 600);
+  }, [activeMap, localRotation, dmPassword, onLibraryChange]);
 
   const handleToggleBattleMode = useCallback(async () => {
     if (!activeMap || isPdf) return;
@@ -309,27 +341,37 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     await writeTokens([], "adventure");
   }, [writeTokens]);
 
-  const handleResetTray = useCallback(() => {
+  const handleClearTokensFromMap = useCallback(() => {
     setHeldSourceId(null);
     setHeldType(null);
     writeTokens([]);
   }, [writeTokens]);
 
-  // 43c: Clear the NPC combat roster (npc-combat sentinel), not the map token chips
-  const handleClearTokens = useCallback(async () => {
-    try {
-      await putNpcCombat(dmPassword, { npcs: [] });
-      onLibraryChange();
-    } catch { /* ignore */ }
-  }, [dmPassword, onLibraryChange]);
+  const handleClearNpcsFromMap = useCallback(() => {
+    setHeldSourceId(null);
+    setHeldType(null);
+    const current = localTokens !== null ? localTokens : (activeMap?.tokens || []);
+    writeTokens(current.filter((t) => t.type === "character"));
+  }, [localTokens, activeMap, writeTokens]);
+
+  // Cache natural image size per mapId so tokens stay correctly positioned when
+  // switching back to a previously-loaded map. For cached images, the browser fires
+  // onLoad before useEffect([imageUrl]) resets imageNaturalSize to null — meaning
+  // MapViewer's naturalSize stays null permanently on second visit. Reading from this
+  // cache bypasses the race and gives correct dimensions immediately.
+  const naturalSizeByMapRef = useRef({});
+  if (activeMapId && viewerState?.naturalSize?.w) {
+    naturalSizeByMapRef.current[activeMapId] = viewerState.naturalSize;
+  }
+  const effectiveNaturalSize = viewerState?.naturalSize || (activeMapId ? naturalSizeByMapRef.current[activeMapId] : null);
 
   // Build chip nodes for token layer
-  const tokenChips = isBattleMode ? effectiveTokens.map((token) => (
+  const tokenChips = (isBattleMode && effectiveNaturalSize) ? effectiveTokens.map((token) => (
     <TokenChip
       key={token.id}
       token={token}
-      imageW={viewerState?.naturalSize?.w || 1}
-      imageH={viewerState?.naturalSize?.h || 1}
+      imageW={effectiveNaturalSize.w}
+      imageH={effectiveNaturalSize.h}
       party={party || []}
       npcCombat={npcCombat || { npcs: [] }}
       isDm={true}
@@ -342,6 +384,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       pal={pal}
       labelHidden={labelsHidden}
       calibTween={calibTweening}
+      onResizeToken={handleResizeToken}
     />
   )) : null;
 
@@ -360,6 +403,30 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
         <div style={{ flex: 1, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.28em", textTransform: "uppercase", color: activeMap ? pal.accentBright : pal.textMuted }}>
           {activeMap ? `Map: ${activeMapLabel}` : "Map"}
         </div>
+        {activeMap && !isPdf && (
+          <>
+            <button
+              type="button"
+              className="btn-gear"
+              onClick={(e) => { e.stopPropagation(); handleRotate(270); }}
+              title="Rotate counter-clockwise"
+              aria-label="Rotate counter-clockwise"
+              style={{ "--pal-accent": pal.accent, "--pal-accent-dim": pal.accentDim, "--pal-text-muted": pal.textMuted }}
+            >
+              ↺
+            </button>
+            <button
+              type="button"
+              className="btn-gear"
+              onClick={(e) => { e.stopPropagation(); handleRotate(90); }}
+              title="Rotate clockwise"
+              aria-label="Rotate clockwise"
+              style={{ "--pal-accent": pal.accent, "--pal-accent-dim": pal.accentDim, "--pal-text-muted": pal.textMuted }}
+            >
+              ↻
+            </button>
+          </>
+        )}
         {activeMap && isBattleMode && (
           <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
             <button
@@ -401,6 +468,27 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
           {activeMap ? (
             <>
               <div style={{ position: "relative" }}>
+                {mapSwitching && (
+                  <div style={{
+                    position: "absolute",
+                    inset: 0,
+                    zIndex: 10,
+                    height: mapHeight,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    background: "rgba(0,0,0,0.78)",
+                    borderRadius: 3,
+                    fontFamily: pal.fontUI,
+                    fontSize: 15,
+                    letterSpacing: "0.18em",
+                    textTransform: "uppercase",
+                    color: "rgba(220,232,245,0.92)",
+                    pointerEvents: "none",
+                  }}>
+                    Loading Map…
+                  </div>
+                )}
                 <MapViewer
                   imageUrl={activeMap.imageUrl}
                   name={activeMap.name}
@@ -411,6 +499,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
                   onViewChange={setViewerState}
                   freeZoom={freeZoom}
                   tokenScale={tokenScale}
+                  rotation={effectiveRotation}
                   interactionMode={isBattleMode ? "dm" : undefined}
                   onTokenLayerClick={isBattleMode && heldSourceId ? handleTokenLayerClick : undefined}
                   onTokenClick={isBattleMode ? handleTokenClick : undefined}
@@ -436,9 +525,8 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
                   heldId={heldSourceId}
                   onSelect={handleSelectToken}
                   onDropToTray={handleDropToTray}
-                  onEndCombat={handleEndCombat}
-                  onResetTray={handleResetTray}
-                  onClearTokens={handleClearTokens}
+                  onClearTokensFromMap={handleClearTokensFromMap}
+                  onClearNpcsFromMap={handleClearNpcsFromMap}
                   pal={pal}
                 />
               )}

@@ -57,7 +57,7 @@ export default function DmDashboardPage() {
   const [guideOpen, setGuideOpen] = useState(false);
   const [openCardPopoverSlug, setOpenCardPopoverSlug] = useState(null);
   const [combatMode, setCombatMode] = useState(initialCombatMode);
-  const [mapCollapsed, setMapCollapsed] = useState(initialCombatMode);
+  const [mapCollapsed, setMapCollapsed] = useState(false);
   const [combatLayoutActive, setCombatLayoutActive] = useState(initialCombatMode);
   const [diceLayoutActive, setDiceLayoutActive] = useState(initialCombatMode);
   const [diceVisible, setDiceVisible] = useState(true);
@@ -101,6 +101,8 @@ export default function DmDashboardPage() {
   const npcCombatExpectedRef = useRef(null);
   // Ref to MapPanel's handleToggleBattleMode, registered via onRegisterBattleToggle prop
   const battleToggleFnRef = useRef(null);
+  const [mapSwitching, setMapSwitching] = useState(false);
+  const expectedMapIdRef = useRef(null);
 
   useEffect(() => {
     partyRef.current = party;
@@ -117,6 +119,12 @@ export default function DmDashboardPage() {
     sessionStorage.setItem(COMBAT_MODE_STORAGE_KEY, String(combatMode));
     sessionStorage.removeItem(LEGACY_COMBAT_MODE_STORAGE_KEY);
   }, [combatMode]);
+
+  useEffect(() => {
+    if (mapSwitching && mapLibrary?.activeMapId === expectedMapIdRef.current) {
+      setMapSwitching(false);
+    }
+  }, [mapLibrary?.activeMapId, mapSwitching]);
 
   useEffect(() => {
     sessionStorage.setItem(TEXT_SCALE_STORAGE_KEY, String(textScale));
@@ -813,12 +821,13 @@ export default function DmDashboardPage() {
     const storedId = sessionStorage.getItem(incomingKey);
     const incomingMap = storedId ? (mapLibrary.maps || []).find((m) => m.id === storedId) : null;
     if (incomingMap && incomingMap.id !== currentActiveMapId) {
-      putMapActive(incomingMap.id, dmPassword).then(() => queueDashboardRefresh(0)).catch(() => {});
+      expectedMapIdRef.current = incomingMap.id;
+      setMapSwitching(true);
+      putMapActive(incomingMap.id, dmPassword).then(() => queueDashboardRefresh(0)).catch(() => { setMapSwitching(false); });
     }
 
     if (!combatMode) {
       setCombatMode(true);
-      setMapCollapsed(true);
       setNonCombatChromeVisible(false);
       setDiceVisible(false);
       setWheelsVisible(false);
@@ -1033,6 +1042,7 @@ export default function DmDashboardPage() {
               party={party}
               npcCombat={npcCombat}
               combatMode={combatMode}
+              mapSwitching={mapSwitching}
               onRegisterBattleToggle={(fn) => { battleToggleFnRef.current = fn; }}
             />
           </div>

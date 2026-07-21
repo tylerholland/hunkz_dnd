@@ -47,6 +47,10 @@ export default function MapViewer({
   // Story 34 — a ref whose .current is set true by the token layer while a
   // player is dragging their own token, so pan doesn't fight the drag.
   panSuppressedRef,
+  // Story 45 — map rotation (0/90/180/270). Rotates the image in-place via CSS
+  // transform with center origin; resets pan/zoom on change so the rotated map
+  // re-anchors predictably inside the container box.
+  rotation = 0,
 }) {
   const containerRef = useRef(null);
   const [translate, setTranslate] = useState({ x: 0, y: 0 });
@@ -61,6 +65,7 @@ export default function MapViewer({
   const dragRef = useRef(null);
   const pinchRef = useRef(null);
   const stateRef = useRef({ translate: { x: 0, y: 0 }, scale: 1 });
+  const imgRef = useRef(null);
   const pdfMode = isPdfMap({ imageUrl, contentType, name });
   const lastPublishedTokenRef = useRef(null);
   const modifierKeyLabel = getMapZoomModifierLabel();
@@ -82,7 +87,12 @@ export default function MapViewer({
     });
   }, [translate, scale, pageNumber, onViewChange, imageNaturalSize]);
 
-  // Reset on imageUrl change
+  // Reset on imageUrl change.
+  // For cached images the browser fires onLoad before this effect runs, so
+  // setImageNaturalSize({w,h}) gets called first and then null overwrites it —
+  // leaving imageNaturalSize permanently null (no second onLoad). Fix: after the
+  // null reset, re-read from the img DOM element within the same batch; if the
+  // image is already decoded, the {w,h} setter wins and the token layer renders.
   useEffect(() => {
     setTranslate({ x: 0, y: 0 });
     setScale(1);
@@ -91,7 +101,19 @@ export default function MapViewer({
     setImageNaturalSize(null);
     lastPublishedTokenRef.current = null;
     stateRef.current = { translate: { x: 0, y: 0 }, scale: 1 };
+    const img = imgRef.current;
+    if (img?.complete && img.naturalWidth > 0) {
+      setImageNaturalSize({ w: img.naturalWidth, h: img.naturalHeight });
+    }
   }, [imageUrl]);
+
+  // Story 45 — reset pan/zoom whenever rotation changes so the rotated map
+  // re-anchors predictably inside the fixed-height container box.
+  useEffect(() => {
+    setTranslate({ x: 0, y: 0 });
+    setScale(1);
+    stateRef.current = { translate: { x: 0, y: 0 }, scale: 1 };
+  }, [rotation]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Expose containerRef to parent if requested
   useEffect(() => {
@@ -284,8 +306,8 @@ export default function MapViewer({
               position: "absolute",
               top: 0,
               left: 0,
-              transformOrigin: "0 0",
-              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+              transformOrigin: "center",
+              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale}) rotate(${rotation}deg)`,
             }}
           >
             <PdfCanvas
@@ -301,11 +323,12 @@ export default function MapViewer({
               position: "absolute",
               top: 0,
               left: 0,
-              transformOrigin: "0 0",
-              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale})`,
+              transformOrigin: "center",
+              transform: `translate(${translate.x}px, ${translate.y}px) scale(${scale}) rotate(${rotation}deg)`,
             }}
           >
             <img
+              ref={imgRef}
               src={imageUrl}
               alt={name || "Map"}
               draggable={false}
@@ -326,13 +349,21 @@ export default function MapViewer({
                   width: imageNaturalSize.w,
                   height: imageNaturalSize.h,
                   "--token-scale-multiplier": tokenScale,
+                  "--map-rotation": `${rotation ?? 0}deg`,
                   pointerEvents: interactionMode === "dm" ? "auto" : "none",
                 }}
                 onClick={onTokenLayerClick ? (e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   if (!rect.width || !rect.height) return;
-                  const fracX = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                  const fracY = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+                  const vx = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                  const vy = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
+                  // Convert visual (rotated) fracs → natural image fracs
+                  const rot = rotation ?? 0;
+                  let fracX, fracY;
+                  if (rot === 90)       { fracX = vy;      fracY = 1 - vx; }
+                  else if (rot === 180) { fracX = 1 - vx;  fracY = 1 - vy; }
+                  else if (rot === 270) { fracX = 1 - vy;  fracY = vx; }
+                  else                  { fracX = vx;      fracY = vy; }
                   onTokenLayerClick({ x: fracX, y: fracY }, e);
                 } : undefined}
               >

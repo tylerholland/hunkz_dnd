@@ -144,8 +144,16 @@ function normalizeMapLibraryRecord(item) {
           ...map,
           contentType: inferMapContentType(map),
           mapMode: map?.mapMode === "battle" ? "battle" : "adventure",
-          tokens: Array.isArray(map?.tokens) ? map.tokens : [],
+          tokens: Array.isArray(map?.tokens)
+            ? map.tokens.map((tok) => ({
+                ...tok,
+                scale: Number.isFinite(tok.scale)
+                  ? Math.min(3.0, Math.max(0.5, tok.scale))
+                  : 1.0,
+              }))
+            : [],
           tokenScale: Number.isFinite(map?.tokenScale) ? Math.min(2.5, Math.max(0.5, map.tokenScale)) : 1.0,
+          rotation: [0, 90, 180, 270].includes(map?.rotation) ? map.rotation : 0,
         }))
       : [],
   };

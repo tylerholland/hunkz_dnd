@@ -29,8 +29,10 @@
   pointer-events: auto;
   user-select: none;
   /* --token-drag-scale (Story 34) defaults to 1 and is only set by
-     .token-chip--dragging below — every other state is unaffected. */
-  transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-drag-scale, 1)));
+     .token-chip--dragging below — every other state is unaffected.
+     --token-size-mult (Story 44) is the per-token size multiplier, defaults
+     to 1 so legacy tokens with no scale are unchanged. */
+  transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * var(--token-drag-scale, 1))) rotate(calc(0deg - var(--map-rotation, 0deg)));
   transform-origin: center;
   z-index: 10;
 }
@@ -48,11 +50,11 @@
 @keyframes token-chip-appear {
   from {
     opacity: 0;
-    transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 0.78));
+    transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 0.78)) rotate(calc(0deg - var(--map-rotation, 0deg)));
   }
   to {
     opacity: 1;
-    transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(var(--token-scale-multiplier, 1));
+    transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1))) rotate(calc(0deg - var(--map-rotation, 0deg)));
   }
 }
 
@@ -376,9 +378,9 @@
 
 /* ── Drop bounce keyframe ─────────────────────────────────────────────── */
 @keyframes token-drop-bounce {
-  0%   { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 1)); }
-  50%  { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 1.08)); }
-  100% { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * 1)); }
+  0%   { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 1)) rotate(calc(0deg - var(--map-rotation, 0deg))); }
+  50%  { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 1.08)) rotate(calc(0deg - var(--map-rotation, 0deg))); }
+  100% { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 1)) rotate(calc(0deg - var(--map-rotation, 0deg))); }
 }
 
 .token-chip--bounce {
@@ -798,13 +800,165 @@
 
 /* Token scaling to 0 on confirmed remove */
 @keyframes token-chip-remove {
-  from { opacity: 1; transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(var(--token-scale-multiplier, 1)); }
+  from { opacity: 1; transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1))) rotate(calc(0deg - var(--map-rotation, 0deg))); }
   to   { opacity: 0; transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(0); }
 }
 
 .token-chip--removing {
   animation: token-chip-remove 180ms ease-in forwards;
   pointer-events: none;
+}
+
+/* ── Per-token resize stepper (Story 44, DM + NPC tokens only) ───────── */
+
+.token-chip--resize-active .token-chip__portrait,
+.token-chip--resize-active .token-chip__initial {
+  box-shadow:
+    0 0 0 2px var(--pal-accent-bright, #a0c0d0),
+    0 0 0 3px rgba(0, 0, 0, 0.4),
+    0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+.token-chip--resize-active {
+  transition: transform 160ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.token-resize-stepper {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 200px;
+  background: var(--pal-surface-solid, #0d0f14);
+  border: 1px solid var(--pal-border, rgba(106, 143, 168, 0.35));
+  border-radius: 3px;
+  padding: 10px 12px 10px;
+  z-index: 200;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  pointer-events: auto;
+  animation: token-resize-stepper-appear 140ms ease-out forwards;
+}
+
+.token-resize-stepper--flip {
+  top: auto;
+  bottom: calc(100% + 8px);
+}
+
+@keyframes token-resize-stepper-appear {
+  from { opacity: 0; transform: translateX(-50%) scale(0.96); }
+  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+}
+
+.token-resize-stepper__readout {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.token-resize-stepper__label {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--pal-accent-bright, #a0c0d0);
+}
+
+.token-resize-stepper__mult {
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 13px;
+  color: var(--pal-text-muted, #5a7a8a);
+}
+
+.token-resize-stepper__track {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.token-resize-stepper__notch {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--pal-border, rgba(106, 143, 168, 0.28));
+  flex-shrink: 0;
+  transition: background 160ms ease, box-shadow 160ms ease;
+}
+
+.token-resize-stepper__notch--active {
+  background: var(--pal-accent-bright, #a0c0d0);
+  box-shadow: 0 0 5px var(--pal-accent-bright, #a0c0d0);
+}
+
+.token-resize-stepper__controls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.token-resize-stepper__btn {
+  width: 32px;
+  height: 32px;
+  padding: 6px;
+  box-sizing: content-box;
+  border-radius: 50%;
+  background: transparent;
+  border: 1px solid var(--pal-border, rgba(106, 143, 168, 0.35));
+  color: var(--pal-text-muted, #5a7a8a);
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: border-color 120ms ease, color 120ms ease, background 120ms ease;
+  touch-action: manipulation;
+}
+
+.token-resize-stepper__btn:hover:not(:disabled) {
+  border-color: var(--pal-accent, #6a8fa8);
+  color: var(--pal-accent-bright, #a0c0d0);
+  background: rgba(106, 143, 168, 0.08);
+}
+
+.token-resize-stepper__btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.token-resize-stepper__done {
+  width: 100%;
+  background: transparent;
+  border: 1px solid var(--pal-border, rgba(106, 143, 168, 0.28));
+  border-radius: 3px;
+  color: var(--pal-text-muted, #5a7a8a);
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  padding: 6px 0;
+  cursor: pointer;
+  transition: border-color 140ms ease, color 140ms ease;
+  touch-action: manipulation;
+}
+
+.token-resize-stepper__done:hover {
+  border-color: var(--pal-accent, #6a8fa8);
+  color: var(--pal-accent-bright, #a0c0d0);
+}
+
+.token-longpress-menu-item--resize {
+  color: var(--pal-accent-bright, #a0c0d0);
+}
+
+.token-longpress-menu-item--resize:hover {
+  background: rgba(106, 143, 168, 0.1);
 }
 
 /* ── Calibration gear button + popover (Battle Mode header) ─────────── */
@@ -1154,5 +1308,27 @@
   .token-drag-toast {
     animation: none;
     opacity: 1;
+  }
+
+  /* Per-token resize (Story 44) — instant size change, no overshoot tween;
+   * instant label swap; instant stepper appear/dismiss; instant selection
+   * ring + lift. The dim-others focus state is kept as a static end-state
+   * (carries spatial focus meaning, per 29b replace-don't-delete rule). */
+  .token-chip--resize-active {
+    transition: none;
+  }
+
+  .token-resize-stepper {
+    animation: none;
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+
+  .token-resize-stepper__notch {
+    transition: none;
+  }
+
+  .token-resize-stepper__btn {
+    transition: none;
   }
 }

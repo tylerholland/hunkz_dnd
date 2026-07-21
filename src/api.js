@@ -239,6 +239,13 @@ export const putMapCalibration = (mapId, tokenScale, dmPassword) =>
     body: JSON.stringify({ tokenScale }),
   });
 
+export const putMapRotation = (mapId, rotation, dmPassword) =>
+  request(`/maps/${mapId}/rotation`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ rotation }),
+  });
+
 // Story 34 — a player drags their own PC token; no auth (server enforces
 // sourceId === slug and token.type === "character").
 export const moveMapToken = (mapId, tokenId, x, y, slug) =>

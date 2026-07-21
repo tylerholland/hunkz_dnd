@@ -1,8 +1,10 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
 
 /**
- * TokenTray — 76px strip below MapViewer showing unplaced PC and NPC tokens.
+ * TokenTray — strip below MapViewer showing unplaced PC and NPC tokens.
+ * Always expanded; no collapse toggle or End Combat button.
  *
  * Props:
  *   party        — array of party member objects from getDmParty
@@ -10,42 +12,39 @@ import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
  *   placedTokens — Token[] currently on the map (to compute unplaced set)
  *   heldId       — sourceId of the token currently held (null = none)
  *   onSelect     — (sourceId, type) => void — called when DM picks a token
- *   onEndCombat   — () => void — clears all tokens + flips to adventure mode
  *   onResetTray   — () => void — returns all placed tokens to tray
  *   onClearTokens — () => void — wipes the npc-combat roster (two-step confirm)
  *   pal
  */
-export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSelect, onDropToTray, onEndCombat, onResetTray, onClearTokens, pal }) {
-  const [endMenuOpen, setEndMenuOpen] = useState(false);
-  const [clearArmed, setClearArmed] = useState(false);
+export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSelect, onDropToTray, onClearTokensFromMap, onClearNpcsFromMap, pal }) {
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuButtonRef = useRef(null);
+  const [menuPos, setMenuPos] = useState(null);
 
-  // Reset confirm-arm state whenever the menu closes
   useEffect(() => {
-    if (!endMenuOpen) setClearArmed(false);
-  }, [endMenuOpen]);
+    if (!menuOpen) { setMenuPos(null); return; }
+    if (menuButtonRef.current) {
+      const rect = menuButtonRef.current.getBoundingClientRect();
+      setMenuPos({ top: rect.bottom + 4, right: window.innerWidth - rect.right });
+    }
+  }, [menuOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e) => {
+      if (menuButtonRef.current?.contains(e.target)) return;
+      setMenuOpen(false);
+    };
+    document.addEventListener("pointerdown", handler);
+    return () => document.removeEventListener("pointerdown", handler);
+  }, [menuOpen]);
 
   const placedSourceIds = new Set((placedTokens || []).map((t) => t.sourceId));
-  // A "map-held" token is one being dragged from the map (it's placed, not from tray)
   const isMapHeld = heldId !== null && placedSourceIds.has(heldId);
 
   const unplacedPcs = (party || []).filter((m) => !placedSourceIds.has(m.slug));
   const unplacedNpcs = (npcCombat?.npcs || []).filter((n) => !placedSourceIds.has(n.id));
-
   const totalUnplaced = unplacedPcs.length + unplacedNpcs.length;
-  const totalAll = (party || []).length + (npcCombat?.npcs || []).length;
-  const allPlaced = totalUnplaced === 0 && totalAll > 0;
-
-  // Collapse to a slim status strip once everything is placed; auto-expand
-  // the instant a token returns to unplaced (or the DM taps the strip).
-  const [manuallyExpanded, setManuallyExpanded] = useState(false);
-  const prevAllPlacedRef = useRef(allPlaced);
-  useEffect(() => {
-    if (prevAllPlacedRef.current && !allPlaced) {
-      setManuallyExpanded(false);
-    }
-    prevAllPlacedRef.current = allPlaced;
-  }, [allPlaced]);
-  const collapsed = allPlaced && !manuallyExpanded;
 
   const palVars = {
     "--pal-border": pal.border,
@@ -55,28 +54,6 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
     "--pal-text-muted": pal.textMuted,
     "--pal-surface-solid": pal.surfaceSolid || pal.surface,
   };
-
-  if (collapsed) {
-    return (
-      <div
-        className={`token-tray token-tray--collapsed${isMapHeld ? " token-tray--drop-target" : ""}`}
-        style={palVars}
-        onClick={isMapHeld ? (e) => { e.stopPropagation(); onDropToTray?.(); } : () => setManuallyExpanded(true)}
-      >
-        <div className="tray-collapsed-strip">
-          <span className="tray-collapsed-check">✓</span>
-          <span className="tray-collapsed-label">All tokens placed · {totalAll}</span>
-          <button
-            type="button"
-            className="tray-collapsed-chevron"
-            onClick={(e) => { e.stopPropagation(); setManuallyExpanded(true); }}
-          >
-            ⌃ open
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div
@@ -101,10 +78,7 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
             <div
               key={member.slug}
               className={`tray-chip${isSelected ? " tray-chip--selected" : ""}`}
-              style={{
-                "--token-ring-color": ringColor,
-                "--pal-accent": pal.accent,
-              }}
+              style={{ "--token-ring-color": ringColor, "--pal-accent": pal.accent }}
               onClick={() => onSelect(member.slug, "character")}
               title={member.name}
             >
@@ -119,10 +93,7 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
               ) : (
                 <div
                   className="tray-chip__initial"
-                  style={{
-                    background: ringColor,
-                    boxShadow: `0 0 0 2px ${ringColor}`,
-                  }}
+                  style={{ background: ringColor, boxShadow: `0 0 0 2px ${ringColor}` }}
                 >
                   {(member.name || "?")[0].toUpperCase()}
                 </div>
@@ -150,19 +121,13 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
             <div
               key={npc.id}
               className={`tray-chip${isSelected ? " tray-chip--selected" : ""}`}
-              style={{
-                "--token-fill-color": fillColor,
-                "--pal-accent": pal.accent,
-              }}
+              style={{ "--token-fill-color": fillColor, "--pal-accent": pal.accent }}
               onClick={() => onSelect(npc.id, "npc")}
               title={npc.name}
             >
               <div
                 className="tray-chip__initial"
-                style={{
-                  background: fillColor,
-                  boxShadow: `0 0 0 2px ${pal.border}`,
-                }}
+                style={{ background: fillColor, boxShadow: `0 0 0 2px ${pal.border}` }}
               >
                 {initials}
               </div>
@@ -171,9 +136,10 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
         })}
       </div>
 
-      {/* End dropdown */}
+      {/* Actions dropdown — Reset Tray + Clear Tokens */}
       <div className="token-tray__actions" style={{ "--pal-surface-solid": pal.surfaceSolid || pal.surface, "--pal-border": pal.border }}>
         <button
+          ref={menuButtonRef}
           type="button"
           className="battle-mode-toggle"
           style={{
@@ -183,65 +149,39 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
             "--pal-accent-dim": pal.accentDim,
             "--pal-text-muted": pal.textMuted,
           }}
-          onClick={() => setEndMenuOpen((v) => !v)}
+          onClick={() => setMenuOpen((v) => !v)}
         >
-          End ▾
+          ⋯
         </button>
 
-        {endMenuOpen && (
-          <div className="tray-end-dropdown" style={palVars}>
+        {menuOpen && menuPos && createPortal(
+          <div
+            className="tray-end-dropdown"
+            style={{ ...palVars, position: "fixed", top: menuPos.top, right: menuPos.right, bottom: "auto", left: "auto" }}
+          >
             <button
               type="button"
-              className="tray-end-dropdown__item tray-end-dropdown__item--danger"
-              onClick={() => { setEndMenuOpen(false); onEndCombat(); }}
+              className="tray-end-dropdown__item tray-end-dropdown__item--normal"
+              onClick={() => { setMenuOpen(false); onClearTokensFromMap?.(); }}
             >
-              End Combat
+              Clear Tokens from Map
             </button>
             <button
               type="button"
               className="tray-end-dropdown__item tray-end-dropdown__item--normal"
-              onClick={() => { setEndMenuOpen(false); onResetTray(); }}
+              onClick={() => { setMenuOpen(false); onClearNpcsFromMap?.(); }}
             >
-              Reset Tray
+              Clear NPCs from Map
             </button>
-            {clearArmed ? (
-              <div className="tray-end-dropdown__confirm-row">
-                <button
-                  type="button"
-                  className="tray-end-dropdown__item tray-end-dropdown__item--danger"
-                  onClick={() => {
-                    setClearArmed(false);
-                    setEndMenuOpen(false);
-                    onClearTokens?.();
-                  }}
-                >
-                  Confirm clear
-                </button>
-                <button
-                  type="button"
-                  className="tray-end-dropdown__item tray-end-dropdown__item--normal"
-                  onClick={() => setClearArmed(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            ) : (
-              <button
-                type="button"
-                className="tray-end-dropdown__item tray-end-dropdown__item--normal"
-                onClick={() => setClearArmed(true)}
-              >
-                Clear Tokens
-              </button>
-            )}
             <button
               type="button"
               className="tray-end-dropdown__item tray-end-dropdown__item--normal"
-              onClick={() => { setClearArmed(false); setEndMenuOpen(false); }}
+              onClick={() => setMenuOpen(false)}
             >
               Cancel
             </button>
-          </div>
+          </div>,
+          document.body
         )}
       </div>
     </div>

@@ -706,6 +706,27 @@ Resources:
               Action: execute-api:ManageConnections
               Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
+  PatchMapRotationFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/patchMapRotation.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /maps/{mapId}/rotation
+            Method: patch
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
+
   MoveMapTokenFunction:
     Type: AWS::Serverless::Function
     Properties:

@@ -6,6 +6,11 @@ const { notifySessionChanged } = require("../lib/broadcast");
 const VALID_TYPES = new Set(["character", "npc"]);
 const MAX_TOKENS = 200;
 
+// Story 44 — scale ceiling matches the per-token size ladder (3.0 = Gargantuan),
+// distinct from the global calibration ceiling (2.5).
+const SCALE_MIN = 0.5;
+const SCALE_MAX = 3.0;
+
 function validateToken(t) {
   if (!t || typeof t !== "object") return false;
   if (typeof t.id !== "string" || !t.id) return false;
@@ -13,7 +18,16 @@ function validateToken(t) {
   if (typeof t.sourceId !== "string" || !t.sourceId) return false;
   if (typeof t.x !== "number" || !Number.isFinite(t.x)) return false;
   if (typeof t.y !== "number" || !Number.isFinite(t.y)) return false;
+  // Story 44 — optional per-token scale: if present must be a finite number.
+  if (t.scale !== undefined && (typeof t.scale !== "number" || !Number.isFinite(t.scale))) return false;
   return true;
+}
+
+function normalizeTokenScale(t) {
+  // Clamp scale when present; leave absent scale absent so legacy tokens are
+  // unchanged (don't force-write 1.0 — the read-side normalizer handles that).
+  if (t.scale === undefined) return t;
+  return { ...t, scale: Math.min(SCALE_MAX, Math.max(SCALE_MIN, t.scale)) };
 }
 
 exports.handler = async (event) => {
@@ -45,7 +59,7 @@ exports.handler = async (event) => {
   const updatedMaps = [...state.maps];
   updatedMaps[idx] = {
     ...updatedMaps[idx],
-    tokens: body.tokens,
+    tokens: body.tokens.map(normalizeTokenScale),
     ...(body.mapMode !== undefined ? { mapMode: body.mapMode } : {}),
   };
 

@@ -328,6 +328,8 @@ Per-card palette scoping works: each `.card[style]` root can set different `--pa
 
 **Revisit when**: Per-token scale, grid snapping, or token image processing is wanted, or a second story needs the same "upload before it has a permanent home" pattern this establishes for NPC portraits.
 
+**Story 44 update (2026-07-20) — per-token scale (the first "Revisit when" trigger above, resolved additively)**: Per-token resize ships as an additive `scale: number` field on each object in a map's `tokens[]`, not a new sentinel or endpoint. It reuses this ADR's shared `TokenChip` (branching on `isDm`/NPC-only for the `⤢ Resize` control) and the existing `patchMapTokens` write path (debounced 300ms in `MapPanel.jsx`, mirroring `patchMapCalibration`'s debounce). Rendering stacks a new per-chip `--token-size-mult` CSS var *multiplicatively* onto this story's global `--token-scale-multiplier` inside the same `transform: scale(calc(...))` on `.token-chip` — the two are orthogonal (global calibration vs. per-token size). Clamp is `[0.5, 3.0]` (distinct from calibration's `[0.5, 2.5]`), enforced in `patchMapTokens.js` on write and defaulted to `1.0` in `normalizeMapLibraryRecord`'s per-token map on read (per ADR-017's widen-the-normalizer-in-the-same-change rule). No migration (absent = 1.0), no new AWS resource. Grid snapping and token image processing remain deferred. See `design/stories/44-per-token-resize.md`.
+
 ---
 
 ## ADR-019 · WebSocket nudge channel: push a signal, not the payload
