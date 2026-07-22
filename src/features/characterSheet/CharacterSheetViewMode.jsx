@@ -335,7 +335,7 @@ function SessionNotesSection({ char, setChar, applySessionPatch, pal }) {
         <button
           onClick={handleAdd}
           className="cs-note-add-btn"
-          style={{ background: `rgba(18,58,78,0.5)` }}
+          style={{ background: pal.accentDim }}
         >+ Add</button>
       </div>
       <div className="cs-notes-hint">Private by default. Tap "Private" to share a note with the DM.</div>

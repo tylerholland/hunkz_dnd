@@ -1,0 +1,1527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Vellum Session Theme — Before/After Prototype</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── Reset ── */
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+
+/* ── Page chrome ── */
+body{
+  background:#2a2a2c;
+  font-family:'Crimson Text',Georgia,serif;
+  min-height:100vh;
+  padding:40px 24px 80px;
+}
+
+/* ── Page header ── */
+.page-header{
+  text-align:center;
+  margin-bottom:48px;
+}
+.page-header h1{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:20px;
+  font-weight:400;
+  letter-spacing:0.22em;
+  color:#c0b8a8;
+  text-transform:uppercase;
+  margin-bottom:8px;
+}
+.page-header p{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:13px;
+  letter-spacing:0.14em;
+  color:#7a7060;
+  text-transform:uppercase;
+}
+
+/* ── Two-panel comparison row ── */
+.comparison-row{
+  display:flex;
+  gap:32px;
+  justify-content:center;
+  align-items:flex-start;
+  flex-wrap:wrap;
+  max-width:1060px;
+  margin:0 auto;
+}
+
+/* ── Panel wrapper ── */
+.panel-wrap{
+  flex:0 0 auto;
+  width:390px;
+}
+
+/* ── Panel label band ── */
+.panel-label{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin-bottom:12px;
+  padding:8px 12px;
+  border-radius:3px;
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:11px;
+  letter-spacing:0.22em;
+  text-transform:uppercase;
+}
+.panel-label.broken{
+  background:rgba(192,80,60,0.14);
+  border:1px solid rgba(192,80,60,0.35);
+  color:#d08070;
+}
+.panel-label.fixed{
+  background:rgba(80,160,80,0.12);
+  border:1px solid rgba(80,160,80,0.3);
+  color:#80b880;
+}
+.panel-label .dot{
+  width:8px;height:8px;border-radius:50%;flex-shrink:0;
+}
+.panel-label.broken .dot{background:#c06040;}
+.panel-label.fixed .dot{background:#60a060;}
+
+/* ── Annotation badges ── */
+.badge-warn{
+  display:inline-block;
+  background:rgba(200,80,60,0.85);
+  color:#fff;
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:9px;
+  letter-spacing:0.08em;
+  padding:2px 6px;
+  border-radius:2px;
+  margin-left:4px;
+  white-space:nowrap;
+  vertical-align:middle;
+  pointer-events:none;
+}
+.badge-ok{
+  display:inline-block;
+  background:rgba(60,160,80,0.85);
+  color:#fff;
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:9px;
+  letter-spacing:0.08em;
+  padding:2px 6px;
+  border-radius:2px;
+  margin-left:4px;
+  white-space:nowrap;
+  vertical-align:middle;
+  pointer-events:none;
+}
+
+/* ── Callout annotations ── */
+.callout{
+  position:absolute;
+  background:rgba(160,192,208,0.10);
+  border:1px solid rgba(160,192,208,0.30);
+  border-radius:3px;
+  color:#a0c0d0;
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.15em;
+  padding:3px 8px;
+  pointer-events:none;
+  text-transform:uppercase;
+  white-space:nowrap;
+  z-index:10;
+}
+.callout-warn{
+  background:rgba(200,80,60,0.12);
+  border-color:rgba(200,80,60,0.4);
+  color:#e09080;
+}
+.callout-ok{
+  background:rgba(60,160,80,0.12);
+  border-color:rgba(60,160,80,0.4);
+  color:#80c880;
+}
+
+/* ═══════════════════════════════════════════════════════════
+   SHARED PHONE SHELL
+═══════════════════════════════════════════════════════════ */
+.phone{
+  width:390px;
+  background:var(--v-bg);
+  border-radius:16px;
+  overflow:hidden;
+  border:1px solid rgba(140,110,70,0.25);
+  box-shadow:0 8px 32px rgba(0,0,0,0.45);
+  font-family:'Crimson Text',Georgia,serif;
+  position:relative;
+}
+
+/* ── Vellum CSS custom properties (set on each .phone) ── */
+.phone{
+  --v-bg:#f5f0e8;
+  --v-surface:rgba(220,208,185,0.5);
+  --v-surface-solid:#e8e0cc;
+  --v-border:rgba(140,110,70,0.22);
+  --v-border-vis:rgba(140,110,70,0.38);
+  --v-accent:#7a5c30;
+  --v-accent-bright:#4a3418;
+  --v-accent-dim:rgba(140,110,70,0.15);
+  --v-text:#2a2018;
+  --v-text-body:#3c2e1c;
+  --v-text-muted:#9a8060;
+  --v-glow1:rgba(180,155,100,0.25);
+  --v-glow2:rgba(160,135,85,0.15);
+  --v-gem:#4a3418;
+  --v-gem-low:rgba(140,110,70,0.18);
+}
+
+/* ── Top nav bar ── */
+.topbar{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  height:48px;
+  padding:0 14px;
+  background:rgba(245,240,232,0.95);
+  border-bottom:1px solid var(--v-border-vis);
+  position:sticky;
+  top:0;
+  z-index:20;
+}
+.topbar-left{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:12px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+  color:var(--v-text-muted);
+}
+.topbar-back{
+  font-size:18px;
+  color:var(--v-accent);
+  line-height:1;
+}
+.topbar-title{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:14px;
+  font-variant:small-caps;
+  letter-spacing:0.12em;
+  color:var(--v-accent-bright);
+}
+.topbar-right{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.mode-toggle{
+  display:flex;
+  border:1px solid var(--v-border-vis);
+  border-radius:3px;
+  overflow:hidden;
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.16em;
+  text-transform:uppercase;
+}
+.mode-seg{
+  padding:5px 10px;
+  background:transparent;
+  color:var(--v-text-muted);
+  border:none;
+  cursor:pointer;
+  white-space:nowrap;
+}
+.mode-seg.active{
+  background:var(--v-accent-dim);
+  color:var(--v-accent-bright);
+  border-right:1px solid var(--v-accent);
+}
+.topbar-icon{
+  width:28px;height:28px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:14px;
+  color:var(--v-text-muted);
+  cursor:pointer;
+}
+
+/* ── Session layout: left col + right col ── */
+.session-shell{
+  display:grid;
+  grid-template-columns:140px 1fr;
+  min-height:calc(100vh - 48px);
+}
+
+/* ── Left column ── */
+.session-left{
+  background:linear-gradient(180deg, rgba(122,92,48,0.06) 0%, rgba(122,92,48,0.03) 100%);
+  border-right:1px solid var(--v-border-vis);
+  padding:12px 10px;
+  overflow-y:auto;
+}
+
+/* ── Right column ── */
+.session-right{
+  padding:10px 12px;
+  overflow-y:auto;
+  background:var(--v-bg);
+}
+
+/* ── Section label rule ── */
+.sec-label{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.22em;
+  text-transform:uppercase;
+  color:var(--v-text-muted);
+  margin-bottom:6px;
+  margin-top:14px;
+  padding-top:10px;
+  border-top:1px solid var(--v-border);
+}
+.sec-label:first-child{margin-top:0;padding-top:0;border-top:none;}
+
+/* ── Identity strip ── */
+.identity{
+  display:flex;
+  align-items:center;
+  gap:8px;
+  margin-bottom:0;
+}
+.portrait-circle{
+  width:44px;height:44px;
+  border-radius:50%;
+  background:var(--v-accent-dim);
+  border:2px solid var(--v-border-vis);
+  flex-shrink:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  overflow:hidden;
+}
+.portrait-circle svg{
+  width:32px;height:32px;
+  opacity:0.5;
+}
+.identity-text{}
+.identity-name{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:13px;
+  font-weight:400;
+  letter-spacing:0.1em;
+  color:var(--v-text);
+  line-height:1.2;
+}
+.identity-sub{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--v-text-muted);
+  margin-top:2px;
+}
+.identity-badges{
+  display:flex;
+  gap:4px;
+  margin-top:4px;
+}
+.stat-badge{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:9px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--v-accent);
+  border:1px solid var(--v-border-vis);
+  border-radius:2px;
+  padding:1px 5px;
+}
+
+/* ── HP block ── */
+.hp-block{
+  position:relative;
+}
+.hp-row{
+  display:flex;
+  align-items:baseline;
+  gap:4px;
+  flex-wrap:wrap;
+}
+.hp-current{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:28px;
+  line-height:1;
+  color:var(--v-gem);
+}
+.hp-sep{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:14px;
+  color:var(--v-text-muted);
+}
+.hp-max{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:14px;
+  color:var(--v-text-muted);
+}
+.hp-steppers{
+  display:flex;
+  gap:4px;
+  margin-left:auto;
+  align-items:center;
+}
+.stepper-btn{
+  width:26px;height:26px;
+  min-width:26px;
+  border-radius:50%;
+  border:1px solid var(--v-border-vis);
+  background:transparent;
+  color:var(--v-accent);
+  font-size:14px;
+  display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+  font-family:'Cinzel',Georgia,serif;
+  line-height:1;
+}
+/* HP bar */
+.hp-bar-track{
+  height:4px;
+  border-radius:2px;
+  margin-top:5px;
+  overflow:hidden;
+}
+.hp-bar-fill{
+  height:100%;
+  border-radius:2px;
+  transition:width 280ms ease;
+}
+
+/* ── Spell slots ── */
+.slots-section{}
+.slot-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+  margin-bottom:5px;
+}
+.slot-level{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--v-text-muted);
+  width:16px;
+  flex-shrink:0;
+}
+.slot-pips{
+  display:flex;
+  gap:4px;
+}
+.slot-pip{
+  width:9px;height:9px;
+  border-radius:50%;
+  border:1px solid;
+  cursor:pointer;
+  transition:transform 160ms ease;
+}
+
+/* ── Death saves ── */
+.death-saves{
+  display:flex;
+  gap:10px;
+}
+.ds-cluster{
+  display:flex;
+  gap:3px;
+  align-items:center;
+}
+.ds-label{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:9px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+  color:var(--v-text-muted);
+  width:22px;
+  flex-shrink:0;
+}
+.ds-pip{
+  width:10px;height:10px;
+  border-radius:50%;
+  border:1px solid;
+  flex-shrink:0;
+}
+
+/* ── Conditions ── */
+.conditions-grid{
+  display:flex;
+  flex-wrap:wrap;
+  gap:4px;
+}
+.cond-pill{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.08em;
+  text-transform:uppercase;
+  padding:3px 7px;
+  border-radius:2px;
+  border:1px solid;
+  cursor:pointer;
+  white-space:nowrap;
+  min-height:24px;
+  display:flex;align-items:center;
+}
+
+/* ── Exhaustion ── */
+.exhaustion-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.exhaustion-num{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:18px;
+  line-height:1;
+}
+.exhaustion-label{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.12em;
+  text-transform:uppercase;
+  color:var(--v-text-muted);
+}
+
+/* ── Inspiration ── */
+.inspiration-row{
+  display:flex;
+  align-items:center;
+  gap:6px;
+}
+.inspo-toggle{
+  width:28px;height:16px;
+  border-radius:8px;
+  border:1px solid;
+  position:relative;
+  cursor:pointer;
+  flex-shrink:0;
+  transition:background 180ms;
+}
+.inspo-toggle .knob{
+  position:absolute;
+  top:2px;left:2px;
+  width:10px;height:10px;
+  border-radius:50%;
+  background:currentColor;
+  transition:left 180ms;
+}
+.inspo-toggle.on .knob{left:14px;}
+.inspo-label{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.14em;
+  text-transform:uppercase;
+}
+
+/* ── Concentration banner ── */
+.conc-banner{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  padding:7px 10px;
+  border-radius:3px;
+  margin-bottom:8px;
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:11px;
+  letter-spacing:0.1em;
+  text-transform:uppercase;
+}
+.conc-dot{
+  width:6px;height:6px;
+  border-radius:50%;
+  flex-shrink:0;
+  animation:concPulse 2s ease-in-out infinite;
+}
+@keyframes concPulse{
+  0%,100%{opacity:1;transform:scale(1)}
+  50%{opacity:0.5;transform:scale(0.8)}
+}
+
+/* ── Tab bar ── */
+.tab-bar{
+  display:flex;
+  gap:4px;
+  margin-bottom:10px;
+}
+.tab-btn{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.16em;
+  text-transform:uppercase;
+  padding:6px 10px;
+  border-radius:3px;
+  border:1px solid;
+  cursor:pointer;
+  background:transparent;
+  min-height:32px;
+  white-space:nowrap;
+}
+.tab-btn.active{
+  background:var(--v-accent-dim);
+  border-color:var(--v-accent);
+  color:var(--v-accent-bright);
+}
+.tab-btn:not(.active){
+  border-color:var(--v-border-vis);
+  color:var(--v-text-muted);
+}
+
+/* ── Weapons table ── */
+.weapons-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+.weapons-table th{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:9px;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:var(--v-text-muted);
+  text-align:left;
+  padding:4px 6px 6px;
+  border-bottom:1px solid var(--v-border);
+}
+.weapons-table td{
+  padding:6px 6px;
+  border-bottom:1px solid var(--v-border);
+  font-family:'Crimson Text',Georgia,serif;
+  font-size:13px;
+  color:var(--v-text-body);
+  vertical-align:middle;
+}
+.weapons-table tr:last-child td{border-bottom:none;}
+.weapon-name{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:12px;
+  color:var(--v-text);
+  letter-spacing:0.06em;
+}
+.weapon-atk{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:13px;
+  color:var(--v-gem);
+  white-space:nowrap;
+}
+.weapon-dmg{
+  white-space:nowrap;
+  color:var(--v-text-body);
+}
+
+/* ── Dice result bubble ── */
+.dice-section{
+  margin-top:12px;
+  padding-top:10px;
+  border-top:1px solid var(--v-border);
+}
+.dice-label{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:10px;
+  letter-spacing:0.2em;
+  text-transform:uppercase;
+  color:var(--v-text-muted);
+  margin-bottom:8px;
+}
+.dice-result-row{
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.result-bubble{
+  width:44px;height:44px;
+  border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  font-family:'Cinzel',Georgia,serif;
+  font-size:20px;
+  font-weight:400;
+  flex-shrink:0;
+}
+.result-desc{
+  font-family:'Crimson Text',Georgia,serif;
+  font-size:13px;
+  font-style:italic;
+  color:var(--v-text-muted);
+  line-height:1.4;
+}
+
+/* ── Session notes ── */
+.notes-area{
+  border-radius:3px;
+  border:1px solid var(--v-border);
+  padding:8px 10px;
+  font-family:'Crimson Text',Georgia,serif;
+  font-size:13px;
+  font-style:italic;
+  line-height:1.5;
+  color:var(--v-text-body);
+  min-height:60px;
+}
+
+/* ── Relative wrapper for annotation badges ── */
+.annotated{
+  position:relative;
+}
+
+/* ─────────────────────────────────────────
+   BROKEN PANEL — dark-assumption overrides
+   (simulating dark-theme CSS on light bg)
+───────────────────────────────────────── */
+.broken .hp-bar-track{
+  background:rgba(0,0,0,0.08); /* would be a dark translucent track */
+}
+.broken .hp-bar-fill{
+  background:#3a8a4a; /* original green — same as dark theme */
+}
+.broken .cond-pill{
+  /* dark translucent background that was fine on near-black bg */
+  background:rgba(0,0,0,0.3);
+  border-color:rgba(255,255,255,0.12);
+  color:rgba(255,255,255,0.7);
+}
+.broken .cond-pill.active{
+  background:rgba(0,0,0,0.5);
+  border-color:rgba(160,192,208,0.6);
+  color:#a0c0d0;
+}
+.broken .conc-banner{
+  background:rgba(0,0,0,0.4);
+  border-left:3px solid rgba(106,143,168,0.7);
+  color:#c0d8e8;
+}
+.broken .conc-dot{
+  background:#a0c0d0;
+}
+/* Death save pips: light-colored fill (designed for dark bg) */
+.broken .ds-pip.success-filled{
+  background:#c8e4d0; /* very pale — disappears on parchment */
+  border-color:#c8e4d0;
+}
+.broken .ds-pip.fail-filled{
+  background:#e4b4b4;
+  border-color:#e4b4b4;
+}
+.broken .ds-pip:not(.success-filled):not(.fail-filled){
+  background:transparent;
+  border-color:rgba(200,200,200,0.35); /* invisible on parchment */
+}
+/* Spell slot pips: light fill designed for dark bg */
+.broken .slot-pip.filled{
+  background:#c8e4d0; /* pale green — invisible on parchment */
+  border-color:#c8e4d0;
+}
+.broken .slot-pip:not(.filled){
+  background:transparent;
+  border-color:rgba(200,200,200,0.3); /* near-invisible border */
+}
+/* Dice result: white text on dark bubble */
+.broken .result-bubble{
+  background:rgba(20,30,40,0.85);
+  color:#ffffff;
+  box-shadow:0 0 12px rgba(160,192,208,0.3);
+}
+/* Session notes: dark bg */
+.broken .notes-area{
+  background:rgba(0,0,0,0.25);
+  border-color:rgba(255,255,255,0.1);
+  color:rgba(255,255,255,0.6);
+}
+/* Inspiration on — designed for dark (glow over dark bg) */
+.broken .inspo-toggle.on{
+  background:rgba(106,143,168,0.3);
+  border-color:#6a8fa8;
+  color:#a0c0d0;
+  box-shadow:0 0 8px rgba(106,143,168,0.5); /* glow invisible on light */
+}
+.broken .inspo-toggle.on .knob{background:#a0c0d0;}
+.broken .inspo-toggle:not(.on){
+  background:rgba(255,255,255,0.1);
+  border-color:rgba(255,255,255,0.2);
+  color:rgba(255,255,255,0.3);
+}
+/* Exhaustion counter: dark surface */
+.broken .exhaustion-num{
+  color:#c8bfaf; /* light text — disappears on parchment */
+}
+
+/* ─────────────────────────────────────────
+   FIXED PANEL — light-theme-aware overrides
+───────────────────────────────────────── */
+.fixed .hp-bar-track{
+  background:var(--v-gem-low);
+}
+.fixed .hp-bar-fill{
+  background:var(--v-accent); /* #7a5c30 — warm brown, visible on parchment */
+}
+.fixed .cond-pill{
+  background:transparent;
+  border-color:var(--v-border-vis);
+  color:var(--v-text-muted);
+}
+.fixed .cond-pill.active{
+  background:var(--v-accent-dim);
+  border-color:var(--v-accent);
+  color:var(--v-text);
+}
+.fixed .conc-banner{
+  background:var(--v-accent-dim);
+  border-left:3px solid var(--v-accent);
+  color:var(--v-text);
+}
+.fixed .conc-dot{
+  background:var(--v-accent);
+}
+/* Death save pips: dark strokes/fills visible on parchment */
+.fixed .ds-pip.success-filled{
+  background:#5a8a40;
+  border-color:#5a8a40;
+}
+.fixed .ds-pip.fail-filled{
+  background:#a04040;
+  border-color:#a04040;
+}
+.fixed .ds-pip:not(.success-filled):not(.fail-filled){
+  background:transparent;
+  border-color:var(--v-border-vis);
+}
+/* Spell slot pips: dark gem fill visible on parchment */
+.fixed .slot-pip.filled{
+  background:var(--v-gem); /* #4a3418 dark brown */
+  border-color:var(--v-gem);
+}
+.fixed .slot-pip:not(.filled){
+  background:transparent;
+  border-color:var(--v-border-vis);
+}
+/* Dice result: dark bg (accent), light text — inverted for light theme */
+.fixed .result-bubble{
+  background:var(--v-accent); /* #7a5c30 */
+  color:var(--v-bg);          /* #f5f0e8 */
+}
+/* Session notes: warm surface */
+.fixed .notes-area{
+  background:var(--v-surface-solid);
+  border-color:var(--v-border-vis);
+  color:var(--v-text-body);
+}
+/* Inspiration on — adapted for light */
+.fixed .inspo-toggle.on{
+  background:var(--v-accent-dim);
+  border-color:var(--v-accent);
+  color:var(--v-accent-bright);
+}
+.fixed .inspo-toggle.on .knob{background:var(--v-accent-bright);}
+.fixed .inspo-toggle:not(.on){
+  background:transparent;
+  border-color:var(--v-border-vis);
+  color:var(--v-text-muted);
+}
+/* Exhaustion counter: dark text on parchment */
+.fixed .exhaustion-num{
+  color:var(--v-text);
+}
+
+/* Shared neutral for things that are fine either way */
+.panel-neutral .hp-bar-track{background:var(--v-gem-low);}
+.panel-neutral .hp-bar-fill{background:#5a9a5a;}
+
+/* ── Legend section ── */
+.legend{
+  max-width:900px;
+  margin:56px auto 0;
+  padding:28px 32px;
+  background:rgba(30,28,26,0.6);
+  border:1px solid rgba(160,140,100,0.2);
+  border-radius:4px;
+}
+.legend h2{
+  font-family:'Cinzel',Georgia,serif;
+  font-size:14px;
+  font-weight:400;
+  letter-spacing:0.22em;
+  text-transform:uppercase;
+  color:#c0b090;
+  margin-bottom:20px;
+}
+.legend-table{
+  width:100%;
+  border-collapse:collapse;
+  font-size:13px;
+}
+.legend-table th{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:11px;
+  letter-spacing:0.18em;
+  text-transform:uppercase;
+  color:#7a6848;
+  text-align:left;
+  padding:6px 10px 8px;
+  border-bottom:1px solid rgba(160,140,100,0.2);
+}
+.legend-table td{
+  padding:7px 10px;
+  vertical-align:top;
+  border-bottom:1px solid rgba(160,140,100,0.1);
+  font-family:'Crimson Text',Georgia,serif;
+  color:#a09078;
+  line-height:1.5;
+}
+.legend-table td:first-child{
+  font-family:'IM Fell English',Georgia,serif;
+  font-size:11px;
+  text-transform:uppercase;
+  letter-spacing:0.12em;
+  color:#c0a060;
+  white-space:nowrap;
+  width:160px;
+}
+.legend-table tr:last-child td{border-bottom:none;}
+code{
+  font-family:monospace;
+  font-size:11px;
+  color:#b09060;
+  background:rgba(255,255,255,0.06);
+  padding:1px 4px;
+  border-radius:2px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════
+     PAGE HEADER
+═══════════════════════════════════════════ -->
+<header class="page-header">
+  <h1>Vellum Palette — Session Page Theme Fix</h1>
+  <p>Before / After · Seraphine Voss · Fighter Lv8 · Vellum palette only</p>
+</header>
+
+<!-- ═══════════════════════════════════════════
+     COMPARISON ROW
+═══════════════════════════════════════════ -->
+<div class="comparison-row">
+
+  <!-- ═══════════════════════════════
+       PANEL 1 — CURRENT (BROKEN)
+  ═══════════════════════════════ -->
+  <div class="panel-wrap">
+    <div class="panel-label broken">
+      <span class="dot"></span>
+      Current — Vellum on session page (broken)
+    </div>
+
+    <div class="phone broken" id="panel-broken">
+
+      <!-- Top bar -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <span class="topbar-back">‹</span>
+          <span class="topbar-title">Seraphine Voss</span>
+        </div>
+        <div class="topbar-right">
+          <div class="mode-toggle">
+            <button class="mode-seg">❡ Profile</button>
+            <button class="mode-seg active">⚔ Session</button>
+          </div>
+          <div class="topbar-icon">🔒</div>
+        </div>
+      </div>
+
+      <!-- Session two-column layout -->
+      <div class="session-shell">
+
+        <!-- LEFT COLUMN -->
+        <div class="session-left">
+
+          <!-- Identity -->
+          <div class="sec-label" style="margin-top:0;padding-top:0;border-top:none;">Identity</div>
+          <div class="identity" style="margin-bottom:8px;">
+            <div class="portrait-circle">
+              <!-- Silhouette SVG -->
+              <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="11" r="7" fill="rgba(122,92,48,0.4)"/>
+                <path d="M4 30 C4 22 28 22 28 30" fill="rgba(122,92,48,0.4)"/>
+              </svg>
+            </div>
+            <div class="identity-text">
+              <div class="identity-name">Seraphine</div>
+              <div class="identity-sub">Fighter · Lv8</div>
+              <div class="identity-badges">
+                <span class="stat-badge">AC 16</span>
+                <span class="stat-badge">30ft</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- HP block (broken: green on parchment) -->
+          <div class="sec-label annotated">
+            HP
+            <span class="badge-warn">⚠ invisible</span>
+          </div>
+          <div class="hp-block" style="position:relative;">
+            <div class="hp-row" style="align-items:center;">
+              <span class="hp-current" style="color:#7a5c30;">68</span>
+              <span class="hp-sep">/</span>
+              <span class="hp-max">72</span>
+              <div class="hp-steppers">
+                <button class="stepper-btn">−</button>
+                <button class="stepper-btn">+</button>
+              </div>
+            </div>
+            <div class="hp-bar-track" style="background:rgba(0,0,0,0.08);">
+              <!-- #3a8a4a on parchment — nearly invisible -->
+              <div class="hp-bar-fill" style="width:94%;background:#3a8a4a;"></div>
+            </div>
+            <div style="font-family:'IM Fell English',Georgia,serif;font-size:9px;letter-spacing:0.1em;text-transform:uppercase;color:#c06040;margin-top:3px;font-style:italic;">
+              ← bar fill #3a8a4a almost invisible on parchment
+            </div>
+          </div>
+
+          <!-- Spell slots (broken: pale pips vanish) -->
+          <div class="sec-label annotated">
+            Spell Slots
+            <span class="badge-warn">⚠ invisible</span>
+          </div>
+          <div class="slots-section">
+            <!-- Level 1: 2 of 4 filled -->
+            <div class="slot-row">
+              <span class="slot-level">L1</span>
+              <div class="slot-pips">
+                <div class="slot-pip filled"></div>
+                <div class="slot-pip filled"></div>
+                <div class="slot-pip"></div>
+                <div class="slot-pip"></div>
+              </div>
+            </div>
+            <!-- Level 2: 1 of 3 filled -->
+            <div class="slot-row">
+              <span class="slot-level">L2</span>
+              <div class="slot-pips">
+                <div class="slot-pip filled"></div>
+                <div class="slot-pip"></div>
+                <div class="slot-pip"></div>
+              </div>
+            </div>
+            <!-- Level 3: 0 of 2 filled -->
+            <div class="slot-row">
+              <span class="slot-level">L3</span>
+              <div class="slot-pips">
+                <div class="slot-pip"></div>
+                <div class="slot-pip"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Death saves (broken: pale pips) -->
+          <div class="sec-label annotated">
+            Death Saves
+            <span class="badge-warn">⚠ vanishes</span>
+          </div>
+          <div class="death-saves">
+            <div class="ds-cluster">
+              <span class="ds-label">Succ</span>
+              <div class="ds-pip success-filled"></div>
+              <div class="ds-pip"></div>
+              <div class="ds-pip"></div>
+            </div>
+            <div class="ds-cluster">
+              <span class="ds-label">Fail</span>
+              <div class="ds-pip fail-filled"></div>
+              <div class="ds-pip"></div>
+              <div class="ds-pip"></div>
+            </div>
+          </div>
+
+          <!-- Exhaustion (broken: light text on light bg) -->
+          <div class="sec-label annotated">
+            Exhaustion
+            <span class="badge-warn">⚠ clashes</span>
+          </div>
+          <div class="exhaustion-row">
+            <span class="exhaustion-num">1</span>
+            <span class="exhaustion-label">/ 6</span>
+          </div>
+
+          <!-- Inspiration (broken: dark glow on light bg) -->
+          <div class="sec-label annotated">
+            Inspiration
+            <span class="badge-warn">⚠ clashes</span>
+          </div>
+          <div class="inspiration-row">
+            <!-- off state shown -->
+            <div class="inspo-toggle" style="background:rgba(255,255,255,0.1);border-color:rgba(255,255,255,0.2);color:rgba(255,255,255,0.3);">
+              <div class="knob"></div>
+            </div>
+            <span class="inspo-label" style="color:var(--v-text-muted);">Off</span>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="session-right">
+
+          <!-- Concentration banner (broken: black bg on parchment) -->
+          <div class="annotated">
+            <div class="conc-banner">
+              <div class="conc-dot"></div>
+              Fly (Conc.)
+              <span class="badge-warn" style="margin-left:auto;">⚠ clashes</span>
+            </div>
+          </div>
+
+          <!-- Conditions (broken: dark pills, invisible on parchment) -->
+          <div class="sec-label annotated">
+            Conditions
+            <span class="badge-warn">⚠ invisible</span>
+          </div>
+          <div class="conditions-grid" style="margin-bottom:10px;">
+            <div class="cond-pill active">Poisoned</div>
+            <div class="cond-pill active">Prone</div>
+            <div class="cond-pill">Blinded</div>
+            <div class="cond-pill">Charmed</div>
+            <div class="cond-pill">Frightened</div>
+          </div>
+
+          <!-- Tab bar -->
+          <div class="tab-bar">
+            <button class="tab-btn active">Combat</button>
+            <button class="tab-btn">Loadout</button>
+            <button class="tab-btn">Notes</button>
+          </div>
+
+          <!-- Weapons table -->
+          <div class="sec-label">Weapons</div>
+          <table class="weapons-table">
+            <thead>
+              <tr>
+                <th>Weapon</th>
+                <th>Hit</th>
+                <th>Damage</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="weapon-name">Rapier</span></td>
+                <td><span class="weapon-atk">+8</span></td>
+                <td><span class="weapon-dmg">1d8+5 pier.</span></td>
+              </tr>
+              <tr>
+                <td><span class="weapon-name">Shortbow</span></td>
+                <td><span class="weapon-atk">+7</span></td>
+                <td><span class="weapon-dmg">1d6+4 pier.</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Dice result (broken: white text on dark bubble) -->
+          <div class="dice-section annotated">
+            <div class="dice-label">
+              Last Roll
+              <span class="badge-warn">⚠ clashes</span>
+            </div>
+            <div class="dice-result-row">
+              <!-- Dark bubble with white text on parchment bg = harsh contrast clash -->
+              <div class="result-bubble">18</div>
+              <div class="result-desc">Rapier attack · d20</div>
+            </div>
+          </div>
+
+          <!-- Session notes (broken: dark bg behind text) -->
+          <div class="sec-label annotated" style="margin-top:12px;">
+            Notes
+            <span class="badge-warn">⚠ clashes</span>
+          </div>
+          <div class="notes-area">
+            Track DM's NPC — the goblin captain has a silver amulet. Remember to use Second Wind next round.
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /phone.broken -->
+  </div><!-- /panel-wrap -->
+
+
+  <!-- ═══════════════════════════════
+       PANEL 2 — PROPOSED (FIXED)
+  ═══════════════════════════════ -->
+  <div class="panel-wrap">
+    <div class="panel-label fixed">
+      <span class="dot"></span>
+      Proposed — Vellum-aware fixes
+    </div>
+
+    <div class="phone fixed" id="panel-fixed">
+
+      <!-- Top bar -->
+      <div class="topbar">
+        <div class="topbar-left">
+          <span class="topbar-back">‹</span>
+          <span class="topbar-title">Seraphine Voss</span>
+        </div>
+        <div class="topbar-right">
+          <div class="mode-toggle">
+            <button class="mode-seg">❡ Profile</button>
+            <button class="mode-seg active">⚔ Session</button>
+          </div>
+          <div class="topbar-icon">🔒</div>
+        </div>
+      </div>
+
+      <!-- Session two-column layout -->
+      <div class="session-shell">
+
+        <!-- LEFT COLUMN -->
+        <div class="session-left">
+
+          <!-- Identity -->
+          <div class="sec-label" style="margin-top:0;padding-top:0;border-top:none;">Identity</div>
+          <div class="identity" style="margin-bottom:8px;">
+            <div class="portrait-circle">
+              <svg viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <circle cx="16" cy="11" r="7" fill="rgba(122,92,48,0.4)"/>
+                <path d="M4 30 C4 22 28 22 28 30" fill="rgba(122,92,48,0.4)"/>
+              </svg>
+            </div>
+            <div class="identity-text">
+              <div class="identity-name">Seraphine</div>
+              <div class="identity-sub">Fighter · Lv8</div>
+              <div class="identity-badges">
+                <span class="stat-badge">AC 16</span>
+                <span class="stat-badge">30ft</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- HP block (fixed: --pal-accent fill on --pal-gem-low track) -->
+          <div class="sec-label annotated">
+            HP
+            <span class="badge-ok">✓ fixed</span>
+          </div>
+          <div class="hp-block">
+            <div class="hp-row" style="align-items:center;">
+              <span class="hp-current" style="color:#7a5c30;">68</span>
+              <span class="hp-sep">/</span>
+              <span class="hp-max">72</span>
+              <div class="hp-steppers">
+                <button class="stepper-btn">−</button>
+                <button class="stepper-btn">+</button>
+              </div>
+            </div>
+            <div class="hp-bar-track">
+              <!-- accent (#7a5c30) on gem-low track — visible and on-theme -->
+              <div class="hp-bar-fill" style="width:94%;"></div>
+            </div>
+          </div>
+
+          <!-- Spell slots (fixed: --pal-gem dark fill) -->
+          <div class="sec-label annotated">
+            Spell Slots
+            <span class="badge-ok">✓ fixed</span>
+          </div>
+          <div class="slots-section">
+            <div class="slot-row">
+              <span class="slot-level">L1</span>
+              <div class="slot-pips">
+                <div class="slot-pip filled"></div>
+                <div class="slot-pip filled"></div>
+                <div class="slot-pip"></div>
+                <div class="slot-pip"></div>
+              </div>
+            </div>
+            <div class="slot-row">
+              <span class="slot-level">L2</span>
+              <div class="slot-pips">
+                <div class="slot-pip filled"></div>
+                <div class="slot-pip"></div>
+                <div class="slot-pip"></div>
+              </div>
+            </div>
+            <div class="slot-row">
+              <span class="slot-level">L3</span>
+              <div class="slot-pips">
+                <div class="slot-pip"></div>
+                <div class="slot-pip"></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Death saves (fixed: #5a8a40 success, #a04040 fail) -->
+          <div class="sec-label annotated">
+            Death Saves
+            <span class="badge-ok">✓ fixed</span>
+          </div>
+          <div class="death-saves">
+            <div class="ds-cluster">
+              <span class="ds-label">Succ</span>
+              <div class="ds-pip success-filled"></div>
+              <div class="ds-pip"></div>
+              <div class="ds-pip"></div>
+            </div>
+            <div class="ds-cluster">
+              <span class="ds-label">Fail</span>
+              <div class="ds-pip fail-filled"></div>
+              <div class="ds-pip"></div>
+              <div class="ds-pip"></div>
+            </div>
+          </div>
+
+          <!-- Exhaustion (fixed: --pal-text on parchment) -->
+          <div class="sec-label annotated">
+            Exhaustion
+            <span class="badge-ok">✓ fixed</span>
+          </div>
+          <div class="exhaustion-row">
+            <span class="exhaustion-num">1</span>
+            <span class="exhaustion-label">/ 6</span>
+          </div>
+
+          <!-- Inspiration (fixed: --pal-accent-dim bg on active) -->
+          <div class="sec-label annotated">
+            Inspiration
+            <span class="badge-ok">✓ fixed</span>
+          </div>
+          <div class="inspiration-row">
+            <!-- Show active state to illustrate the fix -->
+            <div class="inspo-toggle on" onclick="this.classList.toggle('on');this.nextElementSibling.textContent=this.classList.contains('on')?'On':'Off'">
+              <div class="knob"></div>
+            </div>
+            <span class="inspo-label" style="color:var(--v-accent-bright);">On</span>
+          </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN -->
+        <div class="session-right">
+
+          <!-- Concentration banner (fixed: --pal-accent-dim bg, --pal-accent border) -->
+          <div class="annotated">
+            <div class="conc-banner">
+              <div class="conc-dot"></div>
+              Fly (Conc.)
+              <span class="badge-ok" style="margin-left:auto;">✓ fixed</span>
+            </div>
+          </div>
+
+          <!-- Conditions (fixed: transparent pills with border, active gets accent-dim) -->
+          <div class="sec-label annotated">
+            Conditions
+            <span class="badge-ok">✓ fixed</span>
+          </div>
+          <div class="conditions-grid" style="margin-bottom:10px;">
+            <div class="cond-pill active">Poisoned</div>
+            <div class="cond-pill active">Prone</div>
+            <div class="cond-pill">Blinded</div>
+            <div class="cond-pill">Charmed</div>
+            <div class="cond-pill">Frightened</div>
+          </div>
+
+          <!-- Tab bar -->
+          <div class="tab-bar">
+            <button class="tab-btn active">Combat</button>
+            <button class="tab-btn">Loadout</button>
+            <button class="tab-btn">Notes</button>
+          </div>
+
+          <!-- Weapons table -->
+          <div class="sec-label">Weapons</div>
+          <table class="weapons-table">
+            <thead>
+              <tr>
+                <th>Weapon</th>
+                <th>Hit</th>
+                <th>Damage</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="weapon-name">Rapier</span></td>
+                <td><span class="weapon-atk">+8</span></td>
+                <td><span class="weapon-dmg">1d8+5 pier.</span></td>
+              </tr>
+              <tr>
+                <td><span class="weapon-name">Shortbow</span></td>
+                <td><span class="weapon-atk">+7</span></td>
+                <td><span class="weapon-dmg">1d6+4 pier.</span></td>
+              </tr>
+            </tbody>
+          </table>
+
+          <!-- Dice result (fixed: --pal-accent bg, --pal-bg text — inverted) -->
+          <div class="dice-section annotated">
+            <div class="dice-label">
+              Last Roll
+              <span class="badge-ok">✓ fixed</span>
+            </div>
+            <div class="dice-result-row">
+              <!-- accent (#7a5c30) bg + parchment (#f5f0e8) text = clear contrast on light -->
+              <div class="result-bubble">18</div>
+              <div class="result-desc">Rapier attack · d20</div>
+            </div>
+          </div>
+
+          <!-- Session notes (fixed: --pal-surface-solid bg, --pal-border border) -->
+          <div class="sec-label annotated" style="margin-top:12px;">
+            Notes
+            <span class="badge-ok">✓ fixed</span>
+          </div>
+          <div class="notes-area">
+            Track DM's NPC — the goblin captain has a silver amulet. Remember to use Second Wind next round.
+          </div>
+
+        </div>
+      </div>
+    </div><!-- /phone.fixed -->
+  </div><!-- /panel-wrap -->
+
+</div><!-- /comparison-row -->
+
+
+<!-- ═══════════════════════════════════════════
+     LEGEND
+═══════════════════════════════════════════ -->
+<div class="legend">
+  <h2>Legend — Fix Reference</h2>
+  <table class="legend-table">
+    <thead>
+      <tr>
+        <th>Element</th>
+        <th>Broken (dark assumption)</th>
+        <th>Fixed (vellum-aware)</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>HP bar fill</td>
+        <td><code>#3a8a4a</code> — mid-green hardcoded; near-invisible on warm parchment (#f5f0e8). Low contrast ratio ~1.4:1.</td>
+        <td><code>var(--pal-accent)</code> = <code>#7a5c30</code> warm brown. Contrast ~4.8:1 against parchment bg.</td>
+      </tr>
+      <tr>
+        <td>HP bar track</td>
+        <td><code>rgba(0,0,0,0.08)</code> — dark-theme near-transparent looks correct on dark bg, washed on light.</td>
+        <td><code>var(--pal-gem-low)</code> = <code>rgba(140,110,70,0.18)</code> — warm tinted groove visible on parchment.</td>
+      </tr>
+      <tr>
+        <td>Condition pills (inactive)</td>
+        <td><code>background: rgba(0,0,0,0.3)</code> — near-black chip, legible on dark, illegible on parchment. Text white rgba also disappears.</td>
+        <td><code>background: transparent</code>, <code>border: 1px solid var(--pal-border-vis)</code>, <code>color: var(--pal-text-muted)</code>.</td>
+      </tr>
+      <tr>
+        <td>Condition pills (active)</td>
+        <td><code>background: rgba(0,0,0,0.5)</code>, light-blue text — black on parchment creates aggressive dark blobs.</td>
+        <td><code>background: var(--pal-accent-dim)</code>, <code>border: var(--pal-accent)</code>, <code>color: var(--pal-text)</code>.</td>
+      </tr>
+      <tr>
+        <td>Concentration banner</td>
+        <td><code>background: rgba(0,0,0,0.4)</code> — black block on parchment looks like an error state.</td>
+        <td><code>background: var(--pal-accent-dim)</code>, <code>border-left: 3px solid var(--pal-accent)</code>, <code>color: var(--pal-text)</code>.</td>
+      </tr>
+      <tr>
+        <td>Spell slot pips (filled)</td>
+        <td><code>#c8e4d0</code> (very pale green) — designed for dark bg; disappears on parchment. Empty border also invisible.</td>
+        <td>Filled: <code>var(--pal-gem)</code> = <code>#4a3418</code> dark brown. Empty border: <code>var(--pal-border-vis)</code>.</td>
+      </tr>
+      <tr>
+        <td>Death save pips</td>
+        <td>Success: <code>#c8e4d0</code> pale — nearly invisible. Failure: <code>#e4b4b4</code> pale — also fades. Empty: <code>rgba(200,200,200,0.35)</code> invisible.</td>
+        <td>Success filled: <code>#5a8a40</code>. Failure filled: <code>#a04040</code>. Empty: <code>var(--pal-border-vis)</code>. All visible on parchment.</td>
+      </tr>
+      <tr>
+        <td>Dice result bubble</td>
+        <td><code>background: rgba(20,30,40,0.85)</code> dark navy + <code>color: #ffffff</code> — clashes with warm manuscript aesthetic; dark widget on light page feels foreign.</td>
+        <td>Inverted: <code>background: var(--pal-accent)</code> (#7a5c30), <code>color: var(--pal-bg)</code> (#f5f0e8). On-theme ink-on-parchment inversion.</td>
+      </tr>
+      <tr>
+        <td>Session notes area</td>
+        <td><code>background: rgba(0,0,0,0.25)</code> dark wash — creates muddy grey pool on parchment. White-ish text unreadable.</td>
+        <td><code>background: var(--pal-surface-solid)</code> = <code>#e8e0cc</code>. <code>border: var(--pal-border-vis)</code>. <code>color: var(--pal-text-body)</code>.</td>
+      </tr>
+      <tr>
+        <td>Inspiration toggle (active)</td>
+        <td>Glow: <code>box-shadow: 0 0 8px rgba(106,143,168,0.5)</code> — blue ocean glow looks wrong on parchment; toggle bg near-invisible.</td>
+        <td><code>background: var(--pal-accent-dim)</code>, <code>border: var(--pal-accent)</code>, knob <code>var(--pal-accent-bright)</code>. No glow — manuscript aesthetic uses ink weight, not glow.</td>
+      </tr>
+      <tr>
+        <td>Exhaustion counter text</td>
+        <td><code>color: #c8bfaf</code> — a light warm-grey value designed for dark backgrounds; reads as ~30% contrast on parchment.</td>
+        <td><code>color: var(--pal-text)</code> = <code>#2a2018</code> — near-black, full contrast on parchment.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <p style="margin-top:20px;font-family:'IM Fell English',Georgia,serif;font-size:11px;color:#6a5840;letter-spacing:0.12em;font-style:italic;">
+    Implementation note: all fixes use CSS custom properties already defined on the Vellum palette object. No new variables needed — only the consuming components need conditional class or variable selection when <code>palette === "vellum"</code>. The pattern is: set <code>--pal-*</code> vars at the sheet root (as today), and move all hardcoded color values in session-mode components to <code>var(--pal-*)</code> references. Vellum's token set already provides correct values for each element.
+  </p>
+</div>
+
+
+<!-- ═══════════════════════════════════════════
+     INTERACTIVE JS — tab switching + inspiration
+═══════════════════════════════════════════ -->
+<script>
+// Tab switching for both panels
+document.querySelectorAll('.tab-bar').forEach(function(bar) {
+  bar.querySelectorAll('.tab-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      bar.querySelectorAll('.tab-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+    });
+  });
+});
+
+// Inspiration toggle interaction for both panels
+document.querySelectorAll('.inspo-toggle').forEach(function(tog) {
+  tog.addEventListener('click', function() {
+    tog.classList.toggle('on');
+    var label = tog.nextElementSibling;
+    if (label) {
+      label.textContent = tog.classList.contains('on') ? 'On' : 'Off';
+      label.style.color = tog.classList.contains('on')
+        ? 'var(--v-accent-bright)'
+        : 'var(--v-text-muted)';
+    }
+  });
+});
+
+// HP stepper buttons
+document.querySelectorAll('.stepper-btn').forEach(function(btn) {
+  btn.addEventListener('click', function() {
+    var isPlus = btn.textContent.trim() === '+';
+    var hpEl = btn.closest('.hp-block').querySelector('.hp-current');
+    var bar = btn.closest('.hp-block').querySelector('.hp-bar-fill');
+    if (!hpEl) return;
+    var current = parseInt(hpEl.textContent, 10);
+    var max = 72;
+    if (isPlus) current = Math.min(max, current + 1);
+    else current = Math.max(0, current - 1);
+    hpEl.textContent = current;
+    if (bar) {
+      bar.style.width = Math.round((current / max) * 100) + '%';
+    }
+  });
+});
+
+// Slot pip toggling
+document.querySelectorAll('.slot-pip').forEach(function(pip) {
+  pip.addEventListener('click', function() {
+    pip.classList.toggle('filled');
+  });
+});
+
+// Condition pill toggling
+document.querySelectorAll('.cond-pill').forEach(function(pill) {
+  pill.addEventListener('click', function() {
+    pill.classList.toggle('active');
+  });
+});
+</script>
+
+</body>
+</html>

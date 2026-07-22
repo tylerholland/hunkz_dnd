@@ -27,7 +27,8 @@
   z-index: 100;
   background: var(--pal-bg);
   border-bottom: 1px solid var(--pal-border);
-  display: flex;
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
   align-items: center;
   padding: 0 12px;
   gap: 8px;
@@ -38,11 +39,11 @@
 
 /* ─── Left slot ───────────────────────────────────────────────────────────── */
 .topnav-left {
+  grid-column: 1;
   display: flex;
   align-items: center;
   gap: 2px;
   min-width: 0;
-  flex: 0 1 auto;
 }
 
 /* Back glyph — ‹ */
@@ -82,16 +83,12 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  /* Constrain to avoid crowding on mobile — real cap via container query below */
-  max-width: 200px;
 }
 
 /* ─── Center slot (segmented mode control) ──────────────────────────────── */
 .topnav-center {
   display: flex;
-  flex: 1 1 auto;
   justify-content: center;
-  min-width: 0;
 }
 
 /*
@@ -156,11 +153,11 @@
 
 /* ─── Right slot ────────────────────────────────────────────────────────── */
 .topnav-right {
+  grid-column: -1;
   display: flex;
   align-items: center;
   gap: 2px;
-  margin-left: auto;
-  flex-shrink: 0;
+  justify-content: flex-end;
 }
 
 /* Child action buttons (e.g. Manage Party, Upload) — hidden on mobile */
@@ -358,11 +355,14 @@
 
 /* ─── Responsive ─────────────────────────────────────────────────────────── */
 @media (max-width: 560px) {
+  /* On mobile the center slot is hidden so collapse it; left slot fills the gap */
+  .topnav { grid-template-columns: 1fr auto; }
   .topnav-center { display: none; }
   .topnav-mobile-row { display: flex; }
   .topnav-child-btn { display: none; }
   .topnav-dot-label { display: none; }
-  .topnav-title { max-width: 140px; }
+  /* Title fills available space between back button and right slot */
+  .topnav-title { max-width: none; }
 }
 
 /* ─── Reduced motion ─────────────────────────────────────────────────────── */

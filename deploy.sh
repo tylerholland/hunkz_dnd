@@ -27,12 +27,21 @@ DM_HASH=$(aws ssm get-parameter --name "/dnd/dm-password-hash" --region "$REGION
 # sam deploy exits non-zero when the stack is already up to date; tolerate only
 # that case — any real failure must abort the deploy, or the frontend would
 # ship against a backend that never landed (this bit us on 2026-07-18).
+#
+# samconfig.toml sets confirm_changeset = true, so sam deploy prompts
+# "Deploy this changeset? [y/N]:" interactively. Piping through `tee` keeps
+# that prompt visible on the real terminal (a plain $(...) capture swallows
+# it into the variable, which looks like a hang and silently answers N when
+# you press Enter — this bit us on 2026-07-20) while still letting us
+# capture the output for the "No changes to deploy" check below.
 set +e
-SAM_OUTPUT=$(sam deploy --parameter-overrides "DmPasswordHash=$DM_HASH" 2>&1)
-SAM_EXIT=$?
+SAM_LOG="$(mktemp)"
+sam deploy --parameter-overrides "DmPasswordHash=$DM_HASH" 2>&1 | tee "$SAM_LOG"
+SAM_EXIT=${PIPESTATUS[0]}
 set -e
+SAM_OUTPUT="$(cat "$SAM_LOG")"
+rm -f "$SAM_LOG"
 unset DM_HASH
-echo "$SAM_OUTPUT" | tail -15
 if [ "$SAM_EXIT" -ne 0 ] && ! echo "$SAM_OUTPUT" | grep -qi "No changes to deploy"; then
   echo "✗ sam deploy failed (exit $SAM_EXIT) — aborting before frontend sync." >&2
   exit "$SAM_EXIT"
