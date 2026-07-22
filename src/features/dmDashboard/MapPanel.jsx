@@ -15,6 +15,20 @@ function genId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36);
 }
 
+// Build the map view payload, including center fracs so the player's viewport
+// centers on the same point regardless of container size differences.
+function buildMapViewPayload(mapId, viewerState) {
+  const { translate, scale, pageNumber, naturalSize, containerWidth, containerHeight } = viewerState;
+  const W = naturalSize?.w;
+  const H = naturalSize?.h;
+  const payload = { mapId, translate, scale, pageNumber };
+  if (W && H && containerWidth && containerHeight && Number.isFinite(translate?.x) && Number.isFinite(translate?.y)) {
+    payload.centerFracX = (containerWidth / 2 - translate.x) / (scale * W);
+    payload.centerFracY = (containerHeight / 2 - translate.y) / (scale * H);
+  }
+  return payload;
+}
+
 export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, onRegisterBattleToggle }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -139,12 +153,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const handlePublishView = async () => {
     if (!activeMap || !viewerState) return;
     try {
-      await putMapView({
-        mapId: activeMap.id,
-        translate: viewerState.translate,
-        scale: viewerState.scale,
-        pageNumber: viewerState.pageNumber,
-      }, dmPassword);
+      await putMapView(buildMapViewPayload(activeMap.id, viewerState), dmPassword);
       onLibraryChange();
     } catch { /* ignore */ }
   };
@@ -155,12 +164,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     if (!viewerState || !activeMap?.id || !dmPassword) return;
     clearTimeout(autoPubTimerRef.current);
     autoPubTimerRef.current = setTimeout(() => {
-      putMapView({
-        mapId: activeMap.id,
-        translate: viewerState.translate,
-        scale: viewerState.scale,
-        pageNumber: viewerState.pageNumber,
-      }, dmPassword).catch(() => {});
+      putMapView(buildMapViewPayload(activeMap.id, viewerState), dmPassword).catch(() => {});
     }, 800);
     return () => clearTimeout(autoPubTimerRef.current);
   }, [viewerState, activeMap?.id, dmPassword]); // eslint-disable-line react-hooks/exhaustive-deps

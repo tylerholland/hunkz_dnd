@@ -68,6 +68,7 @@ export default function MapViewer({
   const imgRef = useRef(null);
   const pdfMode = isPdfMap({ imageUrl, contentType, name });
   const lastPublishedTokenRef = useRef(null);
+  const pendingCenterFracApplyRef = useRef(false);
   const modifierKeyLabel = getMapZoomModifierLabel();
   const zoomUnlocked = typeof freeZoom === "boolean" ? freeZoom : internalFreeZoom;
   const handlePdfLoad = useCallback(({ numPages }) => {
@@ -84,6 +85,8 @@ export default function MapViewer({
       scale,
       pageNumber,
       naturalSize: imageNaturalSize,
+      containerWidth: containerRef.current?.clientWidth ?? 0,
+      containerHeight: containerRef.current?.clientHeight ?? 0,
     });
   }, [translate, scale, pageNumber, onViewChange, imageNaturalSize]);
 
@@ -122,18 +125,42 @@ export default function MapViewer({
 
   const applyPublishedView = useCallback(() => {
     if (!publishedView) return;
-    const nextTranslate = {
-      x: Number.isFinite(publishedView?.translate?.x) ? publishedView.translate.x : 0,
-      y: Number.isFinite(publishedView?.translate?.y) ? publishedView.translate.y : 0,
-    };
     const nextScale = Number.isFinite(publishedView?.scale) ? publishedView.scale : 1;
     const nextPage = Number.isFinite(publishedView?.pageNumber) ? Math.max(1, Math.floor(publishedView.pageNumber)) : 1;
+
+    const cfx = publishedView?.centerFracX;
+    const cfy = publishedView?.centerFracY;
+    const W = imageNaturalSize?.w;
+    const H = imageNaturalSize?.h;
+    const cw = containerRef.current?.clientWidth;
+    const ch = containerRef.current?.clientHeight;
+
+    let nextTranslate;
+    if (Number.isFinite(cfx) && Number.isFinite(cfy) && W && H && cw && ch) {
+      // Convert center-image-fraction back to a local translate so the same
+      // point on the image lands at the center of *this* container.
+      nextTranslate = {
+        x: cw / 2 - cfx * W * nextScale,
+        y: ch / 2 - cfy * H * nextScale,
+      };
+      pendingCenterFracApplyRef.current = false;
+    } else {
+      nextTranslate = {
+        x: Number.isFinite(publishedView?.translate?.x) ? publishedView.translate.x : 0,
+        y: Number.isFinite(publishedView?.translate?.y) ? publishedView.translate.y : 0,
+      };
+      // Mark pending so we retry once the image natural size is known.
+      if (Number.isFinite(cfx) && Number.isFinite(cfy)) {
+        pendingCenterFracApplyRef.current = true;
+      }
+    }
+
     stateRef.current.translate = nextTranslate;
     stateRef.current.scale = nextScale;
     setTranslate(nextTranslate);
     setScale(nextScale);
     setPageNumber(nextPage);
-  }, [publishedView]);
+  }, [publishedView, imageNaturalSize]);
 
   useEffect(() => {
     const token = publishedView?.updatedAt || null;
@@ -141,6 +168,12 @@ export default function MapViewer({
     lastPublishedTokenRef.current = token;
     applyPublishedView();
   }, [publishedView?.updatedAt, applyPublishedView]);
+
+  // Re-apply once the image loads if the first apply couldn't use center fracs.
+  useEffect(() => {
+    if (!imageNaturalSize || !pendingCenterFracApplyRef.current) return;
+    applyPublishedView();
+  }, [imageNaturalSize, applyPublishedView]);
 
   // Hint fade after 3s
   useEffect(() => {

@@ -61,13 +61,16 @@ function normalizeMapView(view) {
   const pageNumber = Number.isFinite(view?.pageNumber) ? Math.max(1, Math.floor(view.pageNumber)) : 1;
   const mapId = typeof view?.mapId === "string" && view.mapId.trim() ? view.mapId : null;
   if (!mapId) return null;
-  return {
+  const result = {
     mapId,
     translate: { x, y },
     scale,
     pageNumber,
     updatedAt: typeof view?.updatedAt === "string" ? view.updatedAt : null,
   };
+  if (Number.isFinite(view?.centerFracX)) result.centerFracX = view.centerFracX;
+  if (Number.isFinite(view?.centerFracY)) result.centerFracY = view.centerFracY;
+  return result;
 }
 
 function normalizePartyRosterRecord(item) {
