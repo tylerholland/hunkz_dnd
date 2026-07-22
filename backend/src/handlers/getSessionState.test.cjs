@@ -87,7 +87,7 @@ function baseSentinelResponses() {
     },
     "npc-combat": {
       slug: "npc-combat",
-      npcs: [{ id: "n1", initiativeEntryId: "e2", hpCurrent: 3, hpMax: 12 }],
+      npcs: [{ id: "n1", name: "Goblin", portraitUrl: "https://example.com/goblin.png", initiativeEntryId: "e2", hpCurrent: 3, hpMax: 12, conditions: ["poisoned"] }],
     },
     "roll-history": {
       slug: "roll-history",
@@ -256,7 +256,7 @@ test("getSessionState public variant leaks nothing beyond the old public project
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(Object.keys(body).sort(), [
-    "buildVersion", "initiativePublic", "mapLibrary", "partyStatus", "rollHistory", "serverTime",
+    "buildVersion", "initiativePublic", "mapLibrary", "npcCombatPublic", "partyStatus", "rollHistory", "serverTime",
   ].sort());
   assert.equal(body.buildVersion, "abc1234");
 
@@ -282,6 +282,19 @@ test("getSessionState public variant leaks nothing beyond the old public project
 
   // no ?slug supplied — no character field
   assert.equal(body.character, undefined);
+
+  // npcCombatPublic — name and portrait visible to players, HP/conditions are not
+  assert.ok(Array.isArray(body.npcCombatPublic.npcs));
+  assert.equal(body.npcCombatPublic.npcs.length, 1);
+  const publicNpc = body.npcCombatPublic.npcs[0];
+  assert.equal(publicNpc.id, "n1");
+  assert.equal(publicNpc.name, "Goblin");
+  assert.equal(publicNpc.portraitUrl, "https://example.com/goblin.png");
+  // HP and conditions must not be exposed
+  assert.equal(publicNpc.hpCurrent, undefined);
+  assert.equal(publicNpc.hpMax, undefined);
+  assert.equal(publicNpc.conditions, undefined);
+  assert.equal(publicNpc.initiativeEntryId, undefined);
 });
 
 test("getSessionState public variant with ?slug strips playerNotes and passwordHash for an unauthenticated caller", async () => {
