@@ -155,7 +155,7 @@ function DamageHealModal({ type, onConfirm, onClose, pal }) {
           onChange={(e) => setVal(e.target.value)}
           style={{
             width: "100%",
-            background: "rgba(0,0,0,0.3)",
+            background: pal?.surfaceSolid || "#111e2c",
             border: `1px solid ${accentColor}66`,
             borderRadius: 3,
             color: pal?.text || "#c8d8e4",
@@ -321,6 +321,7 @@ export default function CharacterSheetSessionMode({
   onSessionSync,
   activeMap,
   activeMapView,
+  isBattleMode,
   sessionPassword,
   partyStatus,
   initiativeData,
@@ -882,7 +883,7 @@ export default function CharacterSheetSessionMode({
                 placeholder="Spell name…"
                 style={{
                   flex: 1,
-                  background: "rgba(0,0,0,0.25)",
+                  background: pal.surfaceSolid,
                   border: `1px solid ${pal.border}`,
                   borderRadius: 3,
                   color: pal.text,
@@ -1169,6 +1170,7 @@ export default function CharacterSheetSessionMode({
               <PlayerMapViewer
                 activeMap={activeMap}
                 activeMapView={activeMapView}
+                isBattleMode={isBattleMode}
                 pal={pal}
                 slug={slug}
                 partyStatus={partyStatus}
@@ -1290,7 +1292,7 @@ function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }
           placeholder="Add a session note…"
           style={{
             flex: 1,
-            background: "rgba(0,0,0,0.25)",
+            background: pal.surfaceSolid,
             border: `1px solid ${pal.border}`,
             borderRadius: 3,
             color: pal.text,
@@ -1323,7 +1325,7 @@ function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }
 
 // ── PlayerMapViewer ────────────────────────────────────────────────────────
 // Read-only token layer for the player's Map sub-tab.
-const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, pal, slug, partyStatus, npcCombat }) {
+const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, isBattleMode, pal, slug, partyStatus, npcCombat }) {
   const [viewerState, setViewerState] = useState(null);
 
   // Detect mapMode transitions and trigger the dramatic overlay + sound.
@@ -1333,24 +1335,24 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
   const transitionTimerRef = useRef(null);
 
   useEffect(() => {
-    const isCombat = activeMap?.mapMode === "battle";
-    if (prevModeRef.current === undefined) { prevModeRef.current = isCombat; return; }
+    // isBattleMode comes from mapLibrary.activeMapId === battleMapId — updates atomically
+    // with putMapActive so there's no race against patchMapTokens's PutCommand.
+    if (prevModeRef.current === undefined) { prevModeRef.current = isBattleMode; return; }
     const wasCombat = prevModeRef.current;
-    prevModeRef.current = isCombat;
-    if (isCombat !== wasCombat) {
-      const type = isCombat ? "entering" : "leaving";
+    prevModeRef.current = isBattleMode;
+    if (isBattleMode !== wasCombat) {
+      const type = isBattleMode ? "entering" : "leaving";
       setTransitionType(type);
       if (type === "entering") playCombatEnterSound();
       else playCombatExitSound();
       clearTimeout(transitionTimerRef.current);
       transitionTimerRef.current = setTimeout(() => setTransitionType(null), 3200);
     }
-  }, [activeMap?.id, activeMap?.mapMode]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeMap?.id, isBattleMode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => clearTimeout(transitionTimerRef.current), []);
 
   const tokens = activeMap?.tokens || [];
-  const isBattleMode = activeMap?.mapMode === "battle";
   const partyVisible = partyStatus?.visible !== false;
   const tokenScale = activeMap?.tokenScale ?? 1;
   const labelsHidden = tokenScale * (viewerState?.scale ?? 1) < 0.6;

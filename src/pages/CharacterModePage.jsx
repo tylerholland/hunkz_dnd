@@ -229,6 +229,9 @@ export default function CharacterModePage() {
   const activeMapView = activeMap && mapLibrary.activeMapView?.mapId === activeMap.id
     ? mapLibrary.activeMapView
     : null;
+  // Derived from server truth (battleMapId) so it updates atomically with putMapActive,
+  // avoiding the race where patchMapTokens PutCommand could revert activeMapId.
+  const isBattleMode = !!(mapLibrary.activeMapId && mapLibrary.activeMapId === mapLibrary.battleMapId);
 
   const handleUnlockSubmit = async (e) => {
     e.preventDefault();
@@ -397,6 +400,7 @@ export default function CharacterModePage() {
       onSessionSync={queueSessionSync}
       activeMap={activeMap}
       activeMapView={activeMapView}
+      isBattleMode={isBattleMode}
       sessionPassword={sessionPassword}
       partyStatus={partyStatus}
       initiativeData={initiativeData}
