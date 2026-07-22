@@ -1,19 +1,28 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { putMapActive, patchMap, deleteMap } from "../../api";
 import MapUploadModal, { displayMapName } from "./MapUploadModal";
 import MapThumbnail from "../maps/MapThumbnail";
 import "./mapLibrary.css";
 
-export default function MapLibraryModal({ mapLibrary, dmPassword, onLibraryChange, asPage = false }) {
+export default function MapLibraryModal({ mapLibrary, dmPassword, combatMode, onLibraryChange, asPage = false }) {
   const [renamingId, setRenamingId] = useState(null);
   const [renameValue, setRenameValue] = useState("");
   const [deletingId, setDeletingId] = useState(null);
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
   const [error, setError] = useState("");
+  const [optimisticActiveId, setOptimisticActiveId] = useState(null);
 
   const maps = mapLibrary?.maps || [];
-  const activeMapId = mapLibrary?.activeMapId || null;
+  const serverActiveId = mapLibrary?.activeMapId || null;
+  const activeMapId = optimisticActiveId ?? serverActiveId;
+  const activeLabel = combatMode ? "● Combat Map" : "● Adventure Map";
+
+  useEffect(() => {
+    if (optimisticActiveId && optimisticActiveId === serverActiveId) {
+      setOptimisticActiveId(null);
+    }
+  }, [serverActiveId, optimisticActiveId]);
 
   // Static palette values — this component does not receive a pal prop so
   // hardcoded ocean-palette hex values are used (same as before the refactor).
@@ -43,10 +52,15 @@ export default function MapLibraryModal({ mapLibrary, dmPassword, onLibraryChang
 
   const handleSetActive = async (mapId) => {
     setError("");
+    setOptimisticActiveId(mapId);
+    const modeOpts = combatMode ? { battleMapId: mapId } : { adventureMapId: mapId };
     try {
-      await putMapActive(mapId, dmPassword);
+      await putMapActive(mapId, dmPassword, modeOpts);
       onLibraryChange();
-    } catch { setError("Failed to set active map."); }
+    } catch {
+      setOptimisticActiveId(null);
+      setError("Failed to set active map.");
+    }
   };
 
   const handleStartRename = (map) => {
@@ -131,7 +145,7 @@ export default function MapLibraryModal({ mapLibrary, dmPassword, onLibraryChang
               )}
 
               {isActive && !isRenaming && (
-                <div style={{ fontFamily: "'IM Fell English', Georgia, serif", fontSize: 11, letterSpacing: "0.1em", color: "#66cc66" }}>● Active</div>
+                <div style={{ fontFamily: "'IM Fell English', Georgia, serif", fontSize: 11, letterSpacing: "0.1em", color: "#66cc66" }}>{activeLabel}</div>
               )}
 
               {!isRenaming && !isDeleting && (

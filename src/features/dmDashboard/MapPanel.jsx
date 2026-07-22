@@ -657,6 +657,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
         <MapLibraryModal
           mapLibrary={mapLibrary}
           dmPassword={dmPassword}
+          combatMode={combatMode}
           onLibraryChange={handleLibraryChange}
           asPage={false}
         />
