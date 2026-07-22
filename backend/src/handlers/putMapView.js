@@ -1,6 +1,7 @@
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
 const { getMapLibraryState, saveMapLibraryState, normalizeMapView } = require("../lib/specialRecords");
+const { notifySessionChanged } = require("../lib/broadcast");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -22,9 +23,13 @@ exports.handler = async (event) => {
 
   await saveMapLibraryState({
     activeMapId: state.activeMapId,
+    adventureMapId: state.adventureMapId,
+    battleMapId: state.battleMapId,
     activeMapView,
     maps: state.maps,
   });
+
+  await notifySessionChanged();
 
   return ok({ activeMapId: state.activeMapId, activeMapView });
 };

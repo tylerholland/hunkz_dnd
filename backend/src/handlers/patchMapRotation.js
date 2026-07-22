@@ -25,7 +25,7 @@ exports.handler = async (event) => {
   const updatedMaps = [...state.maps];
   updatedMaps[idx] = { ...updatedMaps[idx], rotation: body.rotation };
 
-  await saveMapLibraryState({ activeMapId: state.activeMapId, activeMapView: state.activeMapView, maps: updatedMaps });
+  await saveMapLibraryState({ activeMapId: state.activeMapId, adventureMapId: state.adventureMapId, battleMapId: state.battleMapId, activeMapView: state.activeMapView, maps: updatedMaps });
 
   await notifySessionChanged();
 

@@ -166,9 +166,11 @@ async function getMapLibraryState() {
   return normalizeMapLibraryRecord(item);
 }
 
-async function saveMapLibraryState({ activeMapId, activeMapView, maps }) {
+async function saveMapLibraryState({ activeMapId, activeMapView, maps, adventureMapId, battleMapId }) {
   await putSpecialRecord(MAP_LIBRARY_SLUG, {
     activeMapId: activeMapId ?? null,
+    adventureMapId: adventureMapId ?? null,
+    battleMapId: battleMapId ?? null,
     activeMapView: normalizeMapView(activeMapView),
     maps: maps ?? [],
   });

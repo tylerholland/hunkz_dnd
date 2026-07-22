@@ -63,7 +63,7 @@ exports.handler = async (event) => {
     ...(body.mapMode !== undefined ? { mapMode: body.mapMode } : {}),
   };
 
-  await saveMapLibraryState({ activeMapId: state.activeMapId, activeMapView: state.activeMapView, maps: updatedMaps });
+  await saveMapLibraryState({ activeMapId: state.activeMapId, adventureMapId: state.adventureMapId, battleMapId: state.battleMapId, activeMapView: state.activeMapView, maps: updatedMaps });
 
   await notifySessionChanged();
 
