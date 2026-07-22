@@ -52,7 +52,7 @@ export function useQueuedRefresh(refreshFn) {
   const queueRefresh = useCallback((delay = 75) => {
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      refreshFn({ background: true, force: true });
+      refreshFn({ background: true });
     }, delay);
   }, [refreshFn]);
 

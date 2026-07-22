@@ -172,7 +172,7 @@ export default function CharacterModePage() {
       setError("not_found");
     } finally {
       activeRequestCountRef.current = Math.max(0, activeRequestCountRef.current - 1);
-      if (!background && requestId === requestSeqRef.current) {
+      if (requestId === requestSeqRef.current) {
         setLoading(false);
       }
     }
