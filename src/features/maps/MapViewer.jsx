@@ -32,6 +32,7 @@ export default function MapViewer({
   pal,
   publishedView = null,
   allowResetToPublished = false,
+  autoFollowPublished = false,
   resetLabel = "DM View",
   onViewChange,
   freeZoom,
@@ -163,17 +164,18 @@ export default function MapViewer({
   }, [publishedView, imageNaturalSize]);
 
   useEffect(() => {
+    if (!autoFollowPublished) return;
     const token = publishedView?.updatedAt || null;
     if (!token || token === lastPublishedTokenRef.current) return;
     lastPublishedTokenRef.current = token;
     applyPublishedView();
-  }, [publishedView?.updatedAt, applyPublishedView]);
+  }, [autoFollowPublished, publishedView?.updatedAt, applyPublishedView]);
 
   // Re-apply once the image loads if the first apply couldn't use center fracs.
   useEffect(() => {
-    if (!imageNaturalSize || !pendingCenterFracApplyRef.current) return;
+    if (!autoFollowPublished || !imageNaturalSize || !pendingCenterFracApplyRef.current) return;
     applyPublishedView();
-  }, [imageNaturalSize, applyPublishedView]);
+  }, [autoFollowPublished, imageNaturalSize, applyPublishedView]);
 
   // Hint fade after 3s
   useEffect(() => {

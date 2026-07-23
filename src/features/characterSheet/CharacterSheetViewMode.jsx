@@ -1799,6 +1799,7 @@ export default function CharacterSheetViewMode({ ctx }) {
                           height={500}
                           pal={pal}
                           publishedView={activeMapView}
+                          autoFollowPublished
                           allowResetToPublished={!!activeMapView}
                           resetLabel="Current View"
                         />
