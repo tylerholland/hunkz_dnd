@@ -73,7 +73,6 @@ export default function MapViewerPage() {
             height={"calc(100vh - 96px)"}
             pal={pal}
             publishedView={activeMapView}
-            autoFollowPublished
             allowResetToPublished={!!activeMapView}
             resetLabel="Current View"
           />

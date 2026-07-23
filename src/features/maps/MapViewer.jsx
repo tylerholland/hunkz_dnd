@@ -32,7 +32,6 @@ export default function MapViewer({
   pal,
   publishedView = null,
   allowResetToPublished = false,
-  autoFollowPublished = false,
   resetLabel = "DM View",
   onViewChange,
   freeZoom,
@@ -70,6 +69,7 @@ export default function MapViewer({
   const pdfMode = isPdfMap({ imageUrl, contentType, name });
   const lastPublishedTokenRef = useRef(null);
   const pendingCenterFracApplyRef = useRef(false);
+  const hasInitializedViewRef = useRef(false);
   const modifierKeyLabel = getMapZoomModifierLabel();
   const zoomUnlocked = typeof freeZoom === "boolean" ? freeZoom : internalFreeZoom;
   const handlePdfLoad = useCallback(({ numPages }) => {
@@ -163,19 +163,22 @@ export default function MapViewer({
     setPageNumber(nextPage);
   }, [publishedView, imageNaturalSize]);
 
+  // Apply the published view exactly once per mount (initial positioning only).
+  // Players and DM can pan freely after that without snap-back on re-publish.
   useEffect(() => {
-    if (!autoFollowPublished) return;
+    if (hasInitializedViewRef.current) return;
     const token = publishedView?.updatedAt || null;
-    if (!token || token === lastPublishedTokenRef.current) return;
+    if (!token) return;
+    hasInitializedViewRef.current = true;
     lastPublishedTokenRef.current = token;
     applyPublishedView();
-  }, [autoFollowPublished, publishedView?.updatedAt, applyPublishedView]);
+  }, [publishedView?.updatedAt, applyPublishedView]);
 
-  // Re-apply once the image loads if the first apply couldn't use center fracs.
+  // Re-apply once the image loads if the initial apply couldn't use center fracs.
   useEffect(() => {
-    if (!autoFollowPublished || !imageNaturalSize || !pendingCenterFracApplyRef.current) return;
+    if (!imageNaturalSize || !pendingCenterFracApplyRef.current) return;
     applyPublishedView();
-  }, [autoFollowPublished, imageNaturalSize, applyPublishedView]);
+  }, [imageNaturalSize, applyPublishedView]);
 
   // Hint fade after 3s
   useEffect(() => {

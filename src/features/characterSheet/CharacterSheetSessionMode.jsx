@@ -1404,7 +1404,6 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         height={480}
         pal={pal}
         publishedView={activeMapView}
-        autoFollowPublished
         onViewChange={setViewerState}
         tokenScale={tokenScale}
         rotation={activeMap?.rotation ?? 0}
