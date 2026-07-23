@@ -2,7 +2,7 @@
 
 **SUPERSEDED by Story 31** — see design/stories/31-npc-library-portraits-hp.md
 
-**Status**: Design complete — Ready for Architect Notes
+**Status**: Implemented (`ad0713a`), then superseded/extended by Story 31 (also implemented)
 **Source**: User direction + RPG Consultant follow-on to Story 23
 
 ---

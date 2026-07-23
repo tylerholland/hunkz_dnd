@@ -1,6 +1,6 @@
 # Feature Story: Player Map View Polish — Centred View + NPC Token Names
 
-**Status**: Ready for Architect Notes
+**Status**: Implemented (`eb23684`) — Stories 47a + 47b
 **Source**: DM/Player feedback from live session
 
 ---

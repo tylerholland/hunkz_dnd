@@ -1,6 +1,6 @@
 # Story 23 — NPC Spell and Ability Reference
 
-**Status**: Design updated — needs re-implementation (abilities field changed from string to string[])
+**Status**: Implemented — `abilities` is `string[]` end-to-end (`backend/src/lib/specialRecords.js`, `Array.isArray(t.abilities)`)
 **Source**: RPG Consultant
 **Brief**: `design/briefs/npc-ability-reference-brief.md`
 

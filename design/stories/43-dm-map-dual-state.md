@@ -1,6 +1,6 @@
 # Feature Story: DM Dashboard Map — Dual Mode State + Clear Tokens Button
 
-**Status**: Ready for Architect Notes
+**Status**: Implemented (`fd1d3f6`), extended by Story 43b — server-side persistence (`6a9928a`)
 **Source**: DM feedback
 
 ---

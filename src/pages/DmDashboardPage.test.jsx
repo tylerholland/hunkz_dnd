@@ -69,6 +69,21 @@ vi.mock("../features/dmDashboard/ManagePartyModal", () => ({
   default: () => null,
 }));
 
+// Story 36 WebSocket nudge channel — irrelevant to text-scaling/polling
+// behavior under test, and left unmocked it opens a real WebSocket to
+// VITE_WS_URL (jsdom provides a real WebSocket implementation), which never
+// resolves in this sandbox and hangs the test run indefinitely.
+vi.mock("../lib/useSessionSocket", () => ({
+  useSessionSocket: () => ({ connected: false }),
+}));
+
+// Unrelated dashboard panel; unlike its sibling feature panels below it isn't
+// gated behind a toggle, so it mounts on every render and unconditionally
+// fetches "/world-guide/toc.json" via a bare fetch() with no mock/base URL.
+vi.mock("../features/worldGuide/WorldGuideDrawer", () => ({
+  default: () => null,
+}));
+
 import DmDashboardPage from "./DmDashboardPage";
 
 describe("DmDashboardPage text scaling", () => {
@@ -108,11 +123,12 @@ describe("DmDashboardPage text scaling", () => {
 
     expect(screen.getByText("Text Size: 100%")).toBeInTheDocument();
 
-    fireEvent.click(screen.getByText("Text Size: 100%"));
+    // The "Text Size: 100%" text is a plain (non-interactive) label — the
+    // stepper's +/- buttons are what's actually clickable, and clicking
+    // either one leaves the menu open (no auto-close on stepper interaction).
+    fireEvent.click(screen.getByRole("button", { name: "Increase Text Size" }));
 
     await waitFor(() => {
-      // Re-open menu to see updated label
-      fireEvent.click(screen.getByRole("button", { name: "More actions" }));
       expect(screen.getByText("Text Size: 110%")).toBeInTheDocument();
     });
 

@@ -4,12 +4,14 @@ import { Link, useNavigate } from "react-router-dom";
 import DiceRoller from "../../components/DiceRoller";
 import TopNav, { NavSegment } from "../../components/TopNav";
 import { InfoBadge } from "./CharacterTalents";
+import { getTalentTooltip } from "./talentCatalog";
 import ItemEditorModal, { itemTypeLabel } from "./ItemEditorModal";
 import { HR } from "./CharacterSheetPrimitives";
 import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, HIT_DIE_BY_CLASS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt } from "./constants";
 import { renderInline } from "./theme";
 import MapViewer from "../maps/MapViewer";
 import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
+import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../../lib/useTextScale";
 import "./characterSheet.css";
 
 const CONDITION_SEVERITY_COLORS = {
@@ -419,6 +421,7 @@ export default function CharacterSheetViewMode({ ctx }) {
   } = ctx;
 
   const navigate = useNavigate();
+  const { textScale, textScaleMenuItem } = useTextScale(PLAYER_TEXT_SCALE_KEY);
 
   // Close qty stepper when clicking outside the loadout tab
   useEffect(() => {
@@ -458,6 +461,7 @@ export default function CharacterSheetViewMode({ ctx }) {
       color: pal.accentBright,
       border: `${pal.accent}66`,
       bg: `${pal.accent}16`,
+      catalog: true,
     },
     {
       label: "Spells",
@@ -474,12 +478,13 @@ export default function CharacterSheetViewMode({ ctx }) {
       color: pal.gem,
       border: `${pal.gem}55`,
       bg: `${pal.gem}14`,
+      catalog: true,
     },
   ];
   const hasPersonaBadgeContent = talentGroups.some((group) => group.items.length > 0);
 
   return (
-    <div style={rootWrap}>
+    <div style={{ ...rootWrap, zoom: textScale }}>
       <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
 
       <div aria-hidden="true" className="cs-bg-glow" style={{
@@ -507,6 +512,8 @@ export default function CharacterSheetViewMode({ ctx }) {
           { label: unlockState === "unlocked" ? "Edit Character" : "🔒 Edit Character", onClick: handleEditClick },
           { label: "Export JSON", onClick: exportJSON },
           { label: "All Characters", href: "/" },
+          { divider: true },
+          textScaleMenuItem,
         ]}
       />
 
@@ -1371,7 +1378,7 @@ export default function CharacterSheetViewMode({ ctx }) {
                                   key={item.key}
                                   pal={pal}
                                   label={item.label}
-                                  tooltip={`${group.singular}: ${item.label}`}
+                                  tooltip={group.catalog ? getTalentTooltip(item.key) : `${group.singular}: ${item.label}`}
                                   color={group.color}
                                   background={group.bg}
                                   border={group.border}

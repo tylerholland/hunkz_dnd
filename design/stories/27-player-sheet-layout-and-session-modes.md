@@ -1,6 +1,6 @@
 # Feature Story: Player Sheet Layout — Profile Mode vs. Session Mode
 
-**Status**: Needs UX design
+**Status**: Implemented (`45f1969`) — `CharacterSheetSessionMode.jsx`
 **Source**: RPG Consultant
 **Prototype**: (leave blank — ux-designer fills this in)
 

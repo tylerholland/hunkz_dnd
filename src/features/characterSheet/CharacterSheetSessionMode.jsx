@@ -24,6 +24,7 @@ import { useState, useEffect, useRef, useCallback, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
 import { modOf, fmtMod, CONDITIONS } from "./constants";
+import CharacterTalents from "./CharacterTalents";
 import { patchSession, moveMapToken } from "../../api";
 import DiceRoller from "../../components/DiceRoller";
 import TopNav, { NavSegment } from "../../components/TopNav";
@@ -32,6 +33,7 @@ import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
 import { TokenChip } from "../dmDashboard/battleMode/BattleModeController";
 import CombatTransitionOverlay from "./CombatTransitionOverlay";
 import { playCombatEnterSound, playCombatExitSound } from "../../lib/combatSound";
+import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../../lib/useTextScale";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
 
@@ -472,6 +474,9 @@ export default function CharacterSheetSessionMode({
   const activeConditions = char?.conditions || [];
   const concentration = char?.concentration || { active: false, spell: "" };
   const spellSlots = char?.spellSlots || [];
+  const spells = char?.spells || [];
+  const skills = char?.skills || [];
+  const specialAbilities = char?.specialAbilities || [];
   const weapons = char?.weapons || [];
   const equipment = char?.equipment || [];
   const stats = char?.stats || [];
@@ -533,6 +538,8 @@ export default function CharacterSheetSessionMode({
     />
   );
 
+  const { textScale, textScaleMenuItem } = useTextScale(PLAYER_TEXT_SCALE_KEY);
+
   const sharedPalVars = {
     "--pal-bg": pal.bg,
     "--pal-surface": pal.surface,
@@ -561,6 +568,7 @@ export default function CharacterSheetSessionMode({
           background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%),
                        radial-gradient(ellipse at 80% 100%, ${pal.glow2} 0%, transparent 55%),
                        ${pal.bg}`,
+          zoom: textScale,
         }}
         className="cs-session-root"
       >
@@ -576,6 +584,8 @@ export default function CharacterSheetSessionMode({
           menuItems={[
             { label: "Export JSON", href: `/characters/${slug}` },
             { label: "All Characters", href: "/" },
+            { divider: true },
+            textScaleMenuItem,
           ]}
         />
 
@@ -615,6 +625,7 @@ export default function CharacterSheetSessionMode({
         background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%),
                      radial-gradient(ellipse at 80% 100%, ${pal.glow2} 0%, transparent 55%),
                      ${pal.bg}`,
+        zoom: textScale,
       }}
       className="cs-session-root"
     >
@@ -631,6 +642,8 @@ export default function CharacterSheetSessionMode({
         menuItems={[
           { label: "Export JSON", href: `/characters/${slug}` },
           { label: "All Characters", href: "/" },
+          { divider: true },
+          textScaleMenuItem,
         ]}
       />
 
@@ -827,15 +840,15 @@ export default function CharacterSheetSessionMode({
                         </div>
                       ) : (
                         <div className="cs-sm-party-hp-row">
-                          <span className={hpNumCls}>
-                            {member.hpCurrent}/{member.hpMax}
-                          </span>
                           <div className="cs-sm-party-hp-bar">
                             <div
                               className={`cs-sm-party-hp-fill ${hpBarCls}`}
                               style={{ width: `${memberHpPct}%` }}
                             />
                           </div>
+                          <span className={hpNumCls}>
+                            {member.hpCurrent}/{member.hpMax}
+                          </span>
                         </div>
                       )}
                       {member.conditions?.length > 0 && (
@@ -1018,6 +1031,28 @@ export default function CharacterSheetSessionMode({
                   );
                 })}
               </div>
+            </>
+          )}
+
+          {/* Spells */}
+          {spells.length > 0 && (
+            <>
+              <hr className="cs-sm-rule" />
+              <span className="cs-sm-label">Spells</span>
+              <div className="cs-sm-spells-wrap">
+                {spells.map((spell) => (
+                  <span key={spell} className="cs-sm-spell-chip">{spell}</span>
+                ))}
+              </div>
+            </>
+          )}
+
+          {/* Skills & Special Abilities */}
+          {(skills.length > 0 || specialAbilities.length > 0) && (
+            <>
+              <hr className="cs-sm-rule" />
+              <span className="cs-sm-label">Skills &amp; Abilities</span>
+              <CharacterTalents pal={pal} skills={skills} specialAbilities={specialAbilities} compact />
             </>
           )}
 

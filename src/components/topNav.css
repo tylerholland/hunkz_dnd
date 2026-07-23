@@ -28,7 +28,7 @@
   background: var(--pal-bg);
   border-bottom: 1px solid var(--pal-border);
   display: grid;
-  grid-template-columns: 1fr auto 1fr;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   padding: 0 12px;
   gap: 8px;
@@ -342,6 +342,33 @@
   font-size: 12px;
   color: var(--pal-text, #c8d8e4);
   white-space: nowrap;
+}
+
+.topnav-menu-select-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 16px 8px;
+}
+.topnav-menu-select-label {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted, #6a7888);
+}
+.topnav-menu-select {
+  width: 100%;
+  background: var(--pal-surface, rgba(18,32,48,0.6));
+  border: 1px solid var(--pal-border, rgba(106,143,168,0.25));
+  border-radius: 3px;
+  color: var(--pal-text, #c8d8e4);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  padding: 7px 8px;
+  cursor: pointer;
+  outline: none;
 }
 
 /* ─── Mobile second row (segmented control drops here below 560px) ──────── */

@@ -1,6 +1,6 @@
 # Feature Story: Map Panel Taller Height Limit
 
-**Status**: Ready for Architect Notes
+**Status**: Implemented (`e651200`, bundled with Stories 44/45) — cap raised to `window.innerHeight - 120`
 **Source**: DM feedback
 
 ---

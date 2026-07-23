@@ -12,6 +12,7 @@ import {
   SUBCLASS_OPTIONS,
 } from "./constants";
 import { DragHandle } from "./CharacterSheetPrimitives";
+import { InfoBadge } from "./CharacterTalents";
 import ItemEditorModal from "./ItemEditorModal";
 import { PALETTES } from "./theme";
 
@@ -361,29 +362,20 @@ export default function CharacterSheetEditMode({ ctx }) {
                 const detail = getTalentDetail(key);
                 const selected = (char.skills || []).includes(key);
                 return (
-                  <button
+                  <InfoBadge
                     key={key}
-                    type="button"
-                    title={detail.description}
-                    onClick={() => {
+                    pal={pal}
+                    label={detail.label}
+                    tooltip={detail.description || detail.label}
+                    selected={selected}
+                    onSelect={() => {
                       const existing = char.skills || [];
                       update("skills", selected ? existing.filter((value) => value !== key) : [...existing, key]);
                     }}
-                    style={{
-                      background: selected ? `${pal.accent}16` : "transparent",
-                      border: `1px solid ${selected ? pal.accent : pal.border}`,
-                      borderRadius: 12,
-                      padding: "6px 12px",
-                      color: selected ? pal.accentBright : pal.textMuted,
-                      fontFamily: pal.fontUI,
-                      fontSize: 11,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {detail.label}
-                  </button>
+                    color={selected ? pal.accentBright : pal.textMuted}
+                    background={selected ? `${pal.accent}16` : "transparent"}
+                    border={selected ? pal.accent : pal.border}
+                  />
                 );
               })}
             </div>
@@ -399,29 +391,20 @@ export default function CharacterSheetEditMode({ ctx }) {
                 const detail = getTalentDetail(key);
                 const selected = (char.specialAbilities || []).includes(key);
                 return (
-                  <button
+                  <InfoBadge
                     key={key}
-                    type="button"
-                    title={detail.description}
-                    onClick={() => {
+                    pal={pal}
+                    label={detail.label}
+                    tooltip={detail.description || detail.label}
+                    selected={selected}
+                    onSelect={() => {
                       const existing = char.specialAbilities || [];
                       update("specialAbilities", selected ? existing.filter((value) => value !== key) : [...existing, key]);
                     }}
-                    style={{
-                      background: selected ? `${pal.gem}16` : "transparent",
-                      border: `1px solid ${selected ? pal.gem : pal.border}`,
-                      borderRadius: 12,
-                      padding: "6px 12px",
-                      color: selected ? pal.gem : pal.textMuted,
-                      fontFamily: pal.fontUI,
-                      fontSize: 11,
-                      letterSpacing: "0.1em",
-                      textTransform: "uppercase",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {detail.label}
-                  </button>
+                    color={selected ? pal.gem : pal.textMuted}
+                    background={selected ? `${pal.gem}16` : "transparent"}
+                    border={selected ? pal.gem : pal.border}
+                  />
                 );
               })}
             </div>

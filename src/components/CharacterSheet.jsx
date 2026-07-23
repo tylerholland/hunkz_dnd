@@ -102,7 +102,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     const fieldNames = Object.keys(fields);
     markSessionExpected(fields);
 
-    return patchSession(slug, fields, null)
+    return patchSession(slug, fields, unlockedPassword)
       .then(() => {
         if (Object.prototype.hasOwnProperty.call(fields, "hpCurrent")) hpServerRef.current = fields.hpCurrent;
         if (Object.prototype.hasOwnProperty.call(fields, "exhaustionLevel")) exhServerRef.current = fields.exhaustionLevel;
@@ -116,7 +116,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
         }
         throw err;
       });
-  }, [clearSessionExpected, markSessionExpected, requestSessionSync, slug]);
+  }, [clearSessionExpected, markSessionExpected, requestSessionSync, slug, unlockedPassword]);
 
   useEffect(() => {
     if (!slug) {
@@ -549,8 +549,8 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     []
   );
   const commitHp = useCallback(
-    (targetHp) => patchSession(slug, { hpCurrent: targetHp }, null),
-    [slug]
+    (targetHp) => patchSession(slug, { hpCurrent: targetHp }, unlockedPassword),
+    [slug, unlockedPassword]
   );
   const rollbackHp = useCallback(
     (previousServerHp) => setChar((current) => ({ ...current, hpCurrent: previousServerHp })),
@@ -580,8 +580,8 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     []
   );
   const commitExhaustion = useCallback(
-    (targetExhaustion) => patchSession(slug, { exhaustionLevel: targetExhaustion }, null),
-    [slug]
+    (targetExhaustion) => patchSession(slug, { exhaustionLevel: targetExhaustion }, unlockedPassword),
+    [slug, unlockedPassword]
   );
   const rollbackExhaustion = useCallback(
     (previousServerExhaustion) => setChar((current) => ({ ...current, exhaustionLevel: previousServerExhaustion })),
@@ -603,8 +603,8 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     []
   );
   const commitTempHp = useCallback(
-    (targetTempHp) => patchSession(slug, { tempHP: targetTempHp }, null),
-    [slug]
+    (targetTempHp) => patchSession(slug, { tempHP: targetTempHp }, unlockedPassword),
+    [slug, unlockedPassword]
   );
   const rollbackTempHp = useCallback(
     (previousServerTempHp) => setChar((current) => ({ ...current, tempHP: previousServerTempHp })),

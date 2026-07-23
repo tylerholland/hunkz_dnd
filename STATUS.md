@@ -1,44 +1,46 @@
-# Project Status — last updated 2026-07-16
+# Project Status — last updated 2026-07-22
 
 ## What just landed on `main`
 
-| Commit | What |
-|---|---|
-| (uncommitted) | Cleanup: dead `DmDashboardPage.jsx` deleted, `DmDashboardPrototypePage.jsx` renamed to `DmDashboardPage.jsx`, `/dm-classic` + `/dm-prototype` routes and "Classic Layout" nav link removed, dashboard test API mocks repaired, doc-truth pass (CLAUDE.md, app-overview.md, this file) |
-| `bce1fb2` | Counter wheel fill changes logged to DM roll history |
-| `977899a` | Story 32 implemented — ability checks roll 2d6 + modifier |
-| `cf4f355` | Combat-mode gap fix between counter wheels and dice roller |
-| `4bb6516` | Session status notes + Noa's feature feedback |
-| `8158a38` | Stories 32 + 33 written |
+Stories 34 through 47 (47a/47b) have landed since the last status pass — player-moved
+tokens, full sync consolidation + WebSocket nudge + stale-client auto-refresh, shared
+TopNav, CharacterCard decomposition, NPC library/portraits, DM map dual-state +
+per-token resize + rotation, and player map view polish all confirmed live in source.
+Several of these story files still had pre-implementation `Status:` labels ("Ready for
+Architect Notes", "Needs UX design") that were never updated after the work landed —
+that's now corrected (2026-07-22 doc-truth pass, see `design/stories/`).
 
-**Backend deploy state**: verified 2026-07-16 — `/npc-library` and `/counter-wheels` are live (handlers respond with their own auth errors). The Story 24 deploy warning from June is resolved.
+**PRIORITY (2026-07-17) resolved**: the AWS free-tier request-quota pressure that drove
+Stories 35/36 to jump the queue is addressed — consolidated `GET /session-state` +
+WebSocket nudge channel are both live.
 
 ---
 
 ## Pipeline — what's ready to advance
 
-- **Story 33 — Token Tray Parity** (`design/stories/33-token-tray-parity.md`): Ready for Architect Notes.
+Genuinely unfinished (verified against source, not just doc status):
 
-## PRIORITY (2026-07-17): AWS free-tier pressure
+- **Story 33 — Token Tray Parity** (`design/stories/33-token-tray-parity.md`): Ready for Architect Notes. NPC tokens in the tray still show initials instead of portrait; hover-card/card-highlight parity not started. *Note: numbering collides with `33-ability-score-display.md`, which is a different (and already-implemented) story — worth renumbering one of them.*
+- **Story 39 — Talent Codex** (`design/stories/39-talent-codex.md`): Approved, ready to build. No code yet.
+- **Story 40 — Adventure Breakpoints** (`design/stories/40-adventure-breakpoints.md`): Approved, ready to build. No code yet.
+- **Story 41 — Campaign Settings Admin** (`design/stories/41-campaign-settings-admin.md`): Approved, ready to build — blocked on 39 and 40 landing first.
+- **Story 42 — Profile View Slim-Down** (`design/stories/42-profile-view-slimdown.md`): Approved, ready to build. Profile view still has all four tabs (Combat/Map not yet removed).
+- **Story 21 — Combat Efficiency** (`design/stories/21-combat-efficiency.md`): Awaiting design — AoE multi-target damage, condition tooltips, NPC concentration tracking.
+- **Story 25 — World Guide**: Iceboxed (deliberately shelved — distinct from Story 26, the World Guide *browser*, which is implemented).
 
-Account hit **85% of free-tier request quota** — idle browser tabs polling 4-5 endpoints at 1s. Next play session is **Wednesday 2026-07-22**; sync work must land and deploy before then. Stories 35 (consolidation) → 36 (WebSocket nudge) jump the queue; token stories (33, classic-Map-tab parity) deferred. Stopgap until deployed: don't leave app tabs open when not playing.
+## Roadmap (agreed 2026-07-16) — status
 
-## Roadmap (agreed 2026-07-16)
-
-Original priority order from architecture/feature review session:
-
-1. **Player-moved tokens** (must-have) — players drag their own PC token only; player-writable move endpoint consistent with ADR-005 trust model. Needs `rpg-consultant` story.
-2. **Sync consolidation → WebSocket nudge** — step 1: single `GET /session-state` Lambda (BatchGetItem all sentinels + party projection) replacing the 5-endpoint polling fan-out; step 2: API Gateway WebSocket "state changed, refetch" ping channel with graceful fallback to slow polling. Full payload-over-WS rejected as not worth it.
-3. **Shared top nav** — consistent nav/menu design language across player and DM pages. Needs `design-strategist` first.
-4. **CharacterCard.jsx breakup** — 2,041 lines; extract death-saves strip and `DamageHealModal` first. `code-architect` refactor scope, no design stage.
-5. **Rich talent/ability library + admin page** — DM-authored descriptions replacing `Type: Name` tooltips; structural sibling of the NPC library (sentinel + gallery editor). Full pipeline.
-6. **Adventure/arc breakpoints** — begin/end adventure actions that archive arc state (roll history, wheels, XP snapshot) and reset live surfaces. `rpg-consultant` to define the model.
+1. ~~Player-moved tokens~~ — done (Story 34).
+2. ~~Sync consolidation → WebSocket nudge~~ — done (Stories 35, 35b, 36, 36b).
+3. ~~Shared top nav~~ — done (Story 37).
+4. ~~CharacterCard.jsx breakup~~ — done (Story 38).
+5. **Rich talent/ability library + admin page** — Story 39, still open, full pipeline needed (design-strategist → ux-designer → code-architect → feature-builder).
+6. **Adventure/arc breakpoints** — Story 40, still open, `rpg-consultant` model already defined in the story doc.
 
 ---
 
 ## Things that need attention (not urgent)
 
-- **Old story statuses**: Stories 01–24 have stale status fields from before consistent status tracking. Cosmetic only.
 - **Lint debt**: `npm run lint` reports ~10.5k pre-existing problems repo-wide (legacy/backup files and old rules); files touched recently lint clean. Worth a scoped cleanup or ignore-list pass.
 - **`dist/` is committed and dirty** in git; deploys go via S3 sync, so it can likely be removed from the repo.
-- **`.dm-prototype-*` CSS class names** remain in `dashboard.css` / `DmDashboardPage.jsx` after the rename — functional and self-consistent; rename only if touching those files anyway.
+- **Story 33 numbering collision** — `33-ability-score-display.md` (implemented) and `33-token-tray-parity.md` (not implemented) share a number. Rename one before it causes confusion.

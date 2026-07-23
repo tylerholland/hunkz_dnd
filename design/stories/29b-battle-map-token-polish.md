@@ -1,6 +1,6 @@
 # Feature Story: Battle Map Token Polish
 
-**Status**: Needs UX design
+**Status**: Implemented (`f34f2a5`, merged `e8952e4`)
 **Source**: RPG Consultant
 **Prototype**: design/prototypes/battle-map-token-polish.html
 

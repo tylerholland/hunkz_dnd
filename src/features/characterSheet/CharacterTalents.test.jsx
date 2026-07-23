@@ -20,9 +20,9 @@ describe("CharacterTalents", () => {
     const backstab = screen.getByText("Backstab");
 
     fireEvent.click(athletics);
-    expect(screen.getByText("Skill: Athletics")).toBeInTheDocument();
+    expect(screen.getByText("Represents strength, climbing, grappling, swimming, and other feats of physical exertion.")).toBeInTheDocument();
 
     fireEvent.click(backstab);
-    expect(screen.getByText("Special Ability: Backstab")).toBeInTheDocument();
+    expect(screen.getByText("Deals extra harm or gains advantage when striking from surprise or weak positions.")).toBeInTheDocument();
   });
 });

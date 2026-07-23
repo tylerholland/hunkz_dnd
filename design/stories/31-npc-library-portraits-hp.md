@@ -1,6 +1,6 @@
 # Feature Story: NPC Library with HP and Portraits
 
-**Status**: Ready for Architect Notes
+**Status**: Implemented (`eda4c5d`, merged `1b42531`)
 **Source**: RPG Consultant
 **Prototype**: design/prototypes/npc-library-portraits-hp.html
 

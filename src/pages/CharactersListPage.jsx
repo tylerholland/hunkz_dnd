@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { listCharacters, verifyPassword, getPartyRoster } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import TopNav from "../components/TopNav";
+import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../lib/useTextScale";
 import "./pages.css";
 
 const RESERVED_CHARACTER_SLUGS = new Set(["initiative", "npc-combat", "party-roster"]);
@@ -25,6 +26,7 @@ export default function CharactersListPage() {
   const [dmActive,    setDmActive]    = useState(() => !!sessionStorage.getItem("dnd_dm_password"));
   const [partyMemberSlugs, setPartyMemberSlugs] = useState(() => new Set());
   const navigate = useNavigate();
+  const { textScale, textScaleMenuItem } = useTextScale(PLAYER_TEXT_SCALE_KEY);
 
   useEffect(() => {
     Promise.all([
@@ -99,10 +101,14 @@ export default function CharactersListPage() {
         { label: "Campaign", href: "/dm" },
         { label: "Maps", href: "/maps" },
         { divider: true },
+        textScaleMenuItem,
+        { divider: true },
         { label: "End Session", onClick: handleDmLogout, destructive: true },
       ]
     : [
         { label: "DM Login", onClick: () => setDmPrompt(true) },
+        { divider: true },
+        textScaleMenuItem,
       ];
 
   return (
@@ -112,6 +118,7 @@ export default function CharactersListPage() {
       background: "#0d0f14",
       color: "#c8bfaf",
       fontFamily: "'Crimson Text', Georgia, serif",
+      zoom: textScale,
     }}>
       <TopNav
         title="Character Library"

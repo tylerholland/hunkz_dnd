@@ -138,6 +138,7 @@ export const TokenChip = memo(function TokenChip({
   const [optimisticPos, setOptimisticPos] = useState(null);
   const [dragFailed, setDragFailed] = useState(false);
   const dragOriginRef = useRef(null);
+  const dragRotationRef = useRef(0);
   const dragPointerIdRef = useRef(null);
   const optimisticTimeoutRef = useRef(null);
 
@@ -176,9 +177,13 @@ export const TokenChip = memo(function TokenChip({
     setHasMounted(true);
   }, []);
 
-  // HP data — member uses hpCurrent + hp (from dmParty projection); npc uses hpCurrent + hpMax
+  // HP data — member uses hpCurrent + hpMax (hpMax is always the normalized,
+  // authoritative value from partyProjection.js's projectPlayerCharacter()/
+  // projectDmPartyItem(); the raw `hp` field is a legacy/edit-mode field that
+  // can disagree with it and must only be a fallback, not take priority);
+  // npc uses hpCurrent + hpMax
   const hpCurrent = member?.hpCurrent ?? npc?.hpCurrent ?? null;
-  const hpMax = member?.hp ?? member?.hpMax ?? npc?.hpMax ?? null;
+  const hpMax = member?.hpMax ?? member?.hp ?? npc?.hpMax ?? null;
   const isFallen = hpCurrent !== null && hpCurrent <= 0;
 
   // HP visibility rules (brief §13)
@@ -270,6 +275,14 @@ export const TokenChip = memo(function TokenChip({
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
     dragPointerIdRef.current = e.pointerId;
     dragOriginRef.current = { x: token.x, y: token.y };
+    // Read the map's rotation once, up front — it can't change mid-drag, so
+    // re-reading it via getComputedStyle() on every pointermove (as this used
+    // to do) is pure wasted style recalculation on the hottest path in the
+    // gesture, which was visible as jitter on a rotated map.
+    const layerEl = chipRef.current?.parentElement;
+    dragRotationRef.current = layerEl
+      ? parseFloat(getComputedStyle(layerEl).getPropertyValue('--map-rotation')) || 0
+      : 0;
     if (panSuppressedRef) panSuppressedRef.current = true;
     if (optimisticTimeoutRef.current) {
       clearTimeout(optimisticTimeoutRef.current);
@@ -289,7 +302,7 @@ export const TokenChip = memo(function TokenChip({
     if (!rect.width || !rect.height) return;
     const vx = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const vy = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
-    const rot = parseFloat(getComputedStyle(layerEl).getPropertyValue('--map-rotation')) || 0;
+    const rot = dragRotationRef.current;
     let fracX, fracY;
     if (rot === 90)       { fracX = vy;      fracY = 1 - vx; }
     else if (rot === 180) { fracX = 1 - vx;  fracY = 1 - vy; }

@@ -66,8 +66,7 @@ export function getTalentDetail(key) {
 
 export function getTalentTooltip(key) {
   const detail = getTalentDetail(key);
-  const kindLabel = detail.kind === "skill" ? "Skill" : "Special Ability";
-  return `${kindLabel}: ${detail.label}`;
+  return detail.description || detail.label;
 }
 
 export function getOrderedTalentEntries(skills = [], specialAbilities = []) {

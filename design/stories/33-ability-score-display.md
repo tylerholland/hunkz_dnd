@@ -1,6 +1,6 @@
 # Feature Story: Fix Ability Score Display in Dice Roller
 
-**Status**: Ready for Architect Notes
+**Status**: Implemented — `DiceRoller.jsx` receives real `char.stats`/`stats` from both call sites (`CharacterSheetViewMode.jsx`, `CharacterSheetSessionMode.jsx`)
 **Source**: Player feedback
 
 ---

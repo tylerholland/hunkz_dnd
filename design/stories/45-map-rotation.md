@@ -1,6 +1,6 @@
 # Feature Story: Map Rotation
 
-**Status**: Ready for Architect Notes
+**Status**: Implemented (`e651200`)
 **Source**: DM feedback
 
 ---

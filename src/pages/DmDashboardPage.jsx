@@ -22,6 +22,7 @@ import TopNav, { NavSegment } from "../components/TopNav";
 import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { reportServerBuildVersion } from "../lib/staleClient";
+import { useTextScale } from "../lib/useTextScale";
 import { computeMapSwitch } from "./combatModeToggle";
 
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
@@ -32,14 +33,6 @@ const CARD_FLIP_MS = 460;
 const CARD_COMPACT_MS = 240;
 const DICE_EXIT_MS = 240;
 const DICE_ENTER_MS = 420;
-const TEXT_SCALE_STEP = 0.1;
-const TEXT_SCALE_MIN = 0.9;
-const TEXT_SCALE_MAX = 1.4;
-
-function clampTextScale(value) {
-  if (!Number.isFinite(value)) return 1;
-  return Math.min(TEXT_SCALE_MAX, Math.max(TEXT_SCALE_MIN, value));
-}
 
 export default function DmDashboardPage() {
 
@@ -77,9 +70,7 @@ export default function DmDashboardPage() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [restNotice, setRestNotice] = useState("");
   const [palKey, setPalKey] = useState(() => sessionStorage.getItem("dnd_dm_palette") || "ocean");
-  const [textScale, setTextScale] = useState(() =>
-    clampTextScale(parseFloat(sessionStorage.getItem(TEXT_SCALE_STORAGE_KEY) || "1"))
-  );
+  const { textScale, textScaleMenuItem } = useTextScale(TEXT_SCALE_STORAGE_KEY);
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
   const cardOpenFnsRef = useRef({});
@@ -124,11 +115,6 @@ export default function DmDashboardPage() {
       setMapSwitching(false);
     }
   }, [mapLibrary?.activeMapId, mapSwitching]);
-
-  useEffect(() => {
-    sessionStorage.setItem(TEXT_SCALE_STORAGE_KEY, String(textScale));
-  }, [textScale]);
-
 
   useLayoutEffect(() => {
     const pendingFlip = pendingCardFlipRef.current;
@@ -960,11 +946,6 @@ export default function DmDashboardPage() {
       }),
     },
   ];
-  const roundedTextScalePct = Math.round(textScale * 100);
-  const canDecreaseTextScale = textScale > TEXT_SCALE_MIN;
-  const canIncreaseTextScale = textScale < TEXT_SCALE_MAX;
-
-
   const palVars = {
     "--pal-bg":            pal.bg,
     "--pal-surface":       pal.surface,
@@ -1014,12 +995,16 @@ export default function DmDashboardPage() {
             { label: "Manage Party", onClick: () => setShowManageParty(true) },
             { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
             { divider: true },
+            textScaleMenuItem,
             {
-              stepper: true,
-              label: "Text Size",
-              value: `${roundedTextScalePct}%`,
-              onDecrement: () => setTextScale((current) => clampTextScale(Number((current - TEXT_SCALE_STEP).toFixed(2)))),
-              onIncrement: () => setTextScale((current) => clampTextScale(Number((current + TEXT_SCALE_STEP).toFixed(2)))),
+              select: true,
+              label: "Theme",
+              value: palKey,
+              options: Object.keys(PALETTES).map((key) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1) })),
+              onChange: (nextKey) => {
+                setPalKey(nextKey);
+                sessionStorage.setItem("dnd_dm_palette", nextKey);
+              },
             },
             { divider: true },
             { label: "Sign Out", onClick: handleEndSession, destructive: true },

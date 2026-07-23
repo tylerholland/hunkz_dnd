@@ -1,6 +1,6 @@
 # Feature Story: Battle Map Tokens
 
-**Status**: Needs UX design
+**Status**: Implemented (`765440f`), further polished by Story 29b (also implemented)
 **Source**: RPG Consultant
 **Prototype**: (leave blank — ux-designer fills this in)
 

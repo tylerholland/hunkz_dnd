@@ -1,6 +1,6 @@
 # Feature Story: Per-Token Resize on the Battle Map
 
-**Status**: Ready for Design Brief
+**Status**: Implemented (`e651200`)
 **Source**: DM feedback
 
 ---

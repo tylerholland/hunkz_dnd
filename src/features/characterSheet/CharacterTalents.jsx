@@ -9,8 +9,15 @@ export function InfoBadge({
   color,
   background,
   border,
+  // Optional toggle mode (Edit Character's skill/ability pickers): when
+  // onSelect is provided, clicking selects/deselects instead of pinning the
+  // tooltip open, and `selected` drives the active visual state. Hovering or
+  // focusing always shows the tooltip either way.
+  selected,
+  onSelect,
 }) {
   const [open, setOpen] = useState(false);
+  const isToggle = typeof onSelect === "function";
 
   return (
     <button
@@ -19,7 +26,8 @@ export function InfoBadge({
       onMouseLeave={() => setOpen(false)}
       onFocus={() => setOpen(true)}
       onBlur={() => setOpen(false)}
-      onClick={() => setOpen((value) => !value)}
+      onClick={isToggle ? onSelect : () => setOpen((value) => !value)}
+      aria-pressed={isToggle ? !!selected : undefined}
       style={{
         position: "relative",
         fontFamily: pal.fontUI,
@@ -32,7 +40,7 @@ export function InfoBadge({
         borderRadius: compact ? 10 : 12,
         padding: compact ? "2px 7px" : "3px 10px",
         whiteSpace: "nowrap",
-        cursor: "help",
+        cursor: isToggle ? "pointer" : "help",
       }}
     >
       {label}

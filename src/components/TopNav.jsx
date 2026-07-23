@@ -15,6 +15,7 @@
  * menuItems shape:
  *   { label: string, onClick?: fn, href?: string, destructive?: boolean }
  *   | { divider: true }
+ *   | { select: true, label: string, value: string, options: [{key, label}], onChange: (key) => void }
  *
  * Export: NavSegment — the segmented-control primitive, used standalone on
  * the DM dashboard (Adventure | Combat) and in the center slot.
@@ -113,6 +114,23 @@ export function NavMenu({ items }) {
         {items.map((item, idx) => {
           if (item.divider) {
             return <div key={idx} className="topnav-menu-divider" />;
+          }
+          if (item.select) {
+            return (
+              <div key={idx} className="topnav-menu-select-row">
+                <label className="topnav-menu-select-label">{item.label}</label>
+                <select
+                  className="topnav-menu-select"
+                  value={item.value}
+                  onChange={(e) => item.onChange?.(e.target.value)}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {item.options.map((opt) => (
+                    <option key={opt.key} value={opt.key}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+            );
           }
           if (item.stepper) {
             return (

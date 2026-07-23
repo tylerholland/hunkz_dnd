@@ -2351,6 +2351,12 @@
 .cs-session-root {
   min-height: 100vh;
   position: relative;
+  /* Base text color for this page — --pal-text is defined via inline style
+     on this same element. Without this, any descendant that doesn't set its
+     own color (e.g. .cs-sm-party-hp-nums) falls all the way back to the
+     browser's plain-black default, which reads fine on light palettes like
+     Vellum but is invisible against dark ones like Ocean. */
+  color: var(--pal-text);
 }
 
 /* ─── Top bar ────────────────────────────────────────────────────────────── */
@@ -2885,6 +2891,7 @@
 .cs-sm-party-hp-nums {
   font-family: var(--font-display);
   font-size: 13px;
+  color: var(--pal-text);
   white-space: nowrap;
   flex-shrink: 0;
 }
@@ -3234,6 +3241,25 @@
   border-radius: 50%;
   border: 1.5px solid;
   cursor: default;
+}
+
+/* ─── Spells (reference list — read-only) ───────────────────────────────── */
+
+.cs-sm-spells-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.cs-sm-spell-chip {
+  font-family: var(--font-body);
+  font-size: 12px;
+  padding: 3px 9px;
+  border: 1px solid var(--pal-border);
+  border-radius: 12px;
+  color: var(--pal-text-body);
+  background: var(--pal-gem-low);
+  white-space: nowrap;
 }
 
 /* ─── Inspiration ────────────────────────────────────────────────────────── */
