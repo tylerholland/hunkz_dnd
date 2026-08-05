@@ -49,7 +49,8 @@ test("getInitiativeState and getNpcCombatState return normalized defaults", asyn
     send: async () => ({ Item: null }),
   });
 
-  assert.deepEqual(await getInitiativeState(), { entries: [], activeTurnIndex: 0, round: 1 });
+  // Story 52 — turnStartedAt added to the normalized shape (null default).
+  assert.deepEqual(await getInitiativeState(), { entries: [], activeTurnIndex: 0, round: 1, turnStartedAt: null });
   assert.deepEqual(await getNpcCombatState(), { npcs: [] });
   assert.deepEqual(await getRollHistoryState(), { rolls: [] });
   assert.deepEqual(await getPartyRosterState(), { exists: false, members: [] });

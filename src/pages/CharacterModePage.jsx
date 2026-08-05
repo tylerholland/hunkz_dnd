@@ -57,6 +57,9 @@ export default function CharacterModePage() {
   const [partyStatus, setPartyStatus] = useState({ visible: true, members: [] });
   const [initiativeData, setInitiativeData] = useState({ round: 1, activeTurnIndex: 0, entries: [] });
   const [npcCombat, setNpcCombat] = useState({ npcs: [] });
+  // Stories 52–54 — GET /session-state's serverTime for damage/condition age
+  // arithmetic on the player's Map sub-tab.
+  const [serverTime, setServerTime] = useState(null);
   const [authState, setAuthState] = useState(() => (slug ? "checking" : "locked"));
   const [sessionPassword, setSessionPassword] = useState(null);
   const [unlockInput, setUnlockInput] = useState("");
@@ -165,6 +168,7 @@ export default function CharacterModePage() {
       setPartyStatus(d.partyStatus || { visible: true, members: [] });
       setInitiativeData(d.initiativePublic || { round: 1, activeTurnIndex: 0, entries: [] });
       setNpcCombat(d.npcCombat || d.npcCombatPublic || { npcs: [] });
+      setServerTime(d.serverTime || null);
       reportServerBuildVersion(d.buildVersion);
       setError(null);
     } catch {
@@ -406,6 +410,7 @@ export default function CharacterModePage() {
       initiativeData={initiativeData}
       npcCombat={npcCombat}
       wsConnected={wsConnected}
+      serverTime={serverTime}
     />
   );
 }

@@ -46,13 +46,33 @@ const {
   normalizeAppMetaRecord,
 } = require("../lib/specialRecords");
 const { projectDmPartyItem, projectPlayerCharacter } = require("../lib/partyProjection");
-const { buildPublicInitiativePayload } = require("../lib/initiativeProjection");
+const { buildPublicInitiativePayload, publicNpcConditionsByNpcId } = require("../lib/initiativeProjection");
 const {
   stripPassword,
   applyPlayerNotesVisibility,
   normalizeHpFields,
   computeIsActiveTurn,
 } = require("../lib/characterProjection");
+const {
+  annotateTokensWithInvisibility,
+  omitInvisibleNpcTokensForPlayers,
+  makeCharacterConditionsResolver,
+  makeNpcConditionsResolver,
+} = require("../lib/tokenVisibility");
+
+// Story 54 — annotate every token on every map with a server-derived
+// `invisible` flag (never trust/re-derive it client-side).
+function annotateMapLibrary(mapLibrary, { rawItemsBySlug, npcCombat }) {
+  const getCharacterConditions = makeCharacterConditionsResolver(rawItemsBySlug);
+  const getNpcConditions = makeNpcConditionsResolver(npcCombat);
+  return {
+    ...mapLibrary,
+    maps: mapLibrary.maps.map((map) => ({
+      ...map,
+      tokens: annotateTokensWithInvisibility(map.tokens, { getCharacterConditions, getNpcConditions }),
+    })),
+  };
+}
 
 const SENTINEL_SLUGS = [
   INITIATIVE_SLUG,
@@ -115,6 +135,11 @@ exports.handler = async (event) => {
     }
   }
 
+  // Story 54 — one server-computed `invisible` flag per token, shared by the
+  // DM's `◇` marker and the player-side omission below so they can never
+  // drift. Computed once here (not re-derived by any client).
+  const annotatedMapLibrary = annotateMapLibrary(mapLibrary, { rawItemsBySlug, npcCombat });
+
   if (isDm) {
     const orderedMembers = roster.exists ? roster.members : Array.from(rawItemsBySlug.keys());
     const party = orderedMembers
@@ -125,7 +150,7 @@ exports.handler = async (event) => {
       initiative,
       npcCombat,
       rollHistory,
-      mapLibrary,
+      mapLibrary: annotatedMapLibrary,
       counterWheels,
       serverTime,
       buildVersion: appMeta.buildVersion,
@@ -157,12 +182,29 @@ exports.handler = async (event) => {
       }
     : { visible: false, members: [] };
 
-  // Strip to name+portraitUrl only — HP, conditions, notes stay DM-only
+  // Strip to name+portraitUrl only — HP/notes stay DM-only. Story 53 adds
+  // `conditions` (gated on the linked initiative entry not being hidden —
+  // the DM's existing secrecy lever). Story 52 adds the damage-flash sync
+  // fields (not secret data, ungated).
+  const publicNpcConditions = publicNpcConditionsByNpcId(initiative, npcCombat);
   const npcCombatPublic = {
     npcs: npcCombat.npcs.map((n) => ({
       id: n.id,
       name: n.name,
       portraitUrl: n.portraitUrl ?? null,
+      conditions: publicNpcConditions[n.id] ?? [],
+      lastDamagedAt: n.lastDamagedAt ?? null,
+      lastDamageAmount: n.lastDamageAmount ?? null,
+    })),
+  };
+
+  // Story 54 — the public variant additionally omits every invisible NPC
+  // token entirely (a true absence, never a diminished/hinted rendering).
+  const publicMapLibrary = {
+    ...annotatedMapLibrary,
+    maps: annotatedMapLibrary.maps.map((map) => ({
+      ...map,
+      tokens: omitInvisibleNpcTokensForPlayers(map.tokens),
     })),
   };
 
@@ -170,7 +212,7 @@ exports.handler = async (event) => {
     partyStatus,
     initiativePublic: buildPublicInitiativePayload(initiative, npcCombat),
     npcCombatPublic,
-    mapLibrary,
+    mapLibrary: publicMapLibrary,
     rollHistory,
     serverTime,
     buildVersion: appMeta.buildVersion,

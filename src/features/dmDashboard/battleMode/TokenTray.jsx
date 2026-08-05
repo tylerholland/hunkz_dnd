@@ -1,6 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
+import { isInvisibleCondition } from "./tokenEffects";
+
+function isVeiled(conditions) {
+  return Array.isArray(conditions) && conditions.some(isInvisibleCondition);
+}
 
 /**
  * TokenTray — strip below MapViewer showing unplaced PC and NPC tokens.
@@ -74,10 +79,11 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
           const ringColor = (member.palette && pal.name === member.palette)
             ? pal.accent
             : getPaletteAccent(member.palette);
+          const veiled = isVeiled(member.conditions);
           return (
             <div
               key={member.slug}
-              className={`tray-chip${isSelected ? " tray-chip--selected" : ""}`}
+              className={`tray-chip${isSelected ? " tray-chip--selected" : ""}${veiled ? " tray-chip--veiled" : ""}`}
               style={{ "--token-ring-color": ringColor, "--pal-accent": pal.accent }}
               onClick={() => onSelect(member.slug, "character")}
               title={member.name}
@@ -98,6 +104,11 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
                   {(member.name || "?")[0].toUpperCase()}
                 </div>
               )}
+              {veiled && (
+                <svg className="tk-veil-ring" viewBox="0 0 40 40" aria-hidden="true">
+                  <circle cx="20" cy="20" r="18" />
+                </svg>
+              )}
             </div>
           );
         })}
@@ -117,11 +128,12 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
           const isSelected = heldId === npc.id;
           const fillColor = npcInitialColor(npc.id);
           const initials = npcInitials(npc.name);
+          const veiled = isVeiled(npc.conditions);
           return (
             <div
               key={npc.id}
-              className={`tray-chip${isSelected ? " tray-chip--selected" : ""}`}
-              style={{ "--token-fill-color": fillColor, "--pal-accent": pal.accent }}
+              className={`tray-chip${isSelected ? " tray-chip--selected" : ""}${veiled ? " tray-chip--veiled" : ""}`}
+              style={{ "--token-fill-color": fillColor, "--pal-accent": pal.accent, "--token-ring-color": pal.border }}
               onClick={() => onSelect(npc.id, "npc")}
               title={npc.name}
             >
@@ -131,6 +143,11 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
               >
                 {initials}
               </div>
+              {veiled && (
+                <svg className="tk-veil-ring" viewBox="0 0 40 40" aria-hidden="true">
+                  <circle cx="20" cy="20" r="18" />
+                </svg>
+              )}
             </div>
           );
         })}

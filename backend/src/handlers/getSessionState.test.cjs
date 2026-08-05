@@ -264,8 +264,11 @@ test("getSessionState public variant leaks nothing beyond the old public project
   assert.equal(body.partyStatus.visible, true);
   assert.equal(body.partyStatus.members.length, 1);
   const member = body.partyStatus.members[0];
+  // Stories 52–53 — exhaustionLevel (map condition badge) is now public;
+  // lastDamagedAt/lastDamageAmount (damage flash sync) stay undefined here
+  // since the fixture character carries no damage stamp.
   assert.deepEqual(Object.keys(member).sort(), [
-    "concentration", "conditions", "deathSaves", "hpCurrent", "hpMax", "inspiration",
+    "concentration", "conditions", "deathSaves", "exhaustionLevel", "hpCurrent", "hpMax", "inspiration",
     "name", "palette", "portraitUrl", "slug", "tempHP",
   ].sort());
   assert.equal(member.dmNotes, undefined);
@@ -283,18 +286,20 @@ test("getSessionState public variant leaks nothing beyond the old public project
   // no ?slug supplied — no character field
   assert.equal(body.character, undefined);
 
-  // npcCombatPublic — name and portrait visible to players, HP/conditions are not
+  // npcCombatPublic — name and portrait visible to players, HP stays hidden.
+  // Story 53 — conditions ARE now public (gated on the linked initiative
+  // entry not being hidden; this fixture NPC has no hidden entry).
   assert.ok(Array.isArray(body.npcCombatPublic.npcs));
   assert.equal(body.npcCombatPublic.npcs.length, 1);
   const publicNpc = body.npcCombatPublic.npcs[0];
   assert.equal(publicNpc.id, "n1");
   assert.equal(publicNpc.name, "Goblin");
   assert.equal(publicNpc.portraitUrl, "https://example.com/goblin.png");
-  // HP and conditions must not be exposed
+  // HP must still not be exposed
   assert.equal(publicNpc.hpCurrent, undefined);
   assert.equal(publicNpc.hpMax, undefined);
-  assert.equal(publicNpc.conditions, undefined);
   assert.equal(publicNpc.initiativeEntryId, undefined);
+  assert.ok(Array.isArray(publicNpc.conditions));
 });
 
 test("getSessionState public variant with ?slug strips playerNotes and passwordHash for an unauthenticated caller", async () => {

@@ -24,10 +24,15 @@ function validateToken(t) {
 }
 
 function normalizeTokenScale(t) {
+  // Story 54 — `invisible` is a derived flag (computed server-side per
+  // request from the subject's live conditions), never a stored one. Strip
+  // any client-supplied value so a stale/forged flag can never persist.
+  // eslint-disable-next-line no-unused-vars
+  const { invisible, ...rest } = t;
   // Clamp scale when present; leave absent scale absent so legacy tokens are
   // unchanged (don't force-write 1.0 — the read-side normalizer handles that).
-  if (t.scale === undefined) return t;
-  return { ...t, scale: Math.min(SCALE_MAX, Math.max(SCALE_MIN, t.scale)) };
+  if (rest.scale === undefined) return rest;
+  return { ...rest, scale: Math.min(SCALE_MAX, Math.max(SCALE_MIN, rest.scale)) };
 }
 
 exports.handler = async (event) => {

@@ -659,3 +659,46 @@ Defined in `topNav.css`. Use for page-specific action buttons placed as `childre
 ### CSS variable requirements
 
 TopNav uses `--pal-*` and `--font-*` variables. All pages that adopt TopNav must set `--pal-*` on their root element. Use the `palVars` spread pattern (see DmDashboardPage.jsx, MapLibraryPage.jsx).
+
+## Token effects cluster — damage flash, condition badges, invisible veil (Stories 52–54)
+
+New visual vocabulary on the battle-mode token layer (`TokenChip` in `BattleModeController.jsx`), CSS in `src/features/dmDashboard/battleMode.css`. These colours are **universal, not palette-derived** — the same rule as HP-bar tiers and death-save pips — because they need to read identically regardless of which of the 8 character palettes a given token belongs to.
+
+### DOM structure note
+
+`.token-chip` already owns position (`--token-x`/`-y`), map counter-rotation, and both size multipliers on its own `transform` — there's no separate position wrapper in this codebase. Story 52 introduces `.tk-hit` as a new **inner** child of `.token-chip` (not an outer ancestor, which is what the design briefs assumed) that wraps the portrait/ring/badge/effect layers and carries its own independent recoil/vanish transform, so the whole visible chip still recoils/vanishes together without ever touching `.token-chip`'s own transform (which is fully claimed by position, rotation, and the two size multipliers — six separate declarations across this file).
+
+### Colour tokens
+
+| Token | Value | Used by |
+|---|---|---|
+| `--tk-dmg-hot` | `#e06060` | Shockwave, Phase A wash, reduced-motion static rim |
+| `--tk-dmg-rest` | `#c06060` | Wound halo border — same red as HP-bar critical, death-save fail pip, error text |
+| `--tk-dmg-glow` | `rgba(192,96,96,0.45)` | Wound halo's outer glow — the channel that survives at tiny token sizes |
+| `--fam-control` | `#b05878` | Condition badge family: Incapacitating (loses/forfeits turn) |
+| `--fam-bind` | `#c8903c` | Condition badge family: Positional (can't move freely) — reuses the app's wounded-amber |
+| `--fam-sense` | `#8a7cc8` | Condition badge family: Sense/will (perception/will compromised) |
+| `--fam-physical` | `#8fae3c` | Condition badge family: Attrition (ongoing) — deliberately yellower than healthy-HP green |
+| `--fam-unknown` | `#c8c0b4` | Neutral fallback for an unrecognised condition string |
+| `--tk-veil-desat` / `--tk-veil-dim` | `0.35` / `0.55` | Invisible-veil portrait grayscale/opacity |
+| `--tk-dm-secret` | `#7c93a8` | **App-wide "information only the DM can see" colour** — cold blue-grey adjacent to the DM dashboard's Ocean accent. Reciprocal rule: must never appear on a player-visible surface. |
+| `--tk-dm-secret-scrim` | `rgba(124,147,168,0.22)` | Diagonal hatch texture on a DM-secret invisible NPC token |
+
+### Damage flash (Story 52)
+
+Two phases: **Phase A — IMPACT** (~300–450ms, tiered Standard/Heavy) is a shockwave ring + edge-weighted red portrait wash + a compress-then-rebound recoil (`scale 1→0.92→1.045→1`, deliberately the *inverse* of the existing drop-bounce so the two events never read as the same thing); **Phase B — WOUND** is a 1.5px `--tk-dmg-rest` halo ring outside the token's black outline, breathing 0.5↔0.85 opacity over 2.6s, that persists until the entity's next initiative turn (or a fixed 12s window with no active combat). Phase A never plays on a token's first paint (freshness/mount gate) and is suppressed on a FALLEN token (Phase A still fires — death saves are still real damage — but the halo is suppressed, a corpse being "recently hurt" isn't actionable). Reduced motion: Phase A becomes one static hot rim held ~900ms, then settles into the ordinary halo.
+
+### Condition badges (Story 53)
+
+A left-edge column of up to 3 badges (15px dark plate + 2px family-coloured ring + filled glyph), top-anchored so slot 1 never moves and reading order top→bottom is priority order. A 4th+ condition collapses the bottom badge into a stacked-plate "more behind this" motif rather than a `+N` numeral. Counter-scaled against the per-token `--token-size-mult` only (constant physical size on a Tiny familiar and a Gargantuan dragon) — **not** counter-scaled against map zoom/calibration, which should make badges bigger/smaller along with the rest of the board. Tier 2 — ambient, ice-cold register: no resting animation of any kind, `pointer-events: none`, not interactive. Exhaustion folds in as a six-segment radial gauge badge (not a numeral, illegible at this size) when `exhaustionLevel ≥ 1`, promoted to the Control family/colour at level ≥4. `Invisible` is never a badge — it's Story 54's own whole-token treatment.
+
+### Invisible veil (Story 54)
+
+Three render states, not two — it's viewer × subject, not just PC × NPC:
+
+| | Player viewer | DM viewer |
+|---|---|---|
+| PC invisible | VEILED | VEILED — identical |
+| NPC invisible | **ABSENT** (not in the DOM, not in the response payload) | **SECRET** = VEILED + hatch scrim + `◇` marker |
+
+VEILED = portrait `grayscale(0.35)` + `opacity(0.55)` (portrait layer only, never `.token-chip` itself — that would drag the condition badges and the drag-affordance ring down with it) + the faction ring going dashed (16 dashes, shape-based so it reads on any palette/terrain/colour-blindness with no legend) + a slow 3.2s shimmer + an italic name label. SECRET adds a diagonal hatch scrim and a bare filled `◇` rhombus at 12 o'clock in `--tk-dm-secret`, in its own reserved slot so it's never mistaken for a Story 53 condition badge. A veiled PC never gets the `◇` — that mark specifically means "your players can't see this," which would be false for a PC. An NPC going invisible on the player's map fades out over 500ms with a slight upward drift rather than popping — players legitimately watched it turn invisible, and a hard cut would read as "it's still there and something's hiding it."

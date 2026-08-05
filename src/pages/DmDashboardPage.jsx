@@ -65,6 +65,10 @@ export default function DmDashboardPage() {
   const [npcCombat, setNpcCombat] = useState({ npcs: [] });
   const [rollHistory, setRollHistory] = useState([]);
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
+  // Stories 52–54 — GET /session-state's serverTime, used for all damage/
+  // condition age arithmetic (never Date.now(), or a clock-skewed tab never
+  // flashes/clears in sync with every other viewer).
+  const [serverTime, setServerTime] = useState(null);
   const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
   const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -284,6 +288,7 @@ export default function DmDashboardPage() {
       }
       setRollHistory(rollHistoryData.rolls || []);
       setMapLibrary(mapLibraryData || { activeMapId: null, activeMapView: null, maps: [] });
+      setServerTime(sessionData.serverTime || null);
       reportServerBuildVersion(sessionData.buildVersion);
     } catch {
       // Show stale data rather than error on poll failure.
@@ -1030,6 +1035,8 @@ export default function DmDashboardPage() {
               combatMode={combatMode}
               mapSwitching={mapSwitching}
               onRegisterBattleToggle={(fn) => { battleToggleFnRef.current = fn; }}
+              serverTime={serverTime}
+              initiative={initiative}
             />
           </div>
 

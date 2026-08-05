@@ -49,7 +49,28 @@ function buildPublicInitiativePayload(initiative, npcCombat) {
     round: initiative?.round,
     activeTurnIndex: initiative?.activeTurnIndex,
     entries,
+    // Story 52 — clients derive Phase B (wound halo) liveness from this; not
+    // secret data (it's just "when did the current turn start").
+    turnStartedAt: initiative?.turnStartedAt ?? null,
   };
 }
 
-module.exports = { buildPublicInitiativePayload };
+// Story 53 — NPC conditions were never carried on the public payload before
+// (initiativePublic strips entries down to healthTier). Gated on the same
+// hidden-entry lever the DM already uses to keep an NPC out of the public
+// initiative list — an NPC with a hidden initiative entry carries no public
+// conditions either, so hiding the entry stays the single secrecy lever.
+function publicNpcConditionsByNpcId(initiative, npcCombat) {
+  const hiddenEntryIds = new Set(
+    (initiative?.entries || []).filter((entry) => entry.hidden).map((entry) => entry.id)
+  );
+  const result = {};
+  for (const npc of npcCombat?.npcs || []) {
+    if (!npc?.id) continue;
+    if (npc.initiativeEntryId && hiddenEntryIds.has(npc.initiativeEntryId)) continue;
+    result[npc.id] = Array.isArray(npc.conditions) ? npc.conditions : [];
+  }
+  return result;
+}
+
+module.exports = { buildPublicInitiativePayload, publicNpcConditionsByNpcId };

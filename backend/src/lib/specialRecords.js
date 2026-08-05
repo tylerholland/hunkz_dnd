@@ -12,6 +12,9 @@ function normalizeInitiativeRecord(item) {
     entries: item?.entries ?? [],
     activeTurnIndex: item?.activeTurnIndex ?? 0,
     round: Math.max(1, item?.round ?? 1),
+    // Story 52 — stamped whenever activeTurnIndex/round changes; clients derive
+    // Phase B (wound halo) liveness from this rather than a server-side clear.
+    turnStartedAt: typeof item?.turnStartedAt === "string" ? item.turnStartedAt : null,
   };
 }
 
@@ -105,11 +108,12 @@ async function getInitiativeState() {
   return normalizeInitiativeRecord(item);
 }
 
-async function saveInitiativeState({ entries, activeTurnIndex, round }) {
+async function saveInitiativeState({ entries, activeTurnIndex, round, turnStartedAt }) {
   await putSpecialRecord(INITIATIVE_SLUG, {
     entries,
     activeTurnIndex: activeTurnIndex ?? 0,
     round: Math.max(1, round ?? 1),
+    turnStartedAt: turnStartedAt ?? null,
   });
 }
 

@@ -62,6 +62,21 @@ exports.handler = async (event) => {
     return ok({ slug });
   }
 
+  // Story 52 — damage flash stamp. session.js already fetches the previous
+  // item above for auth, so the prior hpCurrent is in hand for free. Any
+  // strict decrease is treated as damage (healing/tempHP/hpMax edits do not
+  // touch hpCurrent downward and are excluded by construction).
+  if (Object.prototype.hasOwnProperty.call(body, "hpCurrent") && typeof body.hpCurrent === "number") {
+    const prevHp = result.Item.hpCurrent ?? result.Item.hp ?? 0;
+    if (typeof prevHp === "number" && body.hpCurrent < prevHp) {
+      updates.push("#lastDamagedAt = :lastDamagedAt", "#lastDamageAmount = :lastDamageAmount");
+      names["#lastDamagedAt"] = "lastDamagedAt";
+      names["#lastDamageAmount"] = "lastDamageAmount";
+      values[":lastDamagedAt"] = new Date().toISOString();
+      values[":lastDamageAmount"] = prevHp - body.hpCurrent;
+    }
+  }
+
   // Always update the timestamp
   updates.push("#updatedAt = :updatedAt");
   names["#updatedAt"] = "updatedAt";

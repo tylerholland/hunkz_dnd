@@ -20,7 +20,7 @@
  *   partyStatus       — { visible: boolean, members: [] }
  *   initiativeData    — { round, activeTurnIndex, entries: [] }
  */
-import { useState, useEffect, useRef, useCallback, memo } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
 import { modOf, fmtMod, CONDITIONS } from "./constants";
@@ -31,6 +31,16 @@ import TopNav, { NavSegment } from "../../components/TopNav";
 import MapViewer from "../maps/MapViewer";
 import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
 import { TokenChip } from "../dmDashboard/battleMode/BattleModeController";
+import ConditionGlyphSprite from "../dmDashboard/battleMode/ConditionGlyphSprite";
+import {
+  resolveDamageState,
+  assignAoEStagger,
+  resolveCondBand,
+  computeEffectivePx,
+  useDebouncedValue,
+  shimmerPhaseOffsetMs,
+  useTokenExitGhosts,
+} from "../dmDashboard/battleMode/tokenEffects";
 import CombatTransitionOverlay from "./CombatTransitionOverlay";
 import { playCombatEnterSound, playCombatExitSound } from "../../lib/combatSound";
 import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../../lib/useTextScale";
@@ -329,6 +339,9 @@ export default function CharacterSheetSessionMode({
   initiativeData,
   npcCombat,
   wsConnected,
+  // Stories 52–54 — GET /session-state's serverTime for damage/condition age
+  // arithmetic (see PlayerMapViewer).
+  serverTime,
 }) {
   const navigate = useNavigate();
   const [guideOpen, setGuideOpen] = useState(false);
@@ -1210,6 +1223,9 @@ export default function CharacterSheetSessionMode({
                 slug={slug}
                 partyStatus={partyStatus}
                 npcCombat={npcCombat}
+                serverTime={serverTime}
+                initiativeData={initiativeData}
+                ownCharacter={char}
               />
             ) : (
               <p className="cs-sm-map-empty">The DM hasn{"'"}t loaded a map yet.</p>
@@ -1360,8 +1376,23 @@ function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }
 
 // ── PlayerMapViewer ────────────────────────────────────────────────────────
 // Read-only token layer for the player's Map sub-tab.
-const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, isBattleMode, pal, slug, partyStatus, npcCombat }) {
+// Stable empty-array reference (not [] inline) so a map with no tokens field
+// doesn't create a fresh array identity on every render — the `tokens` value
+// below feeds several Stories 52–54 useMemo/useEffect dependency arrays.
+const EMPTY_TOKENS = [];
+
+const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, isBattleMode, pal, slug, partyStatus, npcCombat, serverTime, initiativeData, ownCharacter }) {
   const [viewerState, setViewerState] = useState(null);
+  // Stories 52–54 — persists the last-rendered damage stamp per token id
+  // across renders (freshness gate), reset when the active map changes.
+  const seenStampsRef = useRef(new Map());
+  const prevMapIdRef = useRef(activeMap?.id);
+  useEffect(() => {
+    if (prevMapIdRef.current !== activeMap?.id) {
+      seenStampsRef.current = new Map();
+      prevMapIdRef.current = activeMap?.id;
+    }
+  }, [activeMap?.id]);
 
   // Detect mapMode transitions and trigger the dramatic overlay + sound.
   // undefined = not yet initialized (first render never fires a transition).
@@ -1387,10 +1418,11 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
 
   useEffect(() => () => clearTimeout(transitionTimerRef.current), []);
 
-  const tokens = activeMap?.tokens || [];
+  const tokens = activeMap?.tokens || EMPTY_TOKENS;
   const partyVisible = partyStatus?.visible !== false;
   const tokenScale = activeMap?.tokenScale ?? 1;
-  const labelsHidden = tokenScale * (viewerState?.scale ?? 1) < 0.6;
+  const viewerZoom = viewerState?.scale ?? 1;
+  const labelsHidden = tokenScale * viewerZoom < 0.6;
   // Story 34 — suppresses MapViewer's own pan while the player is dragging
   // their own token; a plain ref (not state) so it never triggers a re-render.
   const panSuppressedRef = useRef(false);
@@ -1402,36 +1434,159 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
     return moveMapToken(activeMap.id, tokenId, x, y, slug);
   };
 
-  // Determine which tokens this player can see per ADR-017
-  const visibleTokens = isBattleMode ? tokens.filter((t) => {
+  // Story 53 — "own token always shows its own badges." When
+  // partyVisibilityEnabled is false, partyStatus.members is [], so without
+  // this merge the player's own token would resolve member === undefined —
+  // no conditions, no HP. The player's own full record is already fetched
+  // (ownCharacter, the `?slug=` character payload) — merge it in rather than
+  // firing a second request.
+  // Memoized (not just an IIFE) so its identity stays stable across pure pan/
+  // zoom re-renders — otherwise every downstream Stories 52–54 computation
+  // below would recompute every frame and defeat TokenChip's memo().
+  const partyForTokens = useMemo(() => {
+    const members = partyStatus?.members || [];
+    if (!ownCharacter?.slug) return members;
+    if (members.some((m) => m.slug === ownCharacter.slug)) return members;
+    return [
+      ...members,
+      {
+        slug: ownCharacter.slug,
+        name: ownCharacter.name,
+        palette: ownCharacter.palette,
+        portraitUrl: ownCharacter.portraitUrl,
+        hpCurrent: ownCharacter.hpCurrent,
+        hpMax: ownCharacter.hpMax,
+        tempHP: ownCharacter.tempHP,
+        conditions: ownCharacter.conditions || [],
+        exhaustionLevel: ownCharacter.exhaustionLevel ?? 0,
+        concentration: ownCharacter.concentration,
+        inspiration: ownCharacter.inspiration,
+        deathSaves: ownCharacter.deathSaves,
+        lastDamagedAt: ownCharacter.lastDamagedAt ?? null,
+        lastDamageAmount: ownCharacter.lastDamageAmount ?? null,
+      },
+    ];
+  }, [partyStatus, ownCharacter]);
+
+  // Determine which tokens this player can see per ADR-017. Server already
+  // omits invisible NPC tokens entirely (Story 54) — no client-side filter
+  // is added here for invisibility, only the pre-existing party-visibility
+  // rule for ally PC tokens. Memoized so the array keeps a stable identity
+  // across pure pan/zoom re-renders (see resolvedByTokenId below).
+  const visibleTokens = useMemo(() => (isBattleMode ? tokens.filter((t) => {
     if (t.type === "npc") return true;
     if (t.sourceId === slug) return true;
     return partyVisible;
-  }) : [];
+  }) : []), [isBattleMode, tokens, slug, partyVisible]);
 
-  const tokenChips = visibleTokens.map((token) => (
-    <TokenChip
-      key={token.id}
-      token={token}
-      imageW={viewerState?.naturalSize?.w || 1}
-      imageH={viewerState?.naturalSize?.h || 1}
-      party={partyStatus?.members || []}
-      npcCombat={npcCombat || { npcs: [] }}
-      isDm={false}
-      isOwnToken={token.sourceId === slug}
-      partyVisibilityEnabled={partyVisible}
-      isHeld={false}
-      pal={pal}
-      labelHidden={labelsHidden}
-      ownSlug={slug}
-      onMoveToken={handleMoveOwnToken}
-      panSuppressedRef={panSuppressedRef}
-    />
-  ));
+  // Story 54 — the vanish. Diff-driven against NPC tokens only (a PC token
+  // disappearing because partyVisibilityEnabled just toggled off is a
+  // privacy setting, not "it went invisible," and must not play the vanish).
+  const npcVisibleTokens = useMemo(
+    () => visibleTokens.filter((t) => t.type === "npc"),
+    [visibleTokens]
+  );
+  const exitGhosts = useTokenExitGhosts(npcVisibleTokens, activeMap?.id);
+
+  const inCombat = (initiativeData?.entries?.length || 0) > 0;
+  const activeEntry = (initiativeData?.entries || [])[initiativeData?.activeTurnIndex ?? 0] || null;
+  const debouncedZoom = useDebouncedValue(viewerZoom, 80);
+
+  // Computed in an effect (not useMemo) because it reads/mutates
+  // seenStampsRef — refs may only be touched outside render — and stored in
+  // state, so the resolved objects keep a stable identity across pure pan/
+  // zoom renders (unaffected by this effect) and TokenChip's memo() keeps
+  // working. One render's lag between new poll data landing and the
+  // resolved effects appearing is imperceptible against a ~1–2s poll
+  // cadence. debouncedZoom only changes on its own tick.
+  const [resolvedByTokenId, setResolvedByTokenId] = useState(new Map());
+  useEffect(() => {
+    const npcList = npcCombat?.npcs || [];
+    const rawDamageStates = new Map();
+    const freshKeysInOrder = [];
+    for (const token of visibleTokens) {
+      const member = token.type === "character" ? partyForTokens.find((m) => m.slug === token.sourceId) : null;
+      const npc = token.type === "npc" ? npcList.find((n) => n.id === token.sourceId) : null;
+      const subject = member || npc;
+      const isCurrentlyActiveTurn = token.type === "character"
+        ? activeEntry?.slug === token.sourceId
+        : activeEntry?.npcId === token.sourceId;
+      const state = resolveDamageState(
+        token.id,
+        {
+          lastDamagedAt: subject?.lastDamagedAt ?? null,
+          lastDamageAmount: subject?.lastDamageAmount ?? null,
+          hpCurrent: subject?.hpCurrent ?? null,
+          hpMax: subject?.hpMax ?? subject?.hp ?? null,
+        },
+        { serverTime, isCurrentlyActiveTurn, turnStartedAt: initiativeData?.turnStartedAt, inCombat },
+        seenStampsRef.current
+      );
+      rawDamageStates.set(token.id, state);
+      if (state.phaseAFresh) freshKeysInOrder.push(token.id);
+    }
+    const staggerByKey = assignAoEStagger(freshKeysInOrder);
+
+    const result = new Map();
+    for (const token of visibleTokens) {
+      const rawState = rawDamageStates.get(token.id);
+      const stagger = staggerByKey.get(token.id);
+      const damageState = rawState && {
+        ...rawState,
+        delayMs: stagger?.delayMs ?? 0,
+        washOnly: !!stagger?.washOnly,
+      };
+      const effectivePx = computeEffectivePx({ tokenScale: token.scale, mapTokenScale: tokenScale, zoom: debouncedZoom });
+      const condBand = resolveCondBand(effectivePx);
+      // Story 54 — player view: NPC invisible tokens never reach this array
+      // at all (server omission), so `token.invisible` here only ever
+      // describes a veiled ally PC — VEILED, never SECRET (no ◇ on the
+      // player's own map).
+      const veil = token.invisible ? { veiled: true, secret: false } : { veiled: false, secret: false };
+      result.set(token.id, { damageState, condBand, veil, shimmerDelayMs: shimmerPhaseOffsetMs(token.id) });
+    }
+    setResolvedByTokenId(result);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [visibleTokens, partyForTokens, npcCombat, serverTime, initiativeData, tokenScale, debouncedZoom]);
+
+  function buildChip(token, opts = {}) {
+    const resolved = resolvedByTokenId.get(token.id) || {};
+    return (
+      <TokenChip
+        key={token.id}
+        token={token}
+        imageW={viewerState?.naturalSize?.w || 1}
+        imageH={viewerState?.naturalSize?.h || 1}
+        party={partyForTokens}
+        npcCombat={npcCombat || { npcs: [] }}
+        isDm={false}
+        isOwnToken={token.sourceId === slug}
+        partyVisibilityEnabled={partyVisible}
+        isHeld={false}
+        pal={pal}
+        labelHidden={labelsHidden}
+        ownSlug={slug}
+        onMoveToken={handleMoveOwnToken}
+        panSuppressedRef={panSuppressedRef}
+        damageState={resolved.damageState}
+        condBand={resolved.condBand}
+        veil={resolved.veil}
+        shimmerDelayMs={resolved.shimmerDelayMs}
+        exiting={!!opts.exiting}
+      />
+    );
+  }
+
+  const tokenChips = [
+    ...visibleTokens.map((token) => buildChip(token)),
+    ...exitGhosts.map((token) => buildChip(token, { exiting: true })),
+  ];
 
   return (
     <>
       <CombatTransitionOverlay type={transitionType} />
+      {/* Story 53 — condition glyph sprite, rendered once. */}
+      <ConditionGlyphSprite />
       <MapViewer
         imageUrl={activeMap.imageUrl}
         name={activeMap.name}
@@ -1442,7 +1597,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         onViewChange={setViewerState}
         tokenScale={tokenScale}
         rotation={activeMap?.rotation ?? 0}
-        tokenLayerChildren={isBattleMode && visibleTokens.length > 0 ? tokenChips : undefined}
+        tokenLayerChildren={isBattleMode && tokenChips.length > 0 ? tokenChips : undefined}
         panSuppressedRef={panSuppressedRef}
       />
     </>
