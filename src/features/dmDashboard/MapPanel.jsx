@@ -8,6 +8,15 @@ import { displayMapName } from "./MapUploadModal";
 import { isPdfMap } from "../maps/mapFiles";
 import TokenTray from "./battleMode/TokenTray";
 import { TokenChip, HeldTokenFloater } from "./battleMode/BattleModeController";
+import ConditionGlyphSprite from "./battleMode/ConditionGlyphSprite";
+import {
+  resolveDamageState,
+  assignAoEStagger,
+  resolveCondBand,
+  computeEffectivePx,
+  useDebouncedValue,
+  shimmerPhaseOffsetMs,
+} from "./battleMode/tokenEffects";
 import "./battleMode.css";
 
 function genId() {
@@ -29,7 +38,7 @@ function buildMapViewPayload(mapId, viewerState) {
   return payload;
 }
 
-export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, onRegisterBattleToggle }) {
+export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, onRegisterBattleToggle, serverTime, initiative }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewerState, setViewerState] = useState(null);
@@ -88,6 +97,16 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const viewerZoom = viewerState?.scale ?? 1;
   const labelsHidden = tokenScale * viewerZoom < 0.6;
 
+  // Stories 52–54 — shared effects state. seenStampsRef persists the last
+  // rendered lastDamagedAt per token id across renders (freshness gate — see
+  // tokenEffects.js resolveDamageState); reset per map switch below.
+  const seenStampsRef = useRef(new Map());
+  const inCombat = (initiative?.entries?.length || 0) > 0;
+  const activeEntry = (initiative?.entries || [])[initiative?.activeTurnIndex ?? 0] || null;
+  // 80ms debounce on the shared zoom value so every chip's condition band
+  // changes on the same tick (a staggered band change would read as a bug).
+  const debouncedZoom = useDebouncedValue(viewerZoom, 80);
+
   // Reset local optimistic state only when the active map itself changes.
   // Do NOT depend on activeMap?.tokens — that reference changes every poll tick
   // even when content is unchanged, which would kill the optimistic battle-mode state.
@@ -99,6 +118,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     setLocalTokenScale(null);
     setCalibOpen(false);
     setLocalRotation(null);
+    seenStampsRef.current = new Map();
   }, [activeMapId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => () => {
@@ -392,31 +412,101 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   }
   const effectiveNaturalSize = viewerState?.naturalSize || (activeMapId ? naturalSizeByMapRef.current[activeMapId] : null);
 
+  // Stories 52–54 — resolve damage/condition-band/veil state once per token,
+  // here in the parent, not inside TokenChip (which is memo'd and would
+  // otherwise recompute per chip on every pan frame). Computed in an effect
+  // (not useMemo) because it reads/mutates seenStampsRef — refs may only be
+  // touched outside render — and stored in state, so the resolved objects
+  // keep a stable identity across pure pan/zoom renders (unaffected by this
+  // effect) and TokenChip's memo() keeps working. One render's lag between
+  // new poll data landing and the resolved effects appearing is imperceptible
+  // against a ~1–2s poll cadence. debouncedZoom only changes on its own tick.
+  const [resolvedByTokenId, setResolvedByTokenId] = useState(new Map());
+  useEffect(() => {
+    const partyList = party || [];
+    const npcList = npcCombat?.npcs || [];
+    const rawDamageStates = new Map();
+    const freshKeysInOrder = [];
+    for (const token of effectiveTokens) {
+      const member = token.type === "character" ? partyList.find((m) => m.slug === token.sourceId) : null;
+      const npc = token.type === "npc" ? npcList.find((n) => n.id === token.sourceId) : null;
+      const subject = member || npc;
+      const isCurrentlyActiveTurn = token.type === "character"
+        ? activeEntry?.slug === token.sourceId
+        : activeEntry?.npcId === token.sourceId;
+      const state = resolveDamageState(
+        token.id,
+        {
+          lastDamagedAt: subject?.lastDamagedAt ?? null,
+          lastDamageAmount: subject?.lastDamageAmount ?? null,
+          hpCurrent: subject?.hpCurrent ?? null,
+          hpMax: subject?.hpMax ?? subject?.hp ?? null,
+        },
+        { serverTime, isCurrentlyActiveTurn, turnStartedAt: initiative?.turnStartedAt, inCombat },
+        seenStampsRef.current
+      );
+      rawDamageStates.set(token.id, state);
+      if (state.phaseAFresh) freshKeysInOrder.push(token.id);
+    }
+    const staggerByKey = assignAoEStagger(freshKeysInOrder);
+
+    const result = new Map();
+    for (const token of effectiveTokens) {
+      const rawState = rawDamageStates.get(token.id);
+      const stagger = staggerByKey.get(token.id);
+      const damageState = rawState && {
+        ...rawState,
+        delayMs: stagger?.delayMs ?? 0,
+        washOnly: !!stagger?.washOnly,
+      };
+      const effectivePx = computeEffectivePx({ tokenScale: token.scale, mapTokenScale: tokenScale, zoom: debouncedZoom });
+      const condBand = resolveCondBand(effectivePx);
+      // Story 54 — the DM always sees the server-computed flag; NPC invisible
+      // renders SECRET (veiled + hatch + ◇), PC invisible renders VEILED
+      // identically to the player's own view (no ◇ — false claim otherwise).
+      const veil = token.invisible
+        ? { veiled: true, secret: token.type === "npc" }
+        : { veiled: false, secret: false };
+      result.set(token.id, { damageState, condBand, veil, shimmerDelayMs: shimmerPhaseOffsetMs(token.id) });
+    }
+    setResolvedByTokenId(result);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [effectiveTokens, party, npcCombat, serverTime, initiative, tokenScale, debouncedZoom]);
+
   // Build chip nodes for token layer
-  const tokenChips = (isBattleMode && effectiveNaturalSize) ? effectiveTokens.map((token) => (
-    <TokenChip
-      key={token.id}
-      token={token}
-      imageW={effectiveNaturalSize.w}
-      imageH={effectiveNaturalSize.h}
-      party={party || []}
-      npcCombat={npcCombat || { npcs: [] }}
-      isDm={true}
-      isOwnToken={false}
-      partyVisibilityEnabled={true}
-      isHeld={heldSourceId === token.sourceId}
-      onTokenClick={handleTokenClick}
-      onRemoveToken={handleRemoveToken}
-      viewerContainerRef={viewerContainerRef}
-      pal={pal}
-      labelHidden={labelsHidden}
-      calibTween={calibTweening}
-      onResizeToken={handleResizeToken}
-    />
-  )) : null;
+  const tokenChips = (isBattleMode && effectiveNaturalSize) ? effectiveTokens.map((token) => {
+    const resolved = resolvedByTokenId.get(token.id) || {};
+    return (
+      <TokenChip
+        key={token.id}
+        token={token}
+        imageW={effectiveNaturalSize.w}
+        imageH={effectiveNaturalSize.h}
+        party={party || []}
+        npcCombat={npcCombat || { npcs: [] }}
+        isDm={true}
+        isOwnToken={false}
+        partyVisibilityEnabled={true}
+        isHeld={heldSourceId === token.sourceId}
+        onTokenClick={handleTokenClick}
+        onRemoveToken={handleRemoveToken}
+        viewerContainerRef={viewerContainerRef}
+        pal={pal}
+        labelHidden={labelsHidden}
+        calibTween={calibTweening}
+        onResizeToken={handleResizeToken}
+        damageState={resolved.damageState}
+        condBand={resolved.condBand}
+        veil={resolved.veil}
+        shimmerDelayMs={resolved.shimmerDelayMs}
+      />
+    );
+  }) : null;
 
   return (
     <div style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 5, marginBottom: 12, overflow: "hidden" }}>
+      {/* Story 53 — condition glyph sprite, rendered once per map surface. */}
+      <ConditionGlyphSprite />
       {/* Header */}
       <div
         onClick={() => setCollapsed((c) => !c)}

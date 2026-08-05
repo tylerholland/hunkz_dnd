@@ -124,7 +124,9 @@
   position: absolute;
   top: 100%;
   left: 50%;
-  transform: translateX(-50%) translateY(2px);
+  /* Story 53 — offset 2px → 4px, global and unconditional, to clear the
+     badge column's slot 3 without a conditional layout. */
+  transform: translateX(-50%) translateY(4px);
   white-space: nowrap;
   max-width: 80px;
   overflow: hidden;
@@ -311,6 +313,47 @@
   font-style: italic;
   font-size: 11px;
   color: var(--pal-text-muted, #6a4830);
+}
+
+/* Story 54 — the detail card's authoritative "◇ INVISIBLE" row, first row
+   of the condition block on every viewer. Neutral colour — --tk-dm-secret
+   never appears on a player-visible surface (the reciprocal rule attached to
+   that colour's app-wide meaning). */
+.token-hp-card__invis-line {
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  color: var(--fam-unknown, #c8c0b4);
+  margin-bottom: 4px;
+}
+.token-hp-card__secret-line {
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--tk-dm-secret, #7c93a8);
+  margin-top: 1px;
+}
+
+/* Story 53 — full condition list, superset of the badge column, same
+   priority order. */
+.token-hp-card__cond-block {
+  margin-bottom: 4px;
+}
+.token-hp-card__cond-line {
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  line-height: 15px;
+}
+
+/* Story 52 — Phase B wound line. */
+.token-hp-card__wound-line {
+  font-family: "Crimson Text", Georgia, serif;
+  font-style: italic;
+  font-size: 12px;
+  color: var(--pal-text-muted, #6a4830);
+  margin-bottom: 4px;
 }
 
 .token-hp-card__bar-wrap {
@@ -568,6 +611,15 @@
 .tray-chip--selected {
   border-color: var(--pal-accent, #a06840);
   background: rgba(160, 104, 64, 0.1);
+}
+
+/* Story 54 — an unplaced token that's currently Invisible gets the dashed
+   ring only (no hatch/◇, meaningless for a token not on the board). Reuses
+   .tk-veil-ring's SVG circle, statically dashed (no transition — tray chips
+   don't animate state). */
+.tray-chip--veiled .tk-veil-ring circle {
+  stroke-dasharray: 4.04 3.03;
+  transition: none;
 }
 
 .tray-chip__portrait {
@@ -1208,6 +1260,301 @@
   to   { opacity: 1; }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   STORIES 52–54 — TOKEN EFFECTS CLUSTER (damage flash, condition badges,
+   invisible veil). Ported from design/prototypes/token-effects-review.html.
+
+   DOM note: `.token-chip` already carries position (translate via --token-x/
+   -y), map rotation counter-rotation, and both size multipliers directly on
+   its own `transform` (see base rule near the top of this file) — there is
+   no separate `.token-pos` wrapper in this codebase the way the cluster
+   brief's DOM diagram assumes. Story 52's `.tk-hit` is therefore introduced
+   as a new INNER child of `.token-chip` (not an outer ancestor) that wraps
+   the portrait/ring/badge/effect layers and carries its own independent
+   recoil transform. This is functionally equivalent — the whole visible chip
+   (portrait, ring, badges) still recoils together — while satisfying the
+   non-negotiable "must not animate .token-chip's transform" constraint
+   without touching the six existing position/rotation/size-mult transform
+   declarations elsewhere in this file.
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  /* Story 52 — damage */
+  --tk-dmg-hot: #e06060;
+  --tk-dmg-rest: #c06060;
+  --tk-dmg-glow: rgba(192, 96, 96, 0.45);
+
+  /* Story 53 — condition families */
+  --fam-control: #b05878;
+  --fam-bind: #c8903c;
+  --fam-sense: #8a7cc8;
+  --fam-physical: #8fae3c;
+  --fam-unknown: #c8c0b4;
+
+  /* Story 54 — invisibility */
+  --tk-veil-desat: 0.35;
+  --tk-veil-dim: 0.55;
+  --tk-veil-sheen: rgba(255, 255, 255, 0.13);
+  --tk-dm-secret: #7c93a8;
+  --tk-dm-secret-scrim: rgba(124, 147, 168, 0.22);
+  --tk-glyph-outline: rgba(0, 0, 0, 0.55);
+}
+
+/* Story 54 — exiting ghost chip (a vanishing NPC token, rendered from the
+   token-exit registry). Inert: no hover, no pointer, no hit-testing. */
+.token-chip--exiting {
+  pointer-events: none;
+}
+
+/* ── .tk-hit — recoil/vanish wrapper (Story 52 + Story 54) ─────────────── */
+.tk-hit {
+  position: absolute;
+  inset: 0;
+  transform-origin: center;
+}
+
+.tk-hit.tk-flash-heavy { animation: tkRecoilHeavy 450ms; }
+.tk-hit.tk-flash-standard { animation: tkRecoilStandard 300ms; }
+@keyframes tkRecoilHeavy {
+  0% { transform: scale(1); }
+  25% { transform: scale(0.92); }
+  65% { transform: scale(1.045); }
+  100% { transform: scale(1); }
+}
+@keyframes tkRecoilStandard {
+  0% { transform: scale(1); }
+  30% { transform: scale(0.95); }
+  70% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}
+
+/* Story 54 — NPC vanish, player view only. Runs on the same .tk-hit wrapper
+   (shared, not a fourth wrapper) — a graceful exit reads as "it left" rather
+   than "something is hiding the last known position". Self-starting
+   animation (not a transition + class toggle) so the ghost chip only needs
+   to mount with this class present, no post-mount rAF choreography. */
+.tk-token-exit {
+  animation: tkTokenExit 500ms cubic-bezier(0.32, 0, 0.67, 0) forwards;
+  pointer-events: none;
+}
+@keyframes tkTokenExit {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to { opacity: 0; transform: translateY(-8%) scale(0.94); }
+}
+
+/* ── Story 52 — damage flash overlays ───────────────────────────────────
+   All conditionally mounted (never present at opacity 0), pointer-events:
+   none (the shockwave extends beyond the chip and must not swallow taps
+   meant for adjacent tokens, or break Story 34 drag / Story 29b long-press). */
+.tk-wash {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: radial-gradient(circle, rgba(224, 96, 96, 0.18) 28%, rgba(224, 96, 96, 0.5) 100%);
+}
+.tk-hit.tk-flash-heavy .tk-wash { animation: tkWash 450ms; }
+.tk-hit.tk-flash-standard .tk-wash { animation: tkWash 300ms; }
+@keyframes tkWash {
+  0% { opacity: 0; }
+  15% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.tk-shock {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  border: 1.5px solid var(--tk-dmg-hot);
+}
+.tk-hit.tk-flash-heavy .tk-shock { animation: tkShock 380ms cubic-bezier(0.16, 0.84, 0.28, 1); }
+@keyframes tkShock {
+  0% { transform: scale(1); opacity: 0.9; }
+  100% { transform: scale(1.65); opacity: 0; }
+}
+
+.tk-wound {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  border: 1.5px solid var(--tk-dmg-rest);
+  box-shadow: 0 0 6px var(--tk-dmg-glow);
+  transition: opacity 400ms ease-out;
+}
+.token-chip[data-wounded="1"] .tk-wound {
+  opacity: 0.7;
+  animation: tkWoundBreathe 2.6s ease-in-out infinite;
+}
+.token-chip--fallen .tk-wound { opacity: 0 !important; animation: none !important; }
+@keyframes tkWoundBreathe {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 0.85; }
+}
+
+/* ── Story 53 — condition badge column ──────────────────────────────────
+   Left-edge column, top-anchored, growing downward. Counter-scaled against
+   --token-size-mult only (constant physical size on a Tiny familiar and a
+   Gargantuan dragon) — deliberately NOT counter-scaled against the map's
+   zoom/calibration, which should still make badges bigger/smaller together
+   with the rest of the board. No resting animation of any kind (Tier 2,
+   ambient) — motion exists only at the moment a badge appears/clears. */
+.tk-cond-col {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  transform: scale(calc(1 / var(--token-size-mult, 1)));
+  transform-origin: center right;
+}
+.tk-badge {
+  position: absolute;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  background: rgba(10, 10, 12, 0.88);
+  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.5);
+  border: 2px solid var(--fam, var(--fam-unknown));
+  color: var(--fam, var(--fam-unknown));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate(-50%, -50%) scale(1);
+  animation: tkBadgeIn 180ms ease-out;
+}
+.tk-badge svg { width: 9.5px; height: 9.5px; }
+.tk-badge[data-slot="1"] { left: calc(50% - 25px); top: calc(50% - 16px); }
+.tk-badge[data-slot="2"] { left: calc(50% - 25px); top: calc(50%); }
+.tk-badge[data-slot="3"] { left: calc(50% - 25px); top: calc(50% + 16px); }
+.tk-badge.tk-badge--summary { width: 18px; height: 18px; left: calc(50% - 25px); top: calc(50%); }
+.tk-badge-stack {
+  position: absolute;
+  inset: 0;
+  transform: translate(2.5px, 2.5px);
+  background: rgba(10, 10, 12, 0.65);
+  border-radius: 50%;
+  z-index: -1;
+}
+@keyframes tkBadgeIn {
+  from { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
+  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+}
+
+/* Exhaustion gauge — six-segment radial fill, drawn as conic-gradient wedges
+   via a filled circle + repeating background; kept simple (no SVG) since it
+   only needs to read as "proportion filled," not precise geometry. */
+.tk-gauge {
+  width: 9.5px;
+  height: 9.5px;
+  border-radius: 50%;
+  background: conic-gradient(
+    var(--fam, var(--fam-physical)) calc(var(--tk-gauge-frac, 0) * 360deg),
+    rgba(255, 255, 255, 0.18) 0
+  );
+}
+
+/* ── Story 54 — invisible veil ──────────────────────────────────────────
+   Dims/desaturates the portrait layer only, never .token-chip — protects
+   Story 53's badge opacity and Story 34's drag affordance ring. */
+.token-chip[data-veil="1"] .token-chip__portrait,
+.token-chip[data-veil="1"] .token-chip__initial,
+.token-chip[data-veil-secret="1"] .token-chip__portrait,
+.token-chip[data-veil-secret="1"] .token-chip__initial {
+  filter: grayscale(var(--tk-veil-desat));
+  opacity: var(--tk-veil-dim);
+  transition: filter 320ms cubic-bezier(0.4, 0, 0.2, 1), opacity 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+/* V4 — dimmers don't multiply: .token-chip--fallen already dims the whole
+   chip (including this portrait, by inherited ancestor opacity) to 0.4 — the
+   more severe single treatment. Setting portrait opacity to 1 here (instead
+   of the veil's 0.55) avoids compounding into an unreadable 0.4 × 0.55 = 0.22.
+   The dashed ring/hatch/◇ are separate elements and persist regardless, per
+   Story 54's "FALLEN keeps the veil" edge case. */
+.token-chip--fallen[data-veil="1"] .token-chip__portrait,
+.token-chip--fallen[data-veil="1"] .token-chip__initial,
+.token-chip--fallen[data-veil-secret="1"] .token-chip__portrait,
+.token-chip--fallen[data-veil-secret="1"] .token-chip__initial {
+  filter: grayscale(0.6);
+  opacity: 1;
+}
+
+.tk-veil-ring {
+  position: absolute;
+  inset: -2px;
+  width: calc(100% + 4px);
+  height: calc(100% + 4px);
+  pointer-events: none;
+  overflow: visible;
+}
+.tk-veil-ring circle {
+  fill: none;
+  stroke: var(--token-ring-color, #6a8fa8);
+  stroke-width: 2;
+  stroke-dasharray: 113.1 0.01;
+  transition: stroke-dasharray 320ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+.token-chip[data-veil="1"] .tk-veil-ring circle,
+.token-chip[data-veil-secret="1"] .tk-veil-ring circle {
+  stroke-dasharray: 4.04 3.03;
+  transition-duration: 240ms;
+}
+
+.tk-veil-sheen {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: linear-gradient(100deg, transparent 30%, var(--tk-veil-sheen) 48%, transparent 66%);
+  background-size: 260% 100%;
+}
+.token-chip[data-veil="1"] .tk-veil-sheen,
+.token-chip[data-veil-secret="1"] .tk-veil-sheen {
+  opacity: 1;
+  animation: tkShimmer 3.2s linear infinite;
+  animation-delay: var(--tk-shimmer-delay, 0ms);
+}
+@keyframes tkShimmer {
+  from { background-position: 200% 0; }
+  to { background-position: -200% 0; }
+}
+
+.tk-veil-hatch {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  background: repeating-linear-gradient(45deg, var(--tk-dm-secret-scrim) 0 1.6px, transparent 1.6px 4.6px);
+  transition: opacity 320ms;
+}
+.token-chip[data-veil-secret="1"] .tk-veil-hatch { opacity: 1; }
+
+.tk-secret-mark {
+  position: absolute;
+  left: calc(50% - 4.5px);
+  top: -13px;
+  width: 9px;
+  height: 9px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 180ms ease-out;
+}
+.tk-secret-mark polygon {
+  fill: var(--tk-dm-secret);
+  stroke: var(--tk-glyph-outline);
+  stroke-width: 0.7;
+}
+.token-chip[data-veil-secret="1"] .tk-secret-mark { opacity: 1; }
+
+.token-chip[data-veil="1"] .token-chip__label,
+.token-chip[data-veil-secret="1"] .token-chip__label {
+  font-style: italic;
+  opacity: 0.6;
+}
+
 /* ── prefers-reduced-motion ──────────────────────────────────────────── */
 /* Single authoritative block covering every motion point in the token layer
  * — both Story 29's original animations and everything 29b added. Strategy
@@ -1330,6 +1677,60 @@
 
   .token-resize-stepper__btn {
     transition: none;
+  }
+
+  /* Story 52 — Phase A becomes one static hot rim held ~900ms (via the
+   * .tk-rm-flash class, applied/removed by JS), then settles into ordinary
+   * Phase B; the halo itself stays (it's information, not decoration), just
+   * without the breathing loop. AoE stagger is suppressed — all rims appear
+   * at once. */
+  .tk-hit.tk-flash-heavy,
+  .tk-hit.tk-flash-standard {
+    animation: none;
+  }
+  .tk-hit.tk-flash-heavy .tk-wash,
+  .tk-hit.tk-flash-standard .tk-wash,
+  .tk-hit.tk-flash-heavy .tk-shock {
+    animation: none;
+    opacity: 0;
+  }
+  .token-chip.tk-rm-flash .tk-wound {
+    opacity: 1 !important;
+    border-color: var(--tk-dmg-hot) !important;
+    animation: none !important;
+    box-shadow: 0 0 8px var(--tk-dmg-hot);
+  }
+  .tk-wound {
+    animation: none;
+    transition-duration: 1ms;
+  }
+
+  /* Story 53 — badge entrance/clear snap instead of scaling in. */
+  .tk-badge {
+    animation: none;
+  }
+
+  /* Story 54 — veil transitions become instant; the shimmer loop (purely
+   * decorative, lowest-priority) is suppressed entirely — desaturation +
+   * the dashed ring already carry the state without it. The NPC vanish
+   * keeps a 200ms opacity-only fade rather than going fully instant — a
+   * cross-fade isn't a vestibular trigger, and "it left" is meaning, not
+   * decoration. */
+  .token-chip[data-veil="1"] .token-chip__portrait,
+  .token-chip[data-veil="1"] .token-chip__initial,
+  .token-chip[data-veil-secret="1"] .token-chip__portrait,
+  .token-chip[data-veil-secret="1"] .token-chip__initial,
+  .tk-veil-ring circle,
+  .tk-veil-hatch,
+  .tk-secret-mark {
+    transition-duration: 1ms;
+  }
+  .tk-veil-sheen {
+    display: none;
+  }
+  .tk-token-exit {
+    animation-duration: 200ms;
+    animation-timing-function: ease;
   }
 }
 

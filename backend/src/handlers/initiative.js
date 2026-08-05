@@ -22,10 +22,21 @@ exports.handler = async (event) => {
       return badRequest("entries must be an array");
     }
 
+    // Story 52 — stamp turnStartedAt whenever the active turn/round advances.
+    // Clients derive Phase B (wound halo) liveness from this rather than a
+    // server-side clear of lastDamagedAt on every character/NPC record (see
+    // Story 52 Architect Notes: a cross-item write on every "Next Turn" tap
+    // would be non-atomic; this single-record stamp is not).
+    const previous = await getInitiativeState();
+    const nextActiveTurnIndex = body.activeTurnIndex ?? 0;
+    const nextRound = Math.max(1, body.round ?? 1);
+    const turnAdvanced = previous.activeTurnIndex !== nextActiveTurnIndex || previous.round !== nextRound;
+
     await saveInitiativeState({
       entries: body.entries,
-      activeTurnIndex: body.activeTurnIndex ?? 0,
-      round: body.round ?? 1,
+      activeTurnIndex: nextActiveTurnIndex,
+      round: nextRound,
+      turnStartedAt: turnAdvanced ? new Date().toISOString() : previous.turnStartedAt,
     });
 
     await notifySessionChanged();

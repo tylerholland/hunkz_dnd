@@ -1,5 +1,11 @@
 import { useState, useRef, useEffect, useCallback, memo, forwardRef } from "react";
 import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
+import {
+  getBadgeEligibleConditions,
+  condBandSlotCount,
+  isInvisibleCondition,
+  FAMILY_COLORS,
+} from "./tokenEffects";
 
 /**
  * BattleModeController
@@ -33,6 +39,63 @@ function nearestSizeIndex(scale) {
   return best;
 }
 
+// ── Story 53 — condition badge column ───────────────────────────────────────
+// Badges are pointer-events: none, non-interactive, no resting animation
+// (Tier 2, ambient). 0-HP collapses to one summary badge @0.6 opacity rather
+// than hiding entirely (compressing beats deleting — "this body is also
+// Petrified" occasionally matters).
+function ConditionBadge({ item, slot, stacked }) {
+  const { meta } = item;
+  const color = FAMILY_COLORS[meta.family] || FAMILY_COLORS.unknown;
+  const isSummary = slot === "summary";
+  return (
+    <div
+      className={`tk-badge${isSummary ? " tk-badge--summary" : ""}`}
+      data-slot={isSummary ? undefined : slot}
+      style={{ "--fam": color }}
+    >
+      {stacked && <div className="tk-badge-stack" />}
+      {meta.glyphId === "g-exhaustion" ? (
+        <div
+          className="tk-gauge"
+          style={{ "--fam": color, "--tk-gauge-frac": Math.min(1, (meta.exhaustionLevel || 0) / 6) }}
+        />
+      ) : (
+        <svg><use href={`#${meta.glyphId}`} /></svg>
+      )}
+    </div>
+  );
+}
+
+function ConditionBadgeColumn({ eligible, isFallen, condBand }) {
+  const slots = condBandSlotCount(condBand);
+  if (slots === 0 || !eligible || eligible.length === 0) return null;
+
+  if (isFallen) {
+    return (
+      <div className="tk-cond-col" style={{ opacity: 0.6 }}>
+        <ConditionBadge item={eligible[0]} slot="summary" stacked={eligible.length > 1} />
+      </div>
+    );
+  }
+
+  const shown = eligible.slice(0, slots);
+  const truncated = eligible.length > slots;
+
+  return (
+    <div className="tk-cond-col">
+      {shown.map((item, i) => (
+        <ConditionBadge
+          key={item.name + i}
+          item={item}
+          slot={String(i + 1)}
+          stacked={truncated && i === shown.length - 1}
+        />
+      ))}
+    </div>
+  );
+}
+
 // ── HeldTokenFloater ────────────────────────────────────────────────────────
 export const HeldTokenFloater = forwardRef(function HeldTokenFloater(
   { heldSourceId, heldType, party, npcCombat, pal },
@@ -51,10 +114,20 @@ export const HeldTokenFloater = forwardRef(function HeldTokenFloater(
     ? npcInitials(npc.name)
     : (member ? (member.name || "?")[0].toUpperCase() : "?");
 
+  // Story 54 — "the DM must know what they're placing." The floater is
+  // DM-only and never crosses a viewer boundary, so checking conditions
+  // directly here (rather than the server-computed per-token `invisible`
+  // flag, which doesn't exist yet for a token not yet on the map) isn't the
+  // client-side re-derivation the story warns against — that rule is about
+  // the player-vs-DM omission, which this floater never participates in.
+  const heldConditions = member?.conditions ?? npc?.conditions ?? [];
+  const veiled = Array.isArray(heldConditions) && heldConditions.some(isInvisibleCondition);
+
   return (
     <div
       ref={ref}
       className="token-floater"
+      data-veil-secret={veiled ? "1" : undefined}
       style={{
         left: "-9999px",
         top: "-9999px",
@@ -69,14 +142,20 @@ export const HeldTokenFloater = forwardRef(function HeldTokenFloater(
           src={member.portraitUrl}
           alt={member.name}
           draggable={false}
+          style={veiled ? { filter: "grayscale(0.35)", opacity: 0.55 } : undefined}
         />
       ) : (
         <div
           className="token-floater__initial"
-          style={{ background: fillColor }}
+          style={{ background: fillColor, ...(veiled ? { filter: "grayscale(0.35)", opacity: 0.55 } : null) }}
         >
           {initials}
         </div>
+      )}
+      {veiled && (
+        <svg className="tk-secret-mark" viewBox="0 0 10 10" aria-hidden="true" style={{ opacity: 1 }}>
+          <polygon points="5,0.5 9.5,5 5,9.5 0.5,5" />
+        </svg>
       )}
     </div>
   );
@@ -109,6 +188,17 @@ export const TokenChip = memo(function TokenChip({
   panSuppressedRef,
   // Story 44 — per-token resize (DM view only, NPC tokens only).
   onResizeToken,
+  // Stories 52–54 — resolved once per render in the parent (MapPanel /
+  // PlayerMapViewer), not recomputed per-chip on every pan frame.
+  // damageState: { phaseAFresh, phaseBLive, tier, staggerDelayMs, washOnly } | null
+  damageState,
+  // condBand: "full" | "two" | "one" | "none" — Story 53's size-band resolver
+  condBand = "full",
+  // veil: { veiled: boolean, secret: boolean } — Story 54, server-derived
+  veil,
+  // exiting: true while this chip is a fading Story 54 vanish ghost
+  exiting = false,
+  shimmerDelayMs = 0,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [flipCard, setFlipCard] = useState(false);
@@ -121,6 +211,11 @@ export const TokenChip = memo(function TokenChip({
   // false on the very first paint (no transition class), flips true right
   // after via the effect below so the token's first position is instant.
   const [hasMounted, setHasMounted] = useState(false);
+  // Story 52 — reduced-motion Phase A substitute: a static hot rim held
+  // ~900ms instead of the recoil/wash/shockwave animation, then settles to
+  // ordinary Phase B (motion may be removed; meaning may not).
+  const [rmFlash, setRmFlash] = useState(false);
+  const rmFlashTimerRef = useRef(null);
   const chipRef = useRef(null);
   const hoverTimerRef = useRef(null);
   const collapseTimerRef = useRef(null);
@@ -177,6 +272,21 @@ export const TokenChip = memo(function TokenChip({
     setHasMounted(true);
   }, []);
 
+  useEffect(() => {
+    if (!damageState?.phaseAFresh) return undefined;
+    const reduced = typeof window !== "undefined"
+      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!reduced) return undefined;
+    setRmFlash(true);
+    if (rmFlashTimerRef.current) clearTimeout(rmFlashTimerRef.current);
+    rmFlashTimerRef.current = setTimeout(() => setRmFlash(false), 900);
+    return undefined;
+  }, [damageState?.phaseAFresh]);
+
+  useEffect(() => () => {
+    if (rmFlashTimerRef.current) clearTimeout(rmFlashTimerRef.current);
+  }, []);
+
   // HP data — member uses hpCurrent + hpMax (hpMax is always the normalized,
   // authoritative value from partyProjection.js's projectPlayerCharacter()/
   // projectDmPartyItem(); the raw `hp` field is a legacy/edit-mode field that
@@ -185,6 +295,16 @@ export const TokenChip = memo(function TokenChip({
   const hpCurrent = member?.hpCurrent ?? npc?.hpCurrent ?? null;
   const hpMax = member?.hpMax ?? member?.hp ?? npc?.hpMax ?? null;
   const isFallen = hpCurrent !== null && hpCurrent <= 0;
+
+  // Story 53 — conditions/exhaustion for the badge column and detail card.
+  // Invisible is deliberately excluded from this set on every viewer
+  // identically (Story 54's own whole-token treatment).
+  const rawConditions = member?.conditions ?? npc?.conditions ?? [];
+  const exhaustionLevel = member?.exhaustionLevel ?? 0; // NPCs have no exhaustion field
+
+  // Story 54 — server-derived flag only; never re-derived client-side.
+  const veiled = !!veil?.veiled;
+  const secret = !!veil?.secret;
 
   // HP visibility rules (brief §13)
   const showExactHp = isDm
@@ -512,7 +632,21 @@ export const TokenChip = memo(function TokenChip({
     canDrag ? "token-chip--own-draggable" : "",
     isDragging ? "token-chip--dragging" : "",
     isDm && resizeActive ? "token-chip--resize-active" : "",
+    exiting ? "token-chip--exiting" : "",
+    rmFlash ? "tk-rm-flash" : "",
   ].filter(Boolean).join(" ");
+
+  // Stories 52–54 — derived render flags. `veiled`/`secret` come from the
+  // server-computed flag only (never re-derived from `rawConditions` here —
+  // that would be a second source of truth for a security-relevant rule).
+  const tkHitClasses = [
+    "tk-hit",
+    damageState?.phaseAFresh && damageState.tier === "heavy" ? "tk-flash-heavy" : "",
+    damageState?.phaseAFresh && damageState.tier === "standard" ? "tk-flash-standard" : "",
+    exiting ? "tk-token-exit" : "",
+  ].filter(Boolean).join(" ");
+  const showWound = !!damageState?.phaseBLive && !isFallen;
+  const eligibleConditions = getBadgeEligibleConditions(rawConditions, exhaustionLevel);
 
   // Story 44 — current scale for the stepper readout
   const currentScale = Number.isFinite(token.scale) ? token.scale : 1.0;
@@ -524,6 +658,11 @@ export const TokenChip = memo(function TokenChip({
       ref={chipRef}
       className={chipClasses}
       data-expanded={expanded ? "true" : "false"}
+      data-wounded={showWound ? "1" : undefined}
+      data-veil={veiled && !secret ? "1" : undefined}
+      data-veil-secret={secret ? "1" : undefined}
+      data-viewer={isDm ? "dm" : "player"}
+      data-cond-band={condBand}
       style={{
         "--token-x": `${left}px`,
         "--token-y": `${top}px`,
@@ -538,34 +677,80 @@ export const TokenChip = memo(function TokenChip({
         "--pal-surface-solid": pal?.surfaceSolid || pal?.surface,
         // Story 44 — per-token size multiplier, stacked on global --token-scale-multiplier
         "--token-size-mult": currentScale,
+        "--tk-shimmer-delay": `${shimmerDelayMs}ms`,
       }}
-      onMouseEnter={handleMouseEnter}
-      onMouseLeave={handleMouseLeave}
-      onClick={handleClick}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerCancel}
-      onPointerLeave={handlePointerLeave}
+      onMouseEnter={exiting ? undefined : handleMouseEnter}
+      onMouseLeave={exiting ? undefined : handleMouseLeave}
+      onClick={exiting ? undefined : handleClick}
+      onPointerDown={exiting ? undefined : handlePointerDown}
+      onPointerMove={exiting ? undefined : handlePointerMove}
+      onPointerUp={exiting ? undefined : handlePointerUp}
+      onPointerCancel={exiting ? undefined : handlePointerCancel}
+      onPointerLeave={exiting ? undefined : handlePointerLeave}
     >
-      {/* Portrait or initial — NPC portraits (Story 29b) use the same
-          element/classes as PC portraits; the ring stays neutral grey via
-          the .token-chip--npc selector regardless of portrait presence. */}
-      {showPortrait ? (
-        <img
-          className="token-chip__portrait"
-          src={portraitUrl}
-          alt={name}
-          draggable={false}
-          loading="lazy"
-          decoding="async"
-          onError={() => setPortraitError(true)}
+      {/* .tk-hit — Story 52's recoil / Story 54's vanish wrapper. Wraps the
+          portrait, ring, and every effect/badge layer so damage recoil (or
+          the NPC vanish) moves the whole visible chip together, without ever
+          touching .token-chip's own transform (fully claimed by position,
+          rotation, and the two size multipliers — see the file-header note
+          on the Stories 52–54 CSS block). */}
+      <div
+        className={tkHitClasses}
+        style={damageState?.phaseAFresh && damageState.delayMs ? { animationDelay: `${damageState.delayMs}ms` } : undefined}
+      >
+        {/* Portrait or initial — NPC portraits (Story 29b) use the same
+            element/classes as PC portraits; the ring stays neutral grey via
+            the .token-chip--npc selector regardless of portrait presence. */}
+        {showPortrait ? (
+          <img
+            className="token-chip__portrait"
+            src={portraitUrl}
+            alt={name}
+            draggable={false}
+            loading="lazy"
+            decoding="async"
+            onError={() => setPortraitError(true)}
+          />
+        ) : (
+          <div className="token-chip__initial">
+            {initials}
+          </div>
+        )}
+
+        {/* Story 54 — veil ring/hatch/sheen (portrait-layer only; never dims
+            .token-chip itself, which would drag badges/drag-affordance down
+            with it). */}
+        {(veiled || secret) && (
+          <>
+            <svg className="tk-veil-ring" viewBox="0 0 40 40" aria-hidden="true">
+              <circle cx="20" cy="20" r="18" />
+            </svg>
+            <div className="tk-veil-sheen" />
+          </>
+        )}
+        {secret && <div className="tk-veil-hatch" />}
+        {secret && (
+          <svg className="tk-secret-mark" viewBox="0 0 10 10" aria-hidden="true">
+            <polygon points="5,0.5 9.5,5 5,9.5 0.5,5" />
+          </svg>
+        )}
+
+        {/* Story 52 — damage flash overlays. Conditionally mounted only,
+            never present at opacity 0 (perf: no idle compositor work). */}
+        {damageState?.phaseAFresh && <div className="tk-wash" />}
+        {showWound && <div className="tk-wound" />}
+        {damageState?.phaseAFresh && damageState.tier === "heavy" && !damageState.washOnly && (
+          <div className="tk-shock" />
+        )}
+
+        {/* Story 53 — condition badge column. Absent from the DOM entirely
+            when there are no eligible conditions (the common case). */}
+        <ConditionBadgeColumn
+          eligible={eligibleConditions}
+          isFallen={isFallen}
+          condBand={condBand}
         />
-      ) : (
-        <div className="token-chip__initial">
-          {initials}
-        </div>
-      )}
+      </div>
 
       {/* Name label */}
       <div className="token-chip__label" style={{ color: pal?.text }}>
@@ -575,6 +760,42 @@ export const TokenChip = memo(function TokenChip({
       {/* HP hover card */}
       <div className={`token-hp-card${flipCard ? " token-hp-card--flip" : ""}`}>
         <div className="token-hp-card__name">{name}</div>
+
+        {/* Story 54 — the authoritative record; first row of the condition
+            block on every viewer (being barely present outranks being
+            poisoned). SECRET gets a DM-only second line. */}
+        {(veiled || secret) && (
+          <div className="token-hp-card__invis-line">
+            ◇ INVISIBLE
+            {isDm && secret && (
+              <div className="token-hp-card__secret-line">◦ Unseen by players</div>
+            )}
+          </div>
+        )}
+
+        {/* Story 53 — every active condition by name, in the same priority
+            order as the badge column (superset, not a differently-sorted
+            list). Exhaustion is the one item shown numerically here. */}
+        {eligibleConditions.length > 0 && (
+          <div className="token-hp-card__cond-block">
+            {eligibleConditions.map((item, i) => (
+              <div key={item.name + i} className="token-hp-card__cond-line" style={{ color: FAMILY_COLORS[item.meta.family] }}>
+                {item.name === "Exhaustion" ? `EXHAUSTION ${item.meta.exhaustionLevel}` : String(item.name).toUpperCase()}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Story 52 — Phase B wound line. Suppressed on FALLEN; damage
+            amount hidden for a player viewing an NPC (whose exact HP is
+            already hidden from players elsewhere on this card). */}
+        {showWound && (
+          <div className="token-hp-card__wound-line">
+            {!isDm && token.type === "npc"
+              ? "◦ Recently wounded"
+              : `◦ Took ${damageState?.lastDamageAmount ?? "?"} — hasn't acted`}
+          </div>
+        )}
 
         {showExactHp && hpCurrent !== null && hpMax !== null && (
           <div className="token-hp-card__numerals">

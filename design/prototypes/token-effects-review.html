@@ -1,0 +1,2024 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Battle Atlas — Token Effects Review (Stories 52–55)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ═══════════════════════════════════════════════════════════════════════
+   OCEAN PALETTE + EFFECT COLOUR TOKENS (universal, from the four briefs)
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  --bg: #0d0f14;
+  --surface: rgba(20,30,45,0.55);
+  --surface-solid: #141e2c;
+  --border: rgba(100,140,168,0.18);
+  --border-vis: rgba(100,140,168,0.32);
+  --accent: #6a8fa8;
+  --accent-bright: #a0c0d0;
+  --accent-dim: rgba(106,143,168,0.15);
+  --text: #c8bfaf;
+  --text-body: #9ab0bc;
+  --text-muted: #7a8fa0;
+  --text-dim: #3a5a6a;
+  --gem: #8ab4c8;
+  --glow1: rgba(40,70,100,0.28);
+  --glow2: rgba(20,40,70,0.22);
+  --font-d: 'Cinzel', Georgia, serif;
+  --font-b: 'Crimson Text', Georgia, serif;
+  --font-u: 'IM Fell English', Georgia, serif;
+
+  /* Faction ring colours */
+  --ring-ember: #c0784a;
+  --ring-ocean: #6a8fa8;
+  --ring-forest: #5a9a5a;
+  --ring-npc: rgba(150,150,150,0.65);
+
+  /* Story 52 — damage */
+  --tk-dmg-hot: #e06060;
+  --tk-dmg-rest: #c06060;
+  --tk-dmg-glow: rgba(192,96,96,0.45);
+
+  /* Story 53 — condition families */
+  --fam-control: #b05878;
+  --fam-bind: #c8903c;
+  --fam-sense: #8a7cc8;
+  --fam-physical: #8fae3c;
+  --fam-unknown: #c8c0b4;
+
+  /* Story 54 — invisibility */
+  --tk-veil-desat: 0.35;
+  --tk-veil-dim: 0.55;
+  --tk-veil-sheen: rgba(255,255,255,0.13);
+  --tk-dm-secret: #7c93a8;
+  --tk-dm-secret-scrim: rgba(124,147,168,0.22);
+  --tk-glyph-outline: rgba(0,0,0,0.55);
+
+  /* Story 55 — attack tracer */
+  --tk-atk-core: #dce8f0;
+  --tk-atk-shade: rgba(0,0,0,0.45);
+  --tk-atk-npc: #c0c8c0;
+  /* Bright glow variants, distinct from the muted resting --ring-* tokens above —
+     a 200-400ms motion effect needs more saturation/luminance than an at-rest ring
+     to actually read as tinted at a glance. Identity mapping is unchanged (Eoghan/
+     Ocean = blue, Aeryn/Forest = green, Aragorn/Ember = amber) — only intensity. */
+  --glow-ember: #ff9d5c;
+  --glow-ocean: #6fc6ff;
+  --glow-forest: #6fe07a;
+  --glow-npc: #dfe4df;
+  --tk-sup-core: #cfe8cf;
+  --tk-sup-glow: #5a9a5a;
+
+  /* Fallen */
+  --fallen-op: 0.4;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, var(--glow2) 0%, transparent 55%),
+    var(--bg);
+  min-height: 100vh;
+  color: var(--text);
+  font-family: var(--font-b);
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TOP BAR + PRESET RAIL (Page Section 1)
+   ═══════════════════════════════════════════════════════════════════════ */
+.topbar {
+  position: sticky; top: 0; z-index: 500;
+  background: rgba(8,11,18,0.97);
+  border-bottom: 1px solid var(--border-vis);
+  backdrop-filter: blur(8px);
+  padding: 12px 24px;
+}
+.topbar-row { display: flex; align-items: center; gap: 18px; }
+.topbar-title { font-family: var(--font-d); font-size: 15px; letter-spacing: 0.14em; color: var(--accent-bright); flex: 1; }
+.topbar-meta { font-family: var(--font-u); font-size: 11px; letter-spacing: 0.14em; color: var(--text-dim); }
+.topbar-badge {
+  font-family: var(--font-u); font-size: 11px; letter-spacing: 0.12em; color: var(--accent);
+  border: 1px solid var(--border-vis); border-radius: 3px; padding: 3px 9px;
+}
+.rm-toggle {
+  display: flex; align-items: center; gap: 7px; font-family: var(--font-u); font-size: 11px;
+  letter-spacing: 0.12em; color: var(--text-dim); cursor: pointer; user-select: none;
+  min-height: 44px;
+}
+.rm-toggle input { cursor: pointer; accent-color: var(--accent); }
+.rm-toggle.active { color: var(--accent-bright); }
+
+.preset-rail { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+.preset-btn {
+  background: transparent; border: 1px solid var(--border-vis); border-radius: 3px;
+  color: var(--text-muted); font-family: var(--font-u); font-size: 11px; letter-spacing: 0.12em;
+  padding: 7px 13px; cursor: pointer; transition: all 0.15s; min-height: 36px;
+}
+.preset-btn:hover { border-color: var(--accent); color: var(--accent-bright); }
+.preset-btn.active { background: var(--accent-dim); border-color: var(--accent); color: var(--accent-bright); }
+.preset-desc {
+  font-family: var(--font-b); font-style: italic; font-size: 12.5px; color: var(--text-muted);
+  margin-top: 8px; min-height: 18px;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAGE BODY / SECTION CHROME
+   ═══════════════════════════════════════════════════════════════════════ */
+.page-body { max-width: 1180px; margin: 0 auto; padding: 40px 28px 100px; }
+.pr-section { margin-bottom: 76px; }
+.pr-section-header { margin-bottom: 22px; padding-bottom: 14px; border-bottom: 1px solid var(--border); }
+.pr-section-num { font-family: var(--font-u); font-size: 11px; letter-spacing: 0.3em; color: var(--text-dim); text-transform: uppercase; margin-bottom: 6px; }
+.pr-section-title { font-family: var(--font-d); font-size: 21px; letter-spacing: 0.07em; color: var(--accent-bright); margin-bottom: 6px; }
+.pr-section-desc { font-family: var(--font-b); font-size: 14px; color: var(--text-muted); line-height: 1.6; max-width: 820px; }
+
+.callout {
+  position: absolute; background: rgba(160,192,208,0.10); border: 1px solid rgba(160,192,208,0.32);
+  border-radius: 3px; color: #a0c0d0; font-family: var(--font-u); font-size: 10.5px; letter-spacing: 0.13em;
+  padding: 3px 8px; pointer-events: none; text-transform: uppercase; white-space: nowrap; z-index: 20;
+}
+.note-line {
+  font-family: var(--font-u); font-size: 11px; letter-spacing: 0.08em; color: var(--tk-dm-secret);
+  background: rgba(124,147,168,0.08); border: 1px solid rgba(124,147,168,0.25); border-radius: 3px;
+  padding: 6px 10px; margin-top: 10px; display: inline-block;
+}
+.btn-ghost {
+  background: transparent; border: 1px solid var(--border-vis); border-radius: 3px; color: var(--text-muted);
+  font-family: var(--font-u); font-size: 11px; letter-spacing: 0.1em; padding: 7px 13px; cursor: pointer;
+  transition: border-color 0.15s, color 0.15s; min-height: 36px;
+}
+.btn-ghost:hover { border-color: var(--accent); color: var(--accent-bright); }
+.btn-ghost.active { border-color: var(--accent); color: var(--accent-bright); background: var(--accent-dim); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TOKEN COMPONENT — the canonical 36px shell, all specimens derive from it
+   Sizing model: real size via --tk-mult on width/height (calc(36px*mult));
+   badge orbit / gem / number / label use FIXED px offsets from centre —
+   this is what gives "counter-scale against size" for free (cluster §4.2):
+   they never read --tk-mult, so they stay a constant physical size whether
+   the chip is 9px or 108px.
+   ═══════════════════════════════════════════════════════════════════════ */
+.tk-wrap { --tk-mult: 1; position: relative; width: calc(36px * var(--tk-mult)); height: calc(36px * var(--tk-mult)); }
+.tk-lunge { position: relative; width: 100%; height: 100%; }
+.tk-hit { position: relative; width: 100%; height: 100%; transform-origin: center; }
+.token-chip { position: relative; width: 100%; height: 100%; border-radius: 50%; }
+
+.tk-portrait {
+  position: absolute; inset: 0; border-radius: 50%; overflow: hidden; background: #16222e;
+  transition: filter 320ms cubic-bezier(.4,0,.2,1), opacity 320ms cubic-bezier(.4,0,.2,1);
+}
+.tk-wrap[data-veil="1"] .tk-portrait, .tk-wrap[data-veil-secret="1"] .tk-portrait {
+  filter: grayscale(0.35); opacity: 0.55;
+}
+.tk-wrap[data-fallen="1"] .tk-portrait { filter: grayscale(0.6); opacity: var(--fallen-op); transition-duration: 220ms; }
+
+.tk-veil-hatch {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: repeating-linear-gradient(45deg, var(--tk-dm-secret-scrim) 0 1.6px, transparent 1.6px 4.6px);
+  transition: opacity 320ms;
+}
+.tk-wrap[data-veil-secret="1"] .tk-veil-hatch { opacity: 1; }
+
+.tk-veil-sheen {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: linear-gradient(100deg, transparent 30%, var(--tk-veil-sheen) 48%, transparent 66%);
+  background-size: 260% 100%;
+}
+.tk-wrap[data-veil="1"] .tk-veil-sheen, .tk-wrap[data-veil-secret="1"] .tk-veil-sheen {
+  opacity: 1; animation: tkShimmer 3.2s linear infinite;
+}
+/* Loop priority (Rule 4, amended §54 §7.4): wound halo > concentration pulse > shimmer.
+   data-loop-suppress-shimmer / -conc are set at render time when a higher loop is active. */
+.tk-wrap[data-loop-suppress-shimmer="1"] .tk-veil-sheen { animation: none; opacity: 0.65; }
+@keyframes tkShimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+.tk-wash {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0;
+  background: radial-gradient(circle, rgba(224,96,96,.18) 28%, rgba(224,96,96,.50) 100%);
+}
+.tk-hit.tk-flash-heavy .tk-wash { animation: tkWash 450ms; }
+.tk-hit.tk-flash-standard .tk-wash { animation: tkWash 300ms; }
+@keyframes tkWash { 0% { opacity: 0; } 15% { opacity: 1; } 100% { opacity: 0; } }
+
+@keyframes tkRecoilHeavy { 0% { transform: scale(1); } 25% { transform: scale(.92); } 65% { transform: scale(1.045); } 100% { transform: scale(1); } }
+@keyframes tkRecoilStandard { 0% { transform: scale(1); } 30% { transform: scale(.95); } 70% { transform: scale(1.02); } 100% { transform: scale(1); } }
+.tk-hit.tk-flash-heavy { animation: tkRecoilHeavy 450ms; }
+.tk-hit.tk-flash-standard { animation: tkRecoilStandard 300ms; }
+
+.tk-ring-svg { position: absolute; inset: calc(-1px * var(--tk-mult)); width: calc(100% + 2px * var(--tk-mult)); height: calc(100% + 2px * var(--tk-mult)); pointer-events: none; overflow: visible; }
+.tk-ring-svg circle.tk-ring-outline { fill: none; stroke: rgba(0,0,0,0.4); stroke-width: 1; }
+.tk-ring-svg circle.tk-ring-faction { fill: none; stroke-width: 2; transition: stroke-dasharray 320ms cubic-bezier(.4,0,.2,1); }
+
+.tk-wound {
+  position: absolute; inset: calc(-3px * var(--tk-mult)); border-radius: 50%; pointer-events: none; opacity: 0;
+  border: calc(1.5px * var(--tk-mult)) solid var(--tk-dmg-rest);
+  box-shadow: 0 0 calc(6px * var(--tk-mult)) var(--tk-dmg-glow);
+  transition: opacity 400ms ease-out;
+}
+.tk-wrap[data-wounded="1"] .tk-wound { opacity: 0.7; animation: tkWoundBreathe 2.6s ease-in-out infinite; }
+.tk-wrap[data-wounded="clearing"] .tk-wound { opacity: 0.18; animation: none; }
+.tk-wrap[data-fallen="1"] .tk-wound { opacity: 0 !important; animation: none !important; }
+@keyframes tkWoundBreathe { 0%, 100% { opacity: 0.5; } 50% { opacity: 0.85; } }
+
+.tk-shock {
+  position: absolute; inset: 0; border-radius: 50%; pointer-events: none; opacity: 0;
+  border: calc(1.5px * var(--tk-mult)) solid var(--tk-dmg-hot);
+}
+.tk-hit.tk-flash-heavy .tk-shock { animation: tkShock 380ms cubic-bezier(.16,.84,.28,1); }
+@keyframes tkShock { 0% { transform: scale(1); opacity: .9; } 100% { transform: scale(1.65); opacity: 0; } }
+
+/* L2 badge orbit — fixed px, never reads --tk-mult (counter-scale by omission)
+   Badge size bumped 12px→15px / glyph 7.5px→9.5px / ring 1.5px→2px — REVIEW-STAGE
+   FINDING (item 1): Story 53's brief (§4) locks 12px as the normative spec. This
+   change is flagged back to that brief for confirmation, not a silent overrule.
+   Slot pitch (13→16) and left offset (-20→-25) are scaled by the same 1.25× the
+   badge diameter grew by, so the I3 "1px min clear-air from the faction ring"
+   relationship is preserved rather than eroded by the larger badge. */
+.tk-cond-col { position: absolute; inset: 0; pointer-events: none; }
+.tk-badge {
+  position: absolute; width: 15px; height: 15px; border-radius: 50%;
+  background: rgba(10,10,12,0.88); box-shadow: 0 0 0 0.5px rgba(255,255,255,0.5);
+  border: 2px solid var(--fam, var(--fam-unknown)); color: var(--fam, var(--fam-unknown));
+  display: flex; align-items: center; justify-content: center; transform: translate(-50%,-50%) scale(1);
+  animation: tkBadgeIn 180ms ease-out;
+}
+.tk-badge svg { width: 9.5px; height: 9.5px; }
+.tk-badge[data-slot="1"] { left: calc(50% - 25px); top: calc(50% - 16px); }
+.tk-badge[data-slot="2"] { left: calc(50% - 25px); top: calc(50%); }
+.tk-badge[data-slot="3"] { left: calc(50% - 25px); top: calc(50% + 16px); }
+.tk-badge.summary { width: 18px; height: 18px; left: calc(50% - 25px); top: calc(50%); }
+.tk-badge-stack { position: absolute; inset: 0; transform: translate(2.5px,2.5px); background: rgba(10,10,12,0.65); border-radius: 50%; z-index: -1; }
+@keyframes tkBadgeIn { from { transform: translate(-50%,-50%) scale(0.7); opacity: 0; } to { transform: translate(-50%,-50%) scale(1); opacity: 1; } }
+
+.tk-secret-mark {
+  position: absolute; left: calc(50% - 4.5px); top: calc(50% - 22px); width: 9px; height: 9px; opacity: 0;
+  transition: opacity 180ms ease-out;
+}
+.tk-secret-mark polygon { fill: var(--tk-dm-secret); stroke: var(--tk-glyph-outline); stroke-width: 0.7; }
+.tk-wrap[data-viewer="dm"][data-veil-secret="1"] .tk-secret-mark { opacity: 1; }
+
+.tk-gem {
+  position: absolute; left: calc(50% + 14px); top: calc(50% - 14px); width: 7px; height: 7px; border-radius: 50%;
+  background: #a0c0d0; opacity: 0; box-shadow: 0 0 4px rgba(160,192,208,.6); transform: translate(-50%,-50%);
+}
+.tk-wrap[data-conc="1"] .tk-gem { opacity: 1; animation: tkGemPulse 1.4s ease-in-out infinite; }
+.tk-wrap[data-conc="1"][data-loop-suppress-conc="1"] .tk-gem { animation: none; opacity: 0.9; }
+@keyframes tkGemPulse { 0%,100% { transform: translate(-50%,-50%) scale(1); opacity: 1; } 50% { transform: translate(-50%,-50%) scale(1.25); opacity: 0.7; } }
+
+.tk-number {
+  position: absolute; left: calc(50% + 12px); top: calc(50% + 12px); width: 14px; height: 14px; border-radius: 50%;
+  background: rgba(10,15,22,.85); border: 1px solid rgba(255,255,255,.2); transform: translate(-50%,-50%);
+  font: 9px var(--font-d); color: var(--accent-bright); display: flex; align-items: center; justify-content: center;
+}
+.tk-name {
+  position: absolute; left: 50%; top: calc(100% + 4px); transform: translate(-50%,0); font: 10px var(--font-u);
+  letter-spacing: 0.06em; color: var(--text); white-space: nowrap; background: rgba(10,15,22,.75);
+  padding: 1px 5px; border-radius: 2px;
+}
+.tk-wrap[data-veil="1"] .tk-name, .tk-wrap[data-veil-secret="1"] .tk-name { font-style: italic; opacity: 0.6; }
+
+/* Vanish/reappear (Story 54 §7.3) */
+.tk-vanish { transition: opacity 500ms ease-in, transform 500ms cubic-bezier(.32,0,.67,0); }
+.tk-vanish.is-gone { opacity: 0; transform: translateY(-8%) scale(0.94); }
+body.reduced-motion .tk-vanish { transition-duration: 200ms !important; transition-timing-function: ease !important; }
+.tk-reappear { animation: tkReappear 200ms ease-out; }
+@keyframes tkReappear { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+
+/* Magnify wrapper — the specimen strip / degradation ladder use THIS, not a
+   fork of the component, so every enlarged specimen literally IS the live
+   36px shell rendered larger. */
+.tk-magnify { display: inline-flex; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   REDUCED MOTION — single authoritative block (mirrors 29b §9.1 convention)
+   ═══════════════════════════════════════════════════════════════════════ */
+body.reduced-motion .tk-hit.tk-flash-heavy,
+body.reduced-motion .tk-hit.tk-flash-standard { animation: none !important; }
+body.reduced-motion .tk-hit.tk-flash-heavy .tk-wash,
+body.reduced-motion .tk-hit.tk-flash-standard .tk-wash { animation: none !important; opacity: 0 !important; }
+body.reduced-motion .tk-hit.tk-flash-heavy .tk-shock { animation: none !important; opacity: 0 !important; }
+/* Phase A replaced by a single static hot rim held ~900ms, then this class is
+   removed by JS and the token settles into ordinary Phase B. */
+body.reduced-motion .tk-wrap.tk-rm-flash .tk-wound {
+  opacity: 1 !important; border-color: var(--tk-dmg-hot) !important; animation: none !important; box-shadow: 0 0 calc(8px*var(--tk-mult)) var(--tk-dmg-hot);
+}
+body.reduced-motion .tk-wound { animation: none !important; opacity: 0.7 !important; transition-duration: 1ms !important; }
+body.reduced-motion .tk-wrap[data-wounded="clearing"] .tk-wound { opacity: 0.18 !important; }
+body.reduced-motion .tk-veil-sheen { display: none !important; }
+body.reduced-motion .tk-gem { animation: none !important; }
+body.reduced-motion .tk-badge { animation: none !important; }
+body.reduced-motion .tk-portrait,
+body.reduced-motion .tk-veil-hatch,
+body.reduced-motion .tk-secret-mark,
+body.reduced-motion .tk-ring-svg circle.tk-ring-faction { transition-duration: 1ms !important; }
+body.reduced-motion .tk-lunge { animation: none !important; }
+body.reduced-motion .tracer-bolt-core,
+body.reduced-motion .tracer-bolt-glow,
+body.reduced-motion .tracer-bolt-shade { animation: none !important; opacity: 0.75 !important; stroke-dashoffset: 0 !important; }
+body.reduced-motion .tracer-crescent { animation: none !important; opacity: 1 !important; }
+body.reduced-motion .tracer-muzzle { animation: none !important; opacity: 1 !important; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 2 — MIRRORED DM / PLAYER BOARD
+   ═══════════════════════════════════════════════════════════════════════ */
+.mb-controls {
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;
+  background: var(--surface); border: 1px solid var(--border-vis); border-radius: 5px; padding: 10px 14px;
+}
+.mb-control-group { display: flex; align-items: center; gap: 6px; }
+.mb-control-label { font-family: var(--font-u); font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--text-dim); margin-right: 4px; }
+.mb-readout { font-family: var(--font-d); font-size: 12px; color: var(--gem); min-width: 44px; text-align: center; }
+
+.mb-boards { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 860px) { .mb-boards { grid-template-columns: 1fr; } }
+.mb-board { background: var(--surface); border: 1px solid var(--border-vis); border-radius: 5px; overflow: hidden; }
+.mb-board-header { display: flex; align-items: center; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); }
+.mb-board-title { font-family: var(--font-u); font-size: 11px; letter-spacing: 0.24em; text-transform: uppercase; color: var(--text-muted); flex: 1; }
+.mb-board-title.dm { color: var(--tk-dm-secret); }
+.mb-board-title.player { color: var(--accent); }
+.mb-count { font-family: var(--font-d); font-size: 11px; color: var(--text-dim); }
+
+.mb-canvas { position: relative; height: 340px; overflow: hidden; background: #0a1108; }
+.mb-terrain {
+  position: absolute; inset: -20%; width: 140%; height: 140%;
+  background:
+    radial-gradient(ellipse at 20% 30%, rgba(70,100,55,0.4) 0%, transparent 42%),
+    radial-gradient(ellipse at 75% 65%, rgba(55,80,50,0.32) 0%, transparent 46%),
+    radial-gradient(ellipse at 48% 88%, rgba(40,58,42,0.28) 0%, transparent 50%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 40px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.025) 0 1px, transparent 1px 40px),
+    #0d1710;
+  transition: transform 260ms ease-out;
+}
+.mb-tracer-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.mb-tok-pos { position: absolute; transform: translate(-50%,-50%); }
+.mb-counter-rotate { transition: transform 260ms ease-out; }
+
+/* Hover/long-press detail card (item 2) — reuses .dc-card / .dc-cond-line / condLine()
+   verbatim from Section 6; this block only adds the reveal/position chrome and a small
+   header row pairing a portrait swatch with name+HP so no second card style is invented. */
+.mb-tooltip {
+  position: absolute; z-index: 60; pointer-events: none; width: 148px;
+  opacity: 0; transform: translateY(3px); transition: opacity 120ms ease-out, transform 120ms ease-out;
+}
+.mb-tooltip.visible { opacity: 1; transform: translateY(0); }
+.mb-tt-head { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; }
+.mb-tt-portrait { width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; border: 1px solid var(--border-vis); }
+.mb-tt-head .dc-name { margin-bottom: 2px; }
+.mb-tt-head .dc-hp-row { margin-bottom: 0; }
+.mb-tt-hp-bar { position: relative; height: 5px; border-radius: 3px; background: rgba(255,255,255,0.08); overflow: hidden; margin: 5px 0 8px; }
+.mb-tt-hp-fill { position: absolute; inset: 0 auto 0 0; height: 100%; border-radius: 3px; transition: width 200ms ease-out; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 3 — Persistent token states strip
+   ═══════════════════════════════════════════════════════════════════════ */
+.spec-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 18px; }
+.spec-card {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 18px 10px 14px;
+  display: flex; flex-direction: column; align-items: center; gap: 10px; position: relative; min-height: 168px;
+}
+.spec-token-stage { display: flex; align-items: center; justify-content: center; height: 78px; }
+.spec-label { font-family: var(--font-u); font-size: 11px; letter-spacing: 0.1em; color: var(--accent-bright); text-align: center; text-transform: uppercase; }
+.spec-sub { font-family: var(--font-b); font-style: italic; font-size: 11.5px; color: var(--text-muted); text-align: center; line-height: 1.4; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 4 — Event choreography rail
+   ═══════════════════════════════════════════════════════════════════════ */
+.choreo-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 16px; }
+.choreo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 14px; position: relative; }
+.choreo-title { font-family: var(--font-u); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--accent-bright); margin-bottom: 4px; }
+.choreo-sub { font-family: var(--font-b); font-style: italic; font-size: 12px; color: var(--text-muted); margin-bottom: 10px; min-height: 32px; }
+.choreo-stage { position: relative; height: 90px; background: #0a1108; border-radius: 4px; overflow: hidden; margin-bottom: 10px; }
+.choreo-stage-svg { position: absolute; inset: 0; width: 100%; height: 100%; overflow: visible; pointer-events: none; }
+.choreo-actor { position: absolute; }
+.choreo-timeline { display: flex; gap: 2px; margin-bottom: 8px; }
+.choreo-tick { flex: 1; height: 5px; background: rgba(255,255,255,0.06); border-radius: 2px; position: relative; overflow: hidden; }
+.choreo-tick-fill { position: absolute; inset: 0; background: var(--accent); width: 0%; }
+.choreo-timeline-labels { display: flex; justify-content: space-between; font-family: var(--font-u); font-size: 9.5px; color: var(--text-dim); letter-spacing: 0.06em; margin-bottom: 10px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 5 — Size degradation ladder
+   ═══════════════════════════════════════════════════════════════════════ */
+.ladder-row { display: flex; align-items: flex-end; gap: 28px; flex-wrap: wrap; margin-bottom: 28px; }
+.ladder-item { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ladder-stage { display: flex; align-items: flex-end; justify-content: center; height: 100px; }
+.ladder-label { font-family: var(--font-u); font-size: 10.5px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); text-align: center; }
+.ladder-px { font-family: var(--font-d); font-size: 11px; color: var(--gem); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 5A — Action memory
+   ═══════════════════════════════════════════════════════════════════════ */
+.mem-strategy { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 16px; margin-bottom: 16px; }
+.mem-strategy-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+.mem-strategy-title { font-family: var(--font-d); font-size: 14px; letter-spacing: 0.06em; color: var(--accent-bright); flex: 1; }
+.mem-strategy-flag { font-family: var(--font-u); font-size: 10px; letter-spacing: 0.12em; text-transform: uppercase; padding: 3px 8px; border-radius: 3px; }
+.mem-strategy-flag.default { color: #7dcca0; border: 1px solid rgba(90,170,128,0.4); background: rgba(90,170,128,0.08); }
+.mem-strategy-flag.candidate { color: var(--text-dim); border: 1px solid var(--border-vis); }
+.mem-timeline { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.mem-tick { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.mem-tick-stage { height: 70px; display: flex; align-items: center; justify-content: center; }
+.mem-tick-label { font-family: var(--font-u); font-size: 10px; letter-spacing: 0.1em; color: var(--text-dim); text-transform: uppercase; }
+.mem-recommend {
+  background: rgba(90,170,128,0.06); border: 1px solid rgba(90,170,128,0.28); border-radius: 5px; padding: 16px 18px; margin-top: 8px;
+}
+.mem-recommend-title { font-family: var(--font-u); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: #7dcca0; margin-bottom: 8px; }
+.mem-recommend p { font-family: var(--font-b); font-size: 13.5px; color: var(--text-body); line-height: 1.65; margin-bottom: 8px; }
+.mem-subhead { font-family: var(--font-u); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin: 22px 0 10px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 6 — Detail card authority
+   ═══════════════════════════════════════════════════════════════════════ */
+.dc-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; }
+.dc-card {
+  width: 148px; background: var(--surface-solid); border: 1px solid var(--border-vis); border-radius: 4px;
+  padding: 10px 11px; font-family: var(--font-u);
+}
+.dc-name { font-family: var(--font-d); font-size: 12px; color: var(--accent-bright); margin-bottom: 6px; letter-spacing: 0.04em; }
+.dc-hp-row { font-size: 11px; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.06em; }
+.dc-divider { border-top: 1px solid var(--border); margin: 6px 0; }
+.dc-cond-line { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; line-height: 15px; display: flex; gap: 6px; align-items: center; }
+.dc-cond-glyph { width: 11px; height: 11px; flex-shrink: 0; }
+.dc-invis-line { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+.dc-secret-line { font-size: 10px; letter-spacing: 0.08em; color: var(--tk-dm-secret); margin-top: 2px; }
+.dc-wound-line { font-family: var(--font-b); font-style: italic; font-size: 12px; color: var(--text-body); margin-top: 6px; }
+.dc-caption { font-family: var(--font-b); font-style: italic; font-size: 11.5px; color: var(--text-dim); margin-top: 8px; max-width: 148px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 7 — Review notes  +  LEGEND
+   ═══════════════════════════════════════════════════════════════════════ */
+.notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+.note-card { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 16px 18px; }
+.note-card-title { font-family: var(--font-d); font-size: 13.5px; color: var(--accent-bright); margin-bottom: 8px; letter-spacing: 0.04em; }
+.note-card p { font-family: var(--font-b); font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+.note-card .ref { font-family: var(--font-u); font-size: 10.5px; letter-spacing: 0.1em; color: var(--text-dim); text-transform: uppercase; margin-top: 8px; display: block; }
+
+.legend { background: var(--surface); border: 1px solid var(--border); border-radius: 5px; padding: 24px 28px; margin-top: 12px; }
+.legend-title { font-family: var(--font-d); font-size: 14px; letter-spacing: 0.18em; color: var(--accent-bright); margin-bottom: 16px; text-transform: uppercase; }
+.legend-items { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px; }
+@media (max-width: 640px) { .legend-items { grid-template-columns: 1fr; } }
+.legend-item { display: flex; gap: 10px; align-items: flex-start; }
+.legend-num { font-family: var(--font-d); font-size: 12px; color: var(--accent); flex-shrink: 0; min-width: 16px; }
+.legend-text { font-family: var(--font-b); font-size: 12.5px; color: var(--text-muted); line-height: 1.55; }
+
+.family-key { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 6px; }
+.family-key-item { display: flex; align-items: center; gap: 6px; font-family: var(--font-u); font-size: 11px; letter-spacing: 0.1em; color: var(--text-muted); }
+.family-swatch { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid; background: rgba(10,10,12,0.7); }
+</style>
+</head>
+<body>
+
+<!-- Hidden SVG glyph sprite — 14 condition glyphs, filled silhouettes, 10x10 viewBox.
+     These are ILLUSTRATIVE approximations of the concepts in the Story 53 brief
+     (§6.5 / §5), not final art — the brief explicitly leaves exact glyph drawing
+     to this stage; treat these as placeholders for a later icon pass.
+     Item 1 note: paths are NOT redrawn for the 15px badge bump — strokes/fills are
+     defined in this fixed 10×10 viewBox, so as the rendered glyph box grows
+     7.5px→9.5px, the same viewBox units map to more physical pixels and every
+     stroke/fill in here (esp. Control's incapacitated/stunned, Bind's
+     restrained/grappled) automatically renders proportionally bolder — no edits
+     needed to stay crisp at the new size. -->
+<svg style="position:absolute;width:0;height:0" aria-hidden="true">
+<defs>
+<symbol id="g-unconscious" viewBox="0 0 10 10"><path d="M1 6.2 Q5 2 9 6.2 Q5 8.6 1 6.2 Z"/></symbol>
+<symbol id="g-paralyzed" viewBox="0 0 10 10"><path d="M6.2 0 L2 5.6 L4.6 5.6 L3.4 10 L8.2 4 L5.4 4 Z"/></symbol>
+<symbol id="g-stunned" viewBox="0 0 10 10"><path d="M5 0.6c2.6 0 4.4 1.9 4.4 4.3 0 2-1.5 3.6-3.4 3.6-1.5 0-2.7-1.1-2.7-2.6 0-1.2 1-2.1 2.1-2.1.9 0 1.6.7 1.6 1.6 0 .7-.5 1.2-1.1 1.2" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></symbol>
+<symbol id="g-petrified" viewBox="0 0 10 10"><polygon points="5,0.4 9.2,2.9 9.2,7.4 5,9.9 0.8,7.4 0.8,2.9"/></symbol>
+<symbol id="g-incapacitated" viewBox="0 0 10 10"><circle cx="5" cy="5" r="4" fill="none" stroke="currentColor" stroke-width="1.5"/><rect x="0.6" y="4.3" width="8.8" height="1.4"/></symbol>
+<symbol id="g-restrained" viewBox="0 0 10 10"><rect x="-0.4" y="4.3" width="10.8" height="1.4" transform="rotate(45 5 5)"/><rect x="-0.4" y="4.3" width="10.8" height="1.4" transform="rotate(-45 5 5)"/></symbol>
+<symbol id="g-grappled" viewBox="0 0 10 10"><path d="M0.5 2 L3.5 5 L0.5 8 L1.5 8 L4.6 5 L1.5 2 Z"/><path d="M9.5 2 L6.5 5 L9.5 8 L8.5 8 L5.4 5 L8.5 2 Z"/></symbol>
+<symbol id="g-prone" viewBox="0 0 10 10"><rect x="0.8" y="7.2" width="8.4" height="1.5"/><circle cx="4.8" cy="3.4" r="2.1"/></symbol>
+<symbol id="g-blinded" viewBox="0 0 10 10"><path d="M0.5 5c1.4-2.4 3-3.4 4.5-3.4S8.1 2.6 9.5 5c-1.4 2.4-3 3.4-4.5 3.4S1.9 7.4 0.5 5Z" fill="none" stroke="currentColor" stroke-width="1.1"/><circle cx="5" cy="5" r="1.15"/><rect x="0.3" y="4.35" width="9.4" height="1.3" transform="rotate(-32 5 5)"/></symbol>
+<symbol id="g-deafened" viewBox="0 0 10 10"><path d="M2 2.5a4.2 4.2 0 0 1 0 5" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><path d="M4 1.2a6.2 6.2 0 0 1 0 7.6" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/><rect x="0.3" y="4.35" width="9.4" height="1.3" transform="rotate(-32 5 5)"/></symbol>
+<symbol id="g-charmed" viewBox="0 0 10 10"><path d="M5 9C2 6.6 0.6 4.9 0.6 3.2A2.3 2.3 0 0 1 5 2.1 2.3 2.3 0 0 1 9.4 3.2C9.4 4.9 8 6.6 5 9Z"/></symbol>
+<symbol id="g-frightened" viewBox="0 0 10 10"><polygon points="0.7,1.2 5,6.2 9.3,1.2 9.3,3.2 5,9 0.7,3.2"/></symbol>
+<symbol id="g-poisoned" viewBox="0 0 10 10"><path d="M5 0.4C6.8 3.4 8.3 5.4 8.3 7A3.3 3.3 0 0 1 1.7 7C1.7 5.4 3.2 3.4 5 0.4Z"/></symbol>
+<symbol id="g-unknown" viewBox="0 0 10 10"><circle cx="5" cy="5" r="1.7"/></symbol>
+</defs>
+</svg>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     1 · TOP BAR + REVIEW PRESETS
+     ═══════════════════════════════════════════════════════════════════════ -->
+<header class="topbar">
+  <div class="topbar-row">
+    <div class="topbar-title">Battle Atlas — Token Effects Review</div>
+    <div class="topbar-meta">Stories 52–55 · Cluster brief · 2026-08-03 · Round 2 revisions</div>
+    <div class="topbar-badge">Ocean Palette</div>
+    <label class="rm-toggle" id="rmToggleLabel">
+      <input type="checkbox" id="rmToggle" />
+      Reduced Motion
+    </label>
+  </div>
+  <div class="preset-rail" id="presetRail"><!-- populated by JS --></div>
+  <div class="preset-desc" id="presetDesc"></div>
+</header>
+
+<div class="page-body">
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     2 · PRIMARY BOARD — Mirrored DM / Player Encounter
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec2">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 2 of 7 — Anchor</div>
+    <div class="pr-section-title">Mirrored DM / Player Encounter</div>
+    <div class="pr-section-desc">
+      The same "Forest Crossing" skirmish, same token positions, same map framing, on both boards at once.
+      The DM board (left) is the strict superset (§7 V1) — an invisible NPC renders SECRET there. The
+      player board (right) is a true absence: that token is never added to its DOM at all, not hidden with CSS.
+      Use the preset rail above to change the encounter's state; use the controls below to test rotation,
+      zoom/size-band, reduced motion, and time-since-event independently of the preset. Hover (or long-press
+      on touch) any token on either board for its full detail card.
+    </div>
+  </div>
+
+  <div class="mb-controls">
+    <div class="mb-control-group">
+      <span class="mb-control-label">Map Rotation</span>
+      <button class="btn-ghost" id="btnRotate">↻ Rotate 90°</button>
+      <span class="mb-readout" id="rotReadout">0°</span>
+    </div>
+    <div class="mb-control-group">
+      <span class="mb-control-label">Effective Size</span>
+      <button class="btn-ghost" id="btnZoom">⤡ Cycle Zoom</button>
+      <span class="mb-readout" id="zoomReadout">36px · full</span>
+    </div>
+    <div class="mb-control-group">
+      <span class="mb-control-label">Elapsed Since Last Event</span>
+      <button class="btn-ghost preset-btn elapsed-btn active" data-elapsed="0">0s</button>
+      <button class="btn-ghost preset-btn elapsed-btn" data-elapsed="5">5s</button>
+      <button class="btn-ghost preset-btn elapsed-btn" data-elapsed="10">10s</button>
+      <button class="btn-ghost preset-btn elapsed-btn" data-elapsed="next">Until Next Action</button>
+    </div>
+  </div>
+
+  <div class="mb-boards">
+    <div class="mb-board">
+      <div class="mb-board-header">
+        <div class="mb-board-title dm">◇ DM View — full information</div>
+        <div class="mb-count" id="mbCountDm">6 tokens</div>
+      </div>
+      <div class="mb-canvas" style="position:relative;">
+        <div class="mb-terrain" id="mbRotatorDm"></div>
+        <svg class="mb-tracer-svg" id="mbTracerDm"></svg>
+        <div id="mb-tokens-dm" style="position:absolute; inset:0;"></div>
+        <svg class="mb-tracer-svg" id="mbChevronDm"></svg>
+        <div class="mb-tooltip" id="mbTooltip-dm"></div>
+        <div class="callout" style="top:8px;left:8px;">Superset of player board</div>
+      </div>
+    </div>
+    <div class="mb-board">
+      <div class="mb-board-header">
+        <div class="mb-board-title player">Player View — what the table sees</div>
+        <div class="mb-count" id="mbCountPlayer">6 tokens</div>
+      </div>
+      <div class="mb-canvas" style="position:relative;">
+        <div class="mb-terrain" id="mbRotatorPlayer"></div>
+        <svg class="mb-tracer-svg" id="mbTracerPlayer"></svg>
+        <div id="mb-tokens-player" style="position:absolute; inset:0;"></div>
+        <svg class="mb-tracer-svg" id="mbChevronPlayer"></svg>
+        <div class="mb-tooltip" id="mbTooltip-player"></div>
+        <div class="callout" style="top:8px;left:8px;">Invisible NPC omitted — zero DOM</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="mb-controls" style="margin-top:14px;">
+    <button class="btn-ghost" id="btnReplayBoard">▶ Replay Strike + Bolt Choreography</button>
+    <button class="btn-ghost" id="btnReplayBoardSpell">✦ Replay As Spell Channel (proposal)</button>
+    <span class="preset-desc" style="margin:0;">Fires on the <strong>Attack</strong> / <strong>Overlap</strong> / <strong>Reduced Motion</strong> presets — Aragorn strikes Goblin 1 (damage + Poisoned), Eoghan bolts the Bandit Captain (damage + Frightened) 140ms later, the bolt now actually drawing rim-to-rim between them — glow tinted Ocean-blue for Eoghan — and leading its own flash by ~60ms. Both remain legible together — the second action does not erase the first. The <strong>Spell Channel</strong> button swaps Eoghan's beat for the new exploratory tracer variant (item 5) — same colour language, different reveal.</span>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     3 · PERSISTENT TOKEN STATES STRIP
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec3">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 3 of 7</div>
+    <div class="pr-section-title">Persistent Token States Strip</div>
+    <div class="pr-section-desc">
+      Every specimen below is the same 36px <code>.tk-wrap</code> component, magnified via a CSS
+      <code>transform: scale()</code> wrapper — nothing here is a bespoke drawing. Fixed inventory,
+      not preset-driven, so the full state matrix is always reviewable in one scroll.
+    </div>
+    <div class="family-key" id="familyKey"></div>
+  </div>
+  <div class="spec-grid" id="specGrid"><!-- populated by JS --></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     4 · EVENT CHOREOGRAPHY RAIL
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec4">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 4 of 7</div>
+    <div class="pr-section-title">Event Choreography Rail</div>
+    <div class="pr-section-desc">
+      Short, replayable demonstrations of order and rhythm — not isolated CSS flourishes. Two rules
+      matter most: the tracer must clearly <em>lead</em> the damage flash, and the vanish must read as
+      absence, never a ghost still sitting on the board.
+    </div>
+  </div>
+  <div class="choreo-grid" id="choreoGrid"><!-- populated by JS --></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     5 · SIZE DEGRADATION LADDER
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec5">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 5 of 7</div>
+    <div class="pr-section-title">Size Degradation Ladder</div>
+    <div class="pr-section-desc">
+      <code>effective_px = 36 × token.scale × map.tokenScale × mapViewerZoom</code> — badges counter-scale
+      (constant physical size, cluster §4.2); ring treatments (faction ring, wound halo, veil dash) scale
+      with the creature silhouette instead. Same token, same conditions, four bands:
+    </div>
+  </div>
+  <div class="ladder-row" id="ladderBands"></div>
+  <div class="pr-section-desc" style="margin-bottom:14px;">
+    Tiny / Medium / Huge — proving badges hold their physical size while the ring and halo scale with the creature:
+  </div>
+  <div class="ladder-row" id="ladderSizes"></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     5A · ACTION MEMORY AND TURN CADENCE
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec5a">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 5A of 7 — Central Practical Concern</div>
+    <div class="pr-section-title">Action Memory And Turn Cadence</div>
+    <div class="pr-section-desc">
+      A 300–500ms burst is correct <em>animation</em> design; it may still fail as <em>table</em> communication
+      when a turn takes 60–120 seconds and the watcher glanced at their phone during the first second. This
+      section compares candidate persistence strategies rather than assuming Phase A's burst is sufficient —
+      it deliberately does not pick a winner for you.
+    </div>
+  </div>
+
+  <div class="mem-subhead">Case: Damage Dealt To An NPC (the only case with a real "did I miss it?" risk)</div>
+
+  <div class="mem-strategy" id="memStrategyA">
+    <div class="mem-strategy-header">
+      <div class="mem-strategy-title">A — Lingering Residue Only</div>
+      <span class="mem-strategy-flag default">Recommended default</span>
+    </div>
+    <div class="pr-section-desc" style="margin-bottom:12px;">
+      Story 52's own Phase B: the wound halo, breathing quietly at 0.5↔0.85 opacity, no re-announcement. This
+      is what ships today per the brief.
+    </div>
+    <div class="mem-timeline" id="memTimelineA"></div>
+  </div>
+
+  <div class="mem-strategy" id="memStrategyB">
+    <div class="mem-strategy-header">
+      <div class="mem-strategy-title">B — Lingering Source/Target Memory Mark</div>
+      <span class="mem-strategy-flag candidate">Comparison candidate — not in any approved brief</span>
+    </div>
+    <div class="pr-section-desc" style="margin-bottom:12px;">
+      A faint dotted connector between attacker and target, in addition to the wound halo, fading out by
+      "until next action." Answers "who did this" as well as "who's hurt" — at the cost of a second persistent
+      element and a second thing to fade correctly.
+    </div>
+    <div class="mem-timeline" id="memTimelineB"></div>
+  </div>
+
+  <div class="mem-strategy" id="memStrategyC">
+    <div class="mem-strategy-header">
+      <div class="mem-strategy-title">C — Quiet Reminder Pulse / Replay</div>
+      <span class="mem-strategy-flag candidate">Comparison candidate — OFF by default</span>
+    </div>
+    <div class="pr-section-desc" style="margin-bottom:12px;">
+      A single soft re-pulse of the wound halo partway through the window (here, at the 5s mark only — not
+      looping), or an explicit manual "↻" replay affordance on the token/detail-card. Included for comparison
+      per the brief's instruction to treat periodic re-pulsing as a candidate, not the default answer.
+    </div>
+    <div class="mem-timeline" id="memTimelineC"></div>
+  </div>
+
+  <div class="mem-subhead">Cases That Need No Persistence Strategy At All</div>
+  <div class="pr-section-desc" style="margin-bottom:14px;">
+    Story 53 conditions are already Tier 2, ambient, with <strong>no resting animation and no fade</strong> — a
+    badge applied while a viewer is looking away is <em>still there</em> at 5s, 10s, and "until next action,"
+    unchanged, whether it was applied to the acting token (self) or a different one. There is nothing lossy
+    about a condition badge the way there is about a 450ms Phase A burst — the memory problem is specific to
+    damage flash and, per below, to the attack tracer.
+  </div>
+  <div class="mem-timeline" id="memTimelineConditions" style="margin-bottom:24px;"></div>
+
+  <div class="mem-subhead">Concurrent Case — Damage + Self Condition + Other-Token Condition, Same Short Span</div>
+  <div class="pr-section-desc" style="margin-bottom:14px;">
+    Aragorn's strike wounds and poisons Goblin 1 while Eoghan's bolt frightens the Bandit Captain, seconds
+    apart. Neither Phase B halo nor either badge column is disturbed by the other event settling in — this is
+    composition Rule 3/6 doing its job over table time, not just over 500ms.
+  </div>
+  <div class="mem-timeline" id="memTimelineConcurrent"></div>
+
+  <div class="mem-recommend">
+    <div class="mem-recommend-title">Recommendation carried from the brief — flagged for sign-off</div>
+    <p>Prefer Strategy A (calm lingering residue) as the shipped default. It survives a scan-the-board glance,
+    costs nothing extra in the layer budget, and is what Story 52 already specifies as Phase B.</p>
+    <p>Strategy B (source/target memory mark) is the strongest upgrade candidate if playtesting shows "who
+    did this" gets lost — it is not in any of the four approved briefs and would need its own design pass
+    before being treated as more than a comparison sketch.</p>
+    <p>Strategy C (reminder pulse / replay) is deliberately shown <em>off</em> by default here — the brief's
+    explicit instruction is to treat periodic re-pulsing as a candidate to weigh, not an assumed answer, because
+    a board that keeps re-announcing old news is the "constant alert surface" the brief is trying to avoid.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     6 · DETAIL CARD AUTHORITY
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec6">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 6 of 7</div>
+    <div class="pr-section-title">Detail Card Authority</div>
+    <div class="pr-section-desc">
+      The hover/long-press card is the authoritative fallback whenever token-space compression drops
+      information from the badge column. Ambient symbol on the map, full truth on demand — same split the
+      app already uses for HP (bar ambient, numerals on demand). Cards shown open here for direct comparison;
+      the mirrored board in §2 now wires this same card up live, on hover (desktop, 120ms) or long-press
+      (mobile, 280ms).
+    </div>
+  </div>
+  <div class="dc-row" id="dcRow"></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     7 · REVIEW NOTES / DECISION TARGETS
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec7">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 7 of 7</div>
+    <div class="pr-section-title">Review Notes / Decision Targets</div>
+    <div class="pr-section-desc">
+      What this prototype is meant to settle before Story 52–55 implementation begins.
+    </div>
+  </div>
+  <div class="notes-grid">
+    <div class="note-card">
+      <div class="note-card-title">Condition family readability</div>
+      <p>Do Control / Bind / Sense / Physical read apart at a glance, by colour <em>and</em> by glyph
+      silhouette, on both dark and vellum terrain? Use the Control / Bind / Sense / Physical presets.</p>
+      <span class="ref">See §2 board · §3 strip · §5 ladder</span>
+    </div>
+    <div class="note-card">
+      <div class="note-card-title">Overflow / collapse treatment</div>
+      <p>Story 53 supersedes the cluster's "+N" numeral with a stack motif on the last badge — no exception
+      to the 12px text-minimum rule required. Confirm the stack motif reads as "more" without a number.</p>
+      <span class="ref">See §3 strip — two-condition / overflow specimens</span>
+    </div>
+    <div class="note-card">
+      <div class="note-card-title">DM-only ◇ clarity</div>
+      <p>Is the SECRET marker unmistakable on the DM board, and is the player board's omission actually a
+      missing DOM node rather than a hidden one? Use the Invisible preset and inspect both boards.</p>
+      <span class="ref">See §2 board · §3 strip · §6 card</span>
+    </div>
+    <div class="note-card">
+      <div class="note-card-title">Tracer readability and sequencing</div>
+      <p>Does the bolt/strike clearly precede the damage flash by ~60ms rather than firing simultaneously
+      (which reads as a glitch)? Does a second action in close sequence erase comprehension of the first?</p>
+      <span class="ref">See §4 choreography rail · §2 board · Attack preset</span>
+    </div>
+    <div class="note-card">
+      <div class="note-card-title">Action-memory treatment across slow turns</div>
+      <p>Is Strategy A's calm residue sufficient at the table, or does the concurrent case need Strategy B's
+      memory mark? Strategy C is shown off by default — should it stay that way?</p>
+      <span class="ref">See §5A — flagged for explicit sign-off</span>
+    </div>
+    <div class="note-card">
+      <div class="note-card-title">Reduced-motion substitutions</div>
+      <p>Toggle Reduced Motion in the header. Confirm every substitution still carries the same information
+      as its animated counterpart — a static held state, never a silent drop.</p>
+      <span class="ref">See header toggle · applies across all 7 sections</span>
+    </div>
+    <div class="note-card">
+      <div class="note-card-title">Condition badge size — review-stage bump</div>
+      <p>Badges enlarged 12px→15px (glyph 7.5px→9.5px, ring border 1.5px→2px) for legibility; slot pitch
+      and offset were scaled by the same 1.25× so the ring clear-air relationship holds. Story 53's own
+      brief locks 12px as spec — carry this finding back there rather than treating it as already decided.</p>
+      <span class="ref">See §2 board · §3 strip · §5 ladder · legend #11</span>
+    </div>
+    <div class="note-card">
+      <div class="note-card-title">Bolt glow is now attacker-tinted</div>
+      <p>The weapon bolt's glow previously read the page-wide <code>--accent</code> var (only looked
+      "always blue" by coincidence). It now pulls from the attacker's own faction ring colour — Ocean blue,
+      Forest green, Ember amber — with NPC attackers keeping the dedicated <code>--tk-atk-npc</code> token.
+      Core stays universal white in every case.</p>
+      <span class="ref">See §4 "Ranged Bolt" / "Tracer + Flash" cards · §2 board</span>
+    </div>
+    <div class="note-card">
+      <div class="note-card-title">Spell tracer — new exploratory variant</div>
+      <p>A third tracer kind (item 5, not in any approved brief): the exact white-core / attacker-ring-glow
+      colour language as the bolt, but wider/softer, and the full line "grows" from caster to target in
+      ~160ms instead of a travelling comet. Demoed with an Ocean caster and a Forest caster side by side.
+      Confirm or redirect before it's written into Story 55's brief.</p>
+      <span class="ref">See §4 choreography rail "Spell Channel" cards · §2 board "Replay As Spell Channel"</span>
+    </div>
+  </div>
+
+  <div class="legend" id="legendBox">
+    <div class="legend-title">Legend</div>
+    <div class="legend-items" id="legendItems"></div>
+  </div>
+</section>
+
+</div><!-- /page-body -->
+
+<script>
+/* ═══════════════════════════════════════════════════════════════════════
+   DATA CATALOGUES
+   ═══════════════════════════════════════════════════════════════════════ */
+const FAMILY_COLOR = { control:'var(--fam-control)', bind:'var(--fam-bind)', sense:'var(--fam-sense)', physical:'var(--fam-physical)', unknown:'var(--fam-unknown)' };
+const CONDITIONS = {
+  unconscious:{fam:'control', label:'Unconscious', rank:1},
+  paralyzed:{fam:'control', label:'Paralyzed', rank:1},
+  stunned:{fam:'control', label:'Stunned', rank:1},
+  petrified:{fam:'control', label:'Petrified', rank:1},
+  incapacitated:{fam:'control', label:'Incapacitated', rank:1},
+  restrained:{fam:'bind', label:'Restrained', rank:2},
+  grappled:{fam:'bind', label:'Grappled', rank:2},
+  prone:{fam:'bind', label:'Prone', rank:2},
+  blinded:{fam:'sense', label:'Blinded', rank:3},
+  deafened:{fam:'sense', label:'Deafened', rank:3},
+  charmed:{fam:'sense', label:'Charmed', rank:3},
+  frightened:{fam:'sense', label:'Frightened', rank:3},
+  poisoned:{fam:'physical', label:'Poisoned', rank:4},
+};
+const RING = { ember:'var(--ring-ember)', ocean:'var(--ring-ocean)', forest:'var(--ring-forest)', npc:'var(--ring-npc)' };
+// Attacker-tinted tracer glow. First pass reused the resting --ring-* tokens directly —
+// those are deliberately muted for at-rest UI chrome and read as "barely there" on a
+// fast 200-400ms motion effect. GLOW_BRIGHT holds a separate, more saturated/luminous
+// variant per faction for exactly this purpose; identity mapping (Eoghan/Ocean=blue,
+// Aeryn/Forest=green, Aragorn/Ember=amber) is unchanged, only the intensity.
+const GLOW_BRIGHT = { ember:'var(--glow-ember)', ocean:'var(--glow-ocean)', forest:'var(--glow-forest)', npc:'var(--glow-npc)' };
+function attackerGlowColor(faction){
+  return GLOW_BRIGHT[faction] || GLOW_BRIGHT.npc;
+}
+// The core stroke stays overwhelmingly the universal white --tk-atk-core (must read on
+// every palette/terrain per Story 55's colour policy) but picks up a light 22% tint of
+// the attacker's bright glow colour, via color-mix, so the bolt/spell's own body — not
+// just a faint side-halo — carries a visible trace of who cast it.
+function attackerCoreColor(faction){
+  return `color-mix(in srgb, var(--tk-atk-core) 78%, ${attackerGlowColor(faction)} 22%)`;
+}
+// Deterministic per-instance feTurbulence seed (not random) — so a given card/board
+// tracer's mist shape is stable across replays for review purposes, while two
+// different tracer instances (e.g. the DM vs. player board, or two spell demo cards)
+// don't render an identical noise pattern.
+function mistSeed(id){
+  let h = 0;
+  for(let i=0;i<id.length;i++) h = (h*31 + id.charCodeAt(i)) >>> 0;
+  return (h % 40) + 1;
+}
+const PORTRAIT = {
+  aragorn:'linear-gradient(160deg,#3a1a0a,#5a2c14)', eoghan:'linear-gradient(160deg,#132436,#1f3d52)',
+  aeryn:'linear-gradient(160deg,#0e2016,#1c3a26)', goblin1:'linear-gradient(160deg,#182a1c,#233d29)',
+  goblin2:'linear-gradient(160deg,#1c1626,#2c2038)', bandit:'linear-gradient(160deg,#241014,#3a1c22)',
+};
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TOKEN RENDERER — the one function every section calls
+   ═══════════════════════════════════════════════════════════════════════ */
+function polar(cx,cy,r,deg){ const rad=deg*Math.PI/180; return [cx + r*Math.sin(rad), cy - r*Math.cos(rad)]; }
+function arcWedge(cx,cy,rI,rO,a0,a1,filled){
+  const [x0,y0]=polar(cx,cy,rO,a0), [x1,y1]=polar(cx,cy,rO,a1);
+  const [x2,y2]=polar(cx,cy,rI,a1), [x3,y3]=polar(cx,cy,rI,a0);
+  const large=(a1-a0)>180?1:0;
+  return `<path d="M${x0},${y0} A${rO},${rO} 0 ${large} 1 ${x1},${y1} L${x2},${y2} A${rI},${rI} 0 ${large} 0 ${x3},${y3} Z" fill="${filled?'currentColor':'rgba(255,255,255,0.15)'}"/>`;
+}
+function exhaustionGauge(level){
+  let segs='';
+  for(let i=0;i<6;i++) segs += arcWedge(5,5,1.15,3.75,i*60,(i+1)*60, i<level);
+  return `<svg viewBox="0 0 10 10" fill="currentColor">${segs}<circle cx="5" cy="5" r="1.15" fill="currentColor"/></svg>`;
+}
+
+function bandFor(mult, override){
+  if(override) return override;
+  const px = 36*mult;
+  if(px>=30) return 'full';
+  if(px>=20) return 'two';
+  if(px>=12) return 'one';
+  return 'none';
+}
+const BAND_CAP = { full:3, two:2, one:1, none:0 };
+
+function badgeHTML(cond, slot, isStack){
+  const fam = FAMILY_COLOR[cond.fam] || FAMILY_COLOR.unknown;
+  const inner = cond.key === 'exhaustion'
+    ? exhaustionGauge(cond.exhLevel||1)
+    : `<svg viewBox="0 0 10 10" fill="currentColor"><use href="#g-${cond.key}"/></svg>`;
+  return `<div class="tk-badge${isStack?' summary':''}" data-slot="${slot}" style="--fam:${fam}" title="${cond.label}">${isStack?'<div class="tk-badge-stack"></div>':''}${inner}</div>`;
+}
+
+function conditionList(keys, exhaustionLevel){
+  let items = (keys||[]).map(k => ({ key:k, ...CONDITIONS[k] }));
+  if(exhaustionLevel){
+    const promoted = exhaustionLevel>=4;
+    items.push({ key:'exhaustion', fam: promoted?'control':'physical', label:`Exhaustion ${exhaustionLevel}`, rank: promoted?1:4, exhLevel: exhaustionLevel });
+  }
+  return items.sort((a,b)=>a.rank-b.rank);
+}
+
+/**
+ * tokenHTML(cfg) — renders the canonical 36px token component.
+ * cfg: { id, mult, faction, portrait, name, number, conditions[], exhaustion,
+ *        concentration, wounded (true|'clearing'|false), flash (null|'standard'|'heavy'),
+ *        veil ('none'|'veiled'|'secret'), fallen, viewer ('dm'|'player'), band(override),
+ *        showLabel }
+ */
+function tokenHTML(cfg){
+  const mult = cfg.mult ?? 1;
+  const band = bandFor(mult, cfg.band);
+  const cap = BAND_CAP[band];
+  let items = cfg.fallen ? [] : conditionList(cfg.conditions, cfg.exhaustion);
+  let badges = '';
+  if(cfg.fallen && (cfg.conditions?.length || cfg.exhaustion)){
+    const all = conditionList(cfg.conditions, cfg.exhaustion);
+    badges = badgeHTML(all[0], 2, all.length>1);
+  } else if(cap>0 && items.length){
+    if(band==='one'){
+      badges = badgeHTML(items[0], 2, items.length>1);
+    } else {
+      const shown = items.slice(0, cap);
+      shown.forEach((c,i)=>{ const isOverflow = i===cap-1 && items.length>cap; badges += badgeHTML(c, i+1, isOverflow); });
+    }
+  }
+  const ring = RING[cfg.faction] || RING.npc;
+  const veil = cfg.veil || 'none';
+  const dash = (veil==='veiled' || veil==='secret') ? 'stroke-dasharray="4.6 3.4"' : '';
+  const woundAttr = cfg.fallen ? '' : (cfg.wounded==='clearing' ? 'clearing' : (cfg.wounded ? '1' : ''));
+  const flashClass = cfg.flash ? ` tk-flash-${cfg.flash}` : '';
+  const number = cfg.number ? `<div class="tk-number">${cfg.number}</div>` : '';
+  const label = cfg.showLabel===false ? '' : `<div class="tk-name">${cfg.name}</div>`;
+  const suppressShimmer = cfg.wounded ? '1' : '0';
+  const suppressConc = cfg.wounded ? '1' : '0';
+  return `
+  <div class="tk-wrap" id="tk-${cfg.id}" style="--tk-mult:${mult}"
+       data-veil="${veil==='veiled'?1:0}" data-veil-secret="${veil==='secret'?1:0}" data-fallen="${cfg.fallen?1:0}"
+       data-wounded="${woundAttr}" data-conc="${cfg.concentration?1:0}" data-viewer="${cfg.viewer||'dm'}"
+       data-loop-suppress-shimmer="${suppressShimmer}" data-loop-suppress-conc="${suppressConc}">
+    <div class="tk-hit${flashClass}" id="tk-${cfg.id}-hit">
+      <div class="token-chip">
+        <div class="tk-portrait" style="background:${cfg.portrait}"></div>
+        <div class="tk-veil-hatch"></div>
+        <div class="tk-veil-sheen"></div>
+        <div class="tk-wash"></div>
+        <svg class="tk-ring-svg" viewBox="0 0 40 40">
+          <circle class="tk-ring-faction" cx="20" cy="20" r="18.5" stroke="${ring}" ${dash}/>
+          <circle class="tk-ring-outline" cx="20" cy="20" r="19.5"/>
+        </svg>
+        <div class="tk-wound"></div>
+        <div class="tk-shock"></div>
+        <div class="tk-cond-col">${badges}</div>
+        <svg class="tk-secret-mark" viewBox="0 0 9 9"><polygon points="4.5,0 9,4.5 4.5,9 0,4.5"/></svg>
+        <div class="tk-gem"></div>
+        ${number}
+        ${label}
+      </div>
+    </div>
+  </div>`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 2 — MIRRORED BOARD
+   ═══════════════════════════════════════════════════════════════════════ */
+const BASE_ROSTER = [
+  { id:'aragorn', faction:'ember', name:'Aragorn', number:null, portrait:PORTRAIT.aragorn, hpCurrent:38, hpMax:44 },
+  { id:'eoghan', faction:'ocean', name:'Eoghan', number:null, portrait:PORTRAIT.eoghan, hpCurrent:29, hpMax:32 },
+  { id:'aeryn', faction:'forest', name:'Aeryn', number:null, portrait:PORTRAIT.aeryn, hpCurrent:21, hpMax:21 },
+  { id:'goblin1', faction:'npc', name:'Goblin 1', number:1, portrait:PORTRAIT.goblin1, hpCurrent:6, hpMax:27, hiddenHp:true },
+  { id:'goblin2', faction:'npc', name:'Shadowfang', number:2, portrait:PORTRAIT.goblin2, hpCurrent:14, hpMax:22, hiddenHp:true },
+  { id:'bandit', faction:'npc', name:'Bandit Captain', number:null, portrait:PORTRAIT.bandit, hpCurrent:34, hpMax:58, hiddenHp:true },
+];
+const POSITIONS = {
+  aragorn:{x:24,y:62}, goblin1:{x:40,y:54}, eoghan:{x:14,y:26}, bandit:{x:70,y:36}, aeryn:{x:60,y:74}, goblin2:{x:82,y:20},
+};
+const PRESET_BOARD = {
+  Baseline: { desc:'Healthy board. No badges, no halos, no marks — exactly today’s tokens (§12 empty-state rule).' },
+  Damage: { desc:'Goblin 1 takes a heavy hit — Phase A burst, settling into Phase B’s resting wound halo.', overrides:{ goblin1:{wounded:true, flash:'heavy'} } },
+  Control: { desc:'Incapacitating tier — Bandit Captain is Stunned (Control family, forfeits its turn).', overrides:{ bandit:{conditions:['stunned']} } },
+  Bind: { desc:'Positional tier — Goblin 1 is Restrained (Bind family, can’t move freely).', overrides:{ goblin1:{conditions:['restrained']} } },
+  Sense: { desc:'Perception/will tier — Bandit Captain is Frightened (Sense family).', overrides:{ bandit:{conditions:['frightened']} } },
+  Physical: { desc:'Attrition tier — Goblin 1 is Poisoned; Aeryn carries Exhaustion 2 (both Physical family).', overrides:{ goblin1:{conditions:['poisoned']}, aeryn:{exhaustion:2} } },
+  Overlap: { desc:'Torture-test: damage, concentration, invisibility and conditions all coexist on one board.', overrides:{
+      goblin1:{wounded:true, conditions:['poisoned']},
+      aeryn:{veil:'veiled', exhaustion:4, concentration:true},
+      bandit:{conditions:['frightened','stunned']},
+      goblin2:{invisible:true},
+    } },
+  Invisible: { desc:'Aeryn (PC) is veiled identically on both boards. Shadowfang (NPC) is SECRET on the DM board, absent on the player board.', overrides:{ aeryn:{veil:'veiled'}, goblin2:{invisible:true} } },
+  Attack: { desc:'Full choreography: Aragorn strikes Goblin 1 (melee + Poisoned), Eoghan bolts the Bandit Captain (ranged + Frightened) 140ms later.', overrides:{
+      goblin1:{conditions:['poisoned']}, bandit:{conditions:['frightened']},
+    }, playChoreo:true },
+  'Slow Turns': { desc:'Same wounds as the Damage preset, but jump straight to Section 5A to compare persistence strategies over table time.', overrides:{ goblin1:{wounded:true}, bandit:{conditions:['frightened']} }, scrollTo:'sec5a' },
+  'Reduced Motion': { desc:'Same strike as Attack, played through the reduced-motion substitution set — a single held static rim, not a burst.', overrides:{ goblin1:{conditions:['poisoned']}, bandit:{conditions:['frightened']} }, playChoreo:true, forceRM:true },
+};
+
+let currentPreset = 'Baseline';
+let currentMult = 1;
+let currentRotation = 0;
+let currentElapsed = '0';
+const ZOOM_STEPS = [ {mult:1, label:'36px · full'}, {mult:0.72, label:'26px · two'}, {mult:0.5, label:'18px · one'}, {mult:0.3, label:'11px · none'} ];
+let zoomIdx = 0;
+
+function renderBoard(viewer){
+  hideTokenTooltip(viewer); // stale reference guard — token ids don’t survive a re-render
+  const tracerSvg = document.getElementById(viewer==='dm' ? 'mbTracerDm' : 'mbTracerPlayer');
+  if(tracerSvg){ clearTimeout(tracerSvg._clearT); tracerSvg.innerHTML=''; }
+  const preset = PRESET_BOARD[currentPreset] || {};
+  const overrides = preset.overrides || {};
+  const container = document.getElementById('mb-tokens-'+viewer);
+  container.innerHTML = '';
+  let count = 0;
+  BASE_ROSTER.forEach(base=>{
+    const ov = overrides[base.id] || {};
+    if(ov.invisible && viewer==='player') return; // ABSENT — literally no DOM node (§7.4)
+    count++;
+    const pos = POSITIONS[base.id];
+    const wounded = ov.wounded || false;
+    const woundState = wounded ? (currentElapsed==='next' ? 'clearing' : true) : false;
+    const cfg = {
+      id: viewer+'-'+base.id, mult: currentMult, faction: base.faction, portrait: base.portrait,
+      name: base.name, number: base.number, conditions: ov.conditions||[], exhaustion: ov.exhaustion||0,
+      concentration: !!ov.concentration, wounded: woundState,
+      flash: (wounded && currentElapsed==='0') ? (ov.flash||'heavy') : null,
+      veil: ov.invisible ? 'secret' : (ov.veil||'none'), fallen: !!ov.fallen, viewer,
+    };
+    if(cfg.veil==='secret' && viewer==='player') cfg.veil='none';
+    const wrap = document.createElement('div');
+    wrap.className = 'mb-tok-pos';
+    wrap.style.left = pos.x+'%'; wrap.style.top = pos.y+'%';
+    wrap.innerHTML = `<div class="tk-lunge" id="lunge-${cfg.id}"><div class="mb-counter-rotate" style="transform:rotate(${-currentRotation}deg)">${tokenHTML(cfg)}</div></div>`;
+    container.appendChild(wrap);
+    attachTokenHover(wrap, viewer, base, ov, cfg); // item 2 — hover/long-press detail card
+  });
+  document.getElementById('mbCount'+(viewer==='dm'?'Dm':'Player')).textContent = count+' token'+(count===1?'':'s');
+}
+
+function renderBothBoards(){
+  renderBoard('dm');
+  renderBoard('player');
+  document.getElementById('mbRotatorDm').style.transform = `rotate(${currentRotation}deg)`;
+  document.getElementById('mbRotatorPlayer').style.transform = `rotate(${currentRotation}deg)`;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MIRRORED BOARD — HOVER / LONG-PRESS DETAIL CARD (item 2)
+   Reuses .dc-card / .dc-cond-line / condLine()'s markup verbatim (Section 6) —
+   condLine()/conditionList() are ordinary function declarations further down
+   this same script, so they're hoisted and safely callable from here.
+   ═══════════════════════════════════════════════════════════════════════ */
+function tooltipCardHTML(viewer, base, ov, cfg){
+  const hpHidden = !!base.hiddenHp && viewer==='player'; // NPCs: players only ever get healthTier, never exact HP
+  const pct = base.hpMax ? Math.max(0, Math.min(1, base.hpCurrent/base.hpMax)) : 0;
+  const barColor = pct<=0.25 ? 'var(--tk-dmg-rest)' : (pct<=0.5 ? 'var(--fam-bind)' : 'var(--tk-sup-glow)');
+  const hpRow = hpHidden ? '?? / ??' : `♥ ${base.hpCurrent} / ${base.hpMax}`;
+  let invisLines = '';
+  if(cfg.veil==='veiled'){
+    // VEILED PC — identical line, identical neutral colour, on both boards (never the DM-only blue-grey)
+    invisLines = `<div class="dc-invis-line" style="color:var(--fam-unknown)">◇ INVISIBLE</div>`;
+  } else if(cfg.veil==='secret'){
+    // SECRET NPC — DM board only; the player board never mounts this token, so this branch never runs there
+    invisLines = `<div class="dc-invis-line" style="color:var(--tk-dm-secret)">◇ INVISIBLE</div><div class="dc-secret-line">◦ UNSEEN BY PLAYERS</div>`;
+  }
+  const items = conditionList(ov.conditions||[], ov.exhaustion||0);
+  const condHTML = items.length
+    ? items.map(condLine).join('')
+    : `<div class="dc-wound-line" style="opacity:0.6">No active conditions</div>`;
+  return `
+    <div class="dc-card">
+      <div class="mb-tt-head">
+        <div class="mb-tt-portrait" style="background:${base.portrait}"></div>
+        <div style="flex:1;min-width:0;">
+          <div class="dc-name">${base.name}</div>
+          <div class="dc-hp-row">${hpRow}</div>
+        </div>
+      </div>
+      ${hpHidden ? '' : `<div class="mb-tt-hp-bar"><div class="mb-tt-hp-fill" style="width:${(pct*100).toFixed(0)}%;background:${barColor}"></div></div>`}
+      ${invisLines}
+      <div class="dc-divider"></div>
+      ${condHTML}
+    </div>`;
+}
+
+function positionTooltip(tt, canvasRect, tokenRect){
+  const margin = 8;
+  const tokenCx = tokenRect.left - canvasRect.left + tokenRect.width/2;
+  const tokenTop = tokenRect.top - canvasRect.top;
+  const ttW = tt.offsetWidth || 148;
+  const ttH = tt.offsetHeight || 120;
+  let left = tokenCx + tokenRect.width/2 + 10; // default: just right of the token
+  if(left + ttW > canvasRect.width - margin){
+    left = tokenCx - tokenRect.width/2 - ttW - 10; // flip to the left edge of the token
+  }
+  left = Math.max(margin, Math.min(left, canvasRect.width - ttW - margin));
+  let top = tokenTop - 6; // default: aligned near the token's top, not centred over it
+  if(top + ttH > canvasRect.height - margin){
+    top = canvasRect.height - ttH - margin; // flip upward so it stays on-board
+  }
+  top = Math.max(margin, top);
+  tt.style.left = left+'px';
+  tt.style.top = top+'px';
+}
+
+function hideTokenTooltip(viewer){
+  const tt = document.getElementById('mbTooltip-'+viewer);
+  if(tt) tt.classList.remove('visible');
+}
+
+function attachTokenHover(el, viewer, base, ov, cfg){
+  const tt = document.getElementById('mbTooltip-'+viewer);
+  if(!tt) return;
+  const canvas = tt.parentElement; // the .mb-canvas — tooltip is clamped to its bounds
+  let showTimer = null;
+  function reveal(){
+    tt.innerHTML = tooltipCardHTML(viewer, base, ov, cfg);
+    tt.classList.add('visible');
+    requestAnimationFrame(()=>{
+      positionTooltip(tt, canvas.getBoundingClientRect(), el.getBoundingClientRect());
+    });
+  }
+  el.addEventListener('mouseenter', ()=>{
+    clearTimeout(showTimer);
+    showTimer = setTimeout(reveal, 120); // desktop hover delay, brief §6
+  });
+  el.addEventListener('mouseleave', ()=>{
+    clearTimeout(showTimer);
+    hideTokenTooltip(viewer);
+  });
+  el.addEventListener('touchstart', ()=>{
+    clearTimeout(showTimer);
+    showTimer = setTimeout(reveal, 280); // long-press delay, brief §6
+  }, {passive:true});
+  el.addEventListener('touchend', ()=>{ clearTimeout(showTimer); hideTokenTooltip(viewer); });
+  el.addEventListener('touchmove', ()=>{ clearTimeout(showTimer); hideTokenTooltip(viewer); }, {passive:true});
+}
+
+function applyBoardPreset(name){
+  currentPreset = name;
+  const preset = PRESET_BOARD[name] || {};
+  document.getElementById('presetDesc').textContent = preset.desc || '';
+  if(preset.forceRM && !document.getElementById('rmToggle').checked){
+    document.getElementById('rmToggle').checked = true;
+    document.body.classList.add('reduced-motion');
+    document.getElementById('rmToggleLabel').classList.add('active');
+  }
+  renderBothBoards();
+  if(preset.playChoreo) setTimeout(()=>playBoardChoreo(), 60);
+  if(preset.scrollTo) setTimeout(()=>{ document.getElementById(preset.scrollTo).scrollIntoView({behavior:'smooth', block:'start'}); }, 250);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MIRRORED BOARD — RANGED BOLT / SPELL TRACER (items 3, 4, 5)
+   Geometry follows Story 55 §5 (the U-unit system, computed in the board's
+   own live rendered pixels — not normalised space). Token positions are
+   derived the exact same way renderBoard() places tokens (percentage of the
+   canvas's current bounding rect), so this is correct after a rotate/zoom
+   change too: nothing here is cached, it's recomputed at fire time.
+   ═══════════════════════════════════════════════════════════════════════ */
+function boltGeometry(viewer, attackerKey, targetKey){
+  const svg = document.getElementById(viewer==='dm' ? 'mbTracerDm' : 'mbTracerPlayer');
+  if(!svg) return null;
+  const rect = svg.getBoundingClientRect();
+  if(!rect.width || !rect.height) return null;
+  const posA = POSITIONS[attackerKey], posB = POSITIONS[targetKey];
+  const ax = posA.x/100*rect.width, ay = posA.y/100*rect.height;
+  const bx = posB.x/100*rect.width, by = posB.y/100*rect.height;
+  const dx = bx-ax, dy = by-ay;
+  const dist = Math.hypot(dx,dy) || 1;
+  const ux = dx/dist, uy = dy/dist;
+  const U = 36*currentMult; // U = 36 × map.tokenScale (Story 55 §5); currentMult stands in for tokenScale here
+  const rA = 18*currentMult, rB = 18*currentMult; // rim radius at the live zoom/size band
+  const p0x = ax+ux*rA, p0y = ay+uy*rA; // rim-to-rim, not centre-to-centre
+  const p2x = bx-ux*rB, p2y = by-uy*rB;
+  const gap = Math.max(dist-rA-rB, 1);
+  // sag = min(0.10 × dist, 2.5U); direction = u rotated +90° (item 4's corrected shallow arc)
+  const sag = Math.min(0.10*dist, 2.5*U);
+  const nx = -uy, ny = ux;
+  const mx = (p0x+p2x)/2 + nx*sag, my = (p0y+p2y)/2 + ny*sag;
+  const d = `M${p0x.toFixed(1)},${p0y.toFixed(1)} Q${mx.toFixed(1)},${my.toFixed(1)} ${p2x.toFixed(1)},${p2y.toFixed(1)}`;
+  const attackerFaction = (BASE_ROSTER.find(b=>b.id===attackerKey)||{}).faction;
+  const glowColor = attackerGlowColor(attackerFaction); // bright attacker-tinted glow, not the muted resting ring token
+  const coreColor = attackerCoreColor(attackerFaction);
+  return { svg, d, U, gap, glowColor, coreColor, faction: attackerFaction, p0x, p0y, ux, uy };
+}
+
+// Melee "velocity chevron" burst — three ⟩ marks emanating from attacker toward
+// target, lighting up in sequence during the lunge. Shared by the rail card (fixed
+// static positions/angle) and the board (real geometry) so the stagger/fade timing
+// can't drift between the two the way the earlier tracer math did.
+function flashChevronSequence(els, rm){
+  if(rm){
+    els.forEach(el=>{ if(el) el.style.opacity='0.85'; });
+    return;
+  }
+  els.forEach((el,i)=>{
+    if(!el) return;
+    setTimeout(()=>{
+      el.style.transition='none'; el.style.opacity='0'; void el.getBoundingClientRect();
+      el.style.transition='opacity 90ms ease-out';
+      requestAnimationFrame(()=>{ el.style.opacity='1'; });
+      setTimeout(()=>{ el.style.transition='opacity 110ms ease-in'; el.style.opacity='0'; }, 90);
+    }, i*55);
+  });
+}
+
+function fireBoardTracer(viewer, attackerKey, targetKey){
+  const geo = boltGeometry(viewer, attackerKey, targetKey);
+  if(!geo) return;
+  const { svg, d, U, gap, glowColor, coreColor, faction } = geo;
+  const rm = document.body.classList.contains('reduced-motion');
+  const coreW = (0.09*U).toFixed(2), glowW = (0.32*U).toFixed(2), shadeW = (0.15*U).toFixed(2);
+  const glowOpacity = faction==='npc' ? 0.72 : 0.68;
+  const dashLen = Math.min(Math.max(0.45*gap, 1.2*U), 6*U);
+  const duration = Math.min(Math.max(180+12*(gap/U), 220), 420);
+  svg.innerHTML = `
+    <path d="${d}" fill="none" stroke="var(--tk-atk-shade)" stroke-width="${shadeW}" stroke-linecap="round" class="mb-bolt-p"/>
+    <path d="${d}" fill="none" stroke="${glowColor}" stroke-opacity="${glowOpacity}" stroke-width="${glowW}" stroke-linecap="round" class="mb-bolt-p"/>
+    <path d="${d}" fill="none" stroke="${coreColor}" stroke-width="${coreW}" stroke-linecap="round" class="mb-bolt-p"/>
+  `;
+  const paths = svg.querySelectorAll('.mb-bolt-p');
+  if(rm){
+    // Story 55 §11 — complete static path, instant, held @0.75 opacity, 260ms
+    paths.forEach(p=>{ p.style.opacity='0.75'; });
+    clearTimeout(svg._clearT);
+    svg._clearT = setTimeout(()=>{ svg.innerHTML=''; }, 260);
+    return;
+  }
+  // BUG FIX (3rd revision): the previous fix ended the sweep at offset -dashLen,
+  // which only fully clears the path when dashLen is small relative to len (true on
+  // the rail's fixed short comet, false here — dashLen is deliberately up to 45% of
+  // travel distance per the brief, so on a long shot a large trailing chunk of the
+  // comet was still mathematically ON the path when the transition "finished,"
+  // reading as a leftover segment reappearing near the source. The gap segment
+  // (previously just `len`) was also only barely larger than len, leaving room for
+  // the dash pattern to wrap. Correct, ratio-independent fix: use a gap comfortably
+  // larger than the full offset sweep (so the pattern can never repeat within it),
+  // and sweep from `len+dashLen` (comet entirely before the path — nothing visible)
+  // to `-(len+dashLen)` (comet entirely past the path — nothing visible), instead of
+  // stopping partway at -dashLen. This holds for any dashLen:len ratio.
+  paths.forEach(p=>{
+    const len = p.getTotalLength();
+    const sweepGap = 2*len + 2*dashLen + 10; // > the full offset sweep — no wraparound possible
+    p.style.transition = 'none';
+    p.setAttribute('stroke-dasharray', `${dashLen} ${sweepGap}`);
+    p.setAttribute('stroke-dashoffset', `${len+dashLen}`);
+    void p.getBoundingClientRect();
+    p.style.transition = `stroke-dashoffset ${duration}ms cubic-bezier(.4,0,.7,.35)`; // A5
+    requestAnimationFrame(()=>{ p.setAttribute('stroke-dashoffset', `${-(len+dashLen)}`); });
+  });
+  clearTimeout(svg._clearT);
+  svg._clearT = setTimeout(()=>{ svg.innerHTML=''; }, duration+260);
+}
+
+// Melee follow-up (user request, not in any approved brief): three ⟩ chevrons step
+// outward from the attacker's rim along the real attacker→target direction. No
+// weapon glyph — just a directional "force leaving the body" cue alongside the
+// existing lunge. Deliberately its OWN sibling SVG layer (mbChevronDm/Player), not
+// the shared bolt/spell tracer layer: this melee beat fires at t=0 while the
+// choreography's ranged half fires into the tracer layer at t=140ms via a full
+// innerHTML replace — sharing one layer would let the ranged attack silently wipe
+// the chevrons mid-fade. boltGeometry()'s rect/position math is still valid here
+// since both SVGs are inset:0 siblings in the same .mb-canvas coordinate space.
+function fireBoardChevrons(viewer, attackerKey, targetKey){
+  const geo = boltGeometry(viewer, attackerKey, targetKey);
+  if(!geo) return;
+  const svg = document.getElementById(viewer==='dm' ? 'mbChevronDm' : 'mbChevronPlayer');
+  if(!svg) return;
+  const { p0x, p0y, ux, uy, U, faction } = geo;
+  const rm = document.body.classList.contains('reduced-motion');
+  const angleDeg = Math.atan2(uy,ux)*180/Math.PI;
+  const scale = (0.62*U/18).toFixed(2);
+  const chevColor = attackerCoreColor(faction);
+  const steps = [0.08, 0.24, 0.40]; // × U out from the rim — short and tight, a close-in bump, not a travel line
+  clearTimeout(svg._clearChevT);
+  svg.innerHTML = steps.map((t,i)=>{
+    const cx = (p0x+ux*t*U).toFixed(1), cy = (p0y+uy*t*U).toFixed(1);
+    // BUG FIX: transform-origin must stay at the path's own local origin (it's
+    // authored around 0,0) so rotate/scale pivot in place — setting it to the
+    // destination world coordinates (cx,cy) shifted the rotation pivot far from the
+    // shape, throwing the whole chevron off to an unrelated position once rotated.
+    return `<g class="mb-chevron" id="mbChev-${viewer}-${i}" style="opacity:0; transform: translate(${cx}px,${cy}px) rotate(${angleDeg.toFixed(1)}deg) scale(${scale})">
+      <path d="M-5,-7 L5,0 L-5,7" fill="none" stroke="${chevColor}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>`;
+  }).join('');
+  const els = steps.map((_,i)=>document.getElementById(`mbChev-${viewer}-${i}`));
+  flashChevronSequence(els, rm);
+  svg._clearChevT = setTimeout(()=>{ svg.innerHTML=''; }, rm ? 320 : 430);
+}
+
+/* Item 5 — exploratory "spell" tracer, NOT in any approved brief (flagged in the
+   response). Coordinator follow-up: same white-core / attacker-ring-glow colour
+   language as the (now-fixed) weapon bolt above — the differentiator from the bolt
+   is purely in the reveal. A wide, blurred glow layer, and the full line "grows"
+   from caster to target (stroke-dashoffset animated across its own full length, not
+   a short travelling comet), completing in ~160ms — well before the weapon bolt's
+   220–420ms travel would finish — so it reads as "a channel opened" rather than
+   "something flew." */
+function fireBoardSpellTracer(viewer, attackerKey, targetKey){
+  const geo = boltGeometry(viewer, attackerKey, targetKey);
+  if(!geo) return;
+  const { svg, d, U, glowColor, coreColor } = geo;
+  const rm = document.body.classList.contains('reduced-motion');
+  const coreW = (0.09*U).toFixed(2), shadeW = (0.16*U).toFixed(2), glowW = (0.55*U).toFixed(2), mistW = (0.85*U).toFixed(2);
+  const filterId = 'mbSpellBlur-'+viewer, mistFilterId = 'mbSpellMist-'+viewer;
+  const REVEAL_MS = 160;
+  const seed1 = mistSeed(filterId), seed2 = mistSeed(mistFilterId);
+  svg.innerHTML = `
+    <defs>
+      <filter id="${mistFilterId}" x="-160%" y="-160%" width="420%" height="420%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.008 0.022" numOctaves="2" seed="${seed2}" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="${(0.42*U).toFixed(2)}" xChannelSelector="R" yChannelSelector="G" result="w"/>
+        <feGaussianBlur in="w" stdDeviation="${(0.17*U).toFixed(2)}"/>
+      </filter>
+      <filter id="${filterId}" x="-140%" y="-140%" width="380%" height="380%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.011 0.03" numOctaves="2" seed="${seed1}" result="n"/>
+        <feDisplacementMap in="SourceGraphic" in2="n" scale="${(0.24*U).toFixed(2)}" xChannelSelector="R" yChannelSelector="G" result="w"/>
+        <feGaussianBlur in="w" stdDeviation="${(0.08*U).toFixed(2)}"/>
+      </filter>
+    </defs>
+    <path d="${d}" fill="none" stroke="${glowColor}" stroke-opacity="0.4" stroke-width="${mistW}" stroke-linecap="round" filter="url(#${mistFilterId})" class="mb-spell-p mb-spell-mist" style="opacity:0"/>
+    <path d="${d}" fill="none" stroke="${glowColor}" stroke-opacity="0.85" stroke-width="${glowW}" stroke-linecap="round" filter="url(#${filterId})" class="mb-spell-p mb-spell-glow" style="opacity:0"/>
+    <path d="${d}" fill="none" stroke="var(--tk-atk-shade)" stroke-width="${shadeW}" stroke-linecap="round" class="mb-spell-p mb-spell-shade"/>
+    <path d="${d}" fill="none" stroke="${coreColor}" stroke-width="${coreW}" stroke-linecap="round" class="mb-spell-p mb-spell-core"/>
+  `;
+  const mist = svg.querySelector('.mb-spell-mist'), glow = svg.querySelector('.mb-spell-glow'), shade = svg.querySelector('.mb-spell-shade'), core = svg.querySelector('.mb-spell-core');
+  clearTimeout(svg._clearT);
+  if(rm){
+    // Reduced-motion substitution — complete static full line, instant, held 260ms
+    [mist,glow,shade,core].forEach(el=>{ if(el) el.style.opacity='1'; });
+    svg._clearT = setTimeout(()=>{ svg.innerHTML=''; }, 260);
+    return;
+  }
+  // BUG FIX (2nd revision): mist/glow used to share the same dash-reveal animation as
+  // shade/core while ALSO running through feDisplacementMap — displacing a raster
+  // whose dash boundary moves every frame produced an incoherent reveal (visually,
+  // the glow appeared to start mid-path, jump to the target, then reset to the
+  // source). Shade/core (undisplaced) keep the dash "growing" reveal — that's the
+  // legible "beam drawing itself" signal. Mist/glow are now static full-length paths,
+  // filter-warped edge spatially stable from frame 1, that simply fade in via opacity.
+  [shade, core].forEach(el=>{
+    if(!el) return;
+    const len = el.getTotalLength();
+    el.style.transition = 'none';
+    el.style.opacity = '1';
+    el.setAttribute('stroke-dasharray', `${len} ${len}`);
+    el.setAttribute('stroke-dashoffset', `${len}`);
+    void el.getBoundingClientRect();
+    el.style.transition = `stroke-dashoffset ${REVEAL_MS}ms ease-out`; // full-length "growing" reveal, not a comet
+    requestAnimationFrame(()=>el.setAttribute('stroke-dashoffset','0'));
+  });
+  [mist, glow].forEach(el=>{
+    if(!el) return;
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    void el.getBoundingClientRect();
+    el.style.transition = `opacity ${REVEAL_MS+60}ms ease-out`;
+    requestAnimationFrame(()=>{ el.style.opacity = '1'; });
+  });
+  svg._clearT = setTimeout(()=>{
+    [mist,glow,shade,core].forEach(el=>{ if(el){ el.style.transition='opacity 220ms ease-in'; el.style.opacity='0'; } });
+    setTimeout(()=>{ svg.innerHTML=''; }, 280);
+  }, REVEAL_MS+280);
+}
+
+function playBoardChoreo(kind){
+  const useSpell = kind === 'spell';
+  ['dm','player'].forEach(viewer=>{
+    const g1hit = document.getElementById(`tk-${viewer}-goblin1-hit`);
+    const banditHit = document.getElementById(`tk-${viewer}-bandit-hit`);
+    const g1lunge = document.getElementById(`lunge-${viewer}-aragorn`);
+    const rm = document.body.classList.contains('reduced-motion');
+    if(g1lunge){
+      g1lunge.style.transition = rm ? 'none' : 'transform 320ms';
+      g1lunge.style.transform = rm ? 'translate(0,0)' : 'translate(4px,-2px)';
+      setTimeout(()=>{ g1lunge.style.transform = 'translate(0,0)'; }, 320);
+      fireBoardChevrons(viewer, 'aragorn', 'goblin1');
+    }
+    if(g1hit){
+      const w1 = document.getElementById(`tk-${viewer}-goblin1`);
+      if(rm){
+        w1.classList.add('tk-rm-flash'); w1.setAttribute('data-wounded','1');
+        setTimeout(()=>w1.classList.remove('tk-rm-flash'), 900);
+      } else {
+        g1hit.classList.remove('tk-flash-heavy'); void g1hit.offsetWidth; g1hit.classList.add('tk-flash-heavy');
+        w1.setAttribute('data-wounded','1');
+      }
+    }
+    setTimeout(()=>{
+      // Tracer fires here (t=140ms), then leads its own damage flash by ~60ms —
+      // "impact, then effect" (items 3/4; Story 55 §8.5's choreography clock).
+      if(useSpell) fireBoardSpellTracer(viewer, 'eoghan', 'bandit');
+      else fireBoardTracer(viewer, 'eoghan', 'bandit');
+      const applyBanditFlash = ()=>{
+        if(banditHit){
+          const w2 = document.getElementById(`tk-${viewer}-bandit`);
+          if(rm){
+            w2.classList.add('tk-rm-flash'); w2.setAttribute('data-wounded','1');
+            setTimeout(()=>w2.classList.remove('tk-rm-flash'), 900);
+          } else {
+            banditHit.classList.remove('tk-flash-standard'); void banditHit.offsetWidth; banditHit.classList.add('tk-flash-standard');
+            w2.setAttribute('data-wounded','1');
+          }
+        }
+      };
+      if(rm) applyBanditFlash(); else setTimeout(applyBanditFlash, 60);
+    }, 140);
+  });
+}
+document.getElementById('btnReplayBoard').addEventListener('click', ()=>playBoardChoreo('bolt'));
+document.getElementById('btnReplayBoardSpell').addEventListener('click', ()=>playBoardChoreo('spell'));
+
+document.getElementById('btnRotate').addEventListener('click', ()=>{
+  currentRotation = (currentRotation + 90) % 360;
+  document.getElementById('rotReadout').textContent = currentRotation + '°';
+  renderBothBoards();
+});
+document.getElementById('btnZoom').addEventListener('click', ()=>{
+  zoomIdx = (zoomIdx + 1) % ZOOM_STEPS.length;
+  currentMult = ZOOM_STEPS[zoomIdx].mult;
+  document.getElementById('zoomReadout').textContent = ZOOM_STEPS[zoomIdx].label;
+  renderBothBoards();
+});
+document.querySelectorAll('.elapsed-btn').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    document.querySelectorAll('.elapsed-btn').forEach(b=>b.classList.remove('active'));
+    btn.classList.add('active');
+    currentElapsed = btn.dataset.elapsed;
+    renderBothBoards();
+  });
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PRESET RAIL (top bar)
+   ═══════════════════════════════════════════════════════════════════════ */
+const PRESET_NAMES = ['Baseline','Damage','Control','Bind','Sense','Physical','Invisible','Attack','Overlap','Slow Turns','Reduced Motion'];
+const railEl = document.getElementById('presetRail');
+PRESET_NAMES.forEach(name=>{
+  const b = document.createElement('button');
+  b.className = 'preset-btn' + (name==='Baseline' ? ' active' : '');
+  b.textContent = name;
+  b.addEventListener('click', ()=>{
+    document.querySelectorAll('.preset-btn').forEach(x=>x.classList.remove('active'));
+    b.classList.add('active');
+    if(name === 'Reduced Motion'){
+      const cb = document.getElementById('rmToggle');
+      cb.checked = true; cb.dispatchEvent(new Event('change'));
+    }
+    applyBoardPreset(name);
+  });
+  railEl.appendChild(b);
+});
+
+document.getElementById('rmToggle').addEventListener('change', (e)=>{
+  document.body.classList.toggle('reduced-motion', e.target.checked);
+  document.getElementById('rmToggleLabel').classList.toggle('active', e.target.checked);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 3 — PERSISTENT TOKEN STATES STRIP (fixed inventory)
+   ═══════════════════════════════════════════════════════════════════════ */
+const SPEC_CONFIGS = [
+  { label:'Baseline PC', sub:'Healthy, off-turn — exactly today’s token', cfg:{ faction:'ocean', portrait:PORTRAIT.eoghan, name:'Eoghan' } },
+  { label:'Baseline NPC', sub:'Neutral ring, portrait, number badge', cfg:{ faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1 } },
+  { label:'Wounded — resting halo', sub:'Phase B: outset red ring, breathing 0.5↔0.85', cfg:{ faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:true } },
+  { label:'Control exemplar', sub:'Paralyzed — red-violet, incapacitating tier', cfg:{ faction:'npc', portrait:PORTRAIT.bandit, name:'Bandit Captain', conditions:['paralyzed'] } },
+  { label:'Bind exemplar', sub:'Restrained — amber, positional tier', cfg:{ faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, conditions:['restrained'] } },
+  { label:'Sense exemplar', sub:'Charmed — violet-blue, will tier', cfg:{ faction:'forest', portrait:PORTRAIT.aeryn, name:'Aeryn', conditions:['charmed'] } },
+  { label:'Physical exemplar', sub:'Poisoned — toxic green, attrition tier', cfg:{ faction:'npc', portrait:PORTRAIT.goblin2, name:'Shadowfang', number:2, conditions:['poisoned'] } },
+  { label:'Exhaustion 3', sub:'Physical family, gauge 3/6 — not yet incapacitating', cfg:{ faction:'ember', portrait:PORTRAIT.aragorn, name:'Aragorn', exhaustion:3 } },
+  { label:'Exhaustion 4 — promoted', sub:'Ring/colour switches to Control at level ≥4', cfg:{ faction:'ember', portrait:PORTRAIT.aragorn, name:'Aragorn', exhaustion:4 } },
+  { label:'Two-condition token', sub:'Restrained (slot 1) + Poisoned (slot 2)', cfg:{ faction:'npc', portrait:PORTRAIT.bandit, name:'Bandit Captain', conditions:['restrained','poisoned'] } },
+  { label:'Overflow / collapsed', sub:'5 conditions — 2 shown, stack motif on slot 2 (no "+N" numeral, Story 53 §13 divergence)', cfg:{ faction:'npc', portrait:PORTRAIT.bandit, name:'Bandit Captain', conditions:['stunned','restrained','frightened','poisoned'], band:'two' } },
+  { label:'Veiled PC', sub:'Dashed faction ring, desat+dim portrait, italic label', cfg:{ faction:'forest', portrait:PORTRAIT.aeryn, name:'Aeryn', veil:'veiled' } },
+  { label:'SECRET invisible NPC', sub:'DM view only — hatch scrim + ◇ marker + dashed ring', cfg:{ faction:'npc', portrait:PORTRAIT.goblin2, name:'Shadowfang', number:2, veil:'secret', viewer:'dm' } },
+  { label:'FALLEN + 3 conditions', sub:'Badges collapse to 1 summary (compressing beats deleting); wound suppressed', cfg:{ faction:'npc', portrait:PORTRAIT.bandit, name:'Bandit Captain', conditions:['stunned','restrained','poisoned'], fallen:true } },
+  { label:'Condition + concentration', sub:'Frightened badge + full-opacity concentration gem, coexisting', cfg:{ faction:'ocean', portrait:PORTRAIT.eoghan, name:'Eoghan', conditions:['frightened'], concentration:true } },
+  { label:'Condition + recent damage', sub:'Poisoned badge over a breathing wound halo — independent layers', cfg:{ faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, conditions:['poisoned'], wounded:true } },
+];
+const specGrid = document.getElementById('specGrid');
+SPEC_CONFIGS.forEach((s,i)=>{
+  const cell = document.createElement('div');
+  cell.className = 'spec-card';
+  cell.innerHTML = `
+    <div class="spec-token-stage"><div class="tk-magnify">${tokenHTML({ id:'spec-'+i, mult:2.1, showLabel:false, ...s.cfg })}</div></div>
+    <div class="spec-label">${s.label}</div>
+    <div class="spec-sub">${s.sub}</div>`;
+  specGrid.appendChild(cell);
+});
+const familyKeyEl = document.getElementById('familyKey');
+[['control','Control'],['bind','Bind'],['sense','Sense'],['physical','Physical']].forEach(([k,l])=>{
+  const d = document.createElement('div');
+  d.className = 'family-key-item';
+  d.innerHTML = `<span class="family-swatch" style="border-color:${FAMILY_COLOR[k]}"></span>${l}`;
+  familyKeyEl.appendChild(d);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 4 — EVENT CHOREOGRAPHY RAIL
+   ═══════════════════════════════════════════════════════════════════════ */
+function tracerSVG(id, kind, faction){
+  // kind: 'strike' | 'bolt' | 'spell'
+  // Rail card path A(20,60)→B(180,55): dist≈160.1, U≈36×0.85≈30.6 (the rail's actors
+  // render at mult:0.85). sag = min(0.10×dist, 2.5U) ≈ min(16.0, 76.5) = 16.0 — item 4's
+  // tightened curve (previously a hand-picked ~22.5px sag, well past what the spec allows).
+  const RAIL_D = 'M20,60 Q100,42 180,55';
+  const glowColor = attackerGlowColor(faction || 'ocean');
+  const coreColor = attackerCoreColor(faction || 'ocean');
+  if(kind==='bolt'){
+    // Rest state is opacity:0 (matches the spell paths' convention below), not just a
+    // hopeful dasharray/dashoffset combo — that's what left a visible stub jutting out
+    // from the attacker before Replay was ever clicked. playTracer() sets opacity to 1
+    // only while actually playing and computes real dasharray/offset from the path's
+    // measured length each time, so these baked-in placeholder values no longer matter.
+    return `<svg class="choreo-stage-svg" id="${id}">
+      <path id="${id}-shade" d="${RAIL_D}" fill="none" stroke="var(--tk-atk-shade)" stroke-width="6" style="opacity:0"/>
+      <path id="${id}-glow" d="${RAIL_D}" fill="none" stroke="${glowColor}" stroke-opacity="0.68" stroke-width="6.5" stroke-linecap="round" style="opacity:0"/>
+      <path id="${id}-core" d="${RAIL_D}" fill="none" stroke="${coreColor}" stroke-width="2" style="opacity:0"/>
+    </svg>`;
+  }
+  if(kind==='spell'){
+    // Item 5 (coordinator update) — exploratory spell variant, same white-core /
+    // attacker-ring-glow colour language as the bolt. The differentiator is purely HOW
+    // it renders: a wider blurred glow, and the full line "grows" from caster to target
+    // (stroke-dashoffset over its own full length) instead of a short travelling comet.
+    // See playSpellTracer() — dash length/duration set at play time via getTotalLength().
+    //
+    // Mist/smoke pass (follow-up, 2nd revision): a plain Gaussian blur reads as a
+    // clean soft-edge glow, not "magical mist" — real cloud/smoke edges are irregular.
+    // feTurbulence (Perlin-style fractal noise) + feDisplacementMap warps the stroke's
+    // own edge by that noise before blurring, so the boundary billows instead of
+    // falling off evenly.
+    //
+    // BUG FIX (2nd revision): the first pass dash-revealed the mist/glow layers the
+    // same way as the core (stroke-dasharray/dashoffset animating the "grown" length)
+    // while ALSO running them through feDisplacementMap. Displacing a raster whose
+    // own dash boundary is moving every frame produced an incoherent reveal — the
+    // warped edge could visually detach from the true reveal point, reading as the
+    // glow starting mid-path, jumping to the target, then resetting to the source.
+    // Fix: mist/glow are now static full-length paths (correct final geometry from
+    // frame 1, filter-warped edge stays spatially stable) that simply FADE IN via
+    // opacity — only shade/core (undisplaced, crisp) do the dash "growing" reveal.
+    // Reads as "the beam draws itself while its haze blooms," not two disconnected
+    // animations. Also fixes a same-id collision (filter and path both named
+    // "${id}-mist") that made playSpellTracer() crash immediately on getTotalLength().
+    return `<svg class="choreo-stage-svg" id="${id}">
+      <defs>
+        <filter id="${id}-mistFilter" x="-160%" y="-160%" width="420%" height="420%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.010 0.028" numOctaves="2" seed="${mistSeed(id)}" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="16" xChannelSelector="R" yChannelSelector="G" result="w"/>
+          <feGaussianBlur in="w" stdDeviation="6"/>
+        </filter>
+        <filter id="${id}-glowFilter" x="-140%" y="-140%" width="380%" height="380%">
+          <feTurbulence type="fractalNoise" baseFrequency="0.014 0.036" numOctaves="2" seed="${mistSeed(id)+3}" result="n"/>
+          <feDisplacementMap in="SourceGraphic" in2="n" scale="10" xChannelSelector="R" yChannelSelector="G" result="w"/>
+          <feGaussianBlur in="w" stdDeviation="3"/>
+        </filter>
+      </defs>
+      <path id="${id}-mist" d="${RAIL_D}" fill="none" stroke="${glowColor}" stroke-opacity="0.4" style="opacity:0" stroke-width="16" stroke-linecap="round" filter="url(#${id}-mistFilter)"/>
+      <path id="${id}-glow" d="${RAIL_D}" fill="none" stroke="${glowColor}" stroke-opacity="0.85" style="opacity:0" stroke-width="10" stroke-linecap="round" filter="url(#${id}-glowFilter)"/>
+      <path id="${id}-shade" d="${RAIL_D}" fill="none" stroke="var(--tk-atk-shade)" style="opacity:0" stroke-width="4.5" stroke-linecap="round"/>
+      <path id="${id}-core" d="${RAIL_D}" fill="none" stroke="${coreColor}" style="opacity:0" stroke-width="2.2" stroke-linecap="round"/>
+    </svg>`;
+  }
+  if(kind==='strike'){
+    // Melee follow-up (user request): three ⟩ chevrons between the actors, lit in
+    // sequence by flashChevronSequence() (shared with the board's real-geometry
+    // version). Fixed horizontal layout here since the rail's attacker/target are
+    // always left/right — no angle math needed, unlike the board.
+    const steps = [34, 44, 54]; // short and tight, close to the attacker's rim — matches the board's close-in spacing
+    return `<svg class="choreo-stage-svg" id="${id}">
+      ${steps.map((x,i)=>`<g class="rail-chevron" id="${id}-chev${i}" style="opacity:0; transform: translate(${x}px,57px)">
+        <path d="M-5,-7 L5,0 L-5,7" fill="none" stroke="${coreColor}" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>
+      </g>`).join('')}
+    </svg>`;
+  }
+  return `<svg class="choreo-stage-svg" id="${id}"></svg>`;
+}
+
+function choreoCard(id, title, sub, kind, faction){
+  return `<div class="choreo-card" id="${id}">
+    <div class="choreo-title">${title}</div>
+    <div class="choreo-sub">${sub}</div>
+    <div class="choreo-timeline"><div class="choreo-tick"><div class="choreo-tick-fill" data-fill="1"></div></div></div>
+    <div class="choreo-timeline-labels"><span>0ms</span><span>event settles</span></div>
+    <div class="choreo-stage">
+      <div class="choreo-actor" id="${id}-attacker" style="left:14px;top:50%;transform:translate(0,-50%);"></div>
+      <div class="choreo-actor" id="${id}-target" style="right:14px;top:50%;transform:translate(0,-50%);"></div>
+      ${kind ? tracerSVG(id+'-tracer', kind, faction) : ''}
+    </div>
+    <button class="btn-ghost" data-replay="${id}">▶ Replay</button>
+  </div>`;
+}
+
+const choreoGrid = document.getElementById('choreoGrid');
+choreoGrid.innerHTML = [
+  choreoCard('ch-strike','Melee Strike','Attacker lunge 18% toward target (140ms out / 180ms back) + impact crescent on the target rim + three chevrons stepping outward in sequence.','strike','ember'),
+  choreoCard('ch-bolt','Ranged Bolt','Tapered streak, cold-steel white core, glow tinted by the attacker’s own faction ring colour (Eoghan → Ocean blue), terminating in the same crescent. 220–420ms by distance.','bolt','ocean'),
+  choreoCard('ch-spell','Spell Channel — proposal (Eoghan · Ocean)','New, exploratory (item 5) — not in any approved brief. Same white-core / attacker-ring-glow language as the bolt, just wider and softer. Full line grows in ~160ms — well under the bolt’s 220–420ms travel — instead of a travelling comet.','spell','ocean'),
+  choreoCard('ch-spell-b','Spell Channel — proposal (Aeryn · Forest)','Same spell language, different caster — the glow tints green instead of blue, proving the tint is attacker-derived, not a fixed "spell colour."','spell','forest'),
+  choreoCard('ch-phaseA','Story 52 — Phase A Impact','Shockwave 100→165% + compress/rebound recoil + red portrait wash. ~450ms, Tier 1, interrupt.',null),
+  choreoCard('ch-phaseB','Story 52 — Phase B Residue','Same token, ~1s later — the loud burst has already resolved into the quiet resting halo.',null),
+  choreoCard('ch-combo','Tracer + Flash Combined Timing','Crescent at t=0, shockwave/recoil at t=+60ms, settled by ~510ms. The 60ms offset is what reads as cause → effect. (Attacker here is Aragorn — Ember — so the glow is amber, not blue.)','bolt','ember'),
+  choreoCard('ch-self','Condition — Applied To Self','Aragorn takes on Exhaustion mid-fight — badge enters at 180ms ease-out on the acting token.',null),
+  choreoCard('ch-other','Condition — Applied To Another','Eoghan’s spell frightens the Bandit Captain — badge enters on a token that did not act this beat.',null),
+  choreoCard('ch-vanish','Invisible Vanish / Reappear','Fade + upward drift + scale to 0.94 over 500ms reads as "it left" — not a ghost still on the board. Reappears with Story 29’s ordinary appear, deliberately unremarkable.',null),
+].join('');
+
+function mountChoreoActor(elId, cfg){
+  document.getElementById(elId).innerHTML = tokenHTML(cfg);
+}
+mountChoreoActor('ch-strike-attacker', { id:'chs-att', mult:0.85, faction:'ember', portrait:PORTRAIT.aragorn, name:'Aragorn' });
+mountChoreoActor('ch-strike-target', { id:'chs-tgt', mult:0.85, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1 });
+mountChoreoActor('ch-bolt-attacker', { id:'chb-att', mult:0.85, faction:'ocean', portrait:PORTRAIT.eoghan, name:'Eoghan' });
+mountChoreoActor('ch-bolt-target', { id:'chb-tgt', mult:0.85, faction:'npc', portrait:PORTRAIT.bandit, name:'Bandit Captain' });
+mountChoreoActor('ch-spell-attacker', { id:'chspell-att', mult:0.85, faction:'ocean', portrait:PORTRAIT.eoghan, name:'Eoghan' });
+mountChoreoActor('ch-spell-target', { id:'chspell-tgt', mult:0.85, faction:'npc', portrait:PORTRAIT.bandit, name:'Bandit Captain' });
+mountChoreoActor('ch-spell-b-attacker', { id:'chspellb-att', mult:0.85, faction:'forest', portrait:PORTRAIT.aeryn, name:'Aeryn' });
+mountChoreoActor('ch-spell-b-target', { id:'chspellb-tgt', mult:0.85, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1 });
+mountChoreoActor('ch-phaseA-target', { id:'cha-tgt', mult:1.3, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1 });
+document.getElementById('ch-phaseA-attacker').style.display='none';
+mountChoreoActor('ch-phaseB-target', { id:'chpb-tgt', mult:1.3, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:true });
+document.getElementById('ch-phaseB-attacker').style.display='none';
+mountChoreoActor('ch-combo-attacker', { id:'chc-att', mult:0.85, faction:'ember', portrait:PORTRAIT.aragorn, name:'Aragorn' });
+mountChoreoActor('ch-combo-target', { id:'chc-tgt', mult:0.85, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1 });
+mountChoreoActor('ch-self-attacker', { id:'chself', mult:1.3, faction:'ember', portrait:PORTRAIT.aragorn, name:'Aragorn' });
+document.getElementById('ch-self-target').style.display='none';
+mountChoreoActor('ch-other-attacker', { id:'chother-att', mult:0.85, faction:'ocean', portrait:PORTRAIT.eoghan, name:'Eoghan' });
+mountChoreoActor('ch-other-target', { id:'chother-tgt', mult:0.85, faction:'npc', portrait:PORTRAIT.bandit, name:'Bandit Captain' });
+mountChoreoActor('ch-vanish-attacker', { id:'chv', mult:1.3, faction:'npc', portrait:PORTRAIT.goblin2, name:'Shadowfang', number:2 });
+document.getElementById('ch-vanish-target').style.display='none';
+
+function playTracer(prefix){
+  const core = document.getElementById(prefix+'-core'), glow = document.getElementById(prefix+'-glow'), shade = document.getElementById(prefix+'-shade');
+  // Ratio-independent sweep (matches fireBoardTracer's 3rd-revision fix): gap sized
+  // to comfortably exceed the full offset sweep (no wraparound possible at any
+  // dashLen:len ratio), sweeping from len+dashLen (comet entirely before the path) to
+  // -(len+dashLen) (comet entirely past it) rather than stopping at -dashLen, which
+  // only fully clears when dashLen is small relative to len. Also toggles opacity
+  // 0→1 at play time — the rest markup is opacity:0 now, not a dash position doing
+  // double duty as the "hidden" state (that's what left a stub visible before Replay
+  // was ever clicked).
+  const dashLen = 18;
+  [core,glow,shade].forEach(el=>{
+    if(!el) return;
+    const len = el.getTotalLength();
+    const sweepGap = 2*len + 2*dashLen + 10;
+    el.style.transition='none';
+    el.style.opacity='1';
+    el.setAttribute('stroke-dasharray', `${dashLen} ${sweepGap}`);
+    el.setAttribute('stroke-dashoffset', `${len+dashLen}`); void el.getBBox();
+    el.style.transition='stroke-dashoffset 320ms cubic-bezier(.4,0,.7,.35)';
+    requestAnimationFrame(()=>el.setAttribute('stroke-dashoffset', `${-(len+dashLen)}`));
+  });
+}
+/* Item 5 — rail-card counterpart of fireBoardSpellTracer(): the path is already
+   static (drawn once by tracerSVG()), so "playing" it measures its own length and
+   animates stroke-dashoffset from that full length down to 0 — a genuine "growing"
+   reveal along the whole line, not a short travelling comet (contrast playTracer(),
+   whose dasharray is a short comet-length segment). */
+function playSpellTracer(prefix){
+  const core = document.getElementById(prefix+'-core'), glow = document.getElementById(prefix+'-glow'),
+        shade = document.getElementById(prefix+'-shade'), mist = document.getElementById(prefix+'-mist');
+  const REVEAL_MS = 160; // fast — well under the bolt's 220–420ms travel clamp
+  // Shade/core (undisplaced, crisp) do the dash "growing" reveal — this is the
+  // legible "beam drawing itself" signal.
+  [shade, core].forEach(el=>{
+    if(!el) return;
+    const len = el.getTotalLength();
+    el.style.transition = 'none';
+    el.style.opacity = '1';
+    el.setAttribute('stroke-dasharray', `${len} ${len}`);
+    el.setAttribute('stroke-dashoffset', `${len}`);
+    void el.getBBox();
+    el.style.transition = `stroke-dashoffset ${REVEAL_MS}ms ease-out`;
+    requestAnimationFrame(()=>el.setAttribute('stroke-dashoffset','0'));
+  });
+  // Mist/glow (feDisplacementMap-warped) stay at their full static geometry and only
+  // fade in — combining an animating dashoffset with a turbulence-displaced raster
+  // caused the reveal to visually detach from the true drawn length (see comment on
+  // tracerSVG's spell case). A static path keeps the warped edge spatially coherent.
+  [mist, glow].forEach(el=>{
+    if(!el) return;
+    el.style.transition = 'none';
+    el.style.opacity = '0';
+    void el.getBBox();
+    el.style.transition = `opacity ${REVEAL_MS+60}ms ease-out`;
+    requestAnimationFrame(()=>{ el.style.opacity = '1'; });
+  });
+  setTimeout(()=>{
+    [mist, shade, glow, core].forEach(el=>{ if(el){ el.style.transition='opacity 220ms ease-in'; el.style.opacity='0'; } });
+  }, REVEAL_MS+280);
+}
+function fillTimeline(card, ms){
+  const fill = card.querySelector('.choreo-tick-fill');
+  fill.style.transition='none'; fill.style.width='0%'; void fill.offsetWidth;
+  fill.style.transition=`width ${ms}ms linear`; requestAnimationFrame(()=>fill.style.width='100%');
+}
+/* Shared by both spell demo cards (Eoghan/Ocean and Aeryn/Forest) — same reveal,
+   same timing, different caster/tint, proving the colour is attacker-derived. */
+function playSpellCard(tracerPrefix, targetWrapId, rm){
+  if(rm){
+    const core=document.getElementById(tracerPrefix+'-core'), glow=document.getElementById(tracerPrefix+'-glow'),
+          shade=document.getElementById(tracerPrefix+'-shade'), mist=document.getElementById(tracerPrefix+'-mist');
+    [mist,glow,shade,core].forEach(el=>{ if(el) el.style.opacity='1'; });
+    setTimeout(()=>{ [mist,glow,shade,core].forEach(el=>{ if(el) el.style.opacity='0'; }); }, 260);
+  } else {
+    playSpellTracer(tracerPrefix);
+  }
+  const tw = document.getElementById(targetWrapId);
+  setTimeout(()=>{
+    if(tw){
+      if(rm){ tw.classList.add('tk-rm-flash'); tw.setAttribute('data-wounded','1'); setTimeout(()=>tw.classList.remove('tk-rm-flash'),900); }
+      else { tw.querySelector('.tk-hit').classList.remove('tk-flash-heavy'); void tw.offsetWidth; tw.querySelector('.tk-hit').classList.add('tk-flash-heavy'); tw.setAttribute('data-wounded','1'); }
+    }
+  }, rm?0:440);
+}
+function replayChoreo(id){
+  const card = document.getElementById(id);
+  const rm = document.body.classList.contains('reduced-motion');
+  switch(id){
+    case 'ch-strike': {
+      fillTimeline(card, 320);
+      const att = document.getElementById('ch-strike-attacker');
+      att.style.transition = rm ? 'none' : 'transform 320ms';
+      att.style.transform = rm ? 'translate(0,-50%)' : 'translate(6px,-50%)';
+      setTimeout(()=>{ att.style.transform='translate(0,-50%)'; }, 320);
+      const chevEls = [0,1,2].map(i=>document.getElementById('ch-strike-tracer-chev'+i));
+      flashChevronSequence(chevEls, rm);
+      const tw = document.getElementById('tk-chs-tgt');
+      tw.querySelector('.tk-hit').classList.remove('tk-flash-standard'); void tw.offsetWidth;
+      if(rm){ tw.classList.add('tk-rm-flash'); tw.setAttribute('data-wounded','1'); setTimeout(()=>tw.classList.remove('tk-rm-flash'),900); }
+      else { tw.querySelector('.tk-hit').classList.add('tk-flash-standard'); tw.setAttribute('data-wounded','1'); }
+      break;
+    }
+    case 'ch-bolt': {
+      fillTimeline(card, 420);
+      if(!rm) playTracer('ch-bolt-tracer');
+      const tw = document.getElementById('tk-chb-tgt');
+      setTimeout(()=>{
+        if(rm){ tw.classList.add('tk-rm-flash'); tw.setAttribute('data-wounded','1'); setTimeout(()=>tw.classList.remove('tk-rm-flash'),900); }
+        else { tw.querySelector('.tk-hit').classList.remove('tk-flash-heavy'); void tw.offsetWidth; tw.querySelector('.tk-hit').classList.add('tk-flash-heavy'); tw.setAttribute('data-wounded','1'); }
+      }, rm?0:360);
+      break;
+    }
+    case 'ch-spell': {
+      fillTimeline(card, 680);
+      playSpellCard('ch-spell-tracer', 'tk-chspell-tgt', rm);
+      break;
+    }
+    case 'ch-spell-b': {
+      fillTimeline(card, 680);
+      playSpellCard('ch-spell-b-tracer', 'tk-chspellb-tgt', rm);
+      break;
+    }
+    case 'ch-phaseA': {
+      fillTimeline(card, 450);
+      const tw = document.getElementById('tk-cha-tgt');
+      if(rm){ tw.classList.add('tk-rm-flash'); setTimeout(()=>tw.classList.remove('tk-rm-flash'),900); }
+      else { tw.querySelector('.tk-hit').classList.remove('tk-flash-heavy'); void tw.offsetWidth; tw.querySelector('.tk-hit').classList.add('tk-flash-heavy'); }
+      break;
+    }
+    case 'ch-phaseB': { fillTimeline(card, 2600); break; } /* purely ambient — halo already breathing */
+    case 'ch-combo': {
+      fillTimeline(card, 510);
+      if(!rm) playTracer('ch-combo-tracer');
+      setTimeout(()=>{
+        const tw = document.getElementById('tk-chc-tgt');
+        if(rm){ tw.classList.add('tk-rm-flash'); tw.setAttribute('data-wounded','1'); setTimeout(()=>tw.classList.remove('tk-rm-flash'),900); }
+        else { tw.querySelector('.tk-hit').classList.remove('tk-flash-heavy'); void tw.offsetWidth; tw.querySelector('.tk-hit').classList.add('tk-flash-heavy'); tw.setAttribute('data-wounded','1'); }
+      }, rm?0:60);
+      break;
+    }
+    case 'ch-self': {
+      fillTimeline(card, 180);
+      const w = document.getElementById('tk-chself');
+      w.querySelector('.tk-cond-col').innerHTML = badgeHTML({key:'poisoned',...CONDITIONS.poisoned}, 1, false);
+      break;
+    }
+    case 'ch-other': {
+      fillTimeline(card, 180);
+      const w = document.getElementById('tk-chother-tgt');
+      w.querySelector('.tk-cond-col').innerHTML = badgeHTML({key:'frightened',...CONDITIONS.frightened}, 1, false);
+      break;
+    }
+    case 'ch-vanish': {
+      fillTimeline(card, 780);
+      const el = document.getElementById('tk-chv');
+      el.classList.add('tk-vanish');
+      requestAnimationFrame(()=>el.classList.add('is-gone'));
+      setTimeout(()=>{
+        // Snap back with no reverse-transition, then play the ordinary,
+        // deliberately unremarkable reappear — Story 54 §17 div. 5:
+        // "no bespoke reverse of the vanish."
+        el.style.transition='none';
+        el.classList.remove('is-gone'); el.classList.remove('tk-vanish');
+        void el.offsetWidth;
+        el.style.transition='';
+        el.classList.add('tk-reappear');
+        setTimeout(()=>el.classList.remove('tk-reappear'), 220);
+      }, rm?300:600);
+      break;
+    }
+  }
+}
+document.querySelectorAll('[data-replay]').forEach(btn=>{
+  btn.addEventListener('click', ()=>replayChoreo(btn.dataset.replay));
+});
+// auto-play once on load so the rail isn't inert on first view
+window.addEventListener('load', ()=>{ ['ch-strike','ch-bolt','ch-spell','ch-spell-b','ch-phaseA','ch-combo'].forEach((id,i)=>setTimeout(()=>replayChoreo(id), 400+i*260)); });
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 5 — SIZE DEGRADATION LADDER
+   ═══════════════════════════════════════════════════════════════════════ */
+const BAND_STEPS = [
+  { band:'full', mult:1, px:36 }, { band:'two', mult:0.7, px:25 }, { band:'one', mult:0.42, px:15 }, { band:'none', mult:0.25, px:9 },
+];
+const ladderBands = document.getElementById('ladderBands');
+BAND_STEPS.forEach(s=>{
+  const cfg = { id:'ladder-'+s.band, mult:s.mult, band:s.band, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, conditions:['restrained','poisoned','stunned'], wounded:true, showLabel:false };
+  const cell = document.createElement('div');
+  cell.className = 'ladder-item';
+  cell.innerHTML = `<div class="ladder-stage">${tokenHTML(cfg)}</div><div class="ladder-label">${s.band}</div><div class="ladder-px">${s.px}px effective</div>`;
+  ladderBands.appendChild(cell);
+});
+const SIZE_EXAMPLES = [
+  { label:'Tiny (0.5×)', mult:0.5 }, { label:'Medium (1.0×)', mult:1 }, { label:'Huge (2.2×)', mult:2.2 },
+];
+const ladderSizes = document.getElementById('ladderSizes');
+SIZE_EXAMPLES.forEach(s=>{
+  const cfg = { id:'size-'+s.label.replace(/\W+/g,''), mult:s.mult, faction:'npc', portrait:PORTRAIT.bandit, name:'Bandit Captain', conditions:['stunned','poisoned'], wounded:true, showLabel:false };
+  const cell = document.createElement('div');
+  cell.className = 'ladder-item';
+  cell.innerHTML = `<div class="ladder-stage">${tokenHTML(cfg)}</div><div class="ladder-label">${s.label}</div><div class="ladder-px">badges stay 12px physical</div>`;
+  ladderSizes.appendChild(cell);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 5A — ACTION MEMORY
+   ═══════════════════════════════════════════════════════════════════════ */
+function memTick(container, label, html){
+  const t = document.createElement('div');
+  t.className='mem-tick';
+  t.innerHTML = `<div class="mem-tick-stage">${html}</div><div class="mem-tick-label">${label}</div>`;
+  container.appendChild(t);
+}
+// Strategy A — lingering residue only
+(function(){
+  const el = document.getElementById('memTimelineA');
+  memTick(el,'Action start', tokenHTML({id:'ma-0', mult:1.4, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:true, flash:'heavy', showLabel:false}));
+  memTick(el,'+5s', tokenHTML({id:'ma-5', mult:1.4, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:true, showLabel:false}));
+  memTick(el,'+10s', tokenHTML({id:'ma-10', mult:1.4, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:true, showLabel:false}));
+  memTick(el,'Until next action', tokenHTML({id:'ma-n', mult:1.4, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:'clearing', showLabel:false}));
+})();
+// Strategy B — lingering source/target memory mark (comparison candidate)
+function memMarkPair(id, fadeLevel){
+  return `<div style="position:relative;display:flex;align-items:center;gap:10px;">
+    ${tokenHTML({id:id+'-a', mult:0.9, faction:'ember', portrait:PORTRAIT.aragorn, name:'', showLabel:false})}
+    <svg width="30" height="8" style="opacity:${fadeLevel}"><line x1="0" y1="4" x2="30" y2="4" stroke="var(--tk-atk-core)" stroke-width="1.4" stroke-dasharray="2 3"/></svg>
+    ${tokenHTML({id:id+'-b', mult:0.9, faction:'npc', portrait:PORTRAIT.goblin1, name:'', number:1, wounded:fadeLevel<0.3?'clearing':true, showLabel:false})}
+  </div>`;
+}
+(function(){
+  const el = document.getElementById('memTimelineB');
+  memTick(el,'Action start', memMarkPair('mb-0',1));
+  memTick(el,'+5s', memMarkPair('mb-5',0.6));
+  memTick(el,'+10s', memMarkPair('mb-10',0.3));
+  memTick(el,'Until next action', memMarkPair('mb-n',0));
+})();
+// Strategy C — quiet reminder pulse (single re-pulse at 5s only, OFF by default)
+(function(){
+  const el = document.getElementById('memTimelineC');
+  memTick(el,'Action start', tokenHTML({id:'mc-0', mult:1.4, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:true, flash:'heavy', showLabel:false}));
+  memTick(el,'+5s — one re-pulse', `<div style="position:relative">${tokenHTML({id:'mc-5', mult:1.4, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:true, showLabel:false})}<button class="btn-ghost" id="btnPulseC" style="position:absolute;bottom:-30px;left:50%;transform:translateX(-50%);white-space:nowrap;font-size:9px;padding:3px 7px;min-height:auto;">▶ trigger re-pulse</button></div>`);
+  memTick(el,'+10s', tokenHTML({id:'mc-10', mult:1.4, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:true, showLabel:false}));
+  memTick(el,'Until next action', tokenHTML({id:'mc-n', mult:1.4, faction:'npc', portrait:PORTRAIT.goblin1, name:'Goblin 1', number:1, wounded:'clearing', showLabel:false}));
+  const b = document.getElementById('btnPulseC');
+  if(b) b.addEventListener('click', ()=>{
+    const w = document.getElementById('tk-mc-5');
+    const ring = w.querySelector('.tk-wound');
+    ring.style.animation='none'; void ring.offsetWidth;
+    ring.style.animation='tkWoundBreathe 640ms ease-in-out 2';
+  });
+})();
+// Conditions need no strategy
+(function(){
+  const el = document.getElementById('memTimelineConditions');
+  ['Action start','+5s','+10s','Until next action'].forEach((lab,i)=>{
+    memTick(el, lab, tokenHTML({id:'mcond-'+i, mult:1.4, faction:'forest', portrait:PORTRAIT.aeryn, name:'Aeryn', conditions:['charmed'], showLabel:false}));
+  });
+})();
+// Concurrent case
+(function(){
+  const el = document.getElementById('memTimelineConcurrent');
+  function pair(id, phase){
+    const wounded = phase==='next' ? 'clearing' : true;
+    const flash = phase==='start' ? 'heavy' : null;
+    return `<div style="display:flex;gap:10px;align-items:flex-end;">
+      ${tokenHTML({id:id+'g1', mult:1.1, faction:'npc', portrait:PORTRAIT.goblin1, name:'', number:1, conditions:['poisoned'], wounded, flash, showLabel:false})}
+      ${tokenHTML({id:id+'bc', mult:1.1, faction:'npc', portrait:PORTRAIT.bandit, name:'', conditions:['frightened'], showLabel:false})}
+    </div>`;
+  }
+  memTick(el,'Action start', pair('mcc-0','start'));
+  memTick(el,'+5s', pair('mcc-5','mid'));
+  memTick(el,'+10s', pair('mcc-10','mid'));
+  memTick(el,'Until next action', pair('mcc-n','next'));
+})();
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 6 — DETAIL CARD AUTHORITY
+   ═══════════════════════════════════════════════════════════════════════ */
+function condLine(cond){
+  const fam = FAMILY_COLOR[cond.fam];
+  const glyphKey = cond.key==='exhaustion' ? null : cond.key;
+  return `<div class="dc-cond-line" style="color:${fam}">
+    ${glyphKey ? `<svg class="dc-cond-glyph" viewBox="0 0 10 10" fill="currentColor"><use href="#g-${glyphKey}"/></svg>` : `<svg class="dc-cond-glyph" viewBox="0 0 10 10">${exhaustionGauge(cond.exhLevel||1)}</svg>`}
+    ${cond.label}
+  </div>`;
+}
+const dcRow = document.getElementById('dcRow');
+dcRow.innerHTML = `
+  <div class="dc-card">
+    <div class="dc-name">Bandit Captain</div>
+    <div class="dc-hp-row">♥ 34 / 58</div>
+    <div class="dc-divider"></div>
+    ${conditionList(['restrained','frightened','poisoned']).map(condLine).join('')}
+    <div class="dc-caption">Full condition list — authoritative superset of whatever the badge column had room for.</div>
+  </div>
+  <div class="dc-card">
+    <div class="dc-name">Aeryn</div>
+    <div class="dc-hp-row">♥ 21 / 21</div>
+    <div class="dc-divider"></div>
+    <div class="dc-invis-line" style="color:var(--fam-unknown)">◇ INVISIBLE</div>
+    <div class="dc-caption">VEILED line — visible to every viewer, neutral colour (never the DM-only blue-grey).</div>
+  </div>
+  <div class="dc-card">
+    <div class="dc-name">Shadowfang</div>
+    <div class="dc-hp-row">♥ 14 / 22</div>
+    <div class="dc-divider"></div>
+    <div class="dc-invis-line" style="color:var(--tk-dm-secret)">◇ INVISIBLE</div>
+    <div class="dc-secret-line">◦ UNSEEN BY PLAYERS</div>
+    <div class="dc-caption">SECRET line — DM-only second row, in the app-wide "DM-only knowledge" colour.</div>
+  </div>
+  <div class="dc-card">
+    <div class="dc-name">Goblin 1</div>
+    <div class="dc-hp-row">♥ 6 / 27</div>
+    <div class="dc-divider"></div>
+    <div class="dc-wound-line">◦ Took 7 — hasn’t acted</div>
+    <div class="dc-caption">Wound line — needs <code>lastDamageAmount</code>; suppressed on FALLEN.</div>
+  </div>
+  <div class="dc-card">
+    <div class="dc-name">Bandit Captain</div>
+    <div class="dc-hp-row">♥ ?? / ??</div>
+    <div class="dc-divider"></div>
+    <div class="dc-wound-line">◦ Recently wounded</div>
+    <div class="dc-caption">Hidden-HP NPC variant — a player sees this instead of a number when exact HP is withheld. The mirrored board's tooltip (§2) uses this identical pattern for every NPC on the player side.</div>
+  </div>`;
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LEGEND
+   ═══════════════════════════════════════════════════════════════════════ */
+const LEGEND = [
+  ['Token component', 'Every specimen on this page — magnified strip, degradation ladder, choreography rail — is the same 36px <code>.tk-wrap</code> component. Enlargement is a CSS <code>transform: scale()</code> wrapper, never a redraw.'],
+  ['Badge counter-scale', 'Condition badges, the gem, the number badge and the ◇ marker are positioned at fixed pixel offsets from the chip centre and never read <code>--tk-mult</code> — that omission is what makes them "counter-scaled" for free.'],
+  ['Ring vs. badge scaling', 'Faction ring, black outline and wound halo all use <code>calc(Npx * var(--tk-mult))</code> — they are part of the creature’s silhouette and grow/shrink with it, unlike badges.'],
+  ['ABSENT is a DOM fact', 'The player board’s invisible NPC token is added/removed from the DOM by JS on preset change, not hidden with CSS — modelling the real server-side omission requirement (§7.4).'],
+  ['Stack motif, not "+N"', 'Overflow badges use a second offset dark plate ("more behind this") rather than a numeral — Story 53 §13 explicitly overrides the cluster brief’s "+N" to avoid a 12px text-minimum exception.'],
+  ['Loop priority', 'When a token is both wounded and veiled/concentrating, lower-priority loops render as their static end state — wound halo &gt; concentration pulse &gt; veil shimmer (amended cluster Rule 4).'],
+  ['FALLEN suppresses, keeps veil', 'FALLEN tokens collapse conditions to one summary badge and drop the wound halo, but keep the invisibility veil — a dying invisible creature is still hidden.'],
+  ['Reduced motion = same information', 'Every substitution in this prototype (static rim, static bolt line, instant badge snaps) is chosen to preserve the same information as its animated counterpart, per the "replace, don’t delete" rule.'],
+  ['Glyphs are placeholders', 'The 14 condition glyphs are illustrative silhouettes for this review pass, not final art — exact glyph drawing is explicitly left open by the Story 53 brief.'],
+  ['Map rotation counter-rotation', 'The mirrored board’s terrain layer rotates on the rotation control; each token’s chip carries an equal-and-opposite rotation so portraits and badges stay upright "for free" (cluster §4.1).'],
+  ['Badge size — review-stage bump', 'Condition badges enlarged 12px→15px (glyph 7.5px→9.5px, ring border 1.5px→2px) for legibility; slot pitch/offset scaled by the same 1.25× so the 1px ring clear-air invariant (§4, Story 53) still holds. Story 53’s own brief locks 12px as spec — flagged back to that brief, not silently overruled here.'],
+  ['Hover/long-press detail card', 'Every mirrored-board token (DM and player, PC and NPC) now has a live hover (120ms desktop) / long-press (280ms touch) reveal, reusing <code>.dc-card</code>/<code>.dc-cond-line</code> verbatim — no second card style invented. Flips inside the board edges rather than spilling off it.'],
+  ['Ranged bolt now fires on the board', 'The mirrored board previously only flashed damage with no tracer — the bolt now draws rim-to-rim from Eoghan to the Bandit Captain, computed fresh from the board’s live rendered size and current rotation/zoom each time it fires.'],
+  ['Bolt sag corrected', 'Curve tightened to the brief’s <code>sag = min(0.10 × dist, 2.5 U)</code> formula — both the choreography-rail’s bolt and the new board tracer share this corrected geometry.'],
+  ['Bolt glow is now attacker-tinted', 'The glow layer previously read the single page-wide <code>--accent</code> var (only looked "always blue" by coincidence, since the page accent equals the Ocean ring colour) — it now pulls from the attacker’s own <code>RING[faction]</code> value, so an Ocean PC glows blue, a Forest PC glows green, an Ember PC glows amber, and NPC attackers keep the dedicated <code>--tk-atk-npc</code> token. Core stays universal white either way.'],
+  ['Spell tracer — new proposal', 'A third, exploratory tracer kind (not yet in any approved brief), sharing the bolt’s exact white-core / attacker-ring-glow colour language — the only difference is the reveal: a wider, softer glow, and the full line "grows" from caster to target in ~160ms (well under the bolt’s 220–420ms travel) instead of a travelling comet. Demoed with both an Ocean caster (Eoghan) and a Forest caster (Aeryn) to show the tint follows the attacker.'],
+];
+const legendItems = document.getElementById('legendItems');
+LEGEND.forEach(([t,d],i)=>{
+  const it = document.createElement('div');
+  it.className='legend-item';
+  it.innerHTML = `<span class="legend-num">${i+1}</span><span class="legend-text"><strong style="color:var(--accent-bright)">${t}.</strong> ${d}</span>`;
+  legendItems.appendChild(it);
+});
+
+/* ═══════════════════════════════════════════════════════════════════════
+   INIT
+   ═══════════════════════════════════════════════════════════════════════ */
+applyBoardPreset('Baseline');
+</script>
+</body>
+</html>
