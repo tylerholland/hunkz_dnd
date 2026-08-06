@@ -50,10 +50,32 @@ function makeNpcConditionsResolver(npcCombat) {
   };
 }
 
+// Story 55 (ADR-023 point 4) — should `lastDamageFrom` be stripped from the
+// public payload? True when the referenced attacker is itself invisible
+// (Story 54's resolver, reused) or linked to a hidden initiative entry (the
+// DM's existing secrecy lever) — a bolt from an empty square leaks the
+// attacker's position as effectively as rendering its token. Fails open
+// (false) for an unresolvable ref, matching this module's existing
+// fail-open convention — an orphaned `sourceId` renders elsewhere too.
+function shouldStripAttackerRef(attackerRef, { getCharacterConditions, getNpcConditions, hiddenSubjectKeys }) {
+  if (!attackerRef || !attackerRef.type || !attackerRef.sourceId) return false;
+  const key = `${attackerRef.type}:${attackerRef.sourceId}`;
+  if (hiddenSubjectKeys?.has(key)) return true;
+
+  let conditions = null;
+  if (attackerRef.type === "character" && getCharacterConditions) {
+    conditions = getCharacterConditions(attackerRef.sourceId);
+  } else if (attackerRef.type === "npc" && getNpcConditions) {
+    conditions = getNpcConditions(attackerRef.sourceId);
+  }
+  return conditions !== null && isInvisibleConditions(conditions);
+}
+
 module.exports = {
   isInvisibleConditions,
   annotateTokensWithInvisibility,
   omitInvisibleNpcTokensForPlayers,
   makeCharacterConditionsResolver,
   makeNpcConditionsResolver,
+  shouldStripAttackerRef,
 };

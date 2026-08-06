@@ -28,7 +28,10 @@ function renderChip(overrides = {}) {
 }
 
 function stubLayerRect(chip) {
-  const layer = chip.parentElement;
+  // Story 55 (ADR-021) — .tk-lunge now sits between .token-chip and the
+  // token-layer root (chip.parentElement.parentElement), not
+  // chip.parentElement directly.
+  const layer = chip.parentElement.parentElement;
   vi.spyOn(layer, "getBoundingClientRect").mockReturnValue({
     left: 0, top: 0, width: 1000, height: 800, right: 1000, bottom: 800, x: 0, y: 0,
   });

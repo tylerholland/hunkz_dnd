@@ -46,7 +46,11 @@ const {
   normalizeAppMetaRecord,
 } = require("../lib/specialRecords");
 const { projectDmPartyItem, projectPlayerCharacter } = require("../lib/partyProjection");
-const { buildPublicInitiativePayload, publicNpcConditionsByNpcId } = require("../lib/initiativeProjection");
+const {
+  buildPublicInitiativePayload,
+  publicNpcConditionsByNpcId,
+  getHiddenInitiativeSubjects,
+} = require("../lib/initiativeProjection");
 const {
   stripPassword,
   applyPlayerNotesVisibility,
@@ -58,13 +62,12 @@ const {
   omitInvisibleNpcTokensForPlayers,
   makeCharacterConditionsResolver,
   makeNpcConditionsResolver,
+  shouldStripAttackerRef,
 } = require("../lib/tokenVisibility");
 
 // Story 54 — annotate every token on every map with a server-derived
 // `invisible` flag (never trust/re-derive it client-side).
-function annotateMapLibrary(mapLibrary, { rawItemsBySlug, npcCombat }) {
-  const getCharacterConditions = makeCharacterConditionsResolver(rawItemsBySlug);
-  const getNpcConditions = makeNpcConditionsResolver(npcCombat);
+function annotateMapLibrary(mapLibrary, { getCharacterConditions, getNpcConditions }) {
   return {
     ...mapLibrary,
     maps: mapLibrary.maps.map((map) => ({
@@ -137,8 +140,12 @@ exports.handler = async (event) => {
 
   // Story 54 — one server-computed `invisible` flag per token, shared by the
   // DM's `◇` marker and the player-side omission below so they can never
-  // drift. Computed once here (not re-derived by any client).
-  const annotatedMapLibrary = annotateMapLibrary(mapLibrary, { rawItemsBySlug, npcCombat });
+  // drift. Computed once here (not re-derived by any client). Story 55 —
+  // the same two resolvers double as the "is this attacker invisible?" gate
+  // for stripping `lastDamageFrom` below (ADR-023).
+  const getCharacterConditions = makeCharacterConditionsResolver(rawItemsBySlug);
+  const getNpcConditions = makeNpcConditionsResolver(npcCombat);
+  const annotatedMapLibrary = annotateMapLibrary(mapLibrary, { getCharacterConditions, getNpcConditions });
 
   if (isDm) {
     const orderedMembers = roster.exists ? roster.members : Array.from(rawItemsBySlug.keys());
@@ -173,19 +180,37 @@ exports.handler = async (event) => {
   // Public variant
   const visEnabled = roster.partyVisibilityEnabled !== false;
   const orderedMembers = roster.exists ? roster.members : [];
+
+  // Story 55 (ADR-023 point 4) — strip `lastDamageFrom` whenever the
+  // referenced attacker is invisible or linked to a hidden initiative entry.
+  // A tracer originating from an empty square leaks the attacker's position
+  // as effectively as rendering its token.
+  const hiddenSubjectKeys = getHiddenInitiativeSubjects(initiative);
+  function publicLastDamageFrom(lastDamageFrom) {
+    if (shouldStripAttackerRef(lastDamageFrom, { getCharacterConditions, getNpcConditions, hiddenSubjectKeys })) {
+      return null;
+    }
+    return lastDamageFrom ?? null;
+  }
+
   const partyStatus = visEnabled
     ? {
         visible: true,
         members: orderedMembers
           .filter((slug) => rawItemsBySlug.has(slug))
-          .map((slug) => projectPlayerCharacter(rawItemsBySlug.get(slug))),
+          .map((slug) => {
+            const projected = projectPlayerCharacter(rawItemsBySlug.get(slug));
+            projected.lastDamageFrom = publicLastDamageFrom(projected.lastDamageFrom);
+            return projected;
+          }),
       }
     : { visible: false, members: [] };
 
   // Strip to name+portraitUrl only — HP/notes stay DM-only. Story 53 adds
   // `conditions` (gated on the linked initiative entry not being hidden —
   // the DM's existing secrecy lever). Story 52 adds the damage-flash sync
-  // fields (not secret data, ungated).
+  // fields (not secret data, ungated). Story 55 adds `lastDamageFrom`,
+  // stripped per publicLastDamageFrom() above.
   const publicNpcConditions = publicNpcConditionsByNpcId(initiative, npcCombat);
   const npcCombatPublic = {
     npcs: npcCombat.npcs.map((n) => ({
@@ -195,6 +220,7 @@ exports.handler = async (event) => {
       conditions: publicNpcConditions[n.id] ?? [],
       lastDamagedAt: n.lastDamagedAt ?? null,
       lastDamageAmount: n.lastDamageAmount ?? null,
+      lastDamageFrom: publicLastDamageFrom(n.lastDamageFrom),
     })),
   };
 
@@ -225,6 +251,13 @@ exports.handler = async (event) => {
       character = await applyPlayerNotesVisibility(character, password, rawCharacterItem);
       character = normalizeHpFields(character);
       character.isActiveTurn = computeIsActiveTurn(initiative, querySlug);
+      // Story 55 — this is the player's own sheet fetch, but a player's own
+      // token feeds the same map tracer (via PlayerMapViewer's ownCharacter
+      // merge) — same strip rule applies, or the ADR-023 guarantee would be
+      // bypassed by reading it off this field instead of partyStatus.
+      if (Object.prototype.hasOwnProperty.call(character, "lastDamageFrom")) {
+        character.lastDamageFrom = publicLastDamageFrom(character.lastDamageFrom);
+      }
       responseBody.character = character;
     }
   }

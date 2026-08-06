@@ -10,14 +10,42 @@
   pointer-events: none; /* overridden on individual chips in DM mode */
 }
 
-/* ── Token chip base ──────────────────────────────────────────────────── */
+/* ── .tk-lunge — position wrapper (ADR-021) ─────────────────────────────── */
 /* Position is carried as --token-x / --token-y (inline, per-token, dynamic —
-   ADR-014) so it composes into a single `transform` alongside the centering
-   offset and scale. This keeps positional updates on the compositor
-   (transform) instead of layout (left/top), which is required for the
-   smooth player-side poll-move transition (Story 29b §5) — see
-   .token-chip--poll-animated below. No base transition here: DM placement
-   stays instant (Story 29's deliberate drop behaviour), matching pre-29b. */
+   ADR-014). Per ADR-021, this OUTER wrapper (not .token-chip itself) owns
+   the position translate — it sits inside .token-layer (which rotates as a
+   whole with the map) but OUTSIDE .token-chip's own counter-rotation, so a
+   Story 55 melee lunge (--lunge-x/-y, translate() only) is expressed in
+   map-frame space and points the right way on a rotated map without any
+   rotation correction. No base transition here: DM placement stays instant
+   (Story 29's deliberate drop behaviour), matching pre-29b. */
+.tk-lunge {
+  position: absolute;
+  left: 0;
+  top: 0;
+  transform: translate(var(--token-x, 0px), var(--token-y, 0px));
+}
+
+.tk-lunge--play {
+  animation: tkLunge 320ms ease-in-out;
+}
+
+/* 140ms out / 180ms back — peak at 140/320 = 43.75%. translate() only, per
+   ADR-021 — no scale/rotate on this wrapper, and no transition (would fight
+   the keyframe). */
+@keyframes tkLunge {
+  0%     { transform: translate(var(--token-x, 0px), var(--token-y, 0px)); }
+  43.75% { transform: translate(calc(var(--token-x, 0px) + var(--lunge-x, 0px)), calc(var(--token-y, 0px) + var(--lunge-y, 0px))); }
+  100%   { transform: translate(var(--token-x, 0px), var(--token-y, 0px)); }
+}
+
+/* ── Token chip base ──────────────────────────────────────────────────── */
+/* .token-chip's own transform now carries only the centering offset,
+   rotation, and scale — position lives on the .tk-lunge wrapper above
+   (ADR-021). This keeps positional updates on the compositor (transform)
+   instead of layout (left/top), which is required for the smooth
+   player-side poll-move transition (Story 29b §5) — see
+   .token-chip--poll-animated below. */
 .token-chip {
   position: absolute;
   left: 0;
@@ -32,7 +60,7 @@
      .token-chip--dragging below — every other state is unaffected.
      --token-size-mult (Story 44) is the per-token size multiplier, defaults
      to 1 so legacy tokens with no scale are unchanged. */
-  transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * var(--token-drag-scale, 1))) rotate(calc(0deg - var(--map-rotation, 0deg)));
+  transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * var(--token-drag-scale, 1))) rotate(calc(0deg - var(--map-rotation, 0deg)));
   transform-origin: center;
   z-index: 10;
 }
@@ -40,21 +68,25 @@
 /* Player-side poll-move: applied only when !isDm and after first mount
    (TokenChip gates this via a hasMountedRef so the class is absent on the
    token's very first paint — it must appear at its committed position, not
-   slide in from 0,0). */
+   slide in from 0,0). Story 55 — the class now lands on .tk-lunge (position
+   moved there, ADR-021), not .token-chip; the selector itself is unchanged
+   so it applies wherever the class is used. */
 .token-chip--poll-animated {
   transition: transform 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
 /* First-mount appearance (player-side only) — fades/scales in at the
-   token's committed position rather than sliding from the origin. */
+   token's committed position rather than sliding from the origin. Position
+   is stable on the ancestor .tk-lunge now, so this keyframe only animates
+   .token-chip's own opacity/scale/rotate. */
 @keyframes token-chip-appear {
   from {
     opacity: 0;
-    transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 0.78)) rotate(calc(0deg - var(--map-rotation, 0deg)));
+    transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 0.78)) rotate(calc(0deg - var(--map-rotation, 0deg)));
   }
   to {
     opacity: 1;
-    transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1))) rotate(calc(0deg - var(--map-rotation, 0deg)));
+    transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1))) rotate(calc(0deg - var(--map-rotation, 0deg)));
   }
 }
 
@@ -420,10 +452,12 @@
 }
 
 /* ── Drop bounce keyframe ─────────────────────────────────────────────── */
+/* Position is stable on the ancestor .tk-lunge (ADR-021) — this keyframe
+   only animates .token-chip's own scale/rotate. */
 @keyframes token-drop-bounce {
-  0%   { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 1)) rotate(calc(0deg - var(--map-rotation, 0deg))); }
-  50%  { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 1.08)) rotate(calc(0deg - var(--map-rotation, 0deg))); }
-  100% { transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 1)) rotate(calc(0deg - var(--map-rotation, 0deg))); }
+  0%   { transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 1)) rotate(calc(0deg - var(--map-rotation, 0deg))); }
+  50%  { transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 1.08)) rotate(calc(0deg - var(--map-rotation, 0deg))); }
+  100% { transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * 1)) rotate(calc(0deg - var(--map-rotation, 0deg))); }
 }
 
 .token-chip--bounce {
@@ -850,10 +884,12 @@
   background: rgba(255, 255, 255, 0.05);
 }
 
-/* Token scaling to 0 on confirmed remove */
+/* Token scaling to 0 on confirmed remove. Position is stable on the
+   ancestor .tk-lunge (ADR-021) — this keyframe only animates .token-chip's
+   own opacity/scale/rotate. */
 @keyframes token-chip-remove {
-  from { opacity: 1; transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1))) rotate(calc(0deg - var(--map-rotation, 0deg))); }
-  to   { opacity: 0; transform: translate(var(--token-x, 0px), var(--token-y, 0px)) translate(-50%, -50%) scale(0); }
+  from { opacity: 1; transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1))) rotate(calc(0deg - var(--map-rotation, 0deg))); }
+  to   { opacity: 0; transform: translate(-50%, -50%) scale(0); }
 }
 
 .token-chip--removing {
@@ -1261,21 +1297,21 @@
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
-   STORIES 52–54 — TOKEN EFFECTS CLUSTER (damage flash, condition badges,
-   invisible veil). Ported from design/prototypes/token-effects-review.html.
+   STORIES 52–55 — TOKEN EFFECTS CLUSTER (damage flash, condition badges,
+   invisible veil, attack tracer). Ported from
+   design/prototypes/token-effects-review.html.
 
-   DOM note: `.token-chip` already carries position (translate via --token-x/
-   -y), map rotation counter-rotation, and both size multipliers directly on
-   its own `transform` (see base rule near the top of this file) — there is
-   no separate `.token-pos` wrapper in this codebase the way the cluster
-   brief's DOM diagram assumes. Story 52's `.tk-hit` is therefore introduced
-   as a new INNER child of `.token-chip` (not an outer ancestor) that wraps
-   the portrait/ring/badge/effect layers and carries its own independent
-   recoil transform. This is functionally equivalent — the whole visible chip
-   (portrait, ring, badges) still recoils together — while satisfying the
-   non-negotiable "must not animate .token-chip's transform" constraint
-   without touching the six existing position/rotation/size-mult transform
-   declarations elsewhere in this file.
+   DOM note (Story 55 / ADR-021): `.token-chip` used to carry position
+   (translate via --token-x/-y) directly on its own `transform`, alongside
+   the counter-rotation and both size multipliers, with no separate
+   `.token-pos` wrapper. Story 55's melee lunge needs position expressed in
+   map-frame space (outside .token-chip's counter-rotation, or it points the
+   wrong way on a rotated map), so `.tk-lunge` is now that outer wrapper —
+   see its rule near the top of this file. Story 52's `.tk-hit` remains an
+   INNER child of `.token-chip` (not an outer ancestor) wrapping the
+   portrait/ring/badge/effect layers with its own independent recoil
+   transform — functionally equivalent to an outer wrapper for recoil's
+   purposes, and unrelated to why the lunge specifically needs to be outside.
    ═══════════════════════════════════════════════════════════════════════ */
 :root {
   /* Story 52 — damage */
@@ -1297,6 +1333,10 @@
   --tk-dm-secret: #7c93a8;
   --tk-dm-secret-scrim: rgba(124, 147, 168, 0.22);
   --tk-glyph-outline: rgba(0, 0, 0, 0.55);
+
+  /* Story 55 — attack tracer */
+  --tk-atk-core: #dce8f0;
+  --tk-atk-shade: rgba(0, 0, 0, 0.45);
 }
 
 /* Story 54 — exiting ghost chip (a vanishing NPC token, rendered from the
@@ -1393,6 +1433,81 @@
 @keyframes tkWoundBreathe {
   0%, 100% { opacity: 0.5; }
   50% { opacity: 0.85; }
+}
+
+/* ── Story 55 — velocity chevrons (attacker, Strike only) ───────────────
+   Positioned via rotate()+translateX() so a single --map-rotation add-back
+   (inherited from .token-layer) lands each chevron at the correct SCREEN
+   bearing regardless of map rotation — .tk-chevron-wrap sits inside .tk-hit,
+   which is inside .token-chip's counter-rotation (net screen rotation 0),
+   so rotate(mapRotation + bearingDeg) IS the correct screen angle; no JS-side
+   correction. transform-origin: 0 0 keeps the rotation pivot at the token's
+   own center (left/top: 50% already placed it there). */
+.tk-chevron-wrap {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-origin: 0 0;
+  pointer-events: none;
+}
+.tk-chevron {
+  position: absolute;
+  left: 0;
+  top: -7px;
+  width: 10px;
+  height: 14px;
+  opacity: 0;
+  overflow: visible;
+}
+.tk-chevron-wrap .tk-chevron {
+  animation: tkChevronFlash 200ms ease-out both;
+}
+@keyframes tkChevronFlash {
+  0%   { opacity: 0; }
+  35%  { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+/* ── Story 55 — impact crescent (target, Strike + Bolt) ──────────────────
+   A short arc on the target's rim, oriented on the attacker→target bearing
+   (rendered on the side facing the attacker — bearing + 180deg). Same
+   --map-rotation add-back trick as the chevrons above. border-top-color
+   trick: only one edge of the ring is coloured, and the whole ring is
+   rotated to aim that edge at the attacker. */
+.tk-crescent {
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0;
+  border: 2px solid transparent;
+  border-top-color: var(--tk-atk-core);
+}
+.tk-crescent--play {
+  animation: tkCrescent 120ms ease-out both;
+}
+.tk-crescent--held {
+  opacity: 1;
+  transform: scale(1);
+}
+@keyframes tkCrescent {
+  0%   { opacity: 0; transform: scale(0.6); }
+  40%  { opacity: 1; transform: scale(1.05); }
+  100% { opacity: 0; transform: scale(1.15); }
+}
+
+/* ── Story 55 — tracer layer (L4, first child of tokenLayerChildren) ─────
+   Natural-image space, explicit z-index below .token-chip's 10 (never
+   relying on document order). Sized to the union bounding box of live
+   tracer geometry + 1U margin (set inline by TracerLayer.jsx) — never the
+   full natural image. Not in the DOM at all when nothing is attacking. */
+.tracer-layer {
+  position: absolute;
+  overflow: visible;
+  pointer-events: none;
+  z-index: 4;
 }
 
 /* ── Story 53 — condition badge column ──────────────────────────────────
@@ -1731,6 +1846,25 @@
   .tk-token-exit {
     animation-duration: 200ms;
     animation-timing-function: ease;
+  }
+
+  /* Story 55 — lunge + chevrons suppressed outright (per the brief's
+   * reduced-motion table); the impact crescent survives as a JS-driven
+   * static hold (.tk-crescent--held, set by TokenChip's rmCrescent state)
+   * rather than a pure CSS override, since it needs a delayed hold duration
+   * — "meaning may not be removed," and the crescent alone still reads as
+   * "it connected, from that side." The Bolt tracer's own static-path
+   * substitution is handled by TracerLayer.jsx directly (imperative SVG
+   * dash setup, not CSS-suppressible). */
+  .tk-lunge--play {
+    animation: none;
+  }
+  .tk-chevron-wrap .tk-chevron {
+    animation: none;
+    opacity: 0;
+  }
+  .tk-crescent--play {
+    animation: none;
   }
 }
 

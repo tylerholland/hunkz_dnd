@@ -1,15 +1,26 @@
 import { useEffect, useRef, useState } from "react";
 
 /**
- * tokenEffects.js — shared logic for the Stories 52–54 token-effects cluster
- * (damage flash, persistent condition badges, invisible veil). Single owner
- * so MapPanel.jsx (DM) and PlayerMapViewer (CharacterSheetSessionMode.jsx)
- * can never drift, per each story's Architect Notes.
+ * tokenEffects.js — shared logic for the Stories 52–55 token-effects cluster
+ * (damage flash, persistent condition badges, invisible veil, attack
+ * tracer). Single owner so MapPanel.jsx (DM) and PlayerMapViewer
+ * (CharacterSheetSessionMode.jsx) can never drift, per each story's
+ * Architect Notes.
  *
  * All age arithmetic here is against the caller-supplied `serverTime`
  * (from GET /session-state), never Date.now() — a clock-skewed client must
  * still compute the same answer as every other viewer.
  */
+
+// Non-reactive prefers-reduced-motion read, matching the inline check
+// already used elsewhere in this cluster (TokenChip's Phase A rmFlash) —
+// this app doesn't need live-toggle reactivity for an OS-level setting.
+export function usePrefersReducedMotion() {
+  const [reduced] = useState(
+    () => typeof window !== "undefined" && !!window.matchMedia?.("(prefers-reduced-motion: reduce)").matches
+  );
+  return reduced;
+}
 
 // ── Story 52 — damage flash ─────────────────────────────────────────────
 export const DAMAGE_FRESHNESS_MS = 4000; // Phase A fires only within this window
@@ -220,6 +231,137 @@ export function shimmerPhaseOffsetMs(id) {
 // with no re-appear animation (a returning token mounts fresh).
 const EXIT_MS = 500;
 const EXIT_BULK_CAP = 3;
+
+// ── Story 55 — attack tracer ─────────────────────────────────────────────
+// Bolt-only for v1 (Channel is cut entirely — see Story 55 Architect Notes
+// risk #4). Geometry is computed in natural-image pixels, never normalised
+// fractions, so classification is rotation-invariant and identical on every
+// viewer. All constants named per the story's "ship as one named constant,
+// tune after a live session" instruction.
+export const TRACER_UNIT_PX = 36; // U = 36 * map.tokenScale
+export const MELEE_GAP_THRESHOLD_U = 1.0; // gap <= 1.0U -> Strike, else Bolt
+export const BOLT_DURATION_FLOOR_MS = 220;
+export const BOLT_DURATION_CEILING_MS = 420;
+export const LUNGE_FRACTION = 0.06; // 6% translate toward target and back
+export const LUNGE_OUT_MS = 140;
+export const LUNGE_BACK_MS = 180;
+export const LUNGE_TOTAL_MS = LUNGE_OUT_MS + LUNGE_BACK_MS;
+export const CHEVRON_STEPS_U = [0.08, 0.24, 0.40]; // × U out from the attacker's rim
+export const CHEVRON_STAGGER_MS = 55;
+export const CHEVRON_FADE_MS = 200; // 90ms in + 110ms out, per chevron
+export const IMPACT_CRESCENT_MS = 120;
+export const TRACER_PHASE_A_DELAY_CAP_MS = 480; // Phase A start-delay cap
+export const TRACER_CONCURRENCY_CAP = 3; // at most 3 concurrent crescents/tracers
+export const TRACER_QUEUE_STAGGER_MS = 250; // beyond the cap, later events get no tracer
+export const NPC_BOLT_TINT = "#c0c8c0"; // neutral steel — non-PC attacker
+export const BOLT_CORE_COLOR = "#dce8f0"; // cold-steel white core, also the crescent colour
+
+// Resolve Strike vs Bolt from token distance in natural-image pixels (not
+// normalised fractions — anisotropic on non-square maps and would
+// misclassify melee vs ranged). Rotation never enters this math.
+export function classifyTracerGeometry({ attacker, target, imageW, imageH, mapTokenScale }) {
+  const scale = Number.isFinite(mapTokenScale) ? mapTokenScale : 1;
+  const U = TRACER_UNIT_PX * scale;
+  const ax = attacker.x * imageW, ay = attacker.y * imageH;
+  const tx = target.x * imageW, ty = target.y * imageH;
+  const dx = tx - ax, dy = ty - ay;
+  const dist = Math.hypot(dx, dy);
+  const rA = (TRACER_UNIT_PX / 2) * (Number.isFinite(attacker.scale) ? attacker.scale : 1) * scale;
+  const rB = (TRACER_UNIT_PX / 2) * (Number.isFinite(target.scale) ? target.scale : 1) * scale;
+  const gap = dist - rA - rB;
+  const kind = gap <= MELEE_GAP_THRESHOLD_U * U ? "strike" : "bolt";
+  const bearingRad = Math.atan2(dy, dx); // map-frame bearing, attacker -> target
+  const bearingDeg = (bearingRad * 180) / Math.PI;
+  const ux = dist > 0 ? dx / dist : 1;
+  const uy = dist > 0 ? dy / dist : 0;
+  return { ax, ay, tx, ty, dx, dy, dist, gap: Math.max(gap, 1), U, rA, rB, kind, bearingDeg, ux, uy };
+}
+
+// Duration scales with distance: 220ms floor, 420ms ceiling — matches the
+// reference prototype's clamp(180 + 12*(gap/U), 220, 420) formula.
+export function boltDurationMs(gapPx, unitPx) {
+  const unit = unitPx > 0 ? unitPx : TRACER_UNIT_PX;
+  const gapU = gapPx / unit;
+  return Math.min(Math.max(180 + 12 * gapU, BOLT_DURATION_FLOOR_MS), BOLT_DURATION_CEILING_MS);
+}
+
+// Choreography clock — single owner shared by both maps (Story 55 amends
+// Story 52's fixed 60ms into this supplied parameter). Only the token flash
+// waits; HP numerals update immediately and optimistically (ADR-011).
+export function resolvePhaseADelayMs(tracerImpactMs) {
+  const impact = Number.isFinite(tracerImpactMs) ? tracerImpactMs : 0;
+  return Math.min(TRACER_PHASE_A_DELAY_CAP_MS, impact + 60);
+}
+
+// Build one tracer event per token whose Phase A just fired fresh AND whose
+// lastDamageFrom resolves to another placed token on the CURRENT viewer's
+// map. Events beyond TRACER_CONCURRENCY_CAP get no tracer (their Phase A
+// flash is unaffected — same wash-only-style degradation as Story 52's AoE
+// cap). Shared by MapPanel (DM) and PlayerMapViewer so the two surfaces can
+// never draw a different geometry for the same event.
+//
+// `freshEventsInOrder`: [{ targetTokenId, attackerRef: {type,sourceId} }],
+// stable input order (same order the caller iterates its token list in).
+export function buildTracerEvents({ tokens, freshEventsInOrder, imageW, imageH, mapTokenScale }) {
+  const byTarget = new Map();
+  const byAttacker = new Map();
+  if (!imageW || !imageH) return { byTarget, byAttacker };
+
+  const list = tokens || [];
+  const eligible = [];
+  for (const evt of freshEventsInOrder || []) {
+    if (!evt?.attackerRef?.type || !evt?.attackerRef?.sourceId) continue;
+    const targetToken = list.find((t) => t.id === evt.targetTokenId);
+    if (!targetToken) continue;
+    const attackerToken = list.find(
+      (t) => t.type === evt.attackerRef.type && t.sourceId === evt.attackerRef.sourceId
+    );
+    if (!attackerToken || attackerToken.id === targetToken.id) continue;
+    eligible.push({ targetToken, attackerToken });
+  }
+
+  eligible.slice(0, TRACER_CONCURRENCY_CAP).forEach((pair, i) => {
+    const geom = classifyTracerGeometry({
+      attacker: pair.attackerToken,
+      target: pair.targetToken,
+      imageW,
+      imageH,
+      mapTokenScale,
+    });
+    const startDelayMs = i * TRACER_QUEUE_STAGGER_MS;
+    // travelMs: the Bolt's own SVG draw duration, or the Strike lunge's full
+    // out-and-back duration — NOT the same as when the impact "lands."
+    const travelMs = geom.kind === "bolt" ? boltDurationMs(geom.gap, geom.U) : LUNGE_TOTAL_MS;
+    // localImpactMs: t=0 of the "crescent, then +60ms shockwave" choreography
+    // (brief §8 Rule 3) — for a Bolt that's arrival (travelMs); for a Strike
+    // it's the lunge's peak (LUNGE_OUT_MS), not the full out-and-back.
+    const localImpactMs = geom.kind === "bolt" ? travelMs : LUNGE_OUT_MS;
+    const impactDelayMs = startDelayMs + localImpactMs;
+    const event = {
+      kind: geom.kind,
+      attackerTokenId: pair.attackerToken.id,
+      targetTokenId: pair.targetToken.id,
+      geom,
+      startDelayMs,
+      travelMs,
+      impactDelayMs,
+      phaseADelayMs: resolvePhaseADelayMs(impactDelayMs),
+    };
+    byTarget.set(pair.targetToken.id, event);
+    if (!byAttacker.has(pair.attackerToken.id)) byAttacker.set(pair.attackerToken.id, event);
+  });
+
+  return { byTarget, byAttacker };
+}
+
+// 6% of one token-diameter unit (U), toward the target and back — a subtle
+// nudge, not a travel. Map-frame dx/dy (no rotation correction — the
+// .tk-lunge wrapper it drives sits outside .token-chip's counter-rotation,
+// per ADR-021).
+export function computeLungeOffsetPx(geom) {
+  const lungeDist = LUNGE_FRACTION * geom.U;
+  return { lungeX: geom.ux * lungeDist, lungeY: geom.uy * lungeDist };
+}
 
 export function useTokenExitGhosts(liveTokens, mapId) {
   const prevTokensRef = useRef(new Map());

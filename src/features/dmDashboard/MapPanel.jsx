@@ -9,13 +9,19 @@ import { isPdfMap } from "../maps/mapFiles";
 import TokenTray from "./battleMode/TokenTray";
 import { TokenChip, HeldTokenFloater } from "./battleMode/BattleModeController";
 import ConditionGlyphSprite from "./battleMode/ConditionGlyphSprite";
+import TracerLayer from "./battleMode/TracerLayer";
+import { getPaletteAccent } from "./battleMode/tokenUtils";
 import {
   resolveDamageState,
   assignAoEStagger,
   resolveCondBand,
   computeEffectivePx,
   useDebouncedValue,
+  usePrefersReducedMotion,
   shimmerPhaseOffsetMs,
+  buildTracerEvents,
+  computeLungeOffsetPx,
+  NPC_BOLT_TINT,
 } from "./battleMode/tokenEffects";
 import "./battleMode.css";
 
@@ -412,21 +418,25 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   }
   const effectiveNaturalSize = viewerState?.naturalSize || (activeMapId ? naturalSizeByMapRef.current[activeMapId] : null);
 
-  // Stories 52–54 — resolve damage/condition-band/veil state once per token,
-  // here in the parent, not inside TokenChip (which is memo'd and would
-  // otherwise recompute per chip on every pan frame). Computed in an effect
-  // (not useMemo) because it reads/mutates seenStampsRef — refs may only be
-  // touched outside render — and stored in state, so the resolved objects
-  // keep a stable identity across pure pan/zoom renders (unaffected by this
-  // effect) and TokenChip's memo() keeps working. One render's lag between
-  // new poll data landing and the resolved effects appearing is imperceptible
-  // against a ~1–2s poll cadence. debouncedZoom only changes on its own tick.
+  // Stories 52–55 — resolve damage/condition-band/veil/tracer state once per
+  // token, here in the parent, not inside TokenChip (which is memo'd and
+  // would otherwise recompute per chip on every pan frame). Computed in an
+  // effect (not useMemo) because it reads/mutates seenStampsRef — refs may
+  // only be touched outside render — and stored in state, so the resolved
+  // objects keep a stable identity across pure pan/zoom renders (unaffected
+  // by this effect) and TokenChip's memo() keeps working. One render's lag
+  // between new poll data landing and the resolved effects appearing is
+  // imperceptible against a ~1–2s poll cadence. debouncedZoom only changes
+  // on its own tick.
+  const reducedMotion = usePrefersReducedMotion();
   const [resolvedByTokenId, setResolvedByTokenId] = useState(new Map());
+  const [tracerLayerEvents, setTracerLayerEvents] = useState([]);
   useEffect(() => {
     const partyList = party || [];
     const npcList = npcCombat?.npcs || [];
     const rawDamageStates = new Map();
     const freshKeysInOrder = [];
+    const freshEventsInOrder = [];
     for (const token of effectiveTokens) {
       const member = token.type === "character" ? partyList.find((m) => m.slug === token.sourceId) : null;
       const npc = token.type === "npc" ? npcList.find((n) => n.id === token.sourceId) : null;
@@ -446,17 +456,37 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
         seenStampsRef.current
       );
       rawDamageStates.set(token.id, state);
-      if (state.phaseAFresh) freshKeysInOrder.push(token.id);
+      if (state.phaseAFresh) {
+        freshKeysInOrder.push(token.id);
+        // Story 55 — every damage-apply path fires the tracer trigger; the
+        // freshness gate is Story 52's, reused verbatim (one shared gate — a
+        // flash without its tracer, or a tracer without its flash, is worse
+        // than neither).
+        freshEventsInOrder.push({ targetTokenId: token.id, attackerRef: subject?.lastDamageFrom ?? null });
+      }
     }
     const staggerByKey = assignAoEStagger(freshKeysInOrder);
+    const { byTarget: tracerByTarget, byAttacker: tracerByAttacker } = buildTracerEvents({
+      tokens: effectiveTokens,
+      freshEventsInOrder,
+      imageW: effectiveNaturalSize?.w,
+      imageH: effectiveNaturalSize?.h,
+      mapTokenScale: tokenScale,
+    });
 
     const result = new Map();
     for (const token of effectiveTokens) {
       const rawState = rawDamageStates.get(token.id);
       const stagger = staggerByKey.get(token.id);
+      const tracerAsTarget = tracerByTarget.get(token.id);
+      const tracerAsAttacker = tracerByAttacker.get(token.id);
       const damageState = rawState && {
         ...rawState,
-        delayMs: stagger?.delayMs ?? 0,
+        // Story 55 — when a tracer is playing against this target, its
+        // choreography-derived delay OVERRIDES the plain AoE stagger delay
+        // (only the token flash waits; HP numerals elsewhere are unaffected,
+        // per ADR-011).
+        delayMs: tracerAsTarget ? tracerAsTarget.phaseADelayMs : (stagger?.delayMs ?? 0),
         washOnly: !!stagger?.washOnly,
       };
       const effectivePx = computeEffectivePx({ tokenScale: token.scale, mapTokenScale: tokenScale, zoom: debouncedZoom });
@@ -467,41 +497,91 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       const veil = token.invisible
         ? { veiled: true, secret: token.type === "npc" }
         : { veiled: false, secret: false };
-      result.set(token.id, { damageState, condBand, veil, shimmerDelayMs: shimmerPhaseOffsetMs(token.id) });
+      const impactState = tracerAsTarget
+        ? { bearingDeg: tracerAsTarget.geom.bearingDeg, delayMs: tracerAsTarget.impactDelayMs }
+        : null;
+      // Bolt attackers don't lunge — nothing travels for Strike, everything
+      // travels for Bolt (brief §9.3/9.4).
+      const lungeState = tracerAsAttacker && tracerAsAttacker.kind === "strike"
+        ? {
+            ...computeLungeOffsetPx(tracerAsAttacker.geom),
+            bearingDeg: tracerAsAttacker.geom.bearingDeg,
+            unitPx: tracerAsAttacker.geom.U,
+            startDelayMs: tracerAsAttacker.startDelayMs,
+          }
+        : null;
+      result.set(token.id, {
+        damageState,
+        condBand,
+        veil,
+        shimmerDelayMs: shimmerPhaseOffsetMs(token.id),
+        impactState,
+        lungeState,
+      });
     }
     setResolvedByTokenId(result);
+
+    // Story 55 — Bolt tracer geometry for TracerLayer (L4), tinted by the
+    // attacker's own faction ring colour (PC palette accent, neutral steel
+    // for NPCs) so two casters' bolts read as distinguishable at a glance.
+    const boltEvents = [];
+    tracerByTarget.forEach((event) => {
+      if (event.kind !== "bolt") return;
+      const attackerToken = effectiveTokens.find((t) => t.id === event.attackerTokenId);
+      const attackerMember = attackerToken?.type === "character"
+        ? partyList.find((m) => m.slug === attackerToken.sourceId)
+        : null;
+      const tint = attackerToken?.type === "character" ? getPaletteAccent(attackerMember?.palette) : NPC_BOLT_TINT;
+      boltEvents.push({ ...event, tint });
+    });
+    setTracerLayerEvents(boltEvents);
+    // effectiveNaturalSize intentionally excluded from deps — it's partly
+    // ref-derived (naturalSizeByMapRef, a cache-on-map-switch fallback) and
+    // its primary driver (viewerState.naturalSize) already changes on the
+    // same poll/pan/zoom cadence as the other deps below; a tracer computed
+    // one tick late against a stale image size is the same "one render's
+    // lag is imperceptible" tradeoff already accepted elsewhere in this
+    // effect (see the comment above).
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveTokens, party, npcCombat, serverTime, initiative, tokenScale, debouncedZoom]);
 
-  // Build chip nodes for token layer
-  const tokenChips = (isBattleMode && effectiveNaturalSize) ? effectiveTokens.map((token) => {
-    const resolved = resolvedByTokenId.get(token.id) || {};
-    return (
-      <TokenChip
-        key={token.id}
-        token={token}
-        imageW={effectiveNaturalSize.w}
-        imageH={effectiveNaturalSize.h}
-        party={party || []}
-        npcCombat={npcCombat || { npcs: [] }}
-        isDm={true}
-        isOwnToken={false}
-        partyVisibilityEnabled={true}
-        isHeld={heldSourceId === token.sourceId}
-        onTokenClick={handleTokenClick}
-        onRemoveToken={handleRemoveToken}
-        viewerContainerRef={viewerContainerRef}
-        pal={pal}
-        labelHidden={labelsHidden}
-        calibTween={calibTweening}
-        onResizeToken={handleResizeToken}
-        damageState={resolved.damageState}
-        condBand={resolved.condBand}
-        veil={resolved.veil}
-        shimmerDelayMs={resolved.shimmerDelayMs}
-      />
-    );
-  }) : null;
+  // Build chip nodes for token layer. TracerLayer is the FIRST child (L4,
+  // below the chips in z-order — explicit z-index, per Architect Notes).
+  const tokenChips = (isBattleMode && effectiveNaturalSize) ? (
+    <>
+      <TracerLayer events={tracerLayerEvents} reducedMotion={reducedMotion} />
+      {effectiveTokens.map((token) => {
+        const resolved = resolvedByTokenId.get(token.id) || {};
+        return (
+          <TokenChip
+            key={token.id}
+            token={token}
+            imageW={effectiveNaturalSize.w}
+            imageH={effectiveNaturalSize.h}
+            party={party || []}
+            npcCombat={npcCombat || { npcs: [] }}
+            isDm={true}
+            isOwnToken={false}
+            partyVisibilityEnabled={true}
+            isHeld={heldSourceId === token.sourceId}
+            onTokenClick={handleTokenClick}
+            onRemoveToken={handleRemoveToken}
+            viewerContainerRef={viewerContainerRef}
+            pal={pal}
+            labelHidden={labelsHidden}
+            calibTween={calibTweening}
+            onResizeToken={handleResizeToken}
+            damageState={resolved.damageState}
+            condBand={resolved.condBand}
+            veil={resolved.veil}
+            shimmerDelayMs={resolved.shimmerDelayMs}
+            lungeState={resolved.lungeState}
+            impactState={resolved.impactState}
+          />
+        );
+      })}
+    </>
+  ) : null;
 
   return (
     <div style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 5, marginBottom: 12, overflow: "hidden" }}>

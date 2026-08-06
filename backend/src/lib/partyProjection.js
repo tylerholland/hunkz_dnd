@@ -22,10 +22,13 @@ const DM_PARTY_FIELDS = [
   "hitDiceCurrent", "xpCurrent", "levelingMode", "coin", "coinMode", "deathSaves",
   // Story 52 — damage flash sync fields. Not secret data.
   "lastDamagedAt", "lastDamageAmount",
+  // Story 55 — attacker ref, same write as the damage stamp. DM sees it
+  // unstripped; the public projection below strips it per-case (ADR-023).
+  "lastDamageFrom",
 ];
 
 const DM_PARTY_PROJECTION_EXPRESSION =
-  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount";
+  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom";
 
 const DM_PARTY_EXPRESSION_ATTRIBUTE_NAMES = {
   "#n": "name",
@@ -54,6 +57,11 @@ const PLAYER_VISIBLE_FIELDS = [
   "conditions", "concentration", "inspiration", "deathSaves",
   // Story 53 — exhaustion badge on the map token. Story 52 — damage flash sync.
   "exhaustionLevel", "lastDamagedAt", "lastDamageAmount",
+  // Story 55 — attacker ref. `getSessionState.js`'s public variant strips
+  // this per-token when the referenced attacker is invisible or linked to a
+  // hidden initiative entry (ADR-023) — projectPlayerCharacter() itself
+  // stays a plain pass-through, same pattern as lastDamagedAt above.
+  "lastDamageFrom",
 ];
 
 function projectPlayerCharacter(item) {
@@ -66,6 +74,7 @@ function projectPlayerCharacter(item) {
   projected.inspiration = item.inspiration ?? false;
   projected.deathSaves = item.deathSaves ?? { successes: 0, failures: 0 };
   projected.exhaustionLevel = item.exhaustionLevel ?? 0;
+  projected.lastDamageFrom = item.lastDamageFrom ?? null;
   return projected;
 }
 

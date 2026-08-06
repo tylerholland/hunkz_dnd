@@ -5,6 +5,9 @@ import {
   condBandSlotCount,
   isInvisibleCondition,
   FAMILY_COLORS,
+  CHEVRON_STEPS_U,
+  CHEVRON_STAGGER_MS,
+  BOLT_CORE_COLOR,
 } from "./tokenEffects";
 
 /**
@@ -64,6 +67,59 @@ function ConditionBadge({ item, slot, stacked }) {
         <svg><use href={`#${meta.glyphId}`} /></svg>
       )}
     </div>
+  );
+}
+
+// ── Story 55 — melee "velocity chevron" burst ───────────────────────────
+// Three small `>` marks stepping outward from the attacker's rim along the
+// real attacker→target bearing, lighting up in sequence during the lunge.
+// A close-in motion cue, not a projectile — travels only CHEVRON_STEPS_U (up
+// to 0.40U) regardless of how far apart the two tokens are. Rendered inside
+// .tk-hit (upright via .token-chip's existing counter-rotation, per the
+// brief's composition rules) — --map-rotation is inherited from .token-layer
+// and added back in CSS so the SCREEN-space bearing is correct at every map
+// rotation without any JS-side correction (see the crescent below for the
+// same trick).
+function ChevronBurst({ bearingDeg, unitPx, startDelayMs }) {
+  return (
+    <>
+      {CHEVRON_STEPS_U.map((stepU, i) => (
+        <div
+          key={i}
+          className="tk-chevron-wrap"
+          style={{
+            transform: `rotate(calc(var(--map-rotation, 0deg) + ${bearingDeg}deg)) translateX(${(stepU * unitPx).toFixed(1)}px)`,
+          }}
+        >
+          <svg
+            className="tk-chevron"
+            viewBox="0 0 10 14"
+            style={{ animationDelay: `${startDelayMs + i * CHEVRON_STAGGER_MS}ms` }}
+            aria-hidden="true"
+          >
+            <path d="M2,1 L8,7 L2,13" fill="none" stroke={BOLT_CORE_COLOR} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        </div>
+      ))}
+    </>
+  );
+}
+
+// ── Story 55 — impact crescent ──────────────────────────────────────────
+// A short arc on the TARGET's circumference, oriented on the attacker→target
+// bearing (rendered on the side facing the attacker). Fires for both Strike
+// and Bolt — the one visual element every tracer kind shares. Same
+// --map-rotation trick as the chevrons above.
+function ImpactCrescent({ bearingDeg, delayMs, held }) {
+  return (
+    <div
+      className={`tk-crescent${held ? " tk-crescent--held" : " tk-crescent--play"}`}
+      style={{
+        transform: `rotate(calc(var(--map-rotation, 0deg) + ${bearingDeg}deg + 180deg))`,
+        animationDelay: held ? undefined : `${delayMs}ms`,
+      }}
+      aria-hidden="true"
+    />
   );
 }
 
@@ -199,6 +255,13 @@ export const TokenChip = memo(function TokenChip({
   // exiting: true while this chip is a fading Story 54 vanish ghost
   exiting = false,
   shimmerDelayMs = 0,
+  // Story 55 — resolved once per render in the parent, alongside damageState.
+  // lungeState: { lungeX, lungeY, bearingDeg, unitPx, startDelayMs } | null —
+  // present only while THIS token is the attacker of a live Strike.
+  lungeState = null,
+  // impactState: { bearingDeg, delayMs } | null — present only while THIS
+  // token is the target of a live tracer (Strike or Bolt).
+  impactState = null,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [flipCard, setFlipCard] = useState(false);
@@ -216,6 +279,12 @@ export const TokenChip = memo(function TokenChip({
   // ordinary Phase B (motion may be removed; meaning may not).
   const [rmFlash, setRmFlash] = useState(false);
   const rmFlashTimerRef = useRef(null);
+  // Story 55 — reduced-motion crescent substitute: held static (no
+  // scale/fade animation) for IMPACT_CRESCENT_MS + 180ms instead of the
+  // 120ms scale-and-fade, per the brief's reduced-motion table ("impact
+  // crescent held static 300ms so the attack is still readable").
+  const [rmCrescent, setRmCrescent] = useState(false);
+  const rmCrescentTimerRef = useRef(null);
   const chipRef = useRef(null);
   const hoverTimerRef = useRef(null);
   const collapseTimerRef = useRef(null);
@@ -285,6 +354,21 @@ export const TokenChip = memo(function TokenChip({
 
   useEffect(() => () => {
     if (rmFlashTimerRef.current) clearTimeout(rmFlashTimerRef.current);
+  }, []);
+
+  useEffect(() => {
+    if (!impactState) return undefined;
+    const reduced = typeof window !== "undefined"
+      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (!reduced) return undefined;
+    setRmCrescent(true);
+    if (rmCrescentTimerRef.current) clearTimeout(rmCrescentTimerRef.current);
+    rmCrescentTimerRef.current = setTimeout(() => setRmCrescent(false), impactState.delayMs + 300);
+    return undefined;
+  }, [impactState]);
+
+  useEffect(() => () => {
+    if (rmCrescentTimerRef.current) clearTimeout(rmCrescentTimerRef.current);
   }, []);
 
   // HP data — member uses hpCurrent + hpMax (hpMax is always the normalized,
@@ -399,7 +483,12 @@ export const TokenChip = memo(function TokenChip({
     // re-reading it via getComputedStyle() on every pointermove (as this used
     // to do) is pure wasted style recalculation on the hottest path in the
     // gesture, which was visible as jitter on a rotated map.
-    const layerEl = chipRef.current?.parentElement;
+    // Story 55 (ADR-021) — .token-chip's parent is now .tk-lunge, not
+    // .token-layer (one extra wrapper level) — --map-rotation is still
+    // correctly readable via inheritance from either element, but the
+    // getBoundingClientRect() geometry below needs the actual .token-layer
+    // (spans the full natural image; .tk-lunge has no intrinsic size).
+    const layerEl = chipRef.current?.parentElement?.parentElement;
     dragRotationRef.current = layerEl
       ? parseFloat(getComputedStyle(layerEl).getPropertyValue('--map-rotation')) || 0
       : 0;
@@ -416,7 +505,9 @@ export const TokenChip = memo(function TokenChip({
 
   const moveDrag = useCallback((e) => {
     if (dragPointerIdRef.current !== e.pointerId) return;
-    const layerEl = chipRef.current?.parentElement;
+    // Story 55 (ADR-021) — two levels up now (.tk-lunge sits between
+    // .token-chip and .token-layer); see the identical note in startDrag.
+    const layerEl = chipRef.current?.parentElement?.parentElement;
     if (!layerEl) return;
     const rect = layerEl.getBoundingClientRect();
     if (!rect.width || !rect.height) return;
@@ -620,11 +711,6 @@ export const TokenChip = memo(function TokenChip({
     token.type === "character" ? "token-chip--pc" : "token-chip--npc",
     isFallen ? "token-chip--fallen" : "",
     isHeld ? "token-chip--ghost" : "",
-    // Player-only, and only after the token's first paint — the very first
-    // render must NOT carry this class or the token would appear to slide
-    // in from (0,0) on mount. Suppressed during an active drag so the token
-    // tracks the pointer instantly instead of easing behind it.
-    !isDm && hasMounted && !isDragging ? "token-chip--poll-animated" : "",
     !isDm && !hasMounted ? "token-chip--appearing" : "",
     labelHidden ? "token-chip--label-hidden" : "",
     calibTween ? "token-chip--calib-tween" : "",
@@ -653,7 +739,40 @@ export const TokenChip = memo(function TokenChip({
   const currentSizeIdx = nearestSizeIndex(currentScale);
   const currentLabel = SIZE_LABELS[SIZE_STEPS[currentSizeIdx]] || "MEDIUM";
 
+  // Story 55 — ADR-021's outer wrapper. .token-chip already carries position
+  // (--token-x/-y) baked into its own single `transform` alongside the
+  // counter-rotation and both size multipliers (see the file-header note on
+  // the Stories 52–54 CSS block) — there is no separate `.token-pos`
+  // wrapper. .tk-lunge is therefore introduced as a new OUTER ancestor
+  // (unlike .tk-hit, which is an inner child) so the lunge's translate() is
+  // expressed in map-frame (natural-image, pre-counter-rotation) space —
+  // .token-chip's counter-rotation would otherwise point it the wrong way on
+  // a rotated map. --token-x/-y move here; .token-chip's own transform below
+  // drops them (battleMode.css).
+  // token-chip--poll-animated now lives here (not on .token-chip) — position
+  // (--token-x/-y) moved to this wrapper (ADR-021), so the smooth player-
+  // side poll-move transition must transition THIS element's transform.
+  // Player-only, and only after the token's first paint — the very first
+  // render must NOT carry this class or the token would appear to slide in
+  // from (0,0) on mount. Suppressed during an active drag so the token
+  // tracks the pointer instantly instead of easing behind it.
+  const lungeClasses = [
+    "tk-lunge",
+    lungeState ? "tk-lunge--play" : "",
+    !isDm && hasMounted && !isDragging ? "token-chip--poll-animated" : "",
+  ].filter(Boolean).join(" ");
+
   return (
+    <div
+      className={lungeClasses}
+      style={{
+        "--token-x": `${left}px`,
+        "--token-y": `${top}px`,
+        "--lunge-x": `${lungeState ? lungeState.lungeX.toFixed(1) : 0}px`,
+        "--lunge-y": `${lungeState ? lungeState.lungeY.toFixed(1) : 0}px`,
+        animationDelay: lungeState ? `${lungeState.startDelayMs}ms` : undefined,
+      }}
+    >
     <div
       ref={chipRef}
       className={chipClasses}
@@ -664,8 +783,6 @@ export const TokenChip = memo(function TokenChip({
       data-viewer={isDm ? "dm" : "player"}
       data-cond-band={condBand}
       style={{
-        "--token-x": `${left}px`,
-        "--token-y": `${top}px`,
         "--token-ring-color": ringColor,
         "--token-fill-color": fillColor,
         "--pal-border": pal?.border,
@@ -691,13 +808,24 @@ export const TokenChip = memo(function TokenChip({
       {/* .tk-hit — Story 52's recoil / Story 54's vanish wrapper. Wraps the
           portrait, ring, and every effect/badge layer so damage recoil (or
           the NPC vanish) moves the whole visible chip together, without ever
-          touching .token-chip's own transform (fully claimed by position,
-          rotation, and the two size multipliers — see the file-header note
-          on the Stories 52–54 CSS block). */}
+          touching .token-chip's own transform (fully claimed by rotation and
+          the two size multipliers — see the file-header note on the Stories
+          52–54 CSS block). Story 55 — also carries the impact crescent
+          (target) and the chevron burst (attacker); the tracer-derived
+          phaseADelayMs (when present) overrides the plain AoE-stagger delay
+          so the flash waits for the tracer to land (brief §8 Rule 3). */}
       <div
         className={tkHitClasses}
         style={damageState?.phaseAFresh && damageState.delayMs ? { animationDelay: `${damageState.delayMs}ms` } : undefined}
       >
+        {/* Story 55 — impact crescent (target only, both Strike and Bolt). */}
+        {impactState && (
+          <ImpactCrescent bearingDeg={impactState.bearingDeg} delayMs={impactState.delayMs} held={rmCrescent} />
+        )}
+        {/* Story 55 — velocity chevrons (attacker only, Strike only). */}
+        {lungeState && (
+          <ChevronBurst bearingDeg={lungeState.bearingDeg} unitPx={lungeState.unitPx} startDelayMs={lungeState.startDelayMs} />
+        )}
         {/* Portrait or initial — NPC portraits (Story 29b) use the same
             element/classes as PC portraits; the ring stays neutral grey via
             the .token-chip--npc selector regardless of portrait presence. */}
@@ -924,6 +1052,7 @@ export const TokenChip = memo(function TokenChip({
       {dragFailed && (
         <div className="token-drag-toast">Couldn&apos;t move token</div>
       )}
+    </div>
     </div>
   );
 });

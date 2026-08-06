@@ -266,11 +266,14 @@ test("getSessionState public variant leaks nothing beyond the old public project
   const member = body.partyStatus.members[0];
   // Stories 52–53 — exhaustionLevel (map condition badge) is now public;
   // lastDamagedAt/lastDamageAmount (damage flash sync) stay undefined here
-  // since the fixture character carries no damage stamp.
+  // since the fixture character carries no damage stamp. Story 55 —
+  // lastDamageFrom is always present (defaults to null) via
+  // projectPlayerCharacter()'s explicit default.
   assert.deepEqual(Object.keys(member).sort(), [
     "concentration", "conditions", "deathSaves", "exhaustionLevel", "hpCurrent", "hpMax", "inspiration",
-    "name", "palette", "portraitUrl", "slug", "tempHP",
+    "lastDamageFrom", "name", "palette", "portraitUrl", "slug", "tempHP",
   ].sort());
+  assert.equal(member.lastDamageFrom, null);
   assert.equal(member.dmNotes, undefined);
   assert.equal(member.playerNotes, undefined);
   assert.equal(member.xpCurrent, undefined);
@@ -383,6 +386,75 @@ test("getSessionState public variant respects partyVisibilityEnabled = false", a
   const body = JSON.parse(result.body);
 
   assert.deepEqual(body.partyStatus, { visible: false, members: [] });
+});
+
+test("getSessionState (Story 55) strips lastDamageFrom in the public variant when the attacker is invisible, keeps it for the DM", async () => {
+  const attackerInvisible = {
+    slug: "initiative",
+    entries: [{ id: "e1", name: "Aragorn", isPC: true, slug: "aragorn", npcId: null, initiative: 25, hidden: false }],
+    activeTurnIndex: 0,
+    round: 1,
+  };
+  const send = makeSend({
+    initiative: attackerInvisible,
+    "npc-combat": { slug: "npc-combat", npcs: [{ id: "n1", name: "Goblin", initiativeEntryId: null, hpCurrent: 3, hpMax: 12, conditions: ["poisoned"] }] },
+  });
+  const withDamage = async (command) => {
+    if (isSentinelBatch(command)) return send(command);
+    const requestedSlugs = command.input.RequestItems[TABLE].Keys.map((k) => k.slug);
+    const items = requestedSlugs.filter((slug) => slug === "aragorn").map(() => ({
+      ...aragornItem(),
+      conditions: ["invisible"],
+      lastDamagedAt: "2026-08-05T12:00:00.000Z",
+      lastDamageAmount: 5,
+      lastDamageFrom: { type: "character", sourceId: "aragorn" },
+    }));
+    return { Responses: { [TABLE]: items } };
+  };
+
+  const { handler: publicHandler } = loadHandlerWithMocks({ send: withDamage, verifyPasswordImpl: async () => ({ valid: false }) });
+  const publicResult = await publicHandler({ headers: {} });
+  const publicBody = JSON.parse(publicResult.body);
+  // The only party member IS the (now-invisible) attacker — its own
+  // lastDamageFrom (pointing at itself/self-damage) must be stripped
+  // because the referenced attacker (aragorn) is invisible.
+  assert.equal(publicBody.partyStatus.members[0].lastDamageFrom, null);
+
+  const { handler: dmHandler } = loadHandlerWithMocks({
+    send: withDamage,
+    verifyPasswordImpl: async (password, item) => (
+      item.passwordHash === "$2b$10$invalid" ? { valid: password === "dm-secret", role: "dm" } : { valid: false }
+    ),
+  });
+  const dmResult = await dmHandler({ headers: { "x-character-password": "dm-secret" } });
+  const dmBody = JSON.parse(dmResult.body);
+  assert.deepEqual(dmBody.party[0].lastDamageFrom, { type: "character", sourceId: "aragorn" });
+});
+
+test("getSessionState (Story 55) strips npcCombatPublic.lastDamageFrom when the attacker's initiative entry is hidden", async () => {
+  const hiddenAttacker = {
+    slug: "initiative",
+    entries: [
+      { id: "e1", name: "Hidden Assassin", isPC: false, slug: null, npcId: "n-assassin", initiative: 22, hidden: true },
+      { id: "e2", name: "Goblin", isPC: false, slug: null, npcId: "n1", initiative: 10, hidden: false },
+    ],
+    activeTurnIndex: 0,
+    round: 1,
+  };
+  const send = makeSend({
+    initiative: hiddenAttacker,
+    "npc-combat": {
+      slug: "npc-combat",
+      npcs: [
+        { id: "n1", name: "Goblin", initiativeEntryId: "e2", hpCurrent: 3, hpMax: 12, conditions: [], lastDamagedAt: "2026-08-05T12:00:00.000Z", lastDamageAmount: 4, lastDamageFrom: { type: "npc", sourceId: "n-assassin" } },
+      ],
+    },
+  });
+
+  const { handler } = loadHandlerWithMocks({ send, verifyPasswordImpl: async () => ({ valid: false }) });
+  const result = await handler({ headers: {} });
+  const body = JSON.parse(result.body);
+  assert.equal(body.npcCombatPublic.npcs[0].lastDamageFrom, null);
 });
 
 test("getSessionState returns buildVersion: null when the app-meta sentinel is absent (backward compatible, pre-36b deploy)", async () => {
