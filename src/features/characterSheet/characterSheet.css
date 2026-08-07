@@ -1690,6 +1690,37 @@
   margin-bottom: 12px;
 }
 
+/* Story 56 — spell role glyph (✶ attack / ✚ heal). Explicit font-size so the
+   system-font fallback (brief OQ-4) doesn't shift row height. Gutter is
+   conditional by construction: it only ever renders inside a spell row,
+   which itself only renders when the spell list has attack/heal entries —
+   so a non-caster's rows are unaffected. */
+.cs-spell-glyph {
+  display: inline-block;
+  width: 14px;
+  font-size: 12px;
+  line-height: 1;
+  text-align: center;
+  color: var(--pal-gem);
+  flex-shrink: 0;
+}
+.cs-spell-glyph.heal {
+  color: #5a9a5a;
+}
+
+/* Story 56 — bulk comma-add entrance stagger (capped at 6 rows; the count is
+   the message, per brief §6). Respects prefers-reduced-motion. */
+@keyframes csSpellRowEnter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.cs-spell-row-enter {
+  animation: csSpellRowEnter 140ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-spell-row-enter { animation: none; }
+}
+
 /* Combat tab "empty" prompt */
 .cs-combat-empty {
   font-family: var(--font-body);
@@ -3245,13 +3276,32 @@
 
 /* ─── Spells (reference list — read-only) ───────────────────────────────── */
 
+/* Story 56 — collapsible "SPELLS · N" header, collapsed by default */
+.cs-sm-spells-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+}
+.cs-sm-spells-toggle .cs-sm-label {
+  margin-bottom: 0;
+}
+
 .cs-sm-spells-wrap {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+  margin-top: 10px;
 }
 
 .cs-sm-spell-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   font-family: var(--font-body);
   font-size: 12px;
   padding: 3px 9px;

@@ -3,6 +3,72 @@ export const fmtMod = (m) => m >= 0 ? `+${m}` : `${m}`;
 export const uid = () => "id" + Date.now() + Math.random().toString(36).slice(2, 7);
 export const parseModInt = (v) => /^[+-]?\d+$/.test(String(v).trim()) ? parseInt(v, 10) : NaN;
 
+// Story 56 — structured spell list.
+export const SPELL_ROLES = [
+  { value: "attack", label: "Attack", glyph: "✶" },
+  { value: "heal", label: "Heal", glyph: "✚" },
+];
+
+export const spellRoleGlyph = (role) => SPELL_ROLES.find((r) => r.value === role)?.glyph;
+
+// Tolerant reader for the `spells` field (ADR-024): accepts the legacy
+// `string[]` shape and the structured `{ id, name, role?, description?,
+// level?, toHit?, damage? }[]` shape, and anything in between (a mixed
+// array from a character that has been partially migrated). Legacy string
+// entries get a *deterministic* id (`legacy:<index>:<name>`) so React keys
+// — and any id derived from them — stay stable across polls; never mints a
+// random id here (that would remount the whole list every poll tick).
+// Structured entries missing an id (shouldn't happen post-editor, but a
+// hand-edited DynamoDB record could) fall back to the same deterministic
+// scheme. Never mutates the input array.
+export function normalizeSpells(spells) {
+  if (!Array.isArray(spells)) return [];
+  return spells
+    .map((entry, index) => {
+      if (typeof entry === "string") {
+        const name = entry.trim();
+        if (!name) return null;
+        return { id: `legacy:${index}:${name}`, name };
+      }
+      if (entry && typeof entry === "object" && entry.name) {
+        return { id: `legacy:${index}:${entry.name}`, ...entry };
+      }
+      return null;
+    })
+    .filter(Boolean);
+}
+
+// One shared derivation for the merged "Weapons & Attack Spells" quick-
+// reference (Combat tab + session-mode combat sub-tab): weapons first, then
+// role:"attack" spells, no interleaving, plus the three-way header string.
+// `spells` must already be normalized (see normalizeSpells above).
+export function buildAttackEntries({ weapons = [], spells = [] } = {}) {
+  const weaponEntries = weapons.map((w) => ({
+    id: w.id,
+    kind: "weapon",
+    name: w.name,
+    toHit: w.mods?.find((m) => m.attribute === "Attack Bonus")?.value,
+    damage: w.mods?.find((m) => m.attribute === "Damage")?.value,
+    description: w.description,
+  }));
+  const spellEntries = spells
+    .filter((s) => s.role === "attack")
+    .map((s) => ({
+      id: s.id,
+      kind: "spell",
+      name: s.name,
+      toHit: s.toHit,
+      damage: s.damage,
+      description: s.description,
+    }));
+  const header = weaponEntries.length > 0 && spellEntries.length > 0
+    ? "Weapons & Spells"
+    : spellEntries.length > 0
+      ? "Spells"
+      : "Weapons";
+  return { entries: [...weaponEntries, ...spellEntries], weaponEntries, spellEntries, header };
+}
+
 export const RACE_OPTIONS = [
   "Human", "Elf", "Night Elf", "Wood Elf", "High Elf", "Drow", "Eladrin",
   "Dwarf", "Halfling", "Half-Elf", "Half-Orc", "Gnome", "Tiefling", "Dragonborn",

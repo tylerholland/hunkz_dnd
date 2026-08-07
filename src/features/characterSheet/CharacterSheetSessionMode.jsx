@@ -23,7 +23,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
-import { modOf, fmtMod, CONDITIONS } from "./constants";
+import { modOf, fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, spellRoleGlyph } from "./constants";
 import CharacterTalents from "./CharacterTalents";
 import { patchSession, moveMapToken } from "../../api";
 import DiceRoller from "../../components/DiceRoller";
@@ -487,18 +487,29 @@ export default function CharacterSheetSessionMode({
     return next;
   });
 
+  // Story 56 — collapsed-by-default Spells reference row, below Spell Slots.
+  const [spellsRefOpen, setSpellsRefOpen] = useState(false);
+
   // ── Derived values ────────────────────────────────────────────────────────
   const hpMax = char?.hpMax ?? 0;
   const hpPct = hpMax > 0 ? Math.min(100, (localHp / hpMax) * 100) : 0;
   const activeConditions = char?.conditions || [];
   const concentration = char?.concentration || { active: false, spell: "" };
   const spellSlots = char?.spellSlots || [];
-  const spells = char?.spells || [];
   const skills = char?.skills || [];
   const specialAbilities = char?.specialAbilities || [];
   const weapons = char?.weapons || [];
   const equipment = char?.equipment || [];
   const stats = char?.stats || [];
+  // Story 56 — tolerant read of `spells` (ADR-024), memoized against the raw
+  // field so the merged attacks list + reference row don't remint ids on
+  // every poll tick. Depend on char?.weapons (the raw field), not the
+  // `weapons` local above — that's a fresh `[]` reference every render.
+  const spells = useMemo(() => normalizeSpells(char?.spells), [char?.spells]);
+  const attackEntries = useMemo(
+    () => buildAttackEntries({ weapons: char?.weapons || [], spells }),
+    [char?.weapons, spells]
+  );
 
   // Ability modifiers
   const abilityMods = stats.map((s) => ({
@@ -1053,16 +1064,29 @@ export default function CharacterSheetSessionMode({
             </>
           )}
 
-          {/* Spells */}
+          {/* Spells — collapsed-by-default reference row (Story 56) */}
           {spells.length > 0 && (
             <>
               <hr className="cs-sm-rule" />
-              <span className="cs-sm-label">Spells</span>
-              <div className="cs-sm-spells-wrap">
-                {spells.map((spell) => (
-                  <span key={spell} className="cs-sm-spell-chip">{spell}</span>
-                ))}
-              </div>
+              <button
+                type="button"
+                className="cs-sm-spells-toggle"
+                onClick={() => setSpellsRefOpen((v) => !v)}
+                aria-expanded={spellsRefOpen}
+              >
+                <span className="cs-sm-label">Spells · {spells.length}</span>
+                <span className={`cs-sm-weapon-expand${spellsRefOpen ? " open" : ""}`}>▼</span>
+              </button>
+              {spellsRefOpen && (
+                <div className="cs-sm-spells-wrap">
+                  {spells.map((spell) => (
+                    <span key={spell.id} className="cs-sm-spell-chip" title={spell.description || spell.name}>
+                      {spell.role && <span className={`cs-spell-glyph${spell.role === "heal" ? " heal" : ""}`}>{spellRoleGlyph(spell.role)}</span>}
+                      {spell.name}
+                    </span>
+                  ))}
+                </div>
+              )}
             </>
           )}
 
@@ -1103,35 +1127,65 @@ export default function CharacterSheetSessionMode({
             ))}
           </div>
 
-          {/* ── COMBAT sub-tab (read-only weapon quick-ref) ── */}
+          {/* ── COMBAT sub-tab (read-only weapon + attack-spell quick-ref) ── */}
           <div className={`cs-sm-tab-panel${sessionSubTab === "combat" ? " active" : ""}`}>
-            {weapons.length === 0 ? (
-              <p className="cs-sm-combat-empty">No weapons configured. Go to Profile mode to add weapons.</p>
+            {weapons.length === 0 && attackEntries.spellEntries.length === 0 ? (
+              <p className="cs-sm-combat-empty">No weapons or attack spells configured. Go to Profile mode to add them.</p>
             ) : (
-              weapons.map((w) => {
-                const meta = weaponMeta(w);
-                const expanded = expandedWeapons.has(w.id);
-                return (
-                  <div key={w.id}>
-                    <div className="cs-sm-weapon-row">
-                      <span className="cs-sm-weapon-name">{w.name}</span>
-                      {meta && (
-                        <span className="cs-sm-weapon-meta">{meta}</span>
-                      )}
-                      {w.description && (
-                        <button
-                          className={`cs-sm-weapon-expand${expanded ? " open" : ""}`}
-                          onClick={() => toggleWeapon(w.id)}
-                          aria-label={expanded ? "Collapse" : "Expand"}
-                        >▼</button>
+              <>
+                <span className="cs-sm-label">{attackEntries.header}</span>
+                {weapons.map((w) => {
+                  const meta = weaponMeta(w);
+                  const expanded = expandedWeapons.has(w.id);
+                  return (
+                    <div key={w.id}>
+                      <div className="cs-sm-weapon-row">
+                        <span className="cs-sm-weapon-name">{w.name}</span>
+                        {meta && (
+                          <span className="cs-sm-weapon-meta">{meta}</span>
+                        )}
+                        {w.description && (
+                          <button
+                            className={`cs-sm-weapon-expand${expanded ? " open" : ""}`}
+                            onClick={() => toggleWeapon(w.id)}
+                            aria-label={expanded ? "Collapse" : "Expand"}
+                          >▼</button>
+                        )}
+                      </div>
+                      {expanded && w.description && (
+                        <div className="cs-sm-weapon-desc">{w.description}</div>
                       )}
                     </div>
-                    {expanded && w.description && (
-                      <div className="cs-sm-weapon-desc">{w.description}</div>
-                    )}
-                  </div>
-                );
-              })
+                  );
+                })}
+                {attackEntries.spellEntries.length > 0 && (
+                  <>
+                    {weapons.length > 0 && <div className="divider" style={{ margin: "6px 0" }} />}
+                    {attackEntries.spellEntries.map((entry) => {
+                      const expandKey = `spell:${entry.id}`;
+                      const expanded = expandedWeapons.has(expandKey);
+                      return (
+                        <div key={entry.id}>
+                          <div className="cs-sm-weapon-row">
+                            <span className="cs-spell-glyph">✶</span>
+                            <span className="cs-sm-weapon-name">{entry.name}</span>
+                            {entry.description && (
+                              <button
+                                className={`cs-sm-weapon-expand${expanded ? " open" : ""}`}
+                                onClick={() => toggleWeapon(expandKey)}
+                                aria-label={expanded ? "Collapse" : "Expand"}
+                              >▼</button>
+                            )}
+                          </div>
+                          {expanded && entry.description && (
+                            <div className="cs-sm-weapon-desc">{entry.description}</div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </>
             )}
           </div>
 

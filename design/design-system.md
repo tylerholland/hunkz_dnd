@@ -270,15 +270,7 @@ Always `flexShrink: 0`, cursor `grab`.
 
 ## Pill / chip / tag
 
-**Spell / ability tag** (view mode, Key Spells section):
-```js
-fontFamily: pal.fontUI, fontSize: 16, letterSpacing: "0.08em"
-padding: "4px 13px"
-border: `1px solid ${pal.border}`
-borderRadius: 2
-color: pal.accent
-display: inline-block
-```
+**Spell / ability tag** — the stats-panel "Spells" badge row uses the shared `InfoBadge` component (`CharacterTalents.jsx`), not a bespoke tag; see `app-overview.md`'s Skills/Spells/Special Abilities section for current behavior. The old freeform "Key Spells & Abilities" comma input this bullet originally described was replaced by the structured spell editor in Story 56 (see below).
 
 **Modifier chip** (on weapon/equipment rows):
 - Small pill showing attribute + value (e.g., "STR +2")
@@ -287,6 +279,42 @@ display: inline-block
 **Active condition chip** (story 03, not yet built):
 - Similar to modifier chip but uses `pal.accent` border and `pal.accentBright` text when active
 - Ghost (dim) state when inactive: `pal.border` border, `pal.textMuted` text
+
+---
+
+## Spell role glyph & role drawer (Story 56)
+
+**Glyph vocabulary** — one meaning per glyph, reused identically on all three
+surfaces that show spells (Persona badge row, session-mode Spells reference
+row, Combat tab / session-mode Combat sub-tab merged attacks list):
+- `✶` (U+2736) — spell `role: "attack"` — color `var(--pal-gem)` / `pal.gem`
+- `✚` (U+271A) — spell `role: "heal"` — universal `#5a9a5a` (not palette-derived, same "universal" treatment as death-save colors)
+- No glyph at all — `role` unset (including every legacy bare-string spell). There is **no visual "unset" state** — absence of the glyph *is* the unset state.
+
+CSS class `.cs-spell-glyph` (`characterSheet.css`) — 14px fixed-width inline
+span, explicit `font-size: 12px` (never left to inherit) so the system-font
+fallback for these two characters doesn't shift row height; `.heal` modifier
+swaps the color. The gutter this glyph occupies is conditional by
+construction, not by a CSS visibility rule: it only ever appears inside a
+spell row, and spell rows only render at all when the list has spells with a
+role set — so a non-caster's weapon rows are byte-for-byte unaffected.
+
+**Role selector** — first real consumer of the `.btn-pill` utility class
+(`shared.css`, previously defined but unused). Three pills, always in this
+order and always all three present: `—` (clears the role key entirely) /
+`✶ Attack` / `✚ Heal`. Selected pill gets `.active`. Lives inside an inline
+drawer on the edit-mode spell row (see `CharacterSheetEditMode.jsx`), not a
+modal — a spell has only a handful of editable properties beyond its name,
+and staying out of a modal reinforces that spells are not inventory items.
+The drawer is **closed by default per row**; opening one row's edit drawer
+does not affect others.
+
+**Bulk comma-add entrance** — `.cs-spell-row-enter` keyframe (140ms
+ease-out, `opacity`+`translateY(-4px)→0`), staggered 40ms per row and capped
+at index 5 (6 rows) regardless of how many were added in one commit; wrapped
+in `@media (prefers-reduced-motion: reduce)` to disable entirely. Reuse this
+pattern for any future "several rows appear from one commit" UI rather than
+inventing a new stagger constant.
 
 ---
 

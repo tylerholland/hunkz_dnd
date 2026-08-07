@@ -77,9 +77,9 @@ All content below the header is gated. When locked: shows a "Full sheet is priva
 
 3. **Skills, Spells & Special Abilities**: rendered as three badge rows inside the stats panel
    - **Skills** row: badge-style tags using the accent palette treatment
-   - **Spells** row: badge-style tags using the standard sheet border/surface treatment
+   - **Spells** row: badge-style tags using the standard sheet border/surface treatment. **(Story 56)** Spells are individually identified (`id`/`name`) rather than bare strings; a badge shows a `✶` (attack) or `✚` (heal) glyph before the name only when that spell's `role` is set — unset spells (including all legacy data) show no glyph, pixel-identical to before this story. Badge tooltip is the spell's `description` when set, else falls back to the old `Spell: Name` text.
    - **Special Abilities** row: badge-style tags using the gem palette treatment
-   - All three rows use the same in-app tooltip interaction on hover, focus, or click; current tooltip text is just `Type: Name` (for example `Skill: Athletics`, `Spell: Hunter's Mark`, `Special Ability: Backstab`)
+   - All three rows use the same in-app tooltip interaction on hover, focus, or click; Skills/Special Abilities tooltip text is still just `Type: Name` (for example `Skill: Athletics`, `Special Ability: Backstab`)
 
 4. **Progression & currency**:
    - **Leveling mode** can be `milestone` or `xp`
@@ -100,7 +100,7 @@ All content below the header is gated. When locked: shows a "Full sheet is priva
      - **Inspiration toggle**: glowing gem circle + "Inspiration" label + "Active" badge when `char.inspiration` is true; tap to toggle (writes via `patchSession`)
      - **Condition grid**: all 14 standard conditions as toggleable pill buttons; Exhaustion level stepper (0–6); "Clear All Conditions" button when any are active
      - **Spell Slots**: per-level bubble rows (available/used); Long Rest + Short Rest buttons; shown only if `spellSlots` configured
-     - **Weapons quick-reference**: collapsed rows showing weapon name + to-hit + damage; tap to expand description; read-only (editing is in Inventory tab)
+     - **Weapons & Attack Spells quick-reference** (**Story 56**): collapsed rows showing weapon name + to-hit + damage; tap to expand description; read-only (editing weapons is in Inventory tab, editing spells is in Edit mode). Section header is computed three ways depending on content — `Weapons` (weapons only), `Weapons & Spells` (both), `Spells` (spells only, e.g. a caster with no weapon); the section renders nothing when both are empty. Weapons render first, unchanged from before this story; any `role: "attack"` spells render below a single hairline divider, each with a `✶` glyph in place of the weapon row's to-hit/damage (spells carry no mods in v1). Shared derivation: `buildAttackEntries()` in `src/features/characterSheet/constants.js`, consumed here and by the session-mode Combat sub-tab.
      - **Session Notes** (`SessionNotesSection`): inline notes section below the weapons quick-reference, visible only to authenticated callers. Player can add, delete, and share individual notes. Each note has a per-note "Private" / "Shared with DM" toggle (default: private). Writes via `patchSession({ playerNotes: [...] })`. Full `playerNotes` array returned to authenticated owner; DM sees only `sharedWithDm: true` entries via the character sheet or `GET /dm/party`.
      - **XP / Coin live management**:
        - XP panel appears only for XP-tracked characters and reflects `xpCurrent`
@@ -161,7 +161,7 @@ Edit mode sections (in order):
 5. **Ability Scores**: auto-fill grid of score cards; each card has stat name input + large score number input + optional note input
 6. **Hit Points & Hit Dice**: two inputs side by side — HP (max, number) and Hit Dice (text, e.g., "4d10")
 7. **Armor & Speed**: four toggle buttons (None/Fast, Light/Normal, Full/Slow, Shield) + Total Armor number input
-8. **Key Spells & Abilities**: comma-separated text input (stored as string array)
+8. **Spells** (**Story 56**, replaces the former "Key Spells & Abilities" comma-separated input): a reorderable list of spell rows (drag handle, name input, `Edit`/`×`). Each row's `Edit` button opens an inline drawer (closed by default — a player fixing a typo never sees the categorization control) with: a Role selector (`—` / `✶ Attack` / `✚ Heal` pill row), a Description textarea (300-char cap), and `Level` / `To-hit` / `Damage` fields. `+ Add` accepts comma-separated bulk entry (e.g. `Fire Bolt, Shield, Mage Armor` + Enter creates three rows), preserving the old input's bulk-entry ergonomics. New rows get a client-minted id (`uid()`); pre-existing bare-string spells are promoted to the structured shape the first time this editor is opened and saved (see Data model note below) — nothing is lost, and un-flagged spells are functionally identical to before.
 9. **Skills**: manual multi-select badge grid for the nine supported skills
 10. **Special Abilities**: manual multi-select badge grid for the supported special abilities
 11. **Leveling Mode**: segmented toggle for `Milestone` vs `XP`
@@ -227,7 +227,7 @@ Fixed-position overlay (rgba(0,0,0,0.8) backdrop). Modal panel in `pal.surfaceSo
   ],
   hpMax: 0, hpCurrent: 0, tempHP: 0,
   hitDice: "", armorType: "", armorTotal: 0,
-  spells: [],          // string[] — spell names / key magical abilities
+  spells: [],          // { id, name, role?: "attack"|"heal", description?, level?, toHit?, damage? }[] (Story 56) — tolerant reader also accepts legacy bare string[]
   skills: [],          // string[] — selected manual skill keys
   specialAbilities: [],// string[] — selected manual special-ability keys
   spellSlots: [],      // { level, max, used, isPactMagic }[]
@@ -296,7 +296,7 @@ Fixed-position overlay (rgba(0,0,0,0.8) backdrop). Modal panel in `pal.surfaceSo
 | `hitDice` | string | e.g., "4d10" |
 | `armorType` | string | "none" / "light" / "full" / "shield" |
 | `armorTotal` | number | Numeric armor class total |
-| `spells` | string[] | Key spells / magical abilities (display tags) |
+| `spells` | array | **(Story 56)** `{ id, name, role?: "attack"\|"heal", description?, level?, toHit?, damage? }[]`. `role` drives the `✶`/`✚` badge glyph and — for `"attack"` — inclusion in the Combat tab's merged weapons/spells quick-reference. `level` (`0` = cantrip) is **absent**, never `0`, when unset. `toHit` is a signed bonus string matching a weapon's `"Attack Bonus"` mod value format (`"+7"`, not `"1d20+7"`); `damage` is a dice expression matching a weapon's `"Damage"` mod value format (`"2d6+3"`). All optional keys are omitted (never `null`/`""`) when unset. Legacy bare strings are tolerated indefinitely at the read layer (`normalizeSpells()` in `src/features/characterSheet/constants.js`, deterministic `legacy:<index>:<name>` id) and are only rewritten to the structured shape as a side effect of the character's next edit-mode save — no migration script (ADR-024). |
 | `skills` | string[] | Manual skill keys such as `athletics`, `stealth` |
 | `specialAbilities` | string[] | Manual special-ability keys such as `backstab`, `ritual`, `wild` |
 | `inPlay` | string[] | Roleplay behavior traits |
@@ -329,8 +329,8 @@ Characters can now be accessed at two dedicated mode URLs:
 **`CharacterSheetSessionMode.jsx`** (`src/features/characterSheet/CharacterSheetSessionMode.jsx`):
 Session mode (two-column layout):
 - **Left column** (340px sticky, full viewport height): identity strip (portrait circle 56px, 72px + glow on own initiative turn), ability score mod chips (3×2 grid, **tappable** — clicking any chip triggers a 2d6 ability check roll in the Dice Roller panel, which auto-opens and scrolls into view), initiative strip (own entry highlighted with ▸ glyph + "Your Turn", NPC health-tier glow), party status strip (other party members, shows HP bars and palette-colored names)
-- **Right column** (scrollable): concentration banner, HP hero card (big optimistic HP with +/− and Damage/Heal modal), conditions section with Manage button (ConditionPickerModal), spell slots (read-only display), inspiration toggle, four sub-tabs
-- **Sub-tabs**: `combat` (read-only weapon quick-reference — Attack/Damage buttons are Story 28), `loadout` (simplified 2-column name/qty/attunement grid), `map` (`PlayerMapViewer` — see "Player token drag" below), `notes` (SessionNotesSection — read/write via patchSession without auth)
+- **Right column** (scrollable): concentration banner, HP hero card (big optimistic HP with +/− and Damage/Heal modal), conditions section with Manage button (ConditionPickerModal), spell slots (read-only display), a **Spells reference row** below Spell Slots (**Story 56** — collapsed-by-default `Spells · N` toggle; expands to read-only chips, each with a `✶`/`✚` glyph when that spell's `role` is set and its description in the chip's tooltip; absent entirely when the character has no spells), inspiration toggle, four sub-tabs
+- **Sub-tabs**: `combat` (read-only weapons **& attack spells** quick-reference — Attack/Damage buttons are Story 28; merged-list rules identical to the profile-mode Combat tab, see above), `loadout` (simplified 2-column name/qty/attunement grid), `map` (`PlayerMapViewer` — see "Player token drag" below), `notes` (SessionNotesSection — read/write via patchSession without auth)
 - All session writes via `patchSession(slug, fields, null)` — no auth required
 - Sub-tab state stored in `sessionStorage` as `dnd_session_subtab_${slug}` (default `"combat"`)
 - Shared `TopNav` (Story 37): `‹` back to `/`, title = character name, center slot = `❡ Profile | ⚔ Session` segmented control (hidden in mobile row below 560px), Live/Polling dot, World Guide book icon, ⋯ menu
@@ -416,7 +416,7 @@ A dedicated DM session-management view accessible at `/dm`.
 - Condition chips (tappable to remove inline); max 3 shown with "+N more" overflow
 - Concentration pulsing dot + spell name when `concentration.active`
 - Inspiration gem indicator
-- **Skills / Spells / Special Abilities badges**: compact inline badge area below the condition row. All configured talents and spells are shown for quick reference. Each badge exposes an in-app tooltip on hover/focus/click; current tooltip text is just `Type: Name`
+- **Skills / Spells / Special Abilities badges**: **not actually built** — corrected per Story 56's architect review, which found no such badge row anywhere in `src/features/dmDashboard/` (`CharacterCard.jsx` renders `spellSlots` only). Planned for Story 50's Capability Rail / codex, which should consume `normalizeSpells()` from `src/features/characterSheet/constants.js` (Story 56) rather than re-deriving spell display from `char.spells`.
 - **XP / Coin summary row**: below the talents block, cards show compact campaign-management widgets:
   - XP-tracked characters get an XP progress panel with current total, next threshold, progress bar, and `+` award button
   - All characters get a coin panel with current GP total and a `Give` button
@@ -649,7 +649,8 @@ A right-edge slide-in drawer providing in-session reference to the campaign worl
 
 - ~~No true push multiplayer transport~~ **Partially closed by Story 36**: a WebSocket nudge channel (`useSessionSocket.js` + `broadcast.js`, no payload over the socket — see ADR-019) now triggers sub-second refetches on connected clients and relaxes their poll interval to a 30s safety net. Adaptive polling plus optimistic writes remain the baseline/fallback — the nudge channel is additive, not a replacement, and clients without a deployed `VITE_WS_URL` behave exactly as before. Still not modeled: payload-over-socket, presence lists, per-entity channels, or a managed service like AppSync (deliberately out of scope per the story)
 - **No public vs. private view split** (planned feature per memory/project_goals.md)
-- **Skill / spell / special ability tooltips are minimal**: current tooltip content only shows type + name. Rich descriptions, stat effects, and mechanical details are not yet modeled for spells and are only partially modeled for skills / special abilities
+- **Skill / special ability tooltips are minimal**: current tooltip content only shows type + name; rich descriptions and mechanical details are not yet modeled. **Partially closed for spells by Story 56**: a spell badge's tooltip now shows its `description` when the player has set one, falling back to the old `Spell: Name` text otherwise — still no stat effects modeled, and skills/special abilities are unchanged
+- **Spells are not individually rollable**: Story 56 gave attack-flagged spells a `toHit`/`damage` shape and a place in the Combat tab's merged quick-reference, but no roll button of their own — `DiceRoller.jsx`'s weapon-roll-buttons row is deliberately untouched; Story 57 is where spells actually become rollable
 - **Party roster is single-campaign only**: there is one global ordered roster record. Multiple campaigns / benches / alternate parties are not modeled yet
 
 ---

@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { useHoldToRepeat } from "../../lib/useHoldToRepeat";
 import { Link, useNavigate } from "react-router-dom";
 import DiceRoller from "../../components/DiceRoller";
@@ -7,7 +7,7 @@ import { InfoBadge } from "./CharacterTalents";
 import { getTalentTooltip } from "./talentCatalog";
 import ItemEditorModal, { itemTypeLabel } from "./ItemEditorModal";
 import { HR } from "./CharacterSheetPrimitives";
-import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, HIT_DIE_BY_CLASS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt } from "./constants";
+import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, HIT_DIE_BY_CLASS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt, normalizeSpells, buildAttackEntries, spellRoleGlyph } from "./constants";
 import { renderInline } from "./theme";
 import MapViewer from "../maps/MapViewer";
 import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
@@ -450,8 +450,26 @@ export default function CharacterSheetViewMode({ ctx }) {
     ...(char.equipment || []),
   ].filter((i) => i.attuned).length;
 
+  // Story 56 — tolerant read of `spells` (ADR-024) memoized against the raw
+  // field so the merged attacks list + badge row don't remint ids (and
+  // remount) on every poll tick.
+  const normalizedSpells = useMemo(() => normalizeSpells(char.spells), [char.spells]);
+  const attackEntries = useMemo(
+    () => buildAttackEntries({ weapons: char.weapons || [], spells: normalizedSpells }),
+    [char.weapons, normalizedSpells]
+  );
+
   const skillItems = (char.skills || []).map((skill) => ({ key: skill, label: skill.replace(/\b\w/g, (ch) => ch.toUpperCase()) }));
-  const spellItems = (char.spells || []).map((spell) => ({ key: spell, label: spell }));
+  const spellItems = normalizedSpells.map((spell) => ({
+    key: spell.id,
+    label: spell.role ? (
+      <>
+        <span className={`cs-spell-glyph${spell.role === "heal" ? " heal" : ""}`}>{spellRoleGlyph(spell.role)}</span>
+        {" "}{spell.name}
+      </>
+    ) : spell.name,
+    tooltip: spell.description || `Spell: ${spell.name}`,
+  }));
   const abilityItems = (char.specialAbilities || []).map((ability) => ({ key: ability, label: ability.replace(/\b\w/g, (ch) => ch.toUpperCase()) }));
   const talentGroups = [
     {
@@ -1378,7 +1396,7 @@ export default function CharacterSheetViewMode({ ctx }) {
                                   key={item.key}
                                   pal={pal}
                                   label={item.label}
-                                  tooltip={group.catalog ? getTalentTooltip(item.key) : `${group.singular}: ${item.label}`}
+                                  tooltip={item.tooltip ?? (group.catalog ? getTalentTooltip(item.key) : `${group.singular}: ${item.label}`)}
                                   color={group.color}
                                   background={group.bg}
                                   border={group.border}
@@ -1742,11 +1760,11 @@ export default function CharacterSheetViewMode({ ctx }) {
                     );
                   })()}
 
-                  {(char.weapons || []).length > 0 && (
+                  {(attackEntries.weaponEntries.length > 0 || attackEntries.spellEntries.length > 0) && (
                     <>
                       <div className="divider" style={{ margin: "20px 0" }} />
                       <div>
-                        <div className="cs-combat-heading">Weapons</div>
+                        <div className="cs-combat-heading">{attackEntries.header}</div>
                         {char.weapons.map((item) => {
                           const expanded = expandedItems.has(item.id + "-combat");
                           const attackMod = item.mods?.find((mod) => mod.attribute === "Attack Bonus");
@@ -1769,11 +1787,35 @@ export default function CharacterSheetViewMode({ ctx }) {
                             </div>
                           );
                         })}
+                        {attackEntries.spellEntries.length > 0 && (
+                          <>
+                            {attackEntries.weaponEntries.length > 0 && <div className="divider" style={{ margin: "10px 0" }} />}
+                            {attackEntries.spellEntries.map((entry) => {
+                              const expandKey = `spell:${entry.id}-combat`;
+                              const expanded = expandedItems.has(expandKey);
+                              return (
+                                <div key={entry.id} className="cs-weapon-card">
+                                  <div onClick={() => {
+                                    const next = new Set(expandedItems);
+                                    if (next.has(expandKey)) next.delete(expandKey);
+                                    else next.add(expandKey);
+                                    setExpandedItems(next);
+                                  }} className="cs-weapon-card-header">
+                                    <span className="cs-spell-glyph">✶</span>
+                                    <span className="cs-weapon-card-name">{entry.name}</span>
+                                    <span className="cs-weapon-card-chevron">{expanded ? "▼" : "▶"}</span>
+                                  </div>
+                                  {expanded && entry.description && <div className="cs-weapon-card-desc">{entry.description}</div>}
+                                </div>
+                              );
+                            })}
+                          </>
+                        )}
                       </div>
                     </>
                   )}
 
-                  {!(char.hpMax ?? char.hp ?? 0) && !(char.spellSlots || []).length && !(char.weapons || []).length && (
+                  {!(char.hpMax ?? char.hp ?? 0) && !(char.spellSlots || []).length && !(char.weapons || []).length && !attackEntries.spellEntries.length && (
                     <div className="cs-combat-empty">
                       Set up your character stats in edit mode to use in-session tracking.
                     </div>

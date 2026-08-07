@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import "./characterSheet.css";
 import ChangePasswordForm from "./ChangePasswordForm";
 import { CHARACTER_SKILLS, SPECIAL_ABILITIES, getTalentDetail } from "./talentCatalog";
@@ -10,6 +11,9 @@ import {
   RACE_OPTIONS,
   SPELL_LEVEL_LABELS,
   SUBCLASS_OPTIONS,
+  normalizeSpells,
+  spellRoleGlyph,
+  uid,
 } from "./constants";
 import { DragHandle } from "./CharacterSheetPrimitives";
 import { InfoBadge } from "./CharacterTalents";
@@ -79,6 +83,54 @@ export default function CharacterSheetEditMode({ ctx }) {
     updateEquipment,
     addEquipment,
   } = ctx;
+
+  // ── Story 56: structured spell list — local state (own drag state; the
+  // existing onDrop/dragInfo above is collections-only, see Architect Notes) ──
+  const [spellDraft, setSpellDraft] = useState("");
+  const [openSpellId, setOpenSpellId] = useState(null);
+  const [spellDragIndex, setSpellDragIndex] = useState(null);
+  const [spellDragOverIndex, setSpellDragOverIndex] = useState(null);
+  const [justAddedSpellIds, setJustAddedSpellIds] = useState([]);
+
+  // Edit mode suspends the poll merge (CharacterSheet.jsx early-returns while
+  // mode === "edit"), so char.spells only changes here as a direct result of
+  // our own writes — plain useMemo is enough, no extra clobber guard needed.
+  const normalizedSpells = useMemo(() => normalizeSpells(char.spells), [char.spells]);
+
+  const updateSpell = (id, field, value) => {
+    const isEmpty = value === undefined || (field !== "name" && value === "");
+    const next = normalizedSpells.map((spell) => {
+      if (spell.id !== id) return spell;
+      const copy = { ...spell };
+      if (isEmpty) delete copy[field];
+      else copy[field] = value;
+      return copy;
+    });
+    update("spells", next);
+  };
+
+  const removeSpell = (id) => {
+    update("spells", normalizedSpells.filter((spell) => spell.id !== id));
+    if (openSpellId === id) setOpenSpellId(null);
+  };
+
+  const commitSpellDraft = () => {
+    const names = spellDraft.split(",").map((s) => s.trim()).filter(Boolean);
+    if (names.length === 0) return;
+    const additions = names.map((name) => ({ id: uid(), name: name.slice(0, 60) }));
+    update("spells", [...normalizedSpells, ...additions]);
+    setSpellDraft("");
+    setJustAddedSpellIds(additions.map((a) => a.id));
+    window.setTimeout(() => setJustAddedSpellIds([]), 900);
+  };
+
+  const reorderSpells = (fromIndex, toIndex) => {
+    if (fromIndex == null || toIndex == null || fromIndex === toIndex) return;
+    const next = [...normalizedSpells];
+    const [moved] = next.splice(fromIndex, 1);
+    next.splice(toIndex, 0, moved);
+    update("spells", next);
+  };
 
   return (
     <>
@@ -348,8 +400,123 @@ export default function CharacterSheetEditMode({ ctx }) {
           </div>
 
           <div style={{ marginBottom: 32 }}>
-            <label style={lbl}>Key Spells & Abilities <span style={{ opacity: 0.5, textTransform: "none", fontSize: 12, letterSpacing: 0 }}>(comma-separated)</span></label>
-            <input className="input-base" value={(char.spells || []).join(", ")} onChange={(e) => update("spells", e.target.value.split(",").map((spell) => spell.trim()).filter(Boolean))} placeholder="Hunter's Mark, Misty Step, Pass Without Trace…" />
+            <div style={secHead}>Spells</div>
+            {normalizedSpells.length === 0 && (
+              <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic", marginBottom: 10 }}>No spells added.</div>
+            )}
+            {normalizedSpells.map((spell, index) => {
+              const isOpen = openSpellId === spell.id;
+              const isDragging = spellDragIndex === index;
+              const isDragOver = spellDragOverIndex === index && spellDragIndex !== index;
+              const enterIndex = justAddedSpellIds.indexOf(spell.id);
+              return (
+                <div
+                  key={spell.id}
+                  draggable
+                  onDragStart={() => setSpellDragIndex(index)}
+                  onDragOver={(e) => { e.preventDefault(); setSpellDragOverIndex(index); }}
+                  onDrop={() => { reorderSpells(spellDragIndex, index); setSpellDragIndex(null); setSpellDragOverIndex(null); }}
+                  onDragEnd={() => { setSpellDragIndex(null); setSpellDragOverIndex(null); }}
+                  className={enterIndex >= 0 ? "cs-spell-row-enter" : undefined}
+                  style={{
+                    background: pal.surface,
+                    border: `1px solid ${isDragOver ? pal.accent : pal.border}`,
+                    borderRadius: 4,
+                    marginBottom: 8,
+                    padding: "10px 14px",
+                    opacity: isDragging ? 0.45 : 1,
+                    animationDelay: enterIndex >= 0 ? `${Math.min(enterIndex, 5) * 40}ms` : undefined,
+                  }}
+                >
+                  <div className="flex-row" style={{ gap: 10 }}>
+                    <span style={{ cursor: "grab", flexShrink: 0 }}><DragHandle color={pal.accent} /></span>
+                    {spell.role && (
+                      <span className={`cs-spell-glyph${spell.role === "heal" ? " heal" : ""}`}>{spellRoleGlyph(spell.role)}</span>
+                    )}
+                    <input
+                      className="input-base"
+                      style={{ flex: 1 }}
+                      maxLength={60}
+                      value={spell.name}
+                      onChange={(e) => updateSpell(spell.id, "name", e.target.value)}
+                      placeholder="Spell name…"
+                    />
+                    <button type="button" onClick={() => setOpenSpellId(isOpen ? null : spell.id)} className="btn-ghost" style={{ width: "auto", padding: "5px 12px", fontSize: 11, flexShrink: 0 }}>
+                      {isOpen ? "Done" : "Edit"}
+                    </button>
+                    <button type="button" onClick={() => removeSpell(spell.id)} className="btn-ghost" style={{ width: 34, padding: 0, flexShrink: 0, color: pal.textMuted, fontSize: 20, textAlign: "center" }}>×</button>
+                  </div>
+
+                  {isOpen && (
+                    <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${pal.border}`, display: "flex", flexDirection: "column", gap: 12 }}>
+                      <div>
+                        <label style={{ ...lbl, marginBottom: 6 }}>Role</label>
+                        <div className="flex-row" style={{ gap: 6 }}>
+                          <button type="button" onClick={() => updateSpell(spell.id, "role", undefined)} className={`btn-pill${!spell.role ? " active" : ""}`}>—</button>
+                          <button type="button" onClick={() => updateSpell(spell.id, "role", "attack")} className={`btn-pill${spell.role === "attack" ? " active" : ""}`}>✶ Attack</button>
+                          <button type="button" onClick={() => updateSpell(spell.id, "role", "heal")} className={`btn-pill${spell.role === "heal" ? " active" : ""}`}>✚ Heal</button>
+                        </div>
+                      </div>
+                      <div>
+                        <label style={lbl}>Description</label>
+                        <textarea
+                          className="input-base"
+                          style={{ minHeight: 60, resize: "vertical" }}
+                          maxLength={300}
+                          value={spell.description || ""}
+                          onChange={(e) => updateSpell(spell.id, "description", e.target.value)}
+                          placeholder="What it does…"
+                        />
+                      </div>
+                      <div className="flex-row" style={{ gap: 10, flexWrap: "wrap" }}>
+                        <div style={{ width: 80 }}>
+                          <label style={lbl}>Level</label>
+                          <input
+                            className="input-base"
+                            type="number"
+                            min={0}
+                            max={9}
+                            style={{ textAlign: "center" }}
+                            value={spell.level ?? ""}
+                            onChange={(e) => {
+                              // Empty must stay ABSENT, never 0 — 0 is a meaningful
+                              // value (cantrip). `|| 0` here would silently turn
+                              // "unspecified" into "always castable" (Story 57).
+                              const raw = e.target.value.trim();
+                              if (raw === "") { updateSpell(spell.id, "level", undefined); return; }
+                              const parsed = parseInt(raw, 10);
+                              updateSpell(spell.id, "level", Number.isNaN(parsed) ? undefined : parsed);
+                            }}
+                            placeholder="—"
+                          />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 90 }}>
+                          <label style={lbl}>To-hit</label>
+                          <input className="input-base" value={spell.toHit || ""} onChange={(e) => updateSpell(spell.id, "toHit", e.target.value)} placeholder="+7" />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 90 }}>
+                          <label style={lbl}>Damage</label>
+                          <input className="input-base" value={spell.damage || ""} onChange={(e) => updateSpell(spell.id, "damage", e.target.value)} placeholder="2d6+3" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+
+            <div className="flex-row" style={{ gap: 8, marginTop: 4 }}>
+              <input
+                className="input-base"
+                value={spellDraft}
+                onChange={(e) => setSpellDraft(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); commitSpellDraft(); } }}
+                placeholder="Fire Bolt, Shield, Mage Armor…"
+              />
+              <button type="button" onClick={commitSpellDraft} className="btn-ghost" style={{ width: "auto", padding: "7px 16px", color: pal.accentBright, borderStyle: "dashed", flexShrink: 0, opacity: spellDraft.trim() ? 1 : 0.5 }}>
+                + Add
+              </button>
+            </div>
           </div>
 
           <div style={{ marginBottom: 32 }}>
