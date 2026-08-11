@@ -93,8 +93,6 @@ export default function DmDashboardPage() {
   const queuedInitiativeRef = useRef(null);
   const npcCombatServerRef = useRef(npcCombat);
   const npcCombatExpectedRef = useRef(null);
-  // Ref to MapPanel's handleToggleBattleMode, registered via onRegisterBattleToggle prop
-  const battleToggleFnRef = useRef(null);
   const [mapSwitching, setMapSwitching] = useState(false);
   const expectedMapIdRef = useRef(null);
 
@@ -803,17 +801,25 @@ export default function DmDashboardPage() {
     clearTransitionSteps();
 
     const { action, incomingMap, modeOpts } = computeMapSwitch(combatMode, mapLibrary);
+    const nextCombatMode = !combatMode;
 
     if (action === "switch") {
       expectedMapIdRef.current = incomingMap.id;
       setMapSwitching(true);
-      putMapActive(incomingMap.id, dmPassword, modeOpts)
+      putMapActive(incomingMap.id, dmPassword, { ...modeOpts, combatMode: nextCombatMode })
         .then(() => queueDashboardRefresh(0))
         .catch(() => { setMapSwitching(false); });
     } else if (action === "record") {
       // No map to switch to yet — record the current map as the outgoing mode's
       // assigned map so future toggles know where to return.
-      putMapActive(mapLibrary.activeMapId, dmPassword, modeOpts)
+      putMapActive(mapLibrary.activeMapId, dmPassword, { ...modeOpts, combatMode: nextCombatMode })
+        .then(() => queueDashboardRefresh(0))
+        .catch(() => {});
+    } else {
+      // No map loaded at all (or none for either mode) — still persist the
+      // combatMode flag server-side so players' isBattleMode derivation
+      // (mapLibrary.combatMode) tracks the DM's toggle even with no map.
+      putMapActive(null, dmPassword, { combatMode: nextCombatMode })
         .then(() => queueDashboardRefresh(0))
         .catch(() => {});
     }
@@ -1034,7 +1040,6 @@ export default function DmDashboardPage() {
               npcCombat={npcCombat}
               combatMode={combatMode}
               mapSwitching={mapSwitching}
-              onRegisterBattleToggle={(fn) => { battleToggleFnRef.current = fn; }}
               serverTime={serverTime}
               initiative={initiative}
             />

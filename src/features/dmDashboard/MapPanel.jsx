@@ -44,7 +44,7 @@ function buildMapViewPayload(mapId, viewerState) {
   return payload;
 }
 
-export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, onRegisterBattleToggle, serverTime, initiative }) {
+export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, serverTime, initiative }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewerState, setViewerState] = useState(null);
@@ -60,11 +60,8 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
 
   // Battle mode state
   const [localTokens, setLocalTokens] = useState(null); // null = use server state
-  const [localMapMode, setLocalMapMode] = useState(null); // null = use server state
   const [heldSourceId, setHeldSourceId] = useState(null);
   const [heldType, setHeldType] = useState(null);
-  const [dmToast, setDmToast] = useState(null); // "entering" | "leaving" | null
-  const dmToastTimerRef = useRef(null);
   const floaterRef = useRef(null);
   const rafRef = useRef(null);
   const viewerContainerRef = useRef(null);
@@ -90,10 +87,10 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const activeMap = maps.find((m) => m.id === activeMapId) || null;
   const publishedView = activeMap && mapLibrary?.activeMapView?.mapId === activeMap.id ? mapLibrary.activeMapView : null;
   const activeMapLabel = activeMap ? displayMapName(activeMap) : "";
-  // Optimistic mapMode: local state overrides server until server confirms.
-  // combatMode prop intentionally excluded here — it tracks page-level UI chrome,
-  // not the map's actual mapMode. Mixing them inverts the toggle direction.
-  const isBattleMode = localMapMode !== null ? localMapMode === "battle" : activeMap?.mapMode === "battle";
+  // Story: combatMode is the single server-persisted source of truth (see
+  // ADR-029) — the DM's own map panel now reads the same flag players derive
+  // isBattleMode from, instead of a separate per-map mapMode field.
+  const isBattleMode = !!combatMode;
   const isPdf = activeMap ? isPdfMap({ imageUrl: activeMap.imageUrl, contentType: activeMap.contentType, name: activeMap.name }) : false;
 
   // Effective tokens: local optimistic state overrides server state
@@ -118,7 +115,6 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   // even when content is unchanged, which would kill the optimistic battle-mode state.
   useEffect(() => {
     setLocalTokens(null);
-    setLocalMapMode(null);
     setHeldSourceId(null);
     setHeldType(null);
     setLocalTokenScale(null);
@@ -231,12 +227,10 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
 
   // ── Battle mode ──────────────────────────────────────────────────────────
 
-  const writeTokens = useCallback(async (newTokens, newMapMode) => {
+  const writeTokens = useCallback(async (newTokens) => {
     const payload = { tokens: newTokens };
-    if (newMapMode !== undefined) payload.mapMode = newMapMode;
     // Apply optimistically so UI responds immediately
     setLocalTokens(newTokens);
-    if (newMapMode !== undefined) setLocalMapMode(newMapMode);
     try {
       await patchMapTokens(activeMap.id, payload, dmPassword);
       onLibraryChange();
@@ -284,28 +278,6 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       putMapRotation(activeMap.id, next, dmPassword).then(onLibraryChange).catch(() => { /* optimistic state holds */ });
     }, 600);
   }, [activeMap, localRotation, dmPassword, onLibraryChange]);
-
-  const handleToggleBattleMode = useCallback(async () => {
-    if (!activeMap || isPdf) return;
-    const newMode = isBattleMode ? "adventure" : "battle";
-    setLocalMapMode(newMode);
-    setHeldSourceId(null);
-    setHeldType(null);
-    // Show confirmation toast so the DM knows the switch broadcasts to players
-    clearTimeout(dmToastTimerRef.current);
-    setDmToast(newMode === "battle" ? "entering" : "leaving");
-    dmToastTimerRef.current = setTimeout(() => setDmToast(null), 2800);
-    try {
-      await patchMapTokens(activeMap.id, { tokens: effectiveTokens, mapMode: newMode }, dmPassword);
-      onLibraryChange();
-    } catch { /* ignore — localMapMode holds optimistic state */ }
-  }, [activeMap, isPdf, isBattleMode, effectiveTokens, dmPassword, onLibraryChange]);
-
-  // Register the battle toggle handler with the parent (DmDashboardPage holds a ref)
-  useEffect(() => {
-    onRegisterBattleToggle?.(handleToggleBattleMode);
-    return () => onRegisterBattleToggle?.(null);
-  }, [onRegisterBattleToggle, handleToggleBattleMode]);
 
   // Escape key cancels held state
   useEffect(() => {
@@ -391,7 +363,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const handleEndCombat = useCallback(async () => {
     setHeldSourceId(null);
     setHeldType(null);
-    await writeTokens([], "adventure");
+    await writeTokens([]);
   }, [writeTokens]);
 
   const handleClearTokensFromMap = useCallback(() => {
@@ -847,12 +819,6 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
           npcCombat={npcCombat || { npcs: [] }}
           pal={pal}
         />,
-        document.body
-      )}
-      {dmToast && createPortal(
-        <div className={`dm-mode-toast dm-mode-toast--${dmToast}`}>
-          {dmToast === "entering" ? "⚔ Players now see combat" : "⛺ Players now see adventure"}
-        </div>,
         document.body
       )}
     </div>

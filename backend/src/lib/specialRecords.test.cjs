@@ -160,6 +160,9 @@ test("getMapLibraryState normalizes legacy map content types from file extension
 
   assert.deepEqual(await getMapLibraryState(), {
     activeMapId: "map-1",
+    adventureMapId: null,
+    battleMapId: null,
+    combatMode: false,
     activeMapView: {
       mapId: "map-1",
       translate: { x: 120, y: -48 },
@@ -173,12 +176,18 @@ test("getMapLibraryState normalizes legacy map content types from file extension
         s3Key: "maps/dungeon.pdf",
         imageUrl: "https://example.com/maps/dungeon.pdf",
         contentType: "application/pdf",
+        tokens: [],
+        tokenScale: 1,
+        rotation: 0,
       },
       {
         id: "map-2",
         s3Key: "maps/forest.webp",
         imageUrl: "https://example.com/maps/forest.webp",
         contentType: "image/webp",
+        tokens: [],
+        tokenScale: 1,
+        rotation: 0,
       },
     ],
   });

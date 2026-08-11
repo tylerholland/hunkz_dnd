@@ -578,6 +578,26 @@ These are **separate event streams that both fire**. A press on a token starts t
 
 ---
 
+## ADR-029 · `mapLibrary.combatMode` is the single persisted source of truth for "is battle mode active"
+
+**Context**: A root-cause investigation (post Story 57) found three independent signals in the codebase that all claimed to answer "is battle mode active," none kept in sync:
+
+1. `DmDashboardPage.jsx`'s local `combatMode` `useState` — drove only the DM's own page-transition chrome (card flips, layout), persisted to the DM's own `sessionStorage`, **never sent to the server**.
+2. `mapLibrary.activeMapId === mapLibrary.battleMapId` — a bookmark-matching scheme. This is what `CharacterModePage.jsx` derived `isBattleMode` from (piped down to `PlayerMapViewer`), and what Story 57's targeting-arm gate read.
+3. `activeMap.mapMode` (`"adventure"|"battle"`, a field on the map itself) — read/written entirely inside `MapPanel.jsx` via its own `BattleModeToggle` button and `handleToggleBattleMode`, governing only the **DM's own map panel**'s token layer.
+
+The failure mode: `combatModeToggle.js`'s `computeMapSwitch()` has a `"record"` branch that fires whenever there's no map already registered for the incoming mode (a single shared adventure+combat map, or the first-ever toggle). On entering combat it recorded the *current* map as belonging to the mode being *left* and never set `battleMapId` — so signal #2 (`activeMapId === battleMapId`) stayed false forever in that common case, even though signal #1 flipped true and the DM's own chrome visually "entered combat." Players' `isBattleMode` never became true. Separately, `MapPanel.jsx`'s `onRegisterBattleToggle` wiring into `DmDashboardPage.jsx`'s `battleToggleFnRef` was dead — nothing ever called it — so signal #3 was permanently disconnected from any UI. A full-repo grep confirmed `map.mapMode` had exactly one consumer (`MapPanel.jsx` + its write path `patchMapTokens.js`) and zero player-facing readers.
+
+**Decision**: Add `combatMode: boolean` to the `map-library` sentinel record (default `false`) as the single canonical, server-persisted flag. Every consumer of "is battle mode active" — `MapPanel.jsx`'s own token-layer gate, `CharacterModePage.jsx`'s `isBattleMode`, and Story 57's targeting-arm gate — now reads this one field. `DmDashboardPage.jsx`'s `toggleCombatMode()` threads `combatMode: !combatMode` into every `putMapActive()` call it makes (the `"switch"` branch, the `"record"` branch, and a new `"none"`-action branch that previously did nothing at all), so the flag persists even when the DM has no map loaded. `putMapActive.js` sets it via a partial `UpdateExpression` (like `adventureMapId`/`battleMapId`), so unrelated map operations never reset it.
+
+The per-map `mapMode` field and its entire UI (`BattleModeToggle.jsx`, `handleToggleBattleMode`, the `localMapMode` optimistic-override state, `onRegisterBattleToggle`/`battleToggleFnRef`) are retired outright — they had exactly one (dead) code path and zero remaining purpose once `MapPanel.jsx` reads `combatMode` directly from its parent.
+
+**What is *not* changed**: the `adventureMapId`/`battleMapId` bookmark system, and `computeMapSwitch()`'s `"switch"`/`"record"`/`"none"` logic for *which map to auto-recall*, remain exactly as they were — they solve a real, separate problem (DMs who use two distinct maps for adventure vs. combat) and were never the bug. Only what `isBattleMode` is *derived from* changed; `combatMode` and the bookmark fields are independent attributes on the same sentinel record, both threaded through every `saveMapLibraryState()` call site since that function does a full overwrite, not a partial update — omitting either would silently reset it on the next unrelated map write (a token move, a rotation, a calibration change).
+
+**Revisit when**: a future feature needs *per-map* battle-mode state again (e.g. two maps simultaneously "in combat" for split-party scenes) — at that point `combatMode` boolean would need to become a per-map or per-scene concept, and this ADR's "one flag" simplification would need to be revisited.
+
+---
+
 ## Feature Index
 
 This is a navigation aid for humans and future agents. It mirrors the feature language in `design/app-overview.md` and points to the primary code locations for each area.

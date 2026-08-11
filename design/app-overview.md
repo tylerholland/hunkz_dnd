@@ -380,7 +380,7 @@ A dedicated DM session-management view accessible at `/dm`.
 
 **Top bar** — shared `TopNav` component (Story 37), sticky:
 - Left: `‹` back to `/`, title `Campaign` in Cinzel small-caps
-- Center: `Adventure | Combat` segmented control (only shown when an active map is loaded); clicking toggles the map's `mapMode` via `MapPanel.handleToggleBattleMode` registered through `onRegisterBattleToggle` prop
+- Center: `Adventure | Combat` segmented control (only shown when an active map is loaded); clicking calls `DmDashboardPage.toggleCombatMode()`, which persists `mapLibrary.combatMode` server-side (ADR-029, the single source of truth for battle-mode-gated features) alongside the DM's own page-transition chrome
 - Right: Live/Polling dot, World Guide book icon, ⋯ menu containing: `Start Combat` / `End Combat`, `Manage Party`, `Enemies Gallery`, divider, `Text Size: N%` (click to increase), `Decrease Text Size`, divider, `Sign Out` (destructive)
 - `Short Rest` and `Long Rest` are in the party-wide actions section lower on the page, not in the top bar
 
@@ -539,7 +539,7 @@ DM-only page. Auth gate: checks `sessionStorage.dnd_dm_password`; if missing, sh
 
 ### Player token drag (session mode Map sub-tab, Story 34)
 
-- On a battle-mode map (`activeMap.mapMode === "battle"`), a player's own PC token (`token.type === "character" && token.sourceId === own slug`) is draggable via Pointer Events; other players' tokens and NPC tokens are not
+- When battle mode is active (`mapLibrary.combatMode`, ADR-029), a player's own PC token (`token.type === "character" && token.sourceId === own slug`) is draggable via Pointer Events; other players' tokens and NPC tokens are not
 - Idle affordance: brighter ring (`--pal-accent-bright`) + `cursor: grab`; while dragging: 1.08 scale, soft shadow, `cursor: grabbing`, no easing (tracks the pointer 1:1)
 - On drop: position clamps to `[0, 1]` and is written optimistically via `moveMapToken`; on failure the token animates back to its last known server position and shows a quiet "Couldn't move token" toast for 3s
 - While dragging, `MapViewer`'s own pan is suppressed via a shared `panSuppressedRef`; incoming polled positions for the own token are ignored until the drag ends and (for a successful write) until the next poll confirms the new position
@@ -587,9 +587,14 @@ Stored as a sentinel DynamoDB item `slug: "map-library"`:
 {
   slug: "map-library",
   activeMapId: string | null,
+  adventureMapId: string | null,     // bookmark — "which map belongs to adventure mode"
+  battleMapId: string | null,        // bookmark — "which map belongs to combat mode"
+  combatMode: boolean,                // default false — ADR-029, the single persisted
+                                       // source of truth for "is battle mode active"
+                                       // (replaces the old activeMapId===battleMapId
+                                       // scheme and the retired per-map mapMode field)
   maps: [{
     id, name, s3Key, imageUrl, uploadedAt,
-    mapMode: "adventure" | "battle",   // default "adventure"
     tokenScale: number,                // global token size multiplier 0.5–2.5
     rotation: 0 | 90 | 180 | 270,     // Story 45 — map rotation in degrees CW
     tokens: [{ id, type, sourceId, x, y, scale? }]  // Story 44 — scale per token 0.5–3.0
@@ -610,10 +615,10 @@ Filtered from `list.js` and `dmParty.js` via `filterPublicCharacterItems()` in `
 | GET | /maps | None | Returns `{ activeMapId, maps[] }` |
 | POST | /maps/presign | DM | Returns presigned S3 PUT URL + `{ id, s3Key, imageUrl }` |
 | POST | /maps | DM | Appends map entry to DynamoDB sentinel item |
-| PUT | /maps/active | DM | Sets or clears `activeMapId` |
+| PUT | /maps/active | DM | Sets or clears `activeMapId`; optional body fields `adventureMapId`/`battleMapId` (bookmark assignment) and `combatMode` (ADR-029 — the single persisted battle-mode flag) |
 | PATCH | /maps/{mapId} | DM | Renames a map entry |
 | DELETE | /maps/{mapId} | DM | Removes from DynamoDB + deletes S3 object (best-effort) |
-| PATCH | /maps/{mapId}/tokens | DM | Replaces `tokens[]` array (and optionally `mapMode`); each token shape `{ id, type, sourceId, x, y, scale? }` |
+| PATCH | /maps/{mapId}/tokens | DM | Replaces `tokens[]` array; each token shape `{ id, type, sourceId, x, y, scale? }` |
 | PATCH | /maps/{mapId}/calibration | DM | Sets global `tokenScale` (0.5–2.5) for a map |
 | PATCH | /maps/{mapId}/rotation | DM | Sets `rotation` (0\|90\|180\|270 degrees CW); Story 45 |
 | PATCH | /maps/{mapId}/tokens/{tokenId}/position | None (server-enforced ownership) | Story 34 — moves a single character token; body `{ x, y, slug }`; rejects mismatched `slug` or NPC tokens with 403 |

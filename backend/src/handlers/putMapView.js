@@ -25,6 +25,7 @@ exports.handler = async (event) => {
     activeMapId: state.activeMapId,
     adventureMapId: state.adventureMapId,
     battleMapId: state.battleMapId,
+    combatMode: state.combatMode,
     activeMapView,
     maps: state.maps,
   });

@@ -147,12 +147,15 @@ function normalizeMapLibraryRecord(item) {
     activeMapId: item?.activeMapId ?? null,
     adventureMapId: item?.adventureMapId ?? null,
     battleMapId: item?.battleMapId ?? null,
+    // Single source of truth for "is battle mode active" — see ADR-029.
+    // Replaces the old activeMapId===battleMapId bookmark-matching scheme and
+    // the retired per-map mapMode field.
+    combatMode: item?.combatMode === true,
     activeMapView: normalizeMapView(item?.activeMapView),
     maps: Array.isArray(item?.maps)
       ? item.maps.map((map) => ({
           ...map,
           contentType: inferMapContentType(map),
-          mapMode: map?.mapMode === "battle" ? "battle" : "adventure",
           tokens: Array.isArray(map?.tokens)
             ? map.tokens.map((tok) => ({
                 ...tok,
@@ -173,11 +176,12 @@ async function getMapLibraryState() {
   return normalizeMapLibraryRecord(item);
 }
 
-async function saveMapLibraryState({ activeMapId, activeMapView, maps, adventureMapId, battleMapId }) {
+async function saveMapLibraryState({ activeMapId, activeMapView, maps, adventureMapId, battleMapId, combatMode }) {
   await putSpecialRecord(MAP_LIBRARY_SLUG, {
     activeMapId: activeMapId ?? null,
     adventureMapId: adventureMapId ?? null,
     battleMapId: battleMapId ?? null,
+    combatMode: combatMode ?? false,
     activeMapView: normalizeMapView(activeMapView),
     maps: maps ?? [],
   });

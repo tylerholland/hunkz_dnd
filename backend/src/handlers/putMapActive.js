@@ -18,6 +18,7 @@ exports.handler = async (event) => {
   const exprValues = { ":mapId": mapId, ":view": null, ":now": new Date().toISOString() };
   if (body.adventureMapId !== undefined) { setParts.push("adventureMapId = :advId"); exprValues[":advId"] = body.adventureMapId ?? null; }
   if (body.battleMapId    !== undefined) { setParts.push("battleMapId = :batId");    exprValues[":batId"] = body.battleMapId    ?? null; }
+  if (body.combatMode     !== undefined) { setParts.push("combatMode = :combat");    exprValues[":combat"] = !!body.combatMode; }
 
   await db.send(new UpdateCommand({
     TableName: TABLE,

@@ -233,9 +233,11 @@ export default function CharacterModePage() {
   const activeMapView = activeMap && mapLibrary.activeMapView?.mapId === activeMap.id
     ? mapLibrary.activeMapView
     : null;
-  // Derived from server truth (battleMapId) so it updates atomically with putMapActive,
-  // avoiding the race where patchMapTokens PutCommand could revert activeMapId.
-  const isBattleMode = !!(mapLibrary.activeMapId && mapLibrary.activeMapId === mapLibrary.battleMapId);
+  // Derived from mapLibrary.combatMode — the single server-persisted source of
+  // truth (see ADR-029). Updates atomically with putMapActive; no longer tied
+  // to the activeMapId===battleMapId bookmark-matching scheme, which silently
+  // stayed false whenever the DM shared one map for both modes.
+  const isBattleMode = !!mapLibrary.combatMode;
 
   const handleUnlockSubmit = async (e) => {
     e.preventDefault();

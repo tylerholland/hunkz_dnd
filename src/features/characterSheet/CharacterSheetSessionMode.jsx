@@ -1622,8 +1622,9 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
   const transitionTimerRef = useRef(null);
 
   useEffect(() => {
-    // isBattleMode comes from mapLibrary.activeMapId === battleMapId — updates atomically
-    // with putMapActive so there's no race against patchMapTokens's PutCommand.
+    // isBattleMode comes from mapLibrary.combatMode (see ADR-029) — updates
+    // atomically with putMapActive so there's no race against patchMapTokens's
+    // PutCommand, same as the old battleMapId-comparison scheme it replaced.
     if (prevModeRef.current === undefined) { prevModeRef.current = isBattleMode; return; }
     const wasCombat = prevModeRef.current;
     prevModeRef.current = isBattleMode;

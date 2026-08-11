@@ -28,7 +28,7 @@ exports.handler = async (event) => {
   // Delete DynamoDB record first, then attempt S3 deletion (best-effort)
   const updatedAdventureMapId = state.adventureMapId === mapId ? null : state.adventureMapId;
   const updatedBattleMapId = state.battleMapId === mapId ? null : state.battleMapId;
-  await saveMapLibraryState({ activeMapId: updatedActiveMapId, adventureMapId: updatedAdventureMapId, battleMapId: updatedBattleMapId, activeMapView: updatedActiveMapView, maps: updatedMaps });
+  await saveMapLibraryState({ activeMapId: updatedActiveMapId, adventureMapId: updatedAdventureMapId, battleMapId: updatedBattleMapId, combatMode: state.combatMode, activeMapView: updatedActiveMapView, maps: updatedMaps });
 
   try {
     await s3.send(new DeleteObjectCommand({ Bucket: BUCKET, Key: entry.s3Key }));

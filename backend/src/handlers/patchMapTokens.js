@@ -53,10 +53,6 @@ exports.handler = async (event) => {
     if (t.x < 0 || t.x > 1 || t.y < 0 || t.y > 1) return badRequest("token x and y must be in [0, 1]");
   }
 
-  if (body.mapMode !== undefined && body.mapMode !== "adventure" && body.mapMode !== "battle") {
-    return badRequest("mapMode must be adventure or battle");
-  }
-
   const state = await getMapLibraryState();
   const idx = state.maps.findIndex((m) => m.id === mapId);
   if (idx === -1) return notFound();
@@ -65,10 +61,9 @@ exports.handler = async (event) => {
   updatedMaps[idx] = {
     ...updatedMaps[idx],
     tokens: body.tokens.map(normalizeTokenScale),
-    ...(body.mapMode !== undefined ? { mapMode: body.mapMode } : {}),
   };
 
-  await saveMapLibraryState({ activeMapId: state.activeMapId, adventureMapId: state.adventureMapId, battleMapId: state.battleMapId, activeMapView: state.activeMapView, maps: updatedMaps });
+  await saveMapLibraryState({ activeMapId: state.activeMapId, adventureMapId: state.adventureMapId, battleMapId: state.battleMapId, combatMode: state.combatMode, activeMapView: state.activeMapView, maps: updatedMaps });
 
   await notifySessionChanged();
 

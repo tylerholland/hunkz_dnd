@@ -41,7 +41,7 @@ exports.handler = async (event) => {
   const updatedMaps = [...state.maps];
   updatedMaps[mapIdx] = { ...map, tokens: updatedTokens };
 
-  await saveMapLibraryState({ activeMapId: state.activeMapId, adventureMapId: state.adventureMapId, battleMapId: state.battleMapId, activeMapView: state.activeMapView, maps: updatedMaps });
+  await saveMapLibraryState({ activeMapId: state.activeMapId, adventureMapId: state.adventureMapId, battleMapId: state.battleMapId, combatMode: state.combatMode, activeMapView: state.activeMapView, maps: updatedMaps });
 
   await notifySessionChanged();
 
