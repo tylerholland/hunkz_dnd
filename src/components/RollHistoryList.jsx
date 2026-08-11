@@ -103,7 +103,18 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false })
           }
           }
         >
-         {actionLabel} 
+         {actionLabel}
+         {/* Story 57 — declared-attack provenance (ADR-026). Rendered from the
+             structured entry.target field, never parsed out of the label.
+             ◎ (U+25CE) is the target glyph, used in exactly two places
+             app-wide: this row and the Attack Bar's own target label. */}
+         {entry.target ? (
+           <span style={{ fontStyle: "italic", textTransform: "none" }}>
+             {" → "}
+             <span style={{ color: pal.accentBright }}>◎</span>
+             {" "}{entry.target.name}
+           </span>
+         ) : null}
         </div>
         <div
           style={{

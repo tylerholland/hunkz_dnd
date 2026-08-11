@@ -50,8 +50,23 @@ import {
 import CombatTransitionOverlay from "./CombatTransitionOverlay";
 import { playCombatEnterSound, playCombatExitSound } from "../../lib/combatSound";
 import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../../lib/useTextScale";
+import AttackDeclarationBar from "./AttackDeclarationBar";
+import RollOverlay from "../../components/RollOverlay";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
+
+// Story 57 — is a spell's slot at `level` exhausted? Cantrips (level 0) and
+// spells with no authored level (unspecified — never coerced from an empty
+// input via `|| 0`, ADR-025) are always available. A level with no tracked
+// slots at all (max === 0 / no entries) fails OPEN — same "don't assert
+// something you can't verify" posture as the rest of the app's
+// invisible/hidden derivations.
+function isSpellSlotSpent(level, spellSlots) {
+  if (!Number.isFinite(level) || level <= 0) return false;
+  const relevant = (spellSlots || []).filter((s) => s.level === level && (s.max || 0) > 0);
+  if (relevant.length === 0) return false;
+  return relevant.every((s) => (s.used || 0) >= s.max);
+}
 
 // Stat abbreviation map
 const STAT_ABBR = {
@@ -510,6 +525,121 @@ export default function CharacterSheetSessionMode({
     () => buildAttackEntries({ weapons: char?.weapons || [], spells }),
     [char?.weapons, spells]
   );
+
+  // ── Story 57 — Attack Declaration Bar ───────────────────────────────────
+  // Transient client state only, owned here per the story's Architect Notes
+  // — deliberately NEVER written to sessionStorage (a declaration restored
+  // after a reload would misrepresent a board that has moved on).
+  // Shape: { target: {tokenId, sourceId, name}, attack: {id,kind,name,toHit,
+  // damage,level} | null, lastRoll: {step,total,...} | null, gone: boolean }
+  const [declaration, setDeclaration] = useState(null);
+  const [barRolling, setBarRolling] = useState(false);
+  const [rollOverlay, setRollOverlay] = useState(null); // { open, result }
+  const goneMissTicksRef = useRef(0);
+  // Mirrors DiceRoller's own advMode state so the bar's Adv/Dis strip
+  // re-renders reactively — a ref-exposed value alone wouldn't trigger a
+  // re-render here when it changes (see DiceRoller's onAdvModeChange).
+  const [mirroredAdvMode, setMirroredAdvMode] = useState("normal");
+
+  // Chips for the bar's PICK picker — same weapons-then-spells order as
+  // attackEntries.entries (Story 56, consumed unchanged), each annotated
+  // with whether its spell slot (if any) is exhausted.
+  const attackChips = useMemo(
+    () => attackEntries.entries.map((entry) => ({
+      ...entry,
+      spent: entry.kind === "spell" ? isSpellSlotSpent(entry.level, spellSlots) : false,
+    })),
+    [attackEntries, spellSlots]
+  );
+  const hasRollableAttacks = useMemo(
+    () => attackEntries.entries.some((e) => e.toHit || e.damage),
+    [attackEntries]
+  );
+
+  // Read from a ref (updated in an effect below), not closed-over props, so
+  // this callback has an EMPTY dependency array and a permanently stable
+  // identity — it's threaded down through PlayerMapViewer (memo'd) into
+  // every TokenChip (memo'd); a fresh function reference on every poll tick
+  // would defeat both (Architect Notes, Performance).
+  const targetLookupRef = useRef({ tokens: activeMap?.tokens, npcs: npcCombat?.npcs });
+  useEffect(() => {
+    targetLookupRef.current = { tokens: activeMap?.tokens, npcs: npcCombat?.npcs };
+  }, [activeMap?.tokens, npcCombat]);
+
+  const handleTargetToken = useCallback((tokenId) => {
+    setDeclaration((prev) => {
+      // Hold on the already-targeted token — untarget (brief §7.2).
+      if (prev?.target?.tokenId === tokenId) return null;
+      const { tokens, npcs } = targetLookupRef.current;
+      const token = (tokens || []).find((t) => t.id === tokenId);
+      if (!token) return prev;
+      const npcName = npcs?.find((n) => n.id === token.sourceId)?.name || "Unknown";
+      // Retarget-while-armed: keep the chosen attack, clear any landed roll
+      // (a result belonged to the old target) — brief "attack retained".
+      return {
+        target: { tokenId, sourceId: token.sourceId, name: npcName },
+        attack: prev?.attack ?? null,
+        lastRoll: null,
+        gone: false,
+      };
+    });
+    goneMissTicksRef.current = 0;
+  }, []);
+
+  const handleSelectAttack = useCallback((chip) => {
+    setDeclaration((prev) => (prev ? {
+      ...prev,
+      attack: { id: chip.id, kind: chip.kind, name: chip.name, toHit: chip.toHit, damage: chip.damage, level: chip.level },
+      lastRoll: null,
+    } : prev));
+  }, []);
+
+  const handleReopenPicker = useCallback(() => {
+    setDeclaration((prev) => (prev ? { ...prev, attack: null, lastRoll: null } : prev));
+  }, []);
+
+  const handleCancelDeclaration = useCallback(() => {
+    setDeclaration(null);
+  }, []);
+
+  const handleBarRoll = useCallback(({ step, exprOverride }) => {
+    if (!declaration?.attack || !diceRollerRef.current || barRolling) return;
+    setBarRolling(true);
+    setRollOverlay({ open: true, result: null });
+    diceRollerRef.current.rollAttack({
+      attackEntry: declaration.attack,
+      step,
+      exprOverride,
+      target: { type: "npc", sourceId: declaration.target.sourceId, name: declaration.target.name },
+      attack: { kind: declaration.attack.kind, id: declaration.attack.id, name: declaration.attack.name },
+      onComplete: (result) => {
+        setBarRolling(false);
+        if (!result) { setRollOverlay(null); return; } // already-rolling no-op (ADR-027)
+        setDeclaration((prev) => (prev ? { ...prev, lastRoll: { ...result, step } } : prev));
+        setRollOverlay({ open: true, result });
+      },
+    });
+  }, [declaration, barRolling]);
+
+  // GONE liveness (brief §5/§8) — 2 consecutive poll ticks of absence, so
+  // one degraded response can't flicker the bar out mid-turn. Derived from
+  // the already-polled activeMap.tokens[]; no extra scan on every render.
+  useEffect(() => {
+    if (!declaration || declaration.gone) { goneMissTicksRef.current = 0; return; }
+    const stillThere = (activeMap?.tokens || []).some((t) => t.id === declaration.target.tokenId);
+    if (stillThere) { goneMissTicksRef.current = 0; return; }
+    goneMissTicksRef.current += 1;
+    if (goneMissTicksRef.current >= 2) {
+      setDeclaration((prev) => (prev ? { ...prev, gone: true } : prev));
+      setTimeout(() => setDeclaration((prev) => (prev?.gone ? null : prev)), 1400);
+    }
+  }, [activeMap?.tokens, declaration]);
+
+  // Leaving session mode clears the declaration (brief §7.1's framing —
+  // the bar/reticle exist only while a declaration is live in session mode).
+  useEffect(() => {
+    if (mode !== "session" && declaration) setDeclaration(null);
+  }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ability modifiers
   const abilityMods = stats.map((s) => ({
@@ -1286,6 +1416,8 @@ export default function CharacterSheetSessionMode({
                 serverTime={serverTime}
                 initiativeData={initiativeData}
                 ownCharacter={char}
+                targetedTokenId={(isBattleMode && hasRollableAttacks) ? declaration?.target?.tokenId ?? null : null}
+                onTargetToken={(isBattleMode && hasRollableAttacks) ? handleTargetToken : undefined}
               />
             ) : (
               <p className="cs-sm-map-empty">The DM hasn{"'"}t loaded a map yet.</p>
@@ -1304,6 +1436,7 @@ export default function CharacterSheetSessionMode({
             stats={stats}
             pal={pal}
             slug={slug}
+            onAdvModeChange={setMirroredAdvMode}
           />
 
         </div>
@@ -1328,6 +1461,34 @@ export default function CharacterSheetSessionMode({
           pal={pal}
           onSave={saveConditions}
           onClose={() => setCondPickerOpen(false)}
+        />
+      )}
+
+      {/* Story 57 — Attack Declaration Bar. Fixed to the viewport, present
+          only while a declaration is live; survives a sub-tab switch for
+          free (it isn't inside any .cs-sm-tab-panel). */}
+      {declaration && (
+        <AttackDeclarationBar
+          pal={pal}
+          declaration={declaration}
+          chips={attackChips}
+          rolling={barRolling}
+          advMode={mirroredAdvMode}
+          onSetAdvMode={(mode) => diceRollerRef.current?.setAdvMode(mode)}
+          getAttackExpr={(entry, step) => diceRollerRef.current?.getAttackExpr(entry, step) ?? ""}
+          onSelectAttack={handleSelectAttack}
+          onReopenPicker={handleReopenPicker}
+          onCancel={handleCancelDeclaration}
+          onRoll={handleBarRoll}
+        />
+      )}
+
+      {rollOverlay?.open && (
+        <RollOverlay
+          pal={pal}
+          playing={rollOverlay.open}
+          result={rollOverlay.result}
+          onDismiss={() => setRollOverlay(null)}
         />
       )}
 
@@ -1441,7 +1602,7 @@ function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }
 // below feeds several Stories 52–54 useMemo/useEffect dependency arrays.
 const EMPTY_TOKENS = [];
 
-const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, isBattleMode, pal, slug, partyStatus, npcCombat, serverTime, initiativeData, ownCharacter }) {
+const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, isBattleMode, pal, slug, partyStatus, npcCombat, serverTime, initiativeData, ownCharacter, targetedTokenId, onTargetToken }) {
   const [viewerState, setViewerState] = useState(null);
   // Stories 52–54 — persists the last-rendered damage stamp per token id
   // across renders (freshness gate), reset when the active map changes.
@@ -1696,6 +1857,8 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         lungeState={resolved.lungeState}
         impactState={resolved.impactState}
         exiting={!!opts.exiting}
+        onTargetToken={onTargetToken}
+        targeted={token.id === targetedTokenId}
       />
     );
   }

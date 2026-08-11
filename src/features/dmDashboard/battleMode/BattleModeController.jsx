@@ -219,6 +219,18 @@ export const HeldTokenFloater = forwardRef(function HeldTokenFloater(
 
 const LONG_PRESS_MS = 480;
 
+// Story 57 — player-facing NPC hold-to-target gesture (ADR-028). Deliberately
+// a separate, independently-named constant rather than reusing LONG_PRESS_MS
+// above: the two thresholds are 20ms apart by design (brief OQ-7) and belong
+// to two different personas' gestures on the same shared component, so they
+// must be free to drift independently rather than silently coupled.
+const TARGET_HOLD_MS = 500;
+// The single most important constant in the gesture design (brief §7.1) — a
+// cancel condition on the chip's OWN pointer timer, not a routing decision
+// (ADR-028 #1): MapViewer's pan runs on an entirely separate Mouse/Touch
+// event family and is never called into from here.
+const TARGET_MOVE_CANCEL_PX = 8;
+
 // ── TokenChip ────────────────────────────────────────────────────────────────
 // Used by MapPanel (DM view) and CharacterSheetSessionMode (player view).
 export const TokenChip = memo(function TokenChip({
@@ -262,6 +274,17 @@ export const TokenChip = memo(function TokenChip({
   // impactState: { bearingDeg, delayMs } | null — present only while THIS
   // token is the target of a live tracer (Strike or Bolt).
   impactState = null,
+  // Story 57 — player-facing NPC hold-to-target (player view only; absent/
+  // undefined for DM chips and for PC tokens, which keeps every existing DM
+  // and own-token-drag interaction on this shared component untouched).
+  // onTargetToken(tokenId) fires when the hold commits; the caller decides
+  // toggle/retarget semantics (this component only reports the gesture).
+  onTargetToken,
+  // targeted: true while this specific placed token is the player's current
+  // declaration target — a boolean per chip (not the declaration object)
+  // so a retarget elsewhere on the map doesn't change this chip's prop
+  // identity and defeat memo().
+  targeted = false,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [flipCard, setFlipCard] = useState(false);
@@ -307,6 +330,12 @@ export const TokenChip = memo(function TokenChip({
   const optimisticTimeoutRef = useRef(null);
 
   const canDrag = !isDm && !!ownSlug && token.type === "character" && token.sourceId === ownSlug;
+
+  // ── Story 57 — player-facing NPC hold-to-target charge state ───────────
+  const [targetCharge, setTargetCharge] = useState("idle"); // idle | charging
+  const targetChargeTimerRef = useRef(null);
+  const targetPointerOriginRef = useRef(null);
+  const canTarget = !isDm && !!onTargetToken && token.type === "npc" && !isHeld;
 
   useEffect(() => {
     return () => {
@@ -422,12 +451,17 @@ export const TokenChip = memo(function TokenChip({
     // Story 44 — suppress hover-expand while resize stepper is open so the
     // HP card doesn't pop over the stepper panel.
     if (resizeActive) return;
+    // Story 57 (ADR-028 #4) — same precedent: the mouse is already over the
+    // chip while a target-charge is in progress (the hover timer would
+    // otherwise fire ~380ms before the 500ms hold commits), so suppress the
+    // detail card while charging or the reticle draws in under the card.
+    if (targetCharge === "charging") return;
     if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
     hoverTimerRef.current = setTimeout(() => {
       checkFlip();
       setExpanded(true);
     }, 120);
-  }, [checkFlip, resizeActive]);
+  }, [checkFlip, resizeActive, targetCharge]);
 
   const handleMouseLeave = useCallback(() => {
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
@@ -469,6 +503,16 @@ export const TokenChip = memo(function TokenChip({
       longPressTimerRef.current = null;
     }
     setLongPress((current) => (current === "charging" ? "idle" : current));
+  }, []);
+
+  // ── Story 57 — player-facing NPC hold-to-target (ADR-028) ───────────────
+  const clearTargetCharge = useCallback(() => {
+    if (targetChargeTimerRef.current) {
+      clearTimeout(targetChargeTimerRef.current);
+      targetChargeTimerRef.current = null;
+    }
+    targetPointerOriginRef.current = null;
+    setTargetCharge((current) => (current === "charging" ? "idle" : current));
   }, []);
 
   // ── Own-token drag (Pointer Events, player-only, Story 34) ──────────────
@@ -567,6 +611,28 @@ export const TokenChip = memo(function TokenChip({
       startDrag(e);
       return;
     }
+    // Story 57 — player hold-to-target (ADR-028). This is the documented
+    // insertion point: a player pressing an NPC token used to fall straight
+    // through to the `if (!isDm || isHeld) return;` guard below and do
+    // nothing at all. canTarget is NPC-only and player-only, so there is no
+    // possible collision with canDrag above (own-PC-only).
+    if (canTarget) {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+      targetPointerOriginRef.current = { x: e.clientX, y: e.clientY };
+      setTargetCharge("charging");
+      targetChargeTimerRef.current = setTimeout(() => {
+        // Commits mid-press, at the moment the threshold is crossed — not on
+        // release (brief §7.1). Suppress the trailing click (ADR-028 #3) so
+        // a completed hold doesn't also fire the tap-to-inspect path.
+        suppressClickRef.current = true;
+        targetChargeTimerRef.current = null;
+        targetPointerOriginRef.current = null;
+        setTargetCharge("idle");
+        onTargetToken?.(token.id);
+      }, TARGET_HOLD_MS);
+      return;
+    }
     if (!isDm || isHeld) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
@@ -575,11 +641,22 @@ export const TokenChip = memo(function TokenChip({
       suppressClickRef.current = true;
       setLongPress("menu");
     }, LONG_PRESS_MS);
-  }, [canDrag, startDrag, isDm, isHeld]);
+  }, [canDrag, startDrag, canTarget, onTargetToken, token.id, isDm, isHeld]);
 
   const handlePointerMove = useCallback((e) => {
-    if (isDragging) moveDrag(e);
-  }, [isDragging, moveDrag]);
+    if (isDragging) { moveDrag(e); return; }
+    // Story 57 — the 8px movement threshold is purely a CANCEL condition on
+    // this chip's own timer (ADR-028 #1); there is nothing to hand off to —
+    // MapViewer's pan runs on a separate Mouse/Touch event family and is
+    // already receiving this same gesture independently.
+    if (targetCharge === "charging" && targetPointerOriginRef.current) {
+      const dx = e.clientX - targetPointerOriginRef.current.x;
+      const dy = e.clientY - targetPointerOriginRef.current.y;
+      if (Math.sqrt(dx * dx + dy * dy) > TARGET_MOVE_CANCEL_PX) {
+        clearTargetCharge();
+      }
+    }
+  }, [isDragging, moveDrag, targetCharge, clearTargetCharge]);
 
   const handlePointerUp = useCallback((e) => {
     if (isDragging) {
@@ -587,7 +664,8 @@ export const TokenChip = memo(function TokenChip({
       return;
     }
     clearLongPressCharge();
-  }, [isDragging, releaseDrag, clearLongPressCharge]);
+    clearTargetCharge();
+  }, [isDragging, releaseDrag, clearLongPressCharge, clearTargetCharge]);
 
   const handlePointerCancel = useCallback((e) => {
     if (isDragging) {
@@ -595,7 +673,8 @@ export const TokenChip = memo(function TokenChip({
       return;
     }
     clearLongPressCharge();
-  }, [isDragging, cancelDrag, clearLongPressCharge]);
+    clearTargetCharge();
+  }, [isDragging, cancelDrag, clearLongPressCharge, clearTargetCharge]);
 
   const handlePointerLeave = useCallback(() => {
     // Pointer capture keeps the drag active regardless of the pointer
@@ -629,6 +708,7 @@ export const TokenChip = memo(function TokenChip({
     return () => {
       if (longPressTimerRef.current) clearTimeout(longPressTimerRef.current);
       if (longPressMenuTimerRef.current) clearTimeout(longPressMenuTimerRef.current);
+      if (targetChargeTimerRef.current) clearTimeout(targetChargeTimerRef.current);
     };
   }, []);
 
@@ -782,6 +862,7 @@ export const TokenChip = memo(function TokenChip({
       data-veil-secret={secret ? "1" : undefined}
       data-viewer={isDm ? "dm" : "player"}
       data-cond-band={condBand}
+      data-targeted={targeted ? "1" : undefined}
       style={{
         "--token-ring-color": ringColor,
         "--token-fill-color": fillColor,
@@ -879,6 +960,46 @@ export const TokenChip = memo(function TokenChip({
           condBand={condBand}
         />
       </div>
+
+      {/* Story 57 — target charge sweep (player-only, while the hold is in
+          progress). Lives inside .token-chip (ADR-021) so it inherits Story
+          45's counter-rotation for free. Reuses the DM long-press ring's
+          exact stroke-dashoffset mechanism/geometry — a transition whose
+          duration equals the hold threshold is a 1:1 progress meter with no
+          JS animation loop — under a new class name so its own
+          reduced-motion treatment (a static dot, not `display:none`) can
+          differ from the DM ring's. */}
+      {canTarget && targetCharge === "charging" && (
+        <svg className="tk-target-charge-ring" viewBox="0 0 44 44">
+          <circle className="track" cx="22" cy="22" r="19" />
+          <circle
+            className="fill"
+            cx="22"
+            cy="22"
+            r="19"
+            style={{ strokeDasharray: 119.4, strokeDashoffset: 0 }}
+          />
+        </svg>
+      )}
+      {canTarget && targetCharge === "charging" && (
+        <div className="tk-target-charge-dot" aria-hidden="true" />
+      )}
+
+      {/* Story 57 — the reticle: a declared target, private to the viewing
+          player (palette-tinted via --pal-accent-bright, not a universal
+          colour — brief §3.1). Four diagonal bracket arcs sitting outside
+          the faction ring, gaps at N/E/S/W so Story 54's ◇ slot and Story
+          53's badge column stay clear. Built the same way as the existing
+          .tk-veil-ring / .token-longpress-ring — one circle, a
+          stroke-dasharray gapped into four equal arcs, rather than four
+          hand-authored path elements. Black under-stroke (a second, wider
+          circle) keeps it legible over any portrait/palette (brief §3.1). */}
+      {targeted && (
+        <svg className="tk-target-ring" viewBox="0 0 52 52" aria-hidden="true">
+          <circle className="tk-target-ring-under" cx="26" cy="26" r="23" />
+          <circle className="tk-target-ring-stroke" cx="26" cy="26" r="23" />
+        </svg>
+      )}
 
       {/* Name label */}
       <div className="token-chip__label" style={{ color: pal?.text }}>

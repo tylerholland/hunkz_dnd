@@ -3622,6 +3622,385 @@
   }
 }
 
+/* ═══════════════════════════════════════════════════════════════════════
+   Story 57 — Attack Declaration Bar + Roll Overlay
+   Fixed to the bottom of the session-mode viewport, present only while a
+   declaration is live (brief §3.2). z-index 150 — above the sticky topbar
+   (110) so it's never occluded, below the roll overlay (200) and any modal.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.cs-atk-bar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 150;
+  min-height: 64px;
+  background: var(--pal-surface-solid, var(--pal-surface));
+  border-top: 1px solid var(--pal-border);
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.35);
+  animation: csAtkBarEnter 220ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+@keyframes csAtkBarEnter {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0); opacity: 1; }
+}
+
+.cs-atk-bar--gone {
+  border-top-color: var(--tk-dmg-rest, #c06060);
+}
+
+.cs-atk-bar-inner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 64px;
+  padding: 8px 20px;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.cs-atk-target {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 4px 8px;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cs-atk-target:disabled { cursor: default; }
+
+.cs-atk-target-glyph {
+  color: var(--pal-accent-bright);
+  font-size: 13px;
+}
+
+.cs-atk-target-name {
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pal-text);
+  max-width: 14ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cs-atk-target-gone {
+  color: var(--tk-dmg-rest, #c06060);
+  text-decoration: line-through;
+}
+
+.cs-atk-cancel {
+  min-width: 44px;
+  min-height: 44px;
+  background: transparent;
+  border: none;
+  color: #c06060;
+  opacity: 0.7;
+  font-size: 18px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cs-atk-cancel:hover { opacity: 1; }
+
+.cs-atk-divider {
+  width: 1px;
+  align-self: stretch;
+  background: var(--pal-border);
+  flex-shrink: 0;
+}
+
+.cs-atk-picker {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.cs-atk-picker::-webkit-scrollbar { display: none; }
+
+.cs-atk-picker-empty {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--pal-text-muted);
+}
+
+.cs-atk-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding: 6px 12px;
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+.cs-atk-chip[data-state="spent"] {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.cs-atk-chip.cs-atk-chip-shake {
+  animation: csAtkChipShake 90ms linear 3;
+}
+@keyframes csAtkChipShake {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(3px); }
+}
+
+.cs-atk-chip-divider {
+  display: inline-block;
+  width: 1px;
+  height: 20px;
+  background: var(--pal-border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+.cs-atk-chip-glyph {
+  color: var(--pal-gem);
+  font-size: 11px;
+}
+
+.cs-atk-chip-name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pal-text);
+}
+
+.cs-atk-chip-slot,
+.cs-atk-chip-tohit {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--pal-text-muted);
+  letter-spacing: 0.06em;
+}
+
+.cs-atk-chosen {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex: 1;
+  min-width: 0;
+}
+
+.cs-atk-chosen-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 12px;
+  background: var(--pal-accent-dim);
+  border: 1px solid var(--pal-accent);
+  border-radius: 3px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.cs-atk-chosen-name {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pal-text);
+}
+
+.cs-atk-chosen-expr,
+.cs-atk-chosen-expr-input {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--pal-accent-bright);
+  letter-spacing: 0.04em;
+}
+.cs-atk-chosen-expr {
+  cursor: text;
+  border-bottom: 1px dashed var(--pal-accent);
+}
+.cs-atk-chosen-expr-input {
+  background: var(--pal-surface-solid, var(--pal-surface));
+  border: 1px solid var(--pal-accent);
+  border-radius: 2px;
+  padding: 2px 4px;
+  width: 90px;
+}
+
+.cs-atk-expr-error {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: #c06060;
+  flex-basis: 100%;
+}
+
+.cs-atk-result {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cs-atk-result-total {
+  font-family: var(--font-display);
+  font-size: 28px;
+}
+
+.cs-atk-result-dice {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--pal-text-muted);
+}
+
+.cs-atk-result-badge {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 2px 6px;
+  border-radius: 2px;
+}
+.cs-atk-result-badge--crit {
+  color: #ffd060;
+  border: 1px solid rgba(255, 200, 40, 0.4);
+  background: rgba(255, 200, 40, 0.08);
+}
+.cs-atk-result-badge--fumble {
+  color: #c06060;
+  border: 1px solid rgba(192, 60, 60, 0.4);
+  background: rgba(192, 60, 60, 0.08);
+}
+
+.cs-atk-adv-strip {
+  display: flex;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.cs-atk-adv-btn {
+  min-width: 32px;
+  height: 32px;
+  padding: 0 8px;
+  background: transparent;
+  border: 1px solid var(--pal-border);
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+}
+.cs-atk-adv-btn.active[data-mode="normal"] {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+  background: var(--pal-accent-dim);
+}
+.cs-atk-adv-btn.active[data-mode="advantage"] {
+  border-color: #5a9a60;
+  color: #88c888;
+  background: rgba(60, 130, 60, 0.18);
+}
+.cs-atk-adv-btn.active[data-mode="disadvantage"] {
+  border-color: #9a5a5a;
+  color: #c88888;
+  background: rgba(130, 60, 60, 0.18);
+}
+
+.cs-atk-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.cs-atk-roll {
+  min-height: 44px;
+  min-width: 96px;
+}
+
+.cs-atk-secondary {
+  min-height: 44px;
+}
+
+/* ── Size-degradation ladder (brief §9) ─────────────────────────────────── */
+@media (max-width: 560px) {
+  .cs-atk-bar-inner {
+    flex-wrap: wrap;
+    min-height: 72px;
+    padding: 6px 14px;
+  }
+  .cs-atk-target,
+  .cs-atk-cancel {
+    order: 1;
+  }
+  .cs-atk-divider { display: none; }
+  .cs-atk-picker,
+  .cs-atk-chosen,
+  .cs-atk-adv-strip {
+    order: 3;
+    flex-basis: 100%;
+  }
+  .cs-atk-actions {
+    order: 2;
+    margin-left: auto;
+  }
+}
+@media (max-width: 380px) {
+  .cs-atk-chip-tohit { display: none; }
+  .cs-atk-result-dice { display: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Story 57 — Roll overlay (brief §5). Attack-Bar-only "big event" reveal;
+   above the map and the bar (z-index 200), a translucent scrim rather than
+   a full modal — this is a moment, not a blocking dialog.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.cs-roll-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  animation: csRollOverlayFade 160ms ease-out both;
+}
+
+@keyframes csRollOverlayFade {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+.cs-roll-overlay-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.cs-roll-overlay-number {
+  position: relative;
+  font-family: var(--font-display);
+  font-size: 25vh;
+  line-height: 1;
+  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.6);
+}
+
+.cs-roll-overlay-tag {
+  position: absolute;
+  bottom: 18%;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+}
+.cs-roll-overlay-tag--crit { color: #ffd060; }
+.cs-roll-overlay-tag--fumble { color: #c06060; }
+
 /* ─── Reduced motion ─────────────────────────────────────────────────────── */
 
 @media (prefers-reduced-motion: reduce) {
@@ -3631,5 +4010,21 @@
   .cs-sm-inspo-gem {
     animation: none !important;
     transition-duration: 0.01ms !important;
+  }
+
+  /* Story 57 — bar enter/exit instant (0ms); no shake refusal, an instant
+     opacity dip instead (brief §6). Roll overlay: number appears instantly
+     at its final value with no cycling, fade instant, the settle-hold
+     duration itself preserved (it's information — the moment you'd
+     otherwise watch cycle). */
+  .cs-atk-bar {
+    animation: none;
+  }
+  .cs-atk-chip-shake {
+    animation: none;
+    opacity: 0.5;
+  }
+  .cs-roll-overlay {
+    animation: none;
   }
 }

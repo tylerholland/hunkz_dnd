@@ -351,6 +351,233 @@ Per-card palette scoping works: each `.card[style]` root can set different `--pa
 
 ---
 
+## ADR-020 · One shared in-card drawer for DM party-card Tier-3 reference; loadout rides the existing polled payload
+
+**Context**: Stories 50 (Capability Rail + Codex) and 51 (Loadout drawer) both add on-demand reference detail to the DM party card, and both design briefs assume they share a container — but they describe *different* containers. Brief 50 says the codex is the container and 51 appends two stacked sections to it (`Skills → Abilities → Spells → Weapons → Inventory`); brief 51 says 50 has no drawer at all and may append a fourth tab to 51's tab strip. Both also independently claim to render Spells. Left unresolved, whichever story ships second rewrites the first one's container.
+
+Separately, the card already has a third expanding region — `DmNotesStrip` — with its own local `open` state, and brief 51 proposes folding it into a shared footer band.
+
+**Decisions**:
+
+1. **One drawer component per card, not one per feature.** `src/features/dmDashboard/characterCard/CardDrawer.jsx` owns the single bounded, internally-scrolling expand region below the card body, and every Tier-3 section that opens into it (notes, codex clusters, loadout tabs). Its open state is a single `openSection: null | "notes" | "skills" | "abilities" | "spells" | "weapons" | "items"` string, which makes intra-card mutual exclusion (both briefs require it) a property of the data type rather than coordination logic between three sibling components. `DmNotesStrip` becomes a section renderer inside it and stops owning `open`.
+
+2. **Section-vs-tab is a per-section render choice, not a container property.** The container provides the band, the bounded height (`min(48vh, 420px)`), the internal scroll, and the open/close motion. Whether a given `openSection` renders as a stacked list or as one pane of a tab strip is decided inside that section's renderer. This is what lets the two stories disagree about presentation without either one restructuring the container.
+
+3. **Dashboard-wide single-open accordion lives in `DmDashboardPage.jsx`**, as an `openDrawerSlug` state plus an `onDrawerOpenChange(slug, section)` callback on `CharacterCard` — extending the existing `openCardPopoverSlug`/`onPopoverOpenChange` pattern rather than inventing a second coordination mechanism. Scroll-anchoring on open reuses the existing `cardItemRefs` slug→node map.
+
+4. **Spells render in exactly one place inside the drawer.** Whichever pass lands first owns the spells section; the second consumes it. `spells` is `string[]` free text with no level/school metadata, so there is nothing to differentiate two treatments anyway.
+
+5. **DM loadout data rides the existing consolidated poll, not an on-demand fetch.** `weapons` and `equipment` are added to `DM_PARTY_FIELDS` / `DM_PARTY_PROJECTION_EXPRESSION` in `backend/src/lib/partyProjection.js`, which serves both `dmParty.js` and the `getSessionState.js` DM variant (ADR-011 Story 35 amendment). This is **DynamoDB-cost-neutral**: both the `ScanCommand` and the `BatchGetItem` are already charged on full item size, so a wider projection changes response bytes only, not RCUs — and it avoids a second fetch path, a per-drawer loading state, and the staleness that would defeat brief 51's live-value-flash requirement. `PLAYER_VISIBLE_FIELDS` is **not** widened — loadout must not leak to players via `GET /party/status`.
+
+**Constraints**:
+- Drawer content must be derived once on open and not re-derived per poll tick. `DmNotesStrip`'s existing `if (!open) return;` sync-deferral is the established precedent to copy.
+- No DOM measurement for chip overflow. The dashboard applies a user text scale (`useTextScale`, CSS `zoom`) and cards re-render on every poll tick, so pixel measurement is both unreliable and expensive. Overflow budgets are computed from label lengths against the fixed, small catalogs in `talentCatalog.js`.
+- Cross-slice import of `src/features/characterSheet/talentCatalog.js` from `src/features/dmDashboard/` is accepted — `DmDashboardPage.jsx` already imports `PALETTES` from `../features/characterSheet/theme`, so this direction is established, not new (ADR-002).
+
+**Revisit when**: A fourth Tier-3 section wants the drawer and the `openSection` union stops being self-explanatory, or party size / per-character item counts grow enough that the widened poll payload becomes material (rough trigger: party > ~10, or > ~40 items/character with long descriptions). At that point the loadout section moves to an on-demand fetch on drawer open and the projection narrows back.
+
+---
+
+## ADR-021 · Token chip DOM: nested transform wrappers (prerequisite for Stories 52–55)
+
+**Context**: Stories 52–55 all animate the map token. Their briefs assume a DOM hierarchy of `L0 .token-pos` → `.tk-lunge` (55) → `.tk-hit` (52/54) → `.token-chip`. **That hierarchy does not exist.** Today `.token-chip` is a single flat element that simultaneously carries: absolute position (`--token-x`/`--token-y`), the `translate(-50%,-50%)` centring offset, the Story 29b calibration scale (`--token-scale-multiplier`), the Story 44 per-token scale (`--token-size-mult`), the Story 34 drag scale (`--token-drag-scale`), and the Story 45 counter-rotation — all composed into **one** `transform` declaration (`src/features/dmDashboard/battleMode.css:35`), which is then re-stated verbatim in five more places (poll-move transition, `tkTokenBounce` keyframes ×3 stops, the removal keyframe). It also owns every pointer handler and `z-index: 10`.
+
+Any keyframe that animates `transform` on `.token-chip` silently drops position, calibration scale, per-token scale, and counter-rotation. This is the single largest implementation hazard in the cluster and it is shared by three of the four stories.
+
+**Decision**: Before any of Stories 52–55 ship, split `.token-chip` into a wrapper chain, each layer owning exactly one transform concern:
+
+```
+.token-pos     position + centring + poll-move transition + drop bounce + drag translate   (L0)
+ └ .tk-lunge   translate() ONLY — Story 55 melee lunge. Outside counter-rotation, so the
+   │           lunge vector is in map space and points correctly on a rotated map.
+   └ .tk-hit   scale() ONLY — Story 52 impact recoil, Story 54 NPC vanish.
+     └ .token-chip   counter-rotation + --token-scale-multiplier + --token-size-mult +
+                     --token-drag-scale. Keeps all pointer handlers, hover card, badges.
+```
+
+`.tk-lunge` and `.tk-hit` are permanent structural elements (bare `<div>`s, no transform/transition/`will-change` at rest) — they cannot be conditionally inserted without remounting the chip and losing hover/drag state. All effect overlays (`.tk-wash`, `.tk-wound`, `.tk-shock`, `.tk-veil-*`, `.tk-secret-mark`, condition badges) are `pointer-events: none`, conditionally rendered, and never present at `opacity: 0`.
+
+**Constraints**:
+- `--token-scale-multiplier` is set on `.token-layer` by `MapViewer.jsx` and inherits; it must keep landing on `.token-chip`, not on a new wrapper, or calibration silently applies twice.
+- Do **not** create `tokens.css`. The briefs reference it; the real file is `src/features/dmDashboard/battleMode.css`. All new symbology classes, keyframes, family colour tokens, size bands, and the single authoritative `prefers-reduced-motion` block extend that file (ADR-014).
+- The repo-wide rule from Story 45 stands: never use the CSS `rotate` property, only `transform`.
+- Existing regression specs `src/features/dmDashboard/battleMode/TokenChip.test.jsx` must pass unchanged across the restructure — they are the safety net for it.
+
+**Rationale**: Doing this split once, as an isolated no-visual-change refactor, is far cheaper than doing it three times inside three feature branches that each need it. Doing it inside Story 52 and then re-cutting it for Story 55 is the predictable failure.
+
+**Revisit when**: A fifth transform concern appears. At that point the chain is deep enough to warrant a single `TokenChipFrame` component owning the wrapper stack rather than inline JSX.
+
+---
+
+## ADR-022 · Token effect state rides existing records as derived server stamps — no new sentinel, no new endpoint
+
+**Context**: Stories 52 and 55 need cross-viewer-synchronised "this entity was just damaged, by whom" state. Options considered: a new `attack-events` sentinel; a client-side inference from polled HP deltas; extra fields on the existing character / `npc-combat` records.
+
+**Decision**: Damage/attack state is written as additional attributes on records that already exist, in the **same write** as the HP change:
+
+| Field | Written on | By |
+|---|---|---|
+| `lastDamagedAt` (ISO, server clock) | character item / each `npc-combat` NPC object | `session.js`, `putNpcCombat.js` |
+| `lastDamageAmount` (number) | same | same |
+| `lastDamageFrom` (`{type,sourceId}` or `null`) | same | same |
+| `turnStartedAt` (ISO, server clock) | `initiative` sentinel | `initiative.js` (PUT) |
+
+Rejected alternatives and why:
+- **A separate `attack-events` sentinel** — two DynamoDB items cannot be updated in one non-transactional call, so the damage stamp and the attacker ref could land in *different* poll payloads. The 60ms two-beat choreography cannot survive that. Also a second write on the hot damage path.
+- **Client-side inference of the attacker from `activeTurnIndex`** — provably wrong on the player's map, because `buildPublicInitiativePayload()` strips hidden entries, so a player's `entries` array does not index-align with the DM's. Also racy on the DM's own map (apply damage + tap Next Turn can coalesce into one payload). A wrong tracer actively misinforms about positioning; worse than no tracer.
+- **Client-side inference of "HP went down" from poll deltas** — every tab-return and map switch would replay old impacts, and no two clients would agree.
+
+**Two consequences that make this cheap**:
+
+1. **Every PC HP write in the app already funnels through `PATCH /characters/{slug}/session`** — the DM card's debounced HP flush, `commitPartySessionUpdates`, the dice roller's "Apply to…", the `DamageHealModal`, the ±1 stepper, and the player's own sheet. Stamping in `session.js` therefore covers 100% of PC damage paths with **zero client changes**. `session.js` already does a `GetCommand` for the character before writing, so the previous `hpCurrent` is in hand for free. Widening that to a `BatchGetCommand` for `{slug, "initiative"}` resolves the attacker in the same round trip — no added latency.
+2. **Every NPC HP write funnels through `PUT /npc-combat`**. That handler is currently a blind full-array replace with no read; it gains one `getNpcCombatState()` (already exported from `specialRecords.js`) to diff per-NPC `hpCurrent`, plus the initiative read for the attacker ref.
+
+**Phase B (wound residue) clearing is derived, not written**: rather than a cross-item write that clears `lastDamagedAt` when the turn advances into an entity, `initiative.js` stamps `turnStartedAt` on the initiative sentinel whenever `activeTurnIndex` or `round` changes. Clients then derive: *the wound halo is live unless this entity is the currently-active one and `turnStartedAt >= lastDamagedAt`* (plus a 12s `serverTime` window when there is no active combat). Both operands are server clocks on records every viewer already polls, so every viewer — including one who joined mid-combat — computes the identical answer, with no extra write on either the damage path or the turn-advance path.
+
+**All age arithmetic uses the `serverTime` field already on `GET /session-state`, never `Date.now()`** — a clock-skewed phone would otherwise never flash, or flash constantly.
+
+**Stale stamps are never an error.** A `lastDamagedAt` that outlives its window, or a `lastDamageFrom` naming a creature no longer on the map, is silently ignored. No cleanup state, no migration (absent = never damaged).
+
+**Cost**: zero new AWS resources. One extra DynamoDB read on the damage path and on the initiative PUT, both human-frequency actions on a PAY_PER_REQUEST table (ADR-003). Response payload grows by ~3 small attributes per party member and per NPC.
+
+**Revisit when**: an explicit targeting UI is built (which would supply the attacker/target directly and make `turnStartedAt`/`lastDamageFrom` inference unnecessary), or a feature needs a genuine event *log* rather than a latest-value stamp — at which point the roll-history sentinel's typed-entry pattern (ADR-015) is the precedent, not a new sentinel.
+
+---
+
+## ADR-023 · Player-facing map/token visibility is enforced in server-side projections, on every unauthenticated path
+
+**Context**: Story 54 (invisible NPCs absent from the player map) and Story 53 (NPC conditions visible to players, except on hidden initiative entries) both change what the player-facing payload contains. Today `PlayerMapViewer` filters tokens **client-side** (`CharacterSheetSessionMode.jsx`) for `partyVisibilityEnabled`. Extending that pattern to invisibility would put the invisible creature's exact coordinates in devtools and make the feature theatre.
+
+**Decision**: Anything a player is not permitted to know is removed **server-side**, in a shared projection helper, on **every** path that can serve it unauthenticated. Concretely:
+
+1. **A derived `invisible` boolean per token**, computed once server-side from the subject's `conditions` (normalised: trimmed, case-insensitive match on `"invisible"`), emitted in both `getSessionState.js` variants. The DM client must **not** re-derive it — if the `◇` marker and the omission are computed independently they can drift, and the guarantee "the DM's map is a strict superset of every player's map, and `◇` marks exactly the difference" becomes false. The flag is **derived, never stored**: `patchMapTokens.js` and `moveMapToken.js` must not accept or round-trip an `invisible` field from a client.
+2. **The public variant omits every `type:"npc"` token whose flag is true**, from the `mapLibrary.maps[].tokens[]` array — and so must **`getMapLibrary.js`**, which is a six-line fully unauthenticated `GET /maps` handler (ADR-012) returning the sentinel verbatim. **This is the leak a `getSessionState`-only fix would miss.** Both handlers call the same helper.
+3. **NPC `conditions` are added to the public NPC payload** (`npcCombatPublic` in `getSessionState.js`, today stripped to `{id, name, portraitUrl}`), gated on the NPC's linked initiative entry not being `hidden` — reusing the DM's existing hide-entry toggle as the single secrecy lever, with no new field and no new UI. `initiativeProjection.js` already computes the hidden-entry set and is the natural home for the gate.
+4. **`lastDamageFrom` is stripped server-side whenever the referenced attacker is invisible or linked to a hidden initiative entry** (Story 55). A tracer originating from an empty square leaks the attacker's position as effectively as rendering its token.
+
+**Fail-open, deliberately**: if a token's subject cannot be resolved (orphaned `sourceId`), it renders and is treated as *not* invisible. Fail-closed would hide a token from players while the DM's map shows it with no `◇`, silently breaking the superset guarantee — the DM would stop trusting the marker, which is the whole value of the feature. Document this; do not "harden" it.
+
+**Accepted residual leak**: Story 31 number badges leave gaps in the visible numbering, letting a player infer that *some* hidden creature exists. That is existence, not position — the only thing 5e invisibility conceals. The DM's escape hatch is hiding the initiative entry.
+
+**Constraint**: `PLAYER_VISIBLE_FIELDS` in `partyProjection.js` stays a whitelist. When widening it, widen `DM_PARTY_PROJECTION_EXPRESSION` in the same change or `dmParty.js`'s Scan silently drops the new attributes (the same rule ADR-017 states for `normalize*Record`).
+
+**Revisit when**: a real fog-of-war / line-of-sight system is wanted (per-viewer visible-region computation), or players get any surface that reports a token *count* — no player-facing UI may ever report a count that includes omitted tokens.
+
+---
+
+## ADR-024 · Character field shape evolution: tolerant client normaliser + lazy write-through, never a migration script
+
+**Context**: Story 56 changes `spells` from `string[]` to an array of objects. This is the first time a *populated, player-authored* character field changes shape. Options considered: a one-shot migration script over the table; a server-side normaliser in the outgoing projection (the precedent set by `normalizeHpFields()` in `characterProjection.js`, which synthesises `hpCurrent`/`hpMax` from legacy `hp`); a tolerant client-side reader.
+
+**Decision**: Shape changes to character fields are absorbed **client-side, at read time, in one named normaliser per field**, and the new shape is persisted **only as a side effect of the next ordinary save**. Concretely for spells: `normalizeSpells()` in `src/features/characterSheet/constants.js`, called at every render site; a bare `string` entry becomes `{ id, name }` with no other keys. `PUT /characters/{slug}` (`update.js`) is a merge-and-store with **no per-field validation or schema**, so the new shape needs zero backend change — the first time a player opens edit mode and saves, that character's spells are structured.
+
+Rejected alternatives and why:
+- **A migration script** (`scripts/migrate.mjs`-style pass over the table) — needs the tolerant reader anyway (a stale client, an unmigrated export, a hand-edited item, and the seed JSONs in `src/characters/` all still produce legacy shapes), so it is pure additional risk on a live table for zero removed code. At a handful of characters it also cannot pay for the cost of writing and testing it.
+- **Server-side normalisation in the projection**, per `normalizeHpFields()` — correct for that case because it fills scalar defaults. Wrong here because normalising an object array requires **minting identity** (`id`), and a server minting non-deterministic ids on every read produces a different id per response, which is worse than no id. It would also have to be applied on at least three paths (`get.js`, both `getSessionState.js` variants, and `dmParty.js`'s Scan) versus one client helper.
+
+**Two hard constraints on any such normaliser**:
+1. **Synthesised ids must be deterministic** (e.g. `legacy:<index>:<name>`), never `crypto.randomUUID()`. The normaliser runs on every poll tick (ADR-011); a fresh id per call changes every React key and remounts the whole list on a 1–30s cadence. Real ids are minted **once, in the editor, at creation time**, and only then persisted.
+2. **The legacy shape is never surfaced as a defect.** No "migrate", "categorize", or "uncategorized" prompt, badge, or banner. A legacy entry renders identically to a new entry whose optional keys are unset. Absent optional keys are the unset state — never `null`, `""`, or a sentinel string like `"none"`; the UI **deletes** the key.
+
+**Constraint on the write path**: a field whose shape is evolving stays on the ordinary edit-mode `PUT`. Do **not** add it to `SESSION_FIELDS` in `session.js` at the same time — a shape change and a second concurrent write path landing together makes any read-tolerance bug undiagnosable. (`spells` deliberately stays out of `SESSION_FIELDS`: brief OQ-1.)
+
+**Revisit when**: a field shape change lands on data a player cannot re-save through the UI (i.e. no natural write-through path exists), or when the tolerant branch of a normaliser outlives the last legacy record by long enough that deleting it is worth a one-off migration. Also revisit if a field ever needs the *server* to reason about its structure — at which point the shape must be normalised server-side and the field validated in `update.js`, which today validates nothing.
+
+---
+
+## ADR-025 · Attack-capable spells reuse the weapon mod *value formats*, not the `mods[]` structure
+
+**Context**: Story 56 gives spells a `role`, and Story 57's amendment adds `level?`, `toHit?`, `damage?` so a declared spell attack has something to roll and a slot to check. The tempting move is to give spells a `mods[]` array so weapons and spells share one shape and one code path.
+
+**Decision**: Spells stay structurally separate from `weapons[]`/`equipment[]` — no `mods[]`, no `equipped`, no `attuned`, no `qty`, no `type` — but the **two roll-relevant string formats are copied verbatim** from the weapon mod values the dice roller already parses:
+
+| Spell field | Same format as | Consumed by |
+|---|---|---|
+| `toHit?: string` | a weapon's `mods[]` entry with `attribute: "Attack Bonus"` — a signed integer bonus (`"+7"`), **not** a full expression | `parseInt` → `executeRoll({ groups:[{count:1,sides:20}], flat })` |
+| `damage?: string` | a weapon's `mods[]` entry with `attribute: "Damage"` — a dice expression (`"2d6+3"`) | `parseDiceExpr` (exported from `DiceRoller.jsx`) |
+
+This is what makes a spell attack and a weapon attack collapse into **one** roll path: `getAttackBonus`/`getDamage` in `DiceRoller.jsx` become field lookups over a shared `{ id, kind, name, toHit, damage }` adapter shape rather than two parallel implementations. `toHit` as a bare bonus rather than `"1d20+7"` is the load-bearing half — a full expression would need its own roll branch and would diverge from every weapon in the app the first time someone edited one.
+
+Rejected: `mods[]` on spells. It pulls `ItemEditorModal`'s mod editor back in (the exact weight Story 56 exists to avoid), and `MOD_ATTRIBUTES` carries AC/Speed/attunement concepts that are meaningless on a spell. Two optional freeform strings are not a mod system.
+
+**`level` is authored, never derived.** `0` means cantrip and is a *meaningful* value, so an empty level input must produce an **absent** key — `parseInt(input, 10) || 0` is a bug here, since it silently turns "unspecified" into "cantrip, always castable". Whether a slot is spent (including Pact Magic pools) is computed by the consumer against `spellSlots`, not stored.
+
+**Does not trigger ADR-010's revisit.** ADR-010 constrains numeric *mod* values via `parseModInt`; the app already stores dice notation in the `"Damage"` mod value and parses it with `parseDiceExpr`. These two fields follow that established split, not a relaxation of ADR-010.
+
+**Revisit when**: spells need a third roll-relevant value (a save DC, an area, a damage type) — at that point a small `spellRoll: { ... }` sub-object is the right shape, not more top-level keys, and the save-vs-attack-roll distinction the RPG consultant deferred (Story 55 §RPG Consultant §1) becomes the reason to build it.
+
+---
+
+## ADR-026 · Roll provenance: declaration context rides the roll-history event as structured optional fields, never a baked label string
+
+**Context**: Story 57 needs a roll to carry *who it was aimed at* and *with what* into the shared `roll-history` sentinel, so the feed reads `Longsword → ◎ Goblin 2` instead of a bare total. The cheap-looking move is to bake the string into the existing `label` field, which needs **zero** backend and renderer change (`postCharacterRoll.js` already stores `label` verbatim, and `RollHistoryRow` already renders it via `normalizeRollActionLabel`).
+
+**Decision**: Reject the baked-label shortcut. Declaration context is carried as **two structured optional fields** on the roll-history event, and the renderer composes the display string from them:
+
+```js
+target?: { type: "npc", sourceId: string, name: string }   // name captured at declaration time
+attack?: { kind: "weapon"|"spell", id: string, name: string }
+```
+
+- **`label` stays exactly what it is today** — `"Longsword ATK"`, plus the `(adv)`/`(dis)` tag `executeRoll` appends. Do not concatenate target text into it.
+- `postCharacterRoll.js` validates and passes both through, following the same optional-field style as `isCrit`/`isFumble`: absent when not supplied, never `null`. Existing callers are unchanged and existing stored rows stay valid (no migration — same additive rule as ADR-015's `type` discriminator, which this does **not** extend: a declared attack is still `type: "roll"`, not a new row type).
+- `RollHistoryRow` renders the target in the existing action-label slot when `entry.target` is present. One glyph, `◎` (U+25CE), no new row type, no extra vertical space.
+
+**Rationale**: a baked string is lossy and unparseable. The two named downstream consumers both need `sourceId` as data, not prose — the DM "Apply to…" pre-selection follow-on (brief OQ-6, "~10 lines" once the data exists) and Story 55's Channel correlation window both key off `target.sourceId` and `attack.kind`. Baking the label means the first consumer has to regex the display string back apart, or a second write path gets added later to carry what should have been there from the start.
+
+**The captured name is authoritative for display; `sourceId` is allowed to dangle.** A history entry is a historical statement, and it must stay correct after the NPC is renamed, duplicated (Story 24's numbered spawn), or deleted. **Never resolve the name via a live lookup at render time.** A consumer that acts on `sourceId` must tolerate it referring to nothing.
+
+**Constraint**: this is roll *provenance*, not a damage or targeting record. It does not write HP, does not participate in ADR-022's damage stamps, and no gameplay state may be derived from its presence or absence — a roll fired from the ordinary roller panel carries neither field and is equally valid.
+
+**Revisit when**: a third provenance dimension is wanted (a save DC, a damage type, an AoE target list) — at that point these collapse into one `declaration: { ... }` sub-object rather than more top-level keys. Also revisit if the DM's `postDmRoll.js` needs the same fields; today it deliberately does not (Story 57 is player-only).
+
+---
+
+## ADR-027 · `DiceRoller` is the single roll engine; new entry points extend its imperative handle and pass overrides as arguments
+
+**Context**: Story 57's Attack Bar is a second entry point into rolling. `executeRoll` in `src/components/DiceRoller.jsx` already owns the whole pipeline — dice generation, advantage/disadvantage, crit/fumble detection, the ~1050ms cycling-number reveal, local history, and the `postCharacterRoll` broadcast. `DiceRoller` is **already** a `forwardRef` exposing `useImperativeHandle(ref, () => ({ rollAbility }))`, and session mode **already** holds a `diceRollerRef` and mounts the roller *outside* the sub-tab panels, so it stays mounted across sub-tab switches.
+
+**Decision**: There is exactly one roll engine. A new entry point **extends the existing imperative handle** (`{ rollAbility, rollAttack, ... }`) and calls the same `executeRoll`. Do not lift `executeRoll` out into a hook, do not duplicate it, and do not let a caller assemble its own dice and only borrow the display.
+
+**Two hard rules that follow, both bug traps observed in the current implementation**:
+
+1. **Any value a second entry point needs to override must be passed as an argument to `executeRoll`, never read from `DiceRoller`'s own state.** `executeRoll` closes over `advMode` state and uses it in **two** places — the adv/dis dice logic *and* the `modeTag` that gets appended to the broadcast label. A caller supplying its own advantage mode must thread it through the parameter object so **both** sites see it; overriding only the dice logic silently drops `(adv)` from the shared feed, which is real information. The same applies to a caller-supplied dice expression.
+2. **`executeRoll` resolves asynchronously and returns nothing.** It sets `rollState` after `resolveTime` (1050ms for a single group) and silently early-returns `if (rollState.rolling)`. A second entry point that needs the result must be given an explicit completion callback in the parameter object, and must handle the "a roll was already in flight, nothing happened" case rather than waiting forever in an armed state.
+
+**Also note**: `executeRoll` calls `ensureOpen()`, which force-opens the roller panel and writes `dnd_dice_open_${slug}`. A caller rolling from a different surface must decide deliberately whether that side effect is wanted; suppress it via a parameter rather than by reordering state.
+
+**Rationale**: forking the roll path is how two surfaces in the same app start disagreeing about what a critical hit is. The cost of the imperative handle is one function in an object that already exists.
+
+**Revisit when**: a third entry point needs the engine, or a roll needs to happen with no `DiceRoller` mounted at all. At that point `executeRoll` and its pure helpers move to `src/lib/rolling.js` with the component consuming it — but only then, and as a mechanical extraction with the existing specs as the safety net.
+
+---
+
+## ADR-028 · Token-layer gestures: two independent event families; only a drag may suppress pan
+
+**Context**: Story 57 adds a player-facing hold gesture to `TokenChip`. The token surface already carries the DM's long-press menu, the player's own-token drag (Story 34), map pan, and pinch-zoom. The briefs treat these as one dispatch problem ("movement >8px → map pan"), which mis-describes the code and invites a feature-builder to write routing logic that double-handles the gesture.
+
+**How it actually works, verified against source**:
+
+- **`TokenChip` uses Pointer Events** (`onPointerDown`/`Move`/`Up`/`Cancel`, `setPointerCapture`) — chosen so mouse, touch, and stylus follow one path.
+- **`MapViewer` pan/pinch uses Mouse and Touch events** (`handleMouseDown`/`handleTouchStart`), on an ancestor, with `touch-action: none` on the container.
+
+These are **separate event streams that both fire**. A press on a token starts the chip's pointer gesture *and* the ancestor's pan gesture simultaneously, and they coexist today — that is precisely how the DM's long-press already works alongside pan.
+
+**Decisions**:
+
+1. **A movement threshold on a chip gesture is a *cancel* condition, not a routing decision.** Exceeding it clears the chip's own timer and nothing else. The pan is already running in the other event family; there is nothing to hand off to. Never call into `MapViewer`'s pan from a chip handler, and never `stopPropagation`/`preventDefault` on a chip gesture that is meant to fall through to pan.
+2. **`panSuppressedRef` is set by drags only.** It is the one mechanism that stops `MapViewer` panning (both `handleMouseDown` and `handleTouchStart` early-return on it). Story 34's drag sets it because a drag must consume the movement. A hold/long-press gesture must **not** set it — doing so breaks pan-started-on-a-token, which is a common thing to do on a crowded map.
+3. **A gesture that commits must suppress the trailing click.** `handleClick` fires on pointerup regardless; the existing `suppressClickRef` flag is the established mechanism and any new committing gesture must set it, or the gesture fires *and* the tap action fires.
+4. **A gesture that has a hover-triggered visual on the same element must suppress that visual while charging.** The detail card (`expanded`) is driven purely by `onMouseEnter` with a 120ms delay, so on desktop any press on a chip also pops the card. The precedent to copy is Story 44's `if (resizeActive) return;` guard at the top of `handleMouseEnter`.
+5. **Pointer capture is safe but must be paired with an explicit movement check.** `setPointerCapture` retargets pointer events only — it does not affect the Mouse/Touch pan family. But it changes boundary-event semantics, so do not rely on `onPointerLeave` to cancel a gesture; track distance from the pointerdown origin in a ref and test it in `onPointerMove`.
+6. **Hold durations are named constants, and near-duplicates are not allowed to drift silently.** `LONG_PRESS_MS = 480` (DM menu) already exists. A second hold threshold must be its own clearly-named constant next to it with a comment saying why it differs, or reuse it.
+
+**Charge-progress affordance**: a CSS `stroke-dashoffset` transition whose `transition-duration` equals the hold threshold is a 1:1 elapsed-time progress meter for free — no `requestAnimationFrame` loop. `.token-longpress-ring` already does exactly this; copy the mechanism. Note that the reduced-motion block sets `display: none` on that class, so a new charge affordance needs its own class to give it a different reduced-motion treatment.
+
+**Revisit when**: `MapViewer`'s pan is migrated to Pointer Events (which would make the two families one and change every rule above), or a chip gesture genuinely needs to consume movement without being a drag.
+
+---
+
 ## Feature Index
 
 This is a navigation aid for humans and future agents. It mirrors the feature language in `design/app-overview.md` and points to the primary code locations for each area.

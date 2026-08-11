@@ -60,6 +60,9 @@ export function buildAttackEntries({ weapons = [], spells = [] } = {}) {
       toHit: s.toHit,
       damage: s.damage,
       description: s.description,
+      // Story 57 — the Attack Bar's only consumer of `level` (0 = cantrip,
+      // absent = unspecified/unknown, never coerced via `|| 0`, ADR-025).
+      level: s.level,
     }));
   const header = weaponEntries.length > 0 && spellEntries.length > 0
     ? "Weapons & Spells"

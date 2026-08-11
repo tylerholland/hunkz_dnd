@@ -81,13 +81,19 @@ const STAT_NAMES = ["Strength", "Dexterity", "Constitution", "Wisdom", "Intellig
 const STAT_SHORT = { Strength: "STR", Dexterity: "DEX", Constitution: "CON", Wisdom: "WIS", Intelligence: "INT", Charisma: "CHA" };
 
 // ── DiceRoller component ───────────────────────────────────────────────────────
-const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pal, slug }, ref) {
+const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pal, slug, onAdvModeChange }, ref) {
   const [isOpen, setIsOpen] = useState(() => {
     if (!slug) return true;
     return sessionStorage.getItem(`dnd_dice_open_${slug}`) !== "false";
   });
 
   const [advMode, setAdvMode] = useState("normal");
+  // Story 57 — the Attack Bar mirrors advMode into its own parent state via
+  // this optional callback (a ref-exposed value alone isn't reactive: the
+  // parent has no way to know it changed without this). advMode itself
+  // stays owned here — this is a read notification, not a second source of
+  // truth (the bar's own setter still calls the ref's `setAdvMode` above).
+  useEffect(() => { onAdvModeChange?.(advMode); }, [advMode, onAdvModeChange]);
 
   const [rollState, setRollState] = useState({ rolling: false, result: null });
 
@@ -123,11 +129,33 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   }, [slug]);
 
   // ── Core roll executor ───────────────────────────────────────────────────────
-  const executeRoll = useCallback(({ groups, flat, label, isD20Attack = false }) => {
-    if (rollState.rolling) return;
+  // Story 57 / ADR-027 — the single roll engine. New entry points (rollAttack
+  // below) extend this via extra parameters rather than forking it:
+  //   advModeOverride — used in place of the panel's own `advMode` state for
+  //     BOTH the dice math and the `(adv)`/`(dis)` broadcast tag (the two
+  //     places `advMode` is read below) — passing it any other way silently
+  //     drops one of the two (ADR-027 rule 1).
+  //   onComplete — executeRoll resolves ~1050ms later via setTimeout and
+  //     otherwise returns nothing; a caller that needs the result must be
+  //     given this callback (ADR-027 rule 2). Called with `null` on the
+  //     already-rolling early-return below so a caller never sits waiting
+  //     forever with no signal (ADR-027 rule 2 / the Attack Bar's ARMED-
+  //     forever trap).
+  //   suppressOpenPanel — `ensureOpen()` force-opens the roller panel and
+  //     writes the sessionStorage collapse flag; a caller rolling from a
+  //     different surface (the Map sub-tab) can opt out of that side effect.
+  //   target / attack — Story 57 declared-attack provenance (ADR-026),
+  //     passed straight through to the broadcast payload; absent for every
+  //     pre-existing call site, so the shared roll feed is unaffected there.
+  const executeRoll = useCallback(({
+    groups, flat, label, isD20Attack = false,
+    advModeOverride, onComplete, suppressOpenPanel = false, target, attack,
+  }) => {
+    if (rollState.rolling) { onComplete?.(null); return; }
 
-    ensureOpen();
+    if (!suppressOpenPanel) ensureOpen();
     setExprError("");
+    const effectiveAdvMode = advModeOverride ?? advMode;
 
     const rolledGroups = groups.map(({ count, sides }) => ({
       sides,
@@ -136,10 +164,10 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
 
     const isSingleD20 = groups.length === 1 && groups[0].sides === 20 && groups[0].count === 1;
     let advKept = null, advDiscarded = null;
-    if (isD20Attack && isSingleD20 && advMode !== "normal") {
+    if (isD20Attack && isSingleD20 && effectiveAdvMode !== "normal") {
       const r2 = rollDie(20);
       const r1 = rolledGroups[0].rolls[0];
-      if (advMode === "advantage") {
+      if (effectiveAdvMode === "advantage") {
         advKept = Math.max(r1, r2); advDiscarded = Math.min(r1, r2);
       } else {
         advKept = Math.min(r1, r2); advDiscarded = Math.max(r1, r2);
@@ -150,10 +178,10 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
     // 2d6 ability check adv/dis: roll a third d6, keep top 2 (adv) or bottom 2 (dis)
     const isAbility2d6 = groups.length === 1 && groups[0].sides === 6 && groups[0].count === 2;
     let keptRolls = null, droppedRoll = null;
-    if (isAbility2d6 && advMode !== "normal") {
+    if (isAbility2d6 && effectiveAdvMode !== "normal") {
       const r3 = rollDie(6);
       const all3 = [...rolledGroups[0].rolls, r3].sort((a, b) => a - b);
-      if (advMode === "advantage") {
+      if (effectiveAdvMode === "advantage") {
         // keep top 2
         keptRolls = [all3[1], all3[2]];
         droppedRoll = all3[0];
@@ -195,14 +223,16 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
 
       setRollState({ rolling: false, result: resultObj });
 
-      const modeTag = advMode !== "normal" && (isD20Attack || isAbility2d6)
-        ? (advMode === "advantage" ? " (adv)" : " (dis)") : "";
+      const modeTag = effectiveAdvMode !== "normal" && (isD20Attack || isAbility2d6)
+        ? (effectiveAdvMode === "advantage" ? " (adv)" : " (dis)") : "";
 
       setHistory(prev => [
         buildLocalRollHistoryEntry({
           id: Date.now(),
           label: label + modeTag,
           result: resultObj,
+          target,
+          attack,
         }),
         ...prev,
       ].slice(0, 5));
@@ -211,8 +241,12 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
         postCharacterRoll(slug, buildCharacterRollPayload({
           label: label + modeTag,
           result: resultObj,
+          target,
+          attack,
         })).catch(() => {});
       }
+
+      onComplete?.(resultObj);
     }, resolveTime);
   }, [rollState.rolling, advMode, ensureOpen]);
 
@@ -238,7 +272,77 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
     executeRoll({ groups: [{ count: 2, sides: 6 }], flat: mod, label: `${stat.name ?? stat.stat} Check`, isD20Attack: false });
   }, [stats, executeRoll]);
 
-  useImperativeHandle(ref, () => ({ rollAbility }), [rollAbility]);
+  // Story 57 (ADR-027) — the Attack Bar's entry point into this same engine.
+  // `attackEntry` is the `{ id, kind, name, toHit, damage }` shape returned
+  // by `buildAttackEntries()` (Story 56) — `toHit` is already a bare signed
+  // bonus string and `damage` an already a dice expression (ADR-025), so
+  // this is a field lookup, not a second parser. `step` picks which of the
+  // two rolls a weapon/spell entry supports; `target`/`attack` ride straight
+  // through to the broadcast (ADR-026); `suppressOpenPanel` defaults to true
+  // here (unlike the panel's own weapon buttons) because this is normally
+  // called from the Map sub-tab, where popping the Combat sub-tab's roller
+  // panel open would be a surprising side effect.
+  // `exprOverride` — brief §3.4's editable roll expression. When supplied
+  // (the bar's chosen-chip expression was tapped and edited), it REPLACES
+  // the entry's own toHit/damage entirely and is parsed with the same
+  // `parseDiceExpr` the panel's own Free Roll / Expression Roll already use
+  // — this is the existing typed-expression path, not a new parser. An ATK
+  // override is expected to still be a single d20 expression (e.g.
+  // "1d20+7"); `parseDiceExpr` naturally yields the same
+  // `{count:1,sides:20}` shape `isD20Attack`'s crit/fumble/adv-dis logic
+  // already keys off, so no extra branch is needed.
+  const rollAttack = useCallback(({ attackEntry, step = "atk", exprOverride, advMode: advModeOverride, target, attack, onComplete, suppressOpenPanel = true }) => {
+    if (!attackEntry) { onComplete?.(null); return; }
+    const attackRef = attack || { kind: attackEntry.kind, id: attackEntry.id, name: attackEntry.name };
+
+    if (typeof exprOverride === "string" && exprOverride.trim()) {
+      const parsed = parseDiceExpr(exprOverride.trim());
+      if (!parsed || parsed.groups.length === 0) { onComplete?.(null); return; }
+      executeRoll({
+        groups: parsed.groups, flat: parsed.flat,
+        label: `${attackEntry.name} ${step === "dmg" ? "DMG" : "ATK"}`,
+        isD20Attack: step !== "dmg",
+        advModeOverride, onComplete, suppressOpenPanel, target, attack: attackRef,
+      });
+      return;
+    }
+
+    if (step === "dmg") {
+      const parsed = attackEntry.damage ? parseDiceExpr(attackEntry.damage) : null;
+      if (!parsed || parsed.groups.length === 0) { onComplete?.(null); return; }
+      executeRoll({
+        groups: parsed.groups, flat: parsed.flat,
+        label: `${attackEntry.name} DMG`, isD20Attack: false,
+        advModeOverride, onComplete, suppressOpenPanel, target, attack: attackRef,
+      });
+      return;
+    }
+
+    const bonus = parseInt(String(attackEntry.toHit ?? "").trim(), 10);
+    executeRoll({
+      groups: [{ count: 1, sides: 20 }], flat: Number.isFinite(bonus) ? bonus : 0,
+      label: `${attackEntry.name} ATK`, isD20Attack: true,
+      advModeOverride, onComplete, suppressOpenPanel, target, attack: attackRef,
+    });
+  }, [executeRoll]);
+
+  // Story 57 (§3.4) — the Attack Bar computes and displays the loaded
+  // expression per step so it can offer it as an editable default. Exposed
+  // on the same handle rather than duplicated in the bar, since it must
+  // match rollAttack's own defaulting exactly (a weapon's bare `+7` toHit
+  // becomes the full `1d20+7` a player would expect to edit).
+  const getAttackExpr = useCallback((attackEntry, step) => {
+    if (!attackEntry) return "";
+    if (step === "dmg") return attackEntry.damage || "";
+    const bonus = String(attackEntry.toHit ?? "").trim();
+    return bonus ? `1d20${bonus.startsWith("+") || bonus.startsWith("-") ? bonus : `+${bonus}`}` : "1d20";
+  }, []);
+
+  // `advMode`/`setAdvMode` are exposed directly (not wrapped) so the Attack
+  // Bar's Adv/Dis strip (brief §3.4) drives the SAME state the panel's own
+  // strip already shows — one shared source of truth, not a second copy
+  // that could disagree with it.
+  useImperativeHandle(ref, () => ({ rollAbility, rollAttack, getAttackExpr, advMode, setAdvMode }), [rollAbility, rollAttack, getAttackExpr, advMode]);
 
   const rollFree = () => {
     let groups, flat;

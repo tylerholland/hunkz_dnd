@@ -81,4 +81,14 @@ describe("buildAttackEntries", () => {
     expect(entries).toHaveLength(0);
     expect(header).toBe("Weapons");
   });
+
+  it("Story 57 — passes spell.level through to the entry (0 = cantrip, absent stays absent, never coerced via || 0)", () => {
+    const cantrip = { id: "s4", name: "Fire Bolt", role: "attack", level: 0, toHit: "+7", damage: "1d10" };
+    const leveled = { id: "s5", name: "Scorching Ray", role: "attack", level: 2, toHit: "+7", damage: "2d6" };
+    const unspecified = { id: "s6", name: "Mystery Bolt", role: "attack", toHit: "+7", damage: "1d6" };
+    const { spellEntries } = buildAttackEntries({ weapons: [], spells: [cantrip, leveled, unspecified] });
+    expect(spellEntries.find((e) => e.id === "s4").level).toBe(0);
+    expect(spellEntries.find((e) => e.id === "s5").level).toBe(2);
+    expect(spellEntries.find((e) => e.id === "s6").level).toBeUndefined();
+  });
 });
