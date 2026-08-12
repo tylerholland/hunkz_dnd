@@ -451,24 +451,37 @@ export const TokenChip = memo(function TokenChip({
     // Story 44 — suppress hover-expand while resize stepper is open so the
     // HP card doesn't pop over the stepper panel.
     if (resizeActive) return;
-    // Story 57 (ADR-028 #4) — same precedent: the mouse is already over the
-    // chip while a target-charge is in progress (the hover timer would
-    // otherwise fire ~380ms before the 500ms hold commits), so suppress the
-    // detail card while charging or the reticle draws in under the card.
-    if (targetCharge === "charging") return;
+    // Fix (2026-08-11, Story 57 follow-up) — NPC tokens on the player's map
+    // no longer expand on hover while targeting is armed (`canTarget`):
+    // passive hover growth desynced from the targeting reticle's geometry
+    // (`.tk-target-ring` had no matching hover-grow rule, so it stayed
+    // sized/positioned for the resting portrait the whole time the portrait
+    // was hover-expanded). Expand is now driven by a deliberate tap instead
+    // (see handlePointerUp) whenever canTarget is true. Hover keeps its
+    // original behavior everywhere else — PC tokens, the DM's own map, and
+    // NPC tokens on the player's map when targeting is disarmed (no battle
+    // mode, or no rollable attack). This also makes the old
+    // `targetCharge === "charging"` guard that used to live here
+    // unreachable (charging can only happen when canTarget is already
+    // true), so it's removed rather than left as dead code.
+    if (canTarget) return;
     if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
     hoverTimerRef.current = setTimeout(() => {
       checkFlip();
       setExpanded(true);
     }, 120);
-  }, [checkFlip, resizeActive, targetCharge]);
+  }, [checkFlip, resizeActive, canTarget]);
 
   const handleMouseLeave = useCallback(() => {
+    // Mirrors the handleMouseEnter gate above — when canTarget is true,
+    // hover never opened the card, so the mouse leaving must not close a
+    // card that a tap deliberately opened.
+    if (canTarget) return;
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     collapseTimerRef.current = setTimeout(() => {
       setExpanded(false);
     }, 60);
-  }, []);
+  }, [canTarget]);
 
   useEffect(() => {
     return () => {
@@ -664,8 +677,21 @@ export const TokenChip = memo(function TokenChip({
       return;
     }
     clearLongPressCharge();
+    // Fix (2026-08-11, Story 57 follow-up) — a tap (release before the hold
+    // commits, no movement past TARGET_MOVE_CANCEL_PX) on a canTarget NPC
+    // token now toggles the detail card, replacing the retired hover
+    // trigger above. `targetChargeTimerRef.current` is non-null only while
+    // the hold is still pending: it's already been nulled either by the
+    // commit timeout (a completed hold — onTargetToken already fired, don't
+    // also toggle) or by clearTargetCharge (a movement cancel — this was a
+    // pan, not a tap). Checking it here distinguishes a clean tap from both
+    // of those with no extra state, and fires immediately on release with
+    // no delay beyond the existing 500ms hold-threshold check.
+    if (canTarget && targetChargeTimerRef.current) {
+      setExpanded((current) => !current);
+    }
     clearTargetCharge();
-  }, [isDragging, releaseDrag, clearLongPressCharge, clearTargetCharge]);
+  }, [isDragging, releaseDrag, clearLongPressCharge, clearTargetCharge, canTarget]);
 
   const handlePointerCancel = useCallback((e) => {
     if (isDragging) {

@@ -753,9 +753,20 @@ New player-facing surface on the session-mode Map sub-tab: `AttackDeclarationBar
 
 Reuses the DM's existing long-press pattern's mechanism (a `stroke-dashoffset` CSS transition whose duration equals the hold threshold is a 1:1 progress meter, zero JS animation loop) under new, independently-named constants — `TARGET_HOLD_MS = 500` (not `LONG_PRESS_MS = 480`, the DM's own gesture threshold two functions away; the two are allowed to drift, not silently coupled) and `TARGET_MOVE_CANCEL_PX = 8`. The 8px threshold is a **cancel condition on the chip's own pointer timer**, not a routing decision — `TokenChip` uses Pointer events and `MapViewer`'s pan uses a separate Mouse/Touch event family; both already fire independently on a press, so there is nothing to hand off to and no `panSuppressedRef` involvement (that flag is drag-only, Story 34).
 
-- **Tap** (<500ms, <8px) — unchanged from today (the existing hover detail-card behaviour; a bare click/tap on an NPC token is still a no-op, exactly as before this story).
+- **Tap** (<500ms, <8px) — toggles the detail card open/closed, firing immediately on release (no extra delay beyond the 500ms hold-threshold check below). **Amended 2026-08-11**: originally shipped as a no-op (the card opened on hover instead, per Architect Risk #1 option (a)); that hover trigger conflicted with the reticle (see "Fix: tap-to-expand" below), so tap was given this job instead of staying a no-op.
 - **Hold** (≥500ms, <8px) — declares/un-declares the target, committing **mid-press** at the instant the threshold crosses, not on release.
-- Suppresses the hover-triggered detail card while charging (same one-line guard precedent as Story 44's `resizeActive` check) — otherwise the card pops over the token you're targeting on desktop, since the mouse never left the chip.
+- While targeting is armed (`canTarget`), hover no longer opens the detail card at all (see "Fix: tap-to-expand" below) — there is nothing left for a charging-suppression guard to suppress, so the one-line `resizeActive`-precedent guard that used to live here was removed as dead code rather than kept alongside the new tap-toggle.
+
+#### Fix: tap-to-expand replaces hover-to-expand while armed (2026-08-11)
+
+The detail card originally opened on **hover** for every token, NPC included, regardless of `canTarget`. That collided with the reticle: `.tk-target-ring` has no hover-driven size rule, so while the mouse rested on an armed NPC token and the portrait hover-grew (`.token-chip[data-expanded="true"] .token-chip__portrait`), the reticle stayed sized/positioned for the resting portrait until `mouseleave` — a visible desync, and worse, entirely incidental (the mouse can rest on a token for any reason, with no relationship to the player's actual intent to target or inspect it).
+
+Fix, scoped to **NPC tokens on the player's map only** (PC tokens and the DM's own map view are untouched — both hover exactly as before):
+
+- **`canTarget` true (armed)**: hover is fully retired for this token — `handleMouseEnter`/`handleMouseLeave` both no-op. Tap toggles the card instead (see above). Mouse-leaving the token after a tap-opened card does **not** auto-close it — only another tap does, matching the toggle-on-repeat-press convention already used for hold-to-target itself.
+- **`canTarget` false (disarmed — no battle mode, or no rollable attack)**: unchanged from before this fix — hover still opens the card after the existing 120ms delay, tap remains a no-op. There is no reticle possible in this state (targeting can't be armed), so there's nothing for hover to desync against.
+
+No CSS changed — the fix is entirely the interaction trigger, not the card's geometry or the reticle's.
 
 ### Charge sweep
 

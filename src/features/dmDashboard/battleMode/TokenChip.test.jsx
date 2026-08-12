@@ -1,4 +1,4 @@
-import { fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
 import { TokenChip } from "./BattleModeController";
@@ -146,5 +146,112 @@ describe("TokenChip own-token drag interaction", () => {
     fireEvent.pointerUp(chip, { pointerId: 3, clientX: 500, clientY: 400 });
 
     expect(onMoveToken).not.toHaveBeenCalled();
+  });
+});
+
+describe("TokenChip NPC tap/hold gesture on the player's map (Story 57 tap-to-expand fix)", () => {
+  const npcToken = { id: "tok-npc", type: "npc", sourceId: "npc-1", x: 0.5, y: 0.5 };
+  const npcCombat = { npcs: [{ id: "npc-1", name: "Goblin", hpCurrent: 5, hpMax: 5 }] };
+
+  function renderNpcChip(overrides = {}) {
+    return render(
+      <div style={{ position: "relative" }}>
+        <TokenChip
+          token={npcToken}
+          imageW={1000}
+          imageH={800}
+          party={[]}
+          npcCombat={npcCombat}
+          isDm={false}
+          isOwnToken={false}
+          partyVisibilityEnabled
+          isHeld={false}
+          pal={PALETTES.ocean}
+          {...overrides}
+        />
+      </div>
+    );
+  }
+
+  it("does not expand on hover when canTarget is armed (onTargetToken present)", () => {
+    const { container } = renderNpcChip({ onTargetToken: vi.fn() });
+    const chip = container.querySelector(".token-chip");
+    fireEvent.mouseEnter(chip);
+    expect(chip.getAttribute("data-expanded")).toBe("false");
+  });
+
+  it("still expands on hover when targeting is disarmed (no onTargetToken)", () => {
+    vi.useFakeTimers();
+    try {
+      const { container } = renderNpcChip();
+      const chip = container.querySelector(".token-chip");
+      fireEvent.mouseEnter(chip);
+      act(() => { vi.advanceTimersByTime(150); });
+      expect(chip.getAttribute("data-expanded")).toBe("true");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("toggles the detail card open on a clean tap when canTarget is armed", () => {
+    const onTargetToken = vi.fn();
+    const { container } = renderNpcChip({ onTargetToken });
+    const chip = container.querySelector(".token-chip");
+    chip.setPointerCapture = vi.fn();
+
+    fireEvent.pointerDown(chip, { pointerId: 1, clientX: 100, clientY: 100, pointerType: "mouse", button: 0 });
+    fireEvent.pointerUp(chip, { pointerId: 1, clientX: 100, clientY: 100 });
+
+    expect(chip.getAttribute("data-expanded")).toBe("true");
+    expect(onTargetToken).not.toHaveBeenCalled();
+
+    // A second tap closes it again.
+    fireEvent.pointerDown(chip, { pointerId: 1, clientX: 100, clientY: 100, pointerType: "mouse", button: 0 });
+    fireEvent.pointerUp(chip, { pointerId: 1, clientX: 100, clientY: 100 });
+    expect(chip.getAttribute("data-expanded")).toBe("false");
+  });
+
+  it("a completed hold declares the target and does not also toggle expand", () => {
+    vi.useFakeTimers();
+    try {
+      const onTargetToken = vi.fn();
+      const { container } = renderNpcChip({ onTargetToken });
+      const chip = container.querySelector(".token-chip");
+      chip.setPointerCapture = vi.fn();
+
+      fireEvent.pointerDown(chip, { pointerId: 1, clientX: 100, clientY: 100, pointerType: "mouse", button: 0 });
+      act(() => { vi.advanceTimersByTime(500); });
+      fireEvent.pointerUp(chip, { pointerId: 1, clientX: 100, clientY: 100 });
+
+      expect(onTargetToken).toHaveBeenCalledWith("tok-npc");
+      expect(chip.getAttribute("data-expanded")).toBe("false");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("a pan-cancelled press (movement past threshold) does not toggle expand", () => {
+    const onTargetToken = vi.fn();
+    const { container } = renderNpcChip({ onTargetToken });
+    const chip = container.querySelector(".token-chip");
+    chip.setPointerCapture = vi.fn();
+
+    fireEvent.pointerDown(chip, { pointerId: 1, clientX: 100, clientY: 100, pointerType: "mouse", button: 0 });
+    fireEvent.pointerMove(chip, { pointerId: 1, clientX: 130, clientY: 100 });
+    fireEvent.pointerUp(chip, { pointerId: 1, clientX: 130, clientY: 100 });
+
+    expect(onTargetToken).not.toHaveBeenCalled();
+    expect(chip.getAttribute("data-expanded")).toBe("false");
+  });
+
+  it("tap remains a no-op when canTarget is false (targeting disarmed)", () => {
+    const { container } = renderNpcChip();
+    const chip = container.querySelector(".token-chip");
+    chip.setPointerCapture = vi.fn();
+
+    fireEvent.pointerDown(chip, { pointerId: 1, clientX: 100, clientY: 100, pointerType: "mouse", button: 0 });
+    fireEvent.pointerUp(chip, { pointerId: 1, clientX: 100, clientY: 100 });
+
+    expect(chip.getAttribute("data-expanded")).toBe("false");
   });
 });

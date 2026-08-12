@@ -558,3 +558,71 @@ silently dropped):
 OQ-6 (DM Apply-to pre-selection), and Story 55's Channel visual (now unblocked
 data-wise by this story's `level`/`toHit`/`damage` fields, but still needs the
 correlation-window logic described in this story's UX Design section above).
+
+## Implementation Notes (2026-08-11 follow-up — hover/reticle desync fix)
+
+**Bug**: on the player's map, an NPC token's detail card opened on **hover**
+(`handleMouseEnter`/`handleMouseLeave`, 120ms intent delay), which grew the
+portrait via `.token-chip[data-expanded="true"] .token-chip__portrait`/
+`.token-chip__initial` (`battleMode.css`). The targeting reticle
+(`.tk-target-ring`) had no matching hover-grow rule and is a sibling of the
+portrait, not a descendant — so while the mouse rested on an armed, targeted
+NPC token, the reticle stayed sized/positioned for the resting portrait the
+whole time it was hover-expanded, visually detached until `mouseleave`
+reverted the portrait. Compounding this: hover is incidental (the mouse can
+rest on a token for any reason), so the expanded state could become active
+before, during, or lingering after a hold-to-target gesture with no
+relationship to the player's actual intent — this was flagged but left
+unaddressed in the original build's Architect Risk #2 fix (which only
+suppressed hover while actively charging, not for the whole armed window).
+
+**Fix — interaction change, not a CSS sync fix.** Retired the passive hover
+trigger for the specific surface where it conflicted, rather than trying to
+keep two independently-triggered animations in sync. Scoped narrowly to NPC
+tokens on the player's map (`!isDm && token.type === "npc"` in `TokenChip`,
+`BattleModeController.jsx`); PC tokens and the DM's own map view are
+untouched.
+
+- **`canTarget` true (targeting armed)**: a clean tap (<500ms hold, <8px
+  movement — the same discriminator already built for hold-to-target)
+  toggles the detail card open/closed, resolved in `handlePointerUp` by
+  checking whether `targetChargeTimerRef.current` is still non-null at
+  release (non-null only while the hold is genuinely still pending — it's
+  already been nulled by either the commit timeout firing, a completed
+  hold, or by `clearTargetCharge()`, a movement-cancelled pan — so no extra
+  state was needed to distinguish a tap from either of those). Fires
+  immediately on release, no delay beyond the existing 500ms
+  hold-threshold check. `handleMouseEnter`/`handleMouseLeave` both
+  early-return while `canTarget` is true, so hover no longer opens **or**
+  auto-closes the card in this state — a tap-opened card only closes via
+  another tap, matching the toggle-on-repeat-press convention hold-to-target
+  itself already uses.
+- **`canTarget` false (targeting disarmed — no battle mode, or the
+  character has no rollable attack)**: left exactly as it was before this
+  fix. Per the original build's Architect Risk #1, tap was already a no-op
+  on the player's map in this state (no `onTokenClick` is passed by
+  `PlayerMapViewer`) and hover was the only trigger — that's unchanged,
+  since there's no reticle possible in this state for hover to desync
+  against, and preserving it is the least-surprising option (no
+  regression for the disarmed case, which is most of the app's runtime —
+  outside battle mode).
+- The `if (targetCharge === "charging") return;` guard inside
+  `handleMouseEnter` (the original Architect Risk #2 fix, a Story
+  44-`resizeActive` precedent) is now unreachable dead code — charging can
+  only happen when `canTarget` is already true, and hover is now retired
+  unconditionally for that whole state, not just while charging — so it
+  was removed rather than left alongside the new `canTarget` gate.
+- No CSS changes. The bug and its fix are both entirely about *when*
+  `expanded` flips, not the card's geometry, the portrait's grow rule, or
+  the reticle's own styling — those all stay exactly as originally built.
+
+**Tests added**: `TokenChip.test.jsx` gained a new describe block covering
+hover-suppressed-while-armed, hover-preserved-while-disarmed, tap-toggles-open-
+then-closed, a completed hold declaring the target without also toggling the
+card, a pan-cancelled press not toggling the card, and tap remaining a no-op
+while disarmed.
+
+**Not touched, confirmed out of scope for this fix**: the reticle's own
+geometry/animation, the charge-sweep ring, the Attack Declaration Bar, the
+roll broadcast/feed fields, and every DM-side/PC-token hover behavior on both
+the DM's map (`MapPanel.jsx`) and the player's map.
