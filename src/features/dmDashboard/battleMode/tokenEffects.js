@@ -354,6 +354,61 @@ export function buildTracerEvents({ tokens, freshEventsInOrder, imageW, imageH, 
   return { byTarget, byAttacker };
 }
 
+let tracerEventCounter = 0;
+
+// A fired Bolt's on-screen lifetime is deliberately decoupled from the poll
+// tick that detected it. buildTracerEvents' output is a pure function of
+// "did THIS tick just see a newly-fresh damage stamp" (resolveDamageState's
+// phaseAFresh is a single-tick pulse — see its own comment); every poll
+// after that one will correctly see the stamp as already-seen and produce
+// an empty tracerByTarget. Without this hook, a caller that renders
+// straight from that per-tick value unmounts <TracerBolt> the instant the
+// NEXT poll lands — and because postCharacterRoll AND the damage-apply
+// write (session.js/putNpcCombat.js) each call notifySessionChanged()
+// independently, a roll followed shortly by a damage-apply can trigger
+// several WS-nudge-triggered polls within tens to a couple hundred
+// milliseconds of each other, well inside the Bolt's own
+// BOLT_DURATION_FLOOR_MS–BOLT_DURATION_CEILING_MS travel window — unmounting
+// the SVG path (a CSS `transition`, not a `@keyframes` animation, so it
+// does not survive its element being removed) before it visibly draws a
+// single frame, or before its own `setTimeout(0)`-deferred reveal step
+// (TracerLayer.jsx's useLayoutEffect) even fires.
+//
+// This hook adds each freshly-detected event to independent, timer-owned
+// state instead: once added, only that event's own startDelayMs+travelMs
+// timer removes it — no subsequent poll response, however soon it lands,
+// can unmount it early. Shared by MapPanel.jsx and PlayerMapViewer so both
+// surfaces play the identical duration for the same event.
+export function useActiveTracerEvents(boltEventsThisTick) {
+  const [active, setActive] = useState([]);
+  const timersRef = useRef(new Map()); // localKey -> timeout id
+
+  useEffect(() => {
+    if (!boltEventsThisTick || boltEventsThisTick.length === 0) return undefined;
+
+    const withKeys = boltEventsThisTick.map((e) => ({ ...e, _localKey: `t${++tracerEventCounter}` }));
+    setActive((prev) => [...prev, ...withKeys]);
+    withKeys.forEach((e) => {
+      const lifetime = (e.startDelayMs || 0) + (e.travelMs || 0) + 150; // small paint/settle buffer
+      const timer = setTimeout(() => {
+        setActive((prev) => prev.filter((x) => x._localKey !== e._localKey));
+        timersRef.current.delete(e._localKey);
+      }, lifetime);
+      timersRef.current.set(e._localKey, timer);
+    });
+    // boltEventsThisTick is a fresh array reference every poll tick, but it
+    // is only ever non-empty on the single tick resolveDamageState's pulse
+    // fires for a given event — depending on it directly (rather than a
+    // manual content-equality check) is safe and matches this module's
+    // existing per-tick-effect style.
+    return undefined;
+  }, [boltEventsThisTick]);
+
+  useEffect(() => () => timersRef.current.forEach((t) => clearTimeout(t)), []);
+
+  return active;
+}
+
 // 6% of one token-diameter unit (U), toward the target and back — a subtle
 // nudge, not a travel. Map-frame dx/dy (no rotation correction — the
 // .tk-lunge wrapper it drives sits outside .token-chip's counter-rotation,

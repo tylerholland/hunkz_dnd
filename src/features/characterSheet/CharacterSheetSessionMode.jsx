@@ -44,6 +44,7 @@ import {
   shimmerPhaseOffsetMs,
   useTokenExitGhosts,
   buildTracerEvents,
+  useActiveTracerEvents,
   computeLungeOffsetPx,
   NPC_BOLT_TINT,
 } from "../dmDashboard/battleMode/tokenEffects";
@@ -1728,7 +1729,14 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
   // cadence. debouncedZoom only changes on its own tick.
   const reducedMotion = usePrefersReducedMotion();
   const [resolvedByTokenId, setResolvedByTokenId] = useState(new Map());
-  const [tracerLayerEvents, setTracerLayerEvents] = useState([]);
+  // boltEventsThisTick is the raw per-poll-tick computation (only non-empty
+  // on the single tick a damage stamp is freshly detected); useActiveTracerEvents
+  // gives each fired event its own timer-owned on-screen lifetime so a
+  // WS-nudge-triggered poll landing shortly after (postCharacterRoll and the
+  // damage-apply write each broadcast independently) can't unmount it
+  // mid-flight — see that hook's comment in tokenEffects.js.
+  const [boltEventsThisTick, setBoltEventsThisTick] = useState([]);
+  const tracerLayerEvents = useActiveTracerEvents(boltEventsThisTick);
   useEffect(() => {
     const npcList = npcCombat?.npcs || [];
     const rawDamageStates = new Map();
@@ -1837,7 +1845,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
       const tint = attackerToken?.type === "character" ? getPaletteAccent(attackerMember?.palette) : NPC_BOLT_TINT;
       boltEvents.push({ ...event, tint });
     });
-    setTracerLayerEvents(boltEvents);
+    setBoltEventsThisTick(boltEvents);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleTokens, partyForTokens, npcCombat, serverTime, initiativeData, tokenScale, debouncedZoom, viewerState?.naturalSize?.w, viewerState?.naturalSize?.h]);
 

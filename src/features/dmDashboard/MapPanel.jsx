@@ -20,6 +20,7 @@ import {
   usePrefersReducedMotion,
   shimmerPhaseOffsetMs,
   buildTracerEvents,
+  useActiveTracerEvents,
   computeLungeOffsetPx,
   NPC_BOLT_TINT,
 } from "./battleMode/tokenEffects";
@@ -410,7 +411,14 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   // on its own tick.
   const reducedMotion = usePrefersReducedMotion();
   const [resolvedByTokenId, setResolvedByTokenId] = useState(new Map());
-  const [tracerLayerEvents, setTracerLayerEvents] = useState([]);
+  // boltEventsThisTick is the raw per-poll-tick computation (only non-empty
+  // on the single tick a damage stamp is freshly detected); useActiveTracerEvents
+  // gives each fired event its own timer-owned on-screen lifetime so a
+  // WS-nudge-triggered poll landing shortly after (postCharacterRoll and the
+  // damage-apply write each broadcast independently) can't unmount it
+  // mid-flight — see that hook's comment in tokenEffects.js.
+  const [boltEventsThisTick, setBoltEventsThisTick] = useState([]);
+  const tracerLayerEvents = useActiveTracerEvents(boltEventsThisTick);
   useEffect(() => {
     const partyList = party || [];
     const npcList = npcCombat?.npcs || [];
@@ -520,7 +528,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       const tint = attackerToken?.type === "character" ? getPaletteAccent(attackerMember?.palette) : NPC_BOLT_TINT;
       boltEvents.push({ ...event, tint });
     });
-    setTracerLayerEvents(boltEvents);
+    setBoltEventsThisTick(boltEvents);
     // effectiveNaturalSize intentionally excluded from deps — it's partly
     // ref-derived (naturalSizeByMapRef, a cache-on-map-switch fallback) and
     // its primary driver (viewerState.naturalSize) already changes on the
