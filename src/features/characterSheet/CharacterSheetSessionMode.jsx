@@ -1763,6 +1763,16 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         freshEventsInOrder.push({ targetTokenId: token.id, attackerRef: subject?.lastDamageFrom ?? null });
       }
     }
+    // Evict stale entries — otherwise every token id this viewer has ever
+    // seen across a multi-day session accumulates a permanent entry here. A
+    // token that drops out of visibleTokens (party-visibility toggle, went
+    // Invisible) and later returns is correctly treated as "first seen"
+    // again — consistent with the freshness gate's existing first-paint
+    // rule, not a new behavior.
+    const liveTokenIds = new Set(visibleTokens.map((t) => t.id));
+    for (const id of seenStampsRef.current.keys()) {
+      if (!liveTokenIds.has(id)) seenStampsRef.current.delete(id);
+    }
     const staggerByKey = assignAoEStagger(freshKeysInOrder);
     // visibleTokens (not the raw activeMap.tokens list) is deliberately what
     // buildTracerEvents resolves the attacker token against — if either
@@ -1777,7 +1787,6 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
       imageH: viewerState?.naturalSize?.h,
       mapTokenScale: tokenScale,
     });
-
     const result = new Map();
     for (const token of visibleTokens) {
       const rawState = rawDamageStates.get(token.id);

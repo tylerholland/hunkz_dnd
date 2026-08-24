@@ -388,6 +388,14 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   if (activeMapId && viewerState?.naturalSize?.w) {
     naturalSizeByMapRef.current[activeMapId] = viewerState.naturalSize;
   }
+  // Evict entries for maps no longer in the library — otherwise every map
+  // ever viewed across a multi-day session accumulates a permanent entry
+  // here (harmless per-entry, but unbounded over a long-lived session).
+  // Mirrors the cache-set above: mutated directly during render, not in an
+  // effect, so it stays correct on the same tick a map is deleted.
+  for (const id of Object.keys(naturalSizeByMapRef.current)) {
+    if (!maps.some((m) => m.id === id)) delete naturalSizeByMapRef.current[id];
+  }
   const effectiveNaturalSize = viewerState?.naturalSize || (activeMapId ? naturalSizeByMapRef.current[activeMapId] : null);
 
   // Stories 52–55 — resolve damage/condition-band/veil/tracer state once per
@@ -437,6 +445,13 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
         freshEventsInOrder.push({ targetTokenId: token.id, attackerRef: subject?.lastDamageFrom ?? null });
       }
     }
+    // Evict stale entries — otherwise every token id ever placed on this map
+    // across a multi-day session (NPCs spawned/removed encounter after
+    // encounter) accumulates a permanent entry here.
+    const liveTokenIds = new Set(effectiveTokens.map((t) => t.id));
+    for (const id of seenStampsRef.current.keys()) {
+      if (!liveTokenIds.has(id)) seenStampsRef.current.delete(id);
+    }
     const staggerByKey = assignAoEStagger(freshKeysInOrder);
     const { byTarget: tracerByTarget, byAttacker: tracerByAttacker } = buildTracerEvents({
       tokens: effectiveTokens,
@@ -445,7 +460,6 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       imageH: effectiveNaturalSize?.h,
       mapTokenScale: tokenScale,
     });
-
     const result = new Map();
     for (const token of effectiveTokens) {
       const rawState = rawDamageStates.get(token.id);
