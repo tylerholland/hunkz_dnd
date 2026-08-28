@@ -25,6 +25,28 @@ import { reportServerBuildVersion } from "../lib/staleClient";
 import { useTextScale } from "../lib/useTextScale";
 import { computeMapSwitch } from "./combatModeToggle";
 
+// Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
+// server-side only (putNpcCombat.js) whenever an NPC's hpCurrent drops — a
+// client's optimistic write can never predict these, so comparing the
+// incoming poll's npcs array against an optimistic guess that never
+// included them (below, npcCombatExpectedRef's reconciliation check) would
+// never match once the server adds them, permanently blocking the real,
+// stamped data from ever being accepted and freezing the DM's own
+// dashboard on a stamp-less snapshot (breaking, among other things, the
+// Story 55 attack tracer, which depends on lastDamagedAt to detect a fresh
+// hit). Strip these fields before comparing so reconciliation only cares
+// about what the client itself controls; the value actually stored is
+// always the real, fully-stamped npcData, never the stripped copy.
+function stripNpcServerStamps(npcs) {
+  return (npcs || []).map((npc) => {
+    const stripped = { ...npc };
+    delete stripped.lastDamagedAt;
+    delete stripped.lastDamageAmount;
+    delete stripped.lastDamageFrom;
+    return stripped;
+  });
+}
+
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
 const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
 const TEXT_SCALE_STORAGE_KEY = "dnd_dm_text_scale";
@@ -276,10 +298,14 @@ export default function DmDashboardPage() {
         setInitiative(initData);
       }
       npcCombatServerRef.current = npcData;
-      if (npcCombatExpectedRef.current && !liveValuesEqual(npcData, npcCombatExpectedRef.current)) {
+      const npcCombatCaughtUp = !npcCombatExpectedRef.current || liveValuesEqual(
+        stripNpcServerStamps(npcData?.npcs),
+        stripNpcServerStamps(npcCombatExpectedRef.current?.npcs)
+      );
+      if (npcCombatExpectedRef.current && !npcCombatCaughtUp) {
         // Keep optimistic NPC state until server catches up or write fails.
       } else {
-        if (npcCombatExpectedRef.current && liveValuesEqual(npcData, npcCombatExpectedRef.current)) {
+        if (npcCombatExpectedRef.current && npcCombatCaughtUp) {
           npcCombatExpectedRef.current = null;
         }
         setNpcCombat(npcData);
