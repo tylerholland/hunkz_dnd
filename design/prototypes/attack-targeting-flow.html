@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Attack Targeting Flow — Design Prototype (Story 57)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ═══════════════════════════════════════════════════════════════════════
+   OCEAN PALETTE — default prototype theme (Eoghan's palette)
+   ═══════════════════════════════════════════════════════════════════════ */
+:root {
+  --pal-bg: #0d0f14;
+  --pal-surface: rgba(20,30,45,0.55);
+  --pal-surface-solid: #141e2c;
+  --pal-border: rgba(100,140,168,0.22);
+  --pal-border-vis: rgba(100,140,168,0.34);
+  --pal-accent: #6a8fa8;
+  --pal-accent-bright: #a0c0d0;
+  --pal-accent-dim: rgba(106,143,168,0.18);
+  --pal-text: #c8bfaf;
+  --pal-text-body: #9ab0bc;
+  --pal-text-muted: #7a8fa0;
+  --pal-text-dim: #3a5a6a;
+  --pal-gem: #8ab4c8;
+  --pal-glow1: rgba(40,70,100,0.28);
+  --pal-glow2: rgba(20,40,70,0.22);
+  --font-display: 'Cinzel', Georgia, serif;
+  --font-body: 'Crimson Text', Georgia, serif;
+  --font-ui: 'IM Fell English', Georgia, serif;
+
+  /* universal tokens, brief §4 */
+  --tk-dmg-rest: #c06060;
+  --ring-npc: rgba(160,160,160,0.7);
+  --ring-pc-own: var(--pal-accent-bright);
+
+  /* reused verbatim from the existing dice roller (design/prototypes/dice-roller.html) */
+  --crit-color: #ffd060;
+  --crit-glow: rgba(255,200,40,0.5);
+  --fumble-color: #c06060;
+  --fumble-glow: rgba(192,60,60,0.5);
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--pal-glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, var(--pal-glow2) 0%, transparent 55%),
+    var(--pal-bg);
+  min-height: 100vh;
+  color: var(--pal-text);
+  font-family: var(--font-body);
+  -webkit-font-smoothing: antialiased;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   TOP BAR — page title + global debug/edge-case controls
+   ═══════════════════════════════════════════════════════════════════════ */
+.topbar {
+  position: sticky; top: 0; z-index: 500;
+  background: rgba(8,11,18,0.97);
+  border-bottom: 1px solid var(--pal-border-vis);
+  backdrop-filter: blur(8px);
+  padding: 12px 24px;
+}
+.topbar-row { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.topbar-title { font-family: var(--font-display); font-size: 15px; letter-spacing: 0.1em; color: var(--pal-accent-bright); }
+.topbar-meta { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em; color: var(--pal-text-dim); flex: 1; min-width: 160px; }
+
+.debug-panel {
+  margin-top: 10px; padding: 10px 14px; background: var(--pal-surface);
+  border: 1px solid var(--pal-border-vis); border-radius: 5px;
+  display: flex; align-items: center; gap: 18px; flex-wrap: wrap;
+}
+.debug-group { display: flex; align-items: center; gap: 8px; }
+.debug-label { font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--pal-text-dim); }
+
+/* toggle switch */
+.tswitch { position: relative; display: inline-flex; align-items: center; gap: 8px; cursor: pointer; user-select: none; min-height: 32px; }
+.tswitch input { position: absolute; opacity: 0; width: 44px; height: 44px; left: -12px; top: -6px; margin: 0; cursor: pointer; }
+.tswitch-track {
+  width: 34px; height: 18px; border-radius: 10px; background: rgba(255,255,255,0.08);
+  border: 1px solid var(--pal-border-vis); position: relative; transition: background 150ms, border-color 150ms;
+}
+.tswitch-knob {
+  position: absolute; top: 1px; left: 1px; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--pal-text-muted); transition: transform 150ms ease-out, background 150ms;
+}
+.tswitch input:checked + .tswitch-track { background: var(--pal-accent-dim); border-color: var(--pal-accent); }
+.tswitch input:checked + .tswitch-track .tswitch-knob { transform: translateX(16px); background: var(--pal-accent-bright); }
+.tswitch-text { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.1em; color: var(--pal-text-muted); }
+.tswitch input:checked ~ .tswitch-text { color: var(--pal-accent-bright); }
+
+/* checkbox pill (edge-case toggles) */
+.cbx { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; min-height: 32px; font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.08em; color: var(--pal-text-muted); }
+.cbx input { accent-color: var(--pal-accent); cursor: pointer; width: 14px; height: 14px; }
+.cbx input:checked ~ span { color: var(--pal-accent-bright); }
+
+/* segmented control (roll outcome) */
+.seg { display: flex; border: 1px solid var(--pal-border-vis); border-radius: 3px; overflow: hidden; }
+.seg-btn {
+  background: transparent; border: none; border-right: 1px solid var(--pal-border-vis);
+  color: var(--pal-text-muted); font-family: var(--font-ui); font-size: 10.5px; letter-spacing: 0.1em;
+  padding: 6px 11px; cursor: pointer; min-height: 32px; text-transform: uppercase; transition: all 150ms;
+}
+.seg-btn:last-child { border-right: none; }
+.seg-btn.active { background: var(--pal-accent-dim); color: var(--pal-accent-bright); }
+.seg-btn:hover:not(.active) { color: var(--pal-text); }
+
+.btn-ghost {
+  background: transparent; border: 1px solid var(--pal-border-vis); border-radius: 3px; color: var(--pal-text-muted);
+  font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.1em; padding: 7px 13px; cursor: pointer;
+  transition: border-color 150ms, color 150ms; min-height: 36px;
+}
+.btn-ghost:hover { border-color: var(--pal-accent); color: var(--pal-accent-bright); }
+.btn-ghost:disabled { opacity: 0.35; cursor: not-allowed; }
+
+.hud-line {
+  margin-top: 8px; font-family: 'Courier New', monospace; font-size: 11px; letter-spacing: 0.02em;
+  color: var(--pal-text-dim); min-height: 16px;
+}
+.hud-line b { color: var(--pal-accent-bright); font-weight: normal; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   PAGE BODY
+   ═══════════════════════════════════════════════════════════════════════ */
+.page-body { max-width: 1180px; margin: 0 auto; padding: 36px 28px 100px; }
+.pr-section { margin-bottom: 72px; }
+.pr-section-header { margin-bottom: 20px; padding-bottom: 14px; border-bottom: 1px solid var(--pal-border); }
+.pr-section-num { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.3em; color: var(--pal-text-dim); text-transform: uppercase; margin-bottom: 6px; }
+.pr-section-title { font-family: var(--font-display); font-size: 21px; letter-spacing: 0.06em; color: var(--pal-accent-bright); margin-bottom: 6px; }
+.pr-section-desc { font-family: var(--font-body); font-size: 14px; color: var(--pal-text-muted); line-height: 1.6; max-width: 840px; }
+
+.callout {
+  position: absolute; background: rgba(160,192,208,0.12); border: 1px solid rgba(160,192,208,0.35);
+  border-radius: 3px; color: #a0c0d0; font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.15em;
+  padding: 4px 9px; pointer-events: none; text-transform: uppercase; white-space: nowrap; z-index: 30;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 1 — LIVE INTERACTIVE DEMO
+   ═══════════════════════════════════════════════════════════════════════ */
+.demo-shell {
+  position: relative; border: 1px solid var(--pal-border-vis); border-radius: 6px; overflow: hidden;
+  background: var(--pal-surface-solid); max-width: 760px;
+}
+.demo-subtabs {
+  display: flex; gap: 6px; padding: 10px 14px; border-bottom: 1px solid var(--pal-border);
+  background: rgba(10,14,20,0.6);
+}
+.demo-subtab {
+  background: transparent; border: 1px solid var(--pal-border); border-radius: 3px; color: var(--pal-text-muted);
+  font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase;
+  padding: 6px 14px; cursor: pointer; min-height: 32px; transition: all 150ms;
+}
+.demo-subtab.active { background: var(--pal-accent-dim); border-color: var(--pal-accent); color: var(--pal-accent-bright); }
+
+.demo-viewport { position: relative; height: 500px; overflow: hidden; isolation: isolate; }
+.demo-map-wrap { position: absolute; inset: 0; transition: padding-bottom 220ms cubic-bezier(0.2,0.8,0.2,1); }
+.demo-map-wrap.bar-open { padding-bottom: 64px; }
+.demo-map-wrap.bar-open.narrow-open { padding-bottom: 72px; }
+
+.map-canvas {
+  position: absolute; inset: 0; overflow: hidden; cursor: grab;
+  background:
+    radial-gradient(ellipse at 22% 28%, rgba(70,100,90,0.30) 0%, transparent 45%),
+    radial-gradient(ellipse at 75% 62%, rgba(50,75,85,0.26) 0%, transparent 48%),
+    repeating-linear-gradient(0deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 42px),
+    repeating-linear-gradient(90deg, rgba(255,255,255,0.02) 0 1px, transparent 1px 42px),
+    #0c1420;
+  transform: rotate(var(--map-rot, 0deg));
+  transition: transform 320ms ease-in-out;
+}
+.combat-subtab-panel {
+  position: absolute; inset: 0; display: none; align-items: center; justify-content: center;
+  flex-direction: column; gap: 10px; padding: 30px; text-align: center;
+}
+.combat-subtab-panel.active { display: flex; }
+.combat-subtab-panel .csp-title { font-family: var(--font-display); font-size: 16px; color: var(--pal-accent-bright); letter-spacing: 0.06em; }
+.combat-subtab-panel .csp-body { font-family: var(--font-body); font-size: 13.5px; color: var(--pal-text-muted); max-width: 380px; line-height: 1.6; font-style: italic; }
+.map-canvas.hidden-for-combat { display: none; }
+
+/* ─── token component ─── */
+.tk-wrap {
+  position: absolute; width: 40px; height: 40px;
+  transform: translate(-50%,-50%) rotate(calc(-1 * var(--map-rot, 0deg)));
+  transition: transform 320ms ease-in-out;
+}
+.tk-wrap.npc { cursor: pointer; }
+.tk-wrap.pc-own { cursor: grab; }
+.tk-portrait-wrap {
+  position: relative; width: 100%; height: 100%; border-radius: 50%;
+  background: #16222e; border: 2px solid var(--ring-color, var(--ring-npc));
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.5);
+  transition: opacity 300ms ease-out, filter 300ms ease-out;
+}
+.tk-portrait-wrap .tk-initial { font-family: var(--font-display); font-size: 15px; color: var(--pal-text-body); }
+.tk-wrap.downed .tk-portrait-wrap { filter: grayscale(0.5); opacity: 0.55; }
+.tk-wrap.gone-fade .tk-portrait-wrap { opacity: 0; transition: opacity 400ms ease-in; }
+.tk-name-label {
+  position: absolute; left: 50%; top: calc(100% + 4px); transform: translateX(-50%);
+  font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.06em; color: var(--pal-text);
+  white-space: nowrap; background: rgba(10,15,22,0.78); padding: 1px 6px; border-radius: 2px;
+}
+.tk-hp-label {
+  position: absolute; left: 50%; top: calc(100% + 18px); transform: translateX(-50%);
+  font-family: var(--font-ui); font-size: 9px; letter-spacing: 0.06em; color: var(--pal-text-dim);
+  white-space: nowrap;
+}
+
+/* the reticle — §3.1 */
+.tk-target-ring {
+  position: absolute; left: 50%; top: 50%; width: 64px; height: 64px;
+  transform: translate(-50%,-50%); overflow: visible; pointer-events: none;
+}
+.tk-target-ring .ring-anim-group { transform-box: fill-box; transform-origin: center; }
+.tk-target-ring .arc-half.arc-underlay { fill: none; stroke: rgba(0,0,0,0.55); stroke-width: 3; stroke-linecap: round; }
+.tk-target-ring .arc-half.arc-stroke { fill: none; stroke: var(--pal-accent-bright); stroke-width: 1.5; stroke-linecap: round; }
+
+@keyframes reticleGroupIn { from { transform: scale(1.25); } to { transform: scale(1); } }
+@keyframes arcDrawIn { from { stroke-dashoffset: var(--len); } to { stroke-dashoffset: 0; } }
+.tk-target-ring.entering .ring-anim-group { animation: reticleGroupIn 200ms cubic-bezier(0.2,0.8,0.2,1); }
+.tk-target-ring.entering .arc-half { animation: arcDrawIn 200ms cubic-bezier(0.2,0.8,0.2,1) forwards; }
+
+@keyframes reticleBreathe { from { opacity: 0.70; } to { opacity: 1.00; } }
+.tk-target-ring.resting .ring-anim-group { animation: reticleBreathe 2.4s ease-in-out infinite alternate; }
+
+@keyframes reticleClearOut { from { transform: scale(1); opacity: 1; } to { transform: scale(1.2); opacity: 0; } }
+.tk-target-ring.clearing .ring-anim-group { animation: reticleClearOut 140ms ease-out forwards; }
+
+/* reduced motion — reticle rows, §6 */
+body.reduced-motion .tk-target-ring.entering .ring-anim-group { animation: none; }
+body.reduced-motion .tk-target-ring.entering .arc-half { animation: none; stroke-dashoffset: 0; }
+body.reduced-motion .tk-target-ring.resting .ring-anim-group { animation: none; opacity: 1; }
+body.reduced-motion .tk-target-ring.clearing .ring-anim-group { animation: none; opacity: 0; }
+
+/* detail card (Story 53 hover/long-press — hold-only on NPC tokens per §7.1) */
+.tk-detail-card {
+  position: absolute; z-index: 60; width: 156px; background: var(--pal-surface-solid);
+  border: 1px solid var(--pal-border-vis); border-radius: 4px; padding: 10px 12px;
+  opacity: 0; transform: translateY(4px); transition: opacity 120ms ease-out, transform 120ms ease-out;
+  pointer-events: none; font-family: var(--font-ui);
+}
+.tk-detail-card.visible { opacity: 1; transform: translateY(0); }
+.tk-detail-card .dc-name { font-family: var(--font-display); font-size: 12.5px; color: var(--pal-accent-bright); margin-bottom: 5px; }
+.tk-detail-card .dc-hp { font-size: 11px; color: var(--pal-text-muted); margin-bottom: 3px; }
+.tk-detail-card .dc-note { font-family: var(--font-body); font-style: italic; font-size: 11px; color: var(--pal-text-dim); margin-top: 5px; line-height: 1.4; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ATTACK BAR — §3.2 / §3.3 / §3.4
+   ═══════════════════════════════════════════════════════════════════════ */
+.cs-atk-bar {
+  position: absolute; left: 0; right: 0; bottom: 0; height: 64px; z-index: 150;
+  background: var(--pal-surface-solid); border-top: 1px solid var(--pal-border);
+  transform: translateY(100%); opacity: 0;
+}
+.cs-atk-bar.visible {
+  transition: transform 220ms cubic-bezier(0.2,0.8,0.2,1), opacity 220ms cubic-bezier(0.2,0.8,0.2,1);
+  transform: translateY(0); opacity: 1;
+}
+.cs-atk-bar.exiting { transition: transform 160ms ease-in, opacity 160ms ease-in; transform: translateY(100%); opacity: 0; }
+.cs-atk-bar.narrow { height: 72px; }
+body.reduced-motion .cs-atk-bar.visible,
+body.reduced-motion .cs-atk-bar.exiting { transition-duration: 0ms !important; }
+
+.cs-atk-bar-inner { display: flex; align-items: center; gap: 12px; height: 100%; padding: 0 16px; }
+.cs-atk-bar.narrow .cs-atk-bar-inner { flex-wrap: wrap; align-content: center; padding: 6px 12px; row-gap: 4px; }
+.cs-atk-bar.narrow .cs-atk-target, .cs-atk-bar.narrow .cs-atk-cancel, .cs-atk-bar.narrow .cs-atk-divider { order: 1; }
+.cs-atk-bar.narrow .cs-atk-picker, .cs-atk-bar.narrow .cs-atk-chosen, .cs-atk-bar.narrow .cs-atk-actions { order: 2; }
+.cs-atk-bar.narrow .cs-atk-chosen, .cs-atk-bar.narrow .cs-atk-actions { flex-basis: auto; }
+.cs-atk-bar.narrow .cs-atk-picker { flex-basis: 100%; }
+.cs-atk-bar.narrow .cs-atk-actions { margin-left: auto; }
+
+.cs-atk-target {
+  display: flex; align-items: center; gap: 6px; background: transparent; border: none; cursor: pointer;
+  min-height: 44px; padding: 0 6px; flex-shrink: 0;
+}
+.cs-atk-target-glyph { font-size: 13px; color: var(--pal-accent-bright); }
+.cs-atk-target-name {
+  position: relative; font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.16em; text-transform: uppercase;
+  color: var(--pal-text); max-width: 14ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  transition: opacity 140ms ease-out, color 180ms;
+}
+.cs-atk-target-name.crossfade-out { opacity: 0; }
+.cs-atk-target-name .strike {
+  position: absolute; left: 0; top: 50%; width: 100%; height: 1.5px; background: var(--tk-dmg-rest);
+  transform-origin: left; transform: scaleX(0);
+}
+.cs-atk-target-name.gone { color: var(--tk-dmg-rest); }
+.cs-atk-target-name.gone .strike { animation: strikeDraw 180ms linear forwards; }
+@keyframes strikeDraw { to { transform: scaleX(1); } }
+body.reduced-motion .cs-atk-target-name.gone .strike { animation: none; transform: scaleX(1); }
+.gone-suffix { opacity: 0; margin-left: 4px; }
+.gone-suffix.show { animation: goneSuffixIn 160ms ease-out 180ms forwards; }
+@keyframes goneSuffixIn { to { opacity: 1; } }
+body.reduced-motion .gone-suffix.show { animation: none; opacity: 1; }
+
+.cs-atk-cancel {
+  min-width: 44px; min-height: 44px; background: transparent; border: none; cursor: pointer;
+  color: var(--tk-dmg-rest); opacity: 0.7; font-family: var(--font-display); font-size: 17px;
+  transition: opacity 150ms; flex-shrink: 0;
+}
+.cs-atk-cancel:hover { opacity: 1; }
+.cs-atk-divider { width: 1px; align-self: stretch; margin: 14px 0; background: var(--pal-border); flex-shrink: 0; }
+
+.cs-atk-picker { flex: 1; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; align-items: center; min-width: 0; }
+.cs-atk-picker::-webkit-scrollbar { display: none; }
+.cs-atk-chip {
+  display: flex; align-items: center; gap: 6px; min-height: 44px; flex-shrink: 0;
+  background: transparent; border: 1px solid var(--pal-border); border-radius: 3px; cursor: pointer;
+  padding: 6px 12px; font-family: var(--font-ui); color: var(--pal-text); transition: border-color 150ms, opacity 180ms, transform 180ms;
+}
+.cs-atk-chip:hover { border-color: var(--pal-accent); }
+.cs-atk-chip .chip-name { font-size: 13px; white-space: nowrap; }
+.cs-atk-chip .chip-tohit { font-size: 11px; color: var(--pal-text-muted); }
+.cs-atk-chip .chip-glyph { font-size: 11px; color: var(--pal-gem); }
+.cs-atk-chip .chip-slot { font-size: 10px; color: var(--pal-text-muted); letter-spacing: 0.08em; margin-left: 2px; }
+.cs-atk-chip[data-state="spent"] { opacity: 0.55; }
+.cs-atk-chip-divider { width: 1px; align-self: stretch; margin: 10px 2px; background: var(--pal-border); flex-shrink: 0; }
+
+@keyframes chipFadeOut { to { opacity: 0; transform: scale(0.94); } }
+.cs-atk-picker.collapsing .cs-atk-chip:not(.chip-selected-pulse) { animation: chipFadeOut 180ms ease-out forwards; }
+.cs-atk-chip.chip-selected-pulse { border-color: var(--pal-accent); }
+
+@keyframes chipShake { 0%,100% { transform: translateX(0); } 16.6% { transform: translateX(-3px); } 33.3% { transform: translateX(3px); } 50% { transform: translateX(-3px); } 66.6% { transform: translateX(3px); } 83.3% { transform: translateX(-3px); } }
+.cs-atk-chip.shake { animation: chipShake 90ms linear; }
+@keyframes chipOpacityDip { 0%,100% { opacity: 1; } 50% { opacity: 0.5; } }
+.cs-atk-chip.shake-rm { animation: chipOpacityDip 90ms linear; }
+
+.cs-atk-chosen { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+@keyframes reverseFadeOut { to { opacity: 0; transform: scale(0.94); } }
+.cs-atk-chosen.reverse-out, .cs-atk-roll.reverse-out { animation: reverseFadeOut 180ms ease-out forwards; }
+
+.cs-atk-chosen-chip {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 44px;
+  background: var(--pal-accent-dim); border: 1px solid var(--pal-accent); border-radius: 3px; cursor: pointer;
+  padding: 5px 12px; font-family: var(--font-ui); flex-shrink: 0;
+}
+.cs-atk-chosen-name { font-size: 12px; letter-spacing: 0.06em; color: var(--pal-accent-bright); white-space: nowrap; }
+.cs-atk-chosen-expr {
+  font-family: var(--font-display); font-size: 13px; color: var(--pal-text); letter-spacing: 0.02em;
+  border-bottom: 1px dashed transparent; transition: border-color 150ms;
+}
+.cs-atk-chosen-expr:hover { border-color: var(--pal-text-muted); }
+.cs-atk-chosen-expr.frozen { color: var(--pal-text-muted); cursor: default; }
+.cs-atk-expr-input {
+  font-family: var(--font-display); font-size: 13px; color: var(--pal-text); background: var(--pal-surface-solid);
+  border: 1px solid var(--pal-accent); border-radius: 2px; padding: 1px 4px; width: 92px; outline: none;
+}
+.expr-error { font-family: var(--font-ui); font-size: 10px; color: var(--tk-dmg-rest); margin-top: 2px; }
+
+.cs-atk-adv-strip { display: flex; height: 32px; border: 1px solid var(--pal-border); border-radius: 3px; overflow: hidden; flex-shrink: 0; }
+.cs-atk-adv-btn {
+  background: transparent; border: none; border-right: 1px solid var(--pal-border); color: var(--pal-text-muted);
+  font-family: var(--font-ui); font-size: 10px; letter-spacing: 0.08em; text-transform: uppercase; padding: 0 10px;
+  cursor: pointer; min-width: 44px; transition: all 150ms;
+}
+.cs-atk-adv-btn:last-child { border-right: none; }
+.cs-atk-adv-btn.active { background: var(--pal-accent-dim); color: var(--pal-accent-bright); }
+.cs-atk-adv-btn:hover:not(.active) { color: var(--pal-text); }
+
+.cs-atk-result { display: flex; align-items: baseline; gap: 8px; }
+.cs-atk-result-total { font-family: var(--font-display); font-size: 28px; color: var(--pal-gem); line-height: 1; }
+.cs-atk-result-total.crit { color: var(--crit-color); }
+.cs-atk-result-total.fumble { color: var(--fumble-color); }
+@keyframes resultIn { from { transform: scale(0.85); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+.cs-atk-result-total.entering { animation: resultIn 240ms cubic-bezier(0.2,0.8,0.2,1); }
+body.reduced-motion .cs-atk-result-total.entering { animation: none; }
+@keyframes critGlowPulse { 0%,100% { text-shadow: 0 0 0 transparent; } 50% { text-shadow: 0 0 22px var(--crit-glow); } }
+.cs-atk-result-total.crit-glow { animation: critGlowPulse 420ms ease-in-out; }
+@keyframes fumbleShakeNum { 0%,100% { transform: translateX(0); } 20% { transform: translateX(-5px); } 40% { transform: translateX(5px); } 60% { transform: translateX(-3px); } 80% { transform: translateX(3px); } }
+.cs-atk-result-total.fumble-shake { animation: fumbleShakeNum 420ms ease-in-out; }
+body.reduced-motion .cs-atk-result-total.crit-glow,
+body.reduced-motion .cs-atk-result-total.fumble-shake { animation: none; }
+
+.cs-atk-result-dice { font-family: var(--font-ui); font-size: 11px; color: var(--pal-text-muted); white-space: nowrap; }
+@keyframes diceIn { from { opacity: 0; } to { opacity: 1; } }
+.cs-atk-result-dice.entering { animation: diceIn 160ms ease-out 80ms both; }
+body.reduced-motion .cs-atk-result-dice.entering { animation: none; }
+
+.cs-atk-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; flex-shrink: 0; }
+.btn-primary {
+  background: rgba(18,58,78,0.5); border: 1px solid var(--pal-accent); border-radius: 3px; color: var(--pal-accent-bright);
+  font-family: var(--font-ui); font-size: 13px; letter-spacing: 0.1em; padding: 9px 20px; cursor: pointer;
+  min-height: 44px; min-width: 96px; text-transform: uppercase; transition: all 150ms;
+}
+.btn-primary:hover { background: rgba(18,58,78,0.8); box-shadow: 0 0 10px rgba(106,143,168,0.3); }
+.btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+.cs-atk-secondary {
+  background: transparent; border: 1px solid var(--pal-border); border-radius: 3px; color: var(--pal-text-muted);
+  font-family: var(--font-ui); font-size: 12px; letter-spacing: 0.1em; padding: 8px 14px; cursor: pointer;
+  min-height: 44px; text-transform: uppercase; transition: all 150ms;
+}
+.cs-atk-secondary:hover { border-color: var(--pal-accent); color: var(--pal-accent-bright); }
+@keyframes rollBtnIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }
+.roll-enter { animation: rollBtnIn 120ms ease-out 60ms both; }
+body.reduced-motion .roll-enter { animation: none; }
+
+/* narrow-band micro overrides (<380px demo) */
+.cs-atk-bar.micro .chip-tohit,
+.cs-atk-bar.micro .cs-atk-result-dice { display: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   ROLL OVERLAY — §5 new spec, Attack-Bar-only
+   ═══════════════════════════════════════════════════════════════════════ */
+.roll-overlay {
+  position: absolute; inset: 0; z-index: 200; display: none; align-items: center; justify-content: center;
+  cursor: pointer;
+}
+.roll-overlay.active { display: flex; }
+.ro-scrim { position: absolute; inset: 0; background: rgba(4,6,10,0.6); opacity: 0; transition: opacity 180ms ease-out; }
+.roll-overlay.active .ro-scrim { opacity: 1; }
+body.reduced-motion .ro-scrim { transition-duration: 0ms; }
+.ro-number {
+  position: relative; font-family: var(--font-display); font-size: 96px; line-height: 1; color: var(--pal-gem);
+  text-shadow: 0 0 30px rgba(0,0,0,0.6);
+}
+.ro-number.crit { color: var(--crit-color); }
+.ro-number.fumble { color: var(--fumble-color); }
+.ro-number.settle { animation: roNumSettle 200ms cubic-bezier(0.2,0.8,0.2,1); }
+@keyframes roNumSettle { from { transform: scale(0.85); opacity: 0.5; } to { transform: scale(1); opacity: 1; } }
+.ro-number.crit-glow { animation: critGlowPulse 420ms ease-in-out; }
+.ro-number.fumble-shake { animation: fumbleShakeNum 420ms ease-in-out; }
+body.reduced-motion .ro-number.settle,
+body.reduced-motion .ro-number.crit-glow,
+body.reduced-motion .ro-number.fumble-shake { animation: none; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 2 — RETICLE ANATOMY CLOSE-UP
+   ═══════════════════════════════════════════════════════════════════════ */
+.anatomy-row { display: flex; gap: 60px; align-items: center; flex-wrap: wrap; position: relative; padding: 20px 0; }
+.anatomy-stage { position: relative; width: 240px; height: 240px; flex-shrink: 0; }
+.anatomy-token { position: absolute; left: 50%; top: 50%; width: 120px; height: 120px; transform: translate(-50%,-50%); }
+.anatomy-token .tk-portrait-wrap { border-width: 5px; }
+.anatomy-token .tk-target-ring { width: 192px; height: 192px; }
+.anatomy-token .tk-target-ring .arc-half.arc-underlay { stroke-width: 8; }
+.anatomy-token .tk-target-ring .arc-half.arc-stroke { stroke-width: 4; }
+.anatomy-legend-list { flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 12px; }
+.anatomy-legend-item { display: flex; gap: 10px; align-items: flex-start; font-family: var(--font-body); font-size: 13px; color: var(--pal-text-muted); line-height: 1.5; }
+.anatomy-legend-item b { color: var(--pal-accent-bright); font-family: var(--font-ui); font-weight: normal; letter-spacing: 0.04em; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 3 — STATES REFERENCE STRIP
+   ═══════════════════════════════════════════════════════════════════════ */
+.states-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.state-card { background: var(--pal-surface); border: 1px solid var(--pal-border); border-radius: 5px; overflow: hidden; }
+.state-card-label { padding: 10px 14px; font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-accent-bright); border-bottom: 1px solid var(--pal-border); }
+.state-card-stage { position: relative; height: 64px; background: var(--pal-surface-solid); }
+.state-card-stage .cs-atk-bar { position: static; height: 100%; transform: none; opacity: 1; }
+.state-card-desc { padding: 10px 14px; font-family: var(--font-body); font-size: 12px; font-style: italic; color: var(--pal-text-dim); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 4 — GESTURE EXPLAINER
+   ═══════════════════════════════════════════════════════════════════════ */
+.gesture-table { width: 100%; border-collapse: collapse; margin-top: 4px; }
+.gesture-table th, .gesture-table td { text-align: left; padding: 10px 14px; border-bottom: 1px solid var(--pal-border); font-family: var(--font-body); font-size: 13px; color: var(--pal-text-body); }
+.gesture-table th { font-family: var(--font-ui); font-size: 10.5px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-text-dim); }
+.gesture-table td.result { font-family: var(--font-ui); color: var(--pal-accent-bright); letter-spacing: 0.06em; }
+.gesture-table code { font-family: var(--font-display); color: var(--pal-gem); }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   SECTION 5 — RESPONSIVE LADDER
+   ═══════════════════════════════════════════════════════════════════════ */
+.ladder-row { display: flex; gap: 20px; flex-wrap: wrap; align-items: flex-start; }
+.rl-item { display: flex; flex-direction: column; gap: 8px; max-width: 220px; }
+.rl-frame { border: 1px solid var(--pal-border-vis); border-radius: 4px; overflow: hidden; background: var(--pal-surface-solid); position: relative; }
+.rl-frame .cs-atk-bar { position: static; transform: none; opacity: 1; }
+.rl-label { font-family: var(--font-ui); font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--pal-text-muted); }
+.rl-px { font-family: var(--font-display); font-size: 10.5px; color: var(--pal-gem); }
+.rl-note { font-family: var(--font-body); font-style: italic; font-size: 11px; color: var(--pal-text-dim); line-height: 1.4; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   LEGEND
+   ═══════════════════════════════════════════════════════════════════════ */
+.legend { background: var(--pal-surface); border: 1px solid var(--pal-border); border-radius: 5px; padding: 24px 28px; margin-top: 12px; }
+.legend-title { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.16em; color: var(--pal-accent-bright); margin-bottom: 16px; text-transform: uppercase; }
+.legend-items { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 30px; }
+@media (max-width: 640px) { .legend-items { grid-template-columns: 1fr; } }
+.legend-item { display: flex; gap: 10px; align-items: flex-start; }
+.legend-num { font-family: var(--font-display); font-size: 12px; color: var(--pal-accent); flex-shrink: 0; min-width: 16px; }
+.legend-text { font-family: var(--font-body); font-size: 12.5px; color: var(--pal-text-muted); line-height: 1.55; }
+
+.amb-note {
+  font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.04em; color: var(--pal-text-dim);
+  background: rgba(160,192,208,0.06); border: 1px solid rgba(160,192,208,0.2); border-radius: 3px;
+  padding: 8px 12px; margin-top: 10px; line-height: 1.6;
+}
+</style>
+</head>
+<body>
+
+<!--
+  AMBIGUITY FLAGS (implemented as the most reasonable interpretation per instructions —
+  see also the .amb-note callouts placed inline near the relevant controls):
+
+  1. §7.2's "Enemy token (already targeted) → tap → clears" row is not explicitly scoped
+     to a phase, while the ARMED-row directly below it is scoped to "a different one".
+     Interpreted here as: re-tapping the SAME targeted token only untargets while in PICK
+     (no attack chosen yet — cheap/transient). While ARMED/RESULT, re-tapping the same
+     token is a no-op; only the explicit × clears, consistent with the brief's own stated
+     PICK/ARMED asymmetry principle ("cheap state is cheap to lose; committed state
+     requires an explicit ×").
+
+  2. The chip-translate half of "PICK → ARMED" ("chosen chip translates to the chip slot")
+     is approximated here via a crossfade/pulse-then-swap choreography rather than a true
+     FLIP position interpolation — a production build would want exact position
+     interpolation; this prototype captures the timing and the "survived vs. got out of
+     the way" feeling within the 180ms/120ms+60ms windows specified.
+
+  3. "Fixed to the bottom edge of the session-mode viewport" (§3.2) and the Roll overlay's
+     "full-viewport" surface (§5) are both scoped to this demo's .demo-viewport frame
+     rather than the actual browser viewport, so the rest of this review page stays
+     scrollable/usable alongside the live demo. Visually identical in every other respect
+     (opacity, z-index stacking, dimensions, animation).
+-->
+
+<header class="topbar">
+  <div class="topbar-row">
+    <div class="topbar-title">Attack Targeting Flow — Story 57</div>
+    <div class="topbar-meta">Design prototype · Ocean palette · brief resolved 2026-08-06</div>
+  </div>
+  <div class="debug-panel">
+    <div class="debug-group">
+      <label class="tswitch" id="rmSwitch">
+        <input type="checkbox" id="rmToggle" />
+        <span class="tswitch-track"><span class="tswitch-knob"></span></span>
+        <span class="tswitch-text">Reduced Motion</span>
+      </label>
+    </div>
+    <div class="debug-group">
+      <span class="debug-label">Next Roll</span>
+      <div class="seg" id="outcomeSeg">
+        <button class="seg-btn active" data-outcome="normal">Normal</button>
+        <button class="seg-btn" data-outcome="crit">Crit (Nat 20)</button>
+        <button class="seg-btn" data-outcome="fumble">Fumble (Nat 1)</button>
+      </div>
+    </div>
+    <div class="debug-group">
+      <label class="cbx"><input type="checkbox" id="battleModeToggle" checked /><span>Battle Mode Active</span></label>
+    </div>
+    <div class="debug-group">
+      <label class="cbx"><input type="checkbox" id="hasAttacksToggle" checked /><span>Has Rollable Attacks</span></label>
+    </div>
+    <div class="debug-group">
+      <label class="cbx"><input type="checkbox" id="hideOwnToggle" /><span>Hide Own Token</span></label>
+    </div>
+    <div class="debug-group">
+      <button class="btn-ghost" id="btnRotate">⟲ Rotate Map 90°</button>
+      <button class="btn-ghost" id="btnNextTurn">▶ Next Turn</button>
+      <button class="btn-ghost" id="btnGone" disabled>Simulate Target Gone</button>
+      <button class="btn-ghost" id="btnReset">↺ Reset Demo</button>
+    </div>
+  </div>
+  <div class="hud-line" id="hudLine">Gesture HUD — press and hold any NPC token below to see live elapsed-ms / moved-px readings.</div>
+</header>
+
+<div class="page-body">
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     1 · LIVE INTERACTIVE DEMO
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec1">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 1 of 5 — Primary Scenario</div>
+    <div class="pr-section-title">Live Battle Map — Declare, Arm, Roll</div>
+    <div class="pr-section-desc">
+      One battle-mode map: three NPC tokens (Goblin 1, Goblin 2 — downed at 0 HP, Bandit Captain) and
+      Eoghan's own token. <b style="color:var(--pal-accent-bright); font-style:normal;">Tap</b> an enemy
+      token (&lt;500ms, &lt;8px movement) to declare a target; <b style="color:var(--pal-accent-bright); font-style:normal;">hold</b>
+      it (≥500ms, &lt;8px) to inspect instead; drag &gt;8px anywhere and it's a pan, never a declare. Use the
+      debug controls above to demo reduced motion, forced crit/fumble, the two "targeting disarmed" edge
+      cases, and map rotation.
+    </div>
+  </div>
+
+  <div class="demo-shell">
+    <div class="demo-subtabs">
+      <button class="demo-subtab active" data-subtab="map">Map</button>
+      <button class="demo-subtab" data-subtab="combat">Combat</button>
+    </div>
+    <div class="demo-viewport">
+      <div class="demo-map-wrap" id="mapWrap">
+        <div class="map-canvas" id="mapCanvas"></div>
+        <div class="combat-subtab-panel" id="combatPanel">
+          <div class="csp-title">Combat Sub-Tab</div>
+          <div class="csp-body">
+            Spell slots / weapon quick-reference would render here — unaffected by this story.
+            Notice the Attack Bar below stays mounted and keeps the target name visible even though
+            the map (and its reticle) isn't — this is the "survives a sub-tab switch" edge case (§10.8).
+          </div>
+        </div>
+      </div>
+      <div class="cs-atk-bar" id="atkBar" data-state="hidden"></div>
+      <div class="roll-overlay" id="rollOverlay">
+        <div class="ro-scrim"></div>
+        <div class="ro-number" id="roNumber">--</div>
+      </div>
+      <div class="callout" style="top:10px; left:10px;" id="rotateCallout">Reticle needs zero extra CSS at any rotation — it's a child of the counter-rotated token chip</div>
+    </div>
+  </div>
+  <div class="amb-note">
+    Ambiguity flag: re-tapping an already-targeted token only untargets while in PICK; once ARMED/RESULT
+    it's a no-op and requires the explicit × (see HTML comment at top of file for full reasoning).
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     2 · RETICLE ANATOMY
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec2">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 2 of 5</div>
+    <div class="pr-section-title">Reticle Anatomy — §3.1</div>
+    <div class="pr-section-desc">
+      Four diagonal 60° arcs centred at 45°/135°/225°/315°, radius = faction-ring radius + 3px. The N/E/S/W
+      gaps are deliberate clearance for Story 54's ◇ slot (12 o'clock) and Story 53's left-edge badge column
+      (9 o'clock). Tinted with the viewing player's own <code>--pal-accent-bright</code>, not a universal
+      colour — this is private intent, not a shared board truth.
+    </div>
+  </div>
+  <div class="anatomy-row">
+    <div class="anatomy-stage" id="anatomyStage"></div>
+    <div class="anatomy-legend-list">
+      <div class="anatomy-legend-item"><b>Underlay stroke</b> — rgba(0,0,0,0.55), 3px, sits beneath the tinted stroke so the reticle reads on any of the 8 palettes and against any terrain.</div>
+      <div class="anatomy-legend-item"><b>Accent stroke</b> — var(--pal-accent-bright), 1.5px, linecap round. The viewing player's own colour — "this is mine."</div>
+      <div class="anatomy-legend-item"><b>N/E/S/W gaps</b> — 0°/90°/180°/270° stay clear year-round for Story 54's ◇ marker and Story 53's condition badge column.</div>
+      <div class="anatomy-legend-item"><b>Lives inside .token-chip</b> — inherits Story 45's counter-rotation automatically; no correction code needed at any of the four map rotations.</div>
+      <div class="anatomy-legend-item"><b>Entrance</b> — group scale 1.25→1.0 + per-arc stroke-dashoffset draw from each arc's midpoint outward, 200ms cubic-bezier(0.2,0.8,0.2,1). "The arcs converging is the lock."</div>
+      <div class="anatomy-legend-item"><b>At rest</b> — opacity 0.70↔1.00 breathe, 2.4s ease-in-out infinite alternate. Ambient — readable without looking directly at it.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     3 · BAR STATES REFERENCE STRIP
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec3">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 3 of 5</div>
+    <div class="pr-section-title">The Four Bar States, At A Glance — §3.3</div>
+    <div class="pr-section-desc">
+      Static reference snapshots of every state the live demo above walks through, including the
+      target-removed GONE state. <code>ATTACK → ⚔ DAMAGE → ↺ AGAIN</code> is the verbal ritual at a real
+      table — "seventeen" / "hit" / "eight damage."
+    </div>
+  </div>
+  <div class="states-grid" id="statesGrid"></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     4 · GESTURE DISCRIMINATOR
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec4">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 4 of 5</div>
+    <div class="pr-section-title">The Gesture Discriminator — §7.1</div>
+    <div class="pr-section-desc">
+      The single most load-bearing pair of constants in the brief. Try it live in Section 1 — press an NPC
+      token and watch the HUD count elapsed ms and moved px in real time before you release.
+    </div>
+  </div>
+  <table class="gesture-table">
+    <thead><tr><th>Gesture on an NPC token</th><th>Threshold</th><th>Result</th></tr></thead>
+    <tbody>
+      <tr><td>pointerdown → up</td><td><code>&lt;500ms</code>, <code>&lt;8px</code></td><td class="result">Declare target (or untarget if already targeted, PICK only)</td></tr>
+      <tr><td>pointerdown → up</td><td><code>≥500ms</code>, <code>&lt;8px</code></td><td class="result">Existing hover/long-press detail card (Story 53) — no targeting</td></tr>
+      <tr><td>pointer moves</td><td><code>&gt;8px</code></td><td class="result">Map pan (unchanged) — never a declare, regardless of duration</td></tr>
+    </tbody>
+  </table>
+  <div class="pr-section-desc" style="margin-top:16px;">
+    This inverts today's tap-priority on enemy tokens deliberately — on a combat surface the fast, cheap
+    gesture belongs to the frequent action, inspection is the rare one. Zero collision with Story 34: targeting
+    is NPC-only, dragging is own-PC-only, and PC tokens (Eoghan, below-left) are completely untouched by this
+    story — try tapping Eoghan's own token to see the unchanged behaviour.
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     5 · SIZE-DEGRADATION LADDER
+     ═══════════════════════════════════════════════════════════════════════ -->
+<section class="pr-section" id="sec5">
+  <div class="pr-section-header">
+    <div class="pr-section-num">Section 5 of 5</div>
+    <div class="pr-section-title">Size-Degradation Ladder — §9</div>
+    <div class="pr-section-desc">
+      The Roll button, the target name, and the result total never truncate at any step — they're the reason
+      the bar exists. Everything else absorbs the squeeze first.
+    </div>
+  </div>
+  <div class="ladder-row" id="ladderRow"></div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════════════════
+     LEGEND
+     ═══════════════════════════════════════════════════════════════════════ -->
+<div class="legend">
+  <div class="legend-title">Legend / Implementation Notes</div>
+  <div class="legend-items">
+    <div class="legend-item"><span class="legend-num">1</span><span class="legend-text">The Attack Bar and Roll Overlay are scoped to the demo-frame viewport (Section 1's dashed boundary), not the real browser viewport, purely so the rest of this review page stays usable — dimensions, opacity, and z-index stacking are otherwise faithful to the brief.</span></div>
+    <div class="legend-item"><span class="legend-num">2</span><span class="legend-text">"Simulate Target Gone" fires the GONE sequence immediately for reviewability; in the real app this triggers only after two consecutive poll ticks of absence (§8), which this prototype does not simulate polling for.</span></div>
+    <div class="legend-item"><span class="legend-num">3</span><span class="legend-text">Fake/canned roll math throughout, as directed — no real dice probability. The "Next Roll" selector force-picks Normal/Crit(Nat 20)/Fumble(Nat 1) so both treatments are reachable on demand.</span></div>
+    <div class="legend-item"><span class="legend-num">4</span><span class="legend-text">Crit gold / fumble red colours and the 420ms glow/shake keyframes are reused verbatim from the existing dice roller prototype (design/prototypes/dice-roller.html) — no new roll-state colours invented.</span></div>
+    <div class="legend-item"><span class="legend-num">5</span><span class="legend-text">"Battle Mode Active" / "Has Rollable Attacks" toggles demo edge cases #1 and #2 (§10) — with either off, NPC tokens fall back to today's plain tap→detail-card behaviour and the bar never mounts.</span></div>
+    <div class="legend-item"><span class="legend-num">6</span><span class="legend-text">Goblin 2 is pre-set to 0 HP (downed tint) to demonstrate edge case #4 — declaring against a downed target still works; the app never adjudicates death.</span></div>
+    <div class="legend-item"><span class="legend-num">7</span><span class="legend-text">"Next Turn" only advances a cosmetic round counter — it deliberately does not clear a live declaration, demonstrating edge case #7 (opportunity attacks survive turn changes).</span></div>
+    <div class="legend-item"><span class="legend-num">8</span><span class="legend-text">"⟲ Rotate Map 90°" rotates the whole canvas while every token (and therefore its reticle, which lives inside it) counter-rotates to stay upright, at all four rotations, with no reticle-specific code.</span></div>
+    <div class="legend-item"><span class="legend-num">9</span><span class="legend-text">The picker → chosen-chip transition is an approximated crossfade/pulse choreography rather than true FLIP position interpolation (see top-of-file HTML comment) — timing windows match the brief exactly; exact chip-to-slot translation is a production refinement.</span></div>
+    <div class="legend-item"><span class="legend-num">10</span><span class="legend-text">Section 3's states strip and Section 5's ladder render the same <code>.cs-atk-bar</code> markup/CSS as the live demo, statically, for at-a-glance review without performing the full gesture flow.</span></div>
+  </div>
+</div>
+
+</div>
+
+<script>
+(function(){
+  'use strict';
+
+  /* ═══════════════════════════ constants (load-bearing, per brief) ═══════════════════════════ */
+  var MOVE_PX = 8;
+  var HOLD_MS = 500;
+  var RETICLE_DRAW_MS = 200;
+  var RETICLE_CLEAR_MS = 140;
+  var BAR_ENTER_MS = 220;
+  var BAR_EXIT_MS = 160;
+  var COLLAPSE_MS = 180;
+  var ROLL_ENTER_MS = 240;
+  var RETARGET_OVERLAP_MS = 60;
+  var GONE_HOLD_MS = 1400;
+  var GONE_STRIKE_MS = 180;
+  var SHAKE_MS = 90;
+  var OVERLAY_CYCLE_MS = 90;
+  var OVERLAY_RESOLVE_MS = 1050;
+  var OVERLAY_DISMISS_MS = 400;
+
+  /* ═══════════════════════════ data ═══════════════════════════ */
+  var TOKENS = {
+    'eoghan':        { name: 'Eoghan', isPC: true,  x: 16, y: 80 },
+    'goblin1':       { name: 'Goblin 1', hp: 7,  hpMax: 7,  x: 54, y: 26 },
+    'goblin2':       { name: 'Goblin 2', hp: 0,  hpMax: 7,  x: 74, y: 60, downed: true },
+    'banditcaptain': { name: 'Bandit Captain', hp: 22, hpMax: 33, x: 36, y: 56 }
+  };
+  var NPC_IDS = ['goblin1','goblin2','banditcaptain'];
+
+  var WEAPONS = [
+    { kind: 'weapon', id: 'w-longsword', name: 'Longsword', toHitLabel: '+7', atkExpr: '1d20+7', dmgExpr: '1d8+4 slashing' },
+    { kind: 'weapon', id: 'w-shortbow',  name: 'Shortbow',  toHitLabel: '+5', atkExpr: '1d20+5', dmgExpr: '1d6+2 piercing' }
+  ];
+  var SPELLS = [
+    { kind: 'spell', id: 's-guidingbolt',  name: 'Guiding Bolt',  toHitLabel: '+5', atkExpr: '1d20+5', dmgExpr: '4d6 radiant',   state: 'ready', slots: 2 },
+    { kind: 'spell', id: 's-inflictwounds', name: 'Inflict Wounds', toHitLabel: '+5', atkExpr: '1d20+5', dmgExpr: '3d10 necrotic', state: 'spent', slots: 0 }
+  ];
+  function findAttack(kind, id) {
+    var list = kind === 'weapon' ? WEAPONS : SPELLS;
+    for (var i = 0; i < list.length; i++) if (list[i].id === id) return list[i];
+    return null;
+  }
+
+  /* ═══════════════════════════ global demo state ═══════════════════════════ */
+  var reducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var nextOutcome = 'normal';
+  var battleModeOn = true;
+  var hasAttacksOn = true;
+  var declaration = null; // { targetId, targetName, attack, phase, advMode, atkRoll, dmgRoll }
+  var goneTokenIds = {};  // tokenId -> true once "removed"
+
+  /* ═══════════════════════════ helpers ═══════════════════════════ */
+  function targetingArmed() { return battleModeOn && hasAttacksOn; }
+  function $(sel, root) { return (root || document).querySelector(sel); }
+  function $all(sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); }
+
+  function polar(cx, cy, r, deg) {
+    var rad = deg * Math.PI / 180;
+    return [cx + r * Math.sin(rad), cy - r * Math.cos(rad)];
+  }
+  function arcHalfPath(cx, cy, r, fromDeg, toDeg) {
+    var p1 = polar(cx, cy, r, fromDeg), p2 = polar(cx, cy, r, toDeg);
+    var large = Math.abs(toDeg - fromDeg) > 180 ? 1 : 0;
+    return 'M ' + p1[0].toFixed(2) + ' ' + p1[1].toFixed(2) + ' A ' + r + ' ' + r + ' 0 ' + large + ' 1 ' + p2[0].toFixed(2) + ' ' + p2[1].toFixed(2);
+  }
+  function buildReticleMarkup(size, cx, cy, r) {
+    var centers = [45, 135, 225, 315];
+    var underlay = '', stroke = '';
+    for (var i = 0; i < centers.length; i++) {
+      var c = centers[i];
+      var halfA = arcHalfPath(cx, cy, r, c, c - 30);
+      var halfB = arcHalfPath(cx, cy, r, c, c + 30);
+      underlay += '<path class="arc-half arc-underlay" d="' + halfA + '"></path><path class="arc-half arc-underlay" d="' + halfB + '"></path>';
+      stroke   += '<path class="arc-half arc-stroke" d="'   + halfA + '"></path><path class="arc-half arc-stroke" d="'   + halfB + '"></path>';
+    }
+    return '<svg class="tk-target-ring" viewBox="0 0 ' + size + ' ' + size + '" width="' + size + '" height="' + size + '">' +
+           '<g class="ring-anim-group"><g class="underlay-g">' + underlay + '</g><g class="stroke-g">' + stroke + '</g></g></svg>';
+  }
+  function primeArcLengths(svgEl) {
+    $all('.arc-half', svgEl).forEach(function(p) {
+      var len = p.getTotalLength();
+      p.style.setProperty('--len', len);
+      p.style.strokeDasharray = len;
+      p.style.strokeDashoffset = 0;
+    });
+  }
+
+  /* ═══════════════════════════ dice expr helpers (fake math, canned results OK) ═══════════════════════════ */
+  var EXPR_RE = /^\s*(\d{0,2})d(\d{1,3})\s*([+-]\s*\d{1,3})?\s*([a-zA-Z]*)\s*$/i;
+  function validExpr(str) { return EXPR_RE.test(str); }
+  function parseExpr(str) {
+    var m = EXPR_RE.exec(str || '');
+    if (!m) return { count: 1, die: 20, mod: 0, type: '' };
+    return {
+      count: m[1] ? parseInt(m[1], 10) : 1,
+      die: parseInt(m[2], 10),
+      mod: m[3] ? parseInt(m[3].replace(/\s+/g, ''), 10) : 0,
+      type: m[4] || ''
+    };
+  }
+  function advRollD20(advMode, forced) {
+    function roll() { return forced != null ? forced : (1 + Math.floor(Math.random() * 20)); }
+    if (advMode === 'normal') return [roll()];
+    var a = roll(), b = forced != null ? forced : (1 + Math.floor(Math.random() * 20));
+    return [a, b];
+  }
+  function fakeRollAtk(attack, advMode, outcome) {
+    var forced = outcome === 'crit' ? 20 : (outcome === 'fumble' ? 1 : null);
+    var rolls = advRollD20(advMode, forced);
+    var used;
+    if (advMode === 'advantage') used = Math.max.apply(null, rolls);
+    else if (advMode === 'disadvantage') used = Math.min.apply(null, rolls);
+    else used = rolls[0];
+    var p = parseExpr(attack.exprAtk);
+    var total = used + p.mod;
+    var diceLabel = rolls.length > 1 ? '[' + rolls.join(',') + ']' : '[' + used + ']';
+    var modLabel = p.mod >= 0 ? ('+' + p.mod) : ('' + p.mod);
+    return { kind: 'atk', total: total, diceLabel: diceLabel, modLabel: modLabel, crit: used === 20, fumble: used === 1 };
+  }
+  function fakeRollDmg(attack) {
+    var p = parseExpr(attack.exprDmg);
+    var rolls = [];
+    for (var i = 0; i < Math.max(1, p.count); i++) rolls.push(1 + Math.floor(Math.random() * p.die));
+    var sum = rolls.reduce(function(a, b) { return a + b; }, 0);
+    var total = sum + p.mod;
+    var diceLabel = '[' + rolls.join(',') + ']' + (p.type ? (' ' + p.type) : '');
+    var modLabel = p.mod ? (p.mod >= 0 ? ('+' + p.mod) : ('' + p.mod)) : '';
+    return { kind: 'dmg', total: total, diceLabel: diceLabel, modLabel: modLabel, crit: false, fumble: false };
+  }
+
+  /* ═══════════════════════════ HUD ═══════════════════════════ */
+  var hudLine = $('#hudLine');
+  function updateHud(text) { hudLine.innerHTML = text; }
+
+  /* ═══════════════════════════ token DOM builders ═══════════════════════════ */
+  var mapCanvas = $('#mapCanvas');
+
+  function buildTokenEl(id) {
+    var t = TOKENS[id];
+    var wrap = document.createElement('div');
+    wrap.className = 'tk-wrap ' + (t.isPC ? 'pc-own' : 'npc') + (t.downed ? ' downed' : '');
+    wrap.id = 'tok-' + id;
+    wrap.style.left = t.x + '%';
+    wrap.style.top = t.y + '%';
+    wrap.style.setProperty('--ring-color', t.isPC ? 'var(--ring-pc-own)' : 'var(--ring-npc)');
+
+    var pw = document.createElement('div');
+    pw.className = 'tk-portrait-wrap';
+    pw.innerHTML = '<span class="tk-initial">' + t.name.charAt(0) + '</span>';
+    wrap.appendChild(pw);
+
+    var name = document.createElement('div');
+    name.className = 'tk-name-label';
+    name.textContent = t.name;
+    wrap.appendChild(name);
+
+    if (!t.isPC) {
+      var hp = document.createElement('div');
+      hp.className = 'tk-hp-label';
+      hp.textContent = t.hp + '/' + t.hpMax + ' HP' + (t.downed ? ' — 0 HP, still targetable' : '');
+      wrap.appendChild(hp);
+    }
+
+    var reticleHolder = document.createElement('div');
+    reticleHolder.className = 'reticle-holder';
+    reticleHolder.id = 'reticle-' + id;
+    wrap.appendChild(reticleHolder);
+
+    var card = document.createElement('div');
+    card.className = 'tk-detail-card';
+    card.id = 'card-' + id;
+    card.innerHTML = t.isPC
+      ? '<div class="dc-name">' + t.name + '</div><div class="dc-note">Own token — Story 34 drag unchanged, not reimplemented in this prototype.</div>'
+      : '<div class="dc-name">' + t.name + '</div><div class="dc-hp">' + t.hp + ' / ' + t.hpMax + ' HP</div><div class="dc-note">Story 53 detail card — now hold-only on NPC tokens (§7.1).</div>';
+    wrap.appendChild(card);
+
+    return wrap;
+  }
+
+  function renderMap() {
+    mapCanvas.innerHTML = '';
+    var hideOwn = $('#hideOwnToggle').checked;
+    Object.keys(TOKENS).forEach(function(id) {
+      if (id === 'eoghan' && hideOwn) return;
+      if (goneTokenIds[id]) return;
+      var el = buildTokenEl(id);
+      mapCanvas.appendChild(el);
+      if (TOKENS[id].isPC) attachPcGesture(el, id);
+      else attachNpcGesture(el, id);
+    });
+    if (declaration && declaration.targetId && !goneTokenIds[declaration.targetId]) {
+      drawReticle(declaration.targetId, true);
+    }
+  }
+
+  /* ═══════════════════════════ reticle control ═══════════════════════════ */
+  function drawReticle(tokenId, resting) {
+    var holder = $('#reticle-' + tokenId);
+    if (!holder) return;
+    holder.innerHTML = buildReticleMarkup(64, 32, 32, 24);
+    var svg = holder.querySelector('.tk-target-ring');
+    primeArcLengths(svg);
+    if (reducedMotion) {
+      svg.classList.add('resting');
+      return;
+    }
+    svg.classList.add('entering');
+    void svg.offsetWidth;
+    setTimeout(function() {
+      svg.classList.remove('entering');
+      svg.classList.add('resting');
+    }, resting ? 0 : RETICLE_DRAW_MS);
+    if (resting) { svg.classList.remove('entering'); svg.classList.add('resting'); }
+  }
+  function clearReticle(tokenId, onDone) {
+    var holder = $('#reticle-' + tokenId);
+    if (!holder) { if (onDone) onDone(); return; }
+    var svg = holder.querySelector('.tk-target-ring');
+    if (!svg) { if (onDone) onDone(); return; }
+    if (reducedMotion) {
+      holder.innerHTML = '';
+      if (onDone) onDone();
+      return;
+    }
+    svg.classList.remove('resting', 'entering');
+    svg.classList.add('clearing');
+    setTimeout(function() {
+      holder.innerHTML = '';
+      if (onDone) onDone();
+    }, RETICLE_CLEAR_MS);
+  }
+
+  /* ═══════════════════════════ detail card (hold-only on NPC) ═══════════════════════════ */
+  var openCardId = null;
+  function showDetailCard(tokenId) {
+    hideDetailCard();
+    var card = $('#card-' + tokenId);
+    if (!card) return;
+    card.style.left = '46px';
+    card.style.top = '-6px';
+    card.classList.add('visible');
+    openCardId = tokenId;
+  }
+  function hideDetailCard() {
+    if (!openCardId) return;
+    var card = $('#card-' + openCardId);
+    if (card) card.classList.remove('visible');
+    openCardId = null;
+  }
+  document.addEventListener('pointerdown', function(e) {
+    if (openCardId && !e.target.closest('.tk-detail-card') && !e.target.closest('.tk-wrap')) hideDetailCard();
+  });
+
+  /* ═══════════════════════════ gesture discriminator — §7.1 ═══════════════════════════ */
+  function attachPcGesture(el, id) {
+    el.addEventListener('pointerdown', function(e) {
+      e.stopPropagation();
+      updateHud('<b>' + TOKENS[id].name + '</b> (own token) — tap→detail card / drag→move, both unchanged by this story (Story 34).');
+      showDetailCard(id);
+    });
+  }
+
+  function attachNpcGesture(el, id) {
+    var down = null, moved = false, holdTimer = null, hudTimer = null;
+
+    el.addEventListener('pointerdown', function(e) {
+      e.stopPropagation();
+      down = { t: performance.now(), x: e.clientX, y: e.clientY };
+      moved = false;
+      try { el.setPointerCapture(e.pointerId); } catch (err) {}
+
+      if (!targetingArmed()) {
+        updateHud('Targeting disarmed (' + (!battleModeOn ? 'battle mode off' : 'no rollable attacks') + ') — falls back to the existing plain tap-to-detail-card behaviour.');
+        return;
+      }
+
+      holdTimer = setTimeout(function() {
+        if (!moved) {
+          updateHud('<b>HOLD → inspect</b> — ' + TOKENS[id].name + ' (≥500ms, &lt;8px). Detail card only, no targeting.');
+          showDetailCard(id);
+        }
+      }, HOLD_MS);
+
+      hudTimer = setInterval(function() {
+        if (!down) return;
+        var elapsed = Math.round(performance.now() - down.t);
+        updateHud('pressing ' + TOKENS[id].name + ' — <b>' + elapsed + 'ms</b> elapsed / <b>0px</b> moved (threshold: 500ms hold, 8px move)');
+      }, 50);
+    });
+
+    el.addEventListener('pointermove', function(e) {
+      if (!down || moved) return;
+      var dx = e.clientX - down.x, dy = e.clientY - down.y;
+      var dist = Math.hypot(dx, dy);
+      if (dist > MOVE_PX) {
+        moved = true;
+        clearTimeout(holdTimer);
+        updateHud('<b>MOVE &gt; 8px detected → pan</b> — targeting cancelled for this press, exactly as panning the map today.');
+      }
+    });
+
+    function endPress(e) {
+      if (!down) return;
+      clearTimeout(holdTimer);
+      clearInterval(hudTimer);
+      var elapsed = performance.now() - down.t;
+      down = null;
+
+      if (!targetingArmed()) {
+        if (!moved) showDetailCard(id);
+        return;
+      }
+      if (moved) return;
+      if (elapsed >= HOLD_MS) return; // hold path already fired via timer
+      updateHud('<b>TAP → target</b> — ' + TOKENS[id].name + ' (' + Math.round(elapsed) + 'ms, &lt;8px).');
+      onTapTarget(id);
+    }
+    el.addEventListener('pointerup', endPress);
+    el.addEventListener('pointercancel', endPress);
+  }
+
+  /* ═══════════════════════════ declaration flow ═══════════════════════════ */
+  var atkBar = $('#atkBar');
+  var mapWrap = $('#mapWrap');
+  var btnGone = $('#btnGone');
+
+  function onTapTarget(id) {
+    if (!declaration) {
+      startDeclaration(id);
+      return;
+    }
+    if (declaration.targetId === id) {
+      if (declaration.phase === 'pick' && !declaration.attack) {
+        cancelDeclaration();
+      }
+      // ARMED/RESULT: no-op — must use × (asymmetry principle, see ambiguity note)
+      return;
+    }
+    retarget(id);
+  }
+
+  function startDeclaration(id) {
+    declaration = { targetId: id, targetName: TOKENS[id].name, attack: null, phase: 'pick', advMode: 'normal', atkRoll: null, dmgRoll: null };
+    drawReticle(id, false);
+    showBar();
+    btnGone.disabled = false;
+  }
+
+  function retarget(newId) {
+    var oldId = declaration.targetId;
+    var nameEl = $('.cs-atk-target-name', atkBar);
+    if (nameEl && !reducedMotion) nameEl.classList.add('crossfade-out');
+
+    clearReticle(oldId);
+    setTimeout(function() {
+      drawReticle(newId, false);
+    }, reducedMotion ? 0 : (RETICLE_CLEAR_MS - RETARGET_OVERLAP_MS));
+
+    declaration.targetId = newId;
+    declaration.targetName = TOKENS[newId].name;
+
+    setTimeout(function() {
+      renderBar();
+    }, reducedMotion ? 0 : 140);
+  }
+
+  function cancelDeclaration() {
+    if (!declaration) return;
+    var id = declaration.targetId;
+    clearReticle(id);
+    hideBar();
+    declaration = null;
+    btnGone.disabled = true;
+  }
+
+  function chooseAttack(kind, id) {
+    var attack = findAttack(kind, id);
+    if (!attack) return;
+    if (attack.state === 'spent') {
+      var btn = atkBar.querySelector('[data-kind="' + kind + '"][data-id="' + id + '"]');
+      if (btn) {
+        btn.classList.add(reducedMotion ? 'shake-rm' : 'shake');
+        setTimeout(function() { btn.classList.remove('shake', 'shake-rm'); }, SHAKE_MS);
+      }
+      return;
+    }
+    var commit = function() {
+      declaration.attack = {
+        kind: kind, id: id, name: attack.name,
+        exprAtk: attack.atkExpr, exprDmg: attack.dmgExpr
+      };
+      declaration.phase = 'armed';
+      declaration.advMode = 'normal';
+      declaration.atkRoll = null;
+      declaration.dmgRoll = null;
+      renderBar();
+      if (!reducedMotion) {
+        var rollBtn = $('.cs-atk-roll', atkBar);
+        if (rollBtn) rollBtn.classList.add('roll-enter');
+      }
+    };
+    if (reducedMotion) { commit(); return; }
+    var picker = $('.cs-atk-picker', atkBar);
+    var chosenBtn = atkBar.querySelector('[data-kind="' + kind + '"][data-id="' + id + '"]');
+    if (picker) picker.classList.add('collapsing');
+    if (chosenBtn) chosenBtn.classList.add('chip-selected-pulse');
+    setTimeout(commit, COLLAPSE_MS);
+  }
+
+  function reopenPicker() {
+    if (!declaration) return;
+    var commit = function() {
+      declaration.phase = 'pick';
+      declaration.attack = null;
+      declaration.atkRoll = null;
+      declaration.dmgRoll = null;
+      renderBar();
+    };
+    if (reducedMotion) { commit(); return; }
+    var chosen = $('.cs-atk-chosen', atkBar);
+    var rollBtn = $('.cs-atk-roll', atkBar);
+    if (chosen) chosen.classList.add('reverse-out');
+    if (rollBtn) rollBtn.classList.add('reverse-out');
+    setTimeout(commit, COLLAPSE_MS);
+  }
+
+  function doRoll(step) {
+    if (!declaration || !declaration.attack) return;
+    var attack = declaration.attack;
+    var result = step === 'atk'
+      ? fakeRollAtk(attack, declaration.advMode, nextOutcome)
+      : fakeRollDmg(attack);
+    if (step === 'atk') { declaration.atkRoll = result; declaration.phase = 'result-atk'; }
+    else { declaration.dmgRoll = result; declaration.phase = 'result-dmg'; }
+    renderBar();
+    playRollOverlay(result, step === 'atk');
+  }
+
+  function rollAgain() {
+    if (!declaration) return;
+    declaration.phase = 'armed';
+    declaration.atkRoll = null;
+    declaration.dmgRoll = null;
+    declaration.advMode = 'normal';
+    renderBar();
+  }
+
+  /* ═══════════════════════════ target-gone flow — §5 / §8 ═══════════════════════════ */
+  function triggerGone() {
+    if (!declaration) return;
+    var id = declaration.targetId;
+    var tokEl = $('#tok-' + id);
+    if (tokEl) tokEl.classList.add('gone-fade');
+    clearReticle(id);
+    btnGone.disabled = true;
+
+    var nameEl = $('.cs-atk-target-name', atkBar);
+    if (nameEl) {
+      nameEl.classList.remove('crossfade-out');
+      nameEl.innerHTML = TOKENS[id].name + '<span class="strike"></span><span class="gone-suffix">&nbsp;— GONE</span>';
+      void nameEl.offsetWidth;
+      nameEl.classList.add('gone');
+      var suffix = nameEl.querySelector('.gone-suffix');
+      if (suffix) suffix.classList.add('show');
+    }
+    // hide picker/chosen/actions during the GONE hold — nothing left to act on
+    var rest = ['.cs-atk-cancel', '.cs-atk-divider', '.cs-atk-picker', '.cs-atk-chosen', '.cs-atk-actions'];
+    rest.forEach(function(sel) { var el = $(sel, atkBar); if (el) el.style.display = 'none'; });
+
+    setTimeout(function() {
+      goneTokenIds[id] = true;
+      hideBar();
+      declaration = null;
+      renderMap();
+    }, GONE_HOLD_MS);
+  }
+
+  /* ═══════════════════════════ bar mount/unmount ═══════════════════════════ */
+  function showBar() {
+    atkBar.classList.remove('exiting');
+    renderBar();
+    void atkBar.offsetWidth;
+    atkBar.classList.add('visible');
+    mapWrap.classList.add('bar-open');
+    updateNarrowClass();
+  }
+  function hideBar() {
+    atkBar.classList.remove('visible');
+    atkBar.classList.add('exiting');
+    mapWrap.classList.remove('bar-open', 'narrow-open');
+    setTimeout(function() {
+      atkBar.classList.remove('exiting');
+      atkBar.innerHTML = '';
+    }, reducedMotion ? 0 : BAR_EXIT_MS);
+  }
+  function updateNarrowClass() {
+    var narrow = atkBar.offsetWidth < 560;
+    var micro = atkBar.offsetWidth < 380;
+    atkBar.classList.toggle('narrow', narrow);
+    atkBar.classList.toggle('micro', micro);
+    mapWrap.classList.toggle('narrow-open', narrow);
+  }
+
+  /* ═══════════════════════════ bar render ═══════════════════════════ */
+  function chipHtml(a) {
+    if (a.kind === 'weapon') {
+      return '<button class="cs-atk-chip" data-kind="weapon" data-id="' + a.id + '" data-action="pick">' +
+        '<span class="chip-name">' + a.name + '</span><span class="chip-tohit">' + a.toHitLabel + '</span></button>';
+    }
+    var spent = a.state === 'spent';
+    return '<button class="cs-atk-chip" data-kind="spell" data-id="' + a.id + '" data-state="' + a.state + '" data-action="pick">' +
+      '<span class="chip-glyph">✶</span><span class="chip-name">' + a.name + '</span>' +
+      (spent ? '<span class="chip-slot">SLOTS 0</span>' : '<span class="chip-tohit">' + a.toHitLabel + '</span>') +
+      '</button>';
+  }
+
+  function renderBar() {
+    if (!declaration) { atkBar.innerHTML = ''; return; }
+    var d = declaration;
+    var html = '';
+    html += '<button class="cs-atk-target" data-action="recenter"><span class="cs-atk-target-glyph">◎</span><span class="cs-atk-target-name">' + d.targetName + '</span></button>';
+    html += '<button class="cs-atk-cancel" data-action="cancel" title="Cancel declaration">×</button>';
+    html += '<div class="cs-atk-divider"></div>';
+
+    if (d.phase === 'pick') {
+      html += '<div class="cs-atk-picker">';
+      WEAPONS.forEach(function(w) { html += chipHtml(w); });
+      html += '<div class="cs-atk-chip-divider"></div>';
+      SPELLS.forEach(function(s) { html += chipHtml(s); });
+      html += '</div>';
+    } else {
+      var upcomingExpr, editable, showAdv;
+      if (d.phase === 'armed') { upcomingExpr = d.attack.exprAtk; editable = true; showAdv = true; }
+      else if (d.phase === 'result-atk') { upcomingExpr = d.attack.exprDmg; editable = true; showAdv = false; }
+      else { upcomingExpr = d.attack.exprDmg; editable = false; showAdv = false; }
+
+      html += '<div class="cs-atk-chosen">';
+      html += '<button class="cs-atk-chosen-chip" data-action="reopen">' +
+              '<span class="cs-atk-chosen-name">' + d.attack.name + '</span>' +
+              '<span class="cs-atk-chosen-expr' + (editable ? '' : ' frozen') + '" data-action="' + (editable ? 'expr-edit' : 'noop') + '" data-expr="' + upcomingExpr + '">' + upcomingExpr + '</span>' +
+              '</button>';
+      if (showAdv) {
+        html += '<div class="cs-atk-adv-strip">' +
+          '<button class="cs-atk-adv-btn' + (d.advMode === 'normal' ? ' active' : '') + '" data-action="adv" data-mode="normal">Normal</button>' +
+          '<button class="cs-atk-adv-btn' + (d.advMode === 'advantage' ? ' active' : '') + '" data-action="adv" data-mode="advantage">Adv</button>' +
+          '<button class="cs-atk-adv-btn' + (d.advMode === 'disadvantage' ? ' active' : '') + '" data-action="adv" data-mode="disadvantage">Dis</button>' +
+          '</div>';
+      }
+      if (d.phase === 'result-atk' || d.phase === 'result-dmg') {
+        var roll = d.phase === 'result-atk' ? d.atkRoll : d.dmgRoll;
+        var cf = roll.crit ? ' crit' : (roll.fumble ? ' fumble' : '');
+        html += '<div class="cs-atk-result">' +
+          '<span class="cs-atk-result-total entering' + cf + '">' + roll.total + '</span>' +
+          '<span class="cs-atk-result-dice entering">' + roll.diceLabel + (roll.modLabel ? (' ' + roll.modLabel) : '') + '</span>' +
+          '</div>';
+      }
+      html += '</div>';
+
+      html += '<div class="cs-atk-actions">';
+      if (d.phase === 'armed') {
+        html += '<button class="cs-atk-roll btn-primary" data-action="roll-attack">ATTACK</button>';
+      } else if (d.phase === 'result-atk') {
+        html += '<button class="cs-atk-roll btn-primary" data-action="roll-damage">⚔ DAMAGE</button>';
+        html += '<button class="cs-atk-secondary" data-action="roll-again">↺ AGAIN</button>';
+      } else {
+        html += '<button class="cs-atk-roll btn-primary" data-action="roll-again">↺ AGAIN</button>';
+      }
+      html += '</div>';
+    }
+    atkBar.innerHTML = html;
+    updateNarrowClass();
+
+    setTimeout(function() {
+      var total = $('.cs-atk-result-total', atkBar);
+      if (total && (total.classList.contains('crit') || total.classList.contains('fumble'))) {
+        total.classList.add(total.classList.contains('crit') ? 'crit-glow' : 'fumble-shake');
+      }
+    }, reducedMotion ? 0 : ROLL_ENTER_MS);
+  }
+
+  /* ═══════════════════════════ roll overlay — §5 new spec ═══════════════════════════ */
+  var rollOverlay = $('#rollOverlay');
+  var roNumber = $('#roNumber');
+  function playRollOverlay(result, isAtkStep) {
+    roNumber.className = 'ro-number';
+    rollOverlay.classList.add('active');
+    var dismissTimer = null;
+
+    function settle() {
+      roNumber.textContent = result.total;
+      if (isAtkStep && result.crit) roNumber.classList.add('crit');
+      if (isAtkStep && result.fumble) roNumber.classList.add('fumble');
+      if (!reducedMotion) {
+        roNumber.classList.add('settle');
+        setTimeout(function() {
+          if (isAtkStep && result.crit) roNumber.classList.add('crit-glow');
+          if (isAtkStep && result.fumble) roNumber.classList.add('fumble-shake');
+        }, 200);
+      }
+      dismissTimer = setTimeout(dismiss, OVERLAY_DISMISS_MS);
+    }
+    function dismiss() {
+      rollOverlay.classList.remove('active');
+    }
+    rollOverlay.onclick = function() {
+      clearTimeout(dismissTimer);
+      dismiss();
+    };
+
+    if (reducedMotion) {
+      settle();
+      return;
+    }
+    var elapsed = 0;
+    var cycle = setInterval(function() {
+      elapsed += OVERLAY_CYCLE_MS;
+      var faux = isAtkStep ? (1 + Math.floor(Math.random() * 20)) : (Math.floor(Math.random() * 30) + 4);
+      roNumber.textContent = faux;
+      if (elapsed >= OVERLAY_RESOLVE_MS) {
+        clearInterval(cycle);
+        settle();
+      }
+    }, OVERLAY_CYCLE_MS);
+  }
+
+  /* ═══════════════════════════ bar event delegation ═══════════════════════════ */
+  atkBar.addEventListener('click', function(e) {
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+    var action = el.getAttribute('data-action');
+    switch (action) {
+      case 'cancel': cancelDeclaration(); break;
+      case 'recenter':
+        var mc = mapCanvas;
+        mc.style.transition = 'filter 140ms ease-out';
+        mc.style.filter = 'brightness(1.35)';
+        setTimeout(function() { mc.style.filter = ''; }, 160);
+        updateHud('Target name tapped — map "re-centres" on ' + declaration.targetName + ' (flash stands in for a real pan/zoom recenter).');
+        break;
+      case 'reopen': reopenPicker(); break;
+      case 'pick':
+        chooseAttack(el.getAttribute('data-kind'), el.getAttribute('data-id'));
+        break;
+      case 'expr-edit': beginExprEdit(el); break;
+      case 'adv':
+        declaration.advMode = el.getAttribute('data-mode');
+        renderBar();
+        break;
+      case 'roll-attack': doRoll('atk'); break;
+      case 'roll-damage': doRoll('dmg'); break;
+      case 'roll-again': rollAgain(); break;
+      default: break;
+    }
+  });
+
+  function beginExprEdit(span) {
+    var current = span.getAttribute('data-expr');
+    var input = document.createElement('input');
+    input.className = 'cs-atk-expr-input';
+    input.value = current;
+    span.replaceWith(input);
+    input.focus();
+    input.select();
+
+    function commit(revert) {
+      var val = revert ? current : input.value.trim();
+      if (!revert && !validExpr(val)) {
+        showExprError(input);
+        return;
+      }
+      if (declaration.phase === 'armed') declaration.attack.exprAtk = val;
+      else declaration.attack.exprDmg = val;
+      renderBar();
+    }
+    input.addEventListener('blur', function() { commit(false); });
+    input.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); input.blur(); }
+      if (e.key === 'Escape') { e.preventDefault(); commit(true); }
+    });
+  }
+  function showExprError(input) {
+    var existing = input.parentNode.querySelector('.expr-error');
+    if (existing) return;
+    var err = document.createElement('div');
+    err.className = 'expr-error';
+    err.textContent = 'Invalid expression — try 1d20+7';
+    input.parentNode.appendChild(err);
+    var rollBtn = $('.cs-atk-roll', atkBar);
+    if (rollBtn) rollBtn.disabled = true;
+    input.addEventListener('input', function onInput() {
+      if (validExpr(input.value.trim())) {
+        err.remove();
+        if (rollBtn) rollBtn.disabled = false;
+        input.removeEventListener('input', onInput);
+      }
+    });
+  }
+
+  /* ═══════════════════════════ background tap — §7.2 ═══════════════════════════ */
+  mapCanvas.addEventListener('pointerdown', function(e) {
+    if (e.target !== mapCanvas) return;
+    if (!declaration) return;
+    if (declaration.phase === 'pick') {
+      updateHud('Background tap in PICK — declaration cleared (cheap state is cheap to lose).');
+      cancelDeclaration();
+    } else {
+      updateHud('Background tap in ARMED/RESULT — nothing happens (committed state requires the explicit ×).');
+    }
+  });
+
+  /* ═══════════════════════════ escape key ═══════════════════════════ */
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape' && declaration && declaration.phase !== 'gone') cancelDeclaration();
+  });
+
+  /* ═══════════════════════════ debug controls wiring ═══════════════════════════ */
+  var rmToggle = $('#rmToggle');
+  rmToggle.checked = reducedMotion;
+  rmToggle.addEventListener('change', function() {
+    reducedMotion = rmToggle.checked;
+    document.body.classList.toggle('reduced-motion', reducedMotion);
+  });
+  document.body.classList.toggle('reduced-motion', reducedMotion);
+
+  $all('#outcomeSeg .seg-btn').forEach(function(btn) {
+    btn.addEventListener('click', function() {
+      $all('#outcomeSeg .seg-btn').forEach(function(b) { b.classList.remove('active'); });
+      btn.classList.add('active');
+      nextOutcome = btn.getAttribute('data-outcome');
+    });
+  });
+
+  $('#battleModeToggle').addEventListener('change', function(e) { battleModeOn = e.target.checked; });
+  $('#hasAttacksToggle').addEventListener('change', function(e) { hasAttacksOn = e.target.checked; });
+  $('#hideOwnToggle').addEventListener('change', renderMap);
+
+  var rotDeg = 0;
+  $('#btnRotate').addEventListener('click', function() {
+    rotDeg = (rotDeg + 90) % 360;
+    mapCanvas.parentElement.style.setProperty('--map-rot', rotDeg + 'deg');
+  });
+
+  var turnCount = 0;
+  $('#btnNextTurn').addEventListener('click', function() {
+    turnCount++;
+    updateHud('Turn advanced (round marker +1, cosmetic only) — declaration ' + (declaration ? '<b>persists</b>, exactly as specced (§10.7).' : 'was already empty.'));
+  });
+
+  btnGone.addEventListener('click', triggerGone);
+
+  $('#btnReset').addEventListener('click', function() {
+    declaration = null;
+    goneTokenIds = {};
+    rotDeg = 0;
+    mapCanvas.parentElement.style.setProperty('--map-rot', '0deg');
+    $('#hideOwnToggle').checked = false;
+    atkBar.className = 'cs-atk-bar';
+    atkBar.innerHTML = '';
+    mapWrap.classList.remove('bar-open', 'narrow-open');
+    btnGone.disabled = true;
+    switchSubtab('map');
+    renderMap();
+    updateHud('Demo reset.');
+  });
+
+  /* ═══════════════════════════ sub-tab strip (edge case #8) ═══════════════════════════ */
+  var combatPanel = $('#combatPanel');
+  function switchSubtab(name) {
+    $all('.demo-subtab').forEach(function(b) { b.classList.toggle('active', b.getAttribute('data-subtab') === name); });
+    if (name === 'combat') {
+      combatPanel.classList.add('active');
+      mapCanvas.classList.add('hidden-for-combat');
+    } else {
+      combatPanel.classList.remove('active');
+      mapCanvas.classList.remove('hidden-for-combat');
+    }
+  }
+  $all('.demo-subtab').forEach(function(btn) {
+    btn.addEventListener('click', function() { switchSubtab(btn.getAttribute('data-subtab')); });
+  });
+
+  /* ═══════════════════════════ Section 2 — reticle anatomy ═══════════════════════════ */
+  (function buildAnatomy() {
+    var stage = $('#anatomyStage');
+    var tok = document.createElement('div');
+    tok.className = 'anatomy-token';
+    tok.innerHTML = '<div class="tk-portrait-wrap" style="--ring-color: var(--pal-accent-bright);"><span class="tk-initial" style="font-size:34px;">B</span></div>' +
+      buildReticleMarkup(192, 96, 96, 72);
+    stage.appendChild(tok);
+    var svg = tok.querySelector('.tk-target-ring');
+    primeArcLengths(svg);
+    svg.classList.add('resting');
+
+    var callouts = [
+      { text: 'N gap — Story 54 ◇ slot', top: '-6px', left: '50%', tx: '-50%' },
+      { text: 'E gap', top: '50%', left: 'calc(100% + 8px)', ty: '-50%' },
+      { text: 'S gap', top: 'calc(100% + 6px)', left: '50%', tx: '-50%' },
+      { text: 'W gap — Story 53 badge column', top: '50%', left: '-10px', tx: '-100%', ty: '-50%' }
+    ];
+    callouts.forEach(function(c) {
+      var el = document.createElement('div');
+      el.className = 'callout';
+      el.textContent = c.text;
+      el.style.top = c.top;
+      el.style.left = c.left;
+      var tx = c.tx || '0', ty = c.ty || '0';
+      el.style.transform = 'translate(' + tx + ',' + ty + ')';
+      stage.appendChild(el);
+    });
+  })();
+
+  /* ═══════════════════════════ Section 3 — states reference strip ═══════════════════════════ */
+  (function buildStatesGrid() {
+    var grid = $('#statesGrid');
+    var states = [
+      { label: 'PICK', desc: 'Target declared, no attack chosen yet. No Roll button until an attack is armed.' },
+      { label: 'ARMED', desc: 'Longsword chosen — expression editable, Adv/Dis strip visible (ATK step).' },
+      { label: 'RESULT (atk) — crit', desc: '⚔ DAMAGE follow-on + ↺ AGAIN. Crit shown here, reusing the dice roller gold treatment verbatim.' },
+      { label: 'RESULT (dmg)', desc: 'Only ↺ AGAIN remains — ready for Extra Attack in two taps.' },
+      { label: 'GONE', desc: 'Strikethrough + colour + "— GONE", held 1400ms before the bar exits.' }
+    ];
+    states.forEach(function(s) {
+      var card = document.createElement('div');
+      card.className = 'state-card';
+      card.innerHTML = '<div class="state-card-label">' + s.label + '</div><div class="state-card-stage"></div><div class="state-card-desc">' + s.desc + '</div>';
+      grid.appendChild(card);
+      var stage = card.querySelector('.state-card-stage');
+      var bar = document.createElement('div');
+      bar.className = 'cs-atk-bar';
+      stage.appendChild(bar);
+      renderStaticState(bar, s.label);
+    });
+  })();
+
+  function renderStaticState(bar, label) {
+    var goblin2 = 'Goblin 2';
+    if (label === 'PICK') {
+      bar.innerHTML = staticTargetRow(goblin2) +
+        '<div class="cs-atk-picker">' + WEAPONS.map(chipHtml).join('') + '<div class="cs-atk-chip-divider"></div>' + SPELLS.map(chipHtml).join('') + '</div>';
+    } else if (label === 'ARMED') {
+      bar.innerHTML = staticTargetRow(goblin2) +
+        '<div class="cs-atk-chosen"><button class="cs-atk-chosen-chip"><span class="cs-atk-chosen-name">Longsword</span><span class="cs-atk-chosen-expr">1d20+7</span></button>' +
+        '<div class="cs-atk-adv-strip"><button class="cs-atk-adv-btn active">Normal</button><button class="cs-atk-adv-btn">Adv</button><button class="cs-atk-adv-btn">Dis</button></div></div>' +
+        '<div class="cs-atk-actions"><button class="cs-atk-roll btn-primary">ATTACK</button></div>';
+    } else if (label.indexOf('RESULT (atk)') === 0) {
+      bar.innerHTML = staticTargetRow(goblin2) +
+        '<div class="cs-atk-chosen"><button class="cs-atk-chosen-chip"><span class="cs-atk-chosen-name">Longsword</span><span class="cs-atk-chosen-expr frozen">1d8+4 slashing</span></button>' +
+        '<div class="cs-atk-result"><span class="cs-atk-result-total crit">20</span><span class="cs-atk-result-dice">[20] +7 — NAT 20</span></div></div>' +
+        '<div class="cs-atk-actions"><button class="cs-atk-roll btn-primary">⚔ DAMAGE</button><button class="cs-atk-secondary">↺ AGAIN</button></div>';
+    } else if (label === 'RESULT (dmg)') {
+      bar.innerHTML = staticTargetRow(goblin2) +
+        '<div class="cs-atk-chosen"><button class="cs-atk-chosen-chip"><span class="cs-atk-chosen-name">Longsword</span><span class="cs-atk-chosen-expr frozen">1d8+4 slashing</span></button>' +
+        '<div class="cs-atk-result"><span class="cs-atk-result-total">11</span><span class="cs-atk-result-dice">[7] +4 slashing</span></div></div>' +
+        '<div class="cs-atk-actions"><button class="cs-atk-roll btn-primary">↺ AGAIN</button></div>';
+    } else if (label === 'GONE') {
+      bar.innerHTML = '<button class="cs-atk-target"><span class="cs-atk-target-glyph">◎</span><span class="cs-atk-target-name gone">' + goblin2 + '<span class="strike" style="transform:scaleX(1);"></span><span class="gone-suffix show">&nbsp;— GONE</span></span></button>';
+    }
+  }
+  function staticTargetRow(name) {
+    return '<button class="cs-atk-target"><span class="cs-atk-target-glyph">◎</span><span class="cs-atk-target-name">' + name + '</span></button>' +
+      '<button class="cs-atk-cancel">×</button><div class="cs-atk-divider"></div>';
+  }
+
+  /* ═══════════════════════════ Section 5 — responsive ladder ═══════════════════════════ */
+  (function buildLadder() {
+    var row = $('#ladderRow');
+    var bands = [
+      { w: 420, label: '≥900px (scaled down)', px: '900px+', mod: '', note: 'Full single row — target, picker/chosen, and the Roll button all share the width freely.' },
+      { w: 340, label: '560–900px', px: '560–900px', mod: '', note: 'Identical layout — the chip row absorbs the squeeze via horizontal scroll.' },
+      { w: 240, label: '<560px — two rows', px: '<560px', mod: 'narrow', note: 'Row 1: target + ×. Row 2: picker, or chosen chip + result + buttons.' },
+      { w: 190, label: '<380px — name only', px: '<380px', mod: 'narrow micro', note: 'Picker chips drop to-hit and result dice arrays hide — the total and the chosen chip’s full name+hit never do.' }
+    ];
+    bands.forEach(function(b) {
+      var item = document.createElement('div');
+      item.className = 'rl-item';
+      item.innerHTML = '<div class="rl-label">' + b.label + '</div><div class="rl-px">' + b.px + '</div>' +
+        '<div class="rl-frame" style="width:' + b.w + 'px; height:' + (b.mod.indexOf('narrow') > -1 ? 76 : 68) + 'px;"><div class="cs-atk-bar ' + b.mod + '"></div></div>' +
+        '<div class="rl-note">' + b.note + '</div>';
+      row.appendChild(item);
+      var bar = item.querySelector('.cs-atk-bar');
+      bar.innerHTML = staticTargetRow('Bandit Captain') +
+        '<div class="cs-atk-chosen"><button class="cs-atk-chosen-chip"><span class="cs-atk-chosen-name">Longsword +7</span><span class="cs-atk-chosen-expr">1d20+7</span></button></div>' +
+        '<div class="cs-atk-actions"><button class="cs-atk-roll btn-primary">ATTACK</button></div>';
+    });
+  })();
+
+  /* ═══════════════════════════ init ═══════════════════════════ */
+  renderMap();
+})();
+</script>
+</body>
+</html>
