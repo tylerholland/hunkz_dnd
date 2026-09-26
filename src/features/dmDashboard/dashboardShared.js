@@ -218,6 +218,15 @@ export function getHpTone(cardPal, hpPct) {
   };
 }
 
+// The backend resets round to 1 when a write omits it, so always carry the latest known value.
+export function normalizeInitiativeUpdate(next, latestRound) {
+  return {
+    entries: next.entries || [],
+    activeTurnIndex: next.activeTurnIndex ?? 0,
+    round: next.round ?? latestRound ?? 1,
+  };
+}
+
 export function initiativesEqual(a, b) {
   if (!a || !b) return false;
   if ((a.activeTurnIndex ?? 0) !== (b.activeTurnIndex ?? 0)) return false;

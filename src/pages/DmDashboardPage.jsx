@@ -16,6 +16,7 @@ import WorldGuideDrawer from "../features/worldGuide/WorldGuideDrawer";
 import {
   PalCtx,
   initiativesEqual,
+  normalizeInitiativeUpdate,
 } from "../features/dmDashboard/dashboardShared";
 import { PALETTES } from "../features/characterSheet/theme";
 import { applyLongRest, applyShortRest } from "../features/characterSheet/constants";
@@ -415,10 +416,10 @@ export default function DmDashboardPage() {
   const commitInitiativeUpdate = useCallback(async (nextInitiative, { optimistic = false } = {}) => {
     if (!dmPassword) return;
 
-    const normalized = {
-      entries: nextInitiative.entries || [],
-      activeTurnIndex: nextInitiative.activeTurnIndex ?? 0,
-    };
+    const latestRound = queuedInitiativeRef.current?.round
+      ?? initiativeExpectedRef.current?.round
+      ?? initiativeServerRef.current?.round;
+    const normalized = normalizeInitiativeUpdate(nextInitiative, latestRound);
 
     queuedInitiativeRef.current = normalized;
 
@@ -484,7 +485,7 @@ export default function DmDashboardPage() {
     try {
       await Promise.all([
         putNpcCombat(dmPassword, { npcs: updatedNpcs }),
-        putInitiative(dmPassword, { entries: updatedEntries, activeTurnIndex: initiative.activeTurnIndex ?? 0 }),
+        putInitiative(dmPassword, { entries: updatedEntries, activeTurnIndex: initiative.activeTurnIndex ?? 0, round: initiative.round ?? 1 }),
       ]);
       queueDashboardRefresh(0);
     } catch {}
@@ -537,6 +538,7 @@ export default function DmDashboardPage() {
     const updatedInitiative = {
       entries: workingEntries,
       activeTurnIndex: nextActiveTurnIndex < 0 ? 0 : nextActiveTurnIndex,
+      round: initiative.round ?? 1,
     };
     const updatedNpcCombat = {
       npcs: (npcCombat.npcs || []).map((value) =>
@@ -586,6 +588,7 @@ export default function DmDashboardPage() {
     const updatedInitiative = {
       entries: updatedEntries,
       activeTurnIndex: nextActiveTurnIndex < 0 ? 0 : nextActiveTurnIndex,
+      round: initiative.round ?? 1,
     };
     const updatedNpcCombat = {
       npcs: (npcCombat.npcs || []).map((value) =>
@@ -763,6 +766,7 @@ export default function DmDashboardPage() {
     const nextInitiative = {
       entries: filteredEntries,
       activeTurnIndex: filteredActiveTurnIndex < 0 ? 0 : filteredActiveTurnIndex,
+      round: initiative.round ?? 1,
     };
 
     if (!initiativesEqual(initiative, nextInitiative)) {

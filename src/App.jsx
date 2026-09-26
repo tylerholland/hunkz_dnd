@@ -6,10 +6,12 @@ import NewCharacterPage from "./pages/NewCharacterPage";
 import DmDashboardPage from "./pages/DmDashboardPage";
 import MapLibraryPage from "./pages/MapLibraryPage";
 import MapViewerPage from "./pages/MapViewerPage";
+import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
   return (
     <BrowserRouter>
+      <ErrorBoundary>
       <Routes>
         <Route path="/"                          element={<CharactersListPage />} />
         <Route path="/dm"                        element={<DmDashboardPage />} />
@@ -21,6 +23,7 @@ export default function App() {
         <Route path="/characters/:slug/session"  element={<CharacterModePage />} />
         <Route path="*"                          element={<Navigate to="/" replace />} />
       </Routes>
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }
