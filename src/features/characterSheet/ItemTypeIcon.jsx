@@ -2,9 +2,10 @@
 // take a soft fill when `filled` (equipped); open strokes stay as lines.
 const SHAPES = {
   weapon: [
-    // Axe: straight haft with a flared, curved-edge head on the right
-    { d: "M6.5 3.2h2.7c1.4-1 3-1.4 4.3-1.2.8 2.4.8 4.6 0 7-1.3.2-2.9-.2-4.3-1.2H6.5Z", closed: true },
-    { d: "M6.5 1.8v12.4" },
+    // Double-bitted battle axe: centre haft, mirrored crescent blades
+    { d: "M8.8 4.2c1.7-.6 3.2-1.6 4.4-2.4 1.4 2.4 1.4 5 0 7.4-1.2-.8-2.7-1.8-4.4-2.4Z", closed: true },
+    { d: "M7.2 4.2c-1.7-.6-3.2-1.6-4.4-2.4-1.4 2.4-1.4 5 0 7.4 1.2-.8 2.7-1.8 4.4-2.4Z", closed: true },
+    { d: "M8 1.5v13" },
   ],
   armor: [
     { d: "M5 2 3 3.5V7l1.5 1v5.5c2.3.9 4.7.9 7 0V8L13 7V3.5L11 2c-1.8 1.7-4.2 1.7-6 0Z", closed: true },
