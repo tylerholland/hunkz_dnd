@@ -51,3 +51,16 @@ export function xpProgress(xpCurrent, level) {
   const pct = Math.max(0, Math.min(1, (xp - floor) / (next - floor)));
   return { xp, floor, next, pct, ready: xp >= next };
 }
+
+// Loadout row icon type (see ItemTypeIcon): weapons column → sword, equipment
+// by its `type`, anything unknown → pouch.
+export const ITEM_TYPE_ICON_LABELS = {
+  weapon: "Weapon", armor: "Armor", shield: "Shield", wondrous: "Wondrous",
+  potion: "Potion", tool: "Tool", ammunition: "Ammunition", quest: "Quest", other: "Item",
+};
+
+export function itemIconType(kind, item) {
+  if (kind === "weapons") return "weapon";
+  const type = String(item?.type || "").toLowerCase();
+  return type !== "weapon" && type in ITEM_TYPE_ICON_LABELS ? type : "other";
+}

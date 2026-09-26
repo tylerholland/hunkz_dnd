@@ -65,3 +65,15 @@ describe("SessionLoadoutRow + ItemEditorModal delete", () => {
     expect(onDelete).toHaveBeenCalledTimes(1);
   });
 });
+
+describe("ItemTypeIcon", () => {
+  it("picks a sword for weapons and the item type for equipment", () => {
+    const { container, rerender } = render(<SessionLoadoutRow kind="weapons" item={{ id: "w", name: "Axe" }} onEdit={vi.fn()} onToggleEquipped={vi.fn()} />);
+    expect(container.querySelector("[data-icon='weapon']")).not.toBeNull();
+    rerender(<SessionLoadoutRow kind="equipment" item={{ id: "p", name: "Healing", type: "Potion", equipped: false }} onEdit={vi.fn()} onToggleEquipped={vi.fn()} />);
+    expect(container.querySelector("[data-icon='potion']")).not.toBeNull();
+    expect(screen.getByTitle("Potion · Stowed — click to equip")).toBeInTheDocument();
+    rerender(<SessionLoadoutRow kind="equipment" item={{ id: "r", name: "Rope" }} onEdit={vi.fn()} onToggleEquipped={vi.fn()} />);
+    expect(container.querySelector("[data-icon='other']")).not.toBeNull();
+  });
+});

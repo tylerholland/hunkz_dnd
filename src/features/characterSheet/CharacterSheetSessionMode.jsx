@@ -1579,6 +1579,7 @@ export default function CharacterSheetSessionMode({
                   <SessionLoadoutRow
                     key={w.id}
                     item={w}
+                    kind="weapons"
                     enterProps={rowEnterProps(w.id)}
                     onEdit={() => setItemDetails({ kind: "weapons", item: w })}
                     onToggleEquipped={() => updateLoadoutItem("weapons", w.id, { equipped: w.equipped === false })}
@@ -1601,6 +1602,7 @@ export default function CharacterSheetSessionMode({
                   <SessionLoadoutRow
                     key={e.id}
                     item={e}
+                    kind="equipment"
                     enterProps={rowEnterProps(e.id)}
                     onEdit={() => setItemDetails({ kind: "equipment", item: e })}
                     onToggleEquipped={() => updateLoadoutItem("equipment", e.id, { equipped: e.equipped === false })}
