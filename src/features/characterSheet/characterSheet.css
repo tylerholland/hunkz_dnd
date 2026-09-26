@@ -4268,3 +4268,26 @@
   font-size: 16px;
   cursor: pointer;
 }
+
+/* Use Item — replaces Drop Item in the profile Inventory's expanded row
+   (matches the Session Loadout's .cs-sm-ld-action). */
+.cs-use-btn {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-accent);
+  cursor: pointer;
+}
+
+.cs-use-btn:hover,
+.cs-use-btn:focus-visible {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+  outline: none;
+}

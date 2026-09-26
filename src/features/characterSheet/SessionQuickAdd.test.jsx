@@ -46,14 +46,33 @@ describe("SessionLedger", () => {
 });
 
 describe("SessionLoadoutRow + ItemEditorModal delete", () => {
-  it("toggles equipped and opens the editor from the name", () => {
+  it("toggles equipped from the icon and expands from the name", () => {
     const onToggleEquipped = vi.fn();
-    const onEdit = vi.fn();
-    render(<SessionLoadoutRow item={{ id: "a", name: "Shield", equipped: false }} onEdit={onEdit} onToggleEquipped={onToggleEquipped} />);
+    const onToggleExpand = vi.fn();
+    render(<SessionLoadoutRow item={{ id: "a", name: "Shield", equipped: false }} onEdit={vi.fn()} onToggleEquipped={onToggleEquipped} onToggleExpand={onToggleExpand} />);
     fireEvent.click(screen.getByRole("button", { name: "Equip Shield" }));
     expect(onToggleEquipped).toHaveBeenCalled();
+    expect(onToggleExpand).not.toHaveBeenCalled();
     fireEvent.click(screen.getByText("Shield"));
+    expect(onToggleExpand).toHaveBeenCalled();
+  });
+
+  it("shows description, Use Item for counted items, and Edit when expanded", () => {
+    const onUse = vi.fn();
+    const onEdit = vi.fn();
+    render(<SessionLoadoutRow expanded item={{ id: "p", name: "Healing", qty: 2, description: "Heals 2d4+2." }} onUse={onUse} onEdit={onEdit} onToggleEquipped={vi.fn()} onToggleExpand={vi.fn()} />);
+    expect(screen.getByText("Heals 2d4+2.")).toBeInTheDocument();
+    fireEvent.click(screen.getByText("Use Item"));
+    expect(onUse).toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Edit"));
     expect(onEdit).toHaveBeenCalled();
+  });
+
+  it("hides Use Item for untracked or used-up items", () => {
+    const { rerender } = render(<SessionLoadoutRow expanded item={{ id: "r", name: "Rope" }} onUse={vi.fn()} onEdit={vi.fn()} onToggleEquipped={vi.fn()} onToggleExpand={vi.fn()} />);
+    expect(screen.queryByText("Use Item")).not.toBeInTheDocument();
+    rerender(<SessionLoadoutRow expanded item={{ id: "r", name: "Rope", qty: 0 }} onUse={vi.fn()} onEdit={vi.fn()} onToggleEquipped={vi.fn()} onToggleExpand={vi.fn()} />);
+    expect(screen.queryByText("Use Item")).not.toBeInTheDocument();
   });
 
   it("requires a second tap to delete", () => {

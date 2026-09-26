@@ -1,37 +1,51 @@
-import ItemTypeIcon from "./ItemTypeIcon";
-import { ITEM_TYPE_ICON_LABELS, itemIconType } from "./sessionLoadout";
+import ItemEquipToggle from "./ItemEquipToggle";
 import "./sessionLoadout.css";
 
-// Story 58 follow-up — a Loadout row. Tapping the name opens the item editor
-// (edit / delete); the chip toggles equipped without opening anything.
-export default function SessionLoadoutRow({ item, kind, enterProps = {}, onEdit, onToggleEquipped }) {
+// Story 58 follow-up — a Loadout row, laid out like the profile Inventory:
+// equip icon on the left, expand caret on the right. Expanding shows the
+// description and modifiers inline, with Use Item (qty-tracked items) and Edit.
+export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse }) {
   const isEquipped = item.equipped !== false;
-  const iconType = itemIconType(kind, item);
+  const canUse = !!onUse && item.qty != null && item.qty > 0;
+  const mods = (item.mods || []).filter((mod) => mod && mod.attribute && String(mod.value ?? "").trim() !== "");
   return (
     <div
-      className={`cs-sm-ld-row${isEquipped ? "" : " stowed"}${enterProps.className ? ` ${enterProps.className}` : ""}`}
+      className={`cs-sm-ld-row${isEquipped ? "" : " stowed"}${expanded ? " expanded" : ""}${enterProps.className ? ` ${enterProps.className}` : ""}`}
       style={enterProps.style}
     >
-      <button type="button" className="cs-sm-ld-name" onClick={onEdit} title={`Edit ${item.name}`}>
-        {item.name}
-      </button>
-      {item.requiresAttunement && (
-        <span
-          className={`cs-sm-ld-attune${item.attuned ? " on" : ""}`}
-          title={item.attuned ? "Attuned" : "Requires attunement"}
-        />
+      <div className="cs-sm-ld-main">
+        <ItemEquipToggle item={item} kind={kind} onToggle={onToggleEquipped} />
+        <button
+          type="button"
+          className="cs-sm-ld-name"
+          onClick={onToggleExpand}
+          aria-expanded={expanded}
+        >
+          <span className="cs-sm-ld-name-text">{item.name}</span>
+          {item.qty != null && <span className={`cs-sm-ld-qty${item.qty === 0 ? " depleted" : ""}`}>×{item.qty}</span>}
+          {item.requiresAttunement && (
+            <span
+              className={`cs-sm-ld-attune${item.attuned ? " on" : ""}`}
+              title={item.attuned ? "Attuned" : "Requires attunement"}
+            />
+          )}
+          <span className="cs-sm-ld-caret" aria-hidden="true">{expanded ? "▲" : "▼"}</span>
+        </button>
+      </div>
+      {expanded && (
+        <div className="cs-sm-ld-details">
+          {item.description && <div className="cs-sm-ld-desc">{item.description}</div>}
+          {mods.length > 0 && (
+            <div className="cs-sm-ld-mods">{mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</div>
+          )}
+          <div className="cs-sm-ld-actions">
+            {canUse && (
+              <button type="button" className="cs-sm-ld-action" onClick={onUse} title="Use one">Use Item</button>
+            )}
+            <button type="button" className="cs-sm-ld-action" onClick={onEdit}>Edit</button>
+          </div>
+        </div>
       )}
-      {item.qty != null && <span className="cs-sm-ld-qty">×{item.qty}</span>}
-      <button
-        type="button"
-        className={`cs-sm-ld-equip${isEquipped ? " on" : ""}`}
-        onClick={onToggleEquipped}
-        aria-pressed={isEquipped}
-        aria-label={`${isEquipped ? "Unequip" : "Equip"} ${item.name}`}
-        title={`${ITEM_TYPE_ICON_LABELS[iconType]} · ${isEquipped ? "Equipped — click to stow" : "Stowed — click to equip"}`}
-      >
-        <ItemTypeIcon type={iconType} filled={isEquipped} />
-      </button>
     </div>
   );
 }

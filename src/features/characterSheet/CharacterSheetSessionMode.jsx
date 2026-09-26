@@ -672,6 +672,18 @@ export default function CharacterSheetSessionMode({
 
   const deleteLoadoutItem = useCallback((kind, id) => writeLoadout(kind, (items) => items.filter((item) => item.id !== id)), [writeLoadout]);
 
+  // Use one of a qty-tracked item (potion, arrows, rations). Stops at 0.
+  const consumeLoadoutItem = useCallback((kind, id) => writeLoadout(kind, (items) => items.map((item) => (
+    item.id === id && item.qty != null ? { ...item, qty: Math.max(0, item.qty - 1) } : item
+  ))), [writeLoadout]);
+
+  const [expandedLoadout, setExpandedLoadout] = useState(() => new Set());
+  const toggleLoadoutExpanded = (id) => setExpandedLoadout((prev) => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
   const commitCoin = useCallback(async (denom, op, amount) => {
     const prevCoin = normalizeCoin(charRef.current?.coin);
     const { value, clamped } = applyDelta(prevCoin[denom], op, amount);
@@ -1660,6 +1672,9 @@ export default function CharacterSheetSessionMode({
                     kind="weapons"
                     enterProps={rowEnterProps(w.id)}
                     onEdit={() => setItemDetails({ kind: "weapons", item: w })}
+                    expanded={expandedLoadout.has(w.id)}
+                    onToggleExpand={() => toggleLoadoutExpanded(w.id)}
+                    onUse={() => consumeLoadoutItem("weapons", w.id)}
                     onToggleEquipped={() => updateLoadoutItem("weapons", w.id, { equipped: w.equipped === false })}
                   />
                 ))}
@@ -1683,6 +1698,9 @@ export default function CharacterSheetSessionMode({
                     kind="equipment"
                     enterProps={rowEnterProps(e.id)}
                     onEdit={() => setItemDetails({ kind: "equipment", item: e })}
+                    expanded={expandedLoadout.has(e.id)}
+                    onToggleExpand={() => toggleLoadoutExpanded(e.id)}
+                    onUse={() => consumeLoadoutItem("equipment", e.id)}
                     onToggleEquipped={() => updateLoadoutItem("equipment", e.id, { equipped: e.equipped === false })}
                   />
                 ))}

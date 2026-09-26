@@ -5,6 +5,7 @@ import TopNav, { NavSegment } from "../../components/TopNav";
 import { InfoBadge } from "./CharacterTalents";
 import { getTalentTooltip } from "./talentCatalog";
 import ItemEditorModal, { itemTypeLabel } from "./ItemEditorModal";
+import ItemEquipToggle from "./ItemEquipToggle";
 import { HR } from "./CharacterSheetPrimitives";
 import { ARMOR_OPTIONS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt, normalizeSpells, spellRoleGlyph } from "./constants";
 import { renderInline } from "./theme";
@@ -86,7 +87,6 @@ export default function CharacterSheetViewMode({ ctx }) {
   // Attunement over-limit flash: set of item ids currently flashing red
   const [attunementFlashing, setAttunementFlashing] = useState(new Set());
   // Drop item confirm: id of item pending drop confirmation, or null
-  const [dropConfirmId, setDropConfirmId] = useState(null);
   const qtyAutoCloseRef = useRef(null);
   const qtyDebounceRef = useRef(null);
   const {
@@ -563,7 +563,6 @@ export default function CharacterSheetViewMode({ ctx }) {
                         const isFlashing = attunementFlashing.has(item.id);
                         const isEquipped = item.equipped !== false;
                         const nameColor = (!needsAttune || isAttuned) ? (isEquipped ? pal.text : pal.textMuted) : pal.textBody;
-                        const isDropConfirming = dropConfirmId === item.id;
 
                         function toggleAttunement(e) {
                           e.stopPropagation();
@@ -582,39 +581,26 @@ export default function CharacterSheetViewMode({ ctx }) {
                         }
 
                         function toggleEquipped(e) {
-                          e.stopPropagation();
+                          e?.stopPropagation();
                           const prevWeapons = char.weapons;
                           const updated = char.weapons.map((w) => w.id === item.id ? { ...w, equipped: !isEquipped } : w);
                           setChar((c) => ({ ...c, weapons: updated }));
                           applySessionPatch({ weapons: updated }, { weapons: prevWeapons }).catch(() => {});
                         }
 
-                        function confirmDrop(e) {
+                        function useOne(e) {
                           e.stopPropagation();
                           const prevWeapons = char.weapons;
-                          const updated = char.weapons.filter((w) => w.id !== item.id);
+                          const updated = char.weapons.map((w) => w.id === item.id && w.qty != null ? { ...w, qty: Math.max(0, w.qty - 1) } : w);
                           setChar((c) => ({ ...c, weapons: updated }));
-                          setDropConfirmId(null);
                           applySessionPatch({ weapons: updated }, { weapons: prevWeapons }).catch(() => {});
                         }
 
                         return (
                           <div key={item.id} onClick={() => toggleExpanded(item.id)} className="cs-item-row">
                             <div className="cs-item-row-inner">
-                              {/* Equipped toggle badge */}
-                              <span
-                                onClick={toggleEquipped}
-                                title={isEquipped ? "Equipped — tap to unequip" : "Not equipped — tap to equip"}
-                                style={{
-                                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                                  width: 14, height: 14, flexShrink: 0,
-                                  padding: 7, margin: -7,
-                                  cursor: "pointer",
-                                  fontSize: 10,
-                                  color: isEquipped ? pal.gem : pal.textMuted,
-                                  opacity: isEquipped ? 1 : 0.45,
-                                }}
-                              >■</span>
+                              {/* Equip toggle — type icon, shared with Session Loadout */}
+                              <ItemEquipToggle item={item} kind="weapons" onToggle={toggleEquipped} />
                               <span className="cs-item-name" style={{ color: nameColor }}>{item.name}</span>
                               {item.mods?.length > 0 && <span className="cs-item-mods">{item.mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</span>}
                               {needsAttune && (
@@ -641,17 +627,10 @@ export default function CharacterSheetViewMode({ ctx }) {
                             {expanded && (
                               <div>
                                 {item.description && <div className="cs-item-description">{item.description}</div>}
-                                {/* Drop item */}
-                                {slug && (
+                                {/* Use Item (qty-tracked items) — replaces Drop Item */}
+                                {slug && item.qty != null && item.qty > 0 && (
                                   <div className="cs-drop-row" onClick={(e) => e.stopPropagation()}>
-                                    {isDropConfirming ? (
-                                      <>
-                                        <button onClick={confirmDrop} className="cs-drop-confirm-btn">Confirm drop</button>
-                                        <button onClick={(e) => { e.stopPropagation(); setDropConfirmId(null); }} className="cs-drop-cancel-btn">Cancel</button>
-                                      </>
-                                    ) : (
-                                      <button onClick={(e) => { e.stopPropagation(); setDropConfirmId(item.id); }} className="cs-drop-btn">Drop Item</button>
-                                    )}
+                                    <button onClick={useOne} className="cs-use-btn" title="Use one">Use Item</button>
                                   </div>
                                 )}
                               </div>
@@ -680,8 +659,6 @@ export default function CharacterSheetViewMode({ ctx }) {
                         const isDepleted = hasQty && item.qty === 0;
                         const stepperOpen = qtyStepperOpenId === item.id;
                         const isEquipped = item.equipped !== false;
-                        const isPotion = item.type === "potion" && hasQty && item.qty > 0;
-                        const isDropConfirming = dropConfirmId === item.id;
                         const nameColor = isDepleted ? pal.textMuted : (!needsAttune || isAttuned) ? (isEquipped ? pal.text : pal.textMuted) : pal.textBody;
 
                         function patchEquipmentQty(newQty) {
@@ -723,25 +700,16 @@ export default function CharacterSheetViewMode({ ctx }) {
                         }
 
                         function toggleEquipped(e) {
-                          e.stopPropagation();
+                          e?.stopPropagation();
                           const prevEquipment = char.equipment;
                           const updated = char.equipment.map((eq) => eq.id === item.id ? { ...eq, equipped: !isEquipped } : eq);
                           setChar((c) => ({ ...c, equipment: updated }));
                           applySessionPatch({ equipment: updated }, { equipment: prevEquipment }).catch(() => {});
                         }
 
-                        function usePotion(e) {
+                        function useOne(e) {
                           e.stopPropagation();
                           patchEquipmentQty(item.qty - 1);
-                        }
-
-                        function confirmDrop(e) {
-                          e.stopPropagation();
-                          const prevEquipment = char.equipment;
-                          const updated = char.equipment.filter((eq) => eq.id !== item.id);
-                          setChar((c) => ({ ...c, equipment: updated }));
-                          setDropConfirmId(null);
-                          applySessionPatch({ equipment: updated }, { equipment: prevEquipment }).catch(() => {});
                         }
 
                         return (
@@ -753,20 +721,8 @@ export default function CharacterSheetViewMode({ ctx }) {
                             style={{ cursor: !stepperOpen ? "pointer" : "default" }}
                           >
                             <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "nowrap" }}>
-                              {/* Equipped toggle badge */}
-                              <span
-                                onClick={toggleEquipped}
-                                title={isEquipped ? "Equipped — tap to unequip" : "Not equipped — tap to equip"}
-                                style={{
-                                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                                  width: 14, height: 14, flexShrink: 0,
-                                  padding: 7, margin: -7,
-                                  cursor: "pointer",
-                                  fontSize: 10,
-                                  color: isEquipped ? pal.gem : pal.textMuted,
-                                  opacity: isEquipped ? 1 : 0.45,
-                                }}
-                              >■</span>
+                              {/* Equip toggle — type icon, shared with Session Loadout */}
+                              <ItemEquipToggle item={item} kind="equipment" onToggle={toggleEquipped} />
                               {/* Name area — replaced by stepper when open */}
                               {stepperOpen ? (
                                 <span style={{ fontFamily: pal.fontBody, fontSize: 15, color: nameColor, flexShrink: 0, marginRight: 4 }}>{item.name}</span>
@@ -799,14 +755,6 @@ export default function CharacterSheetViewMode({ ctx }) {
                               )}
                               {/* Spacer to push type/mods/gem/arrow right when stepper is open */}
                               {stepperOpen && <span style={{ flex: 1 }} />}
-                              {/* Potion quick-use */}
-                              {!stepperOpen && isPotion && slug && (
-                                <button
-                                  onClick={usePotion}
-                                  title="Use one charge"
-                                  className="cs-potion-btn"
-                                >Use</button>
-                              )}
                               {!stepperOpen && item.type && <span className="cs-item-type-chip">{itemTypeLabel(item.type)}</span>}
                               {!stepperOpen && item.mods?.length > 0 && <span className="cs-item-mods">{item.mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</span>}
                               {needsAttune && (
@@ -833,17 +781,10 @@ export default function CharacterSheetViewMode({ ctx }) {
                             {expanded && (
                               <div>
                                 {item.description && <div className="cs-item-description">{item.description}</div>}
-                                {/* Drop item */}
-                                {slug && (
+                                {/* Use Item (qty-tracked items) — replaces Drop Item */}
+                                {slug && item.qty != null && item.qty > 0 && (
                                   <div className="cs-drop-row" onClick={(e) => e.stopPropagation()}>
-                                    {isDropConfirming ? (
-                                      <>
-                                        <button onClick={confirmDrop} className="cs-drop-confirm-btn">Confirm drop</button>
-                                        <button onClick={(e) => { e.stopPropagation(); setDropConfirmId(null); }} className="cs-drop-cancel-btn">Cancel</button>
-                                      </>
-                                    ) : (
-                                      <button onClick={(e) => { e.stopPropagation(); setDropConfirmId(item.id); }} className="cs-drop-btn">Drop Item</button>
-                                    )}
+                                    <button onClick={useOne} className="cs-use-btn" title="Use one">Use Item</button>
                                   </div>
                                 )}
                               </div>

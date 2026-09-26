@@ -347,38 +347,54 @@
   .cs-sm-xp[data-state="ready"] .cs-sm-xp-fill { animation: none; }
 }
 
-/* ─── Loadout rows (edit / equip / delete) ──────────────────────────────── */
+/* ─── Loadout rows: equip icon left, caret right, inline details ─────────── */
 
 .cs-sm-ld-row {
+  border-bottom: 1px solid var(--pal-border);
+}
+
+.cs-sm-ld-main {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   min-height: 44px;
-  border-bottom: 1px solid var(--pal-border);
 }
 
 .cs-sm-ld-name {
   flex: 1;
   min-width: 0;
   min-height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
   padding: 0;
   border: none;
   background: transparent;
-  font-family: var(--font-body);
-  font-size: 15px;
-  color: var(--pal-text);
+  color: inherit;
   text-align: left;
-  overflow-wrap: anywhere;
   cursor: pointer;
 }
 
-.cs-sm-ld-name:hover,
-.cs-sm-ld-name:focus-visible {
-  color: var(--pal-accent-bright);
-  outline: none;
+.cs-sm-ld-name-text {
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--pal-text);
+  overflow-wrap: anywhere;
 }
 
-.cs-sm-ld-row.stowed .cs-sm-ld-name {
+.cs-sm-ld-name:hover .cs-sm-ld-name-text,
+.cs-sm-ld-name:focus-visible .cs-sm-ld-name-text {
+  color: var(--pal-accent-bright);
+}
+
+.cs-sm-ld-name:focus-visible {
+  outline: 2px solid var(--pal-accent);
+  outline-offset: 1px;
+}
+
+.cs-sm-ld-row.stowed .cs-sm-ld-name-text {
   color: var(--pal-text-muted);
 }
 
@@ -396,9 +412,70 @@
 }
 
 .cs-sm-ld-qty {
+  flex-shrink: 0;
   font-family: var(--font-ui);
   font-size: 12px;
   color: var(--pal-text-muted);
+}
+
+.cs-sm-ld-qty.depleted {
+  color: #c06060;
+}
+
+.cs-sm-ld-caret {
+  flex-shrink: 0;
+  width: 16px;
+  text-align: center;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--pal-accent-dim);
+}
+
+.cs-sm-ld-details {
+  padding: 0 0 10px 42px;
+}
+
+.cs-sm-ld-desc {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  line-height: 1.6;
+  color: var(--pal-text-body);
+}
+
+.cs-sm-ld-mods {
+  margin-top: 4px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  color: var(--pal-text-muted);
+}
+
+.cs-sm-ld-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.cs-sm-ld-action {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-accent);
+  cursor: pointer;
+}
+
+.cs-sm-ld-action:hover,
+.cs-sm-ld-action:focus-visible {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+  outline: none;
 }
 
 .cs-sm-ld-equip {
