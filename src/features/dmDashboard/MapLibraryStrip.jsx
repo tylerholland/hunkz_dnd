@@ -29,7 +29,7 @@ export default function MapLibraryStrip({ mapLibrary, dmPassword, combatMode, on
   const border = "rgba(100,130,160,0.28)";
   const textMuted = "#3a5a6a";
   const surface = "rgba(18,32,48,0.55)";
-  const fontUI = "'IM Fell English', Georgia, serif";
+  const fontUI = "'Cinzel Numerals', 'IM Fell English', Georgia, serif";
   const fontBody = "'Crimson Text', Georgia, serif";
 
   const handleSetActive = async (mapId) => {

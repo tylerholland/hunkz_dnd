@@ -167,7 +167,7 @@
   max-width: 80px;
   overflow: hidden;
   text-overflow: ellipsis;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.12em;
   color: var(--pal-text, #d4c4b0);
@@ -260,7 +260,7 @@
   border: 1px solid rgba(192, 96, 96, 0.4);
   border-radius: 3px;
   padding: 4px 8px;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.08em;
   color: #e08080;
@@ -360,14 +360,14 @@
    never appears on a player-visible surface (the reciprocal rule attached to
    that colour's app-wide meaning). */
 .token-hp-card__invis-line {
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.1em;
   color: var(--fam-unknown, #c8c0b4);
   margin-bottom: 4px;
 }
 .token-hp-card__secret-line {
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--tk-dm-secret, #7c93a8);
@@ -380,7 +380,7 @@
   margin-bottom: 4px;
 }
 .token-hp-card__cond-line {
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
@@ -446,7 +446,7 @@
   padding: 3px 0;
   background: transparent;
   border: none;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 10px;
   letter-spacing: 0.08em;
   color: var(--pal-text-muted, #6a4830);
@@ -544,7 +544,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 12px;
   letter-spacing: 0.12em;
   color: #c06060;
@@ -609,7 +609,7 @@
 }
 
 .token-tray__label {
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 10px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -618,7 +618,7 @@
 }
 
 .token-tray__empty {
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   font-style: italic;
   color: var(--pal-text-muted, #6a4830);
@@ -697,7 +697,7 @@
   border-radius: 999px;
   border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.22));
   background: transparent;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.12em;
   color: var(--pal-text-muted, #6a4830);
@@ -743,7 +743,7 @@
   background: transparent;
   border: none;
   text-align: left;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 12px;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -818,7 +818,7 @@
   left: 50%;
   transform: translateX(-50%);
   white-space: nowrap;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 10px;
   letter-spacing: 0.1em;
   color: var(--pal-text-muted, #6a4830);
@@ -866,7 +866,7 @@
   min-height: 44px;
   background: transparent;
   border: none;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 13px;
   letter-spacing: 0.08em;
   cursor: pointer;
@@ -1037,7 +1037,7 @@
   border: 1px solid var(--pal-border, rgba(106, 143, 168, 0.28));
   border-radius: 3px;
   color: var(--pal-text-muted, #5a7a8a);
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.18em;
   text-transform: uppercase;
@@ -1101,7 +1101,7 @@
 }
 
 .calib-title {
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.25em;
   text-transform: uppercase;
@@ -1110,7 +1110,7 @@
 }
 
 .calib-subtitle {
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.15em;
   color: var(--pal-text-muted, #6a4830);
@@ -1199,7 +1199,7 @@
 .calib-range-labels {
   display: flex;
   justify-content: space-between;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 10px;
   letter-spacing: 0.1em;
   color: var(--pal-text-muted, #6a4830);
@@ -1213,7 +1213,7 @@
   border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.22));
   border-radius: 3px;
   color: var(--pal-text-muted, #6a4830);
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.14em;
   padding: 8px;
@@ -1272,7 +1272,7 @@
 
 .tray-collapsed-label {
   flex: 1;
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
@@ -1280,7 +1280,7 @@
 }
 
 .tray-collapsed-chevron {
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: 11px;
   letter-spacing: 0.1em;
   color: var(--pal-text-muted, #6a4830);

@@ -37,6 +37,19 @@
    These kick in wherever the variables haven't been set by a parent component.
    In practice every palette-aware component sets them explicitly, so these
    are just a safe fallback that prevents unstyled flashes.               */
+/* Numerals in the UI font. IM Fell English's old-style figures read small
+   and uneven, so digits (0–9 only) come from Cinzel — full-height, still
+   fantasy — while every other character stays IM Fell. Any font stack that
+   names IM Fell lists 'Cinzel Numerals' first. Self-hosted (OFL) at
+   public/fonts so the unicode-range subset can carry its own family name. */
+@font-face {
+  font-family: 'Cinzel Numerals';
+  src: url('/fonts/cinzel-latin.woff2') format('woff2');
+  font-weight: 400 900;
+  font-display: swap;
+  unicode-range: U+0030-0039;
+}
+
 :root {
   --pal-bg:           #0d0f14;
   --pal-surface:      rgba(18,32,48,0.55);
@@ -56,7 +69,7 @@
   /* Typography — identical across all palettes today; vars allow future divergence */
   --font-display: 'Cinzel', 'Palatino Linotype', Georgia, serif;
   --font-body:    'Crimson Text', 'Palatino Linotype', Georgia, serif;
-  --font-ui:      'IM Fell English', Georgia, serif;
+  --font-ui:      'Cinzel Numerals', 'IM Fell English', Georgia, serif;
 }
 
 /* ─── Utility: flex row ──────────────────────────────────────────────────────

@@ -108,7 +108,7 @@ export default function MapUploadModal({ initialFile, dmPassword, onUploaded, on
   const accentBright = "#a0c0d0";
   const textMuted = "#3a5a6a";
   const text = "#c8bfaf";
-  const fontUI = "'IM Fell English', Georgia, serif";
+  const fontUI = "'Cinzel Numerals', 'IM Fell English', Georgia, serif";
   const fontBody = "'Crimson Text', Georgia, serif";
 
   return (

@@ -296,7 +296,7 @@
   background: transparent;
   border: none;
   text-align: left;
-  font-family: var(--font-ui, "IM Fell English", Georgia, serif);
+  font-family: var(--font-ui, "Cinzel Numerals", "IM Fell English", Georgia, serif);
   font-size: 11px;
   letter-spacing: 0.12em;
   text-transform: uppercase;
@@ -334,7 +334,7 @@
 }
 
 .eg-field-label {
-  font-family: var(--font-ui, "IM Fell English", Georgia, serif);
+  font-family: var(--font-ui, "Cinzel Numerals", "IM Fell English", Georgia, serif);
   font-size: 10px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
@@ -365,7 +365,7 @@
 .eg-hp-input::-webkit-inner-spin-button { -webkit-appearance: none; }
 
 .eg-hp-hint {
-  font-family: var(--font-ui, "IM Fell English", Georgia, serif);
+  font-family: var(--font-ui, "Cinzel Numerals", "IM Fell English", Georgia, serif);
   font-size: 10px;
   color: var(--pal-text-muted);
   font-style: italic;
@@ -432,7 +432,7 @@
 .eg-btn-add-ability {
   border-radius: 3px;
   color: var(--npc-bright);
-  font-family: var(--font-ui, "IM Fell English", Georgia, serif);
+  font-family: var(--font-ui, "Cinzel Numerals", "IM Fell English", Georgia, serif);
   font-size: 14px;
   cursor: pointer;
   padding: 5px 10px;
@@ -443,7 +443,7 @@
 .eg-btn-add-ability:disabled { opacity: 0.4; cursor: default; }
 
 .eg-char-counter {
-  font-family: var(--font-ui, "IM Fell English", Georgia, serif);
+  font-family: var(--font-ui, "Cinzel Numerals", "IM Fell English", Georgia, serif);
   font-size: 10px;
   color: var(--pal-text-muted);
   text-align: right;
@@ -539,7 +539,7 @@
   border: 1px solid rgba(192, 96, 96, 0.4);
   border-radius: 3px;
   color: #c06060;
-  font-family: var(--font-ui, "IM Fell English", Georgia, serif);
+  font-family: var(--font-ui, "Cinzel Numerals", "IM Fell English", Georgia, serif);
   font-size: 12px;
   letter-spacing: 0.1em;
   padding: 5px 10px;
@@ -553,7 +553,7 @@
   background: transparent;
   border: none;
   color: var(--pal-text-muted);
-  font-family: var(--font-ui, "IM Fell English", Georgia, serif);
+  font-family: var(--font-ui, "Cinzel Numerals", "IM Fell English", Georgia, serif);
   font-size: 12px;
   letter-spacing: 0.1em;
   padding: 5px 8px;

@@ -46,7 +46,7 @@ export default function MapLibraryModal({ mapLibrary, dmPassword, combatMode, on
     "--pal-text":          text,
     "--pal-text-body":     "#b0a898",
     "--pal-text-muted":    textMuted,
-    "--font-ui":           "'IM Fell English', Georgia, serif",
+    "--font-ui":           "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
     "--font-body":         "'Crimson Text', Georgia, serif",
   };
 
@@ -145,7 +145,7 @@ export default function MapLibraryModal({ mapLibrary, dmPassword, combatMode, on
               )}
 
               {isActive && !isRenaming && (
-                <div style={{ fontFamily: "'IM Fell English', Georgia, serif", fontSize: 11, letterSpacing: "0.1em", color: "#66cc66" }}>{activeLabel}</div>
+                <div style={{ fontFamily: "'Cinzel Numerals', 'IM Fell English', Georgia, serif", fontSize: 11, letterSpacing: "0.1em", color: "#66cc66" }}>{activeLabel}</div>
               )}
 
               {!isRenaming && !isDeleting && (
@@ -201,7 +201,7 @@ export default function MapLibraryModal({ mapLibrary, dmPassword, combatMode, on
   const content = (
     <div style={palVars}>
       <div className="flex-row-spread" style={{ marginBottom: 16 }}>
-        <div style={{ fontFamily: "'IM Fell English', Georgia, serif", fontSize: 13, letterSpacing: "0.22em", textTransform: "uppercase", color: accentBright }}>Map Library</div>
+        <div style={{ fontFamily: "'Cinzel Numerals', 'IM Fell English', Georgia, serif", fontSize: 13, letterSpacing: "0.22em", textTransform: "uppercase", color: accentBright }}>Map Library</div>
         <div className="flex-row" style={{ gap: 10 }}>
           <button
             onClick={() => { setUploadFile(null); setUploadOpen(true); }}

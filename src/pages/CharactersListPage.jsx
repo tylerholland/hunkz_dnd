@@ -219,7 +219,7 @@ export default function CharactersListPage() {
                         border: `1px solid ${p.border}`,
                         borderRadius: 999,
                         color: p.accent,
-                        fontFamily: "'IM Fell English', Georgia, serif",
+                        fontFamily: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
                         fontSize: 10,
                         letterSpacing: "0.18em",
                         textTransform: "uppercase",
@@ -234,7 +234,7 @@ export default function CharactersListPage() {
                       </div>
                     )}
                     <div style={{
-                      fontFamily: "'IM Fell English', Georgia, serif",
+                      fontFamily: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
                       fontSize: 12, letterSpacing: "0.15em", textTransform: "uppercase",
                       color: p.textMuted,
                     }}>
@@ -250,7 +250,7 @@ export default function CharactersListPage() {
             <button onClick={() => navigate("/characters/new")} className="char-card-new">
               <div style={{ fontSize: 28, color: "rgba(100,130,160,0.4)", marginBottom: 10 }}>+</div>
               <div style={{
-                fontFamily: "'IM Fell English', Georgia, serif",
+                fontFamily: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
                 fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase",
                 color: "rgba(100,130,160,0.4)",
               }}>

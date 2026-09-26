@@ -20,7 +20,7 @@ export const PALETTES = {
     glow1: "rgba(100,45,10,0.35)", glow2: "rgba(70,30,5,0.25)", gem: "#c8904c", gemLow: "#4a3020",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
   ocean: {
     name: "Ocean",
@@ -30,7 +30,7 @@ export const PALETTES = {
     glow1: "rgba(20,45,80,0.4)", glow2: "rgba(15,35,60,0.3)", gem: "#8ab4c8", gemLow: "#2a3a4a",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
   forest: {
     name: "Forest",
@@ -40,7 +40,7 @@ export const PALETTES = {
     glow1: "rgba(15,55,20,0.4)", glow2: "rgba(10,40,15,0.28)", gem: "#78b878", gemLow: "#1e3a20",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
   ash: {
     name: "Ash",
@@ -50,7 +50,7 @@ export const PALETTES = {
     glow1: "rgba(50,50,50,0.28)", glow2: "rgba(35,35,35,0.2)", gem: "#a0a0a0", gemLow: "#303030",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
   hearthstone: {
     name: "Hearthstone",
@@ -60,7 +60,7 @@ export const PALETTES = {
     glow1: "rgba(110,35,10,0.38)", glow2: "rgba(70,20,5,0.22)", gem: "#cc8060", gemLow: "#3a1e12",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
   ironwood: {
     name: "Ironwood",
@@ -70,7 +70,7 @@ export const PALETTES = {
     glow1: "rgba(90,20,28,0.38)", glow2: "rgba(55,10,16,0.24)", gem: "#b87080", gemLow: "#2e1418",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
   hoarfrost: {
     name: "Hoarfrost",
@@ -80,7 +80,7 @@ export const PALETTES = {
     glow1: "rgba(40,70,120,0.28)", glow2: "rgba(20,45,90,0.18)", gem: "#c8dcea", gemLow: "#1e2e42",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
   nightwood: {
     name: "Nightwood",
@@ -90,7 +90,7 @@ export const PALETTES = {
     glow1: "rgba(10,80,38,0.32)", glow2: "rgba(5,55,24,0.2)", gem: "#58c890", gemLow: "#0e2818",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
   pitch: {
     name: "Pitch",
@@ -100,7 +100,7 @@ export const PALETTES = {
     glow1: "rgba(14,30,22,0.3)", glow2: "rgba(8,20,14,0.18)", gem: "#607868", gemLow: "#161e1a",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
   vellum: {
     name: "Vellum",
@@ -110,6 +110,6 @@ export const PALETTES = {
     glow1: "rgba(180,155,100,0.25)", glow2: "rgba(160,135,85,0.15)", gem: "#4a3418", gemLow: "rgba(140,110,70,0.18)",
     fontDisplay: "'Cinzel', 'Palatino Linotype', Georgia, serif",
     fontBody: "'Crimson Text', 'Palatino Linotype', Georgia, serif",
-    fontUI: "'IM Fell English', Georgia, serif",
+    fontUI: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
   },
 };

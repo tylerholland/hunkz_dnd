@@ -178,7 +178,7 @@ function DamageHealModal({ type, onConfirm, onClose, pal }) {
         maxWidth: 340,
       }}>
         <div style={{
-          fontFamily: pal?.fontUI || "IM Fell English",
+          fontFamily: pal?.fontUI || "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
           fontSize: 11,
           letterSpacing: "0.3em",
           textTransform: "uppercase",
@@ -215,7 +215,7 @@ function DamageHealModal({ type, onConfirm, onClose, pal }) {
               border: `1px solid ${pal?.border || "rgba(106,143,168,0.18)"}`,
               borderRadius: 3,
               color: pal?.textMuted || "#3a5a6a",
-              fontFamily: pal?.fontUI || "IM Fell English",
+              fontFamily: pal?.fontUI || "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
               fontSize: 11,
               letterSpacing: "0.15em",
               textTransform: "uppercase",
@@ -231,7 +231,7 @@ function DamageHealModal({ type, onConfirm, onClose, pal }) {
               border: `1px solid ${accentColor}`,
               borderRadius: 3,
               color: accentColor,
-              fontFamily: pal?.fontUI || "IM Fell English",
+              fontFamily: pal?.fontUI || "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
               fontSize: 11,
               letterSpacing: "0.15em",
               textTransform: "uppercase",

@@ -139,7 +139,7 @@
 /* ── Subtitle ───────────────────────────────────────────────────── */
 
 .cto__subtitle {
-  font-family: "IM Fell English", Georgia, serif;
+  font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
   font-size: clamp(13px, 2vw, 18px);
   letter-spacing: 0.16em;
   margin: 0;

@@ -287,7 +287,7 @@ export default function CharacterModePage() {
             }}
           >
             <div style={{
-              fontFamily: pal?.fontUI || "IM Fell English",
+              fontFamily: pal?.fontUI || "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
               fontSize: 11,
               letterSpacing: "0.25em",
               textTransform: "uppercase",
@@ -349,7 +349,7 @@ export default function CharacterModePage() {
                 border: `1px solid ${pal?.accent || "#d07a3a"}`,
                 borderRadius: 3,
                 color: pal?.accentBright || pal?.accent || "#d07a3a",
-                fontFamily: pal?.fontUI || "IM Fell English",
+                fontFamily: pal?.fontUI || "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
                 fontSize: 11,
                 letterSpacing: "0.18em",
                 textTransform: "uppercase",
