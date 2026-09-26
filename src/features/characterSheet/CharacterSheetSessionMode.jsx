@@ -1588,7 +1588,7 @@ export default function CharacterSheetSessionMode({
           <div className="cs-sm-tabs">
             {[
               { key: "combat", label: "Combat" },
-              { key: "loadout", label: "Loadout" },
+              { key: "loadout", label: "Inventory" },
               { key: "notes", label: "Notes" },
             ].map(({ key, label, disabled }) => (
               <button
