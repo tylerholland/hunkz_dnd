@@ -2,9 +2,9 @@
 // take a soft fill when `filled` (equipped); open strokes stay as lines.
 const SHAPES = {
   weapon: [
-    { d: "M13.5 2.5 12.8 5 6.5 11.3 4.7 9.5 11 3.2Z", closed: true },
-    { d: "M3.3 8.3 7.7 12.7" },
-    { d: "M5 11 2.5 13.5" },
+    // Axe: straight haft with a flared, curved-edge head on the right
+    { d: "M6.5 3.2h2.7c1.4-1 3-1.4 4.3-1.2.8 2.4.8 4.6 0 7-1.3.2-2.9-.2-4.3-1.2H6.5Z", closed: true },
+    { d: "M6.5 1.8v12.4" },
   ],
   armor: [
     { d: "M5 2 3 3.5V7l1.5 1v5.5c2.3.9 4.7.9 7 0V8L13 7V3.5L11 2c-1.8 1.7-4.2 1.7-6 0Z", closed: true },
@@ -13,7 +13,9 @@ const SHAPES = {
     { d: "M8 1.5 13.5 3.5v4c0 3.3-2.3 5.8-5.5 7-3.2-1.2-5.5-3.7-5.5-7v-4L8 1.5Z", closed: true },
   ],
   wondrous: [
-    { d: "M8 1.5 9.4 6.6 14.5 8 9.4 9.4 8 14.5 6.6 9.4 1.5 8 6.6 6.6Z", closed: true },
+    // Two four-point sparkles, large lower-left and small upper-right
+    { d: "M6 5 7.1 8.4 10.5 9.5 7.1 10.6 6 14 4.9 10.6 1.5 9.5 4.9 8.4Z", closed: true },
+    { d: "M12 1.4 12.7 3.3 14.6 4 12.7 4.7 12 6.6 11.3 4.7 9.4 4 11.3 3.3Z", closed: true },
   ],
   potion: [
     { d: "M7 1.8v3.9L3.6 11.4c-.8 1.4.2 2.8 1.8 2.8h5.2c1.6 0 2.6-1.4 1.8-2.8L9 5.7V1.8Z", closed: true },
