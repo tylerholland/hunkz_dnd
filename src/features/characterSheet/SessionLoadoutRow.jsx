@@ -30,7 +30,7 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
         >
           <span className="cs-sm-ld-name-text">
             {item.name}
-            {hasQty && item.qty !== 1 && <span className={`cs-sm-ld-qty${item.qty === 0 ? " depleted" : ""}`}> ({item.qty})</span>}
+            {hasQty && item.qty !== 1 && <span className={`cs-sm-ld-qty${item.qty === 0 ? " depleted" : ""}`}> (<span className="cs-sm-ld-qty-num">{item.qty}</span>)</span>}
           </span>
           {item.requiresAttunement && (
             <span

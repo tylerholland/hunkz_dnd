@@ -414,9 +414,14 @@
 .cs-sm-ld-qty {
   flex-shrink: 0;
   font-family: var(--font-ui);
-  /* 14px: the UI font's numerals run small next to the 15px name */
-  font-size: 14px;
+  font-size: 12px;
   color: var(--pal-text-muted);
+}
+
+/* The UI font's numerals run small — size the number (not the parens) up
+   to match the 15px item name. */
+.cs-sm-ld-qty-num {
+  font-size: 15px;
 }
 
 .cs-sm-ld-qty.depleted {
