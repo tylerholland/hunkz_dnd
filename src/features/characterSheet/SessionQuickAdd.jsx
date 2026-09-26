@@ -2,11 +2,19 @@ import { useRef, useState } from "react";
 import { parseQuickAdd } from "./sessionLoadout";
 import "./sessionLoadout.css";
 
-// Story 58 — "+ WEAPON" / "+ ITEM" row at the foot of a Loadout column. It
-// expands in place into a compose row; the input clears and keeps focus
+// Story 58 — quick-add compose row for a Loadout column (opened from the
+// column header's "+ Add" button); the input clears and keeps focus
 // after each add so a whole hoard can be logged in a row.
-export default function SessionQuickAdd({ kind, label, onAdd, onOpenDetails }) {
-  const [open, setOpen] = useState(false);
+// Pass `open`/`onClose` to control it from a header "+ Add" button; left
+// uncontrolled it renders its own full-width "+ LABEL" trigger row.
+export default function SessionQuickAdd({ kind, label, onAdd, onOpenDetails, open: openProp, onClose }) {
+  const controlled = openProp !== undefined;
+  const [openState, setOpenState] = useState(false);
+  const open = controlled ? openProp : openState;
+  const setOpen = (value) => {
+    if (controlled) { if (!value) onClose?.(); }
+    else setOpenState(value);
+  };
   const [text, setText] = useState("");
   const [error, setError] = useState(false);
   const [hintSeen, setHintSeen] = useState(false);
@@ -38,6 +46,7 @@ export default function SessionQuickAdd({ kind, label, onAdd, onOpenDetails }) {
   }
 
   if (!open) {
+    if (controlled) return null;
     return (
       <button type="button" className="cs-sm-add cs-sm-add--idle" onClick={() => setOpen(true)}>
         + {label}

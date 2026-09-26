@@ -621,6 +621,7 @@ export default function CharacterSheetSessionMode({
 
   const [recentAdds, setRecentAdds] = useState({}); // id → stagger index
   const [itemDetails, setItemDetails] = useState(null); // { kind, seed }
+  const [quickAddOpen, setQuickAddOpen] = useState(null); // "weapons" | "equipment" | null
 
   const addLoadoutItems = useCallback(async (kind, items) => {
     if (!slug || items.length === 0) return false;
@@ -1666,9 +1667,26 @@ export default function CharacterSheetSessionMode({
             <div className="cs-sm-loadout-grid">
               {/* Weapons column */}
               <div>
-                <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 8 }}>
-                  Weapons
+                <div className="cs-col-header">
+                  <div className="cs-col-label">Weapons</div>
+                  <button
+                    type="button"
+                    className={`cs-sm-ld-addbtn${quickAddOpen === "weapons" ? " active" : ""}`}
+                    // Keep focus in an open compose row so its blur-to-close
+                    // doesn't fire first and turn this toggle into a reopen.
+                    onMouseDown={(e) => { if (quickAddOpen === "weapons") e.preventDefault(); }}
+                    onClick={() => setQuickAddOpen((current) => (current === "weapons" ? null : "weapons"))}
+                    aria-expanded={quickAddOpen === "weapons"}
+                  >+ Add Weapon</button>
                 </div>
+                <SessionQuickAdd
+                  kind="weapons"
+                  label="Weapon"
+                  open={quickAddOpen === "weapons"}
+                  onClose={() => setQuickAddOpen((current) => (current === "weapons" ? null : current))}
+                  onAdd={(items) => addLoadoutItems("weapons", items)}
+                  onOpenDetails={(seed) => setItemDetails({ kind: "weapons", seed })}
+                />
                 {weapons.map((w) => (
                   <SessionLoadoutRow
                     key={w.id}
@@ -1683,19 +1701,30 @@ export default function CharacterSheetSessionMode({
                     onToggleEquipped={() => updateLoadoutItem("weapons", w.id, { equipped: w.equipped === false })}
                   />
                 ))}
-                <SessionQuickAdd
-                  kind="weapons"
-                  label="Weapon"
-                  onAdd={(items) => addLoadoutItems("weapons", items)}
-                  onOpenDetails={(seed) => setItemDetails({ kind: "weapons", seed })}
-                />
               </div>
 
               {/* Equipment column */}
               <div>
-                <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 8 }}>
-                  Equipment
+                <div className="cs-col-header">
+                  <div className="cs-col-label">Equipment</div>
+                  <button
+                    type="button"
+                    className={`cs-sm-ld-addbtn${quickAddOpen === "equipment" ? " active" : ""}`}
+                    // Keep focus in an open compose row so its blur-to-close
+                    // doesn't fire first and turn this toggle into a reopen.
+                    onMouseDown={(e) => { if (quickAddOpen === "equipment") e.preventDefault(); }}
+                    onClick={() => setQuickAddOpen((current) => (current === "equipment" ? null : "equipment"))}
+                    aria-expanded={quickAddOpen === "equipment"}
+                  >+ Add Item</button>
                 </div>
+                <SessionQuickAdd
+                  kind="equipment"
+                  label="Item"
+                  open={quickAddOpen === "equipment"}
+                  onClose={() => setQuickAddOpen((current) => (current === "equipment" ? null : current))}
+                  onAdd={(items) => addLoadoutItems("equipment", items)}
+                  onOpenDetails={(seed) => setItemDetails({ kind: "equipment", seed })}
+                />
                 {equipment.map((e) => (
                   <SessionLoadoutRow
                     key={e.id}
@@ -1710,12 +1739,6 @@ export default function CharacterSheetSessionMode({
                     onToggleEquipped={() => updateLoadoutItem("equipment", e.id, { equipped: e.equipped === false })}
                   />
                 ))}
-                <SessionQuickAdd
-                  kind="equipment"
-                  label="Item"
-                  onAdd={(items) => addLoadoutItems("equipment", items)}
-                  onOpenDetails={(seed) => setItemDetails({ kind: "equipment", seed })}
-                />
               </div>
             </div>
             <SessionLedger char={char} onCommitCoin={commitCoin} onCommitXp={commitXp} />

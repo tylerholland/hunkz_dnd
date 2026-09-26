@@ -6,6 +6,32 @@
   margin-top: 8px;
 }
 
+/* Header "+ Add Weapon / + Add Item" — matches the profile Inventory's
+   compact right-aligned header button. */
+.cs-sm-ld-addbtn {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  background: var(--pal-surface);
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--pal-text);
+  cursor: pointer;
+  transition: border-color 0.15s;
+}
+
+.cs-sm-ld-addbtn:hover,
+.cs-sm-ld-addbtn:focus-visible,
+.cs-sm-ld-addbtn.active {
+  border-color: var(--pal-accent);
+  outline: none;
+}
+
+.cs-col-header + .cs-sm-add {
+  margin: 0 0 8px;
+}
+
 .cs-sm-add--idle {
   display: flex;
   align-items: center;
