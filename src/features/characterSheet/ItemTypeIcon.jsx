@@ -30,10 +30,9 @@ const SHAPES = {
     { d: "M6.2 1h3.6v2.2H6.2Z", closed: true },
   ],
   tool: [
-    // War hammer: block head, thick haft, pommel
-    { d: "M3 2h10v4.4H3Z", closed: true },
-    { d: "M8 6.4v7.8", width: 2 },
-    { d: "M6.9 14.2h2.2v1.3H6.9Z", closed: true },
+    // Claw hammer: flat striking face left, curved nail-pulling claw right
+    { d: "M1.8 1.4h3.6v1.2h2.2l1.8.3c2.4.4 4.2 1.8 4.9 4l-.6.3C12.4 6 11 5.4 9.4 5.4l-1.8.3H5.4v1.2H1.8Z", closed: true },
+    { d: "M6.6 5.7v8.5", width: 2.2 },
   ],
   ammunition: [
     // Arrow: barbed head, shaft, fletching
@@ -54,7 +53,8 @@ const SHAPES = {
 
 // Held at an angle; scaled slightly so tips stay inside the 16px box.
 const TILT = "rotate(40 8 8) translate(8 8) scale(0.86) translate(-8 -8)";
-const SHAPE_TRANSFORMS = { weapon: TILT, tool: TILT };
+// The hammer leans the other way so it never reads as the axe.
+const SHAPE_TRANSFORMS = { weapon: TILT, tool: "rotate(-35 8 8) translate(8 8) scale(0.9) translate(-8 -8)" };
 
 export default function ItemTypeIcon({ type, filled = false, size = 16 }) {
   const shapes = SHAPES[type] || SHAPES.other;
