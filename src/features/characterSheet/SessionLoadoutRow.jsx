@@ -3,7 +3,8 @@ import "./sessionLoadout.css";
 
 // Story 58 follow-up — a Loadout row, laid out like the profile Inventory:
 // equip icon on the left, expand caret on the right. Expanding shows the
-// description and modifiers inline, with Use Item (qty-tracked items) and Edit.
+// description and modifiers inline, with Use Item for qty-tracked items. A
+// pencil (Edit) appears beside the caret on hover.
 export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse }) {
   const isEquipped = item.equipped !== false;
   const canUse = !!onUse && item.qty != null && item.qty > 0;
@@ -29,8 +30,28 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
               title={item.attuned ? "Attuned" : "Requires attunement"}
             />
           )}
-          <span className="cs-sm-ld-caret" aria-hidden="true">{expanded ? "▲" : "▼"}</span>
         </button>
+        {/* Edit — pencil revealed on row hover/focus (always shown when
+            expanded, and on touch screens that can't hover) */}
+        <button
+          type="button"
+          className="cs-sm-ld-edit"
+          onClick={onEdit}
+          aria-label={`Edit ${item.name}`}
+          title="Edit"
+        >
+          <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+            <path d="M11.2 2.3a1.6 1.6 0 0 1 2.3 0l.2.2a1.6 1.6 0 0 1 0 2.3L5.6 12.9 2.2 13.8l.9-3.4Z" fill="none" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+            <path d="m10 3.5 2.5 2.5" stroke="currentColor" strokeWidth="1.4" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className="cs-sm-ld-caret"
+          onClick={onToggleExpand}
+          aria-label={expanded ? `Collapse ${item.name}` : `Expand ${item.name}`}
+          tabIndex={-1}
+        >{expanded ? "▲" : "▼"}</button>
       </div>
       {expanded && (
         <div className="cs-sm-ld-details">
@@ -38,12 +59,11 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
           {mods.length > 0 && (
             <div className="cs-sm-ld-mods">{mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</div>
           )}
-          <div className="cs-sm-ld-actions">
-            {canUse && (
+          {canUse && (
+            <div className="cs-sm-ld-actions">
               <button type="button" className="cs-sm-ld-action" onClick={onUse} title="Use one">Use Item</button>
-            )}
-            <button type="button" className="cs-sm-ld-action" onClick={onEdit}>Edit</button>
-          </div>
+            </div>
+          )}
         </div>
       )}
     </div>

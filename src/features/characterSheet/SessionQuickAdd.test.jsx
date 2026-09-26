@@ -57,14 +57,14 @@ describe("SessionLoadoutRow + ItemEditorModal delete", () => {
     expect(onToggleExpand).toHaveBeenCalled();
   });
 
-  it("shows description, Use Item for counted items, and Edit when expanded", () => {
+  it("shows description and Use Item for counted items; pencil opens the editor", () => {
     const onUse = vi.fn();
     const onEdit = vi.fn();
     render(<SessionLoadoutRow expanded item={{ id: "p", name: "Healing", qty: 2, description: "Heals 2d4+2." }} onUse={onUse} onEdit={onEdit} onToggleEquipped={vi.fn()} onToggleExpand={vi.fn()} />);
     expect(screen.getByText("Heals 2d4+2.")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Use Item"));
     expect(onUse).toHaveBeenCalled();
-    fireEvent.click(screen.getByText("Edit"));
+    fireEvent.click(screen.getByRole("button", { name: "Edit Healing" }));
     expect(onEdit).toHaveBeenCalled();
   });
 

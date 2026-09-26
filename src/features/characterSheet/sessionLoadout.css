@@ -424,11 +424,59 @@
 
 .cs-sm-ld-caret {
   flex-shrink: 0;
-  width: 16px;
-  text-align: center;
+  width: 24px;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
   font-family: var(--font-ui);
   font-size: 11px;
   color: var(--pal-accent-dim);
+  cursor: pointer;
+}
+
+/* Pencil edit button — hidden until the row is hovered/focused or expanded */
+.cs-sm-ld-edit {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease, color 0.12s ease, background 0.12s ease;
+}
+
+.cs-sm-ld-row:hover .cs-sm-ld-edit,
+.cs-sm-ld-row:focus-within .cs-sm-ld-edit,
+.cs-sm-ld-row.expanded .cs-sm-ld-edit {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.cs-sm-ld-edit:hover,
+.cs-sm-ld-edit:focus-visible {
+  color: var(--pal-accent-bright);
+  background: color-mix(in srgb, var(--pal-accent) 12%, transparent);
+  outline: none;
+}
+
+@media (hover: none) {
+  .cs-sm-ld-row:not(.expanded) .cs-sm-ld-edit {
+    opacity: 0;
+    pointer-events: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-sm-ld-edit { transition: none; }
 }
 
 .cs-sm-ld-details {
