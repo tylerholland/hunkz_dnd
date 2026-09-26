@@ -103,7 +103,7 @@
   border-radius: 10px;
   background: transparent;
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: 11px;
   letter-spacing: 0.04em;
   color: var(--pal-text-body);
   cursor: pointer;
@@ -282,7 +282,7 @@
   border: 1px solid var(--pal-border);
   border-radius: 10px;
   font-family: var(--font-ui);
-  font-size: 10px;
+  font-size: 11px;
   color: var(--pal-text-body);
 }
 
