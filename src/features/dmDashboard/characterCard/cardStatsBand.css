@@ -172,7 +172,9 @@
   overscroll-behavior: contain;
   padding: 4px 14px 10px 18px;
   border-top: 1px solid var(--pal-border);
-  background: color-mix(in srgb, var(--pal-bg) 35%, transparent);
+  /* Neutral tint over the card surface. Not --pal-bg: a light palette on a
+     dark dashboard (Vellum) keeps its parchment bg, which washed this out. */
+  background: rgba(0, 0, 0, 0.16);
 }
 
 .cc-drawer-section {
