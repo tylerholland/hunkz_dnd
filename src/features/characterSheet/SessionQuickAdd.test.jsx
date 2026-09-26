@@ -1,0 +1,43 @@
+import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { describe, expect, it, vi } from "vitest";
+import SessionQuickAdd from "./SessionQuickAdd";
+import SessionLedger from "./SessionLedger";
+
+describe("SessionQuickAdd", () => {
+  it("adds comma-separated items and keeps the input ready for more", async () => {
+    const onAdd = vi.fn().mockResolvedValue(true);
+    render(<SessionQuickAdd kind="equipment" label="Item" onAdd={onAdd} onOpenDetails={() => {}} />);
+    fireEvent.click(screen.getByText("+ Item"));
+    const input = screen.getByLabelText("New item name");
+    fireEvent.change(input, { target: { value: "Rope, Arrows x20" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    expect(onAdd).toHaveBeenCalledTimes(1);
+    expect(onAdd.mock.calls[0][0].map((i) => [i.name, i.qty])).toEqual([["Rope", undefined], ["Arrows", 20]]);
+    expect(input).toHaveValue("");
+    expect(input).toHaveFocus();
+  });
+
+  it("restores the typed text when the save fails", async () => {
+    const onAdd = vi.fn().mockResolvedValue(false);
+    render(<SessionQuickAdd kind="weapons" label="Weapon" onAdd={onAdd} onOpenDetails={() => {}} />);
+    fireEvent.click(screen.getByText("+ Weapon"));
+    const input = screen.getByLabelText("New weapon name");
+    fireEvent.change(input, { target: { value: "Dagger" } });
+    fireEvent.click(screen.getByText("Add"));
+    await waitFor(() => expect(input).toHaveValue("Dagger"));
+    expect(screen.getByText(/Couldn't save/)).toBeInTheDocument();
+  });
+});
+
+describe("SessionLedger", () => {
+  it("applies a gold delta through the pad", async () => {
+    const onCommitCoin = vi.fn().mockResolvedValue({ ok: true, clamped: false });
+    render(<SessionLedger char={{ coin: { gp: 12 }, levelingMode: "milestone" }} onCommitCoin={onCommitCoin} onCommitXp={vi.fn()} />);
+    fireEvent.click(screen.getByLabelText("Gold: 12. Adjust"));
+    fireEvent.click(screen.getByText("100"));
+    fireEvent.click(screen.getByText("25"));
+    fireEvent.click(screen.getByText("Apply"));
+    await waitFor(() => expect(onCommitCoin).toHaveBeenCalledWith("gp", "gain", 125));
+    expect(screen.queryByText("Experience")).not.toBeInTheDocument();
+  });
+});

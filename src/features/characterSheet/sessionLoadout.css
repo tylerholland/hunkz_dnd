@@ -1,0 +1,348 @@
+/* Story 58 — Session-mode Loadout capture row and coin/XP ledger */
+
+/* ─── Quick-add row ─────────────────────────────────────────────────────── */
+
+.cs-sm-add {
+  margin-top: 8px;
+}
+
+.cs-sm-add--idle {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px dashed var(--pal-border);
+  border-radius: 4px;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  cursor: pointer;
+  transition: color 0.12s ease, border-color 0.12s ease;
+}
+
+.cs-sm-add--idle:hover,
+.cs-sm-add--idle:focus-visible {
+  color: var(--pal-accent-bright);
+  border-color: var(--pal-accent);
+  outline: none;
+}
+
+.cs-sm-add-row {
+  display: flex;
+  gap: 6px;
+  align-items: stretch;
+}
+
+.cs-sm-add-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+}
+
+.cs-sm-add-commit,
+.cs-sm-add-details {
+  min-height: 44px;
+  min-width: 44px;
+  flex-shrink: 0;
+}
+
+.cs-sm-add--error .cs-sm-add-input {
+  border-color: #c06060;
+}
+
+.cs-sm-add-hint {
+  margin-top: 4px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--pal-text-muted);
+}
+
+.cs-sm-add-hint--error {
+  color: #c06060;
+}
+
+/* ─── Ledger ─────────────────────────────────────────────────────────────── */
+
+.cs-sm-ledger {
+  margin-top: 22px;
+  padding-top: 14px;
+  border-top: 1px solid var(--pal-border);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.cs-sm-ledger-label {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--pal-accent-dim);
+}
+
+.cs-sm-purse-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 16px;
+  margin-top: 6px;
+}
+
+.cs-sm-purse-gp,
+.cs-sm-purse-denom {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  min-height: 44px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  transition: border-color 0.12s ease, color 0.12s ease;
+}
+
+.cs-sm-purse-gp:hover,
+.cs-sm-purse-gp:focus-visible,
+.cs-sm-purse-gp.active,
+.cs-sm-purse-denom:hover,
+.cs-sm-purse-denom:focus-visible,
+.cs-sm-purse-denom.active {
+  border-color: var(--pal-border);
+  outline: none;
+}
+
+.cs-sm-purse-gp {
+  align-items: center;
+  margin-left: -10px;
+}
+
+.cs-sm-purse-glyph {
+  color: #c8a040;
+  font-size: 16px;
+}
+
+.cs-sm-purse-total {
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1;
+  color: var(--pal-gem);
+}
+
+.cs-sm-purse-unit {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cs-sm-purse-denoms {
+  display: grid;
+  grid-template-columns: repeat(4, auto);
+  gap: 4px;
+}
+
+.cs-sm-purse-denom {
+  align-items: center;
+}
+
+.cs-sm-purse-denom-val {
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--pal-text);
+}
+
+.cs-sm-purse-denom.zero {
+  opacity: 0.4;
+}
+
+.cs-sm-purse-denom.zero.active,
+.cs-sm-purse-denom.zero:hover {
+  opacity: 1;
+}
+
+.flash .cs-sm-purse-total,
+.flash .cs-sm-purse-denom-val,
+.cs-sm-xp-nums.flash {
+  color: #c06060;
+  transition: color 0.1s ease;
+}
+
+/* ─── XP ─────────────────────────────────────────────────────────────────── */
+
+.cs-sm-xp-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cs-sm-xp-nums {
+  flex: 1;
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--pal-text-body);
+  text-align: right;
+}
+
+.cs-sm-xp-add {
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--pal-accent-bright);
+  cursor: pointer;
+}
+
+.cs-sm-xp-add:hover,
+.cs-sm-xp-add.active {
+  border-color: var(--pal-accent);
+}
+
+.cs-sm-xp-bar {
+  height: 4px;
+  margin-top: 6px;
+  border-radius: 2px;
+  background: var(--pal-border);
+  overflow: hidden;
+}
+
+.cs-sm-xp-fill {
+  height: 100%;
+  background: var(--pal-accent);
+  transition: width 0.3s ease;
+}
+
+.cs-sm-xp[data-state="ready"] .cs-sm-xp-nums {
+  color: #d4af37;
+  letter-spacing: 0.08em;
+}
+
+.cs-sm-xp[data-state="ready"] .cs-sm-xp-fill {
+  background: linear-gradient(90deg, #c8a040, #f0d060);
+  animation: csXpThresholdPulse 1.2s ease-out 1;
+}
+
+@keyframes csXpThresholdPulse {
+  0% { box-shadow: 0 0 0 rgba(240, 208, 96, 0); }
+  40% { box-shadow: 0 0 10px rgba(240, 208, 96, 0.8); }
+  100% { box-shadow: 0 0 0 rgba(240, 208, 96, 0); }
+}
+
+/* ─── Delta pad ──────────────────────────────────────────────────────────── */
+
+.cs-sm-pad {
+  margin-top: 10px;
+  padding: 10px;
+  border: 1px solid var(--pal-border);
+  border-radius: 6px;
+  background: var(--pal-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cs-sm-pad-seg {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cs-sm-pad-op {
+  min-height: 40px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  cursor: pointer;
+}
+
+.cs-sm-pad-op + .cs-sm-pad-op {
+  border-left: 1px solid var(--pal-border);
+}
+
+.cs-sm-pad-op.active {
+  background: var(--pal-accent-dim);
+  color: var(--pal-accent-bright);
+}
+
+.cs-sm-pad-entry {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.cs-sm-pad-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  font-family: var(--font-display);
+  font-size: 20px;
+}
+
+.cs-sm-pad-unit {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cs-sm-pad-commit {
+  min-height: 44px;
+  flex-shrink: 0;
+}
+
+.cs-sm-pad-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+
+.cs-sm-pad-chip {
+  min-width: 40px;
+  min-height: 36px;
+  padding: 0 8px;
+  border: 1px solid var(--pal-border);
+  border-radius: 18px;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 13px;
+  color: var(--pal-text-body);
+  cursor: pointer;
+}
+
+.cs-sm-pad-chip:hover {
+  border-color: var(--pal-accent);
+}
+
+.cs-sm-pad-cancel {
+  margin-left: auto;
+  min-height: 36px;
+}
+
+.cs-sm-pad-drift {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--pal-accent-bright);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-sm-xp[data-state="ready"] .cs-sm-xp-fill { animation: none; }
+}

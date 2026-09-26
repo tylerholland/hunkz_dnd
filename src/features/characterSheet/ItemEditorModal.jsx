@@ -18,8 +18,10 @@ export function itemTypeLabel(value) {
   return opt ? opt.label : value || "";
 }
 
-export default function ItemEditorModal({ item, pal, onSave, onClose, showType }) {
-  const [name, setName] = useState(item?.name || "");
+// `seed` pre-fills a NEW item (Story 58 quick-add ⋯) without switching the
+// modal into edit mode the way `item` does.
+export default function ItemEditorModal({ item, seed, pal, onSave, onClose, showType }) {
+  const [name, setName] = useState(item?.name || seed?.name || "");
   const [desc, setDesc] = useState(item?.description || "");
   const [mods, setMods] = useState(item?.mods || []);
   const [type, setType] = useState(() => {
@@ -29,8 +31,8 @@ export default function ItemEditorModal({ item, pal, onSave, onClose, showType }
   });
   const [requiresAttunement, setRequiresAttunement] = useState(item?.requiresAttunement || false);
   const [attuned, setAttuned] = useState(item?.attuned || false);
-  const [trackQty, setTrackQty] = useState(item?.qty != null);
-  const [qty, setQty] = useState(item?.qty ?? 1);
+  const [trackQty, setTrackQty] = useState((item?.qty ?? seed?.qty) != null);
+  const [qty, setQty] = useState(item?.qty ?? seed?.qty ?? 1);
   const [equipped, setEquipped] = useState(item?.equipped !== false);
 
   const addMod = () => setMods((m) => [...m, { attribute: MOD_ATTRIBUTES[0], value: "" }]);

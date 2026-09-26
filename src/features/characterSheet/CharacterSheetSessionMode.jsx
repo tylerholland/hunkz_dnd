@@ -52,6 +52,10 @@ import CombatTransitionOverlay from "./CombatTransitionOverlay";
 import { playCombatEnterSound, playCombatExitSound } from "../../lib/combatSound";
 import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../../lib/useTextScale";
 import AttackDeclarationBar from "./AttackDeclarationBar";
+import ItemEditorModal from "./ItemEditorModal";
+import SessionQuickAdd from "./SessionQuickAdd";
+import SessionLedger from "./SessionLedger";
+import { applyDelta, normalizeCoin } from "./sessionLoadout";
 import RollOverlay from "../../components/RollOverlay";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
@@ -592,6 +596,72 @@ export default function CharacterSheetSessionMode({
       if (kind === "long") setChar((prev) => ({ ...prev, hitDiceCurrent: prevHitDice }));
     }
   }, [char, slug, onSessionSync, sessionPassword]);
+
+  // ── Story 58 — Loadout capture + coin/XP ledger ──────────────────────────
+  // Every commit rebases on the freshest polled value (charRef), never on a
+  // snapshot taken when the compose row or pad opened.
+  const charRef = useRef(char);
+  useEffect(() => { charRef.current = char; }, [char]);
+  const [recentAdds, setRecentAdds] = useState({}); // id → stagger index
+  const [itemDetails, setItemDetails] = useState(null); // { kind, seed }
+
+  const addLoadoutItems = useCallback(async (kind, items) => {
+    if (!slug || items.length === 0) return false;
+    const next = [...(charRef.current?.[kind] || []), ...items];
+    const addedIds = new Set(items.map((item) => item.id));
+    setChar((prev) => ({ ...prev, [kind]: next }));
+    setRecentAdds((prev) => {
+      const merged = { ...prev };
+      items.forEach((item, index) => { merged[item.id] = index; });
+      return merged;
+    });
+    setTimeout(() => setRecentAdds((prev) => {
+      const rest = { ...prev };
+      addedIds.forEach((id) => delete rest[id]);
+      return rest;
+    }), 1000);
+    try {
+      await patchSession(slug, { [kind]: next }, sessionPassword);
+      onSessionSync?.();
+      return true;
+    } catch {
+      setChar((prev) => ({ ...prev, [kind]: (prev?.[kind] || []).filter((item) => !addedIds.has(item.id)) }));
+      return false;
+    }
+  }, [slug, sessionPassword, onSessionSync]);
+
+  const commitCoin = useCallback(async (denom, op, amount) => {
+    const prevCoin = normalizeCoin(charRef.current?.coin);
+    const { value, clamped } = applyDelta(prevCoin[denom], op, amount);
+    const nextCoin = { ...prevCoin, [denom]: value };
+    setChar((prev) => ({ ...prev, coin: nextCoin }));
+    try {
+      await patchSession(slug, { coin: nextCoin }, sessionPassword);
+      onSessionSync?.();
+      return { ok: true, clamped };
+    } catch {
+      setChar((prev) => ({ ...prev, coin: prevCoin }));
+      return { ok: false, clamped: false };
+    }
+  }, [slug, sessionPassword, onSessionSync]);
+
+  const commitXp = useCallback(async (op, amount) => {
+    const prevXp = charRef.current?.xpCurrent ?? 0;
+    const { value, clamped } = applyDelta(prevXp, op, amount);
+    setChar((prev) => ({ ...prev, xpCurrent: value }));
+    try {
+      await patchSession(slug, { xpCurrent: value }, sessionPassword);
+      onSessionSync?.();
+      return { ok: true, clamped };
+    } catch {
+      setChar((prev) => ({ ...prev, xpCurrent: prevXp }));
+      return { ok: false, clamped: false };
+    }
+  }, [slug, sessionPassword, onSessionSync]);
+
+  const rowEnterProps = (id) => (id in recentAdds
+    ? { className: "cs-spell-row-enter", style: { animationDelay: `${recentAdds[id] * 40}ms` } }
+    : {});
 
   // ── Session sub-tab state ─────────────────────────────────────────────────
   const storedSubtab = sessionStorage.getItem(`dnd_session_subtab_${slug}`) || "combat";
@@ -1481,10 +1551,13 @@ export default function CharacterSheetSessionMode({
                 </div>
                 {weapons.map((w) => {
                   const isEquipped = w.equipped !== false;
+                  const enter = rowEnterProps(w.id);
                   return (
                     <div
                       key={w.id}
+                      className={enter.className}
                       style={{
+                        ...enter.style,
                         display: "flex", alignItems: "center", gap: 8,
                         padding: "8px 0",
                         borderBottom: `1px solid ${pal.border}`,
@@ -1507,11 +1580,12 @@ export default function CharacterSheetSessionMode({
                     </div>
                   );
                 })}
-                {weapons.length === 0 && (
-                  <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted, fontStyle: "italic" }}>
-                    No weapons
-                  </span>
-                )}
+                <SessionQuickAdd
+                  kind="weapons"
+                  label="Weapon"
+                  onAdd={(items) => addLoadoutItems("weapons", items)}
+                  onOpenDetails={(seed) => setItemDetails({ kind: "weapons", seed })}
+                />
               </div>
 
               {/* Equipment column */}
@@ -1521,10 +1595,13 @@ export default function CharacterSheetSessionMode({
                 </div>
                 {equipment.map((e) => {
                   const isEquipped = e.equipped !== false;
+                  const enter = rowEnterProps(e.id);
                   return (
                     <div
                       key={e.id}
+                      className={enter.className}
                       style={{
+                        ...enter.style,
                         display: "flex", alignItems: "center", gap: 8,
                         padding: "8px 0",
                         borderBottom: `1px solid ${pal.border}`,
@@ -1544,13 +1621,15 @@ export default function CharacterSheetSessionMode({
                     </div>
                   );
                 })}
-                {equipment.length === 0 && (
-                  <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.textMuted, fontStyle: "italic" }}>
-                    No equipment
-                  </span>
-                )}
+                <SessionQuickAdd
+                  kind="equipment"
+                  label="Item"
+                  onAdd={(items) => addLoadoutItems("equipment", items)}
+                  onOpenDetails={(seed) => setItemDetails({ kind: "equipment", seed })}
+                />
               </div>
             </div>
+            <SessionLedger char={char} onCommitCoin={commitCoin} onCommitXp={commitXp} />
           </div>
 
           {/* ── MAP sub-tab ── */}
@@ -1603,6 +1682,20 @@ export default function CharacterSheetSessionMode({
           pal={pal}
           onConfirm={(amount) => applyDamageHeal(hpModal, amount)}
           onClose={() => setHpModal(null)}
+        />
+      )}
+
+      {itemDetails && (
+        <ItemEditorModal
+          seed={itemDetails.seed}
+          pal={pal}
+          showType={itemDetails.kind === "equipment"}
+          onClose={() => setItemDetails(null)}
+          onSave={(item) => {
+            const { kind } = itemDetails;
+            setItemDetails(null);
+            addLoadoutItems(kind, [item]);
+          }}
         />
       )}
 
