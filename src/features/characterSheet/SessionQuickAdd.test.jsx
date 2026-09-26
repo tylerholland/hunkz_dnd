@@ -109,7 +109,9 @@ describe("Loadout quantity + expandability", () => {
   it("shows (N) in the title and adjusts quantity from the expanded row", () => {
     const onAdjustQty = vi.fn();
     render(<SessionLoadoutRow expanded item={{ id: "t", name: "Torch", qty: 4 }} onEdit={noop} onToggleEquipped={noop} onToggleExpand={noop} onAdjustQty={onAdjustQty} />);
-    expect(screen.getByText("(4)", { exact: false })).toBeInTheDocument();
+    const qtyNum = document.querySelector(".cs-sm-ld-qty-num");
+    expect(qtyNum).toHaveTextContent("4");
+    expect(qtyNum.parentElement).toHaveTextContent("(4)");
     expect(screen.getByText("Quantity:")).toBeInTheDocument();
     fireEvent.click(screen.getByLabelText("Increase Torch quantity"));
     expect(onAdjustQty).toHaveBeenLastCalledWith(1);
