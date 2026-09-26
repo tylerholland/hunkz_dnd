@@ -72,6 +72,8 @@ export default function DmDashboardPage() {
   const [showManageParty, setShowManageParty] = useState(false);
   const [guideOpen, setGuideOpen] = useState(false);
   const [openCardPopoverSlug, setOpenCardPopoverSlug] = useState(null);
+  const [expandedCardSlug, setExpandedCardSlug] = useState(null);
+  const diceRollerRef = useRef(null);
   const [combatMode, setCombatMode] = useState(initialCombatMode);
   const [mapCollapsed, setMapCollapsed] = useState(false);
   const [combatLayoutActive, setCombatLayoutActive] = useState(initialCombatMode);
@@ -964,6 +966,9 @@ export default function DmDashboardPage() {
           showTier2={!cardsCompact}
           onHeaderClick={combatLayoutActive ? () => handleSetActiveTurnForSlug(char.slug) : undefined}
           allParty={party}
+          expanded={expandedCardSlug === char.slug}
+          onToggleExpand={() => setExpandedCardSlug((current) => (current === char.slug ? null : char.slug))}
+          onRoll={(request) => diceRollerRef.current?.rollFor(request)}
         />
       </div>
     ))
@@ -1151,6 +1156,7 @@ export default function DmDashboardPage() {
                   onApplyNpcDamage={handleApplyNpcDamage}
                   remoteHistory={rollHistory}
                   marginTop={0}
+                  ref={diceRollerRef}
                 />
               </div>
             </div>

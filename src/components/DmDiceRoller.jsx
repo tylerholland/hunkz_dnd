@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useImperativeHandle } from "react";
 import { parseDiceExpr, rollDie, DieShape } from "./DiceRoller";
 import { RollHistoryRow } from "./RollHistoryList";
 import { PALETTES } from "../features/characterSheet/theme";
@@ -61,7 +61,7 @@ function createClientRollId(timestamp, index) {
 }
 
 // ── DmDiceRoller ───────────────────────────────────────────────────────────────
-export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, remoteHistory = [], marginTop = 16 }) {
+export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, remoteHistory = [], marginTop = 16, ref }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
     sessionStorage.getItem("dnd_dice_dm_open") !== "false"
@@ -98,11 +98,18 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
   }, []);
 
   // ── Roll execution ──────────────────────────────────────────────────────────
-  const doRoll = useCallback(() => {
+  // `request` ({ expr, label, characterName, palette }) rolls on behalf of a
+  // party card; without it the roller uses its own inputs.
+  const doRoll = useCallback((request) => {
     if (isRolling) return;
+    const req = request && typeof request.expr === "string" ? request : null;
 
     let groups, flat;
-    if (exprInput.trim()) {
+    if (req) {
+      const parsed = parseDiceExpr(req.expr);
+      if (!parsed || parsed.groups.length === 0) return;
+      groups = parsed.groups; flat = parsed.flat;
+    } else if (exprInput.trim()) {
       const parsed = parseDiceExpr(exprInput.trim());
       if (!parsed || parsed.groups.length === 0) {
         setExprError("Could not parse — use NdX or N terms, e.g. 2d6+1d4+3");
@@ -132,7 +139,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
       if (cycleRef.current) { clearInterval(cycleRef.current); cycleRef.current = null; }
       setCycleNum(null);
 
-      const results = Array.from({ length: repeatCount }, () =>
+      const results = Array.from({ length: req ? 1 : repeatCount }, () =>
         executeSingleRoll(groups, flat, capturedAdvMode)
       );
 
@@ -147,18 +154,20 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
       const exprLabel = buildExprLabel(groups, flat);
       const modeTag = capturedAdvMode !== "normal"
         ? (capturedAdvMode === "advantage" ? " (adv)" : " (dis)") : "";
+      const rollLabel = `${req?.label || "Free Roll"}${modeTag}`;
+      const rollName = req?.characterName || "DM";
       const baseTimestamp = Date.now();
       const historyEntries = results.map((result, index) => {
         const id = createClientRollId(baseTimestamp, index);
         return buildLocalRollHistoryEntry({
           id,
-          label: `Free Roll${modeTag}`,
+          label: rollLabel,
           result: {
             ...result,
             exprLabel,
           },
           timestamp: baseTimestamp + index,
-          characterName: "DM",
+          characterName: rollName,
           source: "dm",
         });
       });
@@ -167,18 +176,27 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
       if (dmPassword) {
         const rollPayloads = results.map((result, index) => buildRollHistoryPayload({
           id: historyEntries[index]?.id,
-          label: `Free Roll${modeTag}`,
+          label: rollLabel,
           result: {
             ...result,
             exprLabel,
           },
-          characterName: "DM",
+          characterName: rollName,
+          paletteKey: req?.palette,
           source: "dm",
         }));
         Promise.allSettled(rollPayloads.map((payload) => postDmRoll(dmPassword, payload))).catch(() => {});
       }
     }, 600);
   }, [isRolling, advMode, repeatCount, exprInput, comboDice, comboMod, dieCount, selectedSides, dmPassword]);
+
+  // Party-card rolls (DM card revamp): the dashboard calls rollFor(request).
+  useImperativeHandle(ref, () => ({
+    rollFor(request) {
+      setIsOpen(true);
+      doRoll(request);
+    },
+  }), [doRoll]);
 
   // ── Combo builder ───────────────────────────────────────────────────────────
   const handleDieSelect = (sides) => setSelectedSides(sides);
@@ -438,7 +456,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
             {/* Roll button */}
             <button
               disabled={isRolling}
-              onClick={doRoll}
+              onClick={() => doRoll()}
               className="dice-roll-btn dm"
               style={{ background: "rgba(30,58,78,0.4)" }}
             >{getFreeRollLabel()}</button>

@@ -25,10 +25,13 @@ const DM_PARTY_FIELDS = [
   // Story 55 — attacker ref, same write as the damage stamp. DM sees it
   // unstripped; the public projection below strips it per-case (ADR-023).
   "lastDamageFrom",
+  // DM card revamp (Stories 50/51/64) — ability modifiers, speed, and the
+  // loadout drawer. DM-only payload; player projections are unchanged.
+  "stats", "speed", "weapons", "equipment",
 ];
 
 const DM_PARTY_PROJECTION_EXPRESSION =
-  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom";
+  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom, stats, speed, weapons, equipment";
 
 const DM_PARTY_EXPRESSION_ATTRIBUTE_NAMES = {
   "#n": "name",

@@ -22,6 +22,9 @@ import QuickActionPopover from "./characterCard/QuickActionPopover";
 import DmNotesStrip from "./characterCard/DmNotesStrip";
 import XpCoinRow from "./characterCard/XpCoinRow";
 import DeathSavesStrip from "./characterCard/DeathSavesStrip";
+import CardStatsBand from "./characterCard/CardStatsBand";
+import CardLoadoutDrawer from "./characterCard/CardLoadoutDrawer";
+import { abilityModifier, formatMod } from "./cardStats";
 import "./characterCard.css";
 
 export { AwardXpModal } from "./characterCard/AwardXpModal";
@@ -49,6 +52,9 @@ export default function CharacterCard({
   showTier2 = true,
   dimmed = false,
   onHeaderClick,
+  expanded: expandedProp,
+  onToggleExpand,
+  onRoll,
 }) {
   const pal = useContext(PalCtx);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -56,6 +62,13 @@ export default function CharacterCard({
   const [showAwardXp, setShowAwardXp] = useState(false);
   const [showDistributeCoin, setShowDistributeCoin] = useState(false);
   const [coinExpanded, setCoinExpanded] = useState(false);
+  // Loadout drawer — the dashboard owns this so only one card is open at a time.
+  const [localExpanded, setLocalExpanded] = useState(false);
+  const expanded = expandedProp ?? localExpanded;
+  const toggleExpanded = onToggleExpand ?? (() => setLocalExpanded((value) => !value));
+  const cardRoll = onRoll
+    ? (expr, label) => onRoll({ expr, label, characterName: char.name, palette: char.palette })
+    : undefined;
   const charPal = PALETTES[char.palette] || PALETTES.ocean;
   const cardPal = getPartyCardPalette(charPal, pal);
 
@@ -234,37 +247,7 @@ export default function CharacterCard({
 
   const visibleConds = [...conditions, ...removingConds.filter((condition) => !conditions.includes(condition))];
   const concentrationDisplay = isConcentrating ? concentration : fadingConcentration;
-  const conScore = char.stats?.find((s) => s.stat === "Constitution")?.score ?? 10;
-  const conItemBonus = [...(char.weapons || []), ...(char.equipment || [])].reduce((sum, item) => {
-    return sum + (item.mods || []).filter((m) => m.attribute === "Constitution").reduce((s, m) => s + (parseInt(m.value, 10) || 0), 0);
-  }, 0);
-  const conSaveMod = Math.floor((conScore - 10) / 2) + conItemBonus;
-
-  // Saves strip computations (Story 20)
-  const allItems = [...(char.weapons || []), ...(char.equipment || [])];
-  const equippedItems = allItems.filter((item) => item.equipped !== false);
-  const wisScore = char.stats?.find((s) => s.stat === "Wisdom")?.score ?? 10;
-  const wisItemBonus = equippedItems.reduce((sum, item) => {
-    return sum + (item.mods || []).filter((m) => m.attribute === "Wisdom").reduce((s, m) => s + (parseInt(m.value, 10) || 0), 0);
-  }, 0);
-  const dexScore = char.stats?.find((s) => s.stat === "Dexterity")?.score ?? 10;
-  const dexItemBonus = equippedItems.reduce((sum, item) => {
-    return sum + (item.mods || []).filter((m) => m.attribute === "Dexterity").reduce((s, m) => s + (parseInt(m.value, 10) || 0), 0);
-  }, 0);
-  const speedItemBonus = equippedItems.reduce((sum, item) => {
-    return sum + (item.mods || []).filter((m) => m.attribute === "Speed").reduce((s, m) => s + (parseInt(m.value, 10) || 0), 0);
-  }, 0);
-  const passivePerception = 10 + Math.floor((wisScore - 10) / 2) + wisItemBonus;
-  const wisSaveMod = Math.floor((wisScore - 10) / 2) + wisItemBonus;
-  const dexSaveMod = Math.floor((dexScore - 10) / 2) + dexItemBonus;
-  const SPEED_ZERO_CONDITIONS = ["Restrained", "Paralyzed", "Petrified", "Grappled"];
-  const activeConditions = Array.isArray(char.conditions) ? char.conditions : [];
-  const speedZeroed = SPEED_ZERO_CONDITIONS.some((c) => activeConditions.includes(c));
-  const baseSpeed = char.speed ?? 30;
-  const netSpeed = speedZeroed ? 0 : baseSpeed + speedItemBonus;
-  const showSpeed = netSpeed !== 30 || speedItemBonus !== 0;
-  const formatSaveMod = (mod) => (mod >= 0 ? "+" : "") + mod;
-  const conSaveLabel = (conSaveMod >= 0 ? "+" : "") + conSaveMod;
+  const conSaveLabel = formatMod(abilityModifier(char, "Constitution"));
   const hasStatusRow = visibleConds.length > 0 || !!concentrationDisplay || !!char.inspiration;
   const spellSlotGroups = getSpellSlotGroups(char.spellSlots || []);
   const showDeathSaves = hasHp && optimisticHp === 0 && (!isStable || isFallen);
@@ -577,39 +560,13 @@ export default function CharacterCard({
             </div>
           )}
 
-          {/* Saves strip (Story 20) */}
-          {hasHp && (
-            <div className="cc-saves-strip">
-              <span className="cc-saves-perc-label">Perc</span>
-              <span className="cc-saves-perc-value">{passivePerception}</span>
-              <div className="cc-saves-divider-dot" />
-              <div className="cc-saves-triad">
-                <div className="cc-save-pair">
-                  <span className="cc-save-pair-label">Wis</span>
-                  <span className="cc-save-pair-value">{formatSaveMod(wisSaveMod)}</span>
-                </div>
-                <span className="cc-save-sep">·</span>
-                <div className="cc-save-pair">
-                  <span className="cc-save-pair-label">Con</span>
-                  <span className="cc-save-pair-value">{formatSaveMod(conSaveMod)}</span>
-                </div>
-                <span className="cc-save-sep">·</span>
-                <div className="cc-save-pair">
-                  <span className="cc-save-pair-label">Dex</span>
-                  <span className="cc-save-pair-value">{formatSaveMod(dexSaveMod)}</span>
-                </div>
-              </div>
-              {showSpeed && (
-                <>
-                  <div className="cc-saves-divider-dot" />
-                  <span
-                    className="cc-saves-speed-value"
-                    style={speedZeroed ? { color: "#c06060" } : undefined}
-                  >{netSpeed}ft</span>
-                </>
-              )}
-            </div>
-          )}
+          {/* At-a-glance modifiers + skills (Stories 50/64); replaces the Story 20 saves strip */}
+          <CardStatsBand
+            char={char}
+            onRoll={cardRoll}
+            expanded={expanded}
+            onToggleExpand={toggleExpanded}
+          />
 
           {/* Tier-2 collapse: XP + Coin */}
           <XpCoinRow
@@ -624,6 +581,8 @@ export default function CharacterCard({
             showTier2={showTier2}
           />
       </div>
+
+      {expanded && <CardLoadoutDrawer char={char} onRoll={cardRoll} />}
 
       <DmNotesStrip
         slug={char.slug}
