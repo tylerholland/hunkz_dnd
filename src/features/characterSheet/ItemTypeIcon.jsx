@@ -2,7 +2,7 @@
 // take a soft fill when `filled` (equipped); open strokes stay as lines.
 const SHAPES = {
   weapon: [
-    // Double-bitted battle axe: centre haft, mirrored crescent blades
+    // Double-bitted battle axe (drawn upright; tilted via SHAPE_TRANSFORMS)
     { d: "M8.8 4.2c1.7-.6 3.2-1.6 4.4-2.4 1.4 2.4 1.4 5 0 7.4-1.2-.8-2.7-1.8-4.4-2.4Z", closed: true },
     { d: "M7.2 4.2c-1.7-.6-3.2-1.6-4.4-2.4-1.4 2.4-1.4 5 0 7.4 1.2-.8 2.7-1.8 4.4-2.4Z", closed: true },
     { d: "M8 1.5v13" },
@@ -43,10 +43,16 @@ const SHAPES = {
   ],
 };
 
+// Held at an angle; scaled slightly so the blade tips stay inside the box.
+const SHAPE_TRANSFORMS = {
+  weapon: "rotate(40 8 8) translate(8 8) scale(0.88) translate(-8 -8)",
+};
+
 export default function ItemTypeIcon({ type, filled = false, size = 16 }) {
   const shapes = SHAPES[type] || SHAPES.other;
   return (
     <svg width={size} height={size} viewBox="0 0 16 16" aria-hidden="true" data-icon={type}>
+      <g transform={SHAPE_TRANSFORMS[type]}>
       {shapes.map((shape, i) => (
         <path
           key={i}
@@ -59,6 +65,7 @@ export default function ItemTypeIcon({ type, filled = false, size = 16 }) {
           strokeLinejoin="round"
         />
       ))}
+      </g>
     </svg>
   );
 }
