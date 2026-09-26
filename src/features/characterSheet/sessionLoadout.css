@@ -403,24 +403,29 @@
 
 .cs-sm-ld-equip {
   flex-shrink: 0;
-  min-width: 76px;
-  min-height: 32px;
-  padding: 0 8px;
-  border: 1px solid var(--pal-border);
-  border-radius: 16px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  padding: 0;
+  border: none;
+  border-radius: 50%;
   background: transparent;
-  font-family: var(--font-ui);
-  font-size: 10px;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
   color: var(--pal-text-muted);
+  opacity: 0.45;
   cursor: pointer;
+  transition: color 0.12s ease, opacity 0.12s ease, background 0.12s ease;
+}
+
+.cs-sm-ld-equip:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--pal-accent) 12%, transparent);
 }
 
 .cs-sm-ld-equip.on {
-  border-color: var(--pal-accent);
-  background: var(--pal-accent-dim);
   color: var(--pal-accent-bright);
+  opacity: 1;
 }
 
 .cs-sm-ld-equip:focus-visible {
