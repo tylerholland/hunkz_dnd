@@ -45,13 +45,19 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
   const [menuOpen, setMenuOpen] = useState(false);
 
   const [editingItem, setEditingItem] = useState(null);
-  const [combatTab, setCombatTab] = useState(() => {
-    if (slug) {
+  // Story 59 — the profile tab strip is gone. A stored tab naming Combat or
+  // Map gets one notice pointing at Session mode; the key is then retired.
+  const [movedTabsNotice, setMovedTabsNotice] = useState(() => {
+    if (!slug) return false;
+    try {
       const stored = sessionStorage.getItem(`dnd_tab_${slug}`);
-      if (stored === "loadout" || stored === "persona" || stored === "combat") return stored;
+      sessionStorage.removeItem(`dnd_tab_${slug}`);
+      return stored === "combat" || stored === "map";
+    } catch {
+      return false;
     }
-    return "combat";
   });
+  const dismissMovedTabsNotice = () => setMovedTabsNotice(false);
   const [expandedItems, setExpandedItems] = useState(new Set());
   const [hoveredStat, setHoveredStat] = useState(null);
 
@@ -197,11 +203,6 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
       setActive(first ? { collectionId: char.collections[0].id, sectionId: first.id } : null);
     }
   }, [char.collections, active]);
-
-  const setTab = (tab) => {
-    setCombatTab(tab);
-    if (slug) sessionStorage.setItem(`dnd_tab_${slug}`, tab);
-  };
 
   const update = (field, val) => setChar((current) => ({ ...current, [field]: val }));
   const updateStat = (index, field, val) => setChar((current) => {
@@ -799,8 +800,8 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     toggleExpanded,
     hoveredStat,
     setHoveredStat,
-    combatTab,
-    setTab,
+    movedTabsNotice,
+    dismissMovedTabsNotice,
     activeMap,
     activeMapView,
   };

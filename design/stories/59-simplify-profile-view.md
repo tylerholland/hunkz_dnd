@@ -1,6 +1,6 @@
 # Feature Story: Simplify the Classic Profile View
 
-**Status**: Needs UX design
+**Status**: Done — tab strip removed; Inventory + Persona are plain sections; Combat + Map tabs removed (exhaustion stepper added to Session mode first); one-time notice for stored combat/map tabs
 **Source**: User request
 **Prototype**: (leave blank — ux-designer fills this in)
 

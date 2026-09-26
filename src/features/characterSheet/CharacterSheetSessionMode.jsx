@@ -604,6 +604,21 @@ export default function CharacterSheetSessionMode({
   // snapshot taken when the compose row or pad opened.
   const charRef = useRef(char);
   useEffect(() => { charRef.current = char; }, [char]);
+
+  // Story 59 — exhaustion stepper (0–6), moved here from the classic Combat tab.
+  const setExhaustion = useCallback(async (level) => {
+    const prevLevel = charRef.current?.exhaustionLevel ?? 0;
+    const next = Math.max(0, Math.min(6, level));
+    if (next === prevLevel) return;
+    setChar((prev) => ({ ...prev, exhaustionLevel: next }));
+    try {
+      await patchSession(slug, { exhaustionLevel: next }, sessionPassword);
+      onSessionSync?.();
+    } catch {
+      setChar((prev) => ({ ...prev, exhaustionLevel: prevLevel }));
+    }
+  }, [slug, onSessionSync, sessionPassword]);
+
   const [recentAdds, setRecentAdds] = useState({}); // id → stagger index
   const [itemDetails, setItemDetails] = useState(null); // { kind, seed }
 
@@ -1421,6 +1436,24 @@ export default function CharacterSheetSessionMode({
                 <span key={c} className="cs-sm-cond-chip">{c}</span>
               ))
             )}
+          </div>
+          <div className={`cs-sm-exhaustion${(char?.exhaustionLevel ?? 0) > 0 ? " active" : ""}`}>
+            <span className="cs-sm-exhaustion-label">Exhaustion</span>
+            <button
+              type="button"
+              className="cs-sm-exhaustion-btn"
+              onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) - 1)}
+              disabled={(char?.exhaustionLevel ?? 0) <= 0}
+              aria-label="Decrease exhaustion"
+            >−</button>
+            <span className="cs-sm-exhaustion-level" aria-live="polite">{char?.exhaustionLevel ?? 0}</span>
+            <button
+              type="button"
+              className="cs-sm-exhaustion-btn"
+              onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) + 1)}
+              disabled={(char?.exhaustionLevel ?? 0) >= 6}
+              aria-label="Increase exhaustion"
+            >+</button>
           </div>
 
           {/* Spell slots — tap a pip to spend/restore; rests in the header row (Story 63) */}

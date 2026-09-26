@@ -1,39 +1,16 @@
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { useHoldToRepeat } from "../../lib/useHoldToRepeat";
 import { Link, useNavigate } from "react-router-dom";
-import DiceRoller from "../../components/DiceRoller";
 import TopNav, { NavSegment } from "../../components/TopNav";
 import { InfoBadge } from "./CharacterTalents";
 import { getTalentTooltip } from "./talentCatalog";
 import ItemEditorModal, { itemTypeLabel } from "./ItemEditorModal";
 import { HR } from "./CharacterSheetPrimitives";
-import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, HIT_DIE_BY_CLASS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt, normalizeSpells, buildAttackEntries, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
+import { ARMOR_OPTIONS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt, normalizeSpells, spellRoleGlyph } from "./constants";
 import { renderInline } from "./theme";
-import MapViewer from "../maps/MapViewer";
 import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
 import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../../lib/useTextScale";
 import "./characterSheet.css";
-
-const CONDITION_SEVERITY_COLORS = {
-  Blinded: "#c06060",
-  Paralyzed: "#c06060",
-  Petrified: "#c06060",
-  Poisoned: "#c06060",
-  Stunned: "#c06060",
-  Unconscious: "#c06060",
-  Grappled: "#c09040",
-  Prone: "#c09040",
-  Restrained: "#c09040",
-  Deafened: "#6090c0",
-  Invisible: "#6090c0",
-  Charmed: "#9060b8",
-  Frightened: "#9060b8",
-  Incapacitated: "#9060b8",
-};
-
-function conditionColorFor(name) {
-  return CONDITION_SEVERITY_COLORS[name] || "#c09040";
-}
 
 function formatXpThreshold(value) {
   if (value >= 1000) return `${Math.round(value / 1000)}k`;
@@ -48,152 +25,6 @@ function gpEquivalent(coin) {
   const pp = coin?.pp || 0;
   const total = Math.round((cp * 0.01 + sp * 0.1 + ep * 0.5 + gp + pp * 10) * 100) / 100;
   return Number.isInteger(total) ? `${total}` : total.toFixed(2).replace(/0+$/, "").replace(/\.$/, "");
-}
-
-function HitDiceTracker({ char, slug, applySessionPatch, setChar, pal }) {
-  const [showModal, setShowModal] = useState(false);
-  const [modalCount, setModalCount] = useState(1);
-
-  const level = char.level || 1;
-  const dieSize = HIT_DIE_BY_CLASS[char.charClass] || 8;
-  const hdCurrent = char.hitDiceCurrent ?? level;
-  const isFull = hdCurrent >= level;
-  const isLow = !isFull && level > 0 && (hdCurrent / level) <= 0.25;
-  const isEmpty = hdCurrent === 0;
-
-  // Get CON modifier for HP recovery preview
-  const conStat = (char.stats || []).find((s) => s.stat === "Constitution");
-  const conMod = conStat ? Math.floor((conStat.score - 10) / 2) : 0;
-
-  function openModal() {
-    if (isEmpty) return;
-    setModalCount(1);
-    setShowModal(true);
-  }
-
-  async function confirmSpend(n) {
-    const newVal = Math.max(0, hdCurrent - n);
-    setChar((c) => ({ ...c, hitDiceCurrent: newVal }));
-    setShowModal(false);
-    try {
-      await applySessionPatch({ hitDiceCurrent: newVal }, { hitDiceCurrent: hdCurrent });
-    } catch {
-      setChar((c) => ({ ...c, hitDiceCurrent: hdCurrent }));
-    }
-  }
-
-  const countColor = isEmpty ? "#c06060" : (isLow ? "#c06060" : "#c8a040");
-
-  return (
-    <>
-      <div style={{ marginBottom: 0 }}>
-        {isFull ? (
-          // FULL STATE — compact single line
-          <div className="cs-hd-full-row">
-            <span className="cs-hd-full-gem">◆</span>
-            <span className="cs-hd-full-label">Hit Dice</span>
-            <span className="cs-hd-full-count">{level}</span>
-            <span className="cs-hd-full-size">d{dieSize}</span>
-            <span className="cs-hd-full-badge">Full</span>
-            {slug && (
-              <button onClick={openModal} className="cs-hd-spend-btn">Spend</button>
-            )}
-          </div>
-        ) : (
-          // DEPLETED STATE — expanded tracker
-          <div>
-            <div className="cs-hd-dep-header">
-              <span className="cs-hd-dep-label">Hit Dice</span>
-              <div style={{ display: "flex", alignItems: "baseline", gap: 4 }}>
-                <span style={{ fontFamily: pal.fontDisplay, fontSize: 28, lineHeight: 1, color: countColor, opacity: isEmpty ? 0.6 : 1 }}>{hdCurrent}</span>
-                <span style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textMuted }}>/</span>
-                <span style={{ fontFamily: pal.fontDisplay, fontSize: 18, color: pal.textMuted, lineHeight: 1 }}>{level}</span>
-                <span style={{ fontFamily: pal.fontUI, fontSize: 13, color: pal.textMuted, letterSpacing: "0.06em", marginLeft: 4 }}>d{dieSize}</span>
-              </div>
-            </div>
-
-            {isLow && !isEmpty && (
-              <div className="cs-hd-low-warning">
-                ◈ {hdCurrent} of {level} Hit Dice remaining
-              </div>
-            )}
-
-            <div className="cs-hd-pip-grid">
-              {Array.from({ length: level }, (_, i) => {
-                const available = i < hdCurrent;
-                return (
-                  <div key={i} style={{ width: 26, height: 26, borderRadius: 4, border: `1.5px solid ${available ? "rgba(138,180,200,0.4)" : "rgba(106,143,168,0.15)"}`, background: available ? "rgba(138,180,200,0.12)" : "transparent", opacity: available ? 1 : 0.35, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    {available && <div style={{ width: 8, height: 8, borderRadius: 1, background: pal.gem, opacity: 0.75 }} />}
-                  </div>
-                );
-              })}
-            </div>
-
-            {slug && (
-              <div className="cs-hd-spend-row" style={{ opacity: isEmpty ? 0.45 : 1, pointerEvents: isEmpty ? "none" : "auto" }}>
-                <span className="cs-hd-spend-label">Spend</span>
-                <div style={{ display: "flex", alignItems: "center", border: `1px solid ${pal.border}`, borderRadius: 3, overflow: "hidden" }}>
-                  <button onClick={() => !isEmpty && applyHdDelta(-1)} style={{ background: "transparent", border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 18, width: 32, height: 32, cursor: isEmpty ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.5 }}>−</button>
-                  <span style={{ fontFamily: pal.fontDisplay, fontSize: 16, color: pal.text, minWidth: 28, textAlign: "center", padding: "0 4px", borderLeft: `1px solid ${pal.border}`, borderRight: `1px solid ${pal.border}` }}>1</span>
-                  <button onClick={() => !isEmpty && openModal()} style={{ background: "transparent", border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 18, width: 32, height: 32, cursor: isEmpty ? "default" : "pointer", display: "flex", alignItems: "center", justifyContent: "center", opacity: 0.5 }}>+</button>
-                </div>
-                {!isEmpty && (
-                  <span className="cs-hd-roll-preview">
-                    Roll <span className="cs-hd-roll-dice">1d{dieSize}{conMod >= 0 ? `+${conMod}` : conMod}</span>
-                    <span className="cs-hd-roll-range">({1 + conMod}–{dieSize + conMod})</span>
-                  </span>
-                )}
-                {isEmpty && <span className="cs-hd-empty-note">No dice remaining</span>}
-                <button onClick={openModal} className="cs-hd-spend-action-btn">Spend</button>
-              </div>
-            )}
-          </div>
-        )}
-      </div>
-
-      {/* Spend Modal */}
-      {showModal && (
-        <div className="cs-hd-modal-overlay" onClick={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="cs-hd-modal-panel">
-            <div className="cs-hd-modal-title">Spend Hit Dice</div>
-            <div className="cs-hd-modal-subtitle">Short Rest — roll and add your CON modifier</div>
-
-            <div className="cs-hd-modal-die">
-              <span className="cs-hd-modal-die-label">d{dieSize}</span>
-              <span className="cs-hd-modal-die-avail">{hdCurrent} {hdCurrent === 1 ? "die" : "dice"} available</span>
-            </div>
-
-            <div className="cs-hd-modal-count-row">
-              <span className="cs-hd-modal-count-label">Dice to spend</span>
-              <div style={{ display: "flex", alignItems: "center", border: `1px solid ${pal.border}`, borderRadius: 3, overflow: "hidden" }}>
-                <button onClick={() => setModalCount((n) => Math.max(1, n - 1))} disabled={modalCount <= 1} style={{ background: "transparent", border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 22, width: 40, height: 40, cursor: modalCount <= 1 ? "default" : "pointer", opacity: modalCount <= 1 ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>−</button>
-                <span style={{ fontFamily: pal.fontDisplay, fontSize: 24, color: pal.text, minWidth: 44, textAlign: "center", padding: "0 6px", borderLeft: `1px solid ${pal.border}`, borderRight: `1px solid ${pal.border}` }}>{modalCount}</span>
-                <button onClick={() => setModalCount((n) => Math.min(hdCurrent, n + 1))} disabled={modalCount >= hdCurrent} style={{ background: "transparent", border: "none", color: pal.accentBright, fontFamily: pal.fontDisplay, fontSize: 22, width: 40, height: 40, cursor: modalCount >= hdCurrent ? "default" : "pointer", opacity: modalCount >= hdCurrent ? 0.3 : 1, display: "flex", alignItems: "center", justifyContent: "center" }}>+</button>
-              </div>
-            </div>
-
-            <div className="cs-hd-modal-recovery" style={{ background: `${pal.accent}14` }}>
-              <span className="cs-hd-modal-recovery-label">Expected HP Recovery</span>
-              <span className="cs-hd-modal-recovery-range">{modalCount * (1 + conMod)} – {modalCount * (dieSize + conMod)}</span>
-              <span className="cs-hd-modal-recovery-note">{modalCount}d{dieSize} + {modalCount * conMod} (CON mod ×{modalCount})</span>
-            </div>
-
-            <div className="cs-hd-modal-actions">
-              <button onClick={() => setShowModal(false)} className="btn-ghost">Cancel</button>
-              <button onClick={() => confirmSpend(modalCount)} className="cs-hd-spend-action-btn">Spend {modalCount} {modalCount === 1 ? "Die" : "Dice"}</button>
-            </div>
-          </div>
-        </div>
-      )}
-    </>
-  );
-
-  function applyHdDelta(delta) {
-    const newVal = Math.max(0, hdCurrent + delta);
-    if (newVal === hdCurrent) return;
-    setChar((c) => ({ ...c, hitDiceCurrent: newVal }));
-    applySessionPatch({ hitDiceCurrent: newVal }, { hitDiceCurrent: hdCurrent }).catch(() => {});
-  }
 }
 
 /**
@@ -245,109 +76,8 @@ function QtyStepperControls({ qty, onDecrement, onIncrement, onActivity, pal }) 
   );
 }
 
-function SessionNotesSection({ char, setChar, applySessionPatch, pal }) {
-  const [inputVal, setInputVal] = useState("");
-  const notes = char.playerNotes || [];
-
-  function genId() {
-    return Date.now().toString(36) + Math.random().toString(36).slice(2);
-  }
-
-  async function handleAdd() {
-    const text = inputVal.trim();
-    if (!text) return;
-    const newNote = { id: genId(), text, sharedWithDm: false, createdAt: new Date().toISOString() };
-    const prev = notes;
-    const updated = [...notes, newNote];
-    setChar((c) => ({ ...c, playerNotes: updated }));
-    setInputVal("");
-    try {
-      await applySessionPatch({ playerNotes: updated }, { playerNotes: prev });
-    } catch {
-      setChar((c) => ({ ...c, playerNotes: prev }));
-    }
-  }
-
-  async function handleDelete(id) {
-    const prev = notes;
-    const updated = notes.filter((n) => n.id !== id);
-    setChar((c) => ({ ...c, playerNotes: updated }));
-    try {
-      await applySessionPatch({ playerNotes: updated }, { playerNotes: prev });
-    } catch {
-      setChar((c) => ({ ...c, playerNotes: prev }));
-    }
-  }
-
-  async function handleToggleShare(id) {
-    const prev = notes;
-    const updated = notes.map((n) => n.id === id ? { ...n, sharedWithDm: !n.sharedWithDm } : n);
-    setChar((c) => ({ ...c, playerNotes: updated }));
-    try {
-      await applySessionPatch({ playerNotes: updated }, { playerNotes: prev });
-    } catch {
-      setChar((c) => ({ ...c, playerNotes: prev }));
-    }
-  }
-
-  return (
-    <div className="cs-notes-section">
-      <div className="cs-notes-heading">
-        <span className="cs-notes-heading-label">Session Notes</span>
-        <div className="cs-notes-divider" />
-      </div>
-
-      {notes.length > 0 && (
-        <ul className="cs-notes-list">
-          {notes.map((note, idx) => (
-            <li key={note.id} className="cs-note-item" style={{ borderBottom: idx < notes.length - 1 ? `1px solid ${pal.border}` : "none" }}>
-              <div style={{ flex: 1 }}>
-                <div className="cs-note-text">{note.text}</div>
-                <button
-                  onClick={() => handleToggleShare(note.id)}
-                  className="cs-note-share-btn"
-                  style={{ color: note.sharedWithDm ? pal.gem : pal.textMuted }}
-                >
-                  <span style={{ width: 10, height: 10, borderRadius: "50%", border: `1.5px solid ${note.sharedWithDm ? pal.gem : pal.textMuted}`, background: note.sharedWithDm ? pal.gem : "transparent", display: "inline-block", transition: "background 0.15s, border-color 0.15s", flexShrink: 0 }} />
-                  {note.sharedWithDm ? "Shared with DM" : "Private"}
-                </button>
-              </div>
-              <button
-                onClick={() => handleDelete(note.id)}
-                className="cs-note-delete-btn"
-                title="Delete note"
-              >×</button>
-            </li>
-          ))}
-        </ul>
-      )}
-
-      <div className="cs-note-input-row">
-        <input
-          type="text"
-          maxLength={500}
-          value={inputVal}
-          onChange={(e) => setInputVal(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
-          placeholder="Capture a name, clue, or quest thread… (Enter to add)"
-          style={{ flex: 1, background: pal.surfaceSolid, border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "7px 10px", outline: "none" }}
-          onFocus={(e) => { e.target.style.borderColor = pal.accent; }}
-          onBlur={(e) => { e.target.style.borderColor = pal.border; }}
-        />
-        <button
-          onClick={handleAdd}
-          className="cs-note-add-btn"
-          style={{ background: pal.accentDim }}
-        >+ Add</button>
-      </div>
-      <div className="cs-notes-hint">Private by default. Tap "Private" to share a note with the DM.</div>
-    </div>
-  );
-}
-
 export default function CharacterSheetViewMode({ ctx }) {
   const [guideOpen, setGuideOpen] = useState(false);
-  const [conditionPickerOpen, setConditionPickerOpen] = useState(false);
   const [fullCoinExpanded, setFullCoinExpanded] = useState(false);
   const [xpAwardOpen, setXpAwardOpen] = useState(false);
   const [xpAwardValue, setXpAwardValue] = useState("100");
@@ -383,16 +113,6 @@ export default function CharacterSheetViewMode({ ctx }) {
     slug,
     applySessionPatch,
     setChar,
-    markSessionExpected,
-    hpFlushRef,
-    hpPendingDelta,
-    tempHpFlushRef,
-    exhFlushRef,
-    exhPendingDelta,
-    concSpellInput,
-    setConcSpellInput,
-    hpEditMode,
-    setHpEditMode,
     hpMax,
     hpCurrent,
     tempHP,
@@ -400,15 +120,13 @@ export default function CharacterSheetViewMode({ ctx }) {
     hpBarColor,
     hpBonus,
     _itemBonuses,
-    isActiveTurn,
     secHead,
     inputStyle,
-    combatTab,
-    setTab,
+    movedTabsNotice,
+    dismissMovedTabsNotice,
     editingItem,
     setEditingItem,
     expandedItems,
-    setExpandedItems,
     toggleExpanded,
     hoveredStat,
     setHoveredStat,
@@ -416,8 +134,6 @@ export default function CharacterSheetViewMode({ ctx }) {
     addWeapon,
     updateEquipment,
     addEquipment,
-    activeMap,
-    activeMapView,
   } = ctx;
 
   const navigate = useNavigate();
@@ -454,10 +170,6 @@ export default function CharacterSheetViewMode({ ctx }) {
   // field so the merged attacks list + badge row don't remint ids (and
   // remount) on every poll tick.
   const normalizedSpells = useMemo(() => normalizeSpells(char.spells), [char.spells]);
-  const attackEntries = useMemo(
-    () => buildAttackEntries({ weapons: char.weapons || [], spells: normalizedSpells }),
-    [char.weapons, normalizedSpells]
-  );
 
   const skillItems = (char.skills || []).map((skill) => ({ key: skill, label: skill.replace(/\b\w/g, (ch) => ch.toUpperCase()) }));
   const spellItems = normalizedSpells.map((spell) => ({
@@ -791,78 +503,18 @@ export default function CharacterSheetViewMode({ ctx }) {
                 );
               })()}
 
-              <div className="cs-tab-strip">
-                {[
+              {/* Story 59 — the tab strip is gone; Inventory and Persona are plain
+                  sections, and Combat/Map live in Session mode. One-time notice
+                  for returning users whose last tab no longer exists. */}
+              {movedTabsNotice && (
+                <div className="cs-moved-notice" role="status">
+                  <span>Combat and Map now live in <Link to={`/characters/${slug}/session`} className="cs-moved-notice__link">⚔ Session mode →</Link></span>
+                  <button type="button" className="cs-moved-notice__close" onClick={dismissMovedTabsNotice} aria-label="Dismiss">×</button>
+                </div>
+              )}
 
-                  {
-                    key: "persona",
-                    label: "Persona",
-                    icon: (activeTab) => (
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M4 5 Q4 2 10 2 Q16 2 16 5 L16 11 Q16 16 10 17 Q7 17 5.5 15" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.6" fill="none" strokeLinecap="round"/>
-                        <path d="M4 5 L4 11 Q4 14 5.5 15" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.6" fill="none" strokeLinecap="round"/>
-                        <circle cx="7.5" cy="8" r="1.2" fill={activeTab ? pal.accentBright : pal.textMuted}/>
-                        <circle cx="12.5" cy="8" r="1.2" fill={activeTab ? pal.accentBright : pal.textMuted}/>
-                        <path d="M7.5 12 Q10 13.5 12.5 12" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.4" fill="none" strokeLinecap="round"/>
-                      </svg>
-                    ),
-                  },
-                  {
-                    key: "loadout",
-                    label: "Inventory",
-                    icon: (activeTab) => (
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <line x1="3" y1="3" x2="17" y2="17" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="2" strokeLinecap="round"/>
-                        <line x1="17" y1="3" x2="3" y2="17" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="2" strokeLinecap="round"/>
-                        <rect x="2" y="1" width="3" height="5" rx="1" fill={activeTab ? pal.accentBright : pal.textMuted} transform="rotate(45 3 3)"/>
-                        <rect x="15" y="1" width="3" height="5" rx="1" fill={activeTab ? pal.accentBright : pal.textMuted} transform="rotate(-45 17 3)"/>
-                      </svg>
-                    ),
-                  },
-                  {
-                    key: "map",
-                    label: "Map",
-                    disabled: !activeMap,
-                    icon: (activeTab) => (
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <polygon points="2,4 7,2 13,5 18,3 18,16 13,18 7,15 2,17" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.5" fill="none" strokeLinejoin="round"/>
-                        <line x1="7" y1="2" x2="7" y2="15" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.2"/>
-                        <line x1="13" y1="5" x2="13" y2="18" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.2"/>
-                      </svg>
-                    ),
-                  },
-                  {
-                    key: "combat",
-                    label: "Combat",
-                    icon: (activeTab) => (
-                      <svg width="20" height="20" viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M10 2 L17 5 L17 10 Q17 15 10 18 Q3 15 3 10 L3 5 Z" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.6" fill="none" strokeLinejoin="round"/>
-                        <path d="M10 6 L10 13 M7 9.5 L13 9.5" stroke={activeTab ? pal.accentBright : pal.textMuted} strokeWidth="1.4" strokeLinecap="round"/>
-                      </svg>
-                    ),
-                  }
-                ].map((tab) => {
-                  const isCurrent = combatTab === tab.key;
-                  const isDisabled = !!tab.disabled;
-                  return (
-                    <button
-                      key={tab.key}
-                      onClick={() => !isDisabled && setTab(tab.key)}
-                      className={`cs-tab-btn${isCurrent ? " active" : ""}${isDisabled ? " disabled" : ""}`}
-                      style={{
-                        background: isCurrent ? pal.accentDim : "transparent",
-                        borderColor: isCurrent ? pal.accent : pal.border,
-                        color: isCurrent ? pal.accentBright : pal.textMuted,
-                      }}
-                    >
-                      {tab.icon(isCurrent)}
-                      {tab.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {combatTab === "loadout" && (
+              <div className="cs-profile-section-title">Inventory</div>
+              {(
                 <>
                 {/* Attunement Banner */}
                 {(() => {
@@ -1379,7 +1031,9 @@ export default function CharacterSheetViewMode({ ctx }) {
                 </>
               )}
 
-              {combatTab === "persona" && (
+              <HR color={pal.border} />
+              <div className="cs-profile-section-title">Persona</div>
+              {(
                 <>
                   <div className="cs-section-heading">
                     <div style={secHead}>Skills, Spells & Special Abilities</div>
@@ -1424,439 +1078,10 @@ export default function CharacterSheetViewMode({ ctx }) {
                         </li>
                       ))}
                     </ul>
-                  ) : (
-                    <div className="cs-persona-empty">
-                      No persona traits yet. Add them in edit mode under Persona Traits.
-                    </div>
-                  )}
+                  ) : null}
                 </>
               )}
 
-              {combatTab === "combat" && (
-                <div style={{ border: isActiveTurn ? `1px solid ${pal.accent}` : "1px solid transparent", borderRadius: 8, padding: isActiveTurn ? "14px 14px 10px" : 0, background: isActiveTurn ? `${pal.accent}10` : "transparent", boxShadow: isActiveTurn ? `0 0 0 1px ${pal.accent}22, 0 0 18px ${pal.accent}22` : "none", transition: "border-color 0.18s, box-shadow 0.18s, background 0.18s" }}>
-                  {isActiveTurn && (
-                    <div className="cs-active-turn-banner">
-                      <div>
-                        <div className="cs-active-turn-label">Your Turn</div>
-                        <div className="cs-active-turn-desc">You are the active combatant in initiative.</div>
-                      </div>
-                      <div className="cs-active-turn-dot" style={{ boxShadow: `0 0 10px ${pal.accentBright}` }} />
-                    </div>
-                  )}
-
-                  {char.concentration?.active && (
-                    <div className="cs-conc-banner" style={{ background: `rgba(${pal.name === "Vellum" ? "140,110,70" : "160,104,64"},0.10)` }}>
-                      <div className="cs-conc-banner-left">
-                        <div className="cs-conc-dot" style={{ boxShadow: `0 0 6px ${pal.accentBright}` }} />
-                        <div>
-                          <span className="cs-conc-label">Concentrating on</span>
-                          <span className="cs-conc-spell">{char.concentration.spell}</span>
-                        </div>
-                      </div>
-                      {slug && (
-                        <button onClick={() => {
-                          const prev = char.concentration;
-                          const concentration = { active: false, spell: "" };
-                          setChar((current) => ({ ...current, concentration }));
-                          applySessionPatch({ concentration }, { concentration: prev }).catch(() => {});
-                        }} className="cs-conc-drop-btn">
-                          Drop Concentration
-                        </button>
-                      )}
-                    </div>
-                  )}
-
-                  {slug && !char.concentration?.active && (
-                    <div className="cs-conc-input-row">
-                      <input type="text" placeholder="Spell name…" value={concSpellInput} onChange={(e) => setConcSpellInput(e.target.value)} style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "6px 10px", outline: "none", flex: 1 }} onKeyDown={(e) => {
-                        if (e.key === "Enter" && concSpellInput.trim()) {
-                          const prev = char.concentration;
-                          const concentration = { active: true, spell: concSpellInput.trim() };
-                          setChar((current) => ({ ...current, concentration }));
-                          applySessionPatch({ concentration }, { concentration: prev }).catch(() => {});
-                          setConcSpellInput("");
-                        }
-                      }} />
-                      <button onClick={() => {
-                        if (!concSpellInput.trim()) return;
-                        const prev = char.concentration;
-                        const concentration = { active: true, spell: concSpellInput.trim() };
-                        setChar((current) => ({ ...current, concentration }));
-                        applySessionPatch({ concentration }, { concentration: prev }).catch(() => {});
-                        setConcSpellInput("");
-                      }} className="cs-set-conc-btn" style={{ opacity: concSpellInput.trim() ? 1 : 0.5 }}>
-                        Set Concentration
-                      </button>
-                    </div>
-                  )}
-
-                  {hpMax > 0 && (
-                    <div className="cs-hp-card">
-                      <div className="cs-hp-card-row">
-                        {slug && (
-                          <button onClick={() => {
-                            const delta = -1;
-                            const newVal = Math.max(0, hpCurrent + delta);
-                            if (newVal === hpCurrent) return;
-                            hpPendingDelta.current += delta;
-                            markSessionExpected({ hpCurrent: newVal });
-                            setChar((current) => ({ ...current, hpCurrent: newVal }));
-                            hpFlushRef.current?.();
-                          }} className="cs-hp-stepper">−</button>
-                        )}
-                        <div className="cs-hp-display">
-                          <div className="cs-hp-nums-combat">
-                            {hpEditMode ? (
-                              <input type="number" autoFocus defaultValue={hpCurrent} style={{ fontFamily: pal.fontDisplay, fontSize: 40, color: pal.gem, lineHeight: 1, background: pal.surface, border: `1px solid ${pal.accent}`, borderRadius: 3, width: 80, textAlign: "center", outline: "none", padding: "0 4px" }} onBlur={(e) => {
-                                const value = Math.max(0, Math.min(hpMax, parseInt(e.target.value, 10) || 0));
-                                const prev = hpCurrent;
-                                setChar((current) => ({ ...current, hpCurrent: value }));
-                                applySessionPatch({ hpCurrent: value }, { hpCurrent: prev }).catch(() => {});
-                                setHpEditMode(false);
-                              }} onKeyDown={(e) => {
-                                if (e.key === "Enter") e.target.blur();
-                                if (e.key === "Escape") setHpEditMode(false);
-                              }} />
-                            ) : (
-                              <span onClick={() => slug && setHpEditMode(true)} title={slug ? "Tap to set HP directly" : undefined} className="cs-hp-current-combat" style={{ cursor: slug ? "pointer" : "default" }}>{hpCurrent}</span>
-                            )}
-                            <span className="cs-hp-slash-combat">/</span>
-                            <span className="cs-hp-max-combat">{hpMax}</span>
-                          </div>
-                          <div className="cs-hp-label">Hit Points</div>
-                          {tempHP > 0 && <div className="cs-hp-temp-label">+{tempHP} temp</div>}
-                        </div>
-                        {slug && (
-                          <button onClick={() => {
-                            const delta = 1;
-                            const newVal = Math.min(hpMax, hpCurrent + delta);
-                            if (newVal === hpCurrent) return;
-                            hpPendingDelta.current += delta;
-                            markSessionExpected({ hpCurrent: newVal });
-                            setChar((current) => ({ ...current, hpCurrent: newVal }));
-                            hpFlushRef.current?.();
-                          }} className="cs-hp-stepper">+</button>
-                        )}
-                      </div>
-                      <div className="cs-hp-bar-track-combat">
-                        <div style={{ width: `${Math.max(0, Math.min(100, hpPct * 100))}%`, height: "100%", borderRadius: 3, background: hpBarColor, transition: "width 0.25s, background-color 0.25s" }} />
-                      </div>
-                      {slug && (
-                        <div className="cs-temp-hp-row">
-                          <span className="cs-temp-hp-label">Temp HP</span>
-                          <input type="number" min={0} value={tempHP} onChange={(e) => {
-                            const value = Math.max(0, parseInt(e.target.value, 10) || 0);
-                            setChar((current) => ({ ...current, tempHP: value }));
-                            markSessionExpected({ tempHP: value });
-                            tempHpFlushRef.current?.();
-                          }} style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "4px 8px", outline: "none", width: 72, textAlign: "center" }} />
-                        </div>
-                      )}
-                      {hpCurrent === 0 && hpMax > 0 && (
-                        <div className="cs-death-saves">
-                          <div className="cs-death-saves-title">Death Saves</div>
-                          <div className="cs-death-save-row">
-                            <span className="cs-death-save-label" style={{ color: pal.gem }}>Success</span>
-                            {[0, 1, 2].map((value) => <div key={value} className="cs-death-save-pip" style={{ border: `1px solid ${pal.gem}` }} />)}
-                          </div>
-                          <div className="cs-death-save-row">
-                            <span className="cs-death-save-label" style={{ color: "#c06060" }}>Failure</span>
-                            {[0, 1, 2].map((value) => <div key={value} className="cs-death-save-pip" style={{ border: "1px solid #c06060" }} />)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Hit Dice Tracker */}
-                  <div className="cs-hd-card">
-                    <HitDiceTracker char={char} slug={slug} applySessionPatch={applySessionPatch} setChar={setChar} pal={pal} />
-                  </div>
-
-                  <button onClick={() => {
-                    if (!slug) return;
-                    const inspiration = !char.inspiration;
-                    setChar((current) => ({ ...current, inspiration }));
-                    applySessionPatch({ inspiration }, { inspiration: !inspiration }).catch(() => {});
-                  }} className="cs-inspiration-btn" style={{ background: char.inspiration ? `${pal.gem}18` : "transparent", border: `1px solid ${char.inspiration ? pal.gem : pal.border}`, cursor: slug ? "pointer" : "default" }}>
-                    <div style={{ width: 22, height: 22, borderRadius: "50%", background: char.inspiration ? pal.gem : "transparent", border: `2px solid ${char.inspiration ? pal.gem : pal.border}`, boxShadow: char.inspiration ? `0 0 8px ${pal.gem}88, 0 0 18px ${pal.gem}33` : "none", flexShrink: 0, transition: "all 0.18s" }} />
-                    <span className="cs-inspiration-label" style={{ color: char.inspiration ? pal.accentBright : pal.textMuted }}>Inspiration</span>
-                    {char.inspiration && <span className="cs-inspiration-active-badge" style={{ background: `${pal.gem}1a`, border: `1px solid ${pal.gem}55` }}>Active</span>}
-                  </button>
-
-                  <div className="divider" />
-                  <div style={{ marginBottom: 20 }}>
-                    <div className="cs-conditions-heading">Conditions</div>
-                    {(() => {
-                      const activeConditions = char.conditions || [];
-                      const exhaustionLevel = char.exhaustionLevel || 0;
-                      const activeChips = [
-                        ...activeConditions.map((condition) => ({ key: condition, label: condition, type: "condition" })),
-                        ...(exhaustionLevel > 0 ? [{ key: "exhausted", label: "Exhausted", type: "exhaustion" }] : []),
-                      ];
-                      const inactiveConditions = CONDITIONS.filter((condition) => !activeConditions.includes(condition));
-
-                      return (
-                        <>
-                          {activeChips.length > 0 && (
-                            <div className="cs-condition-chips">
-                              {activeChips.map((chip) => {
-                                const color = chip.type === "exhaustion" ? "#c09040" : conditionColorFor(chip.label);
-                                return (
-                                  <div key={chip.key} className="cs-condition-chip" style={{ background: `${color}26`, border: `1px solid ${color}b3`, color }}>
-                                    <span>{chip.label}</span>
-                                    {slug && (
-                                      <button
-                                        onClick={() => {
-                                          if (chip.type === "exhaustion") {
-                                            const prevExhaustion = exhaustionLevel;
-                                            setChar((current) => ({ ...current, exhaustionLevel: 0 }));
-                                            applySessionPatch({ exhaustionLevel: 0 }, { exhaustionLevel: prevExhaustion }).catch(() => {});
-                                            return;
-                                          }
-                                          const prevConds = activeConditions;
-                                          const conditions = prevConds.filter((value) => value !== chip.label);
-                                          setChar((current) => ({ ...current, conditions }));
-                                          applySessionPatch({ conditions }, { conditions: prevConds }).catch(() => {});
-                                        }}
-                                        className="cs-condition-remove-btn"
-                                      >
-                                        ×
-                                      </button>
-                                    )}
-                                  </div>
-                                );
-                              })}
-                            </div>
-                          )}
-
-                          {slug && (
-                            <>
-                              <button
-                                onClick={() => setConditionPickerOpen((value) => !value)}
-                                className="cs-add-condition-btn"
-                                style={{ marginBottom: conditionPickerOpen && inactiveConditions.length > 0 ? 10 : 0 }}
-                              >
-                                ＋ Add Condition
-                              </button>
-
-                              {conditionPickerOpen && inactiveConditions.length > 0 && (
-                                <div className="cs-condition-picker">
-                                  {inactiveConditions.map((condition) => (
-                                    <button
-                                      key={condition}
-                                      onClick={() => {
-                                        const prevConds = activeConditions;
-                                        const conditions = [...prevConds, condition];
-                                        setChar((current) => ({ ...current, conditions }));
-                                        applySessionPatch({ conditions }, { conditions: prevConds }).catch(() => {});
-                                        setConditionPickerOpen(false);
-                                      }}
-                                      className="cs-condition-option-btn"
-                                    >
-                                      {condition}
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </>
-                          )}
-                        </>
-                      );
-                    })()}
-
-                    {slug && (
-                      <div className="cs-exhaustion-row">
-                        <span className="cs-exhaustion-label">Exhaustion</span>
-                        <button onClick={() => {
-                          const delta = -1;
-                          const value = Math.max(0, (char.exhaustionLevel || 0) + delta);
-                          if (value === (char.exhaustionLevel || 0)) return;
-                          exhPendingDelta.current += delta;
-                          markSessionExpected({ exhaustionLevel: value });
-                          setChar((current) => ({ ...current, exhaustionLevel: value }));
-                          exhFlushRef.current?.();
-                        }} className="cs-exh-btn">−</button>
-                        <span style={{ fontFamily: pal.fontDisplay, fontSize: 20, color: (char.exhaustionLevel || 0) > 0 ? pal.gem : pal.textMuted, minWidth: 20, textAlign: "center" }}>{char.exhaustionLevel || 0}</span>
-                        <button onClick={() => {
-                          const delta = 1;
-                          const value = Math.min(6, (char.exhaustionLevel || 0) + delta);
-                          if (value === (char.exhaustionLevel || 0)) return;
-                          exhPendingDelta.current += delta;
-                          markSessionExpected({ exhaustionLevel: value });
-                          setChar((current) => ({ ...current, exhaustionLevel: value }));
-                          exhFlushRef.current?.();
-                        }} className="cs-exh-btn">+</button>
-                      </div>
-                    )}
-
-                    {slug && (((char.conditions || []).length > 0) || (char.exhaustionLevel || 0) > 0) && (
-                      <button onClick={() => {
-                        const prevConds = char.conditions || [];
-                        const prevExhaustion = char.exhaustionLevel || 0;
-                        setChar((current) => ({ ...current, conditions: [], exhaustionLevel: 0 }));
-                        applySessionPatch({ conditions: [], exhaustionLevel: 0 }, { conditions: prevConds, exhaustionLevel: prevExhaustion }).catch(() => {});
-                      }} className="cs-clear-conditions-btn">
-                        Clear All Conditions
-                      </button>
-                    )}
-                  </div>
-
-                  {(() => {
-                    const activeSlots = (char.spellSlots || []).filter((slot) => slot.max > 0);
-                    if (activeSlots.length === 0) return null;
-                    return (
-                      <>
-                        <div className="divider" />
-                        <div>
-                          <div className="cs-spell-slots-heading">Spell Slots</div>
-                          {activeSlots.map((slot) => (
-                            <div key={slot.level} className="cs-spell-slot-row">
-                              <div className="cs-spell-slot-level">{SPELL_LEVEL_LABELS[slot.level - 1]}</div>
-                              <div className="cs-spell-pips">
-                                {Array.from({ length: slot.max }, (_, index) => {
-                                  const isUsed = index < (slot.used || 0);
-                                  return (
-                                    <div key={index} onClick={() => {
-                                      if (!slug) return;
-                                      const prevSlots = char.spellSlots || [];
-                                      const used = isUsed ? Math.max(0, slot.used - 1) : Math.min(slot.max, (slot.used || 0) + 1);
-                                      const spellSlots = prevSlots.map((entry) => entry.level === slot.level ? { ...entry, used } : entry);
-                                      setChar((current) => ({ ...current, spellSlots }));
-                                      applySessionPatch({ spellSlots }, { spellSlots: prevSlots }).catch(() => {});
-                                    }} style={{ width: 20, height: 20, borderRadius: "50%", background: isUsed ? pal.accentDim : pal.gem, border: `1px solid ${isUsed ? pal.border : pal.accent}`, cursor: slug ? "pointer" : "default", padding: 6, boxSizing: "content-box", transition: "background 0.15s", flexShrink: 0 }} />
-                                  );
-                                })}
-                              </div>
-                              {slot.isPactMagic && <span className="cs-spell-pact-tag">Pact</span>}
-                            </div>
-                          ))}
-                          {slug && (
-                            <div className="cs-spell-rest-btns">
-                              <button onClick={() => {
-                                if (window.confirm("Long rest — reset all spell slots and restore Hit Dice?")) {
-                                  const prevSlots = char.spellSlots || [];
-                                  const hdCurrent = char.hitDiceCurrent;
-                                  const { spellSlots, hitDiceCurrent } = applyLongRest(char);
-                                  setChar((current) => ({ ...current, spellSlots, hitDiceCurrent }));
-                                  applySessionPatch({ spellSlots, hitDiceCurrent }, { spellSlots: prevSlots, hitDiceCurrent: hdCurrent }).catch(() => {});
-                                }
-                              }} style={{ background: pal.accentDim, border: `1px solid ${pal.accent}`, borderRadius: 3, color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", textTransform: "uppercase", padding: "5px 12px", cursor: "pointer" }}>Long Rest</button>
-                              <button onClick={() => {
-                                if (window.confirm("Short rest — reset Pact Magic slots?")) {
-                                  const prevSlots = char.spellSlots || [];
-                                  const { spellSlots } = applyShortRest(char);
-                                  setChar((current) => ({ ...current, spellSlots }));
-                                  applySessionPatch({ spellSlots }, { spellSlots: prevSlots }).catch(() => {});
-                                }
-                              }} className="btn-ghost">Short Rest</button>
-                            </div>
-                          )}
-                        </div>
-                      </>
-                    );
-                  })()}
-
-                  {(attackEntries.weaponEntries.length > 0 || attackEntries.spellEntries.length > 0) && (
-                    <>
-                      <div className="divider" style={{ margin: "20px 0" }} />
-                      <div>
-                        <div className="cs-combat-heading">{attackEntries.header}</div>
-                        {char.weapons.map((item) => {
-                          const expanded = expandedItems.has(item.id + "-combat");
-                          const attackMod = item.mods?.find((mod) => mod.attribute === "Attack Bonus");
-                          const damageMod = item.mods?.find((mod) => mod.attribute === "Damage");
-                          return (
-                            <div key={item.id} className="cs-weapon-card">
-                              <div onClick={() => {
-                                const next = new Set(expandedItems);
-                                const key = item.id + "-combat";
-                                if (next.has(key)) next.delete(key);
-                                else next.add(key);
-                                setExpandedItems(next);
-                              }} className="cs-weapon-card-header">
-                                <span className="cs-weapon-card-name">{item.name}</span>
-                                {attackMod && <span className="cs-weapon-card-mod">To-hit <span className="cs-weapon-card-mod-val">{attackMod.value}</span></span>}
-                                {damageMod && <span className="cs-weapon-card-mod" style={{ marginLeft: 4 }}>Dmg <span className="cs-weapon-card-mod-val">{damageMod.value}</span></span>}
-                                <span className="cs-weapon-card-chevron">{expanded ? "▼" : "▶"}</span>
-                              </div>
-                              {expanded && item.description && <div className="cs-weapon-card-desc">{item.description}</div>}
-                            </div>
-                          );
-                        })}
-                        {attackEntries.spellEntries.length > 0 && (
-                          <>
-                            {attackEntries.weaponEntries.length > 0 && <div className="divider" style={{ margin: "10px 0" }} />}
-                            {attackEntries.spellEntries.map((entry) => {
-                              const expandKey = `spell:${entry.id}-combat`;
-                              const expanded = expandedItems.has(expandKey);
-                              return (
-                                <div key={entry.id} className="cs-weapon-card">
-                                  <div onClick={() => {
-                                    const next = new Set(expandedItems);
-                                    if (next.has(expandKey)) next.delete(expandKey);
-                                    else next.add(expandKey);
-                                    setExpandedItems(next);
-                                  }} className="cs-weapon-card-header">
-                                    <span className="cs-spell-glyph">✶</span>
-                                    <span className="cs-weapon-card-name">{entry.name}</span>
-                                    <span className="cs-weapon-card-chevron">{expanded ? "▼" : "▶"}</span>
-                                  </div>
-                                  {expanded && entry.description && <div className="cs-weapon-card-desc">{entry.description}</div>}
-                                </div>
-                              );
-                            })}
-                          </>
-                        )}
-                      </div>
-                    </>
-                  )}
-
-                  {!(char.hpMax ?? char.hp ?? 0) && !(char.spellSlots || []).length && !(char.weapons || []).length && !attackEntries.spellEntries.length && (
-                    <div className="cs-combat-empty">
-                      Set up your character stats in edit mode to use in-session tracking.
-                    </div>
-                  )}
-
-                  {slug && <SessionNotesSection char={char} setChar={setChar} applySessionPatch={applySessionPatch} pal={pal} />}
-
-                  <DiceRoller weapons={char.weapons || []} stats={char.stats || []} pal={pal} slug={slug} />
-                </div>
-              )}
-
-              {combatTab === "map" && (
-                <div>
-                  {activeMap ? (
-                    <>
-                      <div className="cs-map-label">{activeMap.name || "Active Map"}</div>
-                      <div className="cs-map-open-row">
-                        <button
-                          onClick={() => window.open(`/map-view?theme=${encodeURIComponent((char.palette || "ocean").toLowerCase())}`, "_blank", "noopener,noreferrer")}
-                          className="cs-map-open-btn"
-                        >
-                          Open Window
-                        </button>
-                      </div>
-                      <div className="map-viewer-mobile" style={{ height: 500 }}>
-                        <MapViewer
-                          imageUrl={activeMap.imageUrl}
-                          name={activeMap.name}
-                          contentType={activeMap.contentType}
-                          height={500}
-                          pal={pal}
-                          publishedView={activeMapView}
-                          allowResetToPublished={!!activeMapView}
-                          resetLabel="Current View"
-                        />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="cs-map-empty">
-                      <div className="cs-map-empty-text">The DM hasn&apos;t loaded a map yet.</div>
-                    </div>
-                  )}
-                </div>
-              )}
             </div>
 
             <div className="cs-collections-nav">

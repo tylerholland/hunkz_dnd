@@ -3217,6 +3217,53 @@
   background: color-mix(in srgb, var(--pal-accent) 7%, transparent);
 }
 
+/* Story 59 — exhaustion stepper under Conditions (moved from the classic Combat tab) */
+.cs-sm-exhaustion {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.cs-sm-exhaustion-label {
+  flex: 1;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cs-sm-exhaustion.active .cs-sm-exhaustion-label,
+.cs-sm-exhaustion.active .cs-sm-exhaustion-level {
+  color: var(--pal-accent-bright);
+}
+
+.cs-sm-exhaustion-btn {
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pal-accent-bright);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cs-sm-exhaustion-btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cs-sm-exhaustion-level {
+  min-width: 18px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--pal-text-muted);
+}
+
 .cs-sm-cond-manage-btn {
   background: none;
   border: 1px dashed color-mix(in srgb, var(--pal-accent) 30%, transparent);
@@ -4174,4 +4221,50 @@
   .cs-roll-overlay {
     animation: none;
   }
+}
+
+/* ─── Story 59 — simplified profile view ─────────────────────────────────── */
+/* Plain section titles replace the retired Inventory | Persona | Combat | Map
+   tab strip (same register as the Collections section titles). */
+.cs-profile-section-title {
+  margin: 4px 0 14px;
+  font-family: "IM Fell English", Georgia, serif;
+  font-size: 14px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--pal-accent);
+}
+
+/* One-time notice for returning users whose last tab was Combat or Map. */
+.cs-moved-notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 8px 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--pal-text-muted);
+}
+
+.cs-moved-notice > span {
+  flex: 1;
+}
+
+.cs-moved-notice__link {
+  color: var(--pal-text);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.cs-moved-notice__close {
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--pal-text-muted);
+  font-size: 16px;
+  cursor: pointer;
 }

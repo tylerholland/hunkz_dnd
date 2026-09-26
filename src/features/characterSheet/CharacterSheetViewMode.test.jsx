@@ -1,4 +1,4 @@
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, expect, it, vi } from "vitest";
 
@@ -90,8 +90,8 @@ function makeCtx(overrides = {}) {
     isActiveTurn: false,
     secHead: {},
     inputStyle: {},
-    combatTab: "combat",
-    setTab: vi.fn(),
+    movedTabsNotice: false,
+    dismissMovedTabsNotice: vi.fn(),
     editingItem: null,
     setEditingItem: vi.fn(),
     expandedItems: new Set(),
@@ -115,17 +115,26 @@ function renderView(ctxOverrides = {}) {
   );
 }
 
-describe("CharacterSheetViewMode turn state", () => {
-  it("shows the Your Turn banner when the character is the active combatant", () => {
+// Story 59 — the profile view is reference-only: no tab strip, no Combat
+// or Map panels; Inventory and Persona are plain sections.
+describe("CharacterSheetViewMode simplified profile", () => {
+  it("shows Inventory and Persona as sections with no Combat/Map tabs", () => {
     renderView({ isActiveTurn: true });
 
-    expect(screen.getByText("Your Turn")).toBeInTheDocument();
-    expect(screen.getByText("You are the active combatant in initiative.")).toBeInTheDocument();
+    expect(screen.getByText("Inventory")).toBeInTheDocument();
+    expect(screen.getByText("Persona")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /combat/i })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^map$/i })).not.toBeInTheDocument();
+    expect(screen.queryByText("Your Turn")).not.toBeInTheDocument();
   });
 
-  it("does not show the Your Turn banner when the character is not active", () => {
-    renderView({ isActiveTurn: false });
+  it("points returning Combat/Map users at Session mode once", () => {
+    const dismissMovedTabsNotice = vi.fn();
+    renderView({ movedTabsNotice: true, dismissMovedTabsNotice });
 
-    expect(screen.queryByText("Your Turn")).not.toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveTextContent("Combat and Map now live in");
+    expect(screen.getByRole("link", { name: /Session mode/ })).toHaveAttribute("href", "/characters/aragorn/session");
+    fireEvent.click(screen.getByLabelText("Dismiss"));
+    expect(dismissMovedTabsNotice).toHaveBeenCalled();
   });
 });
