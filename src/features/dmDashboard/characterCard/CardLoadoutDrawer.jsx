@@ -11,6 +11,14 @@ function Section({ title, count, children }) {
   );
 }
 
+// "Torch (4)" — same treatment as the Session Inventory row; (0) = used up.
+function ItemQty({ qty }) {
+  if (qty == null || qty === 1) return null;
+  return (
+    <span className={`cc-drawer-qty${qty === 0 ? " depleted" : ""}`}> (<span className="cc-drawer-qty-num">{qty}</span>)</span>
+  );
+}
+
 function spellLevelLabel(level) {
   const n = Number(level);
   if (!Number.isFinite(n) || n <= 0) return "Cantrips";
@@ -47,7 +55,7 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
               const { attack, damage } = getWeaponSummary(weapon);
               return (
                 <li key={weapon.id || idx} className={`cc-drawer-item${weapon.equipped === false ? " muted" : ""}`}>
-                  <span className="cc-drawer-name">{weapon.name || "Unnamed"}</span>
+                  <span className="cc-drawer-name">{weapon.name || "Unnamed"}<ItemQty qty={weapon.qty} /></span>
                   {attack !== null && (
                     <button type="button" className="cc-drawer-roll" disabled={!onRoll}
                       onClick={() => onRoll?.(`1d20${attack >= 0 ? "+" : ""}${attack}`, `${weapon.name} attack`)}
@@ -107,8 +115,7 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
           <ul className="cc-drawer-list">
             {equipment.map((item, idx) => (
               <li key={item.id || idx} className={`cc-drawer-item${item.equipped === false ? " muted" : ""}`}>
-                <span className="cc-drawer-name">{item.name || "Unnamed"}</span>
-                {item.qty != null && item.qty !== 1 && <span className="cc-drawer-qty">×{item.qty}</span>}
+                <span className="cc-drawer-name">{item.name || "Unnamed"}<ItemQty qty={item.qty} /></span>
               </li>
             ))}
           </ul>

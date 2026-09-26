@@ -232,6 +232,15 @@
   font-family: var(--font-ui);
   font-size: 11px;
   color: var(--pal-text-muted);
+  white-space: nowrap;
+}
+
+.cc-drawer-qty-num {
+  font-size: 13px;
+}
+
+.cc-drawer-qty.depleted {
+  color: #c06060;
 }
 
 .cc-drawer-roll {

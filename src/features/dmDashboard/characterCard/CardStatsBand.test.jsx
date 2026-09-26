@@ -41,7 +41,7 @@ describe("DM card stats band", () => {
     render(<CardLoadoutDrawer char={char} onRoll={onRoll} />);
     expect(screen.getByText("Hunter's Mark")).toBeInTheDocument();
     expect(screen.getByText("Favored Enemy")).toBeInTheDocument();
-    expect(screen.getByText("×2")).toBeInTheDocument();
+    expect(document.querySelector(".cc-drawer-qty")).toHaveTextContent("(2)");
     fireEvent.click(screen.getByText("+7 hit"));
     expect(onRoll).toHaveBeenCalledWith("1d20+7", "Longbow attack");
     fireEvent.click(screen.getByText("1d8+4"));
