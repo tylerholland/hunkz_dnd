@@ -70,6 +70,9 @@ export default function MapViewer({
   const lastPublishedTokenRef = useRef(null);
   const pendingCenterFracApplyRef = useRef(false);
   const hasInitializedViewRef = useRef(false);
+  // True once the viewer pans/zooms by hand — stops automatic re-centering.
+  const userMovedRef = useRef(false);
+  const fitToContainerRef = useRef(null);
   const modifierKeyLabel = getMapZoomModifierLabel();
   const zoomUnlocked = typeof freeZoom === "boolean" ? freeZoom : internalFreeZoom;
   const handlePdfLoad = useCallback(({ numPages }) => {
@@ -104,6 +107,7 @@ export default function MapViewer({
     setPageCount(1);
     setImageNaturalSize(null);
     lastPublishedTokenRef.current = null;
+    userMovedRef.current = false;
     stateRef.current = { translate: { x: 0, y: 0 }, scale: 1 };
     const img = imgRef.current;
     if (img?.complete && img.naturalWidth > 0) {
@@ -114,6 +118,8 @@ export default function MapViewer({
   // Story 45 — reset pan/zoom whenever rotation changes so the rotated map
   // re-anchors predictably inside the fixed-height container box.
   useEffect(() => {
+    userMovedRef.current = false;
+    if (fitToContainerRef.current?.()) return;
     setTranslate({ x: 0, y: 0 });
     setScale(1);
     stateRef.current = { translate: { x: 0, y: 0 }, scale: 1 };
@@ -180,6 +186,55 @@ export default function MapViewer({
     applyPublishedView();
   }, [imageNaturalSize, applyPublishedView]);
 
+  // Fit the whole image in the container, centred. The image box is
+  // transformed around its own centre, so centring its box centres the map at
+  // any scale or rotation. Returns false while sizes are unknown (e.g. the
+  // viewer is mounted inside a collapsed/hidden panel with 0 width).
+  const fitToContainer = useCallback(() => {
+    const cw = containerRef.current?.clientWidth;
+    const ch = containerRef.current?.clientHeight;
+    const W = imageNaturalSize?.w;
+    const H = imageNaturalSize?.h;
+    if (!cw || !ch || !W || !H) return false;
+    const nextScale = Math.min(5, Math.max(0.5, Math.min(cw / W, ch / H)));
+    const nextTranslate = { x: cw / 2 - W / 2, y: ch / 2 - H / 2 };
+    stateRef.current = { translate: nextTranslate, scale: nextScale };
+    setTranslate(nextTranslate);
+    setScale(nextScale);
+    return true;
+  }, [imageNaturalSize]);
+  useEffect(() => { fitToContainerRef.current = fitToContainer; }, [fitToContainer]);
+
+  // Initial framing: the DM's published view when there is one, otherwise the
+  // whole map centred. Re-run on resize until the viewer pans/zooms by hand.
+  const frameInitialView = useCallback(() => {
+    if (userMovedRef.current) return;
+    if (publishedView?.updatedAt) applyPublishedView();
+    else fitToContainer();
+  }, [publishedView?.updatedAt, applyPublishedView, fitToContainer]);
+
+  useEffect(() => {
+    if (pdfMode || publishedView?.updatedAt || !imageNaturalSize) return;
+    frameInitialView();
+  }, [pdfMode, publishedView?.updatedAt, imageNaturalSize, frameInitialView]);
+
+  // A viewer that mounts hidden (collapsed map band, inactive tab) measures
+  // 0×0, so the first framing can't centre anything. Re-frame once it has a
+  // real size, and whenever that size changes, until the user takes over.
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el || typeof ResizeObserver === "undefined") return undefined;
+    let lastWidth = el.clientWidth;
+    const observer = new ResizeObserver(() => {
+      const width = el.clientWidth;
+      if (width === lastWidth) return;
+      lastWidth = width;
+      if (width > 0) frameInitialView();
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [frameInitialView]);
+
   // Hint fade after 3s
   useEffect(() => {
     if (!imageUrl) return;
@@ -209,6 +264,7 @@ export default function MapViewer({
     const dx = e.clientX - dragRef.current.startX;
     const dy = e.clientY - dragRef.current.startY;
     const next = { x: dragRef.current.tx + dx, y: dragRef.current.ty + dy };
+    userMovedRef.current = true;
     stateRef.current.translate = next;
     setTranslate({ ...next });
   }, []);
@@ -232,6 +288,7 @@ export default function MapViewer({
     const nextTx = mx - (mx - prevTrans.x) * (nextScale / prevScale);
     const nextTy = my - (my - prevTrans.y) * (nextScale / prevScale);
     const next = { x: nextTx, y: nextTy };
+    userMovedRef.current = true;
     stateRef.current.scale = nextScale;
     stateRef.current.translate = next;
     setScale(nextScale);
@@ -264,6 +321,7 @@ export default function MapViewer({
 
   const handleTouchMove = useCallback((e) => {
     e.preventDefault();
+    if (dragRef.current || pinchRef.current) userMovedRef.current = true;
     if (e.touches.length === 1 && dragRef.current) {
       const dx = e.touches[0].clientX - dragRef.current.startX;
       const dy = e.touches[0].clientY - dragRef.current.startY;
@@ -294,6 +352,8 @@ export default function MapViewer({
   }, [handleWheel]);
 
   const handleReset = () => {
+    userMovedRef.current = false;
+    if (fitToContainer()) return;
     setTranslate({ x: 0, y: 0 });
     setScale(1);
     stateRef.current = { translate: { x: 0, y: 0 }, scale: 1 };

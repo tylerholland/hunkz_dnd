@@ -64,3 +64,32 @@ describe("MapViewer zoom lock", () => {
     expect(screen.getByText("110%")).toBeInTheDocument();
   });
 });
+
+describe("MapViewer initial framing", () => {
+  function sizeContainer(width, height) {
+    const w = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientWidth");
+    const h = Object.getOwnPropertyDescriptor(HTMLElement.prototype, "clientHeight");
+    Object.defineProperty(HTMLElement.prototype, "clientWidth", { configurable: true, get: () => width });
+    Object.defineProperty(HTMLElement.prototype, "clientHeight", { configurable: true, get: () => height });
+    return () => {
+      if (w) Object.defineProperty(HTMLElement.prototype, "clientWidth", w);
+      if (h) Object.defineProperty(HTMLElement.prototype, "clientHeight", h);
+    };
+  }
+
+  it("centres and fits the whole map when the DM hasn't published a view", () => {
+    const restore = sizeContainer(400, 300);
+    try {
+      render(<MapViewer imageUrl="https://example.com/big.png" name="Big" pal={PALETTES.ember} />);
+      const img = screen.getByAltText("Big");
+      Object.defineProperty(img, "naturalWidth", { configurable: true, value: 2000 });
+      Object.defineProperty(img, "naturalHeight", { configurable: true, value: 1000 });
+      fireEvent.load(img);
+      // fit = min(400/2000, 300/1000) = 0.2 → clamped to the 0.5 minimum;
+      // box centred: x = 200 - 1000, y = 150 - 500.
+      expect(img.parentElement.style.transform).toContain("translate(-800px, -350px) scale(0.5)");
+    } finally {
+      restore();
+    }
+  });
+});
