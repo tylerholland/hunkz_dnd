@@ -20,7 +20,8 @@ export function itemTypeLabel(value) {
 
 // `seed` pre-fills a NEW item (Story 58 quick-add ⋯) without switching the
 // modal into edit mode the way `item` does.
-export default function ItemEditorModal({ item, seed, pal, onSave, onClose, showType }) {
+export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDelete, showType }) {
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [name, setName] = useState(item?.name || seed?.name || "");
   const [desc, setDesc] = useState(item?.description || "");
   const [mods, setMods] = useState(item?.mods || []);
@@ -240,6 +241,17 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, show
         </div>
 
         <div className="em-modal-actions">
+          {onDelete && (
+            <button
+              type="button"
+              onClick={() => (confirmDelete ? onDelete() : setConfirmDelete(true))}
+              onBlur={() => setConfirmDelete(false)}
+              className="btn-ghost em-delete-btn"
+              style={{ flex: 1, color: "#c06060", borderColor: confirmDelete ? "#c06060" : undefined }}
+            >
+              {confirmDelete ? "Confirm delete" : "Delete"}
+            </button>
+          )}
           <button onClick={onClose} className="btn-ghost" style={{ flex: 1 }}>Cancel</button>
           <button
             onClick={handleSave}

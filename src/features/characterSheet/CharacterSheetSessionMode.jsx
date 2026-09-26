@@ -54,6 +54,7 @@ import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../../lib/useTextScale";
 import AttackDeclarationBar from "./AttackDeclarationBar";
 import ItemEditorModal from "./ItemEditorModal";
 import SessionQuickAdd from "./SessionQuickAdd";
+import SessionLoadoutRow from "./SessionLoadoutRow";
 import SessionLedger from "./SessionLedger";
 import { applyDelta, normalizeCoin } from "./sessionLoadout";
 import RollOverlay from "../../components/RollOverlay";
@@ -629,6 +630,31 @@ export default function CharacterSheetSessionMode({
       return false;
     }
   }, [slug, sessionPassword, onSessionSync]);
+
+  // Edit / equip / delete apply a transform to the latest array by item id,
+  // so a concurrent change to a different item is never clobbered.
+  const writeLoadout = useCallback(async (kind, transform) => {
+    if (!slug) return false;
+    const prev = charRef.current?.[kind] || [];
+    const next = transform(prev);
+    setChar((current) => ({ ...current, [kind]: next }));
+    try {
+      await patchSession(slug, { [kind]: next }, sessionPassword);
+      onSessionSync?.();
+      return true;
+    } catch {
+      setChar((current) => ({ ...current, [kind]: prev }));
+      return false;
+    }
+  }, [slug, sessionPassword, onSessionSync]);
+
+  const updateLoadoutItem = useCallback((kind, id, changes) => writeLoadout(kind, (items) => items.map((item) => {
+    if (item.id !== id) return item;
+    // A full item from the editor replaces the row; a partial (equip toggle) merges.
+    return changes.id === id ? changes : { ...item, ...changes };
+  })), [writeLoadout]);
+
+  const deleteLoadoutItem = useCallback((kind, id) => writeLoadout(kind, (items) => items.filter((item) => item.id !== id)), [writeLoadout]);
 
   const commitCoin = useCallback(async (denom, op, amount) => {
     const prevCoin = normalizeCoin(charRef.current?.coin);
@@ -1549,37 +1575,15 @@ export default function CharacterSheetSessionMode({
                 <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 8 }}>
                   Weapons
                 </div>
-                {weapons.map((w) => {
-                  const isEquipped = w.equipped !== false;
-                  const enter = rowEnterProps(w.id);
-                  return (
-                    <div
-                      key={w.id}
-                      className={enter.className}
-                      style={{
-                        ...enter.style,
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "8px 0",
-                        borderBottom: `1px solid ${pal.border}`,
-                      }}
-                    >
-                      <span style={{
-                        flex: 1,
-                        fontFamily: pal.fontBody,
-                        fontSize: 15,
-                        color: isEquipped ? pal.text : pal.textMuted,
-                      }}>{w.name}</span>
-                      {w.requiresAttunement && (
-                        <span style={{
-                          width: 10, height: 10, borderRadius: "50%",
-                          background: w.attuned ? pal.gem : "transparent",
-                          border: `1.5px solid ${w.attuned ? pal.gem : pal.border}`,
-                          flexShrink: 0,
-                        }} />
-                      )}
-                    </div>
-                  );
-                })}
+                {weapons.map((w) => (
+                  <SessionLoadoutRow
+                    key={w.id}
+                    item={w}
+                    enterProps={rowEnterProps(w.id)}
+                    onEdit={() => setItemDetails({ kind: "weapons", item: w })}
+                    onToggleEquipped={() => updateLoadoutItem("weapons", w.id, { equipped: w.equipped === false })}
+                  />
+                ))}
                 <SessionQuickAdd
                   kind="weapons"
                   label="Weapon"
@@ -1593,34 +1597,15 @@ export default function CharacterSheetSessionMode({
                 <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.22em", textTransform: "uppercase", color: pal.accentDim, marginBottom: 8 }}>
                   Equipment
                 </div>
-                {equipment.map((e) => {
-                  const isEquipped = e.equipped !== false;
-                  const enter = rowEnterProps(e.id);
-                  return (
-                    <div
-                      key={e.id}
-                      className={enter.className}
-                      style={{
-                        ...enter.style,
-                        display: "flex", alignItems: "center", gap: 8,
-                        padding: "8px 0",
-                        borderBottom: `1px solid ${pal.border}`,
-                      }}
-                    >
-                      <span style={{
-                        flex: 1,
-                        fontFamily: pal.fontBody,
-                        fontSize: 15,
-                        color: isEquipped ? pal.text : pal.textMuted,
-                      }}>{e.name}</span>
-                      {e.qty != null && (
-                        <span style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textMuted }}>
-                          ×{e.qty}
-                        </span>
-                      )}
-                    </div>
-                  );
-                })}
+                {equipment.map((e) => (
+                  <SessionLoadoutRow
+                    key={e.id}
+                    item={e}
+                    enterProps={rowEnterProps(e.id)}
+                    onEdit={() => setItemDetails({ kind: "equipment", item: e })}
+                    onToggleEquipped={() => updateLoadoutItem("equipment", e.id, { equipped: e.equipped === false })}
+                  />
+                ))}
                 <SessionQuickAdd
                   kind="equipment"
                   label="Item"
@@ -1687,15 +1672,22 @@ export default function CharacterSheetSessionMode({
 
       {itemDetails && (
         <ItemEditorModal
+          item={itemDetails.item}
           seed={itemDetails.seed}
           pal={pal}
           showType={itemDetails.kind === "equipment"}
           onClose={() => setItemDetails(null)}
           onSave={(item) => {
-            const { kind } = itemDetails;
+            const { kind, item: existing } = itemDetails;
             setItemDetails(null);
-            addLoadoutItems(kind, [item]);
+            if (existing) updateLoadoutItem(kind, existing.id, item);
+            else addLoadoutItems(kind, [item]);
           }}
+          onDelete={itemDetails.item ? () => {
+            const { kind, item: existing } = itemDetails;
+            setItemDetails(null);
+            deleteLoadoutItem(kind, existing.id);
+          } : undefined}
         />
       )}
 

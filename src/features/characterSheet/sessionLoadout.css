@@ -346,3 +346,84 @@
 @media (prefers-reduced-motion: reduce) {
   .cs-sm-xp[data-state="ready"] .cs-sm-xp-fill { animation: none; }
 }
+
+/* ─── Loadout rows (edit / equip / delete) ──────────────────────────────── */
+
+.cs-sm-ld-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border-bottom: 1px solid var(--pal-border);
+}
+
+.cs-sm-ld-name {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--pal-text);
+  text-align: left;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+.cs-sm-ld-name:hover,
+.cs-sm-ld-name:focus-visible {
+  color: var(--pal-accent-bright);
+  outline: none;
+}
+
+.cs-sm-ld-row.stowed .cs-sm-ld-name {
+  color: var(--pal-text-muted);
+}
+
+.cs-sm-ld-attune {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pal-border);
+  flex-shrink: 0;
+}
+
+.cs-sm-ld-attune.on {
+  background: var(--pal-gem);
+  border-color: var(--pal-gem);
+}
+
+.cs-sm-ld-qty {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--pal-text-muted);
+}
+
+.cs-sm-ld-equip {
+  flex-shrink: 0;
+  min-width: 76px;
+  min-height: 32px;
+  padding: 0 8px;
+  border: 1px solid var(--pal-border);
+  border-radius: 16px;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  cursor: pointer;
+}
+
+.cs-sm-ld-equip.on {
+  border-color: var(--pal-accent);
+  background: var(--pal-accent-dim);
+  color: var(--pal-accent-bright);
+}
+
+.cs-sm-ld-equip:focus-visible {
+  outline: 2px solid var(--pal-accent);
+  outline-offset: 1px;
+}

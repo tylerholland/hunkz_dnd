@@ -2,6 +2,9 @@ import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import SessionQuickAdd from "./SessionQuickAdd";
 import SessionLedger from "./SessionLedger";
+import SessionLoadoutRow from "./SessionLoadoutRow";
+import ItemEditorModal from "./ItemEditorModal";
+import { PALETTES } from "./theme";
 
 describe("SessionQuickAdd", () => {
   it("adds comma-separated items and keeps the input ready for more", async () => {
@@ -39,5 +42,26 @@ describe("SessionLedger", () => {
     fireEvent.click(screen.getByText("Apply"));
     await waitFor(() => expect(onCommitCoin).toHaveBeenCalledWith("gp", "gain", 125));
     expect(screen.queryByText("Experience")).not.toBeInTheDocument();
+  });
+});
+
+describe("SessionLoadoutRow + ItemEditorModal delete", () => {
+  it("toggles equipped and opens the editor from the name", () => {
+    const onToggleEquipped = vi.fn();
+    const onEdit = vi.fn();
+    render(<SessionLoadoutRow item={{ id: "a", name: "Shield", equipped: false }} onEdit={onEdit} onToggleEquipped={onToggleEquipped} />);
+    fireEvent.click(screen.getByRole("button", { name: "Equip Shield" }));
+    expect(onToggleEquipped).toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Shield"));
+    expect(onEdit).toHaveBeenCalled();
+  });
+
+  it("requires a second tap to delete", () => {
+    const onDelete = vi.fn();
+    render(<ItemEditorModal item={{ id: "a", name: "Shield", mods: [] }} pal={PALETTES.ember} onSave={vi.fn()} onClose={vi.fn()} onDelete={onDelete} />);
+    fireEvent.click(screen.getByText("Delete"));
+    expect(onDelete).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByText("Confirm delete"));
+    expect(onDelete).toHaveBeenCalledTimes(1);
   });
 });
