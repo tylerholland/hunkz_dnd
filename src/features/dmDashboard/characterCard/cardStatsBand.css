@@ -300,3 +300,38 @@
   font-size: 11px;
   color: var(--pal-text-muted);
 }
+
+/* Drawer sections (Attacks / Gear / Consumables / Spells / Abilities & Skills / Pack) */
+.cc-drawer-mods {
+  display: block;
+  margin-top: 1px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--pal-text-muted);
+}
+
+.cc-drawer-attune {
+  flex-shrink: 0;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--pal-border);
+}
+
+.cc-drawer-attune.on {
+  background: var(--pal-gem);
+  border-color: var(--pal-gem);
+}
+
+.cc-drawer-tag {
+  flex-shrink: 0;
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cc-drawer-chips--spaced {
+  margin-top: 6px;
+}

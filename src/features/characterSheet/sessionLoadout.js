@@ -19,7 +19,8 @@ export function parseQuickAdd(text, kind) {
         name = match[1].trim();
         qty = parseInt(match[2], 10);
       }
-      const item = { id: uid(), name: name.slice(0, 60), description: "", mods: [], equipped: true };
+      // New items start stowed; the player equips what they actually wear/wield.
+      const item = { id: uid(), name: name.slice(0, 60), description: "", mods: [], equipped: false };
       if (qty !== undefined) item.qty = qty;
       return item;
     });

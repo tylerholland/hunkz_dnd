@@ -9,7 +9,7 @@ describe("sessionLoadout", () => {
       { name: "Arrows", qty: 20 },
       { name: "Torch", qty: 3 },
     ]);
-    expect(items[0]).toMatchObject({ description: "", mods: [], equipped: true });
+    expect(items[0]).toMatchObject({ description: "", mods: [], equipped: false });
     expect("qty" in items[0]).toBe(false);
     expect(new Set(items.map((i) => i.id)).size).toBe(3);
   });

@@ -1,3 +1,5 @@
+import { normalizeSpells } from "../characterSheet/constants";
+
 // Derived stats for the DM party card (Stories 50/51/64). Mirrors Session
 // mode's computeMod: base score modifier plus mods from equipped items.
 
@@ -89,4 +91,66 @@ export function getSkillBonuses(char) {
 
 export function titleCase(text) {
   return String(text || "").replace(/\b\w/g, (ch) => ch.toUpperCase());
+}
+
+// ── DM drawer grouping ───────────────────────────────────────────────────────
+// Ordered by the questions a DM asks mid-scene: what can they hit with
+// (attacks), what's protecting/empowering them (gear), what's running out
+// (consumables), what else can they cast (spells), what's in the bag (pack).
+// "Equipped" alone doesn't promote plain items — a rope stays in the pack.
+const GEAR_TYPES = new Set(["armor", "shield", "wondrous"]);
+
+function isEquipped(item) {
+  return item?.equipped !== false;
+}
+
+function modsText(item) {
+  return (item?.mods || [])
+    .filter((mod) => mod && mod.attribute && String(mod.value ?? "").trim() !== "")
+    .filter((mod) => mod.attribute !== "Attack Bonus" && mod.attribute !== "Damage")
+    .map((mod) => `${mod.attribute} ${mod.value}`)
+    .join(" · ");
+}
+
+function parseToHit(value) {
+  if (value === null || value === undefined || String(value).trim() === "") return null;
+  const parsed = parseInt(String(value).trim(), 10);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+export function groupDrawerContent(char) {
+  const weapons = (char?.weapons || []).filter(Boolean);
+  const equipment = (char?.equipment || []).filter(Boolean);
+  const spells = normalizeSpells(char?.spells);
+
+  const attacks = [];
+  const gear = [];
+  const consumables = [];
+  const pack = [];
+
+  for (const weapon of weapons) {
+    const entry = { id: weapon.id, kind: "weapon", name: weapon.name || "Unnamed", qty: weapon.qty, ...getWeaponSummary(weapon) };
+    if (isEquipped(weapon)) attacks.push(entry);
+    else pack.push({ ...entry, stowed: true });
+  }
+  for (const spell of spells.filter((s) => s.role === "attack")) {
+    attacks.push({
+      id: spell.id,
+      kind: "spell",
+      name: spell.name,
+      attack: parseToHit(spell.toHit),
+      damage: spell.damage && String(spell.damage).trim() ? String(spell.damage).trim() : null,
+    });
+  }
+
+  for (const item of equipment) {
+    const entry = { id: item.id, name: item.name || "Unnamed", qty: item.qty, mods: modsText(item), attuned: !!item.attuned, requiresAttunement: !!item.requiresAttunement };
+    const type = String(item.type || "").toLowerCase();
+    if (item.qty != null) consumables.push({ ...entry, stowed: !isEquipped(item) });
+    else if (isEquipped(item) && (GEAR_TYPES.has(type) || entry.mods || item.requiresAttunement)) gear.push(entry);
+    else pack.push({ ...entry, stowed: !isEquipped(item) });
+  }
+
+  const otherSpells = spells.filter((s) => s.role !== "attack");
+  return { attacks, gear, consumables, spells: otherSpells, pack };
 }

@@ -34,7 +34,8 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
   const [attuned, setAttuned] = useState(item?.attuned || false);
   const hadQty = (item?.qty ?? seed?.qty) != null;
   const [qty, setQty] = useState(item?.qty ?? seed?.qty ?? 1);
-  const [equipped, setEquipped] = useState(item?.equipped !== false);
+  // Existing items keep their state (absent = equipped, legacy); new items start stowed.
+  const [equipped, setEquipped] = useState(item ? item.equipped !== false : false);
 
   const addMod = () => setMods((m) => [...m, { attribute: MOD_ATTRIBUTES[0], value: "" }]);
   const removeMod = (index) => setMods((m) => m.filter((_, idx) => idx !== index));

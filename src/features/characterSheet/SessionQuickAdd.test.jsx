@@ -134,3 +134,16 @@ describe("Loadout quantity + expandability", () => {
     expect(onSave.mock.calls[1][0].qty).toBe(4);
   });
 });
+
+describe("new items default to stowed", () => {
+  it("saves a new editor item unequipped but keeps an existing item's state", () => {
+    const onSave = vi.fn();
+    const { unmount } = render(<ItemEditorModal pal={PALETTES.ember} onSave={onSave} onClose={() => {}} seed={{ name: "Lantern" }} />);
+    fireEvent.click(screen.getByText("Add Item"));
+    expect(onSave.mock.calls[0][0].equipped).toBe(false);
+    unmount();
+    render(<ItemEditorModal pal={PALETTES.ember} onSave={onSave} onClose={() => {}} item={{ id: "x", name: "Old Sword", mods: [] }} />);
+    fireEvent.click(screen.getByText("Save Changes"));
+    expect(onSave.mock.calls[1][0].equipped).toBe(true);
+  });
+});

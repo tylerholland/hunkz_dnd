@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abilityModifier, formatMod, getAbilityMods, getPassivePerception, getSkillBonuses, getSpeed, getWeaponSummary } from "./cardStats";
+import { abilityModifier, formatMod, getAbilityMods, getPassivePerception, getSkillBonuses, getSpeed, getWeaponSummary, groupDrawerContent } from "./cardStats";
 
 const char = {
   stats: [
@@ -44,5 +44,34 @@ describe("cardStats", () => {
   it("summarizes weapon attack and damage", () => {
     expect(getWeaponSummary(char.weapons[0])).toEqual({ attack: 5, damage: "1d6+2" });
     expect(getWeaponSummary({ name: "Rock" })).toEqual({ attack: null, damage: null });
+  });
+});
+
+describe("groupDrawerContent", () => {
+  it("sorts a loadout the way a DM reads it", () => {
+    const groups = groupDrawerContent({
+      weapons: [
+        { id: "w1", name: "Longsword", mods: [{ attribute: "Attack Bonus", value: "+5" }, { attribute: "Damage", value: "1d8+3" }] },
+        { id: "w2", name: "Spare Dagger", equipped: false },
+      ],
+      spells: [
+        { id: "s1", name: "Fire Bolt", role: "attack", toHit: "+6", damage: "1d10", level: 0 },
+        { id: "s2", name: "Shield", level: 1 },
+        "Light",
+      ],
+      equipment: [
+        { id: "e1", name: "Chain Mail", type: "armor" },
+        { id: "e2", name: "Ring of Protection", mods: [{ attribute: "Armor", value: "+1" }], requiresAttunement: true, attuned: true },
+        { id: "e3", name: "Healing Potion", type: "potion", qty: 2 },
+        { id: "e4", name: "Rope" },
+        { id: "e5", name: "Cloak of Elvenkind", type: "wondrous", equipped: false },
+      ],
+    });
+    expect(groups.attacks.map((a) => [a.name, a.attack, a.damage])).toEqual([["Longsword", 5, "1d8+3"], ["Fire Bolt", 6, "1d10"]]);
+    expect(groups.gear.map((g) => g.name)).toEqual(["Chain Mail", "Ring of Protection"]);
+    expect(groups.gear[1].mods).toBe("Armor +1");
+    expect(groups.consumables.map((c) => [c.name, c.qty])).toEqual([["Healing Potion", 2]]);
+    expect(groups.spells.map((s) => s.name)).toEqual(["Shield", "Light"]);
+    expect(groups.pack.map((p) => [p.name, !!p.stowed])).toEqual([["Spare Dagger", true], ["Rope", false], ["Cloak of Elvenkind", true]]);
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from "react";
-import { formatMod, getSkillBonuses, getWeaponSummary, titleCase } from "../cardStats";
+import { formatMod, getSkillBonuses, groupDrawerContent, titleCase } from "../cardStats";
 import "./cardStatsBand.css";
 
 function Section({ title, count, children }) {
@@ -25,13 +25,33 @@ function spellLevelLabel(level) {
   return `Level ${n}`;
 }
 
-// Read-only loadout drawer (Story 51). One open at a time — the parent owns
-// which card is expanded.
+const rollExpr = (bonus) => `1d20${bonus >= 0 ? "+" : ""}${bonus}`;
+
+function ItemList({ items, renderExtra }) {
+  return (
+    <ul className="cc-drawer-list">
+      {items.map((item, idx) => (
+        <li key={item.id || idx} className={`cc-drawer-item${item.stowed ? " muted" : ""}`}>
+          <span className="cc-drawer-name">
+            {item.name}<ItemQty qty={item.qty} />
+            {item.mods && <span className="cc-drawer-mods">{item.mods}</span>}
+          </span>
+          {item.requiresAttunement && (
+            <span className={`cc-drawer-attune${item.attuned ? " on" : ""}`} title={item.attuned ? "Attuned" : "Not attuned"} />
+          )}
+          {renderExtra?.(item)}
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// Read-only loadout drawer (Stories 51/58). One open at a time — the parent
+// owns which card is expanded. Sections follow the DM's mid-scene questions
+// (see groupDrawerContent); empty sections don't render.
 export default function CardLoadoutDrawer({ char, onRoll }) {
   const ref = useRef(null);
-  const weapons = (char.weapons || []).filter(Boolean);
-  const equipment = (char.equipment || []).filter(Boolean);
-  const spells = (char.spells || []).filter((spell) => spell && spell.name);
+  const { attacks, gear, consumables, spells, pack } = groupDrawerContent(char);
   const abilities = (char.specialAbilities || []).filter((a) => typeof a === "string" && a.trim());
   const skills = getSkillBonuses(char);
 
@@ -45,35 +65,48 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
     return groups;
   }, {});
   const spellGroupKeys = Object.keys(spellGroups).sort((a, b) => (a === "Cantrips" ? -1 : b === "Cantrips" ? 1 : a.localeCompare(b, undefined, { numeric: true })));
+  const nothing = !attacks.length && !gear.length && !consumables.length && !spells.length && !abilities.length && !skills.length && !pack.length;
 
   return (
     <div className="cc-drawer" ref={ref}>
-      <Section title="Weapons" count={weapons.length}>
-        {weapons.length === 0 ? <div className="cc-drawer-empty">None</div> : (
-          <ul className="cc-drawer-list">
-            {weapons.map((weapon, idx) => {
-              const { attack, damage } = getWeaponSummary(weapon);
-              return (
-                <li key={weapon.id || idx} className={`cc-drawer-item${weapon.equipped === false ? " muted" : ""}`}>
-                  <span className="cc-drawer-name">{weapon.name || "Unnamed"}<ItemQty qty={weapon.qty} /></span>
-                  {attack !== null && (
-                    <button type="button" className="cc-drawer-roll" disabled={!onRoll}
-                      onClick={() => onRoll?.(`1d20${attack >= 0 ? "+" : ""}${attack}`, `${weapon.name} attack`)}
-                      title={onRoll ? "Roll attack" : undefined}
-                    >{formatMod(attack)} hit</button>
-                  )}
-                  {damage && (
-                    <button type="button" className="cc-drawer-roll" disabled={!onRoll}
-                      onClick={() => onRoll?.(damage, `${weapon.name} damage`)}
-                      title={onRoll ? "Roll damage" : undefined}
-                    >{damage}</button>
-                  )}
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Section>
+      {nothing && <div className="cc-drawer-empty cc-drawer-section">Nothing on this character yet.</div>}
+
+      {attacks.length > 0 && (
+        <Section title="Attacks" count={attacks.length}>
+          <ItemList
+            items={attacks}
+            renderExtra={(entry) => (
+              <>
+                {entry.kind === "spell" && <span className="cc-drawer-tag">spell</span>}
+                {entry.attack !== null && (
+                  <button type="button" className="cc-drawer-roll" disabled={!onRoll}
+                    onClick={() => onRoll?.(rollExpr(entry.attack), `${entry.name} attack`)}
+                    title={onRoll ? "Roll attack" : undefined}
+                  >{formatMod(entry.attack)} hit</button>
+                )}
+                {entry.damage && (
+                  <button type="button" className="cc-drawer-roll" disabled={!onRoll}
+                    onClick={() => onRoll?.(entry.damage, `${entry.name} damage`)}
+                    title={onRoll ? "Roll damage" : undefined}
+                  >{entry.damage}</button>
+                )}
+              </>
+            )}
+          />
+        </Section>
+      )}
+
+      {gear.length > 0 && (
+        <Section title="Gear" count={gear.length}>
+          <ItemList items={gear} />
+        </Section>
+      )}
+
+      {consumables.length > 0 && (
+        <Section title="Consumables" count={consumables.length}>
+          <ItemList items={consumables} />
+        </Section>
+      )}
 
       {spells.length > 0 && (
         <Section title="Spells" count={spells.length}>
@@ -90,37 +123,30 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
         </Section>
       )}
 
-      {abilities.length > 0 && (
-        <Section title="Special Abilities" count={abilities.length}>
-          <div className="cc-drawer-chips">
-            {abilities.map((ability) => <span key={ability} className="cc-drawer-chip">{titleCase(ability)}</span>)}
-          </div>
+      {(abilities.length > 0 || skills.length > 0) && (
+        <Section title="Abilities & Skills">
+          {abilities.length > 0 && (
+            <div className="cc-drawer-chips">
+              {abilities.map((ability) => <span key={ability} className="cc-drawer-chip">{titleCase(ability)}</span>)}
+            </div>
+          )}
+          {skills.length > 0 && (
+            <div className={`cc-drawer-chips${abilities.length > 0 ? " cc-drawer-chips--spaced" : ""}`}>
+              {skills.map(({ name, bonus }) => (
+                <button key={name} type="button" className="cc-skill-chip" disabled={!onRoll || bonus === null}
+                  onClick={() => bonus !== null && onRoll?.(rollExpr(bonus), name)}
+                >{name}{bonus !== null && <span className="cc-skill-bonus">{formatMod(bonus)}</span>}</button>
+              ))}
+            </div>
+          )}
         </Section>
       )}
 
-      {skills.length > 0 && (
-        <Section title="Skills" count={skills.length}>
-          <div className="cc-drawer-chips">
-            {skills.map(({ name, bonus }) => (
-              <button key={name} type="button" className="cc-skill-chip" disabled={!onRoll || bonus === null}
-                onClick={() => bonus !== null && onRoll?.(`1d20${bonus >= 0 ? "+" : ""}${bonus}`, name)}
-              >{name}{bonus !== null && <span className="cc-skill-bonus">{formatMod(bonus)}</span>}</button>
-            ))}
-          </div>
+      {pack.length > 0 && (
+        <Section title="Pack" count={pack.length}>
+          <ItemList items={pack} />
         </Section>
       )}
-
-      <Section title="Inventory" count={equipment.length}>
-        {equipment.length === 0 ? <div className="cc-drawer-empty">Empty</div> : (
-          <ul className="cc-drawer-list">
-            {equipment.map((item, idx) => (
-              <li key={item.id || idx} className={`cc-drawer-item${item.equipped === false ? " muted" : ""}`}>
-                <span className="cc-drawer-name">{item.name || "Unnamed"}<ItemQty qty={item.qty} /></span>
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
     </div>
   );
 }
