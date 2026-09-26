@@ -18,6 +18,7 @@ import {
   initiativesEqual,
 } from "../features/dmDashboard/dashboardShared";
 import { PALETTES } from "../features/characterSheet/theme";
+import { applyLongRest, applyShortRest } from "../features/characterSheet/constants";
 import TopNav, { NavSegment } from "../components/TopNav";
 import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
@@ -787,14 +788,11 @@ export default function DmDashboardPage() {
   async function doLongRest() {
     setConfirmDialog(null);
     const updates = partyRef.current.map((char) => {
-      const level = char.level || 1;
-      const hdCurrent = char.hitDiceCurrent ?? level;
-      const hdRestore = Math.max(1, Math.floor(level / 2));
-      const hitDiceCurrent = Math.min(level, hdCurrent + hdRestore);
+      const { spellSlots, hitDiceCurrent } = applyLongRest(char);
       return {
         slug: char.slug,
         hpCurrent: char.hpMax ?? char.hp ?? 0,
-        spellSlots: Array.isArray(char.spellSlots) ? char.spellSlots.map((slot) => ({ ...slot, used: 0 })) : char.spellSlots,
+        spellSlots: Array.isArray(char.spellSlots) ? spellSlots : char.spellSlots,
         hitDiceCurrent,
       };
     });
@@ -806,10 +804,13 @@ export default function DmDashboardPage() {
 
   async function doShortRest() {
     setConfirmDialog(null);
-    const updates = partyRef.current.map((char) => ({
-      slug: char.slug,
-      spellSlots: Array.isArray(char.spellSlots) ? char.spellSlots.map((slot) => slot.isPactMagic ? { ...slot, used: 0 } : slot) : char.spellSlots,
-    }));
+    const updates = partyRef.current.map((char) => {
+      const { spellSlots } = applyShortRest(char);
+      return {
+        slug: char.slug,
+        spellSlots: Array.isArray(char.spellSlots) ? spellSlots : char.spellSlots,
+      };
+    });
     const success = await commitPartySessionUpdates(updates);
     if (!success) return;
     setRestNotice("Short rest applied — Pact Magic slots restored.");

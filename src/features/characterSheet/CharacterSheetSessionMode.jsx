@@ -23,9 +23,9 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
-import { modOf, fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, spellRoleGlyph } from "./constants";
+import { modOf, fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
 import CharacterTalents from "./CharacterTalents";
-import { patchSession, moveMapToken } from "../../api";
+import { patchSession, postCharacterRoll, moveMapToken } from "../../api";
 import DiceRoller from "../../components/DiceRoller";
 import TopNav, { NavSegment } from "../../components/TopNav";
 import MapViewer from "../maps/MapViewer";
@@ -484,6 +484,115 @@ export default function CharacterSheetSessionMode({
     }
   }, [char, slug, onSessionSync, sessionPassword]);
 
+  // ── Spell slots — tap to spend/restore + rests (Story 63) ─────────────────
+  // localSpellSlots is the optimistic display value; slotServerRef tracks the
+  // freshest polled array so a debounced flush rebases onto it, never onto a
+  // stale render snapshot (load-bearing once the DM can party-rest mid-tap).
+  const [localSpellSlots, setLocalSpellSlots] = useState(initialData?.spellSlots || []);
+  const slotServerRef = useRef(initialData?.spellSlots || []);
+  const slotFlushTimerRef = useRef(null);
+  const slotPendingDeltaRef = useRef({});
+  const [slotUndo, setSlotUndo] = useState(null); // { level, delta, timer } | null
+
+  useEffect(() => {
+    slotServerRef.current = initialData?.spellSlots || [];
+    setLocalSpellSlots(initialData?.spellSlots || []);
+  }, [initialData?.spellSlots]);
+
+  const flushSpellSlots = useCallback(async () => {
+    const deltas = slotPendingDeltaRef.current;
+    slotPendingDeltaRef.current = {};
+    slotFlushTimerRef.current = null;
+    const activeDeltas = Object.entries(deltas).filter(([, d]) => d !== 0);
+    if (activeDeltas.length === 0) return;
+    const deltaMap = Object.fromEntries(activeDeltas);
+    const base = slotServerRef.current;
+    const next = base.map((s) => {
+      const d = deltaMap[s.level];
+      if (!d) return s;
+      return { ...s, used: Math.min(s.max, Math.max(0, (s.used || 0) + d)) };
+    });
+    try {
+      await patchSession(slug, { spellSlots: next }, sessionPassword);
+      slotServerRef.current = next;
+      onSessionSync?.();
+    } catch {
+      setLocalSpellSlots(slotServerRef.current);
+    }
+  }, [slug, onSessionSync, sessionPassword]);
+
+  const tapSlot = useCallback((level, spend) => {
+    if (!slug) return;
+    setLocalSpellSlots((prev) => prev.map((s) => {
+      if (s.level !== level) return s;
+      const used = spend ? Math.min(s.max, (s.used || 0) + 1) : Math.max(0, (s.used || 0) - 1);
+      return { ...s, used };
+    }));
+    slotPendingDeltaRef.current[level] = (slotPendingDeltaRef.current[level] || 0) + (spend ? 1 : -1);
+    clearTimeout(slotFlushTimerRef.current);
+    slotFlushTimerRef.current = setTimeout(flushSpellSlots, 400);
+
+    setSlotUndo((prev) => {
+      clearTimeout(prev?.timer);
+      const timer = setTimeout(() => setSlotUndo(null), 3000);
+      return { level, delta: spend ? 1 : -1, timer };
+    });
+  }, [slug, flushSpellSlots]);
+
+  const undoSlotTap = useCallback(() => {
+    setSlotUndo((prev) => {
+      if (!prev) return prev;
+      clearTimeout(prev.timer);
+      // The reversal is itself a tap in the opposite direction — if it lands
+      // inside the still-open 400ms debounce window the pending delta nets
+      // to zero and flushSpellSlots skips the network call entirely.
+      tapSlot(prev.level, prev.delta < 0);
+      return null;
+    });
+  }, [tapSlot]);
+
+  const [restConfirm, setRestConfirm] = useState(null); // "short" | "long" | null
+  const restConfirmTimerRef = useRef(null);
+
+  const armRestConfirm = useCallback((kind) => {
+    clearTimeout(restConfirmTimerRef.current);
+    setRestConfirm(kind);
+    restConfirmTimerRef.current = setTimeout(() => setRestConfirm(null), 5000);
+  }, []);
+
+  const commitRest = useCallback(async (kind) => {
+    if (!slug) return;
+    clearTimeout(restConfirmTimerRef.current);
+    setRestConfirm(null);
+    // A rest supersedes any pending pip taps — drop them rather than let a
+    // stale flush overwrite the rest's result a moment later.
+    clearTimeout(slotFlushTimerRef.current);
+    slotFlushTimerRef.current = null;
+    slotPendingDeltaRef.current = {};
+
+    const prevSlots = slotServerRef.current;
+    const prevHitDice = char?.hitDiceCurrent;
+    const patch = kind === "long"
+      ? applyLongRest({ ...char, spellSlots: prevSlots })
+      : applyShortRest({ ...char, spellSlots: prevSlots });
+
+    slotServerRef.current = patch.spellSlots;
+    setLocalSpellSlots(patch.spellSlots);
+    if (kind === "long") setChar((prev) => ({ ...prev, hitDiceCurrent: patch.hitDiceCurrent }));
+
+    try {
+      await patchSession(slug, patch, sessionPassword);
+      onSessionSync?.();
+      if (kind === "long") {
+        postCharacterRoll(slug, { type: "wheel", name: "☾ Long Rest", note: "slots restored" }).catch(() => {});
+      }
+    } catch {
+      slotServerRef.current = prevSlots;
+      setLocalSpellSlots(prevSlots);
+      if (kind === "long") setChar((prev) => ({ ...prev, hitDiceCurrent: prevHitDice }));
+    }
+  }, [char, slug, onSessionSync, sessionPassword]);
+
   // ── Session sub-tab state ─────────────────────────────────────────────────
   const storedSubtab = sessionStorage.getItem(`dnd_session_subtab_${slug}`) || "combat";
   const [sessionSubTab, setSessionSubTabState] = useState(storedSubtab);
@@ -511,7 +620,12 @@ export default function CharacterSheetSessionMode({
   const hpPct = hpMax > 0 ? Math.min(100, (localHp / hpMax) * 100) : 0;
   const activeConditions = char?.conditions || [];
   const concentration = char?.concentration || { active: false, spell: "" };
-  const spellSlots = char?.spellSlots || [];
+  const spellSlots = localSpellSlots;
+  const hasPactSlot = spellSlots.some((s) => s.isPactMagic && (s.max || 0) > 0);
+  const totalSlotsSpent = spellSlots.reduce((sum, s) => sum + (s.used || 0), 0);
+  const pactSlotsSpent = spellSlots.filter((s) => s.isPactMagic).reduce((sum, s) => sum + (s.used || 0), 0);
+  const longRestIsNoop = totalSlotsSpent === 0 && (char?.hitDiceCurrent ?? (char?.level || 1)) >= (char?.level || 1);
+  const shortRestIsNoop = pactSlotsSpent === 0;
   const skills = char?.skills || [];
   const specialAbilities = char?.specialAbilities || [];
   const weapons = char?.weapons || [];
@@ -1167,11 +1281,33 @@ export default function CharacterSheetSessionMode({
             )}
           </div>
 
-          {/* Spell slots */}
+          {/* Spell slots — tap a pip to spend/restore; rests in the header row (Story 63) */}
           {spellSlots.length > 0 && (
             <>
               <hr className="cs-sm-rule" />
-              <span className="cs-sm-label">Spell Slots</span>
+              <div className="cs-sm-slots-header">
+                <span className="cs-sm-label" style={{ marginBottom: 0 }}>Spell Slots</span>
+                <div className="cs-sm-rest-btns">
+                  {hasPactSlot && (
+                    <button
+                      type="button"
+                      className="cs-sm-rest-btn"
+                      disabled={shortRestIsNoop}
+                      onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}
+                    >
+                      {restConfirm === "short" ? `Restore ${pactSlotsSpent} Pact?` : "Short Rest"}
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    className="cs-sm-rest-btn"
+                    disabled={longRestIsNoop}
+                    onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}
+                  >
+                    {restConfirm === "long" ? `Restore All ${totalSlotsSpent}?` : "Long Rest"}
+                  </button>
+                </div>
+              </div>
               <div className="cs-sm-slots-wrap">
                 {spellSlots.map((slot, i) => {
                   const available = slot.max - (slot.used || 0);
@@ -1179,15 +1315,29 @@ export default function CharacterSheetSessionMode({
                     <div key={i} className="cs-sm-slot-group">
                       <span className="cs-sm-slot-lbl">L{slot.level}</span>
                       {Array.from({ length: slot.max }).map((_, pipIdx) => (
-                        <div
+                        <button
                           key={pipIdx}
-                          className="cs-sm-slot-pip"
-                          style={{
-                            borderColor: pipIdx < available ? pal.gem : pal.border,
-                            background: pipIdx < available ? pal.gem : "transparent",
-                          }}
-                        />
+                          type="button"
+                          className="cs-sm-slot-pip-btn"
+                          onClick={() => tapSlot(slot.level, pipIdx < available)}
+                          aria-label={pipIdx < available ? `Spend a level ${slot.level} slot` : `Restore a level ${slot.level} slot`}
+                        >
+                          <span
+                            className="cs-sm-slot-pip"
+                            style={{
+                              borderColor: pipIdx < available ? pal.gem : pal.border,
+                              background: pipIdx < available ? pal.gem : "transparent",
+                            }}
+                          />
+                        </button>
                       ))}
+                      <span className="cs-sm-slot-count">
+                        {slotUndo?.level === slot.level ? (
+                          <button type="button" className="cs-sm-slot-undo" onClick={undoSlotTap}>↺ Undo</button>
+                        ) : (
+                          `${available}/${slot.max}`
+                        )}
+                      </span>
                     </div>
                   );
                 })}

@@ -7,7 +7,7 @@ import { InfoBadge } from "./CharacterTalents";
 import { getTalentTooltip } from "./talentCatalog";
 import ItemEditorModal, { itemTypeLabel } from "./ItemEditorModal";
 import { HR } from "./CharacterSheetPrimitives";
-import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, HIT_DIE_BY_CLASS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt, normalizeSpells, buildAttackEntries, spellRoleGlyph } from "./constants";
+import { ARMOR_OPTIONS, CONDITIONS, SPELL_LEVEL_LABELS, HIT_DIE_BY_CLASS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt, normalizeSpells, buildAttackEntries, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
 import { renderInline } from "./theme";
 import MapViewer from "../maps/MapViewer";
 import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
@@ -1736,11 +1736,8 @@ export default function CharacterSheetViewMode({ ctx }) {
                               <button onClick={() => {
                                 if (window.confirm("Long rest — reset all spell slots and restore Hit Dice?")) {
                                   const prevSlots = char.spellSlots || [];
-                                  const spellSlots = prevSlots.map((slot) => ({ ...slot, used: 0 }));
-                                  const level = char.level || 1;
-                                  const hdCurrent = char.hitDiceCurrent ?? level;
-                                  const hdRestore = Math.max(1, Math.floor(level / 2));
-                                  const hitDiceCurrent = Math.min(level, hdCurrent + hdRestore);
+                                  const hdCurrent = char.hitDiceCurrent;
+                                  const { spellSlots, hitDiceCurrent } = applyLongRest(char);
                                   setChar((current) => ({ ...current, spellSlots, hitDiceCurrent }));
                                   applySessionPatch({ spellSlots, hitDiceCurrent }, { spellSlots: prevSlots, hitDiceCurrent: hdCurrent }).catch(() => {});
                                 }
@@ -1748,7 +1745,7 @@ export default function CharacterSheetViewMode({ ctx }) {
                               <button onClick={() => {
                                 if (window.confirm("Short rest — reset Pact Magic slots?")) {
                                   const prevSlots = char.spellSlots || [];
-                                  const spellSlots = prevSlots.map((slot) => slot.isPactMagic ? { ...slot, used: 0 } : slot);
+                                  const { spellSlots } = applyShortRest(char);
                                   setChar((current) => ({ ...current, spellSlots }));
                                   applySessionPatch({ spellSlots }, { spellSlots: prevSlots }).catch(() => {});
                                 }

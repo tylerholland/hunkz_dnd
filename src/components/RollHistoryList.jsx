@@ -32,6 +32,18 @@ export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false }
       }}
     >
       <span style={{ color: pal.accent, fontSize: 13, flexShrink: 0 }}>◷</span>
+      {entry.characterName && (
+        <span
+          style={{
+            fontFamily: pal.fontBody,
+            fontSize: 13,
+            color: pal.accentBright,
+            flexShrink: 0,
+          }}
+        >
+          {entry.characterName}
+        </span>
+      )}
       <span
         style={{
           fontFamily: pal.fontBody,
@@ -55,7 +67,7 @@ export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false }
           flexShrink: 0,
         }}
       >
-        {isFillChange ? `— ${entry.filledCount}/${entry.segments} filled` : `— ${entry.segments} segments`}
+        {entry.note ? `— ${entry.note}` : isFillChange ? `— ${entry.filledCount}/${entry.segments} filled` : `— ${entry.segments} segments`}
       </span>
     </div>
   );

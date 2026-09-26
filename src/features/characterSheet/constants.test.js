@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeSpells, buildAttackEntries } from "./constants";
+import { normalizeSpells, buildAttackEntries, applyLongRest, applyShortRest } from "./constants";
 
 describe("normalizeSpells", () => {
   it("returns [] for a missing/non-array field", () => {
@@ -90,5 +90,42 @@ describe("buildAttackEntries", () => {
     expect(spellEntries.find((e) => e.id === "s4").level).toBe(0);
     expect(spellEntries.find((e) => e.id === "s5").level).toBe(2);
     expect(spellEntries.find((e) => e.id === "s6").level).toBeUndefined();
+  });
+});
+
+describe("applyLongRest / applyShortRest (Story 63)", () => {
+  it("Long Rest resets every slot's used count to 0, regardless of pact status", () => {
+    const char = {
+      level: 6,
+      spellSlots: [
+        { level: 1, max: 4, used: 3 },
+        { level: 1, max: 1, used: 1, isPactMagic: true },
+      ],
+    };
+    const { spellSlots } = applyLongRest(char);
+    expect(spellSlots.every((s) => s.used === 0)).toBe(true);
+  });
+
+  it("Long Rest restores hitDiceCurrent by floor(level/2), minimum 1, capped at level", () => {
+    expect(applyLongRest({ level: 6, hitDiceCurrent: 2, spellSlots: [] }).hitDiceCurrent).toBe(5);
+    expect(applyLongRest({ level: 1, hitDiceCurrent: 0, spellSlots: [] }).hitDiceCurrent).toBe(1);
+    expect(applyLongRest({ level: 8, hitDiceCurrent: 8, spellSlots: [] }).hitDiceCurrent).toBe(8);
+  });
+
+  it("Long Rest never touches hpCurrent — that restore belongs to the DM's party-wide rest only", () => {
+    const result = applyLongRest({ level: 3, hpCurrent: 2, hpMax: 30, spellSlots: [] });
+    expect("hpCurrent" in result).toBe(false);
+  });
+
+  it("Short Rest resets only isPactMagic slots, leaving standard slots untouched", () => {
+    const char = {
+      spellSlots: [
+        { level: 1, max: 4, used: 3 },
+        { level: 1, max: 1, used: 1, isPactMagic: true },
+      ],
+    };
+    const { spellSlots } = applyShortRest(char);
+    expect(spellSlots.find((s) => !s.isPactMagic).used).toBe(3);
+    expect(spellSlots.find((s) => s.isPactMagic).used).toBe(0);
   });
 });

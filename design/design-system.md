@@ -1,8 +1,8 @@
 # Design System
 
 > This document captures the visual language of the app for use by `ux-designer` when creating prototypes.
-> **Maintained by `feature-builder`** — update when palettes, fonts, or UI patterns change.
-> Do not read `CharacterSheet.jsx` to infer styles — use this document instead.
+> Maintained by the implementing agent when shared palettes, fonts, or UI patterns change.
+> Start with [design essentials](design-essentials.md); search this reference for the affected pattern. Verify current styles against relevant source/CSS when descriptions have drifted.
 
 ---
 

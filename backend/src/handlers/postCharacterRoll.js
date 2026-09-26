@@ -46,6 +46,35 @@ exports.handler = async (event) => {
   if (isReservedCharacterSlug(slug)) return notFound();
 
   const body = JSON.parse(event.body || "{}");
+
+  const result = await db.send(new GetCommand({ TableName: TABLE, Key: { slug } }));
+  if (!result.Item) return notFound();
+
+  // Story 63 — a no-auth, non-dice activity note (e.g. "Long Rest — slots
+  // restored"), reusing this same character-write endpoint rather than
+  // minting a new one. Shares the shared roll-history sentinel and the
+  // WheelHistoryRow renderer with the DM's counter-wheel events, but is
+  // reachable without a DM password since it's the player's own character
+  // acting on their own resources (ADR-005 no-auth session writes).
+  if (body.type === "wheel") {
+    const name = boundedString(body.name);
+    if (!name) return badRequest("name is required");
+    const note = boundedString(body.note);
+    const eventRecord = {
+      id: `wheel-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: "wheel",
+      name,
+      characterName: result.Item.name || result.Item.nameAlt || slug,
+      segments: 1,
+      filledCount: 1,
+      ...(note ? { note } : {}),
+      createdAt: new Date().toISOString(),
+    };
+    await appendRollHistoryEvent(eventRecord);
+    await notifySessionChanged();
+    return ok({ success: true });
+  }
+
   const exprLabel = typeof body.exprLabel === "string" ? body.exprLabel.trim() : "";
   const label = typeof body.label === "string" ? body.label.trim() : "";
   const total = parseInt(body.total, 10);
@@ -54,9 +83,6 @@ exports.handler = async (event) => {
   if (!exprLabel) return badRequest("exprLabel is required");
   if (!Number.isFinite(total)) return badRequest("total must be a number");
   if (!rollValues) return badRequest("rollValues must be a non-empty numeric array");
-
-  const result = await db.send(new GetCommand({ TableName: TABLE, Key: { slug } }));
-  if (!result.Item) return notFound();
 
   const eventRecord = {
     id: `roll-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,

@@ -242,3 +242,23 @@ export const CONDITIONS = [
 ];
 
 export const SPELL_LEVEL_LABELS = ["1st", "2nd", "3rd", "4th", "5th", "6th", "7th", "8th", "9th"];
+
+// Story 63 — shared rest rules, pulled out of the classic Combat tab so the
+// DM's party-wide rest and Session mode's per-character rest call one
+// implementation. Spell slots only — hitDiceCurrent is restored (matching
+// the classic tab's existing behavior) but hpCurrent is deliberately never
+// touched here; a full HP restore is the DM party-wide rest's own addition,
+// not a rule this helper owns.
+export function applyLongRest(char) {
+  const level = char.level || 1;
+  const hdCurrent = char.hitDiceCurrent ?? level;
+  const hdRestore = Math.max(1, Math.floor(level / 2));
+  const hitDiceCurrent = Math.min(level, hdCurrent + hdRestore);
+  const spellSlots = (char.spellSlots || []).map((slot) => ({ ...slot, used: 0 }));
+  return { spellSlots, hitDiceCurrent };
+}
+
+export function applyShortRest(char) {
+  const spellSlots = (char.spellSlots || []).map((slot) => (slot.isPactMagic ? { ...slot, used: 0 } : slot));
+  return { spellSlots };
+}

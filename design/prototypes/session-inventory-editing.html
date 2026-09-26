@@ -1,0 +1,1339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Eoghan — Session · Loadout (Equipment)</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IM+Fell+English:ital@0;1&family=Cinzel:wght@400;500&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
+
+/* ── Palettes (verbatim values from src/features/characterSheet/theme.jsx) ── */
+:root, .pal-ocean {
+  --pal-bg: #0d0f14;
+  --pal-surface: rgba(18,32,48,0.62);
+  --pal-surface-solid: #111e2c;
+  --pal-border: rgba(100,130,160,0.22);
+  --pal-accent: #6a8fa8;
+  --pal-accent-bright: #a0c0d0;
+  --pal-accent-dim: rgba(30,58,78,0.45);
+  --pal-text: #c8bfaf;
+  --pal-text-body: #b0a898;
+  --pal-text-muted: #6a8296;
+  --pal-gem: #8ab4c8;
+  --pal-glow1: rgba(20,45,80,0.4);
+  --pal-glow2: rgba(15,35,60,0.3);
+}
+.pal-ember {
+  --pal-bg: #120d0a;
+  --pal-surface: rgba(50,28,14,0.55);
+  --pal-surface-solid: #2a160a;
+  --pal-border: rgba(160,100,55,0.22);
+  --pal-accent: #a06840;
+  --pal-accent-bright: #c89060;
+  --pal-accent-dim: rgba(74,46,18,0.5);
+  --pal-text: #d4c4b0;
+  --pal-text-body: #b8a888;
+  --pal-text-muted: #8a6a4c;
+  --pal-gem: #c8904c;
+  --pal-glow1: rgba(100,45,10,0.35);
+  --pal-glow2: rgba(70,30,5,0.25);
+}
+.pal-vellum {
+  --pal-bg: #f5f0e8;
+  --pal-surface: rgba(220,208,185,0.5);
+  --pal-surface-solid: #e8e0cc;
+  --pal-border: rgba(140,110,70,0.32);
+  --pal-accent: #7a5c30;
+  --pal-accent-bright: #4a3418;
+  --pal-accent-dim: rgba(140,110,70,0.15);
+  --pal-text: #2a2018;
+  --pal-text-body: #3c2e1c;
+  --pal-text-muted: #7a6446;
+  --pal-gem: #4a3418;
+  --pal-glow1: rgba(180,155,100,0.25);
+  --pal-glow2: rgba(160,135,85,0.15);
+}
+.pal-vellum .cs-sm-add[data-state="idle"] { border-color: rgba(122,100,70,0.5); }
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background:
+    radial-gradient(ellipse at 50% 0%, var(--pal-glow1) 0%, transparent 60%),
+    radial-gradient(ellipse at 80% 100%, var(--pal-glow2) 0%, transparent 55%),
+    var(--pal-bg);
+  min-height: 100vh;
+  color: var(--pal-text);
+  font-family: 'Crimson Text', serif;
+  transition: background 0.2s ease-out, color 0.2s ease-out;
+}
+
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.25); border-radius: 3px; }
+
+button, input, select, textarea { font-family: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }
+
+/* ── Top chrome ── */
+.top-bar {
+  display: flex; align-items: center; gap: 14px;
+  padding: 12px 20px;
+  border-bottom: 1px solid var(--pal-border);
+  background: rgba(10,10,12,0.35);
+}
+.top-back { font-family: 'IM Fell English', serif; font-size: 12px; letter-spacing: 0.1em; color: var(--pal-text-muted); text-decoration: none; }
+.top-title { font-family: 'Cinzel', serif; font-size: 15px; letter-spacing: 0.14em; color: var(--pal-accent-bright); }
+.top-sub { font-family: 'IM Fell English', serif; font-size: 11px; letter-spacing: 0.16em; color: var(--pal-text-muted); text-transform: uppercase; }
+.top-spacer { flex: 1; }
+.pal-switch { display: flex; gap: 6px; }
+.pal-btn {
+  background: transparent; border: 1px solid var(--pal-border); border-radius: 3px;
+  color: var(--pal-text-muted); font-family: 'IM Fell English', serif; font-size: 10px;
+  letter-spacing: 0.1em; text-transform: uppercase; padding: 5px 9px; min-height: 30px;
+}
+.pal-btn.active { border-color: var(--pal-accent); color: var(--pal-accent-bright); background: var(--pal-accent-dim); }
+
+/* ── Session sub-tab strip (context only — Loadout is the only live tab here) ── */
+.stab-row { display: flex; gap: 4px; padding: 10px 20px 0; border-bottom: 1px solid var(--pal-border); }
+.stab {
+  background: none; border: 1px solid transparent; border-bottom: none; border-radius: 4px 4px 0 0;
+  color: var(--pal-text-muted); font-family: 'IM Fell English', serif; font-size: 12px;
+  letter-spacing: 0.14em; text-transform: uppercase; padding: 8px 16px; min-height: 36px;
+}
+.stab:disabled { opacity: 0.4; cursor: not-allowed; }
+.stab.active { border-color: var(--pal-border); background: var(--pal-surface); color: var(--pal-accent-bright); }
+
+/* ── Page layout ── */
+.page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 22px 18px 60px;
+}
+.scope-note {
+  font-family: 'IM Fell English', serif; font-size: 11px; letter-spacing: 0.06em;
+  color: var(--pal-text-muted); font-style: italic; margin-bottom: 18px; line-height: 1.5;
+}
+
+/* ── Real-width harness ──────────────────────────────────────────────────
+   The Equipment column never gets a comfortable fixed width in the real
+   app — it's half of `.cs-sm-loadout-grid` (1fr 1fr, 28px gap), which is
+   itself the right column of `.cs-session-shell` (340px + 1fr, max-width
+   1200px). Presets below are computed from that chain, not guessed:
+     238px — right column at the ≥900px breakpoint floor (900-340=560,
+             minus .cs-session-right's 56px padding = 504px right column,
+             minus 28px grid gap, ÷2 = 238px). The real worst case.
+     288px — right column at a plausible 1000px browser window (604px
+             right column, same math).
+     350px — <600px viewport: .cs-sm-loadout-grid collapses to a single
+             column (grid-template-columns: 1fr), so Equipment gets the
+             FULL right column instead of half. Roomier than the desktop
+             pinch, not the tight case.
+   Default preset is 238px specifically because it's the worst case and
+   the one most likely to be silently untested.                        */
+.width-harness {
+  max-width: 900px; margin: 0 auto 18px; padding: 12px 16px;
+  border: 1px dashed rgba(120,170,200,0.4); border-radius: 6px;
+  background: rgba(60,100,130,0.06);
+}
+.width-harness-title {
+  font-family: 'IM Fell English', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: var(--pal-accent-bright); margin-bottom: 8px;
+}
+.width-harness-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 6px; }
+.width-preset-btn {
+  background: none; border: 1px solid var(--pal-border); border-radius: 4px;
+  color: var(--pal-text-muted); font-family: 'IM Fell English', serif; font-size: 11px;
+  letter-spacing: 0.06em; padding: 7px 12px; min-height: 34px;
+}
+.width-preset-btn.active { border-color: var(--pal-accent); color: var(--pal-accent-bright); background: var(--pal-accent-dim); }
+.width-readout { font-family: 'Cinzel', serif; font-size: 13px; color: var(--pal-gem); margin-left: auto; }
+.width-harness-note { font-family: 'Crimson Text', serif; font-size: 12.5px; color: var(--pal-text-muted); line-height: 1.5; }
+
+.col-frame-outer { display: flex; }
+.col-frame {
+  position: relative;
+  width: 238px;
+  container-type: inline-size;
+  border-left: 1px dashed rgba(120,170,200,0.5);
+  border-right: 1px dashed rgba(120,170,200,0.5);
+  padding: 0 14px;
+  transition: width 160ms ease-out;
+}
+.col-frame.dragging { transition: none; }
+.col-resize-handle {
+  position: absolute; top: 0; right: -7px; width: 14px; height: 100%;
+  cursor: ew-resize; display: flex; align-items: center; justify-content: center;
+}
+.col-resize-handle::before {
+  content: "⋮"; color: var(--pal-accent); opacity: 0.6; font-size: 14px; letter-spacing: -2px;
+}
+.col-resize-handle:hover::before { opacity: 1; }
+
+/* ── Loadout column ── */
+.cs-sm-loadout-panel { }
+.cs-sm-ld-colhead {
+  font-family: 'IM Fell English', serif; font-size: 12px; letter-spacing: 0.24em;
+  text-transform: uppercase; color: var(--pal-text-muted); margin-bottom: 8px;
+}
+/* Real columns: equip circle | name | qty | category | chevron.
+   The list itself is the grid so every row's qty/category track is sized
+   from the widest content across ALL rows — genuine table alignment, not
+   a per-row guess. Each row's five cells are direct children (via
+   display:contents on the per-item wrapper) so they participate in the
+   list's grid; the expand panel spans the full width beneath them. */
+.cs-sm-ld-list {
+  display: grid;
+  grid-template-columns: 20px minmax(0,1fr) auto auto 20px;
+  align-items: center;
+  column-gap: 8px;
+  margin-bottom: 0;
+}
+.cs-sm-ld-row { display: contents; }
+.cs-sm-ld-row.cs-spell-row-enter > * { animation: csSpellRowEnter 140ms ease-out both; }
+@keyframes csSpellRowEnter {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-sm-ld-row.cs-spell-row-enter > * { animation: none; }
+}
+/* Fixed min-height (revision 4): every cell in a row is a grid item sized
+   to its OWN content, not stretched to the row's shared track — align-items:
+   center on .cs-sm-ld-list centers each cell within that track but never
+   equalizes cell height across columns. Before this fix, only rows with a
+   category chip (.cs-sm-ld-type-chip's own padding+border makes it ~38px
+   tall vs. ~17-20px for plain/empty text) pushed their row's shared track
+   taller than a chip-less row — so "Rations" (no category) rendered
+   noticeably shorter than "Potion of Healing" (category: potion) even
+   though both are the same kind of row. A min-height set ONLY on the type
+   chip would be fragile (the next content type that's taller than plain
+   text breaks it again); setting it here, on every cell uniformly, means
+   the row height no longer depends on which cells happen to be populated.
+   44px doubles as the project's own touch-target floor (design-essentials),
+   so this also makes the row a comfortable tap target, not just a visual
+   fix. display:flex + align-items:center replaces the old reliance on
+   line-height/padding math to vertically center each cell's own content
+   (text or chip) within that fixed height — verified against text-overflow
+   ellipsis on the name cell, which still truncates correctly as a flex
+   item. */
+.cs-sm-ld-cell {
+  min-height: 44px;
+  padding: 8px 0;
+  display: flex;
+  align-items: center;
+  border-bottom: 1px solid var(--pal-border);
+}
+/* Explicit (not auto) column placement per cell type. This matters once
+   the category cell can be display:none'd below 260px (see the
+   @container rule below) — with implicit auto-flow, removing one cell
+   from a row's flow shifts every following cell left by one column,
+   which cascades into the NEXT row's cells landing in the wrong track
+   entirely (verified: this is exactly what broke when display:none was
+   first tried without pinning columns). Pinning each type to its own
+   line means a hidden cell just leaves its column empty for that row. */
+.cs-sm-ld-equip-btn.cs-sm-ld-cell { grid-column: 1; }
+.cs-sm-ld-name.cs-sm-ld-cell { grid-column: 2; }
+.cs-sm-ld-qty-cell.cs-sm-ld-cell { grid-column: 3; }
+.cs-sm-ld-cat-cell.cs-sm-ld-cell { grid-column: 4; }
+.cs-sm-ld-chevron-btn.cs-sm-ld-cell { grid-column: 5; }
+.cs-sm-ld-equip-btn.cs-sm-ld-cell {
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; padding: 8px 0;
+  cursor: pointer;
+}
+.cs-sm-ld-equip-dot {
+  width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
+  background-color: var(--pal-gem); border: none;
+}
+.cs-sm-ld-equip-dot.off {
+  background-color: transparent; border: 1.5px solid var(--pal-text-muted);
+}
+.cs-sm-ld-name {
+  font-size: 15px; color: var(--pal-text); min-width: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  cursor: pointer;
+}
+.cs-sm-ld-name.dim { color: var(--pal-text-muted); }
+.cs-sm-ld-qty-cell {
+  font-family: 'Cinzel', serif; font-size: 13px; color: var(--pal-gem);
+  white-space: nowrap; cursor: pointer;
+}
+.cs-sm-ld-cat-cell { white-space: nowrap; cursor: pointer; }
+/* Row hover (revision 4) — the name/qty/category cells and chevron have
+   always been tappable (toggleExpand), but nothing signaled that on
+   pointer devices; every other actionable text in this file gets a color
+   shift on interaction. Touch is unaffected; this is a hover-only cue on
+   top of the existing tap handlers, not a new interaction. */
+.cs-sm-ld-name:hover,
+.cs-sm-ld-qty-cell:hover,
+.cs-sm-ld-cat-cell:hover,
+.cs-sm-ld-chevron-btn:hover { color: var(--pal-accent-bright); }
+.cs-sm-ld-name.dim:hover { color: var(--pal-accent-bright); }
+.cs-sm-ld-type-chip {
+  font-family: 'IM Fell English', serif; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--pal-accent-bright); background: var(--pal-accent-dim); border: 1px solid var(--pal-border);
+  border-radius: 3px; padding: 2px 6px; line-height: 1.3;
+}
+/* Below ~260px there isn't room for a text-label category column next to
+   a readable name (verified: it truncated names to 3-4 characters). Drop
+   the column's content — display:none removes it from the grid's own
+   column sizing, so the (now-empty) 4th auto track collapses to 0 and
+   name/qty reclaim the space — and surface category as a chip inside the
+   expand panel instead, so the information isn't lost, just not standing. */
+/* Thresholds are in container CONTENT-box terms, not frame width: .col-frame's
+   14px×2 padding + 1px×2 dashed border already remove 30px before the list
+   ever sees it (238px frame -> 208px content, 288px -> 258px, 350px -> 320px).
+   229/230 is the real cutover so the 238px preset hides the column and the
+   288px preset shows it — a threshold picked against frame width instead
+   would land both presets on the same side (verified: 259px did exactly that). */
+@container (max-width: 229px) {
+  .cs-sm-ld-cat-cell { display: none; }
+}
+/* Inverse: once the column has room to show category, don't also repeat
+   it in the expand panel right below — that's just noise at that width. */
+@container (min-width: 230px) {
+  .cs-sm-ld-cat-echo { display: none; }
+}
+.cs-sm-ld-chevron-btn.cs-sm-ld-cell {
+  display: flex; align-items: center; justify-content: center;
+  background: none; border: none; font-size: 10px; color: var(--pal-text-muted);
+  cursor: pointer;
+}
+
+/* ── Expanded item detail (tap the row to open) ──
+   Revision 4: a subtle surface tint + rounded bottom corners + right-hand
+   padding (there was none — description text ran flush to the frame edge)
+   set this apart as a self-contained detail drawer rather than reading as
+   just more flat list rows. Same var(--pal-surface) token already used for
+   inputs/pad elsewhere in this file, so it doesn't introduce a new visual
+   language. */
+.cs-sm-ld-expand {
+  grid-column: 1 / -1;
+  padding: 10px 12px 12px 28px;
+  border-bottom: 1px solid var(--pal-border);
+  background: var(--pal-surface);
+  border-radius: 0 0 5px 5px;
+}
+.cs-sm-ld-expand-meta { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.cs-sm-ld-use-btn {
+  height: 26px; padding: 0 10px; background: rgba(18,58,78,0.5); border: 1px solid var(--pal-accent);
+  border-radius: 4px; color: var(--pal-accent-bright); font-family: 'IM Fell English', serif;
+  font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.cs-sm-ld-use-btn:hover { background: rgba(30,80,105,0.6); }
+.cs-sm-ld-use-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.cs-sm-ld-desc {
+  font-size: 13px; line-height: 1.55; color: var(--pal-text-body); margin-bottom: 8px;
+}
+.cs-sm-ld-drop-row { display: flex; gap: 6px; }
+.cs-sm-ld-drop-btn, .cs-sm-ld-drop-confirm-btn, .cs-sm-ld-drop-cancel-btn {
+  height: 26px; padding: 0 10px; border-radius: 4px; font-family: 'IM Fell English', serif;
+  font-size: 11px; letter-spacing: 0.06em;
+}
+.cs-sm-ld-drop-btn { background: none; border: 1px solid var(--pal-border); color: var(--pal-text-muted); }
+.cs-sm-ld-drop-btn:hover { border-color: #c06060; color: #c06060; }
+.cs-sm-ld-drop-confirm-btn { background: rgba(192,96,96,0.18); border: 1px solid #c06060; color: #c06060; }
+.cs-sm-ld-drop-cancel-btn { background: none; border: 1px solid var(--pal-border); color: var(--pal-text-muted); }
+
+/* ── Add affordance / compose row ── */
+.cs-sm-add {
+  margin-top: 4px;
+  border: 1px dashed var(--pal-border);
+  border-radius: 5px;
+  overflow: hidden;
+  position: relative;
+  transition: max-height 180ms cubic-bezier(0.2,0.8,0.2,1), border-color 180ms cubic-bezier(0.2,0.8,0.2,1), border-style 0s 180ms;
+  max-height: 44px;
+}
+.cs-sm-add[data-state="open"], .cs-sm-add[data-state="error"] {
+  border-style: solid;
+  border-color: var(--pal-accent);
+  transition: max-height 180ms cubic-bezier(0.2,0.8,0.2,1), border-color 180ms cubic-bezier(0.2,0.8,0.2,1);
+}
+.cs-sm-add[data-state="error"] { border-color: #c06060; }
+@media (prefers-reduced-motion: reduce) {
+  .cs-sm-add { transition: none; }
+}
+.cs-sm-add-idle-btn {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 44px;
+  background: none; border: none; padding: 0 14px;
+  font-family: 'IM Fell English', serif; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase;
+  color: var(--pal-text-muted); text-align: left;
+}
+.cs-sm-add-idle-btn .plus-glyph { color: var(--pal-accent); opacity: 0.7; font-size: 16px; }
+.cs-sm-add-idle-btn:hover { color: var(--pal-accent-bright); }
+
+.cs-sm-add-fields {
+  padding: 8px 34px 10px 10px;
+  opacity: 0;
+  transition: opacity 90ms ease-out;
+  transition-delay: 0ms;
+}
+.cs-sm-add[data-state="open"] .cs-sm-add-fields,
+.cs-sm-add[data-state="error"] .cs-sm-add-fields { opacity: 1; transition-delay: 60ms; }
+
+.cs-sm-add-cancel-btn {
+  position: absolute; top: 6px; right: 6px; width: 26px; height: 26px;
+  background: none; border: none; color: var(--pal-text-muted); font-size: 15px; line-height: 1;
+}
+.cs-sm-add-cancel-btn:hover { color: var(--pal-accent-bright); }
+
+.cs-sm-add-row1 { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.cs-sm-add-input {
+  flex: 1; min-width: 0; height: 40px; padding: 0 10px;
+  background: var(--pal-surface); border: 1px solid var(--pal-border); border-radius: 4px;
+  color: var(--pal-text); font-family: 'Crimson Text', serif; font-size: 15px;
+}
+.cs-sm-add-input:focus { border-color: var(--pal-accent); outline: none; }
+.cs-sm-add-qty {
+  flex-shrink: 0; height: 40px; min-width: 44px; padding: 0 8px;
+  background: var(--pal-surface); border: 1px solid var(--pal-border); border-radius: 4px;
+  color: var(--pal-gem); font-family: 'Cinzel', serif; font-size: 13px;
+  display: flex; align-items: center; justify-content: center;
+}
+.cs-sm-add-qty.set { border-color: var(--pal-accent); }
+.cs-sm-add-qty-input {
+  width: 44px; height: 40px; text-align: center;
+  background: var(--pal-surface); border: 1px solid var(--pal-accent); border-radius: 4px;
+  color: var(--pal-gem); font-family: 'Cinzel', serif; font-size: 14px;
+}
+.cs-sm-add-row2 { display: flex; gap: 6px; }
+.cs-sm-add-commit {
+  flex: 1; height: 44px; background: rgba(18,58,78,0.5); border: 1px solid var(--pal-accent);
+  border-radius: 4px; color: var(--pal-accent-bright); font-family: 'IM Fell English', serif;
+  font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
+  transition: opacity 0.15s;
+}
+.cs-sm-add-commit:disabled { opacity: 0.4; cursor: not-allowed; }
+.cs-sm-add-commit:not(:disabled):hover { background: rgba(30,80,105,0.6); }
+.cs-sm-add-details {
+  width: 44px; height: 44px; flex-shrink: 0; background: none; border: 1px solid var(--pal-border);
+  border-radius: 4px; color: var(--pal-text-muted); font-size: 15px; letter-spacing: 0.08em;
+}
+.cs-sm-add-details.active { border-color: var(--pal-accent); color: var(--pal-accent-bright); }
+.cs-sm-add-details:hover { border-color: var(--pal-accent); color: var(--pal-accent-bright); }
+.cs-sm-add-hint {
+  font-family: 'IM Fell English', serif; font-size: 11px; letter-spacing: 0.04em; font-style: italic;
+  color: var(--pal-text-muted); margin: 6px 2px 0;
+}
+.cs-sm-add-error-text {
+  font-family: 'IM Fell English', serif; font-size: 11px; letter-spacing: 0.04em;
+  color: #c06060; margin: 6px 2px 0; cursor: pointer;
+}
+
+/* more-fields (type + description) — revealed by ⋯ */
+.cs-sm-add-more {
+  margin-top: 8px; padding-top: 8px; border-top: 1px dashed var(--pal-border);
+}
+.cs-sm-add-more-label {
+  font-family: 'IM Fell English', serif; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--pal-text-muted); margin-bottom: 4px; display: block;
+}
+.cs-sm-add-type-select {
+  width: 100%; height: 36px; padding: 0 8px; margin-bottom: 8px;
+  background: var(--pal-surface); border: 1px solid var(--pal-border); border-radius: 4px;
+  color: var(--pal-text); font-size: 13px;
+}
+.cs-sm-add-desc {
+  width: 100%; min-height: 56px; padding: 8px; resize: vertical;
+  background: var(--pal-surface); border: 1px solid var(--pal-border); border-radius: 4px;
+  color: var(--pal-text); font-family: 'Crimson Text', serif; font-size: 13px; line-height: 1.5;
+}
+.cs-sm-add-desc:focus, .cs-sm-add-type-select:focus { border-color: var(--pal-accent); outline: none; }
+
+/* ── Ledger / purse ── */
+.cs-sm-ledger { margin-top: 30px; padding-top: 16px; border-top: 1px solid var(--pal-border); }
+.cs-sm-purse-gp {
+  display: flex; align-items: center; gap: 8px; width: 100%; height: 44px;
+  background: none; border: none; padding: 0 2px; text-align: left;
+}
+.cs-sm-purse-glyph { color: var(--pal-gem); font-size: 18px; }
+.cs-sm-purse-num {
+  font-family: 'Cinzel', serif; font-size: 28px; color: var(--pal-gem);
+  transition: color 0.2s;
+}
+.cs-sm-purse-num.flash { animation: valueLands 500ms ease-out; }
+@keyframes valueLands {
+  0% { color: var(--pal-gem); transform: scale(1); }
+  35% { color: var(--pal-accent-bright); transform: scale(1.12); }
+  100% { color: var(--pal-gem); transform: scale(1); }
+}
+.cs-sm-purse-num.guard {
+  animation: valueGuard 400ms ease-out;
+}
+@keyframes valueGuard {
+  0%, 100% { color: var(--pal-gem); }
+  40% { color: #c06060; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .cs-sm-purse-num.flash, .cs-sm-purse-num.guard { animation: none; color: var(--pal-accent-bright); }
+}
+.cs-sm-purse-lbl { font-family: 'IM Fell English', serif; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-text-muted); }
+.cs-sm-purse-hint { margin-left: auto; font-family: 'IM Fell English', serif; font-size: 10px; letter-spacing: 0.08em; color: var(--pal-text-muted); opacity: 0.7; text-transform: uppercase; }
+
+/* ── Delta pad (Spend / Gain only — no Set) ── */
+.cs-sm-pad {
+  overflow: hidden; max-height: 0; opacity: 0;
+  transition: max-height 160ms ease-out, opacity 160ms ease-out;
+  background: var(--pal-surface); border-radius: 5px;
+}
+.cs-sm-pad.open { max-height: 400px; opacity: 1; margin-top: 8px; border: 1px solid var(--pal-border); }
+@media (prefers-reduced-motion: reduce) {
+  .cs-sm-pad { transition: none; }
+}
+.cs-sm-pad-inner { padding: 12px; }
+.cs-sm-pad-base {
+  font-family: 'IM Fell English', serif; font-size: 11px; letter-spacing: 0.06em;
+  color: var(--pal-text-muted); margin-bottom: 8px;
+}
+.cs-sm-pad-seg { display: flex; gap: 4px; margin-bottom: 10px; }
+.cs-sm-pad-seg button {
+  flex: 1; height: 36px; background: none; border: 1px solid var(--pal-border); border-radius: 4px;
+  color: var(--pal-text-muted); font-family: 'IM Fell English', serif; font-size: 12px; letter-spacing: 0.1em;
+}
+.cs-sm-pad-seg button.active { border-color: var(--pal-accent); color: var(--pal-accent-bright); background: var(--pal-accent-dim); }
+.cs-sm-pad-input {
+  width: 100%; height: 46px; margin-bottom: 10px; padding: 0 12px;
+  background: var(--pal-surface-solid); border: 1px solid var(--pal-border); border-radius: 4px;
+  color: var(--pal-text); font-family: 'Cinzel', serif; font-size: 22px; text-align: center;
+}
+.cs-sm-pad-input:focus { border-color: var(--pal-accent); outline: none; }
+.cs-sm-pad-chips { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 12px; }
+.cs-sm-pad-chips button {
+  flex: 1 1 auto; min-width: 40px; height: 34px; background: none; border: 1px solid var(--pal-border);
+  border-radius: 4px; color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 13px;
+}
+.cs-sm-pad-chips button:hover { border-color: var(--pal-accent); background: var(--pal-accent-dim); }
+.cs-sm-pad-commit-row { display: flex; gap: 6px; }
+.cs-sm-pad-commit {
+  flex: 1; height: 44px; background: rgba(18,58,78,0.5); border: 1px solid var(--pal-accent);
+  border-radius: 4px; color: var(--pal-accent-bright); font-family: 'IM Fell English', serif;
+  font-size: 13px; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.cs-sm-pad-commit:hover { background: rgba(30,80,105,0.6); }
+.cs-sm-pad-clear {
+  width: 44px; height: 44px; background: none; border: 1px solid var(--pal-border); border-radius: 4px;
+  color: var(--pal-text-muted); font-size: 13px;
+}
+.cs-sm-pad-drift {
+  margin-top: 10px; padding: 8px 10px; border-radius: 4px;
+  background: var(--pal-accent-dim); border: 1px solid var(--pal-accent);
+  font-family: 'IM Fell English', serif; font-size: 11.5px; color: var(--pal-accent-bright); line-height: 1.5;
+  opacity: 0; transform: translateY(-4px);
+  transition: opacity 140ms ease-out, transform 140ms ease-out;
+}
+.cs-sm-pad-drift.show { opacity: 1; transform: translateY(0); }
+@media (prefers-reduced-motion: reduce) {
+  .cs-sm-pad-drift { transition: none; }
+}
+
+/* ── Prototype harness (visually distinct — not part of the real app) ── */
+.harness {
+  max-width: 460px; margin: 34px auto 0; padding: 14px 16px;
+  border: 1px dashed rgba(200,150,80,0.5); border-radius: 6px;
+  background: rgba(120,90,30,0.08);
+}
+.harness-title {
+  font-family: 'IM Fell English', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #d0a860; margin-bottom: 8px;
+}
+.harness-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.harness-btn {
+  background: rgba(200,150,80,0.12); border: 1px solid rgba(200,150,80,0.5); border-radius: 4px;
+  color: #d0a860; font-family: 'IM Fell English', serif; font-size: 11px; letter-spacing: 0.08em;
+  padding: 7px 12px; min-height: 34px;
+}
+.harness-btn:hover { background: rgba(200,150,80,0.22); }
+.harness-btn.toggle-on { background: rgba(200,150,80,0.3); }
+.harness-note { font-family: 'Crimson Text', serif; font-size: 12.5px; color: var(--pal-text-muted); line-height: 1.5; }
+
+/* ── Implementation note panel ── */
+.impl-note {
+  max-width: 460px; margin: 22px auto 40px; padding: 16px 18px;
+  border: 1px solid var(--pal-border); border-radius: 6px; background: var(--pal-surface);
+}
+.impl-note h2 {
+  font-family: 'IM Fell English', serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase;
+  color: var(--pal-accent-bright); margin-bottom: 10px;
+}
+.impl-note ul { padding-left: 18px; }
+.impl-note li { font-size: 13px; line-height: 1.6; color: var(--pal-text-body); margin-bottom: 6px; }
+.impl-note code { font-family: monospace; font-size: 12px; color: var(--pal-accent-bright); }
+
+@media (max-width: 380px) {
+  .cs-sm-add-row1 { flex-wrap: wrap; }
+  .cs-sm-add-input { flex: 1 1 100%; margin-bottom: 6px; }
+}
+</style>
+</head>
+<body class="pal-ocean">
+
+<div class="top-bar">
+  <a class="top-back" href="#" onclick="return false">◂ Exit Session</a>
+  <span class="top-title">EOGHAN</span>
+  <span class="top-sub">Session Mode</span>
+  <div class="top-spacer"></div>
+  <div class="pal-switch" role="group" aria-label="Palette preview">
+    <button class="pal-btn active" data-pal="ocean" onclick="setPalette('ocean', this)">Ocean</button>
+    <button class="pal-btn" data-pal="ember" onclick="setPalette('ember', this)">Ember</button>
+    <button class="pal-btn" data-pal="vellum" onclick="setPalette('vellum', this)">Vellum</button>
+  </div>
+</div>
+
+<div class="stab-row">
+  <button class="stab" disabled title="Not built in this prototype — see scope note">Combat</button>
+  <button class="stab active">Loadout</button>
+  <button class="stab" disabled title="Not built in this prototype — see scope note">Map</button>
+  <button class="stab" disabled title="Not built in this prototype — see scope note">Notes</button>
+</div>
+
+<div class="width-harness">
+  <div class="width-harness-title">Column width — this is the real constraint, not a nice-to-have</div>
+  <div class="width-harness-row">
+    <button class="width-preset-btn active" data-w="238" onclick="setColWidth(238, this)">238px · Desktop pinch (900px window)</button>
+    <button class="width-preset-btn" data-w="288" onclick="setColWidth(288, this)">288px · Desktop (1000px window)</button>
+    <button class="width-preset-btn" data-w="350" onclick="setColWidth(350, this)">350px · Mobile, 1-col (&lt;600px viewport)</button>
+    <span class="width-readout" id="widthReadout">238px</span>
+  </div>
+  <div class="width-harness-note">
+    The Equipment column is never a comfortable fixed width — it's half of <code>.cs-sm-loadout-grid</code>
+    (<code>1fr 1fr</code>, 28px gap), itself the right column of <code>.cs-session-shell</code>
+    (<code>340px 1fr</code>, max-width 1200px). 238px is the real worst case (the ≥900px breakpoint
+    floor); drag the handle on the frame below to test anything in between, or narrower.
+  </div>
+</div>
+
+<div class="page">
+
+  <p class="scope-note">
+    Revision 4 — rev 1 was read-only chrome that didn't match what a player actually needs to
+    <em>do</em> with an item mid-session; rev 2 added the interactions but hid category behind a tap
+    to dodge crowding at the narrow width; rev 3 made equip state, name, quantity, and category real
+    aligned columns down the list, sized to the widest content, not per-row guesses. This pass is a
+    visual/layout cleanup of rev 3's row markup — same columns, same interactions, no new scope: it
+    fixes a row-height bug (rows with a category chip rendered taller than rows without one) and
+    tidies spacing/visual weight around the row list and expand drawer. Still prototypes only the
+    <strong>Equipment</strong> column (Weapons don't carry a <code>type</code>/category in the real
+    data model — see <code>ItemEditorModal.jsx</code>'s <code>showType</code> prop, equipment-only).
+    The two-column grid, XP strip, and the real <code>ItemEditorModal</code> itself are still not
+    built here.
+  </p>
+
+  <div class="col-frame-outer">
+  <div class="col-frame" id="colFrame" style="width: 238px">
+  <div class="col-resize-handle" id="colResizeHandle"></div>
+  <div class="cs-sm-loadout-panel">
+    <div class="cs-sm-ld-col" data-kind="equipment">
+      <div class="cs-sm-ld-colhead">Equipment</div>
+      <div class="cs-sm-ld-list" id="itemList"></div>
+
+      <div class="cs-sm-add" id="addRow" data-state="idle">
+        <button class="cs-sm-add-idle-btn" id="addIdleBtn" onclick="openAdd()">
+          <span class="plus-glyph">+</span> Item
+        </button>
+        <button class="cs-sm-add-cancel-btn" id="addCancelBtn" onclick="closeAdd()" title="Close without adding" aria-label="Close">✕</button>
+        <div class="cs-sm-add-fields">
+          <div class="cs-sm-add-row1">
+            <input class="cs-sm-add-input" id="addInput" type="text" maxlength="60"
+                   placeholder="Item name — or Rope, Torch, Rations"
+                   autocomplete="off">
+            <button class="cs-sm-add-qty" id="qtyChip" onclick="editQty()" title="Quantity">× 1</button>
+          </div>
+          <div class="cs-sm-add-row2">
+            <button class="cs-sm-add-commit" id="addCommit" onclick="commitAdd()" disabled>Add</button>
+            <button class="cs-sm-add-details" id="addDetails" onclick="toggleMoreFields()" title="Add a category or description">⋯ More</button>
+          </div>
+          <div class="cs-sm-add-more" id="addMore" style="display:none">
+            <label class="cs-sm-add-more-label" for="addTypeSelect">Category (optional)</label>
+            <select class="cs-sm-add-type-select" id="addTypeSelect"></select>
+            <label class="cs-sm-add-more-label" for="addDescInput">Description (optional)</label>
+            <textarea class="cs-sm-add-desc" id="addDescInput" placeholder="What does it do? Shown on tap."></textarea>
+          </div>
+          <div class="cs-sm-add-hint" id="addHint" style="display:none">Comma-separate for several — try "Rope, Torch, Rations"</div>
+          <div class="cs-sm-add-error-text" id="addError" style="display:none" onclick="retryAdd()">Couldn't save — tap to retry</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  </div>
+  </div>
+
+  <p class="scope-note" style="margin-top: 18px;">
+    The coin ledger below is intentionally NOT inside the narrow column frame above — in the real
+    Loadout sub-tab it spans the full panel width beneath the two-column grid (Weapons | Equipment),
+    it isn't squeezed into one grid column's half-width. Its own real-world width is roughly the
+    right column itself (~504-804px depending on browser width), never as narrow as 238px.
+  </p>
+
+  <div class="cs-sm-ledger-outer" style="max-width: 460px;">
+    <div class="cs-sm-ledger">
+      <div class="cs-sm-purse" data-mode="gp">
+        <button class="cs-sm-purse-gp" id="gpButton" onclick="togglePad()">
+          <span class="cs-sm-purse-glyph">⧫</span>
+          <span class="cs-sm-purse-num" id="gpNum">128</span>
+          <span class="cs-sm-purse-lbl">GP</span>
+          <span class="cs-sm-purse-hint">Tap to adjust</span>
+        </button>
+
+        <div class="cs-sm-pad" id="pad">
+          <div class="cs-sm-pad-inner">
+            <div class="cs-sm-pad-base" id="padBase">Current: 128 gp</div>
+            <div class="cs-sm-pad-seg">
+              <button id="segSpend" onclick="setPadMode('spend')">− Spend</button>
+              <button id="segGain" class="active" onclick="setPadMode('gain')">+ Gain</button>
+            </div>
+            <input class="cs-sm-pad-input" id="padInput" type="number" inputmode="numeric" placeholder="0" min="0">
+            <div class="cs-sm-pad-chips">
+              <button onclick="addChip(1)">1</button>
+              <button onclick="addChip(5)">5</button>
+              <button onclick="addChip(10)">10</button>
+              <button onclick="addChip(25)">25</button>
+              <button onclick="addChip(50)">50</button>
+              <button onclick="addChip(100)">100</button>
+            </div>
+            <div class="cs-sm-pad-commit-row">
+              <button class="cs-sm-pad-clear" onclick="clearPadInput()" title="Clear">⌫</button>
+              <button class="cs-sm-pad-commit" onclick="applyPad()">Apply</button>
+            </div>
+            <div class="cs-sm-pad-drift" id="padDrift"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="harness">
+    <div class="harness-title">Prototype controls — not part of the real UI</div>
+    <div class="harness-row">
+      <button class="harness-btn" onclick="simulateDrift()">Simulate DM changing coin (+50 gp)</button>
+      <button class="harness-btn" id="failToggle" onclick="toggleFailSim()">Simulate next Add failing: OFF</button>
+      <button class="harness-btn" onclick="resetPrototype()">Reset</button>
+    </div>
+    <div class="harness-note">
+      "Simulate DM changing coin" mimics a live poll landing while the delta pad is open (brief
+      OQ-3): it rebases the base total and shows the drift note without touching whatever you've
+      typed. If the pad is closed, it just lands as a normal remote update (numeral flash, no note).
+    </div>
+  </div>
+
+  <div class="impl-note">
+    <h2>Implementation notes — revision 4</h2>
+    <ul>
+      <li><strong>Revision 4 — row-height bug fix.</strong> Root cause: <code>.cs-sm-ld-list</code>'s
+        <code>align-items: center</code> centers each of a row's five cells within their shared grid
+        track, but never equalizes their height — each cell is still sized to its own content. A
+        plain/empty text cell is ~17-20px tall; <code>.cs-sm-ld-type-chip</code>'s own
+        padding+border made it ~38px tall. Since a row's track height is the max of its cells, only
+        rows that happened to have a category set (Potion of Healing, Cloak of Elvenkind) got a
+        taller track than chip-less rows (Rations, Backpack) — the same kind of row rendering at two
+        different heights depending on incidental content, and (less visibly) each cell's own
+        border-bottom landing at a slightly different vertical offset within that shared track since
+        centering ≠ equal height. Fixed by giving <code>.cs-sm-ld-cell</code> itself a uniform
+        <code>min-height: 44px</code> (also the project's own touch-target floor) plus
+        <code>display: flex; align-items: center</code> so every cell in every row reaches the same
+        floor regardless of content, and content centers within that fixed height instead of relying
+        on line-height/padding math. Verified with a script measuring every cell's rendered height at
+        all three width presets (238/288/350) plus the long-name row — uniform 44px in every case,
+        name-cell <code>text-overflow: ellipsis</code> confirmed still truncating correctly as a flex
+        item (it doesn't wrap; the "wrapped" long name in question always truncates on one line, by
+        design — see the <code>white-space: nowrap</code> rule below).</li>
+      <li><strong>Revision 4 — general cleanup.</strong> Reduced <code>.cs-sm-ld-type-chip</code>'s
+        own padding slightly (now cosmetic only, since row height no longer depends on it) for a
+        lighter badge. Added a subtle <code>var(--pal-surface)</code> tint, rounded bottom corners,
+        and right-hand padding (there was none — description text ran flush to the frame edge) to
+        <code>.cs-sm-ld-expand</code>, so the tap-to-expand detail area reads as a self-contained
+        drawer rather than more flat list rows. Added a hover color shift on the row's tappable
+        cells (name/qty/category/chevron) — a visual affordance only, no new handler, since none of
+        this text previously signaled it was interactive to a pointer user. No markup/JS/interaction
+        changes beyond that; all mock behavior (equip toggle, potion Use, drop confirm, compose row,
+        coin pad) re-verified working after the CSS pass.</li>
+      <li><strong>What changed from rev 1, and why:</strong> rev 1 matched the CURRENT live Session
+        Loadout column exactly (name + qty, nothing else) because that's what's actually in
+        production today. But that's the bug — the live Session column is missing interactions that
+        already exist and already work, unauthenticated, in the classic sheet's own Inventory tab
+        (<code>CharacterSheetViewMode.jsx</code>): equip/unequip toggle, an attunement dot, a type
+        category, a potion "Use" button, tap-to-expand for description, and Drop Item. Session mode
+        never got a version of that row — it got a read-only summary instead. This revision ports
+        that existing, already-no-auth-safe row logic into Session mode rather than inventing
+        anything new.</li>
+      <li><strong>Row layout is real columns, not a stacked summary (revision 3).</strong> An earlier
+        pass of this prototype put the category behind the same tap-to-expand as the description, to
+        dodge crowding at the 238px worst case. Feedback on that pass: desktop routinely has roughly
+        double that width, and hiding an at-a-glance fact (what kind of item this is) behind a tap
+        just because the worst case is narrow was the wrong trade. Fixed by making
+        <code>.cs-sm-ld-list</code> itself a CSS grid (<code>20px minmax(0,1fr) auto auto 20px</code>)
+        with each row's five cells as direct grid children (via <code>display:contents</code> on the
+        row wrapper) — equip dot, name, qty, category, and the expand chevron are genuine aligned
+        columns down the whole list, sized from the widest content across every row, not per-row
+        guesses. Only description/effects text and the Use/Drop actions stay behind the expand tap —
+        those are "look it up when you need it," unlike category which is "glance at it every time."</li>
+      <li><strong>Equip/unequip</strong> — tap the circle (leftmost column) to toggle: filled means
+        equipped, an outlined empty ring means not. Mirrors <code>toggleEquipped</code> in
+        <code>CharacterSheetViewMode.jsx</code> exactly: sets <code>equipped: false/true</code>, no
+        confirm, optimistic. Unequipped items' names also dim, matching the existing dimming rule.</li>
+      <li><strong>Category</strong> — reuses the real <code>ITEM_TYPE_OPTIONS</code> from
+        <code>ItemEditorModal.jsx</code> verbatim (Armor / Shield / Wondrous / Potion / Tool /
+        Ammunition / Quest / Other). Shown as its own column, only when set — an item with no category
+        just leaves that cell blank, it doesn't collapse the column (the point of a real column is that
+        it stays put). Set at creation via the compose row's "⋯ More" panel, or (in the real
+        implementation) editable later via the existing modal — this prototype doesn't rebuild item
+        editing for existing rows, per the brief's own out-of-scope line.</li>
+      <li><strong>"Use" (potions)</strong> — shown only when <code>type === "potion"</code> and
+        <code>qty &gt; 0</code>. Tapping it does exactly what <code>usePotion()</code> already does in
+        the classic sheet today: decrement <code>qty</code> by 1. It does <em>not</em> auto-roll or
+        auto-apply healing — the player still applies HP themselves via the existing HP control. This
+        matches the app's existing trust model (nothing auto-computes an effect from freeform
+        description text) and is the same behavior already live in the classic Inventory tab, just
+        reachable from Session mode too. Try it on the Potion of Healing row.</li>
+      <li><strong>Drop Item</strong> — behind the same tap-to-expand as description, with the same
+        two-step confirm (<code>Drop Item</code> → <code>Confirm drop</code> / <code>Cancel</code>)
+        as the classic row. No swipe-to-delete, per the brief's explicit non-interaction list.</li>
+      <li><strong>Description</strong> is now visible — tap any row with description text to expand
+        it. Previously this data existed on the item but was never rendered anywhere in Session mode;
+        now it is, matching the classic sheet's own tap-to-expand pattern (not a new one).</li>
+      <li><strong>Adding a description/category on create</strong> — the compose row's "⋯ More"
+        toggle (replacing rev 1's inert placeholder note) reveals a real category <code>&lt;select&gt;</code>
+        and a description <code>&lt;textarea&gt;</code> inline, and both are included on the new item
+        when you tap Add. In the real implementation this is still the seeded <code>ItemEditorModal</code>
+        escalation the brief specs (§8) — inlined here only because building a second real modal
+        wasn't worth it for a prototype when the fields are simple enough to show directly.</li>
+      <li><strong>Closing the compose row without adding</strong> — a small ✕ now sits top-right of
+        the open compose row and closes it immediately, text and all. <code>Escape</code> and
+        blur-when-empty (both already specced) still work too; the ✕ exists because neither of those
+        is discoverable by looking at the row, which was the actual complaint.</li>
+      <li><strong>Coin editor — dropped <code>= SET</code>.</strong> Only <code>− Spend</code> /
+        <code>+ Gain</code> remain. Setting an absolute total doesn't correspond to anything that
+        happens at the table (you either spend or you find gold) and it was the segment most likely
+        to be tapped by mistake right next to Gain. Chip-accumulation and rebase-at-commit are
+        unchanged.</li>
+      <li>Local mock state only — nothing here calls <code>patchSession</code>; "writes" mutate an
+        in-memory array/number and re-render.</li>
+      <li>Repeat-capture: after <strong>Add</strong> (click or Enter) the input clears and keeps focus
+        instantly. The "⋯ More" panel also collapses and resets after each add — category/description
+        are per-item, not sticky across a bulk-add streak (an assumption, flagged as such since the
+        brief doesn't specify this case).</li>
+      <li>Comma-bulk: "Rope, Torch, Rations" + Enter creates 3 rows using <code>.cs-spell-row-enter</code>
+        verbatim (140ms ease-out, opacity+translateY(-4px→0)) with a 40ms stagger capped at index 5,
+        matching Story 56's constants exactly. When "⋯ More" is open during a bulk add, the typed
+        category/description apply only to a single (non-comma) add — same precedent as the qty chip
+        below.</li>
+      <li>Trailing quantity parse: a trailing " x20" / " ×20" (case-insensitive) sets <code>qty</code>
+        and is stripped from the name. Only a trailing match parses. Applied per comma-segment.</li>
+      <li>Qty chip vs. typed <code>xN</code>: if both are present on a single (non-comma) add, the
+        parsed <code>xN</code> wins.</li>
+      <li>Empty/whitespace name disables Add (0.4 opacity) and Enter no-ops; empty comma segments are
+        dropped silently; name is hard-capped at 60 characters.</li>
+      <li>Negative guard: Spend larger than the current balance clamps to 0 and flashes the numeral
+        red (400ms) rather than going negative.</li>
+      <li>Drift demo: use the harness button while the pad is open to see the base rebase, the pending
+        amount survive, and the inline note appear; Apply then resolves against the drifted total.</li>
+      <li>Write-failure path (harness toggle): the optimistic row fades out, the compose row reopens
+        with the typed text restored, and the border holds <code>#c06060</code> for 900ms with a
+        tap-to-retry line.</li>
+      <li><code>prefers-reduced-motion: reduce</code> is respected throughout.</li>
+      <li><strong>Not covered by this story, flagged separately:</strong> action-economy / class
+        feature usage ("abilities carrying over from the first page" — Rage, Second Wind, limited-use
+        features) is a different capability than inventory item use and isn't built here. It isn't
+        Story 61 either (that story is about a player viewing a <em>teammate's</em> abilities, not
+        using your own). Recommend it as its own future story rather than folding it into Story 58's
+        inventory scope.</li>
+    </ul>
+  </div>
+
+</div>
+
+<script>
+/* ── uid (mirrors Story 56's helper) ── */
+let uidCounter = 0;
+function uid() { return 'i' + Date.now().toString(36) + (uidCounter++); }
+
+/* ── item type options (verbatim from ItemEditorModal.jsx) ── */
+const ITEM_TYPE_OPTIONS = [
+  { value: '', label: '(none)' },
+  { value: 'armor', label: 'Armor' },
+  { value: 'shield', label: 'Shield' },
+  { value: 'wondrous', label: 'Wondrous' },
+  { value: 'potion', label: 'Potion' },
+  { value: 'tool', label: 'Tool' },
+  { value: 'ammunition', label: 'Ammunition' },
+  { value: 'quest', label: 'Quest' },
+  { value: 'other', label: 'Other' },
+];
+function itemTypeLabel(value) {
+  const opt = ITEM_TYPE_OPTIONS.find((o) => o.value === (value || '').toLowerCase());
+  return opt ? opt.label : (value || '');
+}
+(function populateTypeSelect() {
+  const sel = document.getElementById('addTypeSelect');
+  sel.innerHTML = ITEM_TYPE_OPTIONS.map((o) => `<option value="${o.value}">${o.label}</option>`).join('');
+})();
+
+/* ── mock data ── */
+function initialItems() {
+  return [
+    { id: uid(), name: 'Backpack', equipped: true },
+    { id: uid(), name: 'Bedroll', equipped: false },
+    { id: uid(), name: 'Rope, 50 ft', equipped: true },
+    { id: uid(), name: 'Rations', qty: 4, equipped: true },
+    {
+      id: uid(), name: 'Potion of Healing', qty: 2, equipped: true, type: 'potion',
+      description: 'Restores 2d4 + 2 hit points when consumed as an action.',
+    },
+    {
+      id: uid(), name: 'Cloak of Elvenkind (frayed, smells faintly of pine)', equipped: true, type: 'wondrous',
+      description: 'While wearing this cloak with its hood up, Wisdom (Perception) checks made to see you have disadvantage, and your Dexterity (Stealth) checks have advantage.',
+    },
+  ];
+}
+let items = initialItems();
+let gp = 128;
+let hintShownOnce = false;
+let failNextAdd = false;
+let expandedIds = new Set();
+let dropConfirmId = null;
+
+/* ── list rendering ──
+   Real columns, not a stacked summary: equip dot | name | qty | category
+   | chevron are five direct grid cells (the row wrapper is
+   display:contents so they join the list's own grid — see the CSS
+   comment above .cs-sm-ld-list). Every row's qty and category line up in
+   the same track because the grid sizes those columns from the widest
+   content across the whole list. Only description/effects text and the
+   Use/Drop actions live behind the tap-to-expand panel — those are
+   "look it up" actions, not identifying info, so they don't need a
+   standing column the way category does. */
+function renderItems(justAddedIds) {
+  const list = document.getElementById('itemList');
+  list.innerHTML = items.map((it) => {
+    const enterIdx = justAddedIds ? justAddedIds.indexOf(it.id) : -1;
+    const enterCls = enterIdx >= 0 ? ' cs-spell-row-enter' : '';
+    const delay = enterIdx >= 0 ? ` style="animation-delay:${Math.min(enterIdx, 5) * 40}ms"` : '';
+    const isEquipped = it.equipped !== false;
+    const isExpanded = expandedIds.has(it.id);
+    const isPotionUsable = it.type === 'potion' && (it.qty || 0) > 0;
+    const isDropConfirming = dropConfirmId === it.id;
+
+    // Category is also surfaced here (not just its own column) because
+    // that column hides below 260px — see the @container rule in the CSS.
+    // Harmless duplication above that width; the only copy below it.
+    const expandMetaBits = [];
+    if (it.type) expandMetaBits.push(`<span class="cs-sm-ld-type-chip cs-sm-ld-cat-echo">${escapeHtml(itemTypeLabel(it.type))}</span>`);
+    if (isPotionUsable) expandMetaBits.push(`<button class="cs-sm-ld-use-btn" onclick="usePotion(event,'${it.id}')" title="Use one charge">Use</button>`);
+
+    const expandHtml = isExpanded ? `
+      <div class="cs-sm-ld-expand" style="grid-row: span 1;">
+        ${expandMetaBits.length ? `<div class="cs-sm-ld-expand-meta">${expandMetaBits.join('')}</div>` : ''}
+        ${it.description ? `<p class="cs-sm-ld-desc">${escapeHtml(it.description)}</p>` : ''}
+        <div class="cs-sm-ld-drop-row">
+          ${isDropConfirming
+            ? `<button class="cs-sm-ld-drop-confirm-btn" onclick="confirmDrop(event,'${it.id}')">Confirm drop</button>
+               <button class="cs-sm-ld-drop-cancel-btn" onclick="cancelDrop(event)">Cancel</button>`
+            : `<button class="cs-sm-ld-drop-btn" onclick="askDrop(event,'${it.id}')">Drop Item</button>`
+          }
+        </div>
+      </div>` : '';
+
+    return `<div class="cs-sm-ld-row${enterCls}" data-id="${it.id}"${delay}>
+      <button class="cs-sm-ld-equip-btn cs-sm-ld-cell" onclick="toggleEquip(event,'${it.id}')" title="${isEquipped ? 'Equipped — tap to unequip' : 'Not equipped — tap to equip'}">
+        <span class="cs-sm-ld-equip-dot${isEquipped ? '' : ' off'}"></span>
+      </button>
+      <span class="cs-sm-ld-name cs-sm-ld-cell${isEquipped ? '' : ' dim'}" onclick="toggleExpand('${it.id}')">${escapeHtml(it.name)}</span>
+      <span class="cs-sm-ld-qty-cell cs-sm-ld-cell" onclick="toggleExpand('${it.id}')">${it.qty ? `× ${it.qty}` : ''}</span>
+      <span class="cs-sm-ld-cat-cell cs-sm-ld-cell" onclick="toggleExpand('${it.id}')">${it.type ? `<span class="cs-sm-ld-type-chip">${escapeHtml(itemTypeLabel(it.type))}</span>` : ''}</span>
+      <button class="cs-sm-ld-chevron-btn cs-sm-ld-cell" onclick="toggleExpand('${it.id}')" title="${isExpanded ? 'Collapse' : 'Expand'}">${isExpanded ? '▴' : '▾'}</button>
+      ${expandHtml}
+    </div>`;
+  }).join('');
+}
+function escapeHtml(s) {
+  return s.replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+renderItems();
+
+/* ── item row interactions (mirrors CharacterSheetViewMode.jsx's
+   toggleEquipped / usePotion / confirmDrop exactly — this is a port,
+   not a new interaction model) ── */
+function toggleExpand(id) {
+  if (expandedIds.has(id)) expandedIds.delete(id); else expandedIds.add(id);
+  dropConfirmId = null;
+  renderItems();
+}
+function toggleEquip(e, id) {
+  e.stopPropagation();
+  items = items.map((it) => it.id === id ? { ...it, equipped: it.equipped === false } : it);
+  renderItems();
+}
+function usePotion(e, id) {
+  e.stopPropagation();
+  items = items.map((it) => it.id === id ? { ...it, qty: Math.max(0, (it.qty || 0) - 1) } : it);
+  renderItems();
+}
+function askDrop(e, id) {
+  e.stopPropagation();
+  dropConfirmId = id;
+  renderItems();
+}
+function cancelDrop(e) {
+  e.stopPropagation();
+  dropConfirmId = null;
+  renderItems();
+}
+function confirmDrop(e, id) {
+  e.stopPropagation();
+  items = items.filter((it) => it.id !== id);
+  expandedIds.delete(id);
+  dropConfirmId = null;
+  renderItems();
+}
+
+/* ── compose row ── */
+const addRow = document.getElementById('addRow');
+const addInput = document.getElementById('addInput');
+const addCommit = document.getElementById('addCommit');
+const addHint = document.getElementById('addHint');
+const addError = document.getElementById('addError');
+const qtyChip = document.getElementById('qtyChip');
+const addMore = document.getElementById('addMore');
+const addDetails = document.getElementById('addDetails');
+const addTypeSelect = document.getElementById('addTypeSelect');
+const addDescInput = document.getElementById('addDescInput');
+let manualQty = null; // null = unset (chip shows "× 1" placeholder, no qty written)
+let moreOpen = false;
+let preservedTextOnError = '';
+
+function measureAndSetHeight(el, targetOpen) {
+  if (targetOpen) {
+    el.style.maxHeight = el.scrollHeight + 'px';
+  } else {
+    el.style.maxHeight = '44px';
+  }
+}
+
+function openAdd() {
+  addRow.dataset.state = 'open';
+  addError.style.display = 'none';
+  requestAnimationFrame(() => {
+    measureAndSetHeight(addRow, true);
+  });
+  if (!hintShownOnce && window.innerWidth >= 380) {
+    addHint.style.display = 'block';
+    hintShownOnce = true;
+  } else {
+    addHint.style.display = 'none';
+  }
+  addInput.focus();
+  addRow.scrollIntoView({ block: 'nearest', behavior: prefersReducedMotion() ? 'auto' : 'smooth' });
+}
+
+function closeAdd() {
+  addRow.dataset.state = 'idle';
+  addRow.style.maxHeight = '44px';
+  addInput.value = '';
+  manualQty = null;
+  updateQtyChip();
+  addCommit.disabled = true;
+  addError.style.display = 'none';
+  closeMoreFields();
+}
+
+addInput.addEventListener('input', () => {
+  addCommit.disabled = addInput.value.trim().length === 0;
+});
+addInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault();
+    if (addInput.value.trim().length > 0) commitAdd();
+  } else if (e.key === 'Escape') {
+    closeAdd();
+  }
+});
+addInput.addEventListener('blur', () => {
+  // give click handlers on sibling buttons (Add/qty/details/cancel) a chance to fire first
+  setTimeout(() => {
+    if (document.activeElement === addInput) return;
+    const stillWithinRow = addRow.contains(document.activeElement);
+    if (!stillWithinRow && addInput.value.trim() === '' && addRow.dataset.state === 'open') {
+      closeAdd();
+    }
+  }, 120);
+});
+
+function updateQtyChip() {
+  qtyChip.textContent = manualQty ? `× ${manualQty}` : '× 1';
+  qtyChip.classList.toggle('set', !!manualQty);
+}
+function editQty() {
+  const input = document.createElement('input');
+  input.type = 'number';
+  input.min = '1';
+  input.className = 'cs-sm-add-qty-input';
+  input.value = manualQty || '';
+  input.placeholder = '1';
+  qtyChip.replaceWith(input);
+  input.focus();
+  input.select();
+  const commit = () => {
+    const v = parseInt(input.value, 10);
+    manualQty = (v && v > 0) ? v : null;
+    input.replaceWith(qtyChip);
+    updateQtyChip();
+  };
+  input.addEventListener('blur', commit);
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); commit(); addInput.focus(); }
+    if (e.key === 'Escape') { input.replaceWith(qtyChip); }
+  });
+}
+
+function toggleMoreFields() {
+  moreOpen ? closeMoreFields() : openMoreFields();
+}
+function openMoreFields() {
+  moreOpen = true;
+  addMore.style.display = 'block';
+  addDetails.classList.add('active');
+  addDetails.textContent = '▲ Less';
+  measureAndSetHeight(addRow, true);
+}
+function closeMoreFields() {
+  moreOpen = false;
+  addMore.style.display = 'none';
+  addDetails.classList.remove('active');
+  addDetails.textContent = '⋯ More';
+  addTypeSelect.value = '';
+  addDescInput.value = '';
+  if (addRow.dataset.state === 'open') measureAndSetHeight(addRow, true);
+}
+
+function parseTrailingQty(raw) {
+  const m = raw.match(/^(.*?)[\s]+[x×]\s*(\d+)$/i);
+  if (m && m[1].trim().length > 0) {
+    return { name: m[1].trim(), qty: parseInt(m[2], 10) };
+  }
+  return { name: raw.trim(), qty: null };
+}
+
+function commitAdd() {
+  const raw = addInput.value;
+  const segments = raw.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+  if (segments.length === 0) return;
+
+  const isBulk = segments.length > 1;
+  const type = (!isBulk && moreOpen && addTypeSelect.value) ? addTypeSelect.value : null;
+  const description = (!isBulk && moreOpen && addDescInput.value.trim()) ? addDescInput.value.trim() : null;
+
+  const newItems = segments.map((seg) => {
+    const parsed = parseTrailingQty(seg);
+    const qty = parsed.qty != null ? parsed.qty : (!isBulk && manualQty ? manualQty : null);
+    const it = { id: uid(), name: parsed.name, equipped: true };
+    if (qty) it.qty = qty;
+    if (type) it.type = type;
+    if (description) it.description = description;
+    return it;
+  });
+
+  if (failNextAdd) {
+    failNextAdd = false;
+    document.getElementById('failToggle').textContent = 'Simulate next Add failing: OFF';
+    document.getElementById('failToggle').classList.remove('toggle-on');
+    preservedTextOnError = raw;
+    // optimistic append, then fail
+    items = items.concat(newItems);
+    renderItems(newItems.map((i) => i.id));
+    setTimeout(() => {
+      items = items.filter((i) => !newItems.some((n) => n.id === i.id));
+      renderItems();
+      addRow.dataset.state = 'error';
+      addInput.value = preservedTextOnError;
+      addCommit.disabled = false;
+      addError.style.display = 'block';
+      measureAndSetHeight(addRow, true);
+      setTimeout(() => {
+        if (addRow.dataset.state === 'error') addRow.dataset.state = 'open';
+      }, 900);
+    }, 550);
+    return;
+  }
+
+  items = items.concat(newItems);
+  renderItems(newItems.map((i) => i.id));
+
+  // repeat-capture: instant clear, focus retained, no animation on the reset itself
+  addInput.value = '';
+  manualQty = null;
+  updateQtyChip();
+  closeMoreFields();
+  addCommit.disabled = true;
+  addInput.focus();
+  measureAndSetHeight(addRow, true);
+}
+
+function retryAdd() {
+  addRow.dataset.state = 'open';
+  addError.style.display = 'none';
+  addInput.focus();
+}
+
+/* ── failure-sim harness toggle ── */
+function toggleFailSim() {
+  failNextAdd = !failNextAdd;
+  const btn = document.getElementById('failToggle');
+  btn.textContent = 'Simulate next Add failing: ' + (failNextAdd ? 'ON' : 'OFF');
+  btn.classList.toggle('toggle-on', failNextAdd);
+}
+
+/* ── coin delta pad (Spend / Gain only) ── */
+const pad = document.getElementById('pad');
+const gpNum = document.getElementById('gpNum');
+const padInput = document.getElementById('padInput');
+const padBase = document.getElementById('padBase');
+const padDrift = document.getElementById('padDrift');
+let padOpen = false;
+let padMode = 'gain';
+let padBaseGp = gp; // rebased on drift, applied-from on commit
+
+function togglePad() {
+  padOpen ? closePad() : openPad();
+}
+function openPad() {
+  padOpen = true;
+  padBaseGp = gp;
+  setPadMode('gain');
+  padInput.value = '';
+  padDrift.classList.remove('show');
+  padDrift.textContent = '';
+  padBase.textContent = `Current: ${gp} gp`;
+  pad.classList.add('open');
+  setTimeout(() => padInput.focus(), 160);
+}
+function closePad() {
+  padOpen = false;
+  pad.classList.remove('open');
+}
+function setPadMode(mode) {
+  padMode = mode;
+  document.getElementById('segSpend').classList.toggle('active', mode === 'spend');
+  document.getElementById('segGain').classList.toggle('active', mode === 'gain');
+}
+function addChip(n) {
+  const cur = parseInt(padInput.value, 10) || 0;
+  padInput.value = cur + n;
+}
+function clearPadInput() {
+  padInput.value = '';
+  padInput.focus();
+}
+function flashGp(cls) {
+  gpNum.classList.remove('flash', 'guard');
+  void gpNum.offsetWidth; // restart animation
+  gpNum.classList.add(cls);
+}
+function applyPad() {
+  const amount = parseInt(padInput.value, 10) || 0;
+  let next;
+  let guarded = false;
+  if (padMode === 'spend') {
+    next = padBaseGp - amount;
+    if (next < 0) { next = 0; guarded = true; }
+  } else {
+    next = padBaseGp + amount;
+  }
+  gp = next;
+  gpNum.textContent = gp;
+  flashGp(guarded ? 'guard' : 'flash');
+  closePad();
+}
+function simulateDrift() {
+  if (padOpen) {
+    padBaseGp += 50;
+    padBase.textContent = `Current: ${padBaseGp} gp`;
+    padDrift.textContent = '+50 gp from the DM — applied to new total';
+    padDrift.classList.add('show');
+  } else {
+    gp += 50;
+    gpNum.textContent = gp;
+    flashGp('flash');
+  }
+}
+
+/* ── reduced motion helper ── */
+function prefersReducedMotion() {
+  return window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+}
+
+/* ── real-width harness ── */
+const colFrame = document.getElementById('colFrame');
+const widthReadout = document.getElementById('widthReadout');
+
+function setColWidth(px, btn) {
+  colFrame.style.width = px + 'px';
+  widthReadout.textContent = px + 'px';
+  document.querySelectorAll('.width-preset-btn').forEach((b) => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+}
+
+(function initColResize() {
+  const handle = document.getElementById('colResizeHandle');
+  let dragging = false;
+  let startX = 0;
+  let startWidth = 0;
+
+  function onMove(e) {
+    if (!dragging) return;
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const next = Math.max(150, Math.min(460, startWidth + (clientX - startX)));
+    colFrame.style.width = next + 'px';
+    widthReadout.textContent = Math.round(next) + 'px';
+    document.querySelectorAll('.width-preset-btn').forEach((b) => b.classList.remove('active'));
+  }
+  function onUp() {
+    dragging = false;
+    colFrame.classList.remove('dragging');
+    document.removeEventListener('mousemove', onMove);
+    document.removeEventListener('mouseup', onUp);
+    document.removeEventListener('touchmove', onMove);
+    document.removeEventListener('touchend', onUp);
+  }
+  function onDown(e) {
+    dragging = true;
+    colFrame.classList.add('dragging');
+    startX = e.touches ? e.touches[0].clientX : e.clientX;
+    startWidth = colFrame.getBoundingClientRect().width;
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+    document.addEventListener('touchmove', onMove, { passive: true });
+    document.addEventListener('touchend', onUp);
+    e.preventDefault();
+  }
+  handle.addEventListener('mousedown', onDown);
+  handle.addEventListener('touchstart', onDown, { passive: false });
+})();
+
+/* ── palette switch ── */
+function setPalette(name, btn) {
+  document.body.className = 'pal-' + name;
+  document.querySelectorAll('.pal-btn').forEach((b) => b.classList.remove('active'));
+  btn.classList.add('active');
+}
+
+/* ── reset ── */
+function resetPrototype() {
+  items = initialItems();
+  gp = 128;
+  gpNum.textContent = gp;
+  expandedIds = new Set();
+  dropConfirmId = null;
+  closeAdd();
+  closePad();
+  hintShownOnce = false;
+  failNextAdd = false;
+  document.getElementById('failToggle').textContent = 'Simulate next Add failing: OFF';
+  document.getElementById('failToggle').classList.remove('toggle-on');
+  setColWidth(238, document.querySelector('.width-preset-btn[data-w="238"]'));
+  renderItems();
+}
+</script>
+</body>
+</html>

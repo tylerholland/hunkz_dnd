@@ -152,3 +152,40 @@ test("postCharacterRoll bounds target/attack name length rather than rejecting t
   assert.equal(appended[0].target.name.length, 60);
   assert.equal(appended[0].attack.name.length, 60);
 });
+
+test("postCharacterRoll (Story 63) accepts a no-auth wheel-shaped activity note without dice fields", async () => {
+  const appended = [];
+  const { handler } = loadHandlerWithMocks({
+    getItem: { slug: "aragorn", name: "Aragorn", palette: "ember" },
+    appendRollHistoryEvent: async (eventRecord) => { appended.push(eventRecord); return [eventRecord]; },
+  });
+
+  const result = await handler({
+    pathParameters: { slug: "aragorn" },
+    body: JSON.stringify({
+      type: "wheel",
+      name: "☾ Long Rest",
+      note: "slots restored",
+    }),
+  });
+
+  assert.equal(result.statusCode, 200);
+  assert.equal(appended.length, 1);
+  assert.equal(appended[0].type, "wheel");
+  assert.equal(appended[0].name, "☾ Long Rest");
+  assert.equal(appended[0].note, "slots restored");
+  assert.equal(appended[0].characterName, "Aragorn");
+});
+
+test("postCharacterRoll rejects a wheel-type activity note with no name", async () => {
+  const { handler } = loadHandlerWithMocks({
+    getItem: { slug: "aragorn", name: "Aragorn", palette: "ember" },
+  });
+
+  const result = await handler({
+    pathParameters: { slug: "aragorn" },
+    body: JSON.stringify({ type: "wheel", note: "slots restored" }),
+  });
+
+  assert.equal(result.statusCode, 400);
+});

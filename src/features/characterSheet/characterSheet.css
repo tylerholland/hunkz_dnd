@@ -3245,6 +3245,43 @@
 
 /* ─── Spell slots ────────────────────────────────────────────────────────── */
 
+.cs-sm-slots-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.cs-sm-rest-btns {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.cs-sm-rest-btn {
+  background: none;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: border-color 0.15s, color 0.15s;
+}
+.cs-sm-rest-btn:hover:not(:disabled) {
+  border-color: var(--pal-accent);
+  color: var(--pal-text);
+}
+.cs-sm-rest-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .cs-sm-slots-wrap {
   display: flex;
   flex-wrap: wrap;
@@ -3254,7 +3291,7 @@
 .cs-sm-slot-group {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 0;
 }
 
 .cs-sm-slot-lbl {
@@ -3263,15 +3300,50 @@
   letter-spacing: 0.15em;
   text-transform: uppercase;
   color: var(--pal-text-muted);
-  margin-right: 2px;
+  margin-right: 4px;
+}
+
+.cs-sm-slot-pip-btn {
+  width: 10px;
+  height: 10px;
+  padding: 9px 6px;
+  box-sizing: content-box;
+  border: none;
+  background: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
 }
 
 .cs-sm-slot-pip {
+  display: block;
   width: 10px;
   height: 10px;
   border-radius: 50%;
   border: 1.5px solid;
-  cursor: default;
+  transition: background 0.16s ease, border-color 0.16s ease;
+}
+
+.cs-sm-slot-count {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  color: var(--pal-text-muted);
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.cs-sm-slot-undo {
+  background: none;
+  border: none;
+  color: var(--pal-accent-bright);
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0;
 }
 
 /* ─── Spells (reference list — read-only) ───────────────────────────────── */

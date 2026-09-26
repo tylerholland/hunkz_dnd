@@ -1,8 +1,8 @@
 # App Overview
 
 > This document is the source of truth for what the app currently does, in plain language.
-> **Maintained by `feature-builder`** — update this after every feature implementation.
-> Read by `rpg-consultant` and `ux-designer` instead of source code.
+> Maintained by the implementing agent when behavior changes make a section inaccurate.
+> Search and read only the relevant feature sections; this is not required startup reading.
 
 ---
 
@@ -85,10 +85,10 @@ All content below the header is gated. When locked: shows a "Full sheet is priva
    - **Leveling mode** can be `milestone` or `xp`
    - XP-tracked characters show an XP progress panel using level thresholds, current XP, next-level target, and a progress bar
    - **Coin mode** can be `gp` (single gold total) or `full` (cp / sp / ep / gp / pp)
-   - Coin totals are shown in the Combat tab and can be adjusted live by authenticated users through the session patch path
+   - Coin totals are shown in the Inventory tab and can be adjusted live by authenticated users through the session patch path
 
 5. **Four-tab strip: Inventory | Persona | Combat | Map** — full-width icon+label tab strip (64px tall, SVG icon above label text, IM Fell English 13px uppercase tracked); active tab shows `pal.accentDim` background + `pal.accent` border + `pal.accentBright` text/icons; tab state stored in `sessionStorage` as `dnd_tab_${slug}`, default `"combat"`. The Map tab is visually dimmed (opacity 0.4, `cursor: not-allowed`) when no active map is set.
-   - **Inventory tab** (`combatTab === "loadout"`): two-column `.loadout-grid` (collapses to 1 column at 560px). Tab layout (top to bottom): attunement banner → loadout grid → XP strip (xp-mode only) → coin section.
+   - **Inventory tab** (`combatTab === "loadout"`): two-column `.loadout-grid` (collapses to 1 column at 560px). Tab layout (top to bottom): attunement banner → loadout grid → XP strip (xp-mode only) → coin section. XP panel appears only for XP-tracked characters and reflects `xpCurrent`; coin panel reflects either a single GP total or a full denomination spread based on `coinMode`; both are optimistic, then synced through the live session patch flow.
      - **Attunement banner**: full-width row above the grid, always visible. Shows `◆ Attuned N / 3` + contextual note ("N slots remaining", "Slots full", "⚠ Over limit"). Empty (0/3) renders at opacity 0.45. Over-limit (4+/3) renders the diamond, count, and note in error red `#c06060`. Full (3/3) note renders in `pal.accentBright`.
      - Weapons column: each weapon is an expandable row — name + mod chips; tap to expand description below if present; ▼/▲ indicator. Each weapon has an **equipped toggle** (■ square, 10px, `pal.gem` color when equipped, `pal.textMuted` dimmed when not) to the left of the name; tapping toggles `equipped` via `patchSession({ weapons: [...] })` (no auth required). Unequipped items have their name dimmed to `pal.textMuted` and their mods excluded from all stat calculations. Items with `requiresAttunement: true` show a gem indicator (10px circle) before the expand arrow: filled + pulsing glow when `attuned: true`, hollow circle when not attuned. Tapping the gem circle toggles `attuned` via `patchSession({ weapons: [...] })`. Item name renders in `pal.textBody` (dimmed) when `requiresAttunement` is true and `attuned` is false. **Drop Item** button shown in expanded description area (slug required); first tap shows inline `[Confirm drop] [Cancel]` confirmation; confirming removes the item from the weapons array and writes via `patchSession`.
      - Equipment column: same pattern — equipped toggle badge (■), name + optional capitalized type tag + mod chips; expandable description. Same attunement gem indicator as weapons. Equipment items also support optional `qty` tracking: when `item.qty != null`, shows `· N` inline after the name (muted color); depleted (qty=0) renders separator+count in `#c06060` and dims the item name to `pal.textMuted`. Tapping the qty opens an inline stepper `[−] N [+]` with hold-to-repeat (500ms delay, 100ms repeat); stepper auto-closes after 2s inactivity; writes via `patchSession({ equipment: [...] })` debounced 400ms. **Potion quick-use**: when `item.type === "potion"` AND `item.qty > 0`, a small `Use` button appears in the item row (slug required); tapping decrements qty by 1 via `patchSession`. **Drop Item** button shown in expanded description area (same pattern as weapons).
@@ -102,10 +102,6 @@ All content below the header is gated. When locked: shows a "Full sheet is priva
      - **Spell Slots**: per-level bubble rows (available/used); Long Rest + Short Rest buttons; shown only if `spellSlots` configured
      - **Weapons & Attack Spells quick-reference** (**Story 56**): collapsed rows showing weapon name + to-hit + damage; tap to expand description; read-only (editing weapons is in Inventory tab, editing spells is in Edit mode). Section header is computed three ways depending on content — `Weapons` (weapons only), `Weapons & Spells` (both), `Spells` (spells only, e.g. a caster with no weapon); the section renders nothing when both are empty. Weapons render first, unchanged from before this story; any `role: "attack"` spells render below a single hairline divider, each with a `✶` glyph in place of the weapon row's to-hit/damage (spells carry no mods in v1). Shared derivation: `buildAttackEntries()` in `src/features/characterSheet/constants.js`, consumed here and by the session-mode Combat sub-tab.
      - **Session Notes** (`SessionNotesSection`): inline notes section below the weapons quick-reference, visible only to authenticated callers. Player can add, delete, and share individual notes. Each note has a per-note "Private" / "Shared with DM" toggle (default: private). Writes via `patchSession({ playerNotes: [...] })`. Full `playerNotes` array returned to authenticated owner; DM sees only `sharedWithDm: true` entries via the character sheet or `GET /dm/party`.
-     - **XP / Coin live management**:
-       - XP panel appears only for XP-tracked characters and reflects `xpCurrent`
-       - Coin panel reflects either a single GP total or a full denomination spread based on `coinMode`
-       - Coin adjustments in the sheet are optimistic, then synced through the live session patch flow
      - **Dice Roller** (`DiceRoller.jsx`): collapsible section at the bottom of the Combat tab (collapsed by default; state stored in `sessionStorage` as `dnd_dice_open_${slug}`). Contains:
        - **Advantage/disadvantage strip**: Normal / Advantage / Disadvantage toggle; applies to all d20 rolls until changed; resets on page reload
        - **Weapon roll buttons**: one row per weapon that has an Attack Bonus or Damage mod; ATK button rolls 1d20 + attack bonus (respects adv/dis, triggers crit/fumble); DMG button parses the damage expression (`parseDiceExpr`) and rolls all dice groups
