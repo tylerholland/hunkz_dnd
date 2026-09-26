@@ -1,6 +1,6 @@
 # Feature Story: Persistent Map in Session View
 
-**Status**: Needs UX design
+**Status**: Done — collapsible map band at the top of the session right column; open by default in combat, collapsed otherwise; Map sub-tab removed
 **Source**: User request
 **Prototype**: (leave blank — ux-designer fills this in)
 

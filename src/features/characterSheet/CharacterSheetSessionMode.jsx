@@ -57,6 +57,7 @@ import SessionQuickAdd from "./SessionQuickAdd";
 import SessionLoadoutRow from "./SessionLoadoutRow";
 import SessionLedger from "./SessionLedger";
 import { applyDelta, normalizeCoin } from "./sessionLoadout";
+import { resolveMapBandOpen } from "./sessionMapBand";
 import RollOverlay from "../../components/RollOverlay";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
@@ -690,12 +691,26 @@ export default function CharacterSheetSessionMode({
     : {});
 
   // ── Session sub-tab state ─────────────────────────────────────────────────
-  const storedSubtab = sessionStorage.getItem(`dnd_session_subtab_${slug}`) || "combat";
+  // Story 60 — "map" is no longer a sub-tab (the map is a persistent band).
+  const rawStoredSubtab = sessionStorage.getItem(`dnd_session_subtab_${slug}`);
+  const storedSubtab = rawStoredSubtab && rawStoredSubtab !== "map" ? rawStoredSubtab : "combat";
   const [sessionSubTab, setSessionSubTabState] = useState(storedSubtab);
   const setSessionSubTab = useCallback((tab) => {
     setSessionSubTabState(tab);
     sessionStorage.setItem(`dnd_session_subtab_${slug}`, tab);
   }, [slug]);
+
+  // ── Story 60 — persistent map band ────────────────────────────────────────
+  const mapPrefKey = `dnd_session_map_open_${slug}`;
+  const [mapPref, setMapPref] = useState(() => {
+    try { return JSON.parse(sessionStorage.getItem(mapPrefKey)); } catch { return null; }
+  });
+  const mapOpen = resolveMapBandOpen(mapPref, isBattleMode);
+  const toggleMap = () => {
+    const next = { open: !mapOpen, combat: !!isBattleMode };
+    setMapPref(next);
+    try { sessionStorage.setItem(mapPrefKey, JSON.stringify(next)); } catch { /* storage unavailable */ }
+  };
 
   // ── Initiative collapse (mobile) ──────────────────────────────────────────
   const [initExpanded, setInitExpanded] = useState(false);
@@ -1245,6 +1260,37 @@ export default function CharacterSheetSessionMode({
         {/* ════════════ RIGHT COLUMN ════════════ */}
         <div className="cs-session-right">
 
+          {/* Story 60 — persistent, collapsible map band (was the Map sub-tab).
+              The viewer stays mounted while collapsed so token state, damage
+              freshness and combat transitions keep tracking. */}
+          {activeMap && (
+            <section className={`cs-sm-mapband${mapOpen ? " open" : ""}`}>
+              <button type="button" className="cs-sm-mapband-head" onClick={toggleMap} aria-expanded={mapOpen}>
+                <span className="cs-sm-mapband-caret" aria-hidden="true">▸</span>
+                <span className="cs-sm-mapband-label">Map</span>
+                <span className="cs-sm-mapband-name">{activeMap.name}</span>
+                {isBattleMode && <span className="cs-sm-mapband-combat">Combat</span>}
+              </button>
+              <div className="cs-sm-mapband-body" hidden={!mapOpen}>
+                <PlayerMapViewer
+                  activeMap={activeMap}
+                  activeMapView={activeMapView}
+                  isBattleMode={isBattleMode}
+                  pal={pal}
+                  slug={slug}
+                  partyStatus={partyStatus}
+                  npcCombat={npcCombat}
+                  serverTime={serverTime}
+                  initiativeData={initiativeData}
+                  ownCharacter={char}
+                  targetedTokenId={(isBattleMode && hasRollableAttacks) ? declaration?.target?.tokenId ?? null : null}
+                  onTargetToken={(isBattleMode && hasRollableAttacks) ? handleTargetToken : undefined}
+                  height={380}
+                />
+              </div>
+            </section>
+          )}
+
           {/* Concentration banner */}
           {concentration.active ? (
             <div className="cs-sm-conc-banner">
@@ -1493,7 +1539,6 @@ export default function CharacterSheetSessionMode({
             {[
               { key: "combat", label: "Combat" },
               { key: "loadout", label: "Loadout" },
-              { key: "map", label: "Map", disabled: !activeMap },
               { key: "notes", label: "Notes" },
             ].map(({ key, label, disabled }) => (
               <button
@@ -1617,28 +1662,6 @@ export default function CharacterSheetSessionMode({
               </div>
             </div>
             <SessionLedger char={char} onCommitCoin={commitCoin} onCommitXp={commitXp} />
-          </div>
-
-          {/* ── MAP sub-tab ── */}
-          <div className={`cs-sm-tab-panel${sessionSubTab === "map" ? " active" : ""}`}>
-            {activeMap ? (
-              <PlayerMapViewer
-                activeMap={activeMap}
-                activeMapView={activeMapView}
-                isBattleMode={isBattleMode}
-                pal={pal}
-                slug={slug}
-                partyStatus={partyStatus}
-                npcCombat={npcCombat}
-                serverTime={serverTime}
-                initiativeData={initiativeData}
-                ownCharacter={char}
-                targetedTokenId={(isBattleMode && hasRollableAttacks) ? declaration?.target?.tokenId ?? null : null}
-                onTargetToken={(isBattleMode && hasRollableAttacks) ? handleTargetToken : undefined}
-              />
-            ) : (
-              <p className="cs-sm-map-empty">The DM hasn{"'"}t loaded a map yet.</p>
-            )}
           </div>
 
           {/* ── NOTES sub-tab ── */}
@@ -1840,7 +1863,7 @@ function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }
 // below feeds several Stories 52–54 useMemo/useEffect dependency arrays.
 const EMPTY_TOKENS = [];
 
-const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, isBattleMode, pal, slug, partyStatus, npcCombat, serverTime, initiativeData, ownCharacter, targetedTokenId, onTargetToken }) {
+const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, isBattleMode, pal, slug, partyStatus, npcCombat, serverTime, initiativeData, ownCharacter, targetedTokenId, onTargetToken, height = 480 }) {
   const [viewerState, setViewerState] = useState(null);
   // Stories 52–54 — persists the last-rendered damage stamp per token id
   // across renders (freshness gate), reset when the active map changes.
@@ -2133,7 +2156,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         imageUrl={activeMap.imageUrl}
         name={activeMap.name}
         contentType={activeMap.contentType}
-        height={480}
+        height={height}
         pal={pal}
         publishedView={activeMapView}
         onViewChange={setViewerState}
