@@ -414,7 +414,8 @@
 .cs-sm-ld-qty {
   flex-shrink: 0;
   font-family: var(--font-ui);
-  font-size: 12px;
+  /* 14px: the UI font's numerals run small next to the 15px name */
+  font-size: 14px;
   color: var(--pal-text-muted);
 }
 
