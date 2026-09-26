@@ -5,25 +5,33 @@ import "./sessionLoadout.css";
 // equip icon on the left, expand caret on the right. Expanding shows the
 // description and modifiers inline, with Use Item for qty-tracked items. A
 // pencil (Edit) appears beside the caret on hover.
-export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse }) {
+export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse, onAdjustQty }) {
   const isEquipped = item.equipped !== false;
   const canUse = !!onUse && item.qty != null && item.qty > 0;
+  const toggle = () => { if (expandable) onToggleExpand?.(); };
   const mods = (item.mods || []).filter((mod) => mod && mod.attribute && String(mod.value ?? "").trim() !== "");
+  const hasQty = item.qty != null;
+  // Only rows with something behind them expand; the caret's slot stays
+  // reserved either way so the edit pencil never shifts position.
+  const expandable = !!item.description || mods.length > 0 || hasQty;
+  const isOpen = expandable && expanded;
   return (
     <div
-      className={`cs-sm-ld-row${isEquipped ? "" : " stowed"}${expanded ? " expanded" : ""}${enterProps.className ? ` ${enterProps.className}` : ""}`}
+      className={`cs-sm-ld-row${isEquipped ? "" : " stowed"}${isOpen ? " expanded" : ""}${enterProps.className ? ` ${enterProps.className}` : ""}`}
       style={enterProps.style}
     >
       <div className="cs-sm-ld-main">
         <ItemEquipToggle item={item} kind={kind} onToggle={onToggleEquipped} />
         <button
           type="button"
-          className="cs-sm-ld-name"
-          onClick={onToggleExpand}
-          aria-expanded={expanded}
+          className={`cs-sm-ld-name${expandable ? "" : " static"}`}
+          onClick={toggle}
+          aria-expanded={expandable ? isOpen : undefined}
         >
-          <span className="cs-sm-ld-name-text">{item.name}</span>
-          {item.qty != null && <span className={`cs-sm-ld-qty${item.qty === 0 ? " depleted" : ""}`}>×{item.qty}</span>}
+          <span className="cs-sm-ld-name-text">
+            {item.name}
+            {hasQty && item.qty !== 1 && <span className={`cs-sm-ld-qty${item.qty === 0 ? " depleted" : ""}`}> ({item.qty})</span>}
+          </span>
           {item.requiresAttunement && (
             <span
               className={`cs-sm-ld-attune${item.attuned ? " on" : ""}`}
@@ -45,16 +53,28 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
             <path d="m10 3.5 2.5 2.5" stroke="currentColor" strokeWidth="1.4" />
           </svg>
         </button>
-        <button
-          type="button"
-          className="cs-sm-ld-caret"
-          onClick={onToggleExpand}
-          aria-label={expanded ? `Collapse ${item.name}` : `Expand ${item.name}`}
-          tabIndex={-1}
-        >{expanded ? "▲" : "▼"}</button>
+        {expandable ? (
+          <button
+            type="button"
+            className="cs-sm-ld-caret"
+            onClick={toggle}
+            aria-label={isOpen ? `Collapse ${item.name}` : `Expand ${item.name}`}
+            tabIndex={-1}
+          >{isOpen ? "▲" : "▼"}</button>
+        ) : (
+          <span className="cs-sm-ld-caret cs-sm-ld-caret--empty" aria-hidden="true" />
+        )}
       </div>
-      {expanded && (
+      {isOpen && (
         <div className="cs-sm-ld-details">
+          {hasQty && (
+            <div className="cs-sm-ld-qtyrow">
+              <span className="cs-sm-ld-qtylabel">Quantity:</span>
+              <button type="button" className="cs-sm-ld-qtybtn" onClick={() => onAdjustQty?.(-1)} disabled={!onAdjustQty || item.qty <= 0} aria-label={`Decrease ${item.name} quantity`}>−</button>
+              <span className={`cs-sm-ld-qtyvalue${item.qty === 0 ? " depleted" : ""}`} aria-live="polite">{item.qty}</span>
+              <button type="button" className="cs-sm-ld-qtybtn" onClick={() => onAdjustQty?.(1)} disabled={!onAdjustQty} aria-label={`Increase ${item.name} quantity`}>+</button>
+            </div>
+          )}
           {item.description && <div className="cs-sm-ld-desc">{item.description}</div>}
           {mods.length > 0 && (
             <div className="cs-sm-ld-mods">{mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</div>

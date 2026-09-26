@@ -49,7 +49,7 @@ describe("SessionLoadoutRow + ItemEditorModal delete", () => {
   it("toggles equipped from the icon and expands from the name", () => {
     const onToggleEquipped = vi.fn();
     const onToggleExpand = vi.fn();
-    render(<SessionLoadoutRow item={{ id: "a", name: "Shield", equipped: false }} onEdit={vi.fn()} onToggleEquipped={onToggleEquipped} onToggleExpand={onToggleExpand} />);
+    render(<SessionLoadoutRow item={{ id: "a", name: "Shield", equipped: false, description: "+2 AC" }} onEdit={vi.fn()} onToggleEquipped={onToggleEquipped} onToggleExpand={onToggleExpand} />);
     fireEvent.click(screen.getByRole("button", { name: "Equip Shield" }));
     expect(onToggleEquipped).toHaveBeenCalled();
     expect(onToggleExpand).not.toHaveBeenCalled();
@@ -94,5 +94,41 @@ describe("ItemTypeIcon", () => {
     expect(screen.getByTitle("Potion · Stowed — click to equip")).toBeInTheDocument();
     rerender(<SessionLoadoutRow kind="equipment" item={{ id: "r", name: "Rope" }} onEdit={vi.fn()} onToggleEquipped={vi.fn()} />);
     expect(container.querySelector("[data-icon='other']")).not.toBeNull();
+  });
+});
+
+describe("Loadout quantity + expandability", () => {
+  const noop = () => {};
+
+  it("shows no caret for a name-only item but keeps its slot", () => {
+    const { container } = render(<SessionLoadoutRow item={{ id: "r", name: "Rope" }} onEdit={noop} onToggleEquipped={noop} onToggleExpand={noop} />);
+    expect(screen.queryByLabelText("Expand Rope")).not.toBeInTheDocument();
+    expect(container.querySelector(".cs-sm-ld-caret--empty")).not.toBeNull();
+  });
+
+  it("shows (N) in the title and adjusts quantity from the expanded row", () => {
+    const onAdjustQty = vi.fn();
+    render(<SessionLoadoutRow expanded item={{ id: "t", name: "Torch", qty: 4 }} onEdit={noop} onToggleEquipped={noop} onToggleExpand={noop} onAdjustQty={onAdjustQty} />);
+    expect(screen.getByText("(4)", { exact: false })).toBeInTheDocument();
+    expect(screen.getByText("Quantity:")).toBeInTheDocument();
+    fireEvent.click(screen.getByLabelText("Increase Torch quantity"));
+    expect(onAdjustQty).toHaveBeenLastCalledWith(1);
+    fireEvent.click(screen.getByLabelText("Decrease Torch quantity"));
+    expect(onAdjustQty).toHaveBeenLastCalledWith(-1);
+  });
+
+  it("editor stores qty only when it matters", () => {
+    const onSave = vi.fn();
+    const { unmount } = render(<ItemEditorModal pal={PALETTES.ember} onSave={onSave} onClose={noop} seed={{ name: "Rope" }} />);
+    fireEvent.click(screen.getByText("Add Item"));
+    expect(onSave.mock.calls[0][0]).not.toHaveProperty("qty");
+    unmount();
+
+    render(<ItemEditorModal pal={PALETTES.ember} onSave={onSave} onClose={noop} seed={{ name: "Torch" }} />);
+    fireEvent.click(screen.getByLabelText("Increase quantity"));
+    fireEvent.click(screen.getByLabelText("Increase quantity"));
+    fireEvent.click(screen.getByLabelText("Increase quantity"));
+    fireEvent.click(screen.getByText("Add Item"));
+    expect(onSave.mock.calls[1][0].qty).toBe(4);
   });
 });

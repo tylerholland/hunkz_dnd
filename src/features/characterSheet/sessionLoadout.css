@@ -435,6 +435,60 @@
   cursor: pointer;
 }
 
+.cs-sm-ld-caret--empty {
+  display: inline-block;
+  cursor: default;
+}
+
+.cs-sm-ld-name.static {
+  cursor: default;
+}
+
+.cs-sm-ld-qtyrow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.cs-sm-ld-qtylabel {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cs-sm-ld-qtybtn {
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  background: transparent;
+  color: var(--pal-accent-bright);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.cs-sm-ld-qtybtn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.cs-sm-ld-qtyvalue {
+  min-width: 22px;
+  text-align: center;
+  font-family: var(--font-display);
+  font-size: 16px;
+  color: var(--pal-text);
+}
+
+.cs-sm-ld-qtyvalue.depleted {
+  color: #c06060;
+}
+
 /* Pencil edit button — hidden until the row is hovered/focused or expanded */
 .cs-sm-ld-edit {
   flex-shrink: 0;

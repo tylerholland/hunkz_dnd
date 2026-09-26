@@ -677,6 +677,10 @@ export default function CharacterSheetSessionMode({
     item.id === id && item.qty != null ? { ...item, qty: Math.max(0, item.qty - 1) } : item
   ))), [writeLoadout]);
 
+  const adjustLoadoutQty = useCallback((kind, id, delta) => writeLoadout(kind, (items) => items.map((item) => (
+    item.id === id && item.qty != null ? { ...item, qty: Math.max(0, item.qty + delta) } : item
+  ))), [writeLoadout]);
+
   const [expandedLoadout, setExpandedLoadout] = useState(() => new Set());
   const toggleLoadoutExpanded = (id) => setExpandedLoadout((prev) => {
     const next = new Set(prev);
@@ -1675,6 +1679,7 @@ export default function CharacterSheetSessionMode({
                     expanded={expandedLoadout.has(w.id)}
                     onToggleExpand={() => toggleLoadoutExpanded(w.id)}
                     onUse={() => consumeLoadoutItem("weapons", w.id)}
+                    onAdjustQty={(delta) => adjustLoadoutQty("weapons", w.id, delta)}
                     onToggleEquipped={() => updateLoadoutItem("weapons", w.id, { equipped: w.equipped === false })}
                   />
                 ))}
@@ -1701,6 +1706,7 @@ export default function CharacterSheetSessionMode({
                     expanded={expandedLoadout.has(e.id)}
                     onToggleExpand={() => toggleLoadoutExpanded(e.id)}
                     onUse={() => consumeLoadoutItem("equipment", e.id)}
+                    onAdjustQty={(delta) => adjustLoadoutQty("equipment", e.id, delta)}
                     onToggleEquipped={() => updateLoadoutItem("equipment", e.id, { equipped: e.equipped === false })}
                   />
                 ))}

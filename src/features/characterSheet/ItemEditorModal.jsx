@@ -32,7 +32,7 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
   });
   const [requiresAttunement, setRequiresAttunement] = useState(item?.requiresAttunement || false);
   const [attuned, setAttuned] = useState(item?.attuned || false);
-  const [trackQty, setTrackQty] = useState((item?.qty ?? seed?.qty) != null);
+  const hadQty = (item?.qty ?? seed?.qty) != null;
   const [qty, setQty] = useState(item?.qty ?? seed?.qty ?? 1);
   const [equipped, setEquipped] = useState(item?.equipped !== false);
 
@@ -63,9 +63,12 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
       delete saved.requiresAttunement;
       delete saved.attuned;
     }
-    // Quantity
-    if (trackQty) {
-      saved.qty = Math.max(0, parseInt(qty, 10) || 0);
+    // Quantity — tracked when it already was, when it isn't the default 1,
+    // or for consumable types, so a lone Rope doesn't start carrying qty: 1.
+    const qtyValue = Math.max(0, parseInt(qty, 10) || 0);
+    const consumable = ["potion", "ammunition"].includes(showType ? type : item?.type);
+    if (hadQty || qtyValue !== 1 || consumable) {
+      saved.qty = qtyValue;
     } else {
       delete saved.qty;
     }
@@ -151,34 +154,34 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
           )}
         </div>
 
-        {/* Quantity */}
+        {/* Quantity — always visible; see handleSave for when it's stored */}
         <div className="em-toggle-row">
-          <label className="em-toggle-label" style={{ marginBottom: trackQty ? 8 : 0 }}>
+          <div className="flex-row" style={{ gap: 10 }}>
+            <span className="label-ui" style={{ display: "inline", marginBottom: 0 }}>Quantity</span>
+            <button
+              type="button"
+              className="em-qty-btn"
+              onClick={() => setQty((value) => Math.max(0, (parseInt(value, 10) || 0) - 1))}
+              aria-label="Decrease quantity"
+              style={{ border: `1px solid ${pal.border}`, color: pal.accentBright }}
+            >−</button>
             <input
-              type="checkbox"
-              checked={trackQty}
-              onChange={(e) => {
-                setTrackQty(e.target.checked);
-                if (e.target.checked && (qty == null || qty === "")) setQty(1);
-              }}
-              className="em-checkbox"
-              style={{ accentColor: pal.accent }}
+              type="number"
+              min={0}
+              step={1}
+              value={qty}
+              aria-label="Quantity"
+              onChange={(e) => setQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
+              style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 14, padding: "6px 10px", outline: "none", width: 64, textAlign: "center" }}
             />
-            <span className="label-ui" style={{ display: "inline", marginBottom: 0, color: trackQty ? pal.accentBright : undefined }}>Track Quantity</span>
-          </label>
-          {trackQty && (
-            <div className="flex-row" style={{ paddingLeft: 25, gap: 10 }}>
-              <span className="label-ui" style={{ display: "inline", marginBottom: 0 }}>Current qty</span>
-              <input
-                type="number"
-                min={0}
-                step={1}
-                value={qty}
-                onChange={(e) => setQty(Math.max(0, parseInt(e.target.value, 10) || 0))}
-                style={{ background: pal.surface, border: `1px solid ${pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 14, padding: "6px 10px", outline: "none", width: 72 }}
-              />
-            </div>
-          )}
+            <button
+              type="button"
+              className="em-qty-btn"
+              onClick={() => setQty((value) => (parseInt(value, 10) || 0) + 1)}
+              aria-label="Increase quantity"
+              style={{ border: `1px solid ${pal.border}`, color: pal.accentBright }}
+            >+</button>
+          </div>
         </div>
 
         {/* Equipped */}
