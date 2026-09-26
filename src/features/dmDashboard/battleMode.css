@@ -63,6 +63,10 @@
   transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * var(--token-drag-scale, 1))) rotate(calc(0deg - var(--map-rotation, 0deg)));
   transform-origin: center;
   z-index: 10;
+  /* Story 65 — undoes the per-token size for the hover card, long-press
+     menu and resize stepper, so they read at Medium size on any token. Like
+     the condition badges, they still follow map zoom/calibration. */
+  --tk-popover-counter: calc(1 / var(--token-size-mult, 1));
 }
 
 /* Player-side poll-move: applied only when !isDm and after first mount
@@ -292,9 +296,12 @@
 /* HP hover card */
 .token-hp-card {
   position: absolute;
-  top: calc(100% + 4px);
+  top: calc(100% + 4px * var(--tk-popover-counter, 1));
   left: 50%;
-  transform: translateX(-50%);
+  /* Counter-scaled against the per-token size (see --tk-popover-counter) so
+     the card reads at Medium size on a Gargantuan token. */
+  transform: translateX(-50%) scale(var(--tk-popover-counter, 1));
+  transform-origin: top center;
   width: 124px;
   background: var(--pal-surface-solid, #2a160a);
   border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.38));
@@ -319,7 +326,8 @@
 /* HP card flips above the token in bottom 25% of viewport */
 .token-hp-card--flip {
   top: auto;
-  bottom: calc(100% + 4px);
+  bottom: calc(100% + 4px * var(--tk-popover-counter, 1));
+  transform-origin: bottom center;
 }
 
 .token-hp-card__name {
@@ -829,9 +837,10 @@
 /* Remove micro-menu (✕ Remove / Cancel) */
 .token-longpress-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  top: calc(100% + 6px * var(--tk-popover-counter, 1));
   left: 50%;
-  transform: translateX(-50%) scale(0.94);
+  transform: translateX(-50%) scale(calc(0.94 * var(--tk-popover-counter, 1)));
+  transform-origin: top center;
   width: 140px;
   background: var(--pal-surface-solid, #2a160a);
   border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.38));
@@ -844,8 +853,8 @@
 }
 
 @keyframes token-longpress-menu-surface {
-  from { opacity: 0; transform: translateX(-50%) scale(0.94); }
-  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+  from { opacity: 0; transform: translateX(-50%) scale(calc(0.94 * var(--tk-popover-counter, 1))); }
+  to   { opacity: 1; transform: translateX(-50%) scale(var(--tk-popover-counter, 1)); }
 }
 
 .token-longpress-menu-item {
@@ -913,9 +922,10 @@
 
 .token-resize-stepper {
   position: absolute;
-  top: calc(100% + 8px);
+  top: calc(100% + 8px * var(--tk-popover-counter, 1));
   left: 50%;
-  transform: translateX(-50%);
+  transform: translateX(-50%) scale(var(--tk-popover-counter, 1));
+  transform-origin: top center;
   width: 200px;
   background: var(--pal-surface-solid, #0d0f14);
   border: 1px solid var(--pal-border, rgba(106, 143, 168, 0.35));
@@ -929,12 +939,13 @@
 
 .token-resize-stepper--flip {
   top: auto;
-  bottom: calc(100% + 8px);
+  bottom: calc(100% + 8px * var(--tk-popover-counter, 1));
+  transform-origin: bottom center;
 }
 
 @keyframes token-resize-stepper-appear {
-  from { opacity: 0; transform: translateX(-50%) scale(0.96); }
-  to   { opacity: 1; transform: translateX(-50%) scale(1); }
+  from { opacity: 0; transform: translateX(-50%) scale(calc(0.96 * var(--tk-popover-counter, 1))); }
+  to   { opacity: 1; transform: translateX(-50%) scale(var(--tk-popover-counter, 1)); }
 }
 
 .token-resize-stepper__readout {
@@ -1833,7 +1844,7 @@
   .token-longpress-menu {
     animation: none;
     opacity: 1;
-    transform: translateX(-50%) scale(1);
+    transform: translateX(-50%) scale(var(--tk-popover-counter, 1));
   }
 
   .token-chip--removing {
@@ -1881,7 +1892,7 @@
   .token-resize-stepper {
     animation: none;
     opacity: 1;
-    transform: translateX(-50%) scale(1);
+    transform: translateX(-50%) scale(var(--tk-popover-counter, 1));
   }
 
   .token-resize-stepper__notch {
