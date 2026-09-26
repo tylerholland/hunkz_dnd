@@ -1,0 +1,81 @@
+/* Story 65 — compact token size stepper (token hover card + NPC ⋯ menu) */
+
+.token-size-ctl {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.token-size-ctl__btn {
+  flex-shrink: 0;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.38));
+  border-radius: 3px;
+  background: transparent;
+  color: var(--pal-accent-bright, #e0a060);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.token-size-ctl__btn:hover:not(:disabled) {
+  border-color: var(--pal-accent, #c07840);
+}
+
+.token-size-ctl__btn:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.token-size-ctl__readout {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1.1;
+}
+
+.token-size-ctl__label {
+  font-family: var(--font-ui, "Cinzel", serif);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--pal-text, #e8d0b0);
+  white-space: nowrap;
+}
+
+.token-size-ctl__mult {
+  font-size: 10px;
+  color: var(--pal-text-muted, #8a6a50);
+}
+
+.token-size-ctl--disabled .token-size-ctl__readout {
+  opacity: 0.45;
+}
+
+/* Inside the token hover card */
+.token-hp-card__size {
+  margin-top: 6px;
+  padding-top: 5px;
+  border-top: 1px solid var(--pal-border, rgba(160, 100, 55, 0.38));
+}
+
+.token-chip[data-expanded="true"] .token-hp-card--has-size {
+  max-height: 150px;
+}
+
+/* Inside the NPC card ⋯ menu */
+.npc-overflow-size {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px 14px;
+}
+
+.npc-overflow-size__label {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}

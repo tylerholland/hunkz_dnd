@@ -6,10 +6,11 @@ const { notifySessionChanged } = require("../lib/broadcast");
 const VALID_TYPES = new Set(["character", "npc"]);
 const MAX_TOKENS = 200;
 
-// Story 44 — scale ceiling matches the per-token size ladder (3.0 = Gargantuan),
+// Stories 44/65 — scale ceiling matches the per-token size ladder in
+// src/features/dmDashboard/battleMode/tokenSizes.js (6.0 = Colossal),
 // distinct from the global calibration ceiling (2.5).
 const SCALE_MIN = 0.5;
-const SCALE_MAX = 3.0;
+const SCALE_MAX = 6.0;
 
 function validateToken(t) {
   if (!t || typeof t !== "object") return false;

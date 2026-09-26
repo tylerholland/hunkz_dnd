@@ -74,6 +74,7 @@ export default function DmDashboardPage() {
   const [openCardPopoverSlug, setOpenCardPopoverSlug] = useState(null);
   const [expandedCardSlug, setExpandedCardSlug] = useState(null);
   const diceRollerRef = useRef(null);
+  const mapPanelRef = useRef(null);
   const [combatMode, setCombatMode] = useState(initialCombatMode);
   const [mapCollapsed, setMapCollapsed] = useState(false);
   const [combatLayoutActive, setCombatLayoutActive] = useState(initialCombatMode);
@@ -933,6 +934,12 @@ export default function DmDashboardPage() {
   };
   const activeEntry = (initiative.entries || [])[initiative.activeTurnIndex ?? 0];
   const activeTurnSlug = activeEntry?.slug ?? null;
+  // Story 65 — NPC id → token scale on the active map (absent = not placed).
+  const activeMapTokens = (mapLibrary?.maps || []).find((m) => m.id === mapLibrary?.activeMapId)?.tokens || [];
+  const npcTokenScales = {};
+  for (const token of activeMapTokens) {
+    if (token.type === "npc" && token.sourceId) npcTokenScales[token.sourceId] = Number.isFinite(token.scale) ? token.scale : 1;
+  }
   const partyHasXp = party.some((character) => (character.levelingMode || "milestone") === "xp");
   const partyCardItems = party.length === 0 ? (
     <div style={{ ...panelStyle, padding: "20px 16px", fontFamily: pal.fontUI, fontSize: 13, color: pal.textMuted }}>
@@ -1067,6 +1074,7 @@ export default function DmDashboardPage() {
 
           <div style={{ marginBottom: 16 }}>
             <MapPanel
+              ref={mapPanelRef}
               mapLibrary={mapLibrary}
               dmPassword={dmPassword}
               pal={pal}
@@ -1182,6 +1190,8 @@ export default function DmDashboardPage() {
                   npcLibrary={npcLibrary}
                   onSaveToLibrary={handleSaveToLibrary}
                   onOpenEnemiesGallery={() => setShowEnemiesGallery(true)}
+                  npcTokenScales={npcTokenScales}
+                  onResizeNpcToken={(npcId, scale) => mapPanelRef.current?.resizeNpcTokens(npcId, scale)}
                 />
               </div>
             </div>

@@ -1,6 +1,6 @@
 # Feature Story: Large Enemy Token Size Options
 
-**Status**: Ready for implementation
+**Status**: Done — steps 0.5/1/2/3/4/6× with 5e labels; size row in token hover card + NPC ⋯ menu (backend cap raised to 6.0)
 **Source**: User request
 **Prototype**: (leave blank — ux-designer fills this in, if needed; see note below)
 

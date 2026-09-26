@@ -9,6 +9,8 @@ import {
   CHEVRON_STAGGER_MS,
   BOLT_CORE_COLOR,
 } from "./tokenEffects";
+import { SIZE_STEPS, SIZE_LABELS, nearestSizeIndex, stepTokenScale } from "./tokenSizes";
+import TokenSizeControl from "./TokenSizeControl";
 
 /**
  * BattleModeController
@@ -22,25 +24,7 @@ import {
  * used by both MapPanel (DM view) and CharacterSheetSessionMode (player view).
  */
 
-// ── Per-token size categories (Story 44) ─────────────────────────────────────
-const SIZE_STEPS = [0.5, 1.0, 1.5, 2.0, 3.0];
-const SIZE_LABELS = {
-  0.5: "TINY",
-  1.0: "MEDIUM",
-  1.5: "LARGE",
-  2.0: "HUGE",
-  3.0: "GARGANTUAN",
-};
-
-function nearestSizeIndex(scale) {
-  let best = 0;
-  let bestDist = Infinity;
-  for (let i = 0; i < SIZE_STEPS.length; i++) {
-    const dist = Math.abs(SIZE_STEPS[i] - scale);
-    if (dist < bestDist) { bestDist = dist; best = i; }
-  }
-  return best;
-}
+// Per-token size presets live in ./tokenSizes (Stories 44/65).
 
 // ── Story 53 — condition badge column ───────────────────────────────────────
 // Badges are pointer-events: none, non-interactive, no resting animation
@@ -765,9 +749,7 @@ export const TokenChip = memo(function TokenChip({
 
   const handleStepSize = useCallback((direction) => {
     const currentScale = Number.isFinite(token.scale) ? token.scale : 1.0;
-    const idx = nearestSizeIndex(currentScale);
-    const nextIdx = Math.max(0, Math.min(SIZE_STEPS.length - 1, idx + direction));
-    const nextScale = SIZE_STEPS[nextIdx];
+    const nextScale = stepTokenScale(currentScale, direction);
     if (nextScale !== currentScale) {
       onResizeToken?.(token.id, nextScale);
     }
@@ -844,6 +826,7 @@ export const TokenChip = memo(function TokenChip({
   const currentScale = Number.isFinite(token.scale) ? token.scale : 1.0;
   const currentSizeIdx = nearestSizeIndex(currentScale);
   const currentLabel = SIZE_LABELS[SIZE_STEPS[currentSizeIdx]] || "MEDIUM";
+  const showSizeRow = isDm && token.type === "npc" && !!onResizeToken;
 
   // Story 55 — ADR-021's outer wrapper. .token-chip already carries position
   // (--token-x/-y) baked into its own single `transform` alongside the
@@ -1033,7 +1016,7 @@ export const TokenChip = memo(function TokenChip({
       </div>
 
       {/* HP hover card */}
-      <div className={`token-hp-card${flipCard ? " token-hp-card--flip" : ""}`}>
+      <div className={`token-hp-card${flipCard ? " token-hp-card--flip" : ""}${showSizeRow ? " token-hp-card--has-size" : ""}`}>
         <div className="token-hp-card__name">{name}</div>
 
         {/* Story 54 — the authoritative record; first row of the condition
@@ -1094,6 +1077,15 @@ export const TokenChip = memo(function TokenChip({
 
         {showNpcGlow && (
           <div className={`token-hp-card__glow-line token-hp-card__glow-line--${hpTier}`} />
+        )}
+
+        {/* Story 65 — DM size row on NPC tokens (also reachable via long-press ⤢ Resize) */}
+        {showSizeRow && (
+          <TokenSizeControl
+            className="token-hp-card__size"
+            scale={currentScale}
+            onChange={(next) => onResizeToken(token.id, next)}
+          />
         )}
 
         {isDm && isFallen && onRemoveToken && (

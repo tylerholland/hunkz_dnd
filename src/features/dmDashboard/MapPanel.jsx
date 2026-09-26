@@ -1,8 +1,9 @@
-import { useEffect, useLayoutEffect, useRef, useState, useCallback } from "react";
+import { useEffect, useLayoutEffect, useRef, useState, useCallback, useImperativeHandle } from "react";
+import { MAX_TOKEN_SCALE, MIN_TOKEN_SCALE } from "./battleMode/tokenSizes";
 import { createPortal } from "react-dom";
 import MapViewer, { getMapZoomModifierLabel, readMapFreeZoomPreference, writeMapFreeZoomPreference } from "../maps/MapViewer";
 import MapLibraryModal from "./MapLibraryModal";
-import { putMapView, patchMapTokens, putMapCalibration, putMapRotation, putNpcCombat } from "../../api";
+import { putMapActive, putMapView, patchMapTokens, putMapCalibration, putMapRotation, putNpcCombat } from "../../api";
 import CalibrationPopover from "./battleMode/CalibrationPopover";
 import { displayMapName } from "./MapUploadModal";
 import { isPdfMap } from "../maps/mapFiles";
@@ -45,7 +46,7 @@ function buildMapViewPayload(mapId, viewerState) {
   return payload;
 }
 
-export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, serverTime, initiative }) {
+export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, serverTime, initiative, ref }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewerState, setViewerState] = useState(null);
@@ -255,16 +256,25 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   }, [activeMap, dmPassword, onLibraryChange]);
 
   // Story 44 — debounced per-token scale write, modelled on handleScaleChange
-  const handleResizeToken = useCallback((tokenId, nextScale) => {
+  // Story 65 — `match` is a token id, or a predicate (the NPC card's ⋯ menu
+  // resizes every token of that NPC by sourceId).
+  const handleResizeToken = useCallback((match, nextScale) => {
     if (!activeMap) return;
-    const clamped = Math.min(3.0, Math.max(0.5, nextScale));
-    const next = effectiveTokens.map((t) => t.id === tokenId ? { ...t, scale: clamped } : t);
+    const clamped = Math.min(MAX_TOKEN_SCALE, Math.max(MIN_TOKEN_SCALE, nextScale));
+    const isMatch = typeof match === "function" ? match : (t) => t.id === match;
+    const next = effectiveTokens.map((t) => isMatch(t) ? { ...t, scale: clamped } : t);
     setLocalTokens(next);
     if (tokenResizeWriteTimerRef.current) clearTimeout(tokenResizeWriteTimerRef.current);
     tokenResizeWriteTimerRef.current = setTimeout(() => {
       patchMapTokens(activeMap.id, { tokens: next }, dmPassword).then(onLibraryChange).catch(() => { /* optimistic state holds */ });
     }, 300);
   }, [activeMap, effectiveTokens, dmPassword, onLibraryChange]);
+
+  useImperativeHandle(ref, () => ({
+    resizeNpcTokens(npcId, nextScale) {
+      handleResizeToken((t) => t.type === "npc" && t.sourceId === npcId, nextScale);
+    },
+  }), [handleResizeToken]);
 
   // Story 45 — map rotation
   const effectiveRotation = localRotation !== null ? localRotation : (activeMap?.rotation ?? 0);

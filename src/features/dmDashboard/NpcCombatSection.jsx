@@ -12,6 +12,7 @@ import {
   useHoldToRepeat,
   withAlpha,
 } from "./dashboardShared";
+import TokenSizeControl from "./battleMode/TokenSizeControl";
 import "./npcCombat.css";
 
 /* ── Portrait/initials thumb helper (shared inside NpcCombatSection) ── */
@@ -568,8 +569,12 @@ function NpcAbilityRef({ abilities: abilitiesProp, isActiveTurn, npcPal, onSave 
   );
 }
 
-function NpcOverflowMenu({ npc, npcPal, libraryTemplates, onSaveToLibrary, onClose }) {
+function NpcOverflowMenu({ npc, npcPal, libraryTemplates, onSaveToLibrary, onClose, tokenScale, onResizeToken }) {
   const pal = useContext(PalCtx);
+  // Story 65 — local echo so repeated taps step from the value just chosen,
+  // not the last polled one.
+  const [localScale, setLocalScale] = useState(null);
+  const shownScale = localScale ?? tokenScale;
   const [savedFlash, setSavedFlash] = useState(false);
   const savedTimerRef = useRef(null);
 
@@ -666,6 +671,18 @@ function NpcOverflowMenu({ npc, npcPal, libraryTemplates, onSaveToLibrary, onClo
           </button>
         </>
       )}
+      {onResizeToken && (
+        <div className="npc-overflow-size" style={{ borderTop: `1px solid ${npcPal.actionBorder}` }}>
+          <span className="npc-overflow-size__label" style={{ fontFamily: pal.fontUI, color: pal.textMuted }}>
+            Token size{tokenScale === undefined ? " · not on map" : ""}
+          </span>
+          <TokenSizeControl
+            scale={shownScale ?? 1}
+            disabled={tokenScale === undefined}
+            onChange={(next) => { setLocalScale(next); onResizeToken(next); }}
+          />
+        </div>
+      )}
       <button
         className="npc-overflow-item npc-overflow-item-destructive"
         onClick={onClose}
@@ -693,6 +710,8 @@ function NpcCard({
   dmPassword,
   collapsed = false,
   onToggleCollapse = null,
+  tokenScale,
+  onResizeToken,
 }) {
   const pal = useContext(PalCtx);
   const npcPal = getNpcCardPalette(pal);
@@ -903,6 +922,8 @@ function NpcCard({
                   npcPal={npcPal}
                   libraryTemplates={libraryTemplates}
                   onSaveToLibrary={onSaveToLibrary}
+                  tokenScale={tokenScale}
+                  onResizeToken={onResizeToken}
                   onClose={() => setOverflowOpen(false)}
                 />
               )}
@@ -1056,6 +1077,8 @@ export default function NpcCombatSection({
   npcLibrary,
   onSaveToLibrary,
   onOpenEnemiesGallery,
+  npcTokenScales = {},
+  onResizeNpcToken,
 }) {
   const pal = useContext(PalCtx);
   const npcPal = getNpcCardPalette(pal);
@@ -1316,6 +1339,8 @@ export default function NpcCombatSection({
                   onRemove={() => handleRemoveNpc(npc.id)}
                   libraryTemplates={npcLibrary?.templates}
                   onSaveToLibrary={onSaveToLibrary}
+                  tokenScale={npcTokenScales[npc.id]}
+                  onResizeToken={onResizeNpcToken ? (scale) => onResizeNpcToken(npc.id, scale) : undefined}
                   dmPassword={dmPassword}
                 />
               ))}
@@ -1341,6 +1366,8 @@ export default function NpcCombatSection({
                   onRemove={() => handleRemoveNpc(npc.id)}
                   libraryTemplates={npcLibrary?.templates}
                   onSaveToLibrary={onSaveToLibrary}
+                  tokenScale={npcTokenScales[npc.id]}
+                  onResizeToken={onResizeNpcToken ? (scale) => onResizeNpcToken(npc.id, scale) : undefined}
                   dmPassword={dmPassword}
                   collapsed={collapsedSet.has(npc.id)}
                   onToggleCollapse={() => toggleCardCollapse(npc.id)}
