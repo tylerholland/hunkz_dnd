@@ -231,6 +231,12 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
 
   const writeTokens = useCallback(async (newTokens) => {
     const payload = { tokens: newTokens };
+    // A full write supersedes a pending debounced resize write — the resized
+    // scale is already in newTokens, and the older snapshot would clobber this.
+    if (tokenResizeWriteTimerRef.current) {
+      clearTimeout(tokenResizeWriteTimerRef.current);
+      tokenResizeWriteTimerRef.current = null;
+    }
     // Apply optimistically so UI responds immediately
     setLocalTokens(newTokens);
     try {
@@ -339,12 +345,15 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
 
   const handleTokenLayerClick = useCallback((frac) => {
     if (!heldSourceId || !activeMap) return;
+    // Story 65 — a move keeps the token's per-token size.
+    const existing = effectiveTokens.find((t) => t.sourceId === heldSourceId);
     const newToken = {
       id: genId(),
       type: heldType,
       sourceId: heldSourceId,
       x: frac.x,
       y: frac.y,
+      ...(Number.isFinite(existing?.scale) ? { scale: existing.scale } : {}),
     };
     // Remove any existing token for this source (move, not duplicate)
     const filtered = effectiveTokens.filter((t) => t.sourceId !== heldSourceId);
