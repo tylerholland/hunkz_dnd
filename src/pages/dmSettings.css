@@ -1,0 +1,203 @@
+/* DM Settings page (house rules) */
+
+.dm-settings-page {
+  min-height: 100vh;
+  color: var(--pal-text);
+}
+
+.dm-settings-main {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 28px 16px 64px;
+}
+
+.dm-settings-heading {
+  margin: 0 0 6px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--pal-text);
+}
+
+.dm-settings-intro {
+  margin: 0 0 22px;
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--pal-text-body);
+}
+
+.dm-settings-card {
+  padding: 18px;
+  border: 1px solid var(--pal-border);
+  border-radius: 6px;
+  background: var(--pal-surface);
+}
+
+.dm-settings-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px 24px;
+}
+
+.dm-settings-label-col {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+
+.dm-settings-control-col {
+  flex: 0 1 260px;
+  min-width: 0;
+}
+
+.dm-settings-label {
+  margin: 0 0 6px;
+  font-family: var(--font-ui);
+  font-size: 13px;
+  font-weight: 400;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-accent-bright);
+}
+
+.dm-settings-help {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--pal-text-muted);
+}
+
+.dm-settings-help code {
+  font-family: var(--font-display);
+  color: var(--pal-text-body);
+}
+
+.dm-settings-input {
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 44px;
+  padding: 8px 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.22);
+  color: var(--pal-text);
+  font-family: var(--font-display);
+  font-size: 20px;
+  letter-spacing: 0.04em;
+  outline: none;
+}
+
+.dm-settings-input:focus {
+  border-color: var(--pal-accent);
+}
+
+.dm-settings-input[aria-invalid="true"] {
+  border-color: #c06060;
+}
+
+.dm-settings-presets {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.dm-settings-preset {
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--pal-border);
+  border-radius: 16px;
+  background: transparent;
+  color: var(--pal-text-body);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.dm-settings-preset:hover:not(:disabled),
+.dm-settings-preset.active {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+.dm-settings-preview {
+  margin-top: 16px;
+  padding: 10px 12px;
+  border-left: 2px solid var(--pal-accent);
+  background: rgba(0, 0, 0, 0.16);
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--pal-text-body);
+}
+
+.dm-settings-preview strong {
+  font-family: var(--font-display);
+  font-weight: 400;
+  color: var(--pal-text);
+}
+
+.dm-settings-invalid {
+  color: #d08080;
+}
+
+.dm-settings-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.dm-settings-save,
+.dm-settings-revert {
+  min-height: 40px;
+  padding: 0 18px;
+  border-radius: 4px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dm-settings-save {
+  border: 1px solid var(--pal-accent);
+  background: var(--pal-accent-dim);
+  color: var(--pal-accent-bright);
+}
+
+.dm-settings-save:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.dm-settings-revert {
+  border: 1px solid var(--pal-border);
+  background: transparent;
+  color: var(--pal-text-muted);
+}
+
+.dm-settings-status {
+  font-family: var(--font-body);
+  font-size: 14px;
+  color: var(--pal-text-muted);
+}
+
+.dm-settings-status--saved {
+  color: var(--pal-accent-bright);
+}
+
+.dm-settings-status--error {
+  color: #d08080;
+}
+
+.dm-settings-footnote {
+  margin-top: 18px;
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--pal-text-muted);
+}

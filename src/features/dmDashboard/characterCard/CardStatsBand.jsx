@@ -1,13 +1,15 @@
-import { abilityCheckExpr, formatMod, getAbilityMods, getPassivePerception, getSkillNames, getSpeed } from "../cardStats";
+import { formatMod, getAbilityMods, getPassivePerception, getSkillNames, getSpeed } from "../cardStats";
+import { abilityCheckExpr } from "../../../lib/houseRules";
 import "./cardStatsBand.css";
 
 const KEY_ABILITIES = new Set(["Wis", "Con", "Dex"]);
 const MAX_GLANCE_SKILLS = 4;
 
 // At-a-glance band (Stories 50/64): six ability modifiers, passive
-// perception, speed, and skill names. Clicking an ability rolls a 2d6 check
-// (Story 32) when onRoll is provided; skills are names only for now.
-export default function CardStatsBand({ char, onRoll, expanded, onToggleExpand }) {
+// perception, speed, and skill names. Clicking an ability rolls a check with
+// the table's house-rule dice (DM Settings; default 2d6) when onRoll is
+// provided; skills are names only for now.
+export default function CardStatsBand({ char, onRoll, expanded, onToggleExpand, checkDice }) {
   const abilities = getAbilityMods(char);
   const skills = getSkillNames(char);
   const perception = getPassivePerception(char);
@@ -23,9 +25,9 @@ export default function CardStatsBand({ char, onRoll, expanded, onToggleExpand }
             key={stat}
             type="button"
             className={`cc-abil-cell${KEY_ABILITIES.has(abbr) ? " cc-abil-cell--key" : ""}`}
-            onClick={() => onRoll?.(abilityCheckExpr(mod), `${stat} check`)}
+            onClick={() => onRoll?.(abilityCheckExpr(mod, checkDice), `${stat} check`, { isCheck: true })}
             disabled={!onRoll}
-            title={onRoll ? `Roll ${stat} (${abilityCheckExpr(mod)})` : stat}
+            title={onRoll ? `Roll ${stat} (${abilityCheckExpr(mod, checkDice)})` : stat}
           >
             <span className="cc-abil-abbr">{abbr}</span>
             <span className="cc-abil-mod">{formatMod(mod)}</span>

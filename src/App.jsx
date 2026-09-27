@@ -6,6 +6,7 @@ import NewCharacterPage from "./pages/NewCharacterPage";
 import DmDashboardPage from "./pages/DmDashboardPage";
 import MapLibraryPage from "./pages/MapLibraryPage";
 import MapViewerPage from "./pages/MapViewerPage";
+import DmSettingsPage from "./pages/DmSettingsPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
@@ -15,6 +16,7 @@ export default function App() {
       <Routes>
         <Route path="/"                          element={<CharactersListPage />} />
         <Route path="/dm"                        element={<DmDashboardPage />} />
+        <Route path="/dm/settings"               element={<DmSettingsPage />} />
         <Route path="/maps"                      element={<MapLibraryPage />} />
         <Route path="/map-view"                  element={<MapViewerPage />} />
         <Route path="/characters/new"            element={<NewCharacterPage />} />

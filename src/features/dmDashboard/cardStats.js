@@ -73,11 +73,6 @@ export function getSkillNames(char) {
     .map((skill) => titleCase(skill.trim()));
 }
 
-// Ability checks use the table's 2d6 + modifier house rule (Story 32).
-export function abilityCheckExpr(mod) {
-  return `2d6${mod >= 0 ? "+" : ""}${mod}`;
-}
-
 export function titleCase(text) {
   return String(text || "").replace(/\b\w/g, (ch) => ch.toUpperCase());
 }

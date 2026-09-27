@@ -34,6 +34,7 @@ const {
   PARTY_ROSTER_SLUG,
   COUNTER_WHEELS_SLUG,
   APP_META_SLUG,
+  HOUSE_RULES_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
 const {
@@ -45,6 +46,7 @@ const {
   normalizeCounterWheelsRecord,
   normalizeAppMetaRecord,
 } = require("../lib/specialRecords");
+const { normalizeHouseRulesRecord } = require("../lib/houseRules");
 const { projectDmPartyItem, projectPlayerCharacter } = require("../lib/partyProjection");
 const {
   buildPublicInitiativePayload,
@@ -85,6 +87,7 @@ const SENTINEL_SLUGS = [
   PARTY_ROSTER_SLUG,
   COUNTER_WHEELS_SLUG,
   APP_META_SLUG,
+  HOUSE_RULES_SLUG,
 ];
 
 exports.handler = async (event) => {
@@ -114,6 +117,7 @@ exports.handler = async (event) => {
   const roster = normalizePartyRosterRecord(sentinelBySlug.get(PARTY_ROSTER_SLUG));
   const counterWheels = normalizeCounterWheelsRecord(sentinelBySlug.get(COUNTER_WHEELS_SLUG));
   const appMeta = normalizeAppMetaRecord(sentinelBySlug.get(APP_META_SLUG));
+  const houseRules = normalizeHouseRulesRecord(sentinelBySlug.get(HOUSE_RULES_SLUG));
   const serverTime = new Date().toISOString();
 
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.
@@ -159,6 +163,7 @@ exports.handler = async (event) => {
       rollHistory,
       mapLibrary: annotatedMapLibrary,
       counterWheels,
+      houseRules,
       serverTime,
       buildVersion: appMeta.buildVersion,
     };
@@ -240,6 +245,7 @@ exports.handler = async (event) => {
     npcCombatPublic,
     mapLibrary: publicMapLibrary,
     rollHistory,
+    houseRules,
     serverTime,
     buildVersion: appMeta.buildVersion,
   };

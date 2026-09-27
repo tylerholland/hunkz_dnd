@@ -53,7 +53,7 @@ test("getInitiativeState and getNpcCombatState return normalized defaults", asyn
   assert.deepEqual(await getInitiativeState(), { entries: [], activeTurnIndex: 0, round: 1, turnStartedAt: null });
   assert.deepEqual(await getNpcCombatState(), { npcs: [] });
   assert.deepEqual(await getRollHistoryState(), { rolls: [] });
-  assert.deepEqual(await getPartyRosterState(), { exists: false, members: [] });
+  assert.deepEqual(await getPartyRosterState(), { exists: false, members: [], partyVisibilityEnabled: true });
 });
 
 test("saveInitiativeState, saveNpcCombatState, and saveRollHistoryState persist to sentinel slugs", async () => {

@@ -3,6 +3,7 @@ import { parseDiceExpr, rollDie, DieShape } from "./DiceRoller";
 import { RollHistoryRow } from "./RollHistoryList";
 import { PALETTES } from "../features/characterSheet/theme";
 import { postDmRoll } from "../api";
+import { applyCheckAdvantage, DEFAULT_HOUSE_RULES, isCheckDiceGroups } from "../lib/houseRules";
 import { buildLocalRollHistoryEntry, buildRollHistoryPayload, extractRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
 import "./diceRoller.css";
 
@@ -15,16 +16,19 @@ const ALL_SIDES = [4, 6, 8, 10, 12, 20, 100];
  * Execute a single roll from parsed groups + flat + advMode.
  * Returns a result object: { groups, flat, total, isCrit, isFumble, advKept, advDiscarded, isMultiGroup }
  */
-function executeSingleRoll(groups, flat, advMode) {
+function executeSingleRoll(groups, flat, advMode, { isCheck = false, checkDice } = {}) {
   const rolledGroups = groups.map(({ count, sides }) => ({
     sides,
     rolls: Array.from({ length: count }, () => rollDie(sides)),
   }));
 
   const isSingleD20 = groups.length === 1 && groups[0].sides === 20 && groups[0].count === 1;
+  // Ability checks use the house-rule dice (DM Settings); their adv/dis is
+  // handled below by the shared keep-best/worst-N rule instead.
+  const isCheckRoll = isCheck || isCheckDiceGroups(groups, checkDice);
   let advKept = null, advDiscarded = null;
 
-  if (isSingleD20 && advMode !== "normal") {
+  if (isSingleD20 && advMode !== "normal" && !isCheckRoll) {
     const r2 = rollDie(20);
     const r1 = rolledGroups[0].rolls[0];
     if (advMode === "advantage") {
@@ -35,15 +39,14 @@ function executeSingleRoll(groups, flat, advMode) {
     rolledGroups[0].rolls[0] = advKept;
   }
 
-  // House rule (Story 32): a 2d6 check with adv/dis rolls 3d6 and keeps the
-  // best/worst two — mirrors DiceRoller.jsx so DM rolls match player rolls.
-  const is2d6Check = groups.length === 1 && groups[0].sides === 6 && groups[0].count === 2;
+  // Check adv/dis: one extra die, keep the best/worst N — the same helper the
+  // player roller uses, so DM and player rolls always agree.
   let keptRolls = null, droppedRoll = null;
-  if (is2d6Check && advMode !== "normal") {
-    const all3 = [...rolledGroups[0].rolls, rollDie(6)].sort((a, b) => a - b);
-    if (advMode === "advantage") { keptRolls = [all3[1], all3[2]]; droppedRoll = all3[0]; }
-    else { keptRolls = [all3[0], all3[1]]; droppedRoll = all3[2]; }
-    rolledGroups[0].rolls = keptRolls;
+  if (isCheckRoll && groups.length === 1 && advMode !== "normal") {
+    const applied = applyCheckAdvantage(rolledGroups[0].rolls, rolledGroups[0].sides, advMode, rollDie);
+    rolledGroups[0].rolls = applied.rolls;
+    keptRolls = applied.keptRolls;
+    droppedRoll = applied.droppedRoll;
   }
 
   const diceTotal = rolledGroups.reduce((sum, g) => sum + g.rolls.reduce((s, r) => s + r, 0), 0);
@@ -72,7 +75,7 @@ function createClientRollId(timestamp, index) {
 }
 
 // ── DmDiceRoller ───────────────────────────────────────────────────────────────
-export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, remoteHistory = [], marginTop = 16, ref }) {
+export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
     sessionStorage.getItem("dnd_dice_dm_open") !== "false"
@@ -151,7 +154,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
       setCycleNum(null);
 
       const results = Array.from({ length: req ? 1 : repeatCount }, () =>
-        executeSingleRoll(groups, flat, capturedAdvMode)
+        executeSingleRoll(groups, flat, capturedAdvMode, { isCheck: !!req?.isCheck, checkDice })
       );
 
       setRollResults(results);
@@ -199,7 +202,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
         Promise.allSettled(rollPayloads.map((payload) => postDmRoll(dmPassword, payload))).catch(() => {});
       }
     }, 600);
-  }, [isRolling, advMode, repeatCount, exprInput, comboDice, comboMod, dieCount, selectedSides, dmPassword]);
+  }, [isRolling, advMode, repeatCount, exprInput, comboDice, comboMod, dieCount, selectedSides, dmPassword, checkDice]);
 
   // Party-card rolls (DM card revamp): the dashboard calls rollFor(request).
   useImperativeHandle(ref, () => ({

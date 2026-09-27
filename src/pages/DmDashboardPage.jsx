@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react
 import { Link } from "react-router-dom";
 import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
+import { DEFAULT_HOUSE_RULES, normalizeHouseRules } from "../lib/houseRules";
 import CharacterCard, { AwardXpModal, DistributeCoinModal } from "../features/dmDashboard/CharacterCard";
 import ConfirmDialog from "../features/dmDashboard/ConfirmDialog";
 import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
@@ -96,6 +97,8 @@ export default function DmDashboardPage() {
   // condition age arithmetic (never Date.now(), or a clock-skewed tab never
   // flashes/clears in sync with every other viewer).
   const [serverTime, setServerTime] = useState(null);
+  // DM Settings → house rules (e.g. ability-check dice); shared with players.
+  const [houseRules, setHouseRules] = useState(DEFAULT_HOUSE_RULES);
   const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
   const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -318,6 +321,7 @@ export default function DmDashboardPage() {
       setRollHistory(rollHistoryData.rolls || []);
       setMapLibrary(mapLibraryData || { activeMapId: null, activeMapView: null, maps: [] });
       setServerTime(sessionData.serverTime || null);
+      setHouseRules(normalizeHouseRules(sessionData.houseRules));
       reportServerBuildVersion(sessionData.buildVersion);
     } catch {
       // Show stale data rather than error on poll failure.
@@ -976,6 +980,7 @@ export default function DmDashboardPage() {
           expanded={expandedCardSlug === char.slug}
           onToggleExpand={() => setExpandedCardSlug((current) => (current === char.slug ? null : char.slug))}
           onRoll={(request) => diceRollerRef.current?.rollFor(request)}
+          checkDice={houseRules.abilityCheckDice}
         />
       </div>
     ))
@@ -1048,6 +1053,7 @@ export default function DmDashboardPage() {
             { label: combatMode ? "✕ End Combat" : "⚔ Start Combat", onClick: toggleCombatMode },
             { label: "Manage Party", onClick: () => setShowManageParty(true) },
             { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
+            { label: "⚙ DM Settings", href: "/dm/settings" },
             { divider: true },
             textScaleMenuItem,
             {
@@ -1165,6 +1171,7 @@ export default function DmDashboardPage() {
                   remoteHistory={rollHistory}
                   marginTop={0}
                   ref={diceRollerRef}
+                  checkDice={houseRules.abilityCheckDice}
                 />
               </div>
             </div>

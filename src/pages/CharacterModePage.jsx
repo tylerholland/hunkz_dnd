@@ -60,6 +60,7 @@ export default function CharacterModePage() {
   // Stories 52–54 — GET /session-state's serverTime for damage/condition age
   // arithmetic on the player's Map sub-tab.
   const [serverTime, setServerTime] = useState(null);
+  const [houseRules, setHouseRules] = useState(null);
   const [authState, setAuthState] = useState(() => (slug ? "checking" : "locked"));
   const [sessionPassword, setSessionPassword] = useState(null);
   const [unlockInput, setUnlockInput] = useState("");
@@ -169,6 +170,7 @@ export default function CharacterModePage() {
       setInitiativeData(d.initiativePublic || { round: 1, activeTurnIndex: 0, entries: [] });
       setNpcCombat(d.npcCombat || d.npcCombatPublic || { npcs: [] });
       setServerTime(d.serverTime || null);
+      setHouseRules(d.houseRules || null);
       reportServerBuildVersion(d.buildVersion);
       setError(null);
     } catch {
@@ -413,6 +415,7 @@ export default function CharacterModePage() {
       npcCombat={npcCombat}
       wsConnected={wsConnected}
       serverTime={serverTime}
+      houseRules={houseRules}
     />
   );
 }

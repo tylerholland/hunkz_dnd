@@ -218,7 +218,7 @@ test("getSessionState DM variant returns full consolidated payload", async () =>
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(Object.keys(body).sort(), [
-    "buildVersion", "counterWheels", "initiative", "mapLibrary", "npcCombat", "party", "rollHistory", "serverTime",
+    "buildVersion", "counterWheels", "houseRules", "initiative", "mapLibrary", "npcCombat", "party", "rollHistory", "serverTime",
   ].sort());
   assert.equal(body.buildVersion, "abc1234");
 
@@ -231,10 +231,10 @@ test("getSessionState DM variant returns full consolidated payload", async () =>
   assert.deepEqual(partyMember.sharedPlayerNotes, [
     { id: "pn1", text: "Shared note", sharedWithDm: true, createdAt: "2026-01-01" },
   ]);
-  // Fields outside the DM party whitelist (e.g. collections/weapons/stats) are dropped
+  // Fields outside the DM party whitelist (e.g. collections) are dropped.
+  // weapons/stats/equipment ARE whitelisted for the DM card (Stories 50/51/64).
   assert.equal(partyMember.collections, undefined);
-  assert.equal(partyMember.weapons, undefined);
-  assert.equal(partyMember.stats, undefined);
+  assert.deepEqual(partyMember.weapons, [{ id: "w1", name: "Longsword" }]);
 
   assert.equal(body.initiative.round, 2);
   assert.equal(body.npcCombat.npcs.length, 1);
@@ -256,7 +256,7 @@ test("getSessionState public variant leaks nothing beyond the old public project
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(Object.keys(body).sort(), [
-    "buildVersion", "initiativePublic", "mapLibrary", "npcCombatPublic", "partyStatus", "rollHistory", "serverTime",
+    "buildVersion", "houseRules", "initiativePublic", "mapLibrary", "npcCombatPublic", "partyStatus", "rollHistory", "serverTime",
   ].sort());
   assert.equal(body.buildVersion, "abc1234");
 

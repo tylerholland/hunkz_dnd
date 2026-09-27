@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abilityModifier, formatMod, getAbilityMods, getPassivePerception, getSkillNames, abilityCheckExpr, getSpeed, getWeaponSummary, groupDrawerContent } from "./cardStats";
+import { abilityModifier, formatMod, getAbilityMods, getPassivePerception, getSkillNames, getSpeed, getWeaponSummary, groupDrawerContent } from "./cardStats";
 
 const char = {
   stats: [
@@ -33,11 +33,8 @@ describe("cardStats", () => {
     expect(getSpeed({ ...char, conditions: ["Grappled"] }).speed).toBe(0);
   });
 
-  it("lists skill names without 5e bonuses and builds 2d6 check rolls", () => {
+  it("lists skill names without 5e bonuses", () => {
     expect(getSkillNames({ skills: ["lore", "Stealth", " ", 3] })).toEqual(["Lore", "Stealth"]);
-    expect(abilityCheckExpr(3)).toBe("2d6+3");
-    expect(abilityCheckExpr(0)).toBe("2d6+0");
-    expect(abilityCheckExpr(-1)).toBe("2d6-1");
   });
 
   it("summarizes weapon attack and damage", () => {

@@ -1,6 +1,7 @@
 const { GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
 const { db, TABLE } = require("./db");
-const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG } = require("./specialItems");
+const { normalizeHouseRulesRecord } = require("./houseRules");
+const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, HOUSE_RULES_SLUG } = require("./specialItems");
 // Note: no APP_META_SLUG import here — normalizeAppMetaRecord() (Story 36b)
 // normalizes a generic item and doesn't need the slug constant; the sentinel
 // is written directly by deploy.sh and read directly by getSessionState.js.
@@ -247,6 +248,10 @@ async function saveCounterWheelsState({ wheels }) {
   await putSpecialRecord(COUNTER_WHEELS_SLUG, { wheels: Array.isArray(wheels) ? wheels : [] });
 }
 
+async function saveHouseRulesState(rules) {
+  await putSpecialRecord(HOUSE_RULES_SLUG, normalizeHouseRulesRecord(rules));
+}
+
 // Story 36b — stale-client auto-refresh. Written directly by deploy.sh via
 // `aws dynamodb put-item` (no Lambda write path/save helper needed here);
 // read by getSessionState.js on every poll tick. Absent sentinel (e.g. before
@@ -285,4 +290,5 @@ module.exports = {
   getCounterWheelsState,
   saveCounterWheelsState,
   normalizeAppMetaRecord,
+  saveHouseRulesState,
 };

@@ -3,6 +3,7 @@ import { postCharacterRoll } from "../api";
 import RollHistoryList from "./RollHistoryList";
 import { buildCharacterRollPayload, buildDiceExprLabel, buildLocalRollHistoryEntry } from "../lib/rollHistory";
 import { PALETTES } from "../features/characterSheet/theme";
+import { applyCheckAdvantage, DEFAULT_HOUSE_RULES, isCheckDiceGroups, parseCheckDice } from "../lib/houseRules";
 import "./diceRoller.css";
 
 // ── Pure utility functions ─────────────────────────────────────────────────────
@@ -81,7 +82,10 @@ const STAT_NAMES = ["Strength", "Dexterity", "Constitution", "Wisdom", "Intellig
 const STAT_SHORT = { Strength: "STR", Dexterity: "DEX", Constitution: "CON", Wisdom: "WIS", Intelligence: "INT", Charisma: "CHA" };
 
 // ── DiceRoller component ───────────────────────────────────────────────────────
-const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pal, slug, onAdvModeChange }, ref) {
+// `checkDice` — the DM's house-rule ability-check dice (DM Settings; default
+// 2d6). `abilityMods` — optional { Strength: n, … } from the shared
+// abilityModifier() so checks match the DM card (includes equipped items).
+const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pal, slug, onAdvModeChange, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice, abilityMods }, ref) {
   const [isOpen, setIsOpen] = useState(() => {
     if (!slug) return true;
     return sessionStorage.getItem(`dnd_dice_open_${slug}`) !== "false";
@@ -148,7 +152,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   //     passed straight through to the broadcast payload; absent for every
   //     pre-existing call site, so the shared roll feed is unaffected there.
   const executeRoll = useCallback(({
-    groups, flat, label, isD20Attack = false,
+    groups, flat, label, isD20Attack = false, isCheck = false,
     advModeOverride, onComplete, suppressOpenPanel = false, target, attack,
   }) => {
     if (rollState.rolling) { onComplete?.(null); return; }
@@ -175,22 +179,15 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
       rolledGroups[0].rolls[0] = advKept;
     }
 
-    // 2d6 ability check adv/dis: roll a third d6, keep top 2 (adv) or bottom 2 (dis)
-    const isAbility2d6 = groups.length === 1 && groups[0].sides === 6 && groups[0].count === 2;
+    // Ability checks use the house-rule dice (DM Settings): adv/dis rolls one
+    // extra die and keeps the best/worst N — shared with the DM roller.
+    const isCheckRoll = !isD20Attack && (isCheck || isCheckDiceGroups(groups, checkDice));
     let keptRolls = null, droppedRoll = null;
-    if (isAbility2d6 && effectiveAdvMode !== "normal") {
-      const r3 = rollDie(6);
-      const all3 = [...rolledGroups[0].rolls, r3].sort((a, b) => a - b);
-      if (effectiveAdvMode === "advantage") {
-        // keep top 2
-        keptRolls = [all3[1], all3[2]];
-        droppedRoll = all3[0];
-      } else {
-        // keep bottom 2
-        keptRolls = [all3[0], all3[1]];
-        droppedRoll = all3[2];
-      }
-      rolledGroups[0].rolls = keptRolls;
+    if (isCheckRoll && groups.length === 1 && effectiveAdvMode !== "normal") {
+      const applied = applyCheckAdvantage(rolledGroups[0].rolls, rolledGroups[0].sides, effectiveAdvMode, rollDie);
+      rolledGroups[0].rolls = applied.rolls;
+      keptRolls = applied.keptRolls;
+      droppedRoll = applied.droppedRoll;
     }
 
     const diceTotal = rolledGroups.reduce((sum, g) => sum + g.rolls.reduce((s, r) => s + r, 0), 0);
@@ -223,7 +220,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
 
       setRollState({ rolling: false, result: resultObj });
 
-      const modeTag = effectiveAdvMode !== "normal" && (isD20Attack || isAbility2d6)
+      const modeTag = effectiveAdvMode !== "normal" && (isD20Attack || isCheckRoll)
         ? (effectiveAdvMode === "advantage" ? " (adv)" : " (dis)") : "";
 
       setHistory(prev => [
@@ -248,7 +245,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
 
       onComplete?.(resultObj);
     }, resolveTime);
-  }, [rollState.rolling, advMode, ensureOpen]);
+  }, [rollState.rolling, advMode, ensureOpen, checkDice]);
 
   // ── Roll handlers ────────────────────────────────────────────────────────────
   const rollWeaponAtk = (weapon) => {
@@ -264,13 +261,17 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
     executeRoll({ groups: parsed.groups, flat: parsed.flat, label: `${weapon.name} DMG`, isD20Attack: false });
   };
 
+  const modFor = useCallback((stat) => {
+    const name = stat?.name ?? stat?.stat;
+    return Number.isFinite(abilityMods?.[name]) ? abilityMods[name] : getAbilityMod(stat);
+  }, [abilityMods]);
+
   const rollAbility = useCallback((statOrName) => {
     const stat = typeof statOrName === "string"
       ? (stats || []).find(s => (s.name ?? s.stat) === statOrName) || { name: statOrName, score: 10, mods: [] }
       : statOrName;
-    const mod = getAbilityMod(stat);
-    executeRoll({ groups: [{ count: 2, sides: 6 }], flat: mod, label: `${stat.name ?? stat.stat} Check`, isD20Attack: false });
-  }, [stats, executeRoll]);
+    executeRoll({ groups: [parseCheckDice(checkDice)], flat: modFor(stat), label: `${stat.name ?? stat.stat} Check`, isD20Attack: false, isCheck: true });
+  }, [stats, executeRoll, checkDice, modFor]);
 
   // Story 57 (ADR-027) — the Attack Bar's entry point into this same engine.
   // `attackEntry` is the `{ id, kind, name, toHit, damage }` shape returned
@@ -530,14 +531,14 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
           <div className="flex-row" style={{ gap: 8, justifyContent: "center", flexWrap: "wrap", marginBottom: 8 }}>
             {STAT_NAMES.map(name => {
               const stat = (stats || []).find(s => (s.name ?? s.stat) === name) || { name, score: 10, mods: [] };
-              const mod = getAbilityMod(stat);
+              const mod = modFor(stat);
               const short = STAT_SHORT[name];
               const modStr = mod >= 0 ? `+${mod}` : `${mod}`;
               const isNeg = mod < 0;
               return (
                 <div
                   key={name}
-                  title={`Roll ${short} check`}
+                  title={`Roll ${short} check (${checkDice}${mod >= 0 ? "+" : ""}${mod})`}
                   onClick={() => !rolling && rollAbility(stat)}
                   className="flex-col"
                   style={{ alignItems: "center", gap: 4, cursor: rolling ? "not-allowed" : "pointer", opacity: rolling ? 0.5 : 1 }}

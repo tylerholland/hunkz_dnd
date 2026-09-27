@@ -31,9 +31,16 @@ describe("DM card stats band", () => {
     const onRoll = vi.fn();
     render(<CardStatsBand char={char} onRoll={onRoll} expanded={false} onToggleExpand={() => {}} />);
     fireEvent.click(screen.getByTitle("Roll Wisdom (2d6+3)"));
-    expect(onRoll).toHaveBeenCalledWith("2d6+3", "Wisdom check");
+    expect(onRoll).toHaveBeenCalledWith("2d6+3", "Wisdom check", { isCheck: true });
     expect(screen.queryByRole("button", { name: /Perception/ })).not.toBeInTheDocument();
     expect(screen.getByText("Perception")).toBeInTheDocument();
+  });
+
+  it("uses the DM's house-rule check dice when set", () => {
+    const onRoll = vi.fn();
+    render(<CardStatsBand char={char} onRoll={onRoll} expanded={false} onToggleExpand={() => {}} checkDice="1d20" />);
+    fireEvent.click(screen.getByTitle("Roll Wisdom (1d20+3)"));
+    expect(onRoll).toHaveBeenCalledWith("1d20+3", "Wisdom check", { isCheck: true });
   });
 
   it("drawer lists loadout and rolls weapon attack and damage", () => {

@@ -55,6 +55,7 @@ export default function CharacterCard({
   expanded: expandedProp,
   onToggleExpand,
   onRoll,
+  checkDice,
 }) {
   const pal = useContext(PalCtx);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -67,7 +68,7 @@ export default function CharacterCard({
   const expanded = expandedProp ?? localExpanded;
   const toggleExpanded = onToggleExpand ?? (() => setLocalExpanded((value) => !value));
   const cardRoll = onRoll
-    ? (expr, label) => onRoll({ expr, label, characterName: char.name, palette: char.palette })
+    ? (expr, label, opts) => onRoll({ expr, label, characterName: char.name, palette: char.palette, isCheck: !!opts?.isCheck })
     : undefined;
   const charPal = PALETTES[char.palette] || PALETTES.ocean;
   const cardPal = getPartyCardPalette(charPal, pal);
@@ -566,6 +567,7 @@ export default function CharacterCard({
             onRoll={cardRoll}
             expanded={expanded}
             onToggleExpand={toggleExpanded}
+            checkDice={checkDice}
           />
 
           {/* Tier-2 collapse: XP + Coin */}

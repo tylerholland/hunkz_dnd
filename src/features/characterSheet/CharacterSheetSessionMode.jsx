@@ -23,7 +23,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
-import { modOf, fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
+import { fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
 import CharacterTalents from "./CharacterTalents";
 import { patchSession, postCharacterRoll, moveMapToken } from "../../api";
 import DiceRoller from "../../components/DiceRoller";
@@ -57,6 +57,8 @@ import SessionQuickAdd from "./SessionQuickAdd";
 import SessionLoadoutRow from "./SessionLoadoutRow";
 import SessionLedger from "./SessionLedger";
 import { applyDelta, normalizeCoin } from "./sessionLoadout";
+import { abilityModifier } from "../dmDashboard/cardStats";
+import { abilityCheckExpr, DEFAULT_HOUSE_RULES } from "../../lib/houseRules";
 import { resolveMapBandOpen } from "./sessionMapBand";
 import RollOverlay from "../../components/RollOverlay";
 import "../dmDashboard/battleMode.css";
@@ -114,20 +116,6 @@ function partyRowClass(member) {
 
 function avatarInitial(name) {
   return (name || "?")[0].toUpperCase();
-}
-
-// Compute total ability modifier including item bonuses
-function computeMod(stat, weapons, equipment) {
-  const base = modOf(stat.score);
-  const attrName = stat.stat;
-  let bonus = 0;
-  for (const item of [...(weapons || []), ...(equipment || [])]) {
-    if (item.equipped === false) continue;
-    for (const mod of (item.mods || [])) {
-      if (mod.attribute === attrName) bonus += (mod.value || 0);
-    }
-  }
-  return base + bonus;
 }
 
 // Build weapon meta line from mods (Attack Bonus + Damage)
@@ -370,6 +358,8 @@ export default function CharacterSheetSessionMode({
   // Stories 52–54 — GET /session-state's serverTime for damage/condition age
   // arithmetic (see PlayerMapViewer).
   serverTime,
+  // DM Settings house rules (GET /session-state) — e.g. ability-check dice.
+  houseRules,
 }) {
   const navigate = useNavigate();
   const [guideOpen, setGuideOpen] = useState(false);
@@ -900,11 +890,15 @@ export default function CharacterSheetSessionMode({
   }, [mode]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Ability modifiers
+  // Shared with the DM card (base score + equipped item mods) so a check
+  // shows and rolls the same modifier on every screen.
   const abilityMods = stats.map((s) => ({
     name: s.stat,
     abbr: STAT_ABBR[s.stat] || s.stat.slice(0, 3).toUpperCase(),
-    mod: computeMod(s, weapons, equipment),
+    mod: abilityModifier(char, s.stat),
   }));
+  const abilityModsByName = Object.fromEntries(abilityMods.map((a) => [a.name, a.mod]));
+  const checkDice = houseRules?.abilityCheckDice || DEFAULT_HOUSE_RULES.abilityCheckDice;
 
   // AC and Speed from item mods
   const acBonus = [...weapons, ...equipment]
@@ -1115,7 +1109,7 @@ export default function CharacterSheetSessionMode({
                 key={a.name}
                 className="cs-sm-ability-chip"
                 style={{ cursor: "pointer" }}
-                title={`Roll ${a.abbr} check (2d6)`}
+                title={`Roll ${a.abbr} check (${abilityCheckExpr(a.mod, checkDice)})`}
                 onClick={() => diceRollerRef.current?.rollAbility(a.name)}
               >
                 <span className="cs-sm-ability-mod" style={{ color: pal.gem }}>
@@ -1757,6 +1751,8 @@ export default function CharacterSheetSessionMode({
             pal={pal}
             slug={slug}
             onAdvModeChange={setMirroredAdvMode}
+            checkDice={checkDice}
+            abilityMods={abilityModsByName}
           />
 
         </div>

@@ -267,6 +267,14 @@ export const putCounterWheels = (dmPassword, wheels, wheelEvent) =>
     body: JSON.stringify({ wheels, ...(wheelEvent ? { wheelEvent } : {}) }),
   });
 
+// House rules (DM Settings) — read via getSessionState().houseRules.
+export const putHouseRules = (dmPassword, rules) =>
+  request("/house-rules", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify(rules),
+  });
+
 export const presignNpcPortrait = (filename, contentType, size, dmPassword) =>
   request("/npc-library/portraits/presign", {
     method: "POST",
