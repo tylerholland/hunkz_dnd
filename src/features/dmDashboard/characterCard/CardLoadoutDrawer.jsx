@@ -3,6 +3,7 @@ import { formatMod, getSkillNames, groupDrawerContent, titleCase } from "../card
 import { getTalentDetail } from "../../characterSheet/talentCatalog";
 import { itemTypeLabel } from "../../characterSheet/ItemEditorModal";
 import DrawerDetailPopover from "./DrawerDetailPopover";
+import ItemTypeIcon from "../../characterSheet/ItemTypeIcon";
 import "./cardStatsBand.css";
 
 function Section({ title, count, children }) {
@@ -56,6 +57,11 @@ function ItemList({ items, renderExtra, onDetail }) {
     <ul className="cc-drawer-list">
       {items.map((item, idx) => (
         <li key={item.id || idx} className={`cc-drawer-item${item.stowed ? " muted" : ""}`}>
+          {/* Type icon (display only): solid = equipped, outline = stowed.
+              Attack spells have none but keep the slot so names align. */}
+          <span className={`cc-drawer-icon${item.stowed ? "" : " on"}`} aria-hidden="true">
+            {item.icon && <ItemTypeIcon type={item.icon} filled={!item.stowed} size={14} />}
+          </span>
           <span className="cc-drawer-name">
             {item.description ? (
               <button
@@ -82,7 +88,7 @@ function ItemList({ items, renderExtra, onDetail }) {
 // (see groupDrawerContent); empty sections don't render.
 export default function CardLoadoutDrawer({ char, onRoll }) {
   const ref = useRef(null);
-  const { attacks, gear, consumables, spells, pack } = groupDrawerContent(char);
+  const { attacks, gear, spells, pack } = groupDrawerContent(char);
   const [detail, setDetail] = useState(null);
   const closeDetail = useCallback(() => setDetail(null), []);
   // Tap an entry with more to say → one floating detail card (tap again to close).
@@ -103,7 +109,7 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
     return groups;
   }, {});
   const spellGroupKeys = Object.keys(spellGroups).sort((a, b) => (a === "Cantrips" ? -1 : b === "Cantrips" ? 1 : a.localeCompare(b, undefined, { numeric: true })));
-  const nothing = !attacks.length && !gear.length && !consumables.length && !spells.length && !abilities.length && !skills.length && !pack.length;
+  const nothing = !attacks.length && !gear.length && !spells.length && !abilities.length && !skills.length && !pack.length;
 
   return (
     <div className="cc-drawer" ref={ref}>
@@ -138,13 +144,6 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
       {gear.length > 0 && (
         <Section title="Gear" count={gear.length}>
           <ItemList items={gear}
-            onDetail={openDetail} />
-        </Section>
-      )}
-
-      {consumables.length > 0 && (
-        <Section title="Consumables" count={consumables.length}>
-          <ItemList items={consumables}
             onDetail={openDetail} />
         </Section>
       )}

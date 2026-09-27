@@ -66,8 +66,13 @@ describe("groupDrawerContent", () => {
     expect(groups.attacks.map((a) => [a.name, a.attack, a.damage])).toEqual([["Longsword", 5, "1d8+3"], ["Fire Bolt", 6, "1d10"]]);
     expect(groups.gear.map((g) => g.name)).toEqual(["Chain Mail", "Ring of Protection"]);
     expect(groups.gear[1].mods).toBe("Armor +1");
-    expect(groups.consumables.map((c) => [c.name, c.qty])).toEqual([["Healing Potion", 2]]);
+    expect(groups.consumables).toBeUndefined();
     expect(groups.spells.map((s) => s.name)).toEqual(["Shield", "Light"]);
-    expect(groups.pack.map((p) => [p.name, !!p.stowed])).toEqual([["Spare Dagger", true], ["Rope", false], ["Cloak of Elvenkind", true]]);
+    expect(groups.pack.map((p) => [p.name, !!p.stowed, p.qty])).toEqual([
+      ["Spare Dagger", true, undefined], ["Healing Potion", false, 2], ["Rope", false, undefined], ["Cloak of Elvenkind", true, undefined],
+    ]);
+    expect(groups.attacks[0].icon).toBe("weapon");
+    expect(groups.gear.map((g) => g.icon)).toEqual(["armor", "other"]);
+    expect(groups.pack[1].icon).toBe("potion");
   });
 });

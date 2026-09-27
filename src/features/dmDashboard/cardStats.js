@@ -1,4 +1,5 @@
 import { normalizeSpells } from "../characterSheet/constants";
+import { itemIconType } from "../characterSheet/sessionLoadout";
 
 // Derived stats for the DM party card (Stories 50/51/64). Mirrors Session
 // mode's computeMod: base score modifier plus mods from equipped items.
@@ -79,8 +80,8 @@ export function titleCase(text) {
 
 // ── DM drawer grouping ───────────────────────────────────────────────────────
 // Ordered by the questions a DM asks mid-scene: what can they hit with
-// (attacks), what's protecting/empowering them (gear), what's running out
-// (consumables), what else can they cast (spells), what's in the bag (pack).
+// (attacks), what's protecting/empowering them (gear), what else can they
+// cast (spells), what's in the bag (pack — including counted consumables).
 // "Equipped" alone doesn't promote plain items — a rope stays in the pack.
 const GEAR_TYPES = new Set(["armor", "shield", "wondrous"]);
 
@@ -109,11 +110,10 @@ export function groupDrawerContent(char) {
 
   const attacks = [];
   const gear = [];
-  const consumables = [];
   const pack = [];
 
   for (const weapon of weapons) {
-    const entry = { id: weapon.id, kind: "weapon", name: weapon.name || "Unnamed", qty: weapon.qty, description: weapon.description || "", ...getWeaponSummary(weapon) };
+    const entry = { id: weapon.id, kind: "weapon", icon: "weapon", name: weapon.name || "Unnamed", qty: weapon.qty, description: weapon.description || "", ...getWeaponSummary(weapon) };
     if (isEquipped(weapon)) attacks.push(entry);
     else pack.push({ ...entry, stowed: true });
   }
@@ -130,13 +130,12 @@ export function groupDrawerContent(char) {
   }
 
   for (const item of equipment) {
-    const entry = { id: item.id, name: item.name || "Unnamed", qty: item.qty, type: item.type || "", description: item.description || "", mods: modsText(item), attuned: !!item.attuned, requiresAttunement: !!item.requiresAttunement };
+    const entry = { id: item.id, icon: itemIconType("equipment", item), name: item.name || "Unnamed", qty: item.qty, type: item.type || "", description: item.description || "", mods: modsText(item), attuned: !!item.attuned, requiresAttunement: !!item.requiresAttunement };
     const type = String(item.type || "").toLowerCase();
-    if (item.qty != null) consumables.push({ ...entry, stowed: !isEquipped(item) });
-    else if (isEquipped(item) && (GEAR_TYPES.has(type) || entry.mods || item.requiresAttunement)) gear.push(entry);
+    if (isEquipped(item) && (GEAR_TYPES.has(type) || entry.mods || item.requiresAttunement)) gear.push(entry);
     else pack.push({ ...entry, stowed: !isEquipped(item) });
   }
 
   const otherSpells = spells.filter((s) => s.role !== "attack");
-  return { attacks, gear, consumables, spells: otherSpells, pack };
+  return { attacks, gear, spells: otherSpells, pack };
 }

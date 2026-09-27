@@ -307,7 +307,7 @@
   color: var(--pal-text-muted);
 }
 
-/* Drawer sections (Attacks / Gear / Consumables / Spells / Abilities & Skills / Pack) */
+/* Drawer sections (Attacks / Gear / Spells / Abilities & Skills / Pack) */
 .cc-drawer-mods {
   display: block;
   margin-top: 1px;
@@ -424,4 +424,20 @@ button.cc-drawer-chip {
 .cc-detail-pop {
   scrollbar-width: thin;
   scrollbar-color: color-mix(in srgb, var(--pal-accent, #a07850) 45%, transparent) transparent;
+}
+
+/* Type icon slot in drawer rows (display only) */
+.cc-drawer-icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  color: var(--pal-text-muted);
+  opacity: 0.55;
+}
+
+.cc-drawer-icon.on {
+  color: var(--pal-accent-bright);
+  opacity: 1;
 }
