@@ -125,6 +125,10 @@
   color: var(--pal-accent-bright);
 }
 
+.cc-skill-chip--static {
+  cursor: default;
+}
+
 .cc-skill-chip--more {
   color: var(--pal-text-muted);
 }

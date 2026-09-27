@@ -27,13 +27,13 @@ describe("DM card stats band", () => {
     expect(screen.getByRole("button", { name: "+1" })).toBeInTheDocument(); // 5 skills, 4 shown
   });
 
-  it("rolls a check when a modifier or skill is clicked", () => {
+  it("rolls a 2d6 ability check (house rule); skill chips are names only", () => {
     const onRoll = vi.fn();
     render(<CardStatsBand char={char} onRoll={onRoll} expanded={false} onToggleExpand={() => {}} />);
-    fireEvent.click(screen.getByTitle("Roll Wisdom (1d20+3)"));
-    expect(onRoll).toHaveBeenCalledWith("1d20+3", "Wisdom check");
-    fireEvent.click(screen.getByTitle("Roll Perception (1d20+6)"));
-    expect(onRoll).toHaveBeenLastCalledWith("1d20+6", "Perception");
+    fireEvent.click(screen.getByTitle("Roll Wisdom (2d6+3)"));
+    expect(onRoll).toHaveBeenCalledWith("2d6+3", "Wisdom check");
+    expect(screen.queryByRole("button", { name: /Perception/ })).not.toBeInTheDocument();
+    expect(screen.getByText("Perception")).toBeInTheDocument();
   });
 
   it("drawer lists loadout and rolls weapon attack and damage", () => {

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { abilityModifier, formatMod, getAbilityMods, getPassivePerception, getSkillBonuses, getSpeed, getWeaponSummary, groupDrawerContent } from "./cardStats";
+import { abilityModifier, formatMod, getAbilityMods, getPassivePerception, getSkillNames, abilityCheckExpr, getSpeed, getWeaponSummary, groupDrawerContent } from "./cardStats";
 
 const char = {
   stats: [
@@ -33,12 +33,11 @@ describe("cardStats", () => {
     expect(getSpeed({ ...char, conditions: ["Grappled"] }).speed).toBe(0);
   });
 
-  it("adds proficiency to standard skills only", () => {
-    expect(getSkillBonuses({ ...char, level: 5, skills: ["perception", "Stealth", "Basket weaving"] })).toEqual([
-      { name: "Perception", bonus: 7 },
-      { name: "Stealth", bonus: 5 },
-      { name: "Basket Weaving", bonus: null },
-    ]);
+  it("lists skill names without 5e bonuses and builds 2d6 check rolls", () => {
+    expect(getSkillNames({ skills: ["lore", "Stealth", " ", 3] })).toEqual(["Lore", "Stealth"]);
+    expect(abilityCheckExpr(3)).toBe("2d6+3");
+    expect(abilityCheckExpr(0)).toBe("2d6+0");
+    expect(abilityCheckExpr(-1)).toBe("2d6-1");
   });
 
   it("summarizes weapon attack and damage", () => {

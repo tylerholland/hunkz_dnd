@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { formatMod, getSkillBonuses, groupDrawerContent, titleCase } from "../cardStats";
+import { formatMod, getSkillNames, groupDrawerContent, titleCase } from "../cardStats";
 import { getTalentDetail } from "../../characterSheet/talentCatalog";
 import { itemTypeLabel } from "../../characterSheet/ItemEditorModal";
 import DrawerDetailPopover from "./DrawerDetailPopover";
@@ -28,6 +28,7 @@ function spellLevelLabel(level) {
   return `Level ${n}`;
 }
 
+// Attack rolls stay d20 (the 2d6 house rule covers ability checks).
 const rollExpr = (bonus) => `1d20${bonus >= 0 ? "+" : ""}${bonus}`;
 
 function spellMeta(level) {
@@ -90,7 +91,7 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
     setDetail((current) => (current?.anchor === anchor ? null : { ...content, anchor, rect: anchor.getBoundingClientRect() }));
   };
   const abilities = (char.specialAbilities || []).filter((a) => typeof a === "string" && a.trim());
-  const skills = getSkillBonuses(char);
+  const skills = getSkillNames(char);
 
   useEffect(() => {
     ref.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
@@ -192,11 +193,7 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
           )}
           {skills.length > 0 && (
             <div className={`cc-drawer-chips${abilities.length > 0 ? " cc-drawer-chips--spaced" : ""}`}>
-              {skills.map(({ name, bonus }) => (
-                <button key={name} type="button" className="cc-skill-chip" disabled={!onRoll || bonus === null}
-                  onClick={() => bonus !== null && onRoll?.(rollExpr(bonus), name)}
-                >{name}{bonus !== null && <span className="cc-skill-bonus">{formatMod(bonus)}</span>}</button>
-              ))}
+              {skills.map((name) => <span key={name} className="cc-drawer-chip">{name}</span>)}
             </div>
           )}
         </Section>

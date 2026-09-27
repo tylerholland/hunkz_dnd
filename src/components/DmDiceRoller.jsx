@@ -35,6 +35,17 @@ function executeSingleRoll(groups, flat, advMode) {
     rolledGroups[0].rolls[0] = advKept;
   }
 
+  // House rule (Story 32): a 2d6 check with adv/dis rolls 3d6 and keeps the
+  // best/worst two — mirrors DiceRoller.jsx so DM rolls match player rolls.
+  const is2d6Check = groups.length === 1 && groups[0].sides === 6 && groups[0].count === 2;
+  let keptRolls = null, droppedRoll = null;
+  if (is2d6Check && advMode !== "normal") {
+    const all3 = [...rolledGroups[0].rolls, rollDie(6)].sort((a, b) => a - b);
+    if (advMode === "advantage") { keptRolls = [all3[1], all3[2]]; droppedRoll = all3[0]; }
+    else { keptRolls = [all3[0], all3[1]]; droppedRoll = all3[2]; }
+    rolledGroups[0].rolls = keptRolls;
+  }
+
   const diceTotal = rolledGroups.reduce((sum, g) => sum + g.rolls.reduce((s, r) => s + r, 0), 0);
   const total = diceTotal + flat;
   const rawRoll = isSingleD20 ? rolledGroups[0].rolls[0] : null;
@@ -43,7 +54,7 @@ function executeSingleRoll(groups, flat, advMode) {
   const isFumble = hasD20 && rawRoll === 1;
   const isMultiGroup = rolledGroups.length > 1;
 
-  return { groups: rolledGroups, flat, total, isCrit, isFumble, advKept, advDiscarded, isMultiGroup };
+  return { groups: rolledGroups, flat, total, isCrit, isFumble, advKept, advDiscarded, isMultiGroup, keptRolls, droppedRoll };
 }
 
 function isDamageRoll(groups) {

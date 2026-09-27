@@ -64,29 +64,18 @@ export function getWeaponSummary(weapon) {
   return { attack, damage };
 }
 
-// Character skills are stored as the names of proficient skills.
-const SKILL_ABILITY = {
-  acrobatics: "Dexterity", "animal handling": "Wisdom", arcana: "Intelligence",
-  athletics: "Strength", deception: "Charisma", history: "Intelligence",
-  insight: "Wisdom", intimidation: "Charisma", investigation: "Intelligence",
-  medicine: "Wisdom", nature: "Intelligence", perception: "Wisdom",
-  performance: "Charisma", persuasion: "Charisma", religion: "Intelligence",
-  "sleight of hand": "Dexterity", stealth: "Dexterity", survival: "Wisdom",
-};
-
-export function proficiencyBonus(level) {
-  return 2 + Math.floor((Math.max(1, toInt(level) || 1) - 1) / 4);
-}
-
-// Returns [{ name, bonus }] — bonus is null for non-standard skills.
-export function getSkillBonuses(char) {
-  const prof = proficiencyBonus(char?.level);
+// Skills are this table's own list (from Noam's system — see
+// talentCatalog.js), not 5e skills, and how a skill modifies a 2d6 check
+// isn't settled yet — so the card shows names only, with no bonus or roll.
+export function getSkillNames(char) {
   return (char?.skills || [])
     .filter((skill) => typeof skill === "string" && skill.trim())
-    .map((skill) => {
-      const ability = SKILL_ABILITY[skill.trim().toLowerCase()];
-      return { name: titleCase(skill.trim()), bonus: ability ? abilityModifier(char, ability) + prof : null };
-    });
+    .map((skill) => titleCase(skill.trim()));
+}
+
+// Ability checks use the table's 2d6 + modifier house rule (Story 32).
+export function abilityCheckExpr(mod) {
+  return `2d6${mod >= 0 ? "+" : ""}${mod}`;
 }
 
 export function titleCase(text) {
