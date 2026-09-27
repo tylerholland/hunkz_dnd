@@ -1261,7 +1261,10 @@
 
 .cc-notes-input {
   flex: 1;
-  background: var(--pal-surface-solid);
+  /* Neutral field tint, not --pal-surface-solid: on a dark dashboard a light
+     palette (Vellum) keeps a half-transparent parchment surface that read as
+     flat grey behind the text. */
+  background: rgba(0, 0, 0, 0.22);
   border: 1px solid var(--pal-border);
   border-radius: 3px;
   color: var(--pal-text);
