@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { formatMod, getSkillNames, groupDrawerContent, titleCase } from "../cardStats";
 import { getTalentDetail } from "../../characterSheet/talentCatalog";
 import { itemTypeLabel } from "../../characterSheet/ItemEditorModal";
@@ -52,16 +52,29 @@ function itemMeta(item) {
   return parts.filter(Boolean).join(" · ");
 }
 
-function ItemList({ items, renderExtra, onDetail }) {
+function ItemList({ items, renderExtra, onDetail, onToggleEquipped }) {
   return (
     <ul className="cc-drawer-list">
       {items.map((item, idx) => (
         <li key={item.id || idx} className={`cc-drawer-item${item.stowed ? " muted" : ""}`}>
           {/* Type icon (display only): solid = equipped, outline = stowed.
               Attack spells have none but keep the slot so names align. */}
-          <span className={`cc-drawer-icon${item.stowed ? "" : " on"}`} aria-hidden="true">
-            {item.icon && <ItemTypeIcon type={item.icon} filled={!item.stowed} size={14} />}
-          </span>
+          {item.icon && onToggleEquipped && item.source ? (
+            <button
+              type="button"
+              className={`cc-drawer-icon cc-drawer-icon--btn${item.stowed ? "" : " on"}`}
+              onClick={() => onToggleEquipped(item.source, item.id)}
+              aria-pressed={!item.stowed}
+              aria-label={`${item.stowed ? "Equip" : "Stow"} ${item.name}`}
+              title={item.stowed ? "Stowed — click to equip" : "Equipped — click to stow"}
+            >
+              <ItemTypeIcon type={item.icon} filled={!item.stowed} size={14} />
+            </button>
+          ) : (
+            <span className={`cc-drawer-icon${item.stowed ? "" : " on"}`} aria-hidden="true">
+              {item.icon && <ItemTypeIcon type={item.icon} filled={!item.stowed} size={14} />}
+            </span>
+          )}
           <span className="cc-drawer-name">
             {item.description ? (
               <button
@@ -86,7 +99,7 @@ function ItemList({ items, renderExtra, onDetail }) {
 // Read-only loadout drawer (Stories 51/58). One open at a time — the parent
 // owns which card is expanded. Sections follow the DM's mid-scene questions
 // (see groupDrawerContent); empty sections don't render.
-export default function CardLoadoutDrawer({ char, onRoll }) {
+export default function CardLoadoutDrawer({ char, onRoll, onToggleEquipped }) {
   const ref = useRef(null);
   const { attacks, gear, spells, pack } = groupDrawerContent(char);
   const [detail, setDetail] = useState(null);
@@ -98,10 +111,6 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
   };
   const abilities = (char.specialAbilities || []).filter((a) => typeof a === "string" && a.trim());
   const skills = getSkillNames(char);
-
-  useEffect(() => {
-    ref.current?.scrollIntoView?.({ block: "nearest", behavior: "smooth" });
-  }, []);
 
   const spellGroups = spells.reduce((groups, spell) => {
     const label = spellLevelLabel(spell.level);
@@ -120,6 +129,7 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
           <ItemList
             items={attacks}
             onDetail={openDetail}
+            onToggleEquipped={onToggleEquipped}
             renderExtra={(entry) => (
               <>
                 {entry.kind === "spell" && <span className="cc-drawer-tag">spell</span>}
@@ -144,7 +154,8 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
       {gear.length > 0 && (
         <Section title="Gear" count={gear.length}>
           <ItemList items={gear}
-            onDetail={openDetail} />
+            onDetail={openDetail}
+            onToggleEquipped={onToggleEquipped} />
         </Section>
       )}
 
@@ -201,7 +212,8 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
       {pack.length > 0 && (
         <Section title="Pack" count={pack.length}>
           <ItemList items={pack}
-            onDetail={openDetail} />
+            onDetail={openDetail}
+            onToggleEquipped={onToggleEquipped} />
         </Section>
       )}
       <DrawerDetailPopover detail={detail} onClose={closeDetail} />

@@ -24,6 +24,7 @@ import XpCoinRow from "./characterCard/XpCoinRow";
 import DeathSavesStrip from "./characterCard/DeathSavesStrip";
 import CardStatsBand from "./characterCard/CardStatsBand";
 import CardLoadoutDrawer from "./characterCard/CardLoadoutDrawer";
+import DrawerCollapse from "./characterCard/DrawerCollapse";
 import { abilityModifier, formatMod } from "./cardStats";
 import "./characterCard.css";
 
@@ -270,6 +271,14 @@ export default function CharacterCard({
       return false;
     }
   }, [char.slug, dmPassword, onCommitSessionUpdates, onUpdate]);
+
+  // DM toggle from the loadout drawer: equip/stow one weapon or item.
+  const toggleItemEquipped = useCallback((source, id) => {
+    const list = Array.isArray(char[source]) ? char[source] : [];
+    if (!list.some((item) => item?.id === id)) return;
+    const next = list.map((item) => (item?.id === id ? { ...item, equipped: item.equipped === false } : item));
+    commitSessionFields({ [source]: next });
+  }, [char, commitSessionFields]);
 
   async function removeCondition(cond) {
     if (removingConds.includes(cond)) return;
@@ -584,7 +593,9 @@ export default function CharacterCard({
           />
       </div>
 
-      {expanded && <CardLoadoutDrawer char={char} onRoll={cardRoll} />}
+      <DrawerCollapse open={expanded}>
+        <CardLoadoutDrawer char={char} onRoll={cardRoll} onToggleEquipped={toggleItemEquipped} />
+      </DrawerCollapse>
 
       <DmNotesStrip
         slug={char.slug}

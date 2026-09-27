@@ -75,3 +75,17 @@ describe("DM drawer details", () => {
     expect(screen.getByRole("dialog", { name: "Torch" })).toHaveTextContent("Qty 4");
   });
 });
+
+describe("DM drawer equip toggle", () => {
+  it("toggles a weapon or item from its type icon", () => {
+    const onToggleEquipped = vi.fn();
+    render(<CardLoadoutDrawer onToggleEquipped={onToggleEquipped} char={{
+      weapons: [{ id: "w1", name: "Axe" }],
+      equipment: [{ id: "e1", name: "Rope", equipped: false }],
+    }} />);
+    fireEvent.click(screen.getByLabelText("Stow Axe"));
+    expect(onToggleEquipped).toHaveBeenCalledWith("weapons", "w1");
+    fireEvent.click(screen.getByLabelText("Equip Rope"));
+    expect(onToggleEquipped).toHaveBeenLastCalledWith("equipment", "e1");
+  });
+});
