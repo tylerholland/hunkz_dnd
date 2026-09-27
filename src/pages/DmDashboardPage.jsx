@@ -487,15 +487,31 @@ export default function DmDashboardPage() {
       conditions: [],
       initiativeEntryId: entryId,
     };
-    const updatedNpcs = [...(npcCombat.npcs || []), newNpc];
+    const updatedNpcCombat = { npcs: [...(npcCombat.npcs || []), newNpc] };
     const updatedEntries = initiative.entries.map((value) => value.id === entryId ? { ...value, npcId } : value);
+    const updatedInitiative = { entries: updatedEntries, activeTurnIndex: initiative.activeTurnIndex ?? 0, round: initiative.round ?? 1 };
+
+    // Instant: show the new NPC card + linked entry now, reconcile on landing.
+    setInitiative(updatedInitiative);
+    initiativeExpectedRef.current = updatedInitiative;
+    npcCombatExpectedRef.current = updatedNpcCombat;
+    setNpcCombat(updatedNpcCombat);
+
     try {
       await Promise.all([
-        putNpcCombat(dmPassword, { npcs: updatedNpcs }),
-        putInitiative(dmPassword, { entries: updatedEntries, activeTurnIndex: initiative.activeTurnIndex ?? 0, round: initiative.round ?? 1 }),
+        putNpcCombat(dmPassword, updatedNpcCombat),
+        putInitiative(dmPassword, updatedInitiative),
       ]);
+      initiativeServerRef.current = updatedInitiative;
+      npcCombatServerRef.current = updatedNpcCombat;
       queueDashboardRefresh(0);
-    } catch {}
+    } catch {
+      initiativeExpectedRef.current = null;
+      npcCombatExpectedRef.current = null;
+      setInitiative(initiativeServerRef.current);
+      setNpcCombat(npcCombatServerRef.current);
+      queueDashboardRefresh(0);
+    }
   }, [dmPassword, initiative, npcCombat, queueDashboardRefresh]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleAddNpcToInitiative = useCallback(async (npcId, targetIndex = null) => {
@@ -673,7 +689,13 @@ export default function DmDashboardPage() {
     }
 
     setNpcLibrary({ templates: nextTemplates });
-    await putNpcLibrary(dmPassword, nextTemplates);
+    try {
+      await putNpcLibrary(dmPassword, nextTemplates);
+    } catch {
+      setNpcLibrary({ templates: current });
+      setRestNotice("Couldn't save to the Enemies library — the change was undone.");
+      setTimeout(() => setRestNotice(""), 5000);
+    }
   }, [dmPassword, npcLibrary]);
 
   const handleCardUpdate = useCallback((action) => {
@@ -760,7 +782,14 @@ export default function DmDashboardPage() {
       setPartyVisibilityEnabled(nextPartyVisibilityEnabled);
     }
 
-    setParty((current) => current.filter((character) => nextMembers.includes(character.slug)));
+    // Instant: reorder/remove existing cards and add placeholder cards for new
+    // members (from the library summary) until the next poll fills them in.
+    setParty((current) => {
+      const bySlug = new Map(current.map((character) => [character.slug, character]));
+      return nextMembers
+        .map((slug) => bySlug.get(slug) || libraryCharacters.find((character) => character.slug === slug))
+        .filter(Boolean);
+    });
 
     const allowedMemberSet = new Set(nextMembers);
     const filteredEntries = (initiative.entries || []).filter((entry) => !entry.isPC || (entry.slug && allowedMemberSet.has(entry.slug)));
@@ -792,6 +821,8 @@ export default function DmDashboardPage() {
       partyRosterExpectedRef.current = null;
       await fetchRosterContext().catch(() => {});
       queueDashboardRefresh(0);
+      setRestNotice("Couldn't save the party roster — the change was undone.");
+      setTimeout(() => setRestNotice(""), 5000);
       throw err;
     }
   }

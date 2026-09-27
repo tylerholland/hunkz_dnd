@@ -13,8 +13,6 @@ export default function ManagePartyModal({ characters, rosterMembers, partyVisib
   const pal = useContext(PalCtx);
   const [members, setMembers] = useState(rosterMembers);
   const [visibilityEnabled, setVisibilityEnabled] = useState(partyVisibilityEnabled);
-  const [saving, setSaving] = useState(false);
-  const [error, setError] = useState("");
 
   useEffect(() => {
     function onKeyDown(e) {
@@ -51,17 +49,11 @@ export default function ManagePartyModal({ characters, rosterMembers, partyVisib
     });
   }
 
-  async function handleSave() {
-    setSaving(true);
-    setError("");
-    try {
-      await onSave(members, visibilityEnabled);
-      onClose();
-    } catch {
-      setError("Could not save party roster.");
-    } finally {
-      setSaving(false);
-    }
+  // Instant: the dashboard applies the roster optimistically, so close now and
+  // let the save finish in the background (the dashboard reports failures).
+  function handleSave() {
+    Promise.resolve(onSave(members, visibilityEnabled)).catch(() => {});
+    onClose();
   }
 
   return (
@@ -130,13 +122,10 @@ export default function ManagePartyModal({ characters, rosterMembers, partyVisib
           <span style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.text }}>Allow players to see party HP and conditions</span>
         </label>
 
-        {error && (
-          <div style={{ marginTop: 12, color: "#c06060", fontFamily: pal.fontBody, fontSize: 14 }}>{error}</div>
-        )}
 
         <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
           <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${pal.border}`, borderRadius: 4, color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 14px", cursor: "pointer" }}>Cancel</button>
-          <button onClick={handleSave} disabled={saving} style={{ background: saving ? "rgba(18,32,48,0.3)" : "rgba(18,32,48,0.6)", border: `1px solid ${pal.accent}`, borderRadius: 4, color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 14px", cursor: saving ? "not-allowed" : "pointer" }}>{saving ? "Saving…" : "Save Party"}</button>
+          <button onClick={handleSave} style={{ background: "rgba(18,32,48,0.6)", border: `1px solid ${pal.accent}`, borderRadius: 4, color: pal.accentBright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.14em", textTransform: "uppercase", padding: "8px 14px", cursor: "pointer" }}>Save Party</button>
         </div>
       </div>
     </div>

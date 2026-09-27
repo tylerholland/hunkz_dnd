@@ -13,7 +13,13 @@ export default function MapLibraryModal({ mapLibrary, dmPassword, combatMode, on
   const [error, setError] = useState("");
   const [optimisticActiveId, setOptimisticActiveId] = useState(null);
 
-  const maps = mapLibrary?.maps || [];
+  // Instant rename/delete: local overrides on top of the server list, undone
+  // if the write fails. (Delete stays behind its confirm step.)
+  const [renamedById, setRenamedById] = useState({});
+  const [removedIds, setRemovedIds] = useState(() => new Set());
+  const maps = (mapLibrary?.maps || [])
+    .filter((map) => !removedIds.has(map.id))
+    .map((map) => (renamedById[map.id] !== undefined ? { ...map, name: renamedById[map.id] } : map));
   const serverActiveId = mapLibrary?.activeMapId || null;
   const activeMapId = optimisticActiveId ?? serverActiveId;
   const activeLabel = combatMode ? "● Combat Map" : "● Adventure Map";
@@ -71,20 +77,37 @@ export default function MapLibraryModal({ mapLibrary, dmPassword, combatMode, on
 
   const handleSaveRename = async (mapId) => {
     setError("");
+    const name = renameValue;
+    setRenamedById((current) => ({ ...current, [mapId]: name }));
+    setRenamingId(null);
     try {
-      await patchMap(mapId, renameValue, dmPassword);
+      await patchMap(mapId, name, dmPassword);
       onLibraryChange();
-      setRenamingId(null);
-    } catch { setError("Failed to rename map."); }
+    } catch {
+      setRenamedById((current) => {
+        const next = { ...current };
+        delete next[mapId];
+        return next;
+      });
+      setError("Failed to rename map.");
+    }
   };
 
   const handleDelete = async (mapId) => {
     setError("");
+    setRemovedIds((current) => new Set(current).add(mapId));
+    setDeletingId(null);
     try {
       await deleteMap(mapId, dmPassword);
       onLibraryChange();
-      setDeletingId(null);
-    } catch { setError("Failed to delete map."); }
+    } catch {
+      setRemovedIds((current) => {
+        const next = new Set(current);
+        next.delete(mapId);
+        return next;
+      });
+      setError("Failed to delete map.");
+    }
   };
 
   const handleUploaded = () => {

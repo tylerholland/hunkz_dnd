@@ -268,6 +268,9 @@ export default function EnemiesGalleryModal({ templates, dmPassword, onClose, on
   };
 
   const [entries, setEntries] = useState(() => [...templates]);
+  // Last list the server confirmed — restored if a background save fails.
+  const lastSavedRef = useRef([...templates]);
+  const [saveError, setSaveError] = useState("");
   const [selectedId, setSelectedId] = useState(() => templates[0]?.id ?? null);
   const [isDirty, setIsDirty] = useState(false);
   const [showDirtyGuard, setShowDirtyGuard] = useState(false);
@@ -424,9 +427,12 @@ export default function EnemiesGalleryModal({ templates, dmPassword, onClose, on
         ...t,
         updatedAt: t.updatedAt || new Date().toISOString(),
       })));
+      lastSavedRef.current = entriesToSave;
+      setSaveError("");
       onTemplatesChange(entriesToSave);
     } catch {
-      // Non-fatal — UI stays consistent, backend may be stale
+      setEntries(lastSavedRef.current);
+      setSaveError("Couldn't save — your last change was undone.");
     }
   }
 
@@ -477,6 +483,7 @@ export default function EnemiesGalleryModal({ templates, dmPassword, onClose, on
           <span className="eg-modal-title" style={{ fontFamily: pal.fontDisplay }}>NPC Library</span>
           <button className="eg-close-btn" onClick={requestClose} aria-label="Close">×</button>
         </div>
+        {saveError && <div className="eg-portrait-error" role="alert" style={{ padding: "6px 16px" }}>{saveError}</div>}
 
         <div className={`eg-modal-body${isMobileDrilled ? " drilled-in" : ""}`}>
           {/* List pane */}

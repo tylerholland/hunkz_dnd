@@ -97,7 +97,10 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   }, [collapsedOverride]);
 
   const maps = mapLibrary?.maps || [];
-  const activeMapId = mapLibrary?.activeMapId || null;
+  // Instant "Clear": the panel empties now; the server catches up behind it.
+  const {
+    value: activeMapId, begin: beginActiveMap, settle: settleActiveMap,
+  } = useSettlingOverride(mapLibrary?.activeMapId || null);
   const activeMap = maps.find((m) => m.id === activeMapId) || null;
   const publishedView = activeMap && mapLibrary?.activeMapView?.mapId === activeMap.id ? mapLibrary.activeMapView : null;
   const activeMapLabel = activeMap ? displayMapName(activeMap) : "";
@@ -184,10 +187,12 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   }, [activeMapId, maps.length, libraryOpen, publishedView, isBattleMode]);
 
   const handleClear = async () => {
+    const seq = beginActiveMap(null);
     try {
       await putMapActive(null, dmPassword);
       onLibraryChange();
-    } catch { /* ignore */ }
+    } catch { /* override releases back to the server's active map */ }
+    finally { settleActiveMap(seq); }
   };
 
   const handleLibraryChange = (action) => {
