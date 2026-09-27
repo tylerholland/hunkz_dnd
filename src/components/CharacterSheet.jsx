@@ -10,8 +10,8 @@ import CharacterSheetEditMode from "../features/characterSheet/CharacterSheetEdi
 import CharacterSheetViewMode from "../features/characterSheet/CharacterSheetViewMode";
 import { PALETTES } from "../features/characterSheet/theme";
 import {
-  cloneLiveValue,
   mergeOptimisticLiveFields,
+  markExpectedFields,
   useDebouncedOptimisticNumberFlush,
 } from "../lib/liveSync";
 
@@ -89,9 +89,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
   }, [char]);
 
   const markSessionExpected = useCallback((fields) => {
-    Object.entries(fields).forEach(([field, value]) => {
-      sessionExpectedRef.current.set(field, cloneLiveValue(value));
-    });
+    markExpectedFields(sessionExpectedRef, fields);
   }, []);
 
   const clearSessionExpected = useCallback((fields) => {

@@ -26,6 +26,7 @@ import { PALETTES } from "./theme";
 import { fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
 import CharacterTalents from "./CharacterTalents";
 import { patchSession, postCharacterRoll, moveMapToken } from "../../api";
+import { clearExpectedFields, isFieldPending, markExpectedFields, mergeOptimisticLiveFields } from "../../lib/liveSync";
 import DiceRoller from "../../components/DiceRoller";
 import TopNav, { NavSegment } from "../../components/TopNav";
 import MapViewer from "../maps/MapViewer";
@@ -113,6 +114,12 @@ function partyRowClass(member) {
   if (hpMax > 0 && hpCurrent / hpMax <= 0.5) return "bloodied";
   return "";
 }
+
+// Fields Session mode writes live (mirrors backend session.js SESSION_FIELDS).
+const SESSION_LIVE_FIELDS = [
+  "hpCurrent", "tempHP", "spellSlots", "conditions", "exhaustionLevel", "concentration", "inspiration",
+  "weapons", "equipment", "playerNotes", "hitDiceCurrent", "xpCurrent", "coin", "deathSaves",
+];
 
 function avatarInitial(name) {
   return (name || "?")[0].toUpperCase();
@@ -365,9 +372,24 @@ export default function CharacterSheetSessionMode({
   const [guideOpen, setGuideOpen] = useState(false);
   const [char, setChar] = useState(initialData);
 
-  // Keep char in sync when initialData changes (polling)
+  // Pending-write guard: every session write records the value it expects
+  // (patchLive below); incoming polls leave those fields alone until the
+  // server echoes them or the expectation expires — so a poll that was
+  // already in flight can't snap an instant update back.
+  const expectedRef = useRef(new Map());
+  const patchLive = useCallback(async (fields) => {
+    markExpectedFields(expectedRef, fields);
+    try {
+      return await patchSession(slug, fields, sessionPassword);
+    } catch (err) {
+      clearExpectedFields(expectedRef, Object.keys(fields));
+      throw err;
+    }
+  }, [slug, sessionPassword]);
+
+  // Keep char in sync when initialData changes (polling), minus pending fields
   useEffect(() => {
-    setChar(initialData);
+    setChar((prev) => (prev ? mergeOptimisticLiveFields(prev, initialData, SESSION_LIVE_FIELDS, expectedRef) : initialData));
   }, [initialData]);
 
   const pal = PALETTES[char?.palette] || PALETTES.ember;
@@ -381,19 +403,20 @@ export default function CharacterSheetSessionMode({
 
   useEffect(() => {
     const incoming = initialData?.hpCurrent ?? 0;
+    if (isFieldPending(expectedRef, "hpCurrent", incoming)) return;
     hpServerRef.current = incoming;
     setLocalHp(incoming);
   }, [initialData?.hpCurrent]);
 
   const flushHp = useCallback(async (targetHp) => {
     try {
-      await patchSession(slug, { hpCurrent: targetHp }, sessionPassword);
+      await patchLive({ hpCurrent: targetHp });
       hpServerRef.current = targetHp;
       onSessionSync?.();
     } catch {
       setLocalHp(hpServerRef.current);
     }
-  }, [slug, onSessionSync, sessionPassword]);
+  }, [onSessionSync, patchLive]);
 
   const changeHp = useCallback((delta) => {
     setLocalHp((prev) => {
@@ -419,13 +442,13 @@ export default function CharacterSheetSessionMode({
     setTimeout(() => setHpFlash(null), 400);
     setHpModal(null);
     try {
-      await patchSession(slug, { hpCurrent: next }, sessionPassword);
+      await patchLive({ hpCurrent: next });
       hpServerRef.current = next;
       onSessionSync?.();
     } catch {
       setLocalHp(hpServerRef.current);
     }
-  }, [char, localHp, slug, onSessionSync, sessionPassword]);
+  }, [char, localHp, onSessionSync, patchLive]);
 
   // ── Condition manager ─────────────────────────────────────────────────────
   const [condPickerOpen, setCondPickerOpen] = useState(false);
@@ -434,12 +457,12 @@ export default function CharacterSheetSessionMode({
     setChar((prev) => ({ ...prev, conditions }));
     setCondPickerOpen(false);
     try {
-      await patchSession(slug, { conditions }, sessionPassword);
+      await patchLive({ conditions });
       onSessionSync?.();
     } catch {
       setChar((prev) => ({ ...prev, conditions: initialData?.conditions || [] }));
     }
-  }, [slug, onSessionSync, initialData?.conditions, sessionPassword]);
+  }, [onSessionSync, initialData?.conditions, patchLive]);
 
   // ── Concentration ─────────────────────────────────────────────────────────
   const [concInput, setConcInput] = useState("");
@@ -448,12 +471,12 @@ export default function CharacterSheetSessionMode({
   const dropConcentration = useCallback(async () => {
     setChar((prev) => ({ ...prev, concentration: { active: false, spell: "" } }));
     try {
-      await patchSession(slug, { concentration: { active: false, spell: "" } }, sessionPassword);
+      await patchLive({ concentration: { active: false, spell: "" } });
       onSessionSync?.();
     } catch {
       setChar((prev) => ({ ...prev, concentration: initialData?.concentration }));
     }
-  }, [slug, onSessionSync, initialData?.concentration, sessionPassword]);
+  }, [onSessionSync, initialData?.concentration, patchLive]);
 
   const setConcentration = useCallback(async (spell) => {
     const conc = { active: true, spell };
@@ -461,24 +484,24 @@ export default function CharacterSheetSessionMode({
     setConcInput("");
     setConcInputOpen(false);
     try {
-      await patchSession(slug, { concentration: conc }, sessionPassword);
+      await patchLive({ concentration: conc });
       onSessionSync?.();
     } catch {
       setChar((prev) => ({ ...prev, concentration: initialData?.concentration }));
     }
-  }, [slug, onSessionSync, initialData?.concentration, sessionPassword]);
+  }, [onSessionSync, initialData?.concentration, patchLive]);
 
   // ── Inspiration ───────────────────────────────────────────────────────────
   const toggleInspiration = useCallback(async () => {
     const next = !char.inspiration;
     setChar((prev) => ({ ...prev, inspiration: next }));
     try {
-      await patchSession(slug, { inspiration: next }, sessionPassword);
+      await patchLive({ inspiration: next });
       onSessionSync?.();
     } catch {
       setChar((prev) => ({ ...prev, inspiration: !next }));
     }
-  }, [char, slug, onSessionSync, sessionPassword]);
+  }, [char, onSessionSync, patchLive]);
 
   // ── Spell slots — tap to spend/restore + rests (Story 63) ─────────────────
   // localSpellSlots is the optimistic display value; slotServerRef tracks the
@@ -491,6 +514,7 @@ export default function CharacterSheetSessionMode({
   const [slotUndo, setSlotUndo] = useState(null); // { level, delta, timer } | null
 
   useEffect(() => {
+    if (isFieldPending(expectedRef, "spellSlots", initialData?.spellSlots || [])) return;
     slotServerRef.current = initialData?.spellSlots || [];
     setLocalSpellSlots(initialData?.spellSlots || []);
   }, [initialData?.spellSlots]);
@@ -509,13 +533,13 @@ export default function CharacterSheetSessionMode({
       return { ...s, used: Math.min(s.max, Math.max(0, (s.used || 0) + d)) };
     });
     try {
-      await patchSession(slug, { spellSlots: next }, sessionPassword);
+      await patchLive({ spellSlots: next });
       slotServerRef.current = next;
       onSessionSync?.();
     } catch {
       setLocalSpellSlots(slotServerRef.current);
     }
-  }, [slug, onSessionSync, sessionPassword]);
+  }, [onSessionSync, patchLive]);
 
   const tapSlot = useCallback((level, spend) => {
     if (!slug) return;
@@ -577,7 +601,7 @@ export default function CharacterSheetSessionMode({
     if (kind === "long") setChar((prev) => ({ ...prev, hitDiceCurrent: patch.hitDiceCurrent }));
 
     try {
-      await patchSession(slug, patch, sessionPassword);
+      await patchLive(patch);
       onSessionSync?.();
       if (kind === "long") {
         postCharacterRoll(slug, { type: "wheel", name: "☾ Long Rest", note: "slots restored" }).catch(() => {});
@@ -587,7 +611,7 @@ export default function CharacterSheetSessionMode({
       setLocalSpellSlots(prevSlots);
       if (kind === "long") setChar((prev) => ({ ...prev, hitDiceCurrent: prevHitDice }));
     }
-  }, [char, slug, onSessionSync, sessionPassword]);
+  }, [char, slug, onSessionSync, patchLive]);
 
   // ── Story 58 — Loadout capture + coin/XP ledger ──────────────────────────
   // Every commit rebases on the freshest polled value (charRef), never on a
@@ -602,12 +626,12 @@ export default function CharacterSheetSessionMode({
     if (next === prevLevel) return;
     setChar((prev) => ({ ...prev, exhaustionLevel: next }));
     try {
-      await patchSession(slug, { exhaustionLevel: next }, sessionPassword);
+      await patchLive({ exhaustionLevel: next });
       onSessionSync?.();
     } catch {
       setChar((prev) => ({ ...prev, exhaustionLevel: prevLevel }));
     }
-  }, [slug, onSessionSync, sessionPassword]);
+  }, [onSessionSync, patchLive]);
 
   const [recentAdds, setRecentAdds] = useState({}); // id → stagger index
   const [itemDetails, setItemDetails] = useState(null); // { kind, seed }
@@ -629,14 +653,14 @@ export default function CharacterSheetSessionMode({
       return rest;
     }), 1000);
     try {
-      await patchSession(slug, { [kind]: next }, sessionPassword);
+      await patchLive({ [kind]: next });
       onSessionSync?.();
       return true;
     } catch {
       setChar((prev) => ({ ...prev, [kind]: (prev?.[kind] || []).filter((item) => !addedIds.has(item.id)) }));
       return false;
     }
-  }, [slug, sessionPassword, onSessionSync]);
+  }, [slug, onSessionSync, patchLive]);
 
   // Edit / equip / delete apply a transform to the latest array by item id,
   // so a concurrent change to a different item is never clobbered.
@@ -646,14 +670,14 @@ export default function CharacterSheetSessionMode({
     const next = transform(prev);
     setChar((current) => ({ ...current, [kind]: next }));
     try {
-      await patchSession(slug, { [kind]: next }, sessionPassword);
+      await patchLive({ [kind]: next });
       onSessionSync?.();
       return true;
     } catch {
       setChar((current) => ({ ...current, [kind]: prev }));
       return false;
     }
-  }, [slug, sessionPassword, onSessionSync]);
+  }, [slug, onSessionSync, patchLive]);
 
   const updateLoadoutItem = useCallback((kind, id, changes) => writeLoadout(kind, (items) => items.map((item) => {
     if (item.id !== id) return item;
@@ -685,32 +709,45 @@ export default function CharacterSheetSessionMode({
     const nextCoin = { ...prevCoin, [denom]: value };
     setChar((prev) => ({ ...prev, coin: nextCoin }));
     try {
-      await patchSession(slug, { coin: nextCoin }, sessionPassword);
+      await patchLive({ coin: nextCoin });
       onSessionSync?.();
       return { ok: true, clamped };
     } catch {
       setChar((prev) => ({ ...prev, coin: prevCoin }));
       return { ok: false, clamped: false };
     }
-  }, [slug, sessionPassword, onSessionSync]);
+  }, [onSessionSync, patchLive]);
 
   const commitXp = useCallback(async (op, amount) => {
     const prevXp = charRef.current?.xpCurrent ?? 0;
     const { value, clamped } = applyDelta(prevXp, op, amount);
     setChar((prev) => ({ ...prev, xpCurrent: value }));
     try {
-      await patchSession(slug, { xpCurrent: value }, sessionPassword);
+      await patchLive({ xpCurrent: value });
       onSessionSync?.();
       return { ok: true, clamped };
     } catch {
       setChar((prev) => ({ ...prev, xpCurrent: prevXp }));
       return { ok: false, clamped: false };
     }
-  }, [slug, sessionPassword, onSessionSync]);
+  }, [onSessionSync, patchLive]);
 
   const rowEnterProps = (id) => (id in recentAdds
     ? { className: "cs-spell-row-enter", style: { animationDelay: `${recentAdds[id] * 40}ms` } }
     : {});
+
+  const saveNotes = useCallback(async (nextNotes) => {
+    const prevNotes = charRef.current?.playerNotes || [];
+    setChar((prev) => ({ ...prev, playerNotes: nextNotes }));
+    try {
+      await patchLive({ playerNotes: nextNotes });
+      onSessionSync?.();
+      return true;
+    } catch {
+      setChar((prev) => ({ ...prev, playerNotes: prevNotes }));
+      return false;
+    }
+  }, [patchLive, onSessionSync]);
 
   // ── Session sub-tab state ─────────────────────────────────────────────────
   // Story 60 — "map" is no longer a sub-tab (the map is a persistent band).
@@ -1740,7 +1777,7 @@ export default function CharacterSheetSessionMode({
 
           {/* ── NOTES sub-tab ── */}
           <div className={`cs-sm-tab-panel${sessionSubTab === "notes" ? " active" : ""}`}>
-            <SessionNotesSection char={char} slug={slug} pal={pal} onSessionSync={onSessionSync} sessionPassword={sessionPassword} />
+            <SessionNotesSection char={char} pal={pal} onSaveNotes={saveNotes} />
           </div>
 
           {/* Dice roller */}
@@ -1858,24 +1895,27 @@ function ModSegment({ label, glyph, mode, value, setMode }) {
 }
 
 // Session notes section (owner/DM auth enforced by CharacterModePage + API)
-function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }) {
+// Notes save instantly: the note appears (and the input clears) before the
+// write; a failed save removes it and puts the text back.
+function SessionNotesSection({ char, pal, onSaveNotes }) {
   const [newNote, setNewNote] = useState("");
-  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(false);
   const notes = char?.playerNotes || [];
 
   async function addNote() {
-    if (!newNote.trim()) return;
-    setSaving(true);
+    const text = newNote.trim();
+    if (!text) return;
     const next = [
       ...notes,
-      { id: "n" + Date.now(), text: newNote.trim(), sharedWithDm: false, createdAt: new Date().toISOString() },
+      { id: "n" + Date.now(), text, sharedWithDm: false, createdAt: new Date().toISOString() },
     ];
-    try {
-      await patchSession(slug, { playerNotes: next }, sessionPassword);
-      onSessionSync?.();
-      setNewNote("");
-    } catch { /* ignore */ }
-    finally { setSaving(false); }
+    setNewNote("");
+    setError(false);
+    const ok = await onSaveNotes(next);
+    if (!ok) {
+      setNewNote((current) => current || text);
+      setError(true);
+    }
   }
 
   return (
@@ -1913,7 +1953,7 @@ function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }
         />
         <button
           onClick={addNote}
-          disabled={saving || !newNote.trim()}
+          disabled={!newNote.trim()}
           style={{
             background: "transparent",
             border: `1px solid ${pal.accent}`,
@@ -1924,10 +1964,11 @@ function SessionNotesSection({ char, slug, pal, onSessionSync, sessionPassword }
             letterSpacing: "0.1em",
             padding: "6px 12px",
             cursor: "pointer",
-            opacity: (!newNote.trim() || saving) ? 0.5 : 1,
+            opacity: !newNote.trim() ? 0.5 : 1,
           }}
         >Add</button>
       </div>
+      {error && <p className="cs-sm-notes-empty" role="alert" style={{ color: "#c06060" }}>Couldn{"'"}t save that note — try again.</p>}
     </div>
   );
 }

@@ -1,5 +1,20 @@
 import { useEffect, useLayoutEffect, useRef, useState, useCallback, useImperativeHandle } from "react";
 import { MAX_TOKEN_SCALE, MIN_TOKEN_SCALE } from "./battleMode/tokenSizes";
+import { liveValuesEqual, useSettlingOverride } from "../../lib/liveSync";
+
+const NO_TOKENS = [];
+// Server responses annotate each token with a derived `invisible` flag
+// (ADR-023) that local writes don't carry — ignore it when comparing.
+function stripDerived(tokens) {
+  return (tokens || []).map((token) => {
+    const copy = { ...token };
+    delete copy.invisible;
+    return copy;
+  });
+}
+function tokensEqual(a, b) {
+  return liveValuesEqual(stripDerived(a), stripDerived(b));
+}
 import { createPortal } from "react-dom";
 import MapViewer, { getMapZoomModifierLabel, readMapFreeZoomPreference, writeMapFreeZoomPreference } from "../maps/MapViewer";
 import MapLibraryModal from "./MapLibraryModal";
@@ -61,7 +76,6 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const zoomModifierLabel = getMapZoomModifierLabel();
 
   // Battle mode state
-  const [localTokens, setLocalTokens] = useState(null); // null = use server state
   const [heldSourceId, setHeldSourceId] = useState(null);
   const [heldType, setHeldType] = useState(null);
   const floaterRef = useRef(null);
@@ -70,13 +84,11 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const autoPubTimerRef = useRef(null);
 
   // Calibration state (token scale)
-  const [localTokenScale, setLocalTokenScale] = useState(null); // null = use server state
   const [calibOpen, setCalibOpen] = useState(false);
   const [calibTweening, setCalibTweening] = useState(false);
   const calibWriteTimerRef = useRef(null);
   const calibTweenTimerRef = useRef(null);
   const tokenResizeWriteTimerRef = useRef(null); // Story 44
-  const [localRotation, setLocalRotation] = useState(null); // Story 45 — null = use server state
   const rotationWriteTimerRef = useRef(null); // Story 45
 
   useEffect(() => {
@@ -96,9 +108,20 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const isPdf = activeMap ? isPdfMap({ imageUrl: activeMap.imageUrl, contentType: activeMap.contentType, name: activeMap.name }) : false;
 
   // Effective tokens: local optimistic state overrides server state
-  const effectiveTokens = localTokens !== null ? localTokens : (activeMap?.tokens || []);
+  // Optimistic overrides that hand back to the server once a write lands
+  // (useSettlingOverride) — so the DM's own moves are instant AND player
+  // token drags / other changes still appear afterwards.
+  const {
+    value: effectiveTokens, begin: beginTokens, settle: settleTokens, reset: resetTokens,
+  } = useSettlingOverride(activeMap?.tokens || NO_TOKENS, { equals: tokensEqual });
   // Effective token scale: local optimistic state overrides server state
-  const tokenScale = localTokenScale !== null ? localTokenScale : (activeMap?.tokenScale ?? 1);
+  const {
+    value: tokenScale, begin: beginTokenScale, settle: settleTokenScale, reset: resetTokenScale,
+  } = useSettlingOverride(activeMap?.tokenScale ?? 1);
+  // Story 45 — map rotation
+  const {
+    value: effectiveRotation, begin: beginRotation, settle: settleRotation, reset: resetRotation,
+  } = useSettlingOverride(activeMap?.rotation ?? 0);
   const viewerZoom = viewerState?.scale ?? 1;
   const labelsHidden = tokenScale * viewerZoom < 0.6;
 
@@ -116,12 +139,12 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   // Do NOT depend on activeMap?.tokens — that reference changes every poll tick
   // even when content is unchanged, which would kill the optimistic battle-mode state.
   useEffect(() => {
-    setLocalTokens(null);
+    resetTokens();
     setHeldSourceId(null);
     setHeldType(null);
-    setLocalTokenScale(null);
+    resetTokenScale();
     setCalibOpen(false);
-    setLocalRotation(null);
+    resetRotation();
     seenStampsRef.current = new Map();
   }, [activeMapId]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -238,17 +261,18 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       tokenResizeWriteTimerRef.current = null;
     }
     // Apply optimistically so UI responds immediately
-    setLocalTokens(newTokens);
+    const seq = beginTokens(newTokens);
     try {
       await patchMapTokens(activeMap.id, payload, dmPassword);
       onLibraryChange();
-    } catch { /* ignore — optimistic state holds until next poll */ }
-  }, [activeMap, dmPassword, onLibraryChange]);
+    } catch { /* the override releases back to server state after settling */ }
+    finally { settleTokens(seq); }
+  }, [activeMap, dmPassword, onLibraryChange, beginTokens, settleTokens]);
 
   const handleScaleChange = useCallback((nextScale, opts) => {
     if (!activeMap) return;
     const clamped = Math.min(2.5, Math.max(0.5, nextScale));
-    setLocalTokenScale(clamped);
+    const seq = beginTokenScale(clamped);
     // ± steppers / reset get a brief 120ms tween; slider drag stays 1:1 instant.
     if (opts?.tween) {
       setCalibTweening(true);
@@ -257,9 +281,9 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     }
     if (calibWriteTimerRef.current) clearTimeout(calibWriteTimerRef.current);
     calibWriteTimerRef.current = setTimeout(() => {
-      putMapCalibration(activeMap.id, clamped, dmPassword).then(onLibraryChange).catch(() => { /* ignore — optimistic state holds */ });
+      putMapCalibration(activeMap.id, clamped, dmPassword).then(onLibraryChange).catch(() => {}).finally(() => settleTokenScale(seq));
     }, 600);
-  }, [activeMap, dmPassword, onLibraryChange]);
+  }, [activeMap, dmPassword, onLibraryChange, beginTokenScale, settleTokenScale]);
 
   // Story 44 — debounced per-token scale write, modelled on handleScaleChange
   // Story 65 — `match` is a token id, or a predicate (the NPC card's ⋯ menu
@@ -269,12 +293,13 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     const clamped = Math.min(MAX_TOKEN_SCALE, Math.max(MIN_TOKEN_SCALE, nextScale));
     const isMatch = typeof match === "function" ? match : (t) => t.id === match;
     const next = effectiveTokens.map((t) => isMatch(t) ? { ...t, scale: clamped } : t);
-    setLocalTokens(next);
+    const seq = beginTokens(next);
     if (tokenResizeWriteTimerRef.current) clearTimeout(tokenResizeWriteTimerRef.current);
     tokenResizeWriteTimerRef.current = setTimeout(() => {
-      patchMapTokens(activeMap.id, { tokens: next }, dmPassword).then(onLibraryChange).catch(() => { /* optimistic state holds */ });
+      tokenResizeWriteTimerRef.current = null;
+      patchMapTokens(activeMap.id, { tokens: next }, dmPassword).then(onLibraryChange).catch(() => {}).finally(() => settleTokens(seq));
     }, 300);
-  }, [activeMap, effectiveTokens, dmPassword, onLibraryChange]);
+  }, [activeMap, effectiveTokens, dmPassword, onLibraryChange, beginTokens, settleTokens]);
 
   useImperativeHandle(ref, () => ({
     resizeNpcTokens(npcId, nextScale) {
@@ -282,19 +307,15 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     },
   }), [handleResizeToken]);
 
-  // Story 45 — map rotation
-  const effectiveRotation = localRotation !== null ? localRotation : (activeMap?.rotation ?? 0);
-
   const handleRotate = useCallback((delta) => {
     if (!activeMap) return;
-    const current = localRotation !== null ? localRotation : (activeMap?.rotation ?? 0);
-    const next = (current + delta + 360) % 360;
-    setLocalRotation(next);
+    const next = (effectiveRotation + delta + 360) % 360;
+    const seq = beginRotation(next);
     if (rotationWriteTimerRef.current) clearTimeout(rotationWriteTimerRef.current);
     rotationWriteTimerRef.current = setTimeout(() => {
-      putMapRotation(activeMap.id, next, dmPassword).then(onLibraryChange).catch(() => { /* optimistic state holds */ });
+      putMapRotation(activeMap.id, next, dmPassword).then(onLibraryChange).catch(() => {}).finally(() => settleRotation(seq));
     }, 600);
-  }, [activeMap, localRotation, dmPassword, onLibraryChange]);
+  }, [activeMap, effectiveRotation, dmPassword, onLibraryChange, beginRotation, settleRotation]);
 
   // Escape key cancels held state
   useEffect(() => {
@@ -395,9 +416,9 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   const handleClearNpcsFromMap = useCallback(() => {
     setHeldSourceId(null);
     setHeldType(null);
-    const current = localTokens !== null ? localTokens : (activeMap?.tokens || []);
+    const current = effectiveTokens;
     writeTokens(current.filter((t) => t.type === "character"));
-  }, [localTokens, activeMap, writeTokens]);
+  }, [effectiveTokens, writeTokens]);
 
   // Cache natural image size per mapId so tokens stay correctly positioned when
   // switching back to a previously-loaded map. For cached images, the browser fires
