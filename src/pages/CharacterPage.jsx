@@ -5,6 +5,7 @@ import { updateCharacter, deleteCharacter, getSessionState } from "../api";
 import { useAdaptivePolling, useQueuedRefresh } from "../lib/liveSync";
 import { reportServerBuildVersion } from "../lib/staleClient";
 import "./pages.css";
+import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
 
 export default function CharacterPage() {
   const navigate = useNavigate();
@@ -50,9 +51,10 @@ export default function CharacterPage() {
         throw new Error("Invalid character payload");
       }
       if (requestId !== requestSeqRef.current) return;
-      setData(d.character);
+      // ADR-030 — skip a character record older than one already written/applied.
+      if (acceptVersion(characterVersionKey(slug), d.character?.version)) setData(d.character);
       if (d.character?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.character.palette);
-      setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
+      if (acceptVersion("map-library", d.mapLibrary?.version)) setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
       reportServerBuildVersion(d.buildVersion);
       setError(null);
     } catch {

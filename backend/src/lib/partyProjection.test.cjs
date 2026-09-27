@@ -27,7 +27,7 @@ test("DM projection carries stats, speed, and loadout for the card", () => {
 });
 
 test("DM projection expression lists every whitelisted field", () => {
-  const aliases = { name: "#n", hp: "#hp", conditions: "#c", level: "#l", dmNotes: "#dmNotes" };
+  const aliases = { name: "#n", hp: "#hp", conditions: "#c", level: "#l", dmNotes: "#dmNotes", version: "#ver" };
   const listed = DM_PARTY_PROJECTION_EXPRESSION.split(",").map((part) => part.trim());
   for (const field of DM_PARTY_FIELDS) {
     assert.ok(listed.includes(aliases[field] || field), `missing ${field}`);

@@ -3,6 +3,7 @@ const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
 const { MAP_LIBRARY_SLUG } = require("../lib/specialItems");
+const { withVersions } = require("../lib/versioning");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -26,16 +27,19 @@ exports.handler = async (event) => {
   const result = await db.send(new UpdateCommand({
     TableName: TABLE,
     Key: { slug: MAP_LIBRARY_SLUG },
-    UpdateExpression: "SET #maps = list_append(if_not_exists(#maps, :empty), :newMap), activeMapId = if_not_exists(activeMapId, :null), updatedAt = :now",
-    ExpressionAttributeNames: { "#maps": "maps" },
+    // list_append is atomic, so an atomic version bump (ADR-030) is enough.
+    UpdateExpression: "SET #maps = list_append(if_not_exists(#maps, :empty), :newMap), activeMapId = if_not_exists(activeMapId, :null), updatedAt = :now, #ver = if_not_exists(#ver, :verZero) + :verOne",
+    ExpressionAttributeNames: { "#maps": "maps", "#ver": "version" },
     ExpressionAttributeValues: {
       ":empty": [],
       ":newMap": [newMap],
       ":null": null,
       ":now": new Date().toISOString(),
+      ":verZero": 0,
+      ":verOne": 1,
     },
     ReturnValues: "ALL_NEW",
   }));
 
-  return ok({ maps: result.Attributes?.maps ?? [] });
+  return ok(withVersions({ maps: result.Attributes?.maps ?? [] }, { [MAP_LIBRARY_SLUG]: result.Attributes?.version }));
 };

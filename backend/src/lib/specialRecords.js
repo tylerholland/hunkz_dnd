@@ -1,6 +1,11 @@
 const { GetCommand, PutCommand } = require("@aws-sdk/lib-dynamodb");
+
+// Max per-token size multiplier — keep in sync with SCALE_MAX in
+// handlers/patchMapTokens.js and tokenSizes.js on the client (Story 65).
+const TOKEN_SCALE_MAX = 6.0;
 const { db, TABLE } = require("./db");
 const { normalizeHouseRulesRecord } = require("./houseRules");
+const { VersionConflictError, isConditionalFailure, currentVersion, conditionalPutParams, withVersionRetry } = require("./versioning");
 const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, HOUSE_RULES_SLUG } = require("./specialItems");
 // Note: no APP_META_SLUG import here — normalizeAppMetaRecord() (Story 36b)
 // normalizes a generic item and doesn't need the slug constant; the sentinel
@@ -16,6 +21,7 @@ function normalizeInitiativeRecord(item) {
     // Story 52 — stamped whenever activeTurnIndex/round changes; clients derive
     // Phase B (wound halo) liveness from this rather than a server-side clear.
     turnStartedAt: typeof item?.turnStartedAt === "string" ? item.turnStartedAt : null,
+    version: currentVersion(item),
   };
 }
 
@@ -35,12 +41,14 @@ function normalizeNpcCombatRecord(item) {
       conditions: Array.isArray(npc?.conditions) ? npc.conditions : [],
       notes: Array.isArray(npc?.notes) ? npc.notes : [],
     })),
+    version: currentVersion(item),
   };
 }
 
 function normalizeRollHistoryRecord(item) {
   return {
     rolls: item?.rolls ?? [],
+    version: currentVersion(item),
   };
 }
 
@@ -82,6 +90,7 @@ function normalizePartyRosterRecord(item) {
     exists: !!item,
     members: Array.isArray(item?.members) ? item.members.filter((value) => typeof value === "string" && value.trim()) : [],
     partyVisibilityEnabled: item?.partyVisibilityEnabled !== false, // default true
+    version: currentVersion(item),
   };
 }
 
@@ -93,15 +102,34 @@ async function getSpecialRecord(slug) {
   return result.Item || null;
 }
 
-async function putSpecialRecord(slug, payload) {
-  await db.send(new PutCommand({
-    TableName: TABLE,
-    Item: {
-      slug,
-      ...payload,
-      updatedAt: new Date().toISOString(),
-    },
-  }));
+// Versioned write (ADR-030); returns the record's new version.
+// - `expectedVersion` given (read-modify-write callers): write only if the
+//   stored version is still that value, else throw VersionConflictError so
+//   the caller can re-read and re-apply (see withVersionRetry).
+// - omitted (whole-record replace): read the current version and bump it,
+//   retrying if another write lands in between. Last write wins, as before,
+//   but the version still advances monotonically.
+async function putSpecialRecord(slug, payload, { expectedVersion } = {}) {
+  const item = { ...payload, slug, updatedAt: new Date().toISOString() };
+  const writeAt = async (expected) => {
+    try {
+      await db.send(new PutCommand(conditionalPutParams(TABLE, item, expected)));
+      return expected + 1;
+    } catch (err) {
+      if (isConditionalFailure(err)) throw new VersionConflictError(slug);
+      throw err;
+    }
+  };
+  if (Number.isFinite(expectedVersion)) return writeAt(expectedVersion);
+  return withVersionRetry(async () => {
+    const current = await db.send(new GetCommand({
+      TableName: TABLE,
+      Key: { slug },
+      ProjectionExpression: "#ver",
+      ExpressionAttributeNames: { "#ver": "version" },
+    }));
+    return writeAt(currentVersion(current.Item));
+  });
 }
 
 async function getInitiativeState() {
@@ -109,13 +137,13 @@ async function getInitiativeState() {
   return normalizeInitiativeRecord(item);
 }
 
-async function saveInitiativeState({ entries, activeTurnIndex, round, turnStartedAt }) {
-  await putSpecialRecord(INITIATIVE_SLUG, {
+async function saveInitiativeState({ entries, activeTurnIndex, round, turnStartedAt }, opts) {
+  return putSpecialRecord(INITIATIVE_SLUG, {
     entries,
     activeTurnIndex: activeTurnIndex ?? 0,
     round: Math.max(1, round ?? 1),
     turnStartedAt: turnStartedAt ?? null,
-  });
+  }, opts);
 }
 
 async function getNpcCombatState() {
@@ -123,8 +151,8 @@ async function getNpcCombatState() {
   return normalizeNpcCombatRecord(item);
 }
 
-async function saveNpcCombatState({ npcs }) {
-  await putSpecialRecord(NPC_COMBAT_SLUG, { npcs });
+async function saveNpcCombatState({ npcs }, opts) {
+  return putSpecialRecord(NPC_COMBAT_SLUG, { npcs }, opts);
 }
 
 async function getRollHistoryState() {
@@ -132,15 +160,19 @@ async function getRollHistoryState() {
   return normalizeRollHistoryRecord(item);
 }
 
-async function saveRollHistoryState({ rolls }) {
-  await putSpecialRecord(ROLL_HISTORY_SLUG, { rolls });
+async function saveRollHistoryState({ rolls }, opts) {
+  return putSpecialRecord(ROLL_HISTORY_SLUG, { rolls }, opts);
 }
 
+// Read-append-write under the version lock: two rolls landing at the same
+// moment both survive (the loser re-reads and re-appends).
 async function appendRollHistoryEvent(event, limit = ROLL_HISTORY_LIMIT) {
-  const current = await getRollHistoryState();
-  const rolls = [event, ...(current.rolls || [])].slice(0, limit);
-  await saveRollHistoryState({ rolls });
-  return rolls;
+  return withVersionRetry(async () => {
+    const current = await getRollHistoryState();
+    const rolls = [event, ...(current.rolls || [])].slice(0, limit);
+    await saveRollHistoryState({ rolls }, { expectedVersion: current.version });
+    return rolls;
+  });
 }
 
 function normalizeMapLibraryRecord(item) {
@@ -161,7 +193,7 @@ function normalizeMapLibraryRecord(item) {
             ? map.tokens.map((tok) => ({
                 ...tok,
                 scale: Number.isFinite(tok.scale)
-                  ? Math.min(3.0, Math.max(0.5, tok.scale))
+                  ? Math.min(TOKEN_SCALE_MAX, Math.max(0.5, tok.scale))
                   : 1.0,
               }))
             : [],
@@ -169,6 +201,7 @@ function normalizeMapLibraryRecord(item) {
           rotation: [0, 90, 180, 270].includes(map?.rotation) ? map.rotation : 0,
         }))
       : [],
+    version: currentVersion(item),
   };
 }
 
@@ -177,15 +210,15 @@ async function getMapLibraryState() {
   return normalizeMapLibraryRecord(item);
 }
 
-async function saveMapLibraryState({ activeMapId, activeMapView, maps, adventureMapId, battleMapId, combatMode }) {
-  await putSpecialRecord(MAP_LIBRARY_SLUG, {
+async function saveMapLibraryState({ activeMapId, activeMapView, maps, adventureMapId, battleMapId, combatMode }, opts) {
+  return putSpecialRecord(MAP_LIBRARY_SLUG, {
     activeMapId: activeMapId ?? null,
     adventureMapId: adventureMapId ?? null,
     battleMapId: battleMapId ?? null,
     combatMode: combatMode ?? false,
     activeMapView: normalizeMapView(activeMapView),
     maps: maps ?? [],
-  });
+  }, opts);
 }
 
 async function getPartyRosterState() {
@@ -193,11 +226,11 @@ async function getPartyRosterState() {
   return normalizePartyRosterRecord(item);
 }
 
-async function savePartyRosterState({ members, partyVisibilityEnabled }) {
-  await putSpecialRecord(PARTY_ROSTER_SLUG, {
+async function savePartyRosterState({ members, partyVisibilityEnabled }, opts) {
+  return putSpecialRecord(PARTY_ROSTER_SLUG, {
     members: Array.isArray(members) ? members : [],
     partyVisibilityEnabled: partyVisibilityEnabled !== false, // default true
-  });
+  }, opts);
 }
 
 function normalizeNpcLibraryRecord(item) {
@@ -213,6 +246,7 @@ function normalizeNpcLibraryRecord(item) {
         portraitUrl: typeof t.portraitUrl === "string" ? t.portraitUrl : null,
         updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : null,
       })),
+    version: currentVersion(item),
   };
 }
 
@@ -221,8 +255,8 @@ async function getNpcLibraryState() {
   return normalizeNpcLibraryRecord(item);
 }
 
-async function saveNpcLibraryState({ templates }) {
-  await putSpecialRecord(NPC_LIBRARY_SLUG, { templates: Array.isArray(templates) ? templates : [] });
+async function saveNpcLibraryState({ templates }, opts) {
+  return putSpecialRecord(NPC_LIBRARY_SLUG, { templates: Array.isArray(templates) ? templates : [] }, opts);
 }
 
 function normalizeCounterWheelsRecord(item) {
@@ -236,6 +270,7 @@ function normalizeCounterWheelsRecord(item) {
         segments: Number.isFinite(w.segments) ? Math.max(1, Math.min(12, Math.round(w.segments))) : 6,
         filledCount: Number.isFinite(w.filledCount) ? Math.max(0, Math.round(w.filledCount)) : 0,
       })),
+    version: currentVersion(item),
   };
 }
 
@@ -244,12 +279,12 @@ async function getCounterWheelsState() {
   return normalizeCounterWheelsRecord(item);
 }
 
-async function saveCounterWheelsState({ wheels }) {
-  await putSpecialRecord(COUNTER_WHEELS_SLUG, { wheels: Array.isArray(wheels) ? wheels : [] });
+async function saveCounterWheelsState({ wheels }, opts) {
+  return putSpecialRecord(COUNTER_WHEELS_SLUG, { wheels: Array.isArray(wheels) ? wheels : [] }, opts);
 }
 
-async function saveHouseRulesState(rules) {
-  await putSpecialRecord(HOUSE_RULES_SLUG, normalizeHouseRulesRecord(rules));
+async function saveHouseRulesState(rules, opts) {
+  return putSpecialRecord(HOUSE_RULES_SLUG, normalizeHouseRulesRecord(rules), opts);
 }
 
 // Story 36b — stale-client auto-refresh. Written directly by deploy.sh via

@@ -12,6 +12,7 @@ function normalizeHouseRulesRecord(item) {
   const dice = typeof item?.abilityCheckDice === "string" ? item.abilityCheckDice.trim().toLowerCase() : "";
   return {
     abilityCheckDice: isValidCheckDice(dice) ? dice : DEFAULT_HOUSE_RULES.abilityCheckDice,
+    version: Number.isFinite(item?.version) ? item.version : 0,
   };
 }
 

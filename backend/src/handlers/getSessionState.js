@@ -218,6 +218,7 @@ exports.handler = async (event) => {
   // stripped per publicLastDamageFrom() above.
   const publicNpcConditions = publicNpcConditionsByNpcId(initiative, npcCombat);
   const npcCombatPublic = {
+    version: npcCombat.version ?? 0, // ADR-030
     npcs: npcCombat.npcs.map((n) => ({
       id: n.id,
       name: n.name,

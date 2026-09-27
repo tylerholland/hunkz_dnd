@@ -4,7 +4,7 @@ const { isValidCheckDice, normalizeHouseRulesRecord, DEFAULT_HOUSE_RULES } = req
 const { isReservedCharacterSlug, HOUSE_RULES_SLUG } = require("./specialItems");
 
 test("house rules default to 2d6 ability checks", () => {
-  assert.deepEqual(normalizeHouseRulesRecord(undefined), DEFAULT_HOUSE_RULES);
+  assert.deepEqual(normalizeHouseRulesRecord(undefined), { ...DEFAULT_HOUSE_RULES, version: 0 });
   assert.equal(DEFAULT_HOUSE_RULES.abilityCheckDice, "2d6");
 });
 

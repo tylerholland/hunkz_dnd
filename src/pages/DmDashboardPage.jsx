@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
 import { DEFAULT_HOUSE_RULES, normalizeHouseRules } from "../lib/houseRules";
+import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
 import CharacterCard, { AwardXpModal, DistributeCoinModal } from "../features/dmDashboard/CharacterCard";
 import ConfirmDialog from "../features/dmDashboard/ConfirmDialog";
 import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
@@ -254,6 +255,11 @@ export default function DmDashboardPage() {
       const rollHistoryData = sessionData.rollHistory || { rolls: [] };
       const mapLibraryData = sessionData.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] };
       if (requestId !== requestSeqRef.current) return;
+      // ADR-030 — skip any record older than what this screen already wrote
+      // or applied (a poll that was in flight during a write, or out of order).
+      const acceptInitiative = acceptVersion("initiative", initData.version);
+      const acceptNpcCombat = acceptVersion("npc-combat", npcData.version);
+      const acceptMapLibrary = acceptVersion("map-library", mapLibraryData.version);
       const expectedRoster = partyRosterExpectedRef.current;
       let nextPartyData = partyData;
       if (expectedRoster) {
@@ -270,6 +276,9 @@ export default function DmDashboardPage() {
       const currentPartyBySlug = new Map(partyRef.current.map((character) => [character.slug, character]));
       const reconciledParty = nextPartyData.map((incomingCharacter) => {
         const currentCharacter = currentPartyBySlug.get(incomingCharacter.slug);
+        if (currentCharacter && !acceptVersion(characterVersionKey(incomingCharacter.slug), incomingCharacter.version)) {
+          return currentCharacter;
+        }
         const expectedFields = partyExpectedValuesRef.current.get(incomingCharacter.slug);
         if (!currentCharacter || !expectedFields || expectedFields.size === 0) {
           return incomingCharacter;
@@ -296,22 +305,24 @@ export default function DmDashboardPage() {
       });
 
       setParty(reconciledParty);
-      initiativeServerRef.current = initData;
-      if (initiativeExpectedRef.current && !initiativesEqual(initData, initiativeExpectedRef.current)) {
-        // Keep optimistic turn state until server catches up or write fails.
-      } else {
-        if (initiativeExpectedRef.current && initiativesEqual(initData, initiativeExpectedRef.current)) {
-          initiativeExpectedRef.current = null;
+      if (acceptInitiative) {
+        initiativeServerRef.current = initData;
+        if (initiativeExpectedRef.current && !initiativesEqual(initData, initiativeExpectedRef.current)) {
+          // Keep optimistic turn state until server catches up or write fails.
+        } else {
+          if (initiativeExpectedRef.current && initiativesEqual(initData, initiativeExpectedRef.current)) {
+            initiativeExpectedRef.current = null;
+          }
+          setInitiative(initData);
         }
-        setInitiative(initData);
       }
-      npcCombatServerRef.current = npcData;
+      if (acceptNpcCombat) npcCombatServerRef.current = npcData;
       const npcCombatCaughtUp = !npcCombatExpectedRef.current || liveValuesEqual(
         stripNpcServerStamps(npcData?.npcs),
         stripNpcServerStamps(npcCombatExpectedRef.current?.npcs)
       );
-      if (npcCombatExpectedRef.current && !npcCombatCaughtUp) {
-        // Keep optimistic NPC state until server catches up or write fails.
+      if (!acceptNpcCombat || (npcCombatExpectedRef.current && !npcCombatCaughtUp)) {
+        // Stale record, or optimistic NPC state awaiting the server — keep ours.
       } else {
         if (npcCombatExpectedRef.current && npcCombatCaughtUp) {
           npcCombatExpectedRef.current = null;
@@ -319,7 +330,7 @@ export default function DmDashboardPage() {
         setNpcCombat(npcData);
       }
       setRollHistory(rollHistoryData.rolls || []);
-      setMapLibrary(mapLibraryData || { activeMapId: null, activeMapView: null, maps: [] });
+      if (acceptMapLibrary) setMapLibrary(mapLibraryData || { activeMapId: null, activeMapView: null, maps: [] });
       setServerTime(sessionData.serverTime || null);
       setHouseRules(normalizeHouseRules(sessionData.houseRules));
       reportServerBuildVersion(sessionData.buildVersion);

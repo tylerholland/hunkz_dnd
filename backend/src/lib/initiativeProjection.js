@@ -52,6 +52,7 @@ function buildPublicInitiativePayload(initiative, npcCombat) {
     // Story 52 — clients derive Phase B (wound halo) liveness from this; not
     // secret data (it's just "when did the current turn start").
     turnStartedAt: initiative?.turnStartedAt ?? null,
+    version: initiative?.version ?? 0, // ADR-030
   };
 }
 

@@ -50,10 +50,11 @@ test("getInitiativeState and getNpcCombatState return normalized defaults", asyn
   });
 
   // Story 52 — turnStartedAt added to the normalized shape (null default).
-  assert.deepEqual(await getInitiativeState(), { entries: [], activeTurnIndex: 0, round: 1, turnStartedAt: null });
-  assert.deepEqual(await getNpcCombatState(), { npcs: [] });
-  assert.deepEqual(await getRollHistoryState(), { rolls: [] });
-  assert.deepEqual(await getPartyRosterState(), { exists: false, members: [], partyVisibilityEnabled: true });
+  // ADR-030 — every normalized record carries its version (0 = never written).
+  assert.deepEqual(await getInitiativeState(), { entries: [], activeTurnIndex: 0, round: 1, turnStartedAt: null, version: 0 });
+  assert.deepEqual(await getNpcCombatState(), { npcs: [], version: 0 });
+  assert.deepEqual(await getRollHistoryState(), { rolls: [], version: 0 });
+  assert.deepEqual(await getPartyRosterState(), { exists: false, members: [], partyVisibilityEnabled: true, version: 0 });
 });
 
 test("saveInitiativeState, saveNpcCombatState, and saveRollHistoryState persist to sentinel slugs", async () => {
@@ -65,7 +66,8 @@ test("saveInitiativeState, saveNpcCombatState, and saveRollHistoryState persist 
     savePartyRosterState,
   } = loadModuleWithMocks({
     send: async (command) => {
-      sent.push(command.input);
+      // Versioned writes read the current version first (Get), then Put.
+      if (command.input?.Item) sent.push(command.input);
       return {};
     },
   });
@@ -89,6 +91,9 @@ test("saveInitiativeState, saveNpcCombatState, and saveRollHistoryState persist 
   assert.equal(sent[0].Item.activeTurnIndex, 0);
   assert.equal(sent[0].Item.round, 1);
   assert.match(sent[0].Item.updatedAt, /^\d{4}-\d{2}-\d{2}T/);
+  // ADR-030 — first write is version 1, conditional on no prior version.
+  assert.equal(sent[0].Item.version, 1);
+  assert.match(sent[0].ConditionExpression, /attribute_not_exists\(#ver\) OR #ver = :expected/);
 
   assert.equal(sent[1].Item.slug, "npc-combat");
   assert.deepEqual(sent[1].Item.npcs, [{ id: "npc-1", name: "Goblin", hpCurrent: 7, hpMax: 7 }]);
@@ -134,6 +139,7 @@ test("getNpcCombatState normalizes legacy npc combat shapes", async () => {
         notes: [],
       },
     ],
+    version: 0,
   });
 });
 
@@ -190,6 +196,7 @@ test("getMapLibraryState normalizes legacy map content types from file extension
         rotation: 0,
       },
     ],
+    version: 0,
   });
 });
 
@@ -223,4 +230,57 @@ test("appendRollHistoryEvent keeps the newest 500 rolls by default", async () =>
   assert.equal(sent[0].Item.rolls.length, 500);
   assert.equal(sent[0].Item.rolls[0].id, "new-roll");
   assert.equal(sent[0].Item.rolls.at(-1).id, "existing-498");
+});
+
+test("whole-record saves bump the stored version and retry when a write lands in between", async () => {
+  let stored = 4;
+  let conflictOnce = true;
+  const puts = [];
+  const { saveNpcCombatState } = loadModuleWithMocks({
+    send: async (command) => {
+      if (!command.input?.Item) return { Item: { version: stored } }; // version read
+      if (conflictOnce) {
+        conflictOnce = false;
+        stored = 5; // someone else wrote meanwhile
+        throw Object.assign(new Error("conditional"), { name: "ConditionalCheckFailedException" });
+      }
+      puts.push(command.input);
+      stored = command.input.Item.version;
+      return {};
+    },
+  });
+  const version = await saveNpcCombatState({ npcs: [] });
+  assert.equal(version, 6);
+  assert.equal(puts.length, 1);
+  assert.equal(puts[0].ExpressionAttributeValues[":expected"], 5);
+});
+
+test("expectedVersion writes throw VersionConflictError instead of clobbering", async () => {
+  const { saveMapLibraryState } = loadModuleWithMocks({
+    send: async () => { throw Object.assign(new Error("conditional"), { name: "ConditionalCheckFailedException" }); },
+  });
+  const { VersionConflictError } = require("./versioning");
+  await assert.rejects(saveMapLibraryState({ maps: [] }, { expectedVersion: 3 }), (err) => err instanceof VersionConflictError);
+});
+
+test("concurrent roll appends both survive (loser re-reads and re-appends)", async () => {
+  let record = { slug: "roll-history", rolls: [{ id: "a" }], version: 1 };
+  let raced = false;
+  const { appendRollHistoryEvent } = loadModuleWithMocks({
+    send: async (command) => {
+      const input = command.input;
+      if (!input.Item) return { Item: record };
+      if (!raced) {
+        raced = true; // another roll lands between our read and write
+        record = { ...record, rolls: [{ id: "b" }, ...record.rolls], version: 2 };
+        throw Object.assign(new Error("conditional"), { name: "ConditionalCheckFailedException" });
+      }
+      assert.equal(input.ExpressionAttributeValues[":expected"], record.version);
+      record = input.Item;
+      return {};
+    },
+  });
+  await appendRollHistoryEvent({ id: "c" });
+  assert.deepEqual(record.rolls.map((r) => r.id), ["c", "b", "a"]);
+  assert.equal(record.version, 3);
 });

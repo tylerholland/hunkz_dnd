@@ -7,6 +7,7 @@ import { reportServerBuildVersion } from "../lib/staleClient";
 import MapViewer from "../features/maps/MapViewer";
 import { displayMapName } from "../features/dmDashboard/MapUploadModal";
 import TopNav from "../components/TopNav";
+import { acceptVersion } from "../lib/versionFloors";
 
 export default function MapViewerPage() {
   const [searchParams] = useSearchParams();
@@ -19,7 +20,8 @@ export default function MapViewerPage() {
   const fetchSessionState = useCallback(async () => {
     try {
       const data = await getSessionState();
-      setMapLibrary(data?.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
+      // ADR-030 — never step back to an older map-library version.
+      if (acceptVersion("map-library", data?.mapLibrary?.version)) setMapLibrary(data?.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
       reportServerBuildVersion(data?.buildVersion);
     } catch {
       // Keep stale data instead of flashing an error.

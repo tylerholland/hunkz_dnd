@@ -1,6 +1,8 @@
 const { verifyPassword } = require("../lib/auth");
 const { badRequest, forbidden, ok } = require("../lib/response");
 const { savePartyRosterState } = require("../lib/specialRecords");
+const { withVersions } = require("../lib/versioning");
+const { PARTY_ROSTER_SLUG } = require("../lib/specialItems");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -20,7 +22,7 @@ exports.handler = async (event) => {
     ? body.partyVisibilityEnabled
     : undefined;
 
-  await savePartyRosterState({ members, partyVisibilityEnabled });
+  const savedVersion = await savePartyRosterState({ members, partyVisibilityEnabled });
 
-  return ok({ success: true, members, partyVisibilityEnabled: partyVisibilityEnabled !== false });
+  return ok(withVersions({ success: true, members, partyVisibilityEnabled: partyVisibilityEnabled !== false }, { [PARTY_ROSTER_SLUG]: savedVersion }));
 };

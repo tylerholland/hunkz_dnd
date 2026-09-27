@@ -10,6 +10,7 @@ import {
 import { useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { reportServerBuildVersion } from "../lib/staleClient";
+import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
 import CharacterSheetSessionMode from "../features/characterSheet/CharacterSheetSessionMode";
 import "./pages.css";
 
@@ -163,12 +164,32 @@ export default function CharacterModePage() {
         throw new Error("Invalid character payload");
       }
       if (requestId !== requestSeqRef.current) return;
-      setData(d.character);
-      if (d.character?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.character.palette);
-      setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
-      setPartyStatus(d.partyStatus || { visible: true, members: [] });
-      setInitiativeData(d.initiativePublic || { round: 1, activeTurnIndex: 0, entries: [] });
-      setNpcCombat(d.npcCombat || d.npcCombatPublic || { npcs: [] });
+      // ADR-030 — skip any record older than what this screen already wrote
+      // or applied (a poll in flight during a write, or out of order).
+      if (acceptVersion(characterVersionKey(slug), d.character?.version)) {
+        setData(d.character);
+        if (d.character?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.character.palette);
+      }
+      if (acceptVersion("map-library", d.mapLibrary?.version)) {
+        setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
+      }
+      const incomingStatus = d.partyStatus || { visible: true, members: [] };
+      const staleMembers = new Set((incomingStatus.members || [])
+        .filter((member) => !acceptVersion(characterVersionKey(member.slug), member.version))
+        .map((member) => member.slug));
+      setPartyStatus((prev) => (staleMembers.size === 0 ? incomingStatus : {
+        ...incomingStatus,
+        members: (incomingStatus.members || []).map((member) => (
+          staleMembers.has(member.slug) ? (prev?.members || []).find((p) => p.slug === member.slug) || member : member
+        )),
+      }));
+      if (acceptVersion("initiative", d.initiativePublic?.version)) {
+        setInitiativeData(d.initiativePublic || { round: 1, activeTurnIndex: 0, entries: [] });
+      }
+      const npcIncoming = d.npcCombat || d.npcCombatPublic;
+      if (acceptVersion("npc-combat", npcIncoming?.version)) {
+        setNpcCombat(npcIncoming || { npcs: [] });
+      }
       setServerTime(d.serverTime || null);
       setHouseRules(d.houseRules || null);
       reportServerBuildVersion(d.buildVersion);

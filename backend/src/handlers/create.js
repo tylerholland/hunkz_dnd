@@ -28,6 +28,7 @@ exports.handler = async (event) => {
       passwordHash,
       createdAt: now,
       updatedAt: now,
+      version: 1, // ADR-030
     },
   }));
 

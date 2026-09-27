@@ -1,3 +1,4 @@
+import { noteVersions } from "./lib/versionFloors";
 const BASE = import.meta.env.VITE_API_URL;
 const OPTIONAL_ENDPOINT_SUPPORT = {
   rollHistory: null,
@@ -9,6 +10,9 @@ async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, options);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw Object.assign(new Error(data.error || "Request failed"), { status: res.status });
+  // ADR-030 — writes report the record versions they produced; screens then
+  // ignore any older data for those records (see lib/versionFloors.js).
+  if (data && data.versions) noteVersions(data.versions);
   return data;
 }
 

@@ -1,6 +1,8 @@
 const { verifyPassword } = require("../lib/auth");
-const { ok, forbidden, badRequest, notFound } = require("../lib/response");
+const { ok, forbidden, badRequest, notFound, conflict } = require("../lib/response");
 const { getMapLibraryState, saveMapLibraryState } = require("../lib/specialRecords");
+const { VersionConflictError, withVersionRetry, withVersions } = require("../lib/versioning");
+const { MAP_LIBRARY_SLUG } = require("../lib/specialItems");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -13,14 +15,22 @@ exports.handler = async (event) => {
   const body = JSON.parse(event.body || "{}");
   if (typeof body.name !== "string") return badRequest("name must be a string");
 
-  const state = await getMapLibraryState();
-  const idx = state.maps.findIndex((m) => m.id === mapId);
-  if (idx === -1) return notFound();
+  // ADR-030 — read-modify-write under the map-library version lock: a
+  // concurrent write (another token move, the DM's edit) makes this
+  // attempt re-read and re-apply instead of erasing it.
+  return withVersionRetry(async () => {
+    const state = await getMapLibraryState();
+    const idx = state.maps.findIndex((m) => m.id === mapId);
+    if (idx === -1) return notFound();
 
-  const updatedMaps = [...state.maps];
-  updatedMaps[idx] = { ...updatedMaps[idx], name: body.name };
+    const updatedMaps = [...state.maps];
+    updatedMaps[idx] = { ...updatedMaps[idx], name: body.name };
 
-  await saveMapLibraryState({ activeMapId: state.activeMapId, adventureMapId: state.adventureMapId, battleMapId: state.battleMapId, combatMode: state.combatMode, activeMapView: state.activeMapView, maps: updatedMaps });
+    const savedVersion = await saveMapLibraryState({ activeMapId: state.activeMapId, adventureMapId: state.adventureMapId, battleMapId: state.battleMapId, combatMode: state.combatMode, activeMapView: state.activeMapView, maps: updatedMaps }, { expectedVersion: state.version });
 
-  return ok({ maps: updatedMaps });
+    return ok(withVersions({ maps: updatedMaps }, { [MAP_LIBRARY_SLUG]: savedVersion }));
+  }).catch((err) => {
+    if (err instanceof VersionConflictError) return conflict("Busy — please try again");
+    throw err;
+  });
 };

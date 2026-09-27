@@ -6,6 +6,7 @@ const { saveNpcCombatState, normalizeNpcCombatRecord, normalizeInitiativeRecord 
 const { NPC_COMBAT_SLUG, INITIATIVE_SLUG } = require("../lib/specialItems");
 const { resolveAttackerRef } = require("../lib/initiativeProjection");
 const { notifySessionChanged } = require("../lib/broadcast");
+const { withVersions } = require("../lib/versioning");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -48,9 +49,9 @@ exports.handler = async (event) => {
     return npc;
   });
 
-  await saveNpcCombatState({ npcs: stampedNpcs });
+  const savedVersion = await saveNpcCombatState({ npcs: stampedNpcs });
 
   await notifySessionChanged();
 
-  return ok({ success: true });
+  return ok(withVersions({ success: true }, { [NPC_COMBAT_SLUG]: savedVersion }));
 };

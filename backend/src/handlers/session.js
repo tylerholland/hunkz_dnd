@@ -4,6 +4,7 @@ const { verifyPassword } = require("../lib/auth");
 const { ok, notFound, forbidden } = require("../lib/response");
 const { isReservedCharacterSlug, INITIATIVE_SLUG } = require("../lib/specialItems");
 const { notifySessionChanged } = require("../lib/broadcast");
+const { addVersionBump, characterVersionKey, withVersions } = require("../lib/versioning");
 const { normalizeInitiativeRecord } = require("../lib/specialRecords");
 const { resolveAttackerRef } = require("../lib/initiativeProjection");
 
@@ -104,15 +105,20 @@ exports.handler = async (event) => {
   names["#updatedAt"] = "updatedAt";
   values[":updatedAt"] = new Date().toISOString();
 
-  await db.send(new UpdateCommand({
+  // ADR-030 — bump the record version in the same write (field-level SETs,
+  // so an atomic +1 is enough; no read-modify-write here).
+  addVersionBump(updates, names, values);
+
+  const writeResult = await db.send(new UpdateCommand({
     TableName: TABLE,
     Key: { slug },
     UpdateExpression: `SET ${updates.join(", ")}`,
     ExpressionAttributeNames: names,
     ExpressionAttributeValues: values,
+    ReturnValues: "UPDATED_NEW",
   }));
 
   await notifySessionChanged();
 
-  return ok({ slug });
+  return ok(withVersions({ slug }, { [characterVersionKey(slug)]: writeResult?.Attributes?.version }));
 };

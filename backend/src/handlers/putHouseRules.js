@@ -3,6 +3,8 @@ const { ok, forbidden, badRequest } = require("../lib/response");
 const { saveHouseRulesState } = require("../lib/specialRecords");
 const { isValidCheckDice, normalizeHouseRulesRecord } = require("../lib/houseRules");
 const { notifySessionChanged } = require("../lib/broadcast");
+const { withVersions } = require("../lib/versioning");
+const { HOUSE_RULES_SLUG } = require("../lib/specialItems");
 
 // DM-only: replace the table's house rules. Every client picks the new rules
 // up from getSessionState on its next poll (nudged immediately via WS).
@@ -17,7 +19,7 @@ exports.handler = async (event) => {
   }
 
   const houseRules = normalizeHouseRulesRecord(body);
-  await saveHouseRulesState(houseRules);
+  const savedVersion = await saveHouseRulesState(houseRules);
   await notifySessionChanged();
-  return ok({ houseRules });
+  return ok(withVersions({ houseRules: { ...houseRules, version: savedVersion } }, { [HOUSE_RULES_SLUG]: savedVersion }));
 };

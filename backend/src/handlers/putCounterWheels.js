@@ -2,6 +2,8 @@ const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
 const { saveCounterWheelsState, appendRollHistoryEvent } = require("../lib/specialRecords");
 const { notifySessionChanged } = require("../lib/broadcast");
+const { withVersions } = require("../lib/versioning");
+const { COUNTER_WHEELS_SLUG } = require("../lib/specialItems");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -11,7 +13,7 @@ exports.handler = async (event) => {
   const body = JSON.parse(event.body || "{}");
   if (!Array.isArray(body.wheels)) return badRequest("wheels must be an array");
 
-  await saveCounterWheelsState({ wheels: body.wheels });
+  const savedVersion = await saveCounterWheelsState({ wheels: body.wheels });
 
   // If a wheel creation or fill-change event was included, append it to
   // roll history. filledCount present = fill change; absent = creation.
@@ -29,5 +31,5 @@ exports.handler = async (event) => {
 
   await notifySessionChanged();
 
-  return ok({ success: true });
+  return ok(withVersions({ success: true }, { [COUNTER_WHEELS_SLUG]: savedVersion }));
 };

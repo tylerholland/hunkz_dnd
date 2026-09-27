@@ -1,6 +1,8 @@
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
 const { saveNpcLibraryState } = require("../lib/specialRecords");
+const { withVersions } = require("../lib/versioning");
+const { NPC_LIBRARY_SLUG } = require("../lib/specialItems");
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -10,7 +12,7 @@ exports.handler = async (event) => {
   const body = JSON.parse(event.body || "{}");
   if (!Array.isArray(body.templates)) return badRequest("templates must be an array");
 
-  await saveNpcLibraryState({ templates: body.templates });
+  const savedVersion = await saveNpcLibraryState({ templates: body.templates });
 
-  return ok({ success: true });
+  return ok(withVersions({ success: true }, { [NPC_LIBRARY_SLUG]: savedVersion }));
 };

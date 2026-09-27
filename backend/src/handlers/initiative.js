@@ -2,6 +2,8 @@ const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
 const { getInitiativeState, saveInitiativeState } = require("../lib/specialRecords");
 const { notifySessionChanged } = require("../lib/broadcast");
+const { withVersions } = require("../lib/versioning");
+const { INITIATIVE_SLUG } = require("../lib/specialItems");
 
 exports.handler = async (event) => {
   const method = event.requestContext?.http?.method;
@@ -32,7 +34,7 @@ exports.handler = async (event) => {
     const nextRound = Math.max(1, body.round ?? 1);
     const turnAdvanced = previous.activeTurnIndex !== nextActiveTurnIndex || previous.round !== nextRound;
 
-    await saveInitiativeState({
+    const savedVersion = await saveInitiativeState({
       entries: body.entries,
       activeTurnIndex: nextActiveTurnIndex,
       round: nextRound,
@@ -41,7 +43,7 @@ exports.handler = async (event) => {
 
     await notifySessionChanged();
 
-    return ok({ success: true });
+    return ok(withVersions({ success: true }, { [INITIATIVE_SLUG]: savedVersion }));
   }
 
   return { statusCode: 405, body: JSON.stringify({ error: "Method not allowed" }) };

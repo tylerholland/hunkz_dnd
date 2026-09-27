@@ -28,10 +28,12 @@ const DM_PARTY_FIELDS = [
   // DM card revamp (Stories 50/51/64) — ability modifiers, speed, and the
   // loadout drawer. DM-only payload; player projections are unchanged.
   "stats", "speed", "weapons", "equipment",
+  // ADR-030 — record version for client stale-read protection.
+  "version",
 ];
 
 const DM_PARTY_PROJECTION_EXPRESSION =
-  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom, stats, speed, weapons, equipment";
+  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom, stats, speed, weapons, equipment, #ver";
 
 const DM_PARTY_EXPRESSION_ATTRIBUTE_NAMES = {
   "#n": "name",
@@ -39,6 +41,7 @@ const DM_PARTY_EXPRESSION_ATTRIBUTE_NAMES = {
   "#l": "level",
   "#hp": "hp",
   "#dmNotes": "dmNotes",
+  "#ver": "version",
 };
 
 // DM projection: whitelisted fields, dmNotes defaulted, playerNotes replaced
@@ -65,6 +68,8 @@ const PLAYER_VISIBLE_FIELDS = [
   // hidden initiative entry (ADR-023) — projectPlayerCharacter() itself
   // stays a plain pass-through, same pattern as lastDamagedAt above.
   "lastDamageFrom",
+  // ADR-030 — record version (not secret).
+  "version",
 ];
 
 function projectPlayerCharacter(item) {
