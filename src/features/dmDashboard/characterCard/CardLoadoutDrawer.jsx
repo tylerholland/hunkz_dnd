@@ -1,5 +1,8 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { formatMod, getSkillBonuses, groupDrawerContent, titleCase } from "../cardStats";
+import { getTalentDetail } from "../../characterSheet/talentCatalog";
+import { itemTypeLabel } from "../../characterSheet/ItemEditorModal";
+import DrawerDetailPopover from "./DrawerDetailPopover";
 import "./cardStatsBand.css";
 
 function Section({ title, count, children }) {
@@ -27,13 +30,40 @@ function spellLevelLabel(level) {
 
 const rollExpr = (bonus) => `1d20${bonus >= 0 ? "+" : ""}${bonus}`;
 
-function ItemList({ items, renderExtra }) {
+function spellMeta(level) {
+  const n = Number(level);
+  if (level === undefined || level === null || level === "" || !Number.isFinite(n)) return "";
+  return n <= 0 ? "Cantrip" : `Level ${n} spell`;
+}
+
+function itemMeta(item) {
+  const parts = [];
+  if (item.kind === "spell") parts.push(spellMeta(item.level) || "Spell");
+  else if (item.kind === "weapon") parts.push("Weapon");
+  else if (item.type) parts.push(itemTypeLabel(item.type));
+  if (item.attack !== undefined && item.attack !== null) parts.push(`${formatMod(item.attack)} to hit`);
+  if (item.damage) parts.push(item.damage);
+  if (item.qty != null) parts.push(`Qty ${item.qty}`);
+  if (item.mods) parts.push(item.mods);
+  if (item.requiresAttunement) parts.push(item.attuned ? "Attuned" : "Requires attunement");
+  if (item.stowed) parts.push("Stowed");
+  return parts.filter(Boolean).join(" · ");
+}
+
+function ItemList({ items, renderExtra, onDetail }) {
   return (
     <ul className="cc-drawer-list">
       {items.map((item, idx) => (
         <li key={item.id || idx} className={`cc-drawer-item${item.stowed ? " muted" : ""}`}>
           <span className="cc-drawer-name">
-            {item.name}<ItemQty qty={item.qty} />
+            {item.description ? (
+              <button
+                type="button"
+                className="cc-drawer-name-btn cc-has-detail"
+                onClick={(e) => onDetail(e, { title: item.name, meta: itemMeta(item), body: item.description })}
+              >{item.name}</button>
+            ) : item.name}
+            <ItemQty qty={item.qty} />
             {item.mods && <span className="cc-drawer-mods">{item.mods}</span>}
           </span>
           {item.requiresAttunement && (
@@ -52,6 +82,13 @@ function ItemList({ items, renderExtra }) {
 export default function CardLoadoutDrawer({ char, onRoll }) {
   const ref = useRef(null);
   const { attacks, gear, consumables, spells, pack } = groupDrawerContent(char);
+  const [detail, setDetail] = useState(null);
+  const closeDetail = useCallback(() => setDetail(null), []);
+  // Tap an entry with more to say → one floating detail card (tap again to close).
+  const openDetail = (e, content) => {
+    const anchor = e.currentTarget;
+    setDetail((current) => (current?.anchor === anchor ? null : { ...content, anchor, rect: anchor.getBoundingClientRect() }));
+  };
   const abilities = (char.specialAbilities || []).filter((a) => typeof a === "string" && a.trim());
   const skills = getSkillBonuses(char);
 
@@ -75,6 +112,7 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
         <Section title="Attacks" count={attacks.length}>
           <ItemList
             items={attacks}
+            onDetail={openDetail}
             renderExtra={(entry) => (
               <>
                 {entry.kind === "spell" && <span className="cc-drawer-tag">spell</span>}
@@ -98,13 +136,15 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
 
       {gear.length > 0 && (
         <Section title="Gear" count={gear.length}>
-          <ItemList items={gear} />
+          <ItemList items={gear}
+            onDetail={openDetail} />
         </Section>
       )}
 
       {consumables.length > 0 && (
         <Section title="Consumables" count={consumables.length}>
-          <ItemList items={consumables} />
+          <ItemList items={consumables}
+            onDetail={openDetail} />
         </Section>
       )}
 
@@ -114,9 +154,16 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
             <div key={key} className="cc-drawer-spell-group">
               <span className="cc-drawer-sublabel">{key}</span>
               <div className="cc-drawer-chips">
-                {spellGroups[key].map((spell, idx) => (
-                  <span key={spell.id || `${key}-${idx}`} className="cc-drawer-chip" title={spell.description || spell.name}>{spell.name}</span>
-                ))}
+                {spellGroups[key].map((spell, idx) => (spell.description ? (
+                  <button
+                    key={spell.id || `${key}-${idx}`}
+                    type="button"
+                    className="cc-drawer-chip cc-has-detail"
+                    onClick={(e) => openDetail(e, { title: spell.name, meta: spellMeta(spell.level), body: spell.description })}
+                  >{spell.name}</button>
+                ) : (
+                  <span key={spell.id || `${key}-${idx}`} className="cc-drawer-chip">{spell.name}</span>
+                )))}
               </div>
             </div>
           ))}
@@ -127,7 +174,20 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
         <Section title="Abilities & Skills">
           {abilities.length > 0 && (
             <div className="cc-drawer-chips">
-              {abilities.map((ability) => <span key={ability} className="cc-drawer-chip">{titleCase(ability)}</span>)}
+              {abilities.map((ability) => {
+                const info = getTalentDetail(ability);
+                const label = info.label && info.label !== ability ? info.label : titleCase(ability);
+                return info.description ? (
+                  <button
+                    key={ability}
+                    type="button"
+                    className="cc-drawer-chip cc-has-detail"
+                    onClick={(e) => openDetail(e, { title: label, meta: "Special ability", body: info.description })}
+                  >{label}</button>
+                ) : (
+                  <span key={ability} className="cc-drawer-chip">{label}</span>
+                );
+              })}
             </div>
           )}
           {skills.length > 0 && (
@@ -144,9 +204,11 @@ export default function CardLoadoutDrawer({ char, onRoll }) {
 
       {pack.length > 0 && (
         <Section title="Pack" count={pack.length}>
-          <ItemList items={pack} />
+          <ItemList items={pack}
+            onDetail={openDetail} />
         </Section>
       )}
+      <DrawerDetailPopover detail={detail} onClose={closeDetail} />
     </div>
   );
 }

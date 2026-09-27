@@ -48,3 +48,23 @@ describe("DM card stats band", () => {
     expect(onRoll).toHaveBeenLastCalledWith("1d8+4", "Longbow damage");
   });
 });
+
+describe("DM drawer details", () => {
+  it("opens a detail card for entries with a description, and closes on Escape", () => {
+    render(<CardLoadoutDrawer char={{
+      name: "Eoghan",
+      spells: [{ id: "s1", name: "Hex", level: 1, description: "Curse a creature." }, { id: "s2", name: "Light", level: 0 }],
+      equipment: [{ id: "e1", name: "Torch", qty: 4, description: "Bright light 20 ft." }],
+    }} />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hex" }));
+    expect(screen.getByRole("dialog", { name: "Hex" })).toHaveTextContent("Curse a creature.");
+    expect(screen.getByRole("dialog")).toHaveTextContent("Level 1 spell");
+    fireEvent.keyDown(document, { key: "Escape" });
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    // No description → plain text, not a button
+    expect(screen.queryByRole("button", { name: "Light" })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Torch" }));
+    expect(screen.getByRole("dialog", { name: "Torch" })).toHaveTextContent("Qty 4");
+  });
+});

@@ -28,9 +28,17 @@ body {
 button { font-family: inherit; cursor: pointer; }
 textarea, input, select { font-family: inherit; }
 
-::-webkit-scrollbar { width: 6px; }
+/* Scrollbars — thin and quiet everywhere. The standard properties cover
+   Firefox and current Chrome (which ignores the ::-webkit-* rules whenever
+   they apply); the ::-webkit-* rules cover Safari. Components can retint
+   by setting scrollbar-color with their own palette accent. */
+:root {
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--pal-accent, #8a7050) 40%, transparent) transparent;
+}
+::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(128,128,128,0.2); border-radius: 3px; }
+::-webkit-scrollbar-thumb { background: color-mix(in srgb, var(--pal-accent, #8a7050) 40%, transparent); border-radius: 3px; }
 
 /* Select element base — palette values applied via CSS vars set at component root */
 select {

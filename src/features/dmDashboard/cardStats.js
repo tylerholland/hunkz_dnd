@@ -129,7 +129,7 @@ export function groupDrawerContent(char) {
   const pack = [];
 
   for (const weapon of weapons) {
-    const entry = { id: weapon.id, kind: "weapon", name: weapon.name || "Unnamed", qty: weapon.qty, ...getWeaponSummary(weapon) };
+    const entry = { id: weapon.id, kind: "weapon", name: weapon.name || "Unnamed", qty: weapon.qty, description: weapon.description || "", ...getWeaponSummary(weapon) };
     if (isEquipped(weapon)) attacks.push(entry);
     else pack.push({ ...entry, stowed: true });
   }
@@ -138,13 +138,15 @@ export function groupDrawerContent(char) {
       id: spell.id,
       kind: "spell",
       name: spell.name,
+      description: spell.description || "",
+      level: spell.level,
       attack: parseToHit(spell.toHit),
       damage: spell.damage && String(spell.damage).trim() ? String(spell.damage).trim() : null,
     });
   }
 
   for (const item of equipment) {
-    const entry = { id: item.id, name: item.name || "Unnamed", qty: item.qty, mods: modsText(item), attuned: !!item.attuned, requiresAttunement: !!item.requiresAttunement };
+    const entry = { id: item.id, name: item.name || "Unnamed", qty: item.qty, type: item.type || "", description: item.description || "", mods: modsText(item), attuned: !!item.attuned, requiresAttunement: !!item.requiresAttunement };
     const type = String(item.type || "").toLowerCase();
     if (item.qty != null) consumables.push({ ...entry, stowed: !isEquipped(item) });
     else if (isEquipped(item) && (GEAR_TYPES.has(type) || entry.mods || item.requiresAttunement)) gear.push(entry);
