@@ -1,6 +1,6 @@
 # Feature Story: Adventure Breakpoints — Retroactive Chapter Marks
 
-**Status**: Approved — Ready to Build (model revised per DM 2026-07-16)
+**Status**: Superseded by [Story 69 — Session Chronicle](69-session-chronicle.md) (2026-09-28, never built). Range tagging replaces the clear-on-end model; the map-activation logging idea carries over.
 **Source**: DM priority list 2026-07-16 (#3), revised by DM
 
 ---

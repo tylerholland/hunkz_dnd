@@ -1,0 +1,588 @@
+<title>Session Chronicle</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English:ital@0;1&display=swap">
+<!--
+  Implementation note (Story 69 — Session Chronicle)
+  - Chronicle page lists chapters → sessions. DM records a session by picking a time range of the
+    live roll log (activity strip by LOCAL day, presets, exact times), unticking noise, naming it,
+    choosing/creating a chapter. Saving snapshots the included events into the session record.
+  - Session page: summary (anyone edits, "last edited by"), highlights computed from events,
+    recollections (authors edit own, DM hides), collapsed activity log. DM: edit range, rename, delete.
+  - Sessions can't overlap; recorded days are shaded in the strip.
+  - Data here is the real roll log as of 2026-09-28 (read-only copy). The summary and recollection
+    text on the first session are examples, marked as such.
+-->
+<style>
+  :root {
+    --bg: #f4ecdb;
+    --surface: #fbf6ea;
+    --surface-2: #efe4cc;
+    --line: #d8c8a6;
+    --ink: #2c2114;
+    --ink-soft: #5a4a33;
+    --ink-mute: #85714f;
+    --accent: #8a5a1c;
+    --accent-soft: rgba(138, 90, 28, 0.12);
+    --bar: #b89660;
+    --bar-sel: #8a5a1c;
+    --taken: #cbbd9e;
+    --good: #3f7d52;
+    --bad: #a8453a;
+    --display: "Cinzel", "Palatino Linotype", Georgia, serif;
+    --body: "Crimson Text", "Palatino Linotype", Georgia, serif;
+    --ui: "IM Fell English", Georgia, serif;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      color-scheme: dark;
+      --bg: #15120e;
+      --surface: #1f1a14;
+      --surface-2: #28211a;
+      --line: #3b3228;
+      --ink: #ecdfc6;
+      --ink-soft: #c4b394;
+      --ink-mute: #92806a;
+      --accent: #d9a650;
+      --accent-soft: rgba(217, 166, 80, 0.14);
+      --bar: #6f5a3a;
+      --bar-sel: #e0b060;
+      --taken: #3a3228;
+      --good: #7fcf98;
+      --bad: #e0857a;
+    }
+  }
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --bg: #15120e;
+    --surface: #1f1a14;
+    --surface-2: #28211a;
+    --line: #3b3228;
+    --ink: #ecdfc6;
+    --ink-soft: #c4b394;
+    --ink-mute: #92806a;
+    --accent: #d9a650;
+    --accent-soft: rgba(217, 166, 80, 0.14);
+    --bar: #6f5a3a;
+    --bar-sel: #e0b060;
+    --taken: #3a3228;
+    --good: #7fcf98;
+    --bad: #e0857a;
+  }
+  html, body { background: var(--bg); color: var(--ink); }
+  body { font-family: var(--body); font-size: 17px; line-height: 1.55; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding-inline: 16px; padding-block: 22px 64px; }
+
+  .topbar { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; margin-bottom: 22px; }
+  .eyebrow { font-family: var(--ui); font-size: 13px; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); }
+  .role { margin-left: auto; display: flex; align-items: center; gap: 8px; font-family: var(--ui); font-size: 13px; color: var(--ink-mute); letter-spacing: .06em; }
+  .role select { font-family: var(--body); font-size: 15px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; min-height: 36px; padding: 0 8px; }
+
+  h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(28px, 4.4vw, 42px); letter-spacing: .05em; text-wrap: balance; }
+  .lede { margin: 4px 0 0; color: var(--ink-soft); max-width: 62ch; }
+  .page-head { display: flex; flex-wrap: wrap; align-items: end; gap: 12px 20px; margin-bottom: 26px; }
+  .page-head .spacer { flex: 1; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 42px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-family: var(--ui); font-size: 14px; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+  .btn:hover { border-color: var(--accent); }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+  .btn.quiet { background: transparent; color: var(--ink-soft); }
+  .btn.danger { color: var(--bad); }
+  .btn:focus-visible, .link:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible, .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .link { background: none; border: 0; padding: 0; color: var(--accent); font-family: var(--ui); font-size: 14px; letter-spacing: .08em; cursor: pointer; }
+
+  /* ── Chronicle list ─────────────────────── */
+  .chapter { margin-bottom: 34px; }
+  .chapter-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 6px; margin-bottom: 14px; }
+  .chapter-num { font-family: var(--ui); font-size: 13px; letter-spacing: .2em; text-transform: uppercase; color: var(--accent); white-space: nowrap; }
+  .chapter-name { margin: 0; font-family: var(--display); font-weight: 400; font-size: 22px; letter-spacing: .04em; }
+  .chapter-name input { font: inherit; letter-spacing: inherit; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 0 8px; width: min(420px, 100%); }
+  .sessions { display: grid; gap: 12px; }
+  .card { display: grid; grid-template-columns: 92px 1fr; gap: 16px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 6px; cursor: pointer; text-align: left; color: inherit; font: inherit; width: 100%; }
+  .card:hover { border-color: var(--accent); }
+  .date-block { display: grid; align-content: start; justify-items: center; border-right: 1px solid var(--line); padding-right: 14px; }
+  .date-block .dow { font-family: var(--ui); font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--ink-mute); }
+  .date-block .day { font-family: var(--display); font-size: 34px; line-height: 1.1; }
+  .date-block .mon { font-family: var(--ui); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); }
+  .card h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 19px; letter-spacing: .03em; }
+  .meta { font-family: var(--ui); font-size: 14px; color: var(--ink-mute); letter-spacing: .03em; }
+  .excerpt { margin: 6px 0 0; color: var(--ink-soft); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+  .excerpt.empty { font-style: italic; color: var(--ink-mute); }
+  .who-row { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 8px; }
+  .who { display: inline-flex; align-items: center; gap: 6px; font-family: var(--ui); font-size: 13px; color: var(--ink-soft); }
+  .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  @media (max-width: 520px) {
+    .card { grid-template-columns: 1fr; }
+    .date-block { border-right: 0; padding-right: 0; justify-items: start; grid-auto-flow: column; gap: 8px; align-items: baseline; }
+    .date-block .day { font-size: 22px; }
+  }
+
+  /* ── Record a session ───────────────────── */
+  .panel { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 16px; display: grid; gap: 14px; }
+  .panel h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 19px; letter-spacing: .04em; }
+  .step { font-family: var(--ui); font-size: 13px; letter-spacing: .18em; text-transform: uppercase; color: var(--accent); }
+  .strip-scroll { overflow-x: auto; padding-bottom: 4px; }
+  .strip { position: relative; display: flex; align-items: flex-end; gap: 2px; height: 120px; padding-top: 6px; min-width: max-content; }
+  .bar { position: relative; width: 9px; flex: none; height: 100%; display: flex; align-items: flex-end; cursor: pointer; background: transparent; border: 0; padding: 0; }
+  .bar i { display: block; width: 100%; min-height: 2px; background: var(--bar); border-radius: 2px 2px 0 0; }
+  .bar.empty i { background: var(--line); opacity: .6; }
+  .bar.in i { background: var(--bar-sel); }
+  .bar.in::before { content: ""; position: absolute; inset: 0 -1px; background: var(--accent-soft); z-index: -1; }
+  .bar.taken i { background: repeating-linear-gradient(45deg, var(--taken) 0 3px, transparent 3px 6px); border: 1px solid var(--taken); }
+  .bar.taken { cursor: not-allowed; }
+  .bar:hover i { filter: brightness(1.15); }
+  .axis { display: flex; gap: 2px; min-width: max-content; margin-top: 4px; }
+  .axis span { width: 9px; flex: none; position: relative; font-family: var(--ui); font-size: 12px; color: var(--ink-mute); }
+  .axis span b { position: absolute; left: 0; top: 0; white-space: nowrap; font-weight: 400; }
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--ui); font-size: 13px; color: var(--ink-mute); }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .presets { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip { min-height: 38px; padding: 0 14px; border-radius: 999px; border: 1px solid var(--line); background: transparent; color: var(--ink); font-family: var(--body); font-size: 15px; cursor: pointer; }
+  .chip:hover { border-color: var(--accent); }
+  .times { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; }
+  .field { display: grid; gap: 4px; }
+  .field label, .field .lbl { font-family: var(--ui); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-mute); }
+  .field input, .field select, .field textarea { font-family: var(--body); font-size: 16px; min-height: 42px; background: var(--bg); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 0 10px; }
+  .field textarea { min-height: 220px; padding: 10px 12px; line-height: 1.55; resize: vertical; }
+  .tally { font-family: var(--ui); font-size: 15px; color: var(--ink-soft); }
+  .tally b { font-family: var(--display); font-weight: 400; color: var(--ink); }
+  .warn { color: var(--bad); font-family: var(--ui); font-size: 14px; }
+  .preview { max-height: 420px; overflow-y: auto; border: 1px solid var(--line); border-radius: 4px; background: var(--bg); }
+  .day-group + .day-group { border-top: 1px solid var(--line); }
+  .day-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--surface-2); font-family: var(--ui); font-size: 14px; letter-spacing: .06em; }
+  .day-head .count { margin-left: auto; color: var(--ink-mute); }
+  .ev { display: grid; grid-template-columns: 22px 64px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 5px 12px; font-size: 15px; }
+  .ev.off { opacity: .42; text-decoration: line-through; text-decoration-color: var(--ink-mute); }
+  .ev .t { font-family: var(--ui); font-size: 13px; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+  .ev .what { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .ev .what .nm { font-weight: 600; }
+  .ev .num { font-family: var(--display); font-variant-numeric: tabular-nums; }
+  .ev input, .day-head input { width: 16px; height: 16px; accent-color: var(--accent); }
+  .row-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .row-actions .spacer { flex: 1; }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  @media (max-width: 640px) { .two { grid-template-columns: 1fr; } }
+
+  /* ── Session page ───────────────────────── */
+  .session-head { display: grid; gap: 6px; margin-bottom: 22px; }
+  .session-head h1 input { font: inherit; letter-spacing: inherit; width: 100%; background: var(--surface); color: var(--ink); border: 1px solid var(--line); border-radius: 4px; padding: 0 8px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr); gap: 22px; align-items: start; }
+  @media (max-width: 820px) { .grid { grid-template-columns: 1fr; } }
+  .section { display: grid; gap: 10px; margin-bottom: 26px; }
+  .section-head { display: flex; align-items: baseline; gap: 12px; border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+  .section-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: .06em; }
+  .section-head .spacer { flex: 1; }
+  .summary p { margin: 0 0 12px; max-width: 66ch; }
+  .summary .example { font-family: var(--ui); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); border: 1px solid var(--accent); border-radius: 3px; padding: 0 6px; margin-left: 8px; }
+  .edited { font-family: var(--ui); font-size: 13px; color: var(--ink-mute); }
+  .empty-note { color: var(--ink-mute); font-style: italic; margin: 0; }
+  .hl { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+  .hl-card { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; display: grid; gap: 2px; align-content: start; }
+  .hl-card .k { font-family: var(--ui); font-size: 12px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-mute); }
+  .hl-card .v { font-family: var(--display); font-size: 26px; line-height: 1.2; }
+  .hl-card .d { font-size: 14px; color: var(--ink-soft); }
+  .hl-card.good .v { color: var(--good); }
+  .hl-card.bad .v { color: var(--bad); }
+  .recs { display: grid; gap: 10px; }
+  .rec { border-left: 3px solid var(--c, var(--accent)); background: var(--surface); padding: 8px 12px; border-radius: 0 6px 6px 0; }
+  .rec.hidden { opacity: .5; }
+  .rec p { margin: 0; }
+  .rec .by { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: baseline; font-family: var(--ui); font-size: 13px; color: var(--ink-mute); margin-top: 4px; }
+  .rec .by b { color: var(--c); font-weight: 400; }
+  .rec-form { display: grid; gap: 8px; }
+  .rec-form textarea { min-height: 80px; }
+  details.log { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
+  details.log summary { cursor: pointer; padding: 10px 14px; font-family: var(--ui); font-size: 14px; letter-spacing: .08em; color: var(--ink-soft); }
+  details.log .preview { border: 0; border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; max-height: 360px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); font-family: var(--ui); font-size: 14px; letter-spacing: .06em; padding: 8px 16px; border-radius: 4px; z-index: 50; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+
+<div class="wrap">
+  <div class="topbar">
+    <span class="eyebrow">Hunkz Adventures · Preview</span>
+    <label class="role" for="role">Viewing as
+      <select id="role"></select>
+    </label>
+  </div>
+  <main id="app"></main>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+const LOG = [{"t": "2026-09-28T17:03:34.267Z", "who": "Liu Sha", "pal": "ember", "label": "Unarmed Strike DMG", "expr": "1d4 + 2", "total": 4, "dice": [2], "target": "Carrion Crawler"}, {"t": "2026-09-28T17:03:26.444Z", "who": "Liu Sha", "pal": "ember", "label": "Unarmed Strike ATK", "expr": "1d20 + 4", "total": 8, "dice": [4], "target": "Carrion Crawler"}, {"t": "2026-09-27T00:16:31.465Z", "who": "DM", "label": "Deception", "expr": "1d20 + 4", "total": 16, "dice": [12]}, {"t": "2026-09-27T00:04:27.990Z", "who": "DM", "label": "Stealth", "expr": "1d20 + 4", "total": 14, "dice": [10]}, {"t": "2026-09-26T22:19:31.613Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 6, "dice": [5, 1], "target": "Carrion Crawler"}, {"t": "2026-09-26T22:19:28.255Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 16, "dice": [12], "target": "Carrion Crawler"}, {"t": "2026-09-26T22:19:15.794Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Dagger ATK", "expr": "1d20", "total": 16, "dice": [16], "target": "Carrion Crawler"}, {"t": "2026-09-26T22:19:08.157Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Dagger ATK", "expr": "1d20", "total": 13, "dice": [13], "target": "Carrion Crawler"}, {"t": "2026-09-26T05:32:58.892Z", "who": "DM", "label": "Constitution Check", "expr": "1d20 + 2", "total": 6, "dice": [4]}, {"t": "2026-09-23T06:02:36.929Z", "wheel": "??????", "segments": 4}, {"t": "2026-09-23T06:02:36.397Z", "wheel": "??????", "filled": 2, "segments": 4}, {"t": "2026-09-23T06:02:35.624Z", "wheel": "??????", "filled": 3, "segments": 4}, {"t": "2026-09-23T06:02:34.460Z", "wheel": "??????", "filled": 4, "segments": 4}, {"t": "2026-09-23T05:51:15.598Z", "wheel": "??????", "segments": 4}, {"t": "2026-08-28T02:09:14.386Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 11, "dice": [5, 6], "target": "Goblin King"}, {"t": "2026-08-28T02:09:11.844Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 19, "dice": [15], "target": "Goblin King"}, {"t": "2026-08-28T02:08:24.539Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 8, "dice": [3, 5], "target": "Goblin King"}, {"t": "2026-08-28T02:08:20.536Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 23, "dice": [19], "target": "Goblin King"}, {"t": "2026-08-24T20:36:05.842Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 10, "dice": [4, 6], "target": "Goblin King"}, {"t": "2026-08-24T20:36:03.233Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 23, "dice": [19], "target": "Goblin King"}, {"t": "2026-08-18T18:59:51.810Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 6, "dice": [4, 2], "target": "Goblin King"}, {"t": "2026-08-18T18:59:49.731Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 20, "dice": [16], "target": "Goblin King"}, {"t": "2026-08-18T18:45:42.849Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 7, "dice": [3, 4], "target": "Goblin King"}, {"t": "2026-08-18T18:45:40.687Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 16, "dice": [12], "target": "Goblin King"}, {"t": "2026-08-18T18:27:36.200Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 9, "dice": [5, 4], "target": "Goblin King"}, {"t": "2026-08-18T18:27:34.912Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 11, "dice": [7], "target": "Goblin King"}, {"t": "2026-08-18T18:10:08.808Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 8, "dice": [4, 4], "target": "Goblin King"}, {"t": "2026-08-18T18:09:58.150Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 13, "dice": [9], "target": "Goblin King"}, {"t": "2026-08-12T02:21:12.395Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 4, "dice": [3, 1], "target": "Goblin King"}, {"t": "2026-08-12T02:21:09.382Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 9, "dice": [5], "target": "Goblin King"}, {"t": "2026-08-12T02:21:01.987Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex DMG", "expr": "2d6", "total": 7, "dice": [3, 4], "target": "Goblin King"}, {"t": "2026-08-12T02:20:53.656Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Hex ATK", "expr": "1d20 + 4", "total": 13, "dice": [9], "target": "Goblin King"}, {"t": "2026-07-23T05:12:24.254Z", "who": "\"The Sound of a Hearthfire Burning\" Quietclaw", "pal": "ash", "label": "Free Roll", "expr": "2d6 + 2", "total": 12, "dice": [6, 4]}, {"t": "2026-07-23T05:07:49.991Z", "who": "Mr. Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "2d6", "total": 7, "dice": [4, 3]}, {"t": "2026-07-23T05:01:36.447Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d6 + 2", "total": 6, "dice": [2, 2]}, {"t": "2026-07-23T04:45:18.504Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d6 + 2", "total": 8, "dice": [5, 1]}, {"t": "2026-07-23T04:44:31.936Z", "wheel": "Misty Step", "filled": 3, "segments": 3}, {"t": "2026-07-23T04:41:07.804Z", "who": "Aesop", "pal": "nightwood", "label": "Free Roll", "expr": "1d6", "total": 1, "dice": [1]}, {"t": "2026-07-23T04:39:10.604Z", "who": "Aesop", "pal": "nightwood", "label": "Free Roll", "expr": "2d6", "total": 3, "dice": [1, 2]}, {"t": "2026-07-23T04:37:41.658Z", "who": "Liu Sha", "pal": "ember", "label": "Free Roll", "expr": "1d6", "total": 1, "dice": [1]}, {"t": "2026-07-23T04:37:27.005Z", "who": "Liu Sha", "pal": "ember", "label": "Free Roll", "expr": "2d6 + 2", "total": 11, "dice": [3, 6]}, {"t": "2026-07-23T04:35:52.586Z", "who": "Liu Sha", "pal": "ember", "label": "Free Roll", "expr": "1d6", "total": 6, "dice": [6]}, {"t": "2026-07-23T04:34:21.925Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "1d20", "total": 9, "dice": [9]}, {"t": "2026-07-23T04:33:34.945Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "1d6", "total": 5, "dice": [5]}, {"t": "2026-07-23T04:33:21.484Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d6 + 2", "total": 10, "dice": [2, 6]}, {"t": "2026-07-23T04:32:19.174Z", "wheel": "Misty Step", "filled": 2, "segments": 3}, {"t": "2026-07-23T04:32:16.894Z", "wheel": "Misty Step", "filled": 1, "segments": 3}, {"t": "2026-07-23T04:32:08.595Z", "wheel": "Misty Step", "segments": 3}, {"t": "2026-07-23T04:32:08.097Z", "wheel": "Misty Step", "filled": 1, "segments": 3}, {"t": "2026-07-23T04:30:20.844Z", "who": "\"The Sound of a Hearthfire Burning\" Quietclaw", "pal": "ash", "label": "Free Roll", "expr": "2d6 + 2", "total": 10, "dice": [6, 2]}, {"t": "2026-07-23T04:26:35.097Z", "wheel": "Battlesounds Draw Unwanted Attention", "filled": 6, "segments": 6}, {"t": "2026-07-23T04:21:36.553Z", "who": "Liu Sha", "pal": "ember", "label": "Free Roll", "expr": "1d6 + 1", "total": 5, "dice": [4]}, {"t": "2026-07-23T04:20:37.170Z", "who": "Liu Sha", "pal": "ember", "label": "Free Roll", "expr": "2d6 + 1", "total": 3, "dice": [1, 1]}, {"t": "2026-07-23T04:17:40.470Z", "wheel": "Misty Step", "filled": 2, "segments": 3}, {"t": "2026-07-23T04:17:10.031Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d6 + 1", "total": 5, "dice": [1, 3]}, {"t": "2026-07-23T04:16:45.536Z", "wheel": "Misty Step", "filled": 1, "segments": 3}, {"t": "2026-07-23T04:16:42.189Z", "wheel": "Misty Step", "segments": 3}, {"t": "2026-07-23T04:12:19.457Z", "wheel": "Battlesounds Draw Unwanted Attention", "filled": 4, "segments": 6}, {"t": "2026-07-23T04:11:21.895Z", "who": "Aesop", "pal": "nightwood", "label": "Free Roll", "expr": "1d6", "total": 2, "dice": [2]}, {"t": "2026-07-23T04:10:45.632Z", "who": "Mr. Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "1d6", "total": 5, "dice": [5]}, {"t": "2026-07-23T04:08:35.564Z", "who": "Mr. Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "2d6 + 2", "total": 11, "dice": [5, 4]}, {"t": "2026-07-23T04:08:03.012Z", "who": "Liu Sha", "pal": "ember", "label": "Free Roll", "expr": "1d20 + 1", "total": 21, "dice": [20]}, {"t": "2026-07-23T04:07:56.152Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "1d20 + 1", "total": 19, "dice": [18]}, {"t": "2026-07-23T04:07:51.714Z", "who": "Aesop", "pal": "nightwood", "label": "Free Roll", "expr": "1d20", "total": 2, "dice": [2]}, {"t": "2026-07-23T04:07:32.732Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Dexterity Check", "expr": "2d6 + 1", "total": 3, "dice": [1, 1]}, {"t": "2026-07-23T04:06:41.650Z", "who": "Mr. Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "2d6 + 2", "total": 9, "dice": [6, 1]}, {"t": "2026-07-23T04:04:04.372Z", "who": "\"The Sound of a Hearthfire Burning\" Quietclaw", "pal": "ash", "label": "Free Roll", "expr": "1d6", "total": 2, "dice": [2]}, {"t": "2026-07-23T04:02:03.312Z", "who": "Aesop", "pal": "nightwood", "label": "Free Roll", "expr": "1d8", "total": 8, "dice": [8]}, {"t": "2026-07-23T04:00:13.470Z", "who": "Liu Sha", "pal": "ember", "label": "Free Roll", "expr": "2d6 + 1", "total": 9, "dice": [2, 6]}, {"t": "2026-07-23T03:57:06.871Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "1d6", "total": 1, "dice": [1]}, {"t": "2026-07-23T03:56:50.330Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d6 + 2", "total": 9, "dice": [2, 5]}, {"t": "2026-07-23T03:47:01.958Z", "who": "Aesop", "pal": "nightwood", "label": "Free Roll", "expr": "2d6", "total": 11, "dice": [5, 6]}, {"t": "2026-07-23T03:42:28.035Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d6 + 2", "total": 13, "dice": [6, 5]}, {"t": "2026-07-23T03:32:21.978Z", "who": "\"The Sound of a Hearthfire Burning\" Quietclaw", "pal": "ash", "label": "Free Roll", "expr": "2d6 + 2", "total": 7, "dice": [4, 1]}, {"t": "2026-07-23T03:27:54.877Z", "who": "Mr. Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "2d6 + 2", "total": 6, "dice": [1, 3]}, {"t": "2026-07-23T03:25:34.953Z", "wheel": "Battlesounds Draw Unwanted Attention", "filled": 3, "segments": 6}, {"t": "2026-07-23T03:21:26.281Z", "who": "Liu Sha", "pal": "ember", "label": "Free Roll", "expr": "2d6", "total": 7, "dice": [2, 5]}, {"t": "2026-07-23T03:18:29.161Z", "wheel": "Battlesounds Draw Unwanted Attention", "filled": 2, "segments": 6}, {"t": "2026-07-23T03:16:59.802Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d6 + 2", "total": 11, "dice": [4, 5]}, {"t": "2026-07-23T03:15:30.100Z", "who": "Liu Sha", "pal": "ember", "label": "Strength Check", "expr": "2d6 + 2", "total": 7, "dice": [2, 3]}, {"t": "2026-07-23T03:15:25.421Z", "who": "Liu Sha", "pal": "ember", "label": "Strength Check", "expr": "2d6 + 2", "total": 8, "dice": [1, 5]}, {"t": "2026-07-23T03:13:45.647Z", "who": "DM", "label": "Free Roll", "expr": "1d6", "total": 3, "dice": [3]}, {"t": "2026-07-23T03:13:07.482Z", "who": "\"The Sound of a Hearthfire Burning\" Quietclaw", "pal": "ash", "label": "Free Roll", "expr": "1d6 + 1", "total": 3, "dice": [2]}, {"t": "2026-07-23T03:11:52.282Z", "who": "\"The Sound of a Hearthfire Burning\" Quietclaw", "pal": "ash", "label": "Free Roll", "expr": "2d6 + 1", "total": 8, "dice": [1, 6]}, {"t": "2026-07-23T03:07:45.419Z", "who": "Mr. Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "2d6 + 2", "total": 10, "dice": [6, 2]}, {"t": "2026-07-23T03:02:10.597Z", "wheel": "Battlesounds Draw Unwanted Attention", "filled": 1, "segments": 6}, {"t": "2026-07-23T03:00:46.060Z", "who": "Aesop", "pal": "nightwood", "label": "Free Roll", "expr": "2d6", "total": 2, "dice": [1, 1]}, {"t": "2026-07-23T02:57:29.401Z", "who": "Mr. Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "1d6", "total": 4, "dice": [4]}, {"t": "2026-07-23T02:57:26.603Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "1d20 + 1", "total": 5, "dice": [4]}, {"t": "2026-07-23T02:56:20.839Z", "who": "Liu Sha", "pal": "ember", "label": "Free Roll", "expr": "2d6 + 2", "total": 7, "dice": [3, 2]}, {"t": "2026-07-23T02:50:09.507Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "1d6", "total": 1, "dice": [1]}, {"t": "2026-07-23T02:48:39.378Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d6 + 2", "total": 9, "dice": [6, 1]}, {"t": "2026-07-23T02:43:45.019Z", "who": "\"The Sound of a Hearthfire Burning\" Quietclaw", "pal": "ash", "label": "Free Roll", "expr": "2d6 + 2", "total": 9, "dice": [1, 6]}, {"t": "2026-07-23T02:42:04.157Z", "who": "Mr. Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "1d6", "total": 6, "dice": [6]}, {"t": "2026-07-23T02:40:11.724Z", "who": "Mr. Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "2d6 - 1", "total": 5, "dice": [1, 5]}, {"t": "2026-07-21T14:57:19.361Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Dexterity Check", "expr": "2d6 + 1", "total": 6, "dice": [3, 2]}, {"t": "2026-07-21T14:57:16.319Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Constitution Check", "expr": "2d6 + 2", "total": 8, "dice": [3, 3]}, {"t": "2026-07-21T14:57:07.719Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Constitution Check", "expr": "2d6 + 2", "total": 6, "dice": [2, 2]}, {"t": "2026-07-21T13:38:23.641Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "undefined Check", "expr": "2d6 + 2", "total": 13, "dice": [5, 6]}, {"t": "2026-07-21T13:38:13.313Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "undefined Check", "expr": "2d6 + 2", "total": 8, "dice": [2, 4]}, {"t": "2026-07-21T13:38:04.231Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "undefined Check", "expr": "2d6 + 2", "total": 12, "dice": [5, 5]}, {"t": "2026-07-20T22:15:48.721Z", "who": "Meanjeans", "pal": "vellum", "label": "Free Roll", "expr": "1d20", "total": 1, "dice": [1]}, {"t": "2026-07-20T22:15:38.963Z", "who": "Meanjeans", "pal": "vellum", "label": "undefined Check", "expr": "2d6", "total": 9, "dice": [6, 3]}, {"t": "2026-07-20T06:49:07.525Z", "wheel": "The Fighting Attracts the Attention of Other Sewer Denizens", "segments": 6}, {"t": "2026-07-20T06:48:57.388Z", "wheel": "The Fighting Attracts the Attention of Other Sewer Denizens", "filled": 1, "segments": 6}, {"t": "2026-07-20T06:48:26.404Z", "wheel": "The Fighting Attracts the Attention of Other Sewer Denizens", "segments": 6}, {"t": "2026-07-20T06:17:14.773Z", "wheel": "Counter 2", "segments": 9}, {"t": "2026-07-20T06:17:03.552Z", "wheel": "Test", "segments": 6}, {"t": "2026-07-20T06:17:02.956Z", "wheel": "Test", "filled": 1, "segments": 6}, {"t": "2026-07-20T06:17:02.453Z", "wheel": "Test", "filled": 2, "segments": 6}, {"t": "2026-07-20T06:17:01.696Z", "wheel": "Test", "filled": 3, "segments": 6}, {"t": "2026-07-20T06:17:01.157Z", "wheel": "Test", "filled": 4, "segments": 6}, {"t": "2026-07-20T06:17:00.557Z", "wheel": "Test", "filled": 5, "segments": 6}, {"t": "2026-07-20T06:16:59.492Z", "wheel": "Test", "filled": 6, "segments": 6}, {"t": "2026-07-20T06:16:58.277Z", "wheel": "Test", "filled": 5, "segments": 6}, {"t": "2026-07-20T06:16:57.171Z", "wheel": "Test", "filled": 4, "segments": 6}, {"t": "2026-07-17T04:47:38.473Z", "who": "\"The Sound of a Hearthfire Burning\" Quietclaw", "pal": "ash", "label": "Strength Check", "expr": "2d6", "total": 8, "dice": [6, 2]}, {"t": "2026-07-17T04:47:29.491Z", "who": "\"The Sound of a Hearthfire Burning\" Quietclaw", "pal": "ash", "label": "Strength Check", "expr": "2d6", "total": 7, "dice": [4, 3]}, {"t": "2026-07-17T04:35:16.130Z", "wheel": "Test", "segments": 6}, {"t": "2026-07-16T16:59:23.950Z", "wheel": "Test", "filled": 5, "segments": 6}, {"t": "2026-07-16T16:34:11.329Z", "wheel": "Test", "segments": 6}, {"t": "2026-07-16T16:22:24.258Z", "wheel": "Test", "segments": 6}, {"t": "2026-07-06T03:51:42.758Z", "wheel": "Test", "segments": 9}, {"t": "2026-06-24T05:16:50.402Z", "wheel": "Lockpicks remaining", "segments": 6}, {"t": "2026-06-24T05:12:25.523Z", "wheel": "Wake up Guard", "segments": 6}, {"t": "2026-06-24T05:11:39.304Z", "wheel": "Lies told", "segments": 4}, {"t": "2026-06-09T06:06:05.958Z", "who": "DM", "label": "Free Roll", "expr": "2d8 + 1d10", "total": 11, "dice": [4, 5, 2]}, {"t": "2026-06-09T05:48:17.377Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Strength Check", "expr": "1d20", "total": 10, "dice": [10]}, {"t": "2026-06-09T05:47:24.258Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Dexterity Check", "expr": "1d20", "total": 3, "dice": [3]}, {"t": "2026-06-09T05:42:00.333Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Dexterity Check", "expr": "1d20", "total": 5, "dice": [5]}, {"t": "2026-05-31T23:46:22.021Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "vellum", "label": "Free Roll", "expr": "1d8", "total": 5, "dice": [5]}, {"t": "2026-05-30T06:53:11.562Z", "who": "DM", "label": "Free Roll", "expr": "2d6 + 1d4 + 3", "total": 11, "dice": [2, 2, 4]}, {"t": "2026-05-30T06:52:22.421Z", "who": "DM", "label": "Free Roll", "expr": "1d20", "total": 13, "dice": [13]}, {"t": "2026-05-29T05:55:27.159Z", "who": "DM", "label": "Free Roll", "expr": "1d20", "total": 14, "dice": [14]}, {"t": "2026-05-29T03:33:00.120Z", "who": "DM", "label": "Free Roll", "expr": "1d20", "total": 2, "dice": [2]}, {"t": "2026-05-12T21:35:58.084Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Dexterity Check (dis)", "expr": "1d20", "total": 16, "dice": [16, 18]}, {"t": "2026-05-12T04:17:26.434Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Constitution Check", "expr": "1d20", "total": 17, "dice": [17]}, {"t": "2026-05-12T04:17:24.039Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Intelligence Check", "expr": "1d20", "total": 11, "dice": [11]}, {"t": "2026-05-12T04:17:18.717Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "1d20", "total": 15, "dice": [15]}, {"t": "2026-05-09T05:04:16.772Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d20", "total": 34, "dice": [14, 20]}, {"t": "2026-05-09T05:04:12.295Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d20", "total": 14, "dice": [8, 6]}, {"t": "2026-05-09T05:04:06.453Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d20", "total": 30, "dice": [20, 10]}, {"t": "2026-05-03T07:54:05.751Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "2d8", "total": 10, "dice": [2, 8]}, {"t": "2026-05-03T07:53:44.108Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Stick ATK", "expr": "1d20 + 1", "total": 7, "dice": [6]}, {"t": "2026-05-02T01:14:44.100Z", "who": "Aragorn", "pal": "vellum", "label": "Free Roll", "expr": "2d12", "total": 6, "dice": [4, 2]}, {"t": "2026-05-02T01:10:27.601Z", "who": "Aragorn", "pal": "ember", "label": "Free Roll", "expr": "1d8 + 1d10", "total": 4, "dice": [2, 2]}, {"t": "2026-05-02T01:08:27.983Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Free Roll", "expr": "1d10 + 1d8 + 2d6", "total": 14, "dice": [3, 5, 5, 1]}, {"t": "2026-05-02T00:52:39.412Z", "who": "E\u00f2ghan MacGille F\u00e0th", "pal": "ocean", "label": "Stick ATK", "expr": "undefinedd20 + 1", "total": 5, "dice": [4]}];
+
+(() => {
+  const PEOPLE = {
+    "Eòghan MacGille Fàth": { short: "Eòghan", slug: "eoghan", c: "#6a8fa8" },
+    "Liu Sha": { short: "Liu Sha", slug: "liu", c: "#b07a4c" },
+    "Mr. Meanjeans": { short: "Meanjeans", slug: "meanjeans", c: "#9a7a3c" },
+    "Meanjeans": { short: "Meanjeans", slug: "meanjeans", c: "#9a7a3c" },
+    '"The Sound of a Hearthfire Burning" Quietclaw': { short: "Quietclaw", slug: "quietclaw", c: "#8f8f8f" },
+    "Aesop": { short: "Aesop", slug: "aesop", c: "#2e9a62" },
+    "Aragorn": { short: "Aragorn", slug: "aragorn", c: "#a06840" },
+    "DM": { short: "DM", slug: "dm", c: "#b08a3a" },
+  };
+  const ROLES = [
+    { id: "dm", label: "DM" },
+    { id: "aesop", label: "Aesop (player)" },
+    { id: "eoghan", label: "Eòghan (player)" },
+    { id: "liu", label: "Liu Sha (player)" },
+  ];
+  const nameOf = (slug) => ({ dm: "DM", aesop: "Aesop", eoghan: "Eòghan", liu: "Liu Sha", quietclaw: "Quietclaw", meanjeans: "Meanjeans" }[slug] || slug);
+  const colorOf = (slug) => (Object.values(PEOPLE).find((p) => p.slug === slug) || PEOPLE.DM).c;
+
+  const events = LOG.map((e, i) => ({ ...e, id: "e" + i, ms: Date.parse(e.t) })).filter((e) => Number.isFinite(e.ms)).sort((a, b) => a.ms - b.ms);
+
+  // ── time helpers (viewer-local) ─────────────
+  const dayKey = (ms) => { const d = new Date(ms); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`; };
+  const startOfDay = (ms) => { const d = new Date(ms); d.setHours(0, 0, 0, 0); return d.getTime(); };
+  const endOfDay = (ms) => { const d = new Date(ms); d.setHours(23, 59, 59, 999); return d.getTime(); };
+  const fmtDay = (ms, o = {}) => new Date(ms).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric", ...o });
+  const fmtTime = (ms) => new Date(ms).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const toInput = (ms) => { const d = new Date(ms); const p = (n) => String(n).padStart(2, "0"); return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`; };
+  const fromInput = (v) => { const ms = Date.parse(v); return Number.isFinite(ms) ? ms : null; };
+  const ago = (ms) => { const m = Math.round((Date.now() - ms) / 60000); if (m < 1) return "just now"; if (m < 60) return `${m} min ago`; const h = Math.round(m / 60); if (h < 24) return `${h} h ago`; return fmtDay(ms); };
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // ── state ───────────────────────────────────
+  const firstSessionEvents = events.filter((e) => e.t >= "2026-07-23T02:30:00Z" && e.t <= "2026-07-23T05:30:00Z");
+  const S = {
+    role: "dm",
+    view: { name: "list" },
+    chapters: [{ id: "c1", name: "The Road to Hearthfire" }],
+    sessions: [{
+      id: "s1", chapterId: "c1", title: "Session 1 · " + fmtDay(firstSessionEvents[0]?.ms || Date.now()),
+      startMs: firstSessionEvents[0]?.ms, endMs: firstSessionEvents[firstSessionEvents.length - 1]?.ms, excluded: new Set(),
+      summary: {
+        example: true,
+        text: "The party pressed on toward Hearthfire under a sky the colour of old pewter. Quietclaw's battle-songs carried further than anyone liked, and the clock for Battlesounds Draw Unwanted Attention ticked up more than once.\n\nEòghan spent most of the night blinking across the field with Misty Step while Liu Sha held the line with brute strength. Aesop's luck ran cold — a string of ones — but Meanjeans kept the rolls honest.\n\n(Example text. The DM pastes the real summary here.)",
+        by: "dm", at: Date.now() - 1000 * 60 * 60 * 26,
+      },
+      recollections: [
+        { id: "r1", by: "aesop", text: "Rolled a 2 on a d20 and a 1 on a d6 within five minutes. I'd like it noted that the dice are cursed. (Example recollection.)", at: Date.now() - 1000 * 60 * 60 * 20, hidden: false },
+      ],
+    }],
+  };
+  let draft = null;
+
+  const app = document.getElementById("app");
+  const roleSel = document.getElementById("role");
+  roleSel.innerHTML = ROLES.map((r) => `<option value="${r.id}">${r.label}</option>`).join("");
+  roleSel.onchange = () => { S.role = roleSel.value; render(); };
+  const isDm = () => S.role === "dm";
+
+  function toast(msg) { const t = document.getElementById("toast"); t.textContent = msg; t.hidden = false; clearTimeout(toast.h); toast.h = setTimeout(() => { t.hidden = true; }, 2200); }
+  function go(view) { S.view = view; render(); window.scrollTo(0, 0); }
+
+  const sessionEvents = (s) => events.filter((e) => e.ms >= s.startMs && e.ms <= s.endMs && !s.excluded.has(e.id));
+  const takenBy = (ms, exceptId) => S.sessions.find((s) => s.id !== exceptId && ms >= s.startMs && ms <= s.endMs);
+  const players = (evs) => [...new Set(evs.filter((e) => e.who && e.who !== "DM").map((e) => (PEOPLE[e.who] || { short: e.who }).short))];
+  const personFor = (e) => PEOPLE[e.who] || (e.wheel ? { short: "Clock", c: "var(--accent)" } : { short: e.who || "?", c: "var(--ink-mute)" });
+
+  function evLine(e) {
+    if (e.wheel) return `<span class="nm" style="color:var(--accent)">⟳ ${esc(e.wheel)}</span> ${e.filled != null ? `<span class="meta">${e.filled}/${e.segments}</span>` : ""}`;
+    const p = personFor(e);
+    return `<span class="nm" style="color:${p.c}">${esc(p.short)}</span> ${esc(e.label || "Roll")} <span class="meta">${esc(e.expr || "")}</span>${e.target ? ` <span class="meta">◎ ${esc(e.target)}</span>` : ""}`;
+  }
+  function evNum(e) { return e.wheel ? "" : `${e.crit ? "✦ " : ""}${e.total ?? ""}`; }
+
+  // ── views ───────────────────────────────────
+  function render() {
+    const v = S.view;
+    if (v.name === "record") return renderRecord();
+    if (v.name === "session") return renderSession(S.sessions.find((s) => s.id === v.id));
+    renderList();
+  }
+
+  function renderList() {
+    const chapters = S.chapters.map((c, i) => ({ ...c, n: i + 1, sessions: S.sessions.filter((s) => s.chapterId === c.id).sort((a, b) => b.startMs - a.startMs) })).reverse();
+    app.innerHTML = `
+      <div class="page-head">
+        <div><h1>Chronicle</h1><p class="lede">The adventure so far, session by session. Anyone can add to a session's story.</p></div>
+        <span class="spacer"></span>
+        ${isDm() ? `<button type="button" class="btn primary" id="rec">+ Record a session</button>` : ""}
+      </div>
+      ${chapters.map((c) => `
+        <section class="chapter">
+          <div class="chapter-head">
+            <span class="chapter-num">Chapter ${c.n}</span>
+            <h2 class="chapter-name" data-chapter="${c.id}">${esc(c.name)}</h2>
+            ${isDm() ? `<button type="button" class="link" data-rename="${c.id}">Rename</button>` : ""}
+          </div>
+          <div class="sessions">
+            ${c.sessions.length ? c.sessions.map(cardHtml).join("") : `<p class="empty-note">No sessions in this chapter yet.</p>`}
+          </div>
+        </section>`).join("")}`;
+    app.querySelector("#rec")?.addEventListener("click", startRecord);
+    app.querySelectorAll("[data-open]").forEach((b) => b.onclick = () => go({ name: "session", id: b.dataset.open }));
+    app.querySelectorAll("[data-rename]").forEach((b) => b.onclick = () => renameChapter(b.dataset.rename));
+  }
+  function cardHtml(s) {
+    const evs = sessionEvents(s), d = new Date(s.startMs);
+    const multi = dayKey(s.startMs) !== dayKey(s.endMs);
+    const who = players(evs);
+    const first = (s.summary?.text || "").split("\n")[0];
+    return `<button type="button" class="card" data-open="${s.id}">
+      <span class="date-block"><span class="dow">${d.toLocaleDateString(undefined, { weekday: "short" })}</span><span class="day">${d.getDate()}</span><span class="mon">${d.toLocaleDateString(undefined, { month: "short", year: "numeric" })}</span></span>
+      <span>
+        <h3>${esc(s.title)}</h3>
+        <span class="meta">${multi ? `${fmtDay(s.startMs)} – ${fmtDay(s.endMs)}` : `${fmtTime(s.startMs)} – ${fmtTime(s.endMs)}`} · ${evs.length} events · ${s.recollections.filter((r) => !r.hidden).length} recollections</span>
+        <p class="excerpt ${first ? "" : "empty"}">${first ? esc(first) : "No summary yet."}</p>
+        <span class="who-row">${who.map((n) => `<span class="who"><span class="dot" style="background:${(Object.values(PEOPLE).find((p) => p.short === n) || {}).c}"></span>${esc(n)}</span>`).join("")}</span>
+      </span>
+    </button>`;
+  }
+  function renameChapter(id) {
+    const c = S.chapters.find((x) => x.id === id), h = app.querySelector(`[data-chapter="${id}"]`);
+    h.innerHTML = `<input id="ch-name" aria-label="Chapter name" value="${esc(c.name)}">`;
+    const inp = h.querySelector("input"); inp.focus(); inp.select();
+    const done = (save) => { if (save && inp.value.trim()) c.name = inp.value.trim(); render(); };
+    inp.onkeydown = (e) => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); };
+    inp.onblur = () => done(true);
+  }
+
+  // ── record ──────────────────────────────────
+  function lastSessionEnd(exceptId) { return Math.max(0, ...S.sessions.filter((s) => s.id !== exceptId).map((s) => s.endMs)); }
+  function startRecord(editId) {
+    const editing = typeof editId === "string" ? S.sessions.find((s) => s.id === editId) : null;
+    const latest = events[events.length - 1]?.ms || Date.now();
+    draft = editing
+      ? { editId: editing.id, start: editing.startMs, end: editing.endMs, excluded: new Set(editing.excluded), title: editing.title, chapterId: editing.chapterId, newChapter: "" }
+      : { editId: null, start: startOfDay(latest), end: endOfDay(latest), excluded: new Set(), title: "", chapterId: S.chapters[S.chapters.length - 1].id, newChapter: "" };
+    if (!editing) draft.title = defaultTitle();
+    go({ name: "record" });
+  }
+  const defaultTitle = () => `Session ${S.sessions.length + 1} · ${fmtDay(draft.start)}`;
+
+  function renderRecord() {
+    const days = [];
+    const first = startOfDay(events[0].ms), last = startOfDay(Math.max(Date.now(), events[events.length - 1].ms));
+    for (let d = first; d <= last; d = startOfDay(d + 36 * 3600 * 1000)) days.push(d);
+    const byDay = new Map(); events.forEach((e) => { const k = dayKey(e.ms); byDay.set(k, (byDay.get(k) || 0) + 1); });
+    const max = Math.max(...byDay.values());
+    const inRange = events.filter((e) => e.ms >= draft.start && e.ms <= draft.end);
+    const included = inRange.filter((e) => !draft.excluded.has(e.id));
+    const conflict = inRange.find((e) => takenBy(e.ms, draft.editId));
+    const who = players(included);
+    const groups = new Map(); inRange.forEach((e) => { const k = dayKey(e.ms); if (!groups.has(k)) groups.set(k, []); groups.get(k).push(e); });
+    let lastMonth = "";
+    app.innerHTML = `
+      <div class="page-head">
+        <div><button type="button" class="link" id="back">← Chronicle</button><h1>${draft.editId ? "Edit session range" : "Record a session"}</h1>
+        <p class="lede">Pick the stretch of the activity log this session covers. Nothing is removed from the live log. The session keeps its own copy.</p></div>
+      </div>
+      <div class="panel">
+        <span class="step">1 · When was it?</span>
+        <div class="strip-scroll" id="strip-scroll">
+          <div class="strip" role="group" aria-label="Log activity by day">
+            ${days.map((d) => {
+              const k = dayKey(d), n = byDay.get(k) || 0, taken = !!takenBy(d + 12 * 3600000, draft.editId) && n > 0 && events.filter((e) => dayKey(e.ms) === k).every((e) => takenBy(e.ms, draft.editId));
+              const inSel = d <= draft.end && endOfDay(d) >= draft.start;
+              return `<button type="button" class="bar ${n ? "" : "empty"} ${inSel ? "in" : ""} ${taken ? "taken" : ""}" data-day="${d}" title="${fmtDay(d)} · ${n} event${n === 1 ? "" : "s"}${taken ? " · already in a session" : ""}" aria-label="${fmtDay(d)}, ${n} events${taken ? ", already recorded" : ""}"><i style="height:${n ? Math.max(4, (n / max) * 100) : 2}%"></i></button>`;
+            }).join("")}
+          </div>
+          <div class="axis" aria-hidden="true">${days.map((d) => { const m = new Date(d).toLocaleDateString(undefined, { month: "short" }); const show = m !== lastMonth; lastMonth = m; return `<span>${show ? `<b>${m}</b>` : ""}</span>`; }).join("")}</div>
+        </div>
+        <div class="legend"><span><i style="background:var(--bar)"></i>Events that day</span><span><i style="background:var(--bar-sel)"></i>In this session</span><span><i style="background:repeating-linear-gradient(45deg,var(--taken) 0 3px,transparent 3px 6px);border:1px solid var(--taken)"></i>Already recorded</span></div>
+        <p class="meta" style="margin:0">Click a day to pick it. Shift-click another day to stretch the range across both.</p>
+        <div class="presets">
+          <button type="button" class="chip" data-preset="today">Today</button>
+          <button type="button" class="chip" data-preset="since">Since last session</button>
+          <button type="button" class="chip" data-preset="week">Last 7 days</button>
+        </div>
+        <div class="times">
+          <div class="field"><label for="start">Starts</label><input id="start" type="datetime-local" value="${toInput(draft.start)}"></div>
+          <div class="field"><label for="end">Ends</label><input id="end" type="datetime-local" value="${toInput(draft.end)}"></div>
+          <button type="button" class="chip" id="end-now">Ends now</button>
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <span class="step">2 · What happened?</span>
+        <div class="tally"><b>${included.length}</b> events${inRange.length !== included.length ? ` (${inRange.length - included.length} left out)` : ""} · <b>${who.length}</b> players${who.length ? ` · ${who.map(esc).join(", ")}` : ""}</div>
+        ${conflict ? `<p class="warn" role="alert">Part of this range is already in “${esc(takenBy(conflict.ms, draft.editId).title)}”. Sessions can't overlap: narrow the range or untick those events.</p>` : ""}
+        <div class="preview" id="preview">
+          ${inRange.length ? [...groups.entries()].map(([k, evs]) => {
+            const allOff = evs.every((e) => draft.excluded.has(e.id));
+            return `<div class="day-group">
+              <div class="day-head"><input type="checkbox" data-dayck="${k}" ${allOff ? "" : "checked"} aria-label="Include ${fmtDay(evs[0].ms)}"><span>${fmtDay(evs[0].ms, { weekday: "long" })}</span><span class="count">${evs.filter((e) => !draft.excluded.has(e.id)).length} of ${evs.length}</span></div>
+              ${evs.map((e) => { const off = draft.excluded.has(e.id); const tk = takenBy(e.ms, draft.editId); return `<label class="ev ${off ? "off" : ""}"><input type="checkbox" data-ev="${e.id}" ${off ? "" : "checked"}><span class="t">${fmtTime(e.ms)}</span><span class="what">${evLine(e)}${tk ? ` <span class="warn">· in “${esc(tk.title)}”</span>` : ""}</span><span class="num">${evNum(e)}</span></label>`; }).join("")}
+            </div>`;
+          }).join("") : `<p class="empty-note" style="padding:14px">No log events in this range.</p>`}
+        </div>
+      </div>
+
+      <div class="panel" style="margin-top:14px">
+        <span class="step">3 · Name it</span>
+        <div class="two">
+          <div class="field"><label for="title">Session title</label><input id="title" value="${esc(draft.title)}"></div>
+          <div class="field"><label for="chapter">Chapter</label>
+            <select id="chapter">${S.chapters.map((c, i) => `<option value="${c.id}" ${draft.chapterId === c.id ? "selected" : ""}>Chapter ${i + 1}: ${esc(c.name)}</option>`).join("")}<option value="__new" ${draft.chapterId === "__new" ? "selected" : ""}>Start a new chapter…</option></select>
+          </div>
+        </div>
+        ${draft.chapterId === "__new" ? `<div class="field"><label for="newch">New chapter name</label><input id="newch" value="${esc(draft.newChapter)}" placeholder="The Sunken Crossroads"></div>` : ""}
+        <div class="row-actions">
+          <span class="spacer"></span>
+          <button type="button" class="btn quiet" id="cancel">Cancel</button>
+          <button type="button" class="btn primary" id="save" ${!included.length || conflict ? "disabled" : ""}>${draft.editId ? "Save range" : "Record session"}</button>
+        </div>
+      </div>`;
+
+    const rer = () => { const sc = document.getElementById("strip-scroll"); const x = sc.scrollLeft; const pv = document.getElementById("preview"); const y = pv?.scrollTop || 0; renderRecord(); document.getElementById("strip-scroll").scrollLeft = x; const pv2 = document.getElementById("preview"); if (pv2) pv2.scrollTop = y; };
+    const setRange = (a, b) => { draft.start = Math.min(a, b); draft.end = Math.max(a, b); if (!draft.editId && !draft.titleTouched) draft.title = defaultTitle(); rer(); };
+    app.querySelector("#back").onclick = () => go({ name: "list" });
+    app.querySelector("#cancel").onclick = () => go(draft.editId ? { name: "session", id: draft.editId } : { name: "list" });
+    app.querySelectorAll(".bar").forEach((b) => b.onclick = (ev) => {
+      if (b.classList.contains("taken")) return;
+      const d = +b.dataset.day;
+      if (ev.shiftKey) setRange(Math.min(d, draft.start), Math.max(endOfDay(d), draft.end));
+      else {
+        const dayEvents = events.filter((e) => dayKey(e.ms) === dayKey(d) && !takenBy(e.ms, draft.editId));
+        // Snap to the day's actual activity so the times read like a session, not midnight-to-midnight.
+        if (dayEvents.length) setRange(dayEvents[0].ms, dayEvents[dayEvents.length - 1].ms);
+        else setRange(startOfDay(d), endOfDay(d));
+      }
+    });
+    app.querySelectorAll("[data-preset]").forEach((b) => b.onclick = () => {
+      const now = Date.now();
+      if (b.dataset.preset === "today") setRange(startOfDay(now), now);
+      if (b.dataset.preset === "since") setRange(lastSessionEnd(draft.editId) + 1, now);
+      if (b.dataset.preset === "week") setRange(startOfDay(now - 6 * 86400000), now);
+    });
+    app.querySelector("#start").onchange = (e) => { const ms = fromInput(e.target.value); if (ms != null) setRange(ms, draft.end); };
+    app.querySelector("#end").onchange = (e) => { const ms = fromInput(e.target.value); if (ms != null) setRange(draft.start, ms); };
+    app.querySelector("#end-now").onclick = () => setRange(draft.start, Date.now());
+    app.querySelectorAll("[data-ev]").forEach((c) => c.onchange = () => { c.checked ? draft.excluded.delete(c.dataset.ev) : draft.excluded.add(c.dataset.ev); rer(); });
+    app.querySelectorAll("[data-dayck]").forEach((c) => c.onchange = () => { inRange.filter((e) => dayKey(e.ms) === c.dataset.dayck).forEach((e) => c.checked ? draft.excluded.delete(e.id) : draft.excluded.add(e.id)); rer(); });
+    app.querySelector("#title").oninput = (e) => { draft.title = e.target.value; draft.titleTouched = true; };
+    app.querySelector("#chapter").onchange = (e) => { draft.chapterId = e.target.value; rer(); };
+    app.querySelector("#newch")?.addEventListener("input", (e) => { draft.newChapter = e.target.value; });
+    app.querySelector("#save").onclick = () => {
+      let chapterId = draft.chapterId;
+      if (chapterId === "__new") { chapterId = "c" + (S.chapters.length + 1) + Date.now(); S.chapters.push({ id: chapterId, name: draft.newChapter.trim() || `Chapter ${S.chapters.length + 1}` }); }
+      // Trim the stored range to the first/last included event.
+      const inc = included;
+      const start = inc[0].ms, end = inc[inc.length - 1].ms;
+      const excluded = new Set([...draft.excluded].filter((id) => { const e = events.find((x) => x.id === id); return e && e.ms >= start && e.ms <= end; }));
+      if (draft.editId) {
+        Object.assign(S.sessions.find((s) => s.id === draft.editId), { startMs: start, endMs: end, excluded, title: draft.title.trim() || defaultTitle(), chapterId });
+        toast("Range saved"); go({ name: "session", id: draft.editId });
+      } else {
+        const s = { id: "s" + Date.now(), chapterId, title: draft.title.trim() || defaultTitle(), startMs: start, endMs: end, excluded, summary: null, recollections: [] };
+        S.sessions.push(s); toast("Session recorded"); go({ name: "session", id: s.id });
+      }
+    };
+    // keep the selection in view on first paint
+    const sel = app.querySelector(".bar.in"); if (sel && !rer.done) { sel.scrollIntoView({ block: "nearest", inline: "center" }); }
+  }
+
+  // ── session page ────────────────────────────
+  function highlights(evs) {
+    const rolls = evs.filter((e) => !e.wheel && Number.isFinite(e.total));
+    const d20 = rolls.filter((e) => /^1d20/.test(e.expr || ""));
+    const nat20 = d20.filter((e) => e.crit || (e.dice && e.dice[0] === 20));
+    const nat1 = d20.filter((e) => e.fumble || (e.dice && e.dice[0] === 1));
+    const snake = rolls.filter((e) => /^2d6/.test(e.expr || "") && e.dice && e.dice.length === 2 && e.dice[0] === 1 && e.dice[1] === 1);
+    const top = rolls.slice().sort((a, b) => b.total - a.total)[0];
+    const counts = new Map(); rolls.forEach((e) => { const n = personFor(e).short; if (n !== "DM") counts.set(n, (counts.get(n) || 0) + 1); });
+    const busiest = [...counts.entries()].sort((a, b) => b[1] - a[1])[0];
+    const clocks = new Map(); evs.filter((e) => e.wheel).forEach((e) => clocks.set(e.wheel, e));
+    const names = (list) => [...new Set(list.map((e) => personFor(e).short))].join(", ");
+    return [
+      { k: "Natural 20s", v: nat20.length, d: nat20.length ? names(nat20) : "None this time", cls: nat20.length ? "good" : "" },
+      { k: "Natural 1s", v: nat1.length + snake.length, d: nat1.length + snake.length ? names([...nat1, ...snake]) : "Clean night", cls: nat1.length + snake.length ? "bad" : "" },
+      top ? { k: "Highest roll", v: top.total, d: `${personFor(top).short} · ${top.label || "Roll"} (${top.expr})` } : null,
+      busiest ? { k: "Most rolls", v: busiest[1], d: busiest[0] } : null,
+      { k: "Clocks moved", v: clocks.size, d: clocks.size ? [...clocks.values()].map((e) => `${e.wheel}${e.filled != null ? ` ${e.filled}/${e.segments}` : ""}`).join(" · ") : "None" },
+    ].filter(Boolean);
+  }
+
+  function renderSession(s) {
+    if (!s) return go({ name: "list" });
+    const evs = sessionEvents(s);
+    const chapterIdx = S.chapters.findIndex((c) => c.id === s.chapterId);
+    const chapter = S.chapters[chapterIdx];
+    const who = players(evs);
+    const me = S.role;
+    const multi = dayKey(s.startMs) !== dayKey(s.endMs);
+    const paras = (s.summary?.text || "").split(/\n{2,}/).filter(Boolean);
+    app.innerHTML = `
+      <div class="session-head">
+        <button type="button" class="link" id="back" style="justify-self:start">← Chronicle</button>
+        <span class="chapter-num">Chapter ${chapterIdx + 1} · ${esc(chapter?.name || "")}</span>
+        <h1 id="title-h">${esc(s.title)}</h1>
+        <span class="meta">${multi ? `${fmtDay(s.startMs, { weekday: "long" })} – ${fmtDay(s.endMs, { weekday: "long" })}` : `${fmtDay(s.startMs, { weekday: "long", year: "numeric" })} · ${fmtTime(s.startMs)} – ${fmtTime(s.endMs)}`}</span>
+        <span class="who-row">${who.map((n) => `<span class="who"><span class="dot" style="background:${(Object.values(PEOPLE).find((p) => p.short === n) || {}).c}"></span>${esc(n)}</span>`).join("")}</span>
+        ${isDm() ? `<div class="row-actions" style="margin-top:6px"><button type="button" class="btn quiet" id="rename">Rename</button><button type="button" class="btn quiet" id="range">Edit range</button><label class="field" style="grid-auto-flow:column;align-items:center;gap:8px"><span class="lbl">Chapter</span><select id="move">${S.chapters.map((c, i) => `<option value="${c.id}" ${c.id === s.chapterId ? "selected" : ""}>Chapter ${i + 1}</option>`).join("")}</select></label><span class="spacer"></span><button type="button" class="btn quiet danger" id="del">Delete session</button></div>` : ""}
+      </div>
+      <div class="grid">
+        <div>
+          <section class="section" aria-labelledby="sum-h">
+            <div class="section-head"><h2 id="sum-h">Summary</h2>${s.summary?.example ? `<span class="summary"><span class="example">Example</span></span>` : ""}<span class="spacer"></span><button type="button" class="link" id="edit-sum">${s.summary?.text ? "Edit" : "Add summary"}</button></div>
+            <div class="summary" id="sum-body">
+              ${paras.length ? paras.map((p) => `<p>${esc(p).replace(/\n/g, "<br>")}</p>`).join("") : `<p class="empty-note">No summary yet. Paste one in: a transcript summary, the DM's notes, anyone's account of the night.</p>`}
+              ${s.summary?.at ? `<span class="edited">Last edited by ${esc(nameOf(s.summary.by))} · ${ago(s.summary.at)}</span>` : ""}
+            </div>
+          </section>
+          <section class="section" aria-labelledby="rec-h">
+            <div class="section-head"><h2 id="rec-h">Recollections</h2><span class="meta">${me === "dm" ? "Players' own notes. You can hide any." : "Your notes on the night, in your own words."}</span></div>
+            <div class="recs">
+              ${s.recollections.filter((r) => !r.hidden || isDm() || r.by === me).map((r) => `
+                <div class="rec ${r.hidden ? "hidden" : ""}" style="--c:${colorOf(r.by)}" data-rec="${r.id}">
+                  <p>${esc(r.text)}</p>
+                  <span class="by"><b>${esc(nameOf(r.by))}</b><span>${ago(r.at)}${r.hidden ? " · hidden by the DM" : ""}</span>
+                    ${r.by === me ? `<button type="button" class="link" data-editrec="${r.id}">Edit</button>` : ""}
+                    ${isDm() ? `<button type="button" class="link" data-hide="${r.id}">${r.hidden ? "Show" : "Hide"}</button>` : ""}
+                  </span>
+                </div>`).join("") || `<p class="empty-note">No recollections yet.</p>`}
+              ${me !== "dm" ? `<form class="rec-form field" id="rec-form"><label for="rec-text">Add a recollection as ${esc(nameOf(me))}</label><textarea id="rec-text" placeholder="What do you remember about this session?"></textarea><div class="row-actions"><span class="spacer"></span><button type="submit" class="btn primary">Add</button></div></form>` : ""}
+            </div>
+          </section>
+        </div>
+        <div>
+          <section class="section" aria-labelledby="hl-h">
+            <div class="section-head"><h2 id="hl-h">Highlights</h2><span class="meta">From the log</span></div>
+            <div class="hl">${highlights(evs).map((h) => `<div class="hl-card ${h.cls || ""}"><span class="k">${h.k}</span><span class="v">${h.v}</span><span class="d">${esc(h.d)}</span></div>`).join("")}</div>
+          </section>
+          <details class="log">
+            <summary>Activity log · ${evs.length} events</summary>
+            <div class="preview">${evs.slice().reverse().map((e) => `<div class="ev" style="grid-template-columns:64px minmax(0,1fr) auto"><span class="t">${fmtTime(e.ms)}</span><span class="what">${evLine(e)}</span><span class="num">${evNum(e)}</span></div>`).join("")}</div>
+          </details>
+        </div>
+      </div>`;
+
+    app.querySelector("#back").onclick = () => go({ name: "list" });
+    app.querySelector("#edit-sum").onclick = () => {
+      const body = app.querySelector("#sum-body");
+      body.innerHTML = `<div class="field"><label for="sum-text">Summary · everyone can edit</label><textarea id="sum-text">${esc(s.summary?.text || "")}</textarea></div><div class="row-actions" style="margin-top:8px"><span class="meta">Paste a transcript summary or write your own. Blank lines start new paragraphs.</span><span class="spacer"></span><button type="button" class="btn quiet" id="sum-cancel">Cancel</button><button type="button" class="btn primary" id="sum-save">Save</button></div>`;
+      const ta = body.querySelector("textarea"); ta.focus();
+      body.querySelector("#sum-cancel").onclick = () => renderSession(s);
+      body.querySelector("#sum-save").onclick = () => { s.summary = { text: ta.value.trim(), by: me, at: Date.now() }; toast("Summary saved"); renderSession(s); };
+    };
+    app.querySelector("#rec-form")?.addEventListener("submit", (e) => { e.preventDefault(); const t = app.querySelector("#rec-text").value.trim(); if (!t) return; s.recollections.push({ id: "r" + Date.now(), by: me, text: t, at: Date.now(), hidden: false }); renderSession(s); });
+    app.querySelectorAll("[data-hide]").forEach((b) => b.onclick = () => { const r = s.recollections.find((x) => x.id === b.dataset.hide); r.hidden = !r.hidden; renderSession(s); });
+    app.querySelectorAll("[data-editrec]").forEach((b) => b.onclick = () => {
+      const r = s.recollections.find((x) => x.id === b.dataset.editrec), box = app.querySelector(`[data-rec="${r.id}"]`);
+      box.innerHTML = `<div class="field"><label for="er-${r.id}">Edit your recollection</label><textarea id="er-${r.id}">${esc(r.text)}</textarea></div><div class="row-actions" style="margin-top:6px"><span class="spacer"></span><button type="button" class="btn quiet" data-c>Cancel</button><button type="button" class="btn primary" data-s>Save</button></div>`;
+      box.querySelector("[data-c]").onclick = () => renderSession(s);
+      box.querySelector("[data-s]").onclick = () => { r.text = box.querySelector("textarea").value.trim() || r.text; r.at = Date.now(); renderSession(s); };
+    });
+    app.querySelector("#rename")?.addEventListener("click", () => {
+      const h = app.querySelector("#title-h"); h.innerHTML = `<input aria-label="Session title" value="${esc(s.title)}">`;
+      const inp = h.querySelector("input"); inp.focus(); inp.select();
+      const done = (save) => { if (save && inp.value.trim()) s.title = inp.value.trim(); renderSession(s); };
+      inp.onkeydown = (e) => { if (e.key === "Enter") done(true); if (e.key === "Escape") done(false); };
+      inp.onblur = () => done(true);
+    });
+    app.querySelector("#range")?.addEventListener("click", () => startRecord(s.id));
+    app.querySelector("#move")?.addEventListener("change", (e) => { s.chapterId = e.target.value; toast("Moved"); renderSession(s); });
+    app.querySelector("#del")?.addEventListener("click", (e) => {
+      const b = e.currentTarget;
+      if (b.dataset.armed) { S.sessions = S.sessions.filter((x) => x.id !== s.id); toast("Session deleted. The live log is untouched."); go({ name: "list" }); return; }
+      b.dataset.armed = "1"; b.textContent = "Tap again to delete"; setTimeout(() => { if (b.isConnected) { delete b.dataset.armed; b.textContent = "Delete session"; } }, 3000);
+    });
+  }
+
+  render();
+})();
+</script>
