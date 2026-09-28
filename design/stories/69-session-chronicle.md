@@ -1,6 +1,6 @@
 # Feature Story: Session Chronicle — Tag Sessions, Build Chapters
 
-**Status**: Draft — prototype in review (2026-09-28)
+**Status**: Built (2026-09-28): `/chronicle`, `backend/src/handlers/chronicle.js`, `src/features/chronicle/`
 **Supersedes**: [Story 40 — Adventure Breakpoints](40-adventure-breakpoints.md) (never built)
 **Prototype**: `design/prototypes/session-chronicle.html`
 

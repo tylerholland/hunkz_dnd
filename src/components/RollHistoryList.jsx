@@ -152,6 +152,16 @@ export function ConditionHistoryRow({ pal, entry, opacity = 1, showDivider = fal
   );
 }
 
+export function TurnHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  return (
+    <div style={{ ...historyRowStyle(pal, opacity, showDivider), color: pal.textMuted }}>
+      <span style={{ color: pal.accent, fontSize: 12, flexShrink: 0 }} aria-hidden="true">⏵</span>
+      <span style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase" }}>Round {entry.round}</span>
+      <span style={{ fontStyle: "italic" }}>{entry.subject?.name || "Someone"}&apos;s turn</span>
+    </div>
+  );
+}
+
 export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null }) {
   // Branch on type: "wheel" entries render differently from dice rows
   if (entry.type === "wheel") {
@@ -162,6 +172,9 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
   }
   if (entry.type === "condition") {
     return <ConditionHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider} />;
+  }
+  if (entry.type === "turn") {
+    return <TurnHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider} />;
   }
   const actionLabel = normalizeRollActionLabel(entry.label);
   const nameColor = entry.nameColor || pal.accentBright;

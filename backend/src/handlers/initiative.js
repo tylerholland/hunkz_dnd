@@ -1,6 +1,7 @@
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, badRequest } = require("../lib/response");
-const { getInitiativeState, saveInitiativeState } = require("../lib/specialRecords");
+const { getInitiativeState, saveInitiativeState, appendRollHistoryEvents } = require("../lib/specialRecords");
+const { buildTurnEvent } = require("../lib/sessionEvents");
 const { notifySessionChanged } = require("../lib/broadcast");
 const { withVersions } = require("../lib/versioning");
 const { INITIATIVE_SLUG } = require("../lib/specialItems");
@@ -40,6 +41,17 @@ exports.handler = async (event) => {
       round: nextRound,
       turnStartedAt: turnAdvanced ? new Date().toISOString() : previous.turnStartedAt,
     });
+
+    // Story 69 — each turn joins the log, so a session's timeline has real
+    // rounds. Only while combatants exist (clearing the tracker isn't a turn).
+    const activeEntry = body.entries[nextActiveTurnIndex];
+    if (turnAdvanced && activeEntry) {
+      try {
+        await appendRollHistoryEvents([buildTurnEvent({ round: nextRound, entry: activeEntry })]);
+      } catch (err) {
+        console.error("[initiative] could not log turn", err);
+      }
+    }
 
     await notifySessionChanged();
 

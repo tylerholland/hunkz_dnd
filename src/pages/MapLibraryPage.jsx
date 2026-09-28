@@ -121,7 +121,7 @@ export default function MapLibraryPage() {
         <TopNav
           backTo="/dm"
           title="Map Library"
-          menuItems={[{ label: "Campaign", href: "/dm" }]}
+          menuItems={[{ label: "Campaign", href: "/dm" }, { label: "Chronicle", href: "/chronicle" }]}
         >
           <button
             onClick={() => { setUploadFile(null); setUploadOpen(true); }}

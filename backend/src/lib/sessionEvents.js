@@ -71,4 +71,13 @@ function buildConditionEvent({ subject, before, after, exhaustionBefore, exhaust
   return event;
 }
 
-module.exports = { subjectRef, buildHpEvent, buildConditionEvent, conditionNames };
+// Initiative advanced to a new turn (and maybe a new round). `subject` is the
+// combatant whose turn it is, so hidden entries can be filtered for players.
+function buildTurnEvent({ round, entry, at }) {
+  const subject = entry?.isPC && entry.slug
+    ? subjectRef("character", entry.slug, entry.name)
+    : entry?.npcId ? subjectRef("npc", entry.npcId, entry.name) : { type: "other", sourceId: entry?.id || "", name: bounded(entry?.name) || "?" };
+  return { id: eventId("turn"), type: "turn", createdAt: at || new Date().toISOString(), round, subject };
+}
+
+module.exports = { subjectRef, buildHpEvent, buildConditionEvent, buildTurnEvent, conditionNames };

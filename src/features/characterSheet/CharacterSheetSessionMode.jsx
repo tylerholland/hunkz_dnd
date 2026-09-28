@@ -1046,6 +1046,7 @@ export default function CharacterSheetSessionMode({
           menuItems={[
             { label: "Export JSON", href: `/characters/${slug}` },
             { label: "All Characters", href: "/" },
+            { label: "Chronicle", href: "/chronicle" },
             { divider: true },
             textScaleMenuItem,
           ]}
@@ -1104,6 +1105,7 @@ export default function CharacterSheetSessionMode({
         menuItems={[
           { label: "Export JSON", href: `/characters/${slug}` },
           { label: "All Characters", href: "/" },
+          { label: "Chronicle", href: "/chronicle" },
           { divider: true },
           textScaleMenuItem,
         ]}

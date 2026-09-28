@@ -9,7 +9,7 @@ const OPTIONAL_ENDPOINT_SUPPORT = {
 async function request(path, options = {}) {
   const res = await fetch(`${BASE}${path}`, options);
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw Object.assign(new Error(data.error || "Request failed"), { status: res.status });
+  if (!res.ok) throw Object.assign(new Error(data.error || "Request failed"), { status: res.status, data });
   // ADR-030 — writes report the record versions they produced; screens then
   // ignore any older data for those records (see lib/versionFloors.js).
   if (data && data.versions) noteVersions(data.versions);
@@ -297,3 +297,55 @@ export const getSessionState = ({ dmPassword, slug } = {}) => {
     headers: dmPassword !== undefined && dmPassword !== null ? { "x-character-password": dmPassword } : {},
   });
 };
+
+// ── Story 69 — Session Chronicle ────────────────────────────────────────────
+// `viewer` is { password, asSlug? } (DM: password only; a player: their
+// character password + slug). Reads work without it.
+const chronicleHeaders = (viewer, json = false) => ({
+  ...(json ? { "Content-Type": "application/json" } : {}),
+  ...(viewer?.password !== undefined && viewer?.password !== null ? { "x-character-password": viewer.password } : {}),
+});
+
+export const getChronicle = () => request("/chronicle");
+
+export const getChronicleSession = (id, viewer) =>
+  request(`/chronicle/sessions/${encodeURIComponent(id)}${viewer?.asSlug ? `?asSlug=${encodeURIComponent(viewer.asSlug)}` : ""}`, {
+    headers: chronicleHeaders(viewer),
+  });
+
+// Live feed + everything archived (DM only) — the Record-a-session picker.
+export const getRollHistoryWithArchive = (dmPassword) =>
+  request("/roll-history?archive=1", { headers: { "x-character-password": dmPassword } });
+
+export const createChronicleSession = (dmPassword, payload) =>
+  request("/chronicle/sessions", { method: "POST", headers: chronicleHeaders({ password: dmPassword }, true), body: JSON.stringify(payload) });
+
+export const updateChronicleSession = (dmPassword, id, payload) =>
+  request(`/chronicle/sessions/${encodeURIComponent(id)}`, { method: "PUT", headers: chronicleHeaders({ password: dmPassword }, true), body: JSON.stringify(payload) });
+
+export const deleteChronicleSession = (dmPassword, id) =>
+  request(`/chronicle/sessions/${encodeURIComponent(id)}`, { method: "DELETE", headers: chronicleHeaders({ password: dmPassword }) });
+
+export const putChronicleChapters = (dmPassword, chapters) =>
+  request("/chronicle/chapters", { method: "PUT", headers: chronicleHeaders({ password: dmPassword }, true), body: JSON.stringify({ chapters }) });
+
+export const putChronicleSummary = (viewer, id, { text, baseUpdatedAt }) =>
+  request(`/chronicle/sessions/${encodeURIComponent(id)}/summary`, {
+    method: "PUT",
+    headers: chronicleHeaders(viewer, true),
+    body: JSON.stringify({ text, baseUpdatedAt: baseUpdatedAt ?? null, asSlug: viewer?.asSlug }),
+  });
+
+export const addChronicleRecollection = (viewer, id, text) =>
+  request(`/chronicle/sessions/${encodeURIComponent(id)}/recollections`, {
+    method: "POST",
+    headers: chronicleHeaders(viewer, true),
+    body: JSON.stringify({ text, asSlug: viewer?.asSlug }),
+  });
+
+export const updateChronicleRecollection = (viewer, id, recollectionId, changes) =>
+  request(`/chronicle/sessions/${encodeURIComponent(id)}/recollections/${encodeURIComponent(recollectionId)}`, {
+    method: "PUT",
+    headers: chronicleHeaders(viewer, true),
+    body: JSON.stringify({ ...changes, asSlug: viewer?.asSlug }),
+  });

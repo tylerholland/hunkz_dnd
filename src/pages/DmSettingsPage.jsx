@@ -88,7 +88,7 @@ export default function DmSettingsPage() {
         className="dm-settings-page"
         style={{ ...palVars, background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` }}
       >
-        <TopNav backTo="/dm" title="DM Settings" menuItems={[{ label: "Campaign", href: "/dm" }, { label: "Map Library", href: "/maps" }]} />
+        <TopNav backTo="/dm" title="DM Settings" menuItems={[{ label: "Campaign", href: "/dm" }, { label: "Map Library", href: "/maps" }, { label: "Chronicle", href: "/chronicle" }]} />
 
         <main className="dm-settings-main">
           <h1 className="dm-settings-heading">House Rules</h1>

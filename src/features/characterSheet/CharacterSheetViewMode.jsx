@@ -242,6 +242,7 @@ export default function CharacterSheetViewMode({ ctx }) {
           { label: unlockState === "unlocked" ? "Edit Character" : "🔒 Edit Character", onClick: handleEditClick },
           { label: "Export JSON", onClick: exportJSON },
           { label: "All Characters", href: "/" },
+          { label: "Chronicle", href: "/chronicle" },
           { divider: true },
           textScaleMenuItem,
         ]}

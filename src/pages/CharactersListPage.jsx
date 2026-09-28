@@ -100,12 +100,14 @@ export default function CharactersListPage() {
     ? [
         { label: "Campaign", href: "/dm" },
         { label: "Maps", href: "/maps" },
+        { label: "Chronicle", href: "/chronicle" },
         { divider: true },
         textScaleMenuItem,
         { divider: true },
         { label: "End Session", onClick: handleDmLogout, destructive: true },
       ]
     : [
+        { label: "Chronicle", href: "/chronicle" },
         { label: "DM Login", onClick: () => setDmPrompt(true) },
         { divider: true },
         textScaleMenuItem,

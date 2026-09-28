@@ -258,7 +258,7 @@ exports.handler = async (event) => {
   const publicRollHistory = {
     ...rollHistory,
     rolls: (rollHistory.rolls || []).flatMap((event) => {
-      if (event?.type !== "hp" && event?.type !== "condition") return [event];
+      if (event?.type !== "hp" && event?.type !== "condition" && event?.type !== "turn") return [event];
       if (shouldStripAttackerRef(event.subject, { getCharacterConditions, getNpcConditions, hiddenSubjectKeys })) return [];
       const out = { ...event };
       if (out.subject?.type === "npc") { delete out.from; delete out.to; delete out.max; }

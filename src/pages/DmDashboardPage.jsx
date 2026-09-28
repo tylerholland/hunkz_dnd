@@ -1210,6 +1210,7 @@ export default function DmDashboardPage() {
             { label: combatMode ? "✕ End Combat" : "⚔ Start Combat", onClick: toggleCombatMode },
             { label: "Manage Party", onClick: () => setShowManageParty(true) },
             { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
+            { label: "📜 Chronicle", href: "/chronicle" },
             { label: "⚙ DM Settings", href: "/dm/settings" },
             { divider: true },
             textScaleMenuItem,

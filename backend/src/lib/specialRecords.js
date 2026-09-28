@@ -385,6 +385,8 @@ function normalizeAppMetaRecord(item) {
 }
 
 module.exports = {
+  getSpecialRecord,
+  putSpecialRecord,
   normalizeInitiativeRecord,
   normalizeNpcCombatRecord,
   normalizeRollHistoryRecord,
