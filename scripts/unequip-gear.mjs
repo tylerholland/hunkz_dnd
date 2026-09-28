@@ -46,7 +46,7 @@ async function scanAll() {
     items.push(...(res.Items || []));
     ExclusiveStartKey = res.LastEvaluatedKey;
   } while (ExclusiveStartKey);
-  return items.filter((item) => item.slug && !RESERVED.has(item.slug));
+  return items.filter((item) => item.slug && !RESERVED.has(item.slug) && !item.slug.startsWith("roll-history-archive:"));
 }
 
 const characters = await scanAll();

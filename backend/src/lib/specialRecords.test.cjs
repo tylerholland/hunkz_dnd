@@ -225,11 +225,14 @@ test("appendRollHistoryEvent keeps the newest 500 rolls by default", async () =>
   await appendRollHistoryEvent({ id: "new-roll" });
 
   assert.equal(ROLL_HISTORY_LIMIT, 500);
-  assert.equal(sent.length, 1);
-  assert.equal(sent[0].Item.slug, "roll-history");
-  assert.equal(sent[0].Item.rolls.length, 500);
-  assert.equal(sent[0].Item.rolls[0].id, "new-roll");
-  assert.equal(sent[0].Item.rolls.at(-1).id, "existing-498");
+  const livePuts = sent.filter((input) => input.Item?.slug === "roll-history");
+  assert.equal(livePuts.length, 1);
+  assert.equal(livePuts[0].Item.rolls.length, 500);
+  assert.equal(livePuts[0].Item.rolls[0].id, "new-roll");
+  assert.equal(livePuts[0].Item.rolls.at(-1).id, "existing-498");
+  // The roll that aged out is archived, not dropped (Story 69).
+  const archivePut = sent.find((input) => input.Item?.slug === "roll-history-archive:0");
+  assert.deepEqual(archivePut.Item.events.map((e) => e.id), ["existing-499"]);
 });
 
 test("whole-record saves bump the stored version and retry when a write lands in between", async () => {

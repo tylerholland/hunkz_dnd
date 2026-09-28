@@ -6,7 +6,7 @@ const TOKEN_SCALE_MAX = 6.0;
 const { db, TABLE } = require("./db");
 const { normalizeHouseRulesRecord } = require("./houseRules");
 const { VersionConflictError, isConditionalFailure, currentVersion, conditionalPutParams, withVersionRetry } = require("./versioning");
-const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, HOUSE_RULES_SLUG } = require("./specialItems");
+const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, HOUSE_RULES_SLUG, ROLL_HISTORY_ARCHIVE_PREFIX } = require("./specialItems");
 // Note: no APP_META_SLUG import here — normalizeAppMetaRecord() (Story 36b)
 // normalizes a generic item and doesn't need the slug constant; the sentinel
 // is written directly by deploy.sh and read directly by getSessionState.js.
@@ -165,27 +165,80 @@ async function saveRollHistoryState({ rolls }, opts) {
 }
 
 // Read-append-write under the version lock: two rolls landing at the same
-// moment both survive (the loser re-reads and re-appends).
+// moment both survive (the loser re-reads and re-appends). The live feed
+// stays at `limit` (it rides every poll); whatever falls off the end moves
+// to the archive once the live write has succeeded, so a retried write can't
+// archive the same events twice.
 async function appendRollHistoryEvent(event, limit = ROLL_HISTORY_LIMIT) {
-  return withVersionRetry(async () => {
-    const current = await getRollHistoryState();
-    const rolls = [event, ...(current.rolls || [])].slice(0, limit);
-    await saveRollHistoryState({ rolls }, { expectedVersion: current.version });
-    return rolls;
-  });
+  return appendRollHistoryEvents([event], limit);
 }
 
 // Several events from one write (e.g. HP + condition) in a single
-// read-append-write.
+// read-append-write. `events` are given oldest-first.
 async function appendRollHistoryEvents(events, limit = ROLL_HISTORY_LIMIT) {
   const list = (Array.isArray(events) ? events : []).filter(Boolean);
   if (!list.length) return null;
-  return withVersionRetry(async () => {
+  const { rolls, overflow } = await withVersionRetry(async () => {
     const current = await getRollHistoryState();
-    const rolls = [...list.slice().reverse(), ...(current.rolls || [])].slice(0, limit);
-    await saveRollHistoryState({ rolls }, { expectedVersion: current.version });
-    return rolls;
+    const all = [...list.slice().reverse(), ...(current.rolls || [])];
+    const live = all.slice(0, limit);
+    await saveRollHistoryState({ rolls: live }, { expectedVersion: current.version });
+    return { rolls: live, overflow: all.slice(limit) };
   });
+  if (overflow.length) {
+    try {
+      await archiveRollHistoryEvents(overflow);
+    } catch (err) {
+      console.error("[rollHistory] could not archive aged-out events", err);
+    }
+  }
+  return rolls;
+}
+
+// ── Archive: a ring of pages ────────────────────────────────────────────────
+// 500 live + 5 × 500 archived ≈ 3000 events kept. Each page stays well under
+// DynamoDB's 400KB item limit (~370 bytes an event). When the ring wraps, the
+// oldest page is overwritten.
+const ROLL_HISTORY_ARCHIVE_PAGES = 5;
+const ROLL_HISTORY_ARCHIVE_PAGE_SIZE = 500;
+const ARCHIVE_INDEX_SLUG = `${ROLL_HISTORY_ARCHIVE_PREFIX}index`;
+const archivePageSlug = (n) => `${ROLL_HISTORY_ARCHIVE_PREFIX}${n}`;
+
+// `overflow` is newest-first and older than everything in the live feed but
+// newer than everything already archived.
+async function archiveRollHistoryEvents(overflow) {
+  let remaining = overflow.slice();
+  let guard = 0;
+  while (remaining.length && guard < 50) {
+    guard += 1;
+    await withVersionRetry(async () => {
+      const indexItem = await getSpecialRecord(ARCHIVE_INDEX_SLUG);
+      const seq = Number.isFinite(indexItem?.seq) ? indexItem.seq : 0;
+      const slug = archivePageSlug(seq % ROLL_HISTORY_ARCHIVE_PAGES);
+      const pageItem = await getSpecialRecord(slug);
+      // A page left over from the previous lap of the ring counts as empty.
+      const pageEvents = pageItem?.seq === seq && Array.isArray(pageItem.events) ? pageItem.events : [];
+      const room = ROLL_HISTORY_ARCHIVE_PAGE_SIZE - pageEvents.length;
+      if (room > 0) {
+        // Oldest of the overflow goes here; anything newer waits for the next page.
+        const take = remaining.slice(Math.max(0, remaining.length - room));
+        await putSpecialRecord(slug, { seq, events: [...take, ...pageEvents] }, { expectedVersion: currentVersion(pageItem) });
+        remaining = remaining.slice(0, remaining.length - take.length);
+      } else {
+        await putSpecialRecord(ARCHIVE_INDEX_SLUG, { seq: seq + 1 }, { expectedVersion: currentVersion(indexItem) });
+      }
+    });
+  }
+}
+
+// Everything archived, newest-first (for the Chronicle's session picker).
+async function getRollHistoryArchive() {
+  const pages = await Promise.all(
+    Array.from({ length: ROLL_HISTORY_ARCHIVE_PAGES }, (_, i) => getSpecialRecord(archivePageSlug(i)))
+  );
+  return pages
+    .flatMap((page) => (Array.isArray(page?.events) ? page.events : []))
+    .sort((a, b) => String(b?.createdAt || "").localeCompare(String(a?.createdAt || "")));
 }
 
 // ADR-032 — "Deal Damage" from the roll log marks that roll applied so the
@@ -347,6 +400,10 @@ module.exports = {
   saveRollHistoryState,
   appendRollHistoryEvent,
   appendRollHistoryEvents,
+  archiveRollHistoryEvents,
+  getRollHistoryArchive,
+  ROLL_HISTORY_ARCHIVE_PAGES,
+  ROLL_HISTORY_ARCHIVE_PAGE_SIZE,
   markRollApplied,
   getMapLibraryState,
   saveMapLibraryState,

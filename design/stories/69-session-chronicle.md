@@ -21,7 +21,7 @@ Story 40 marked a chapter end by archiving and then **clearing** the live feeds.
 2. Pick the range by clicking a day, using a preset (**Today**, **Since last session**, **Last 7 days**), or setting exact start/end times.
 3. **Preview** the events in the range, grouped by day. Untick single events or a whole day to leave out testing noise. This also covers a two-part session with dead days in between.
 4. The title is pre-filled ("Session N · Wed Jul 22"). Choose a chapter or start a new one. Save.
-5. Saving **copies** the included events into the session record, so the session survives the live log's 500-event cap.
+5. Saving **copies** the included events into the session record. The picker reads the live feed plus the archive (`GET /roll-history?archive=1`), so about 3000 events of history are available to tag; sessions saved from them keep their own copy for good.
 
 **Session page** (everyone):
 - **Summary**: anyone can edit it (DM and players; "we're all friends here"). It shows "Last edited by … · when". Plain text with paragraphs; the DM usually pastes a transcript summary.

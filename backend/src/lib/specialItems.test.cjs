@@ -33,3 +33,10 @@ test("filterPublicCharacterItems removes reserved sentinel rows", () => {
 
   assert.deepEqual(items.map((item) => item.slug), ["aragorn", "liu-sha"]);
 });
+
+test("roll-history archive pages are reserved, never characters (Story 69)", () => {
+  const { isReservedCharacterSlug, filterPublicCharacterItems } = require("./specialItems");
+  assert.equal(isReservedCharacterSlug("roll-history-archive:0"), true);
+  assert.equal(isReservedCharacterSlug("roll-history-archive:index"), true);
+  assert.deepEqual(filterPublicCharacterItems([{ slug: "roll-history-archive:3" }, { slug: "eoghan" }]).map((i) => i.slug), ["eoghan"]);
+});
