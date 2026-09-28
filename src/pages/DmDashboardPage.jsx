@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState } from "../api";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll } from "../api";
 import DmDiceRoller from "../components/DmDiceRoller";
 import { DEFAULT_HOUSE_RULES, normalizeHouseRules } from "../lib/houseRules";
 import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
@@ -10,6 +10,9 @@ import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
 import InitiativeTracker from "../features/dmDashboard/InitiativeTracker";
 import NpcCombatSection from "../features/dmDashboard/NpcCombatSection";
 import MapPanel from "../features/dmDashboard/MapPanel";
+import DealDamageModal from "../features/dmDashboard/takeAction/DealDamageModal";
+import { characterActions, rememberDice, rememberedDice } from "../features/dmDashboard/takeAction/actionOptions";
+import { classifyStrike, matchDeclaredAttack } from "../features/maps/combatFx/strikeRules";
 import CounterWheelsPanel from "../features/dmDashboard/CounterWheelsPanel";
 import MapLibraryStrip from "../features/dmDashboard/MapLibraryStrip";
 import ManagePartyModal from "../features/dmDashboard/ManagePartyModal";
@@ -375,7 +378,9 @@ export default function DmDashboardPage() {
     }));
   }, []);
 
-  const commitPartySessionUpdates = useCallback(async (updates) => {
+  // `sendOnly` ({ [slug]: fields }) rides the PATCH but never the optimistic
+  // state — e.g. the Take Action `fx` (ADR-032), which the server consumes.
+  const commitPartySessionUpdates = useCallback(async (updates, { sendOnly = {} } = {}) => {
     if (!dmPassword || !Array.isArray(updates) || updates.length === 0) return false;
 
     const snapshot = partyRef.current;
@@ -396,7 +401,7 @@ export default function DmDashboardPage() {
     applyPartyOptimisticUpdates(validUpdates);
 
     try {
-      await Promise.all(validUpdates.map(({ slug, ...fields }) => patchSession(slug, fields, dmPassword)));
+      await Promise.all(validUpdates.map(({ slug, ...fields }) => patchSession(slug, { ...fields, ...(sendOnly[slug] || {}) }, dmPassword)));
       queueDashboardRefresh(0);
       return true;
     } catch {
@@ -406,7 +411,9 @@ export default function DmDashboardPage() {
     }
   }, [applyPartyOptimisticUpdates, dmPassword, queueDashboardRefresh]);
 
-  const commitNpcCombatUpdate = useCallback(async (nextNpcCombat, { optimistic = false } = {}) => {
+  // `fxById` attaches a Take Action `fx` (ADR-032) to those NPCs in the
+  // request only — never to state, or a later commit would resend it.
+  const commitNpcCombatUpdate = useCallback(async (nextNpcCombat, { optimistic = false, fxById = null } = {}) => {
     if (!dmPassword) return;
 
     const normalized = {
@@ -419,7 +426,10 @@ export default function DmDashboardPage() {
     }
 
     try {
-      await putNpcCombat(dmPassword, normalized);
+      const payload = fxById
+        ? { npcs: normalized.npcs.map((npc) => (fxById[npc.id] ? { ...npc, fx: fxById[npc.id] } : npc)) }
+        : normalized;
+      await putNpcCombat(dmPassword, payload);
       npcCombatServerRef.current = normalized;
       queueDashboardRefresh(0);
       return true;
@@ -485,6 +495,110 @@ export default function DmDashboardPage() {
     ));
     await commitNpcCombatUpdate({ npcs: updated }, { optimistic: true });
   }, [commitNpcCombatUpdate, npcCombat.npcs]);
+
+  // ── ADR-032 — Take Action / Deal Damage ────────────────────────────────
+  // One pop-up behind both entry points: an action picked on the map, and
+  // "Deal Damage" on a player's targeted damage roll in the log.
+  const [takeAction, setTakeAction] = useState(null);
+  const [appliedRollIds, setAppliedRollIds] = useState(() => new Set());
+
+  const handleRequestAction = useCallback(({ actor, target, action, onDone }) => {
+    const actorKey = `${actor.type}:${actor.sourceId}`;
+    const remembered = rememberedDice(actorKey, action.id);
+    setTakeAction({
+      actor,
+      target,
+      action,
+      initialExpr: remembered || action.dice || "",
+      rememberedExpr: !!remembered,
+      onDone,
+    });
+  }, []);
+
+  const handleDealDamageFromRoll = useCallback((entry) => {
+    const member = partyRef.current.find((m) => m.slug === entry.slug);
+    const npc = (npcCombat.npcs || []).find((n) => n.id === entry.target?.sourceId);
+    if (!member || !npc) return;
+    const known = characterActions(member).find((a) => a.id === entry.attack.id)
+      || characterActions(member).find((a) => a.name === entry.attack.name);
+    const action = known || {
+      id: entry.attack.id,
+      name: entry.attack.name,
+      dice: "",
+      style: classifyStrike({ attack: entry.attack }),
+    };
+    const { crit } = matchDeclaredAttack(rollHistory, { attackerSlug: entry.slug, targetSourceId: npc.id, at: entry.createdAt });
+    setTakeAction({
+      actor: { type: "character", sourceId: member.slug, name: member.name },
+      target: { type: "npc", sourceId: npc.id, name: npc.name },
+      action,
+      initialExpr: action.dice || "",
+      initialAmount: Number.isFinite(entry.total) ? entry.total : 0,
+      initialCrit: crit || !!entry.isCrit,
+      fromRoll: { exprLabel: entry.exprLabel, total: entry.total, isCrit: crit || !!entry.isCrit },
+      rollId: entry.id,
+    });
+  }, [npcCombat.npcs, rollHistory]);
+
+  const closeTakeAction = useCallback(() => setTakeAction(null), []);
+
+  const handleTakeActionRoll = useCallback((result, rawExpr) => {
+    if (!takeAction) return;
+    const { actor, target, action } = takeAction;
+    rememberDice(`${actor.type}:${actor.sourceId}`, action.id, rawExpr);
+    postDmRoll(dmPassword, {
+      exprLabel: result.exprLabel,
+      label: `${actor.name} · ${action.name} ${action.heal ? "HEAL" : "DMG"}`,
+      total: result.total,
+      rollValues: result.rollValues,
+      target: { type: target.type, sourceId: target.sourceId, name: target.name },
+    }).then(() => queueDashboardRefresh(0)).catch(() => {});
+  }, [takeAction, dmPassword, queueDashboardRefresh]);
+
+  const applyTakeAction = useCallback(({ amount = 0, crit = false, miss = false }) => {
+    if (!takeAction) return;
+    const { actor, target, action, rollId, onDone } = takeAction;
+    const heal = !!action.heal;
+    const fx = {
+      attacker: { type: actor.type, sourceId: actor.sourceId },
+      style: action.style,
+      crit: !!crit,
+      miss: !!miss,
+      ...(rollId ? { rollId } : {}),
+    };
+    if (rollId) setAppliedRollIds((current) => new Set(current).add(rollId));
+    if (target.type === "character") {
+      const member = partyRef.current.find((m) => m.slug === target.sourceId);
+      if (member && !miss) {
+        const max = member.hpMax ?? member.hp ?? 0;
+        const hp = member.hpCurrent ?? 0;
+        const hpCurrent = Math.max(0, Math.min(max, hp + (heal ? amount : -amount)));
+        commitPartySessionUpdates([{ slug: member.slug, hpCurrent }], { sendOnly: { [member.slug]: { fx } } });
+      } else if (member) {
+        patchSession(member.slug, { fx }, dmPassword).then(() => queueDashboardRefresh(0)).catch(() => {});
+      }
+    } else {
+      const npcs = (npcCombat.npcs || []).map((npc) => {
+        if (npc.id !== target.sourceId || miss) return npc;
+        const hpCurrent = heal ? Math.min(npc.hpMax, npc.hpCurrent + amount) : npc.hpCurrent - amount;
+        return { ...npc, hpCurrent };
+      });
+      commitNpcCombatUpdate({ npcs }, { optimistic: true, fxById: { [target.sourceId]: fx } });
+    }
+    onDone?.();
+    setTakeAction(null);
+  }, [takeAction, commitPartySessionUpdates, commitNpcCombatUpdate, npcCombat.npcs, dmPassword, queueDashboardRefresh]);
+
+  const takeActionTargetHp = (() => {
+    if (!takeAction) return null;
+    const { target } = takeAction;
+    if (target.type === "character") {
+      const member = party.find((m) => m.slug === target.sourceId);
+      return member ? { current: member.hpCurrent ?? 0, max: member.hpMax ?? member.hp ?? 0 } : null;
+    }
+    const npc = (npcCombat.npcs || []).find((n) => n.id === target.sourceId);
+    return npc ? { current: npc.hpCurrent, max: npc.hpMax } : null;
+  })();
 
   const handlePromoteToNpc = useCallback(async (entryId, hpMax) => {
     const entry = initiative.entries.find((value) => value.id === entryId);
@@ -1135,7 +1249,28 @@ export default function DmDashboardPage() {
               serverTime={serverTime}
               initiative={initiative}
               rollHistory={rollHistory}
+              onRequestAction={handleRequestAction}
             />
+            {takeAction && takeActionTargetHp && (
+              <DealDamageModal
+                key={`${takeAction.actor.sourceId}>${takeAction.target.sourceId}>${takeAction.action.id}>${takeAction.rollId || ""}`}
+                pal={pal}
+                actorName={takeAction.actor.name}
+                targetName={takeAction.target.name}
+                targetHp={takeActionTargetHp}
+                actionName={takeAction.action.name}
+                heal={!!takeAction.action.heal}
+                initialExpr={takeAction.initialExpr}
+                rememberedExpr={takeAction.rememberedExpr}
+                initialAmount={takeAction.initialAmount ?? null}
+                initialCrit={!!takeAction.initialCrit}
+                fromRoll={takeAction.fromRoll || null}
+                onRoll={handleTakeActionRoll}
+                onApply={({ amount, crit }) => applyTakeAction({ amount, crit })}
+                onMiss={() => applyTakeAction({ miss: true })}
+                onClose={closeTakeAction}
+              />
+            )}
           </div>
 
           <div
@@ -1211,6 +1346,8 @@ export default function DmDashboardPage() {
                   dmPassword={dmPassword}
                   onApplyDamage={handleApplyDamage}
                   onApplyNpcDamage={handleApplyNpcDamage}
+                  onDealDamage={handleDealDamageFromRoll}
+                  appliedRollIds={appliedRollIds}
                   remoteHistory={rollHistory}
                   marginTop={0}
                   ref={diceRollerRef}

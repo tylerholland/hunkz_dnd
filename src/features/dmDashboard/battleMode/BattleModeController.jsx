@@ -6,7 +6,6 @@ import {
   isInvisibleCondition,
   FAMILY_COLORS,
 } from "./tokenEffects";
-import { SIZE_STEPS, SIZE_LABELS, nearestSizeIndex, stepTokenScale } from "./tokenSizes";
 import TokenSizeControl from "./TokenSizeControl";
 
 /**
@@ -206,14 +205,19 @@ export const TokenChip = memo(function TokenChip({
   // so a retarget elsewhere on the map doesn't change this chip's prop
   // identity and defeat memo().
   targeted = false,
+  // ADR-032 — DM Take Action (DM view only). onDmAction(tokenId) reports a
+  // committed long-press (or, while picking a target, a tap); MapPanel owns
+  // the actor → target → action flow. dmActionRole ("actor" | "target" |
+  // null) and dmTargeting are primitives so memo() still holds.
+  onDmAction,
+  dmActionRole = null,
+  dmTargeting = false,
 }) {
   const [expanded, setExpanded] = useState(false);
   const [flipCard, setFlipCard] = useState(false);
   const [portraitError, setPortraitError] = useState(false);
-  const [longPress, setLongPress] = useState("idle"); // idle | charging | menu
+  const [longPress, setLongPress] = useState("idle"); // idle | charging | menu (fallen tokens only)
   const [removing, setRemoving] = useState(false);
-  // Story 44 — resize stepper state
-  const [resizeActive, setResizeActive] = useState(false);
   // State (not a ref) so the mount-gate can be read safely during render —
   // false on the very first paint (no transition class), flips true right
   // after via the effect below so the token's first position is instant.
@@ -352,9 +356,6 @@ export const TokenChip = memo(function TokenChip({
   }, [viewerContainerRef]);
 
   const handleMouseEnter = useCallback(() => {
-    // Story 44 — suppress hover-expand while resize stepper is open so the
-    // HP card doesn't pop over the stepper panel.
-    if (resizeActive) return;
     // Fix (2026-08-11, Story 57 follow-up) — NPC tokens on the player's map
     // no longer expand on hover while targeting is armed (`canTarget`):
     // passive hover growth desynced from the targeting reticle's geometry
@@ -374,7 +375,7 @@ export const TokenChip = memo(function TokenChip({
       checkFlip();
       setExpanded(true);
     }, 120);
-  }, [checkFlip, resizeActive, canTarget]);
+  }, [checkFlip, canTarget]);
 
   const handleMouseLeave = useCallback(() => {
     // Mirrors the handleMouseEnter gate above — when canTarget is true,
@@ -402,15 +403,22 @@ export const TokenChip = memo(function TokenChip({
       e.stopPropagation();
       return;
     }
+    // ADR-032 — while the DM is picking a target, a tap picks it (moving a
+    // token mid-action is unlikely); otherwise a tap is the usual pick-up.
+    if (isDm && dmTargeting && onDmAction) {
+      e.stopPropagation();
+      onDmAction(token.id);
+      return;
+    }
     if (onTokenClick) {
       e.stopPropagation();
       onTokenClick(token.id, e);
     }
     // If no onTokenClick (e.g. during HELD state), let the click propagate to
     // the token layer so placement fires at this position.
-  }, [token.id, onTokenClick]);
+  }, [token.id, onTokenClick, isDm, dmTargeting, onDmAction]);
 
-  // ── Long-press remove (Pointer Events, DM-only) ─────────────────────────
+  // ── Long-press Take Action (Pointer Events, DM-only, ADR-032) ───────────
   // Uses Pointer Events (not mouse events) so this works identically for
   // mouse, touch, and stylus in one path — mousedown/mouseup would never
   // fire on touch, which is the entire point of this gesture.
@@ -553,12 +561,21 @@ export const TokenChip = memo(function TokenChip({
     if (!isDm || isHeld) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
     try { e.currentTarget.setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    if (!onDmAction) return;
     setLongPress("charging");
     longPressTimerRef.current = setTimeout(() => {
+      longPressTimerRef.current = null;
       suppressClickRef.current = true;
-      setLongPress("menu");
+      // A fallen token asks first (Take Action / Remove from Board); a
+      // living one — or any token picked as a target — acts straight away.
+      if (isFallen && !dmTargeting) {
+        setLongPress("menu");
+      } else {
+        setLongPress("idle");
+        onDmAction(token.id);
+      }
     }, LONG_PRESS_MS);
-  }, [canDrag, startDrag, canTarget, onTargetToken, token.id, isDm, isHeld]);
+  }, [canDrag, startDrag, canTarget, onTargetToken, token.id, isDm, isHeld, onDmAction, isFallen, dmTargeting]);
 
   const handlePointerMove = useCallback((e) => {
     if (isDragging) { moveDrag(e); return; }
@@ -654,48 +671,11 @@ export const TokenChip = memo(function TokenChip({
     setLongPress("idle");
   }, []);
 
-  // ── Story 44 — resize stepper handlers ──────────────────────────────────
-
-  const handleOpenResize = useCallback((e) => {
+  const handleTakeAction = useCallback((e) => {
     e.stopPropagation();
-    checkFlip();
     setLongPress("idle");
-    setResizeActive(true);
-  }, [checkFlip]);
-
-  const handleCloseResize = useCallback(() => {
-    setResizeActive(false);
-  }, []);
-
-  const handleStepSize = useCallback((direction) => {
-    const currentScale = Number.isFinite(token.scale) ? token.scale : 1.0;
-    const nextScale = stepTokenScale(currentScale, direction);
-    if (nextScale !== currentScale) {
-      onResizeToken?.(token.id, nextScale);
-    }
-  }, [token.id, token.scale, onResizeToken]);
-
-  useEffect(() => {
-    if (!resizeActive) return undefined;
-    function handleKeyDown(e) {
-      if (e.key === "+" || e.key === "=") { e.preventDefault(); handleStepSize(1); }
-      else if (e.key === "-") { e.preventDefault(); handleStepSize(-1); }
-      else if (e.key === "Escape") { e.preventDefault(); handleCloseResize(); }
-    }
-    document.addEventListener("keydown", handleKeyDown);
-    return () => document.removeEventListener("keydown", handleKeyDown);
-  }, [resizeActive, handleStepSize, handleCloseResize]);
-
-  useEffect(() => {
-    if (!resizeActive) return undefined;
-    function handleOutside(e) {
-      if (chipRef.current && !chipRef.current.contains(e.target)) {
-        handleCloseResize();
-      }
-    }
-    document.addEventListener("pointerdown", handleOutside);
-    return () => document.removeEventListener("pointerdown", handleOutside);
-  }, [resizeActive, handleCloseResize]);
+    onDmAction?.(token.id);
+  }, [onDmAction, token.id]);
 
   // Rendered position: live drag position while dragging, else the
   // optimistic post-drop position pending poll confirmation, else the
@@ -725,7 +705,9 @@ export const TokenChip = memo(function TokenChip({
     removing ? "token-chip--removing" : "",
     canDrag ? "token-chip--own-draggable" : "",
     isDragging ? "token-chip--dragging" : "",
-    isDm && resizeActive ? "token-chip--resize-active" : "",
+    dmActionRole === "actor" ? "token-chip--dm-actor" : "",
+    dmActionRole === "target" ? "token-chip--dm-target" : "",
+    isDm && dmTargeting && !dmActionRole ? "token-chip--dm-targetable" : "",
     exiting ? "token-chip--exiting" : "",
     rmFlash ? "tk-rm-flash" : "",
   ].filter(Boolean).join(" ");
@@ -742,10 +724,7 @@ export const TokenChip = memo(function TokenChip({
   const showWound = !!damageState?.phaseBLive && !isFallen;
   const eligibleConditions = getBadgeEligibleConditions(rawConditions, exhaustionLevel);
 
-  // Story 44 — current scale for the stepper readout
   const currentScale = Number.isFinite(token.scale) ? token.scale : 1.0;
-  const currentSizeIdx = nearestSizeIndex(currentScale);
-  const currentLabel = SIZE_LABELS[SIZE_STEPS[currentSizeIdx]] || "MEDIUM";
   const showSizeRow = isDm && token.type === "npc" && !!onResizeToken;
 
   // Story 55 — ADR-021's outer wrapper. .token-chip already carries position
@@ -1010,7 +989,7 @@ export const TokenChip = memo(function TokenChip({
         )}
       </div>
 
-      {/* Long-press remove — ring-sweep charge cue + micro-menu (DM only) */}
+      {/* Long-press Take Action — ring-sweep charge cue; fallen tokens get a micro-menu (DM only) */}
       {isDm && longPress !== "idle" && (
         <>
           <svg className={`token-longpress-ring${longPress === "charging" ? " charging" : ""}`} viewBox="0 0 44 44">
@@ -1026,74 +1005,23 @@ export const TokenChip = memo(function TokenChip({
               }}
             />
           </svg>
-          <div className="token-longpress-hold-label">Hold to remove</div>
+          <div className="token-longpress-hold-label">Hold to act</div>
         </>
       )}
       {isDm && longPress === "menu" && (
-        <div className="token-longpress-menu" onClick={(e) => e.stopPropagation()}>
-          {/* Story 44 — ⤢ Resize row, NPC tokens only */}
-          {token.type === "npc" && onResizeToken && (
-            <button
-              type="button"
-              className="token-longpress-menu-item token-longpress-menu-item--resize"
-              onClick={handleOpenResize}
-            >
-              ⤢ Resize
+        // stopPropagation on pointerdown too: without it a press on a menu
+        // item bubbled to the chip and started a new long-press / pick-up.
+        <div className="token-longpress-menu" onClick={(e) => e.stopPropagation()} onPointerDown={(e) => e.stopPropagation()}>
+          <button type="button" className="token-longpress-menu-item" onClick={handleTakeAction}>
+            Take Action
+          </button>
+          {onRemoveToken && (
+            <button type="button" className="token-longpress-menu-item token-longpress-menu-item--remove" onClick={handleConfirmRemove}>
+              Remove from Board
             </button>
           )}
-          <button type="button" className="token-longpress-menu-item token-longpress-menu-item--remove" onClick={handleConfirmRemove}>
-            ✕ Remove
-          </button>
           <button type="button" className="token-longpress-menu-item token-longpress-menu-item--cancel" onClick={handleCancelLongPress}>
             Cancel
-          </button>
-        </div>
-      )}
-
-      {/* Story 44 — Per-token resize stepper panel (DM only, NPC tokens only) */}
-      {isDm && resizeActive && token.type === "npc" && onResizeToken && (
-        <div
-          className={`token-resize-stepper${flipCard ? " token-resize-stepper--flip" : ""}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <div className="token-resize-stepper__readout">
-            <span className="token-resize-stepper__label">{currentLabel}</span>
-            <span className="token-resize-stepper__mult">{SIZE_STEPS[currentSizeIdx]}×</span>
-          </div>
-          <div className="token-resize-stepper__track">
-            {SIZE_STEPS.map((step, i) => (
-              <span
-                key={step}
-                className={`token-resize-stepper__notch${i === currentSizeIdx ? " token-resize-stepper__notch--active" : ""}`}
-              />
-            ))}
-          </div>
-          <div className="token-resize-stepper__controls">
-            <button
-              type="button"
-              className="token-resize-stepper__btn"
-              onClick={(e) => { e.stopPropagation(); handleStepSize(-1); }}
-              disabled={currentSizeIdx === 0}
-              aria-label="Decrease token size"
-            >
-              −
-            </button>
-            <button
-              type="button"
-              className="token-resize-stepper__btn"
-              onClick={(e) => { e.stopPropagation(); handleStepSize(1); }}
-              disabled={currentSizeIdx === SIZE_STEPS.length - 1}
-              aria-label="Increase token size"
-            >
-              +
-            </button>
-          </div>
-          <button
-            type="button"
-            className="token-resize-stepper__done"
-            onClick={(e) => { e.stopPropagation(); handleCloseResize(); }}
-          >
-            Done
           </button>
         </div>
       )}

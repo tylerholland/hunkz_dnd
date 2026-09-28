@@ -5,6 +5,8 @@ import { PALETTES } from "../features/characterSheet/theme";
 import { postDmRoll } from "../api";
 import { applyCheckAdvantage, DEFAULT_HOUSE_RULES, isCheckDiceGroups } from "../lib/houseRules";
 import { buildLocalRollHistoryEntry, buildRollHistoryPayload, extractRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
+import { isDealableRoll } from "../features/dmDashboard/takeAction/actionOptions";
+import "../features/dmDashboard/takeAction/takeAction.css";
 import "./diceRoller.css";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
@@ -75,7 +77,7 @@ function createClientRollId(timestamp, index) {
 }
 
 // ── DmDiceRoller ───────────────────────────────────────────────────────────────
-export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice }) {
+export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, onDealDamage, appliedRollIds, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
     sessionStorage.getItem("dnd_dice_dm_open") !== "false"
@@ -581,7 +583,20 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
                       }}
                       opacity={opacity}
                       showDivider={i < combinedHistory.length - 1}
-                    />
+                    >
+                      {/* ADR-032 — apply a player's targeted damage roll. */}
+                      {onDealDamage && isDealableRoll(entry) && (
+                        entry.applied || appliedRollIds?.has(entry.id) ? (
+                          <span className="ta-applied">
+                            {entry.applied?.kind === "miss" ? "Marked as a miss" : `✓ Applied${entry.applied?.amount != null ? ` ${entry.applied.amount}` : ""}`}
+                          </span>
+                        ) : (
+                          <button type="button" className="ta-deal" onClick={() => onDealDamage(entry)}>
+                            Deal Damage
+                          </button>
+                        )
+                      )}
+                    </RollHistoryRow>
                   );
                 })}
               </div>

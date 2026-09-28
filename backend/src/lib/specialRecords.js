@@ -175,6 +175,23 @@ async function appendRollHistoryEvent(event, limit = ROLL_HISTORY_LIMIT) {
   });
 }
 
+// ADR-032 — "Deal Damage" from the roll log marks that roll applied so the
+// button can't be used twice (shown on every DM screen, survives reloads).
+async function markRollApplied(rollId, applied) {
+  if (!rollId) return null;
+  return withVersionRetry(async () => {
+    const current = await getRollHistoryState();
+    let found = false;
+    const rolls = (current.rolls || []).map((roll) => {
+      if (roll?.id !== rollId) return roll;
+      found = true;
+      return { ...roll, applied };
+    });
+    if (!found) return null;
+    return saveRollHistoryState({ rolls }, { expectedVersion: current.version });
+  });
+}
+
 function normalizeMapLibraryRecord(item) {
   return {
     activeMapId: item?.activeMapId ?? null,
@@ -316,6 +333,7 @@ module.exports = {
   getRollHistoryState,
   saveRollHistoryState,
   appendRollHistoryEvent,
+  markRollApplied,
   getMapLibraryState,
   saveMapLibraryState,
   getPartyRosterState,

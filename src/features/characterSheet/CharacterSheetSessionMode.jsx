@@ -34,7 +34,7 @@ import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
 import { TokenChip } from "../dmDashboard/battleMode/BattleModeController";
 import ConditionGlyphSprite from "../dmDashboard/battleMode/ConditionGlyphSprite";
 import CombatFxLayer from "../maps/combatFx/CombatFxLayer";
-import { buildStrikeEvents, isFreshStamp } from "../maps/combatFx/strikeEvents";
+import { buildStrikeEvents, collectTokenHits } from "../maps/combatFx/strikeEvents";
 import {
   resolveDamageState,
   assignAoEStagger,
@@ -2123,6 +2123,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
   // ADR-031 — combat FX strike events (see MapPanel for the DM twin).
   const [strikeEvents, setStrikeEvents] = useState([]);
   const healSeenRef = useRef(new Map());
+  const missSeenRef = useRef(new Map());
   useEffect(() => {
     const npcList = npcCombat?.npcs || [];
     const rawDamageStates = new Map();
@@ -2147,16 +2148,18 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         seenStampsRef.current
       );
       rawDamageStates.set(token.id, state);
-      if (state.phaseAFresh) {
-        freshKeysInOrder.push(token.id);
-        // ADR-031 — same freshness gate as Story 52. `lastDamageFrom` is
-        // already stripped server-side (ADR-023) when the attacker is
-        // invisible or hidden, so a null ref just means "impact only."
-        hits.push({ kind: "damage", token, stamp: subject?.lastDamagedAt, fromRef: subject?.lastDamageFrom ?? null });
-      }
-      if (isFreshStamp(token.id, subject?.lastHealedAt ?? null, serverTime, healSeenRef.current)) {
-        hits.push({ kind: "heal", token, stamp: subject.lastHealedAt, fromRef: subject?.lastHealFrom ?? null });
-      }
+      if (state.phaseAFresh) freshKeysInOrder.push(token.id);
+      // ADR-031/032 — every damage/heal plays a strike (Story 52's freshness
+      // gate, reused); a chosen action (lastFx) or a miss plays exactly as
+      // chosen. Attacker refs are already stripped server-side when hidden.
+      hits.push(...collectTokenHits({
+        token,
+        subject,
+        damageFresh: state.phaseAFresh,
+        serverTime,
+        healSeen: healSeenRef.current,
+        missSeen: missSeenRef.current,
+      }));
     }
     // Evict stale entries — otherwise every token id this viewer has ever
     // seen across a multi-day session accumulates a permanent entry here. A
@@ -2168,8 +2171,8 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
     for (const id of seenStampsRef.current.keys()) {
       if (!liveTokenIds.has(id)) seenStampsRef.current.delete(id);
     }
-    for (const id of healSeenRef.current.keys()) {
-      if (!liveTokenIds.has(id)) healSeenRef.current.delete(id);
+    for (const seen of [healSeenRef.current, missSeenRef.current]) {
+      for (const id of seen.keys()) if (!liveTokenIds.has(id)) seen.delete(id);
     }
     const staggerByKey = assignAoEStagger(freshKeysInOrder);
     const result = new Map();

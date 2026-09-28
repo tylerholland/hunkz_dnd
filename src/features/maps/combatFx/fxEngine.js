@@ -20,7 +20,10 @@ export const TABLE_PACE = 0.3;
 
 const CHARGE_MS = 350;
 const SHEETS = { slash: "/effects/fa01-slash.png", thrust: "/effects/fa01-thrust.png", punch: "/effects/fa01-punch.png" };
-const SHEET_FOR_STYLE = { cut: "slash", chop: "slash", flurry: "punch", arrow: "thrust", fire: "punch", force: "punch", bolt: "punch" };
+const SHEET_FOR_STYLE = { cut: "slash", chop: "slash", flurry: "punch", arrow: "thrust", rock: "punch", fire: "punch", force: "punch", bolt: "punch" };
+// A new hit on a token whose strike is still playing is absorbed (slow −/+
+// taps would otherwise stack several swings from the same attacker).
+const ABSORB_MS = 1100;
 
 const clamp01 = (k) => Math.max(0, Math.min(1, k));
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -142,7 +145,7 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       ctx.restore();
     } });
   }
-  function jabPop(targetId, bearing, second) {
+  function jabPopHit(targetId, bearing, second) {
     const p = tok(targetId); if (!p) return;
     const cx = p.x - Math.cos(bearing) * p.r * 0.7, cy = p.y - Math.sin(bearing) * p.r * 0.7;
     rings.push({ x: cx, y: cy, r0: p.r * 0.15, r1: p.r * (second ? 0.9 : 0.7), t0: clock, dur: 260, color: "rgba(255,248,230,", w: 2.2 });
@@ -159,11 +162,22 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       const a = tok(attId), b = tok(targetId); if (!a || !b) return;
       const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
       const p0 = { x: a.x + ux * a.r, y: a.y + uy * a.r }, p2 = { x: b.x - ux * b.r * 0.6, y: b.y - uy * b.r * 0.6 };
-      const sag = kind === "arrow" ? -Math.min(0.06 * d, a.r * 2) : 0;
+      const sag = kind === "arrow" ? -Math.min(0.06 * d, a.r * 2) : kind === "rock" ? -Math.min(0.18 * d, a.r * 4) : 0;
       const c = { x: (p0.x + p2.x) / 2 - uy * sag * (ux >= 0 ? 1 : -1), y: (p0.y + p2.y) / 2 + ux * sag * (ux >= 0 ? 1 : -1) };
       const along = (u) => ({ x: (1 - u) * (1 - u) * p0.x + 2 * (1 - u) * u * c.x + u * u * p2.x, y: (1 - u) * (1 - u) * p0.y + 2 * (1 - u) * u * c.y + u * u * p2.y });
       const u = kind === "orb" ? easeIn(k) * 0.35 + k * 0.65 : k;
       const h = along(u);
+      if (kind === "rock") {
+        // A tumbling stone on a high arc, drawn opaque (not glowing).
+        ctx.save(); ctx.translate(h.x, h.y); ctx.rotate(k * Math.PI * 5);
+        const rr = Math.max(4, a.r * 0.26);
+        ctx.fillStyle = "rgba(0,0,0,0.35)"; ctx.beginPath(); ctx.ellipse(1.5, 2, rr, rr * 0.8, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.fillStyle = "#8d8272"; ctx.beginPath();
+        ctx.moveTo(-rr, -rr * 0.2); ctx.lineTo(-rr * 0.4, -rr * 0.9); ctx.lineTo(rr * 0.6, -rr * 0.75); ctx.lineTo(rr, rr * 0.1); ctx.lineTo(rr * 0.35, rr * 0.85); ctx.lineTo(-rr * 0.7, rr * 0.6); ctx.closePath(); ctx.fill();
+        ctx.fillStyle = "#b4a996"; ctx.beginPath(); ctx.moveTo(-rr * 0.5, -rr * 0.5); ctx.lineTo(rr * 0.4, -rr * 0.55); ctx.lineTo(0, 0); ctx.closePath(); ctx.fill();
+        ctx.restore();
+        return;
+      }
       ctx.save(); ctx.globalCompositeOperation = "lighter";
       if (kind === "arrow") {
         for (let i = 0; i < 10; i++) {
@@ -271,7 +285,7 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
   }
 
   // ── Impact ────────────────────────────────────────────────────────────────
-  function impact(targetId, o) {
+  function hitImpact(targetId, o) {
     const p = tok(targetId); if (!p) return;
     const R = p.r, s = state(targetId);
     const heavy = o.crit ? 1.9 : o.heavy ? 1.3 : 1;
@@ -308,21 +322,52 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
     if (o.crit) boardShake = Math.max(boardShake, 7);
   }
 
+  // A miss: the strike arrives but doesn't connect — a puff of dust past the
+  // target's shoulder and a brief sidestep, no blood, flash or knockback.
+  function whiff(targetId, o = {}) {
+    const p = tok(targetId); if (!p) return;
+    const side = (o.bearing ?? Math.PI / 2) + (Math.random() < 0.5 ? 1 : -1) * Math.PI / 2;
+    const cx = p.x + Math.cos(o.bearing ?? 0) * p.r * 0.9 + Math.cos(side) * p.r * 0.8;
+    const cy = p.y + Math.sin(o.bearing ?? 0) * p.r * 0.9 + Math.sin(side) * p.r * 0.8;
+    for (let i = 0; i < 9; i++) {
+      const a = Math.random() * Math.PI * 2, sp = 0.02 + Math.random() * 0.04;
+      spark(cx, cy, { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 0.01, max: 650, size: 3 + Math.random() * 3, color: "rgba(200,185,160,0.35)", drag: 0.97, shrink: false, line: false, blood: true, dust: true });
+    }
+    state(targetId).knock = { t0: clock, dur: 420, dist: p.r * 0.35, bearing: side };
+    effects.push({ t0: clock, dur: 900, draw: (k) => {
+      const q = tok(targetId); if (!q) return;
+      ctx.save();
+      ctx.globalAlpha = k < 0.2 ? k / 0.2 : Math.max(0, 1 - (k - 0.2) / 0.8);
+      ctx.font = `${Math.round(Math.max(12, q.r * 0.5))}px Cinzel, Georgia, serif`;
+      ctx.textAlign = "center"; ctx.fillStyle = "#eadfc8"; ctx.strokeStyle = "rgba(0,0,0,0.6)"; ctx.lineWidth = 3;
+      const y = q.y - q.r - 8 - k * 14;
+      ctx.strokeText("MISS", q.x, y); ctx.fillText("MISS", q.x, y);
+      ctx.restore();
+    } });
+  }
+
   // ── Sequences ─────────────────────────────────────────────────────────────
-  // event = { style, crit, attackerId|null, targetId, hue }
+  // event = { style, crit, miss?, attackerId|null, targetId, hue }
+  const busyUntil = new Map();
   function play(event) {
     if (destroyed || !event?.targetId) return;
-    const { style, crit, attackerId, targetId } = event;
+    const { style, attackerId, targetId } = event;
+    const miss = event.miss === true;
+    const crit = !miss && event.crit;
     const hue = Number.isFinite(event.hue) ? event.hue : 205;
     const a = tok(attackerId), t = tok(targetId);
     if (!t) return;
+    if (clock < (busyUntil.get(targetId) ?? -1) && !idle()) return;
+    busyUntil.set(targetId, clock + ABSORB_MS);
+    const impact = miss ? (id, o) => whiff(id, o) : hitImpact;
+    const jabPop = miss ? () => {} : jabPopHit;
     const bearing = a ? Math.atan2(t.y - a.y, t.x - a.x) : Math.PI / 2;
     const common = { style, crit, bearing, hue };
 
     // Reduced motion, or no attacker on this map: the impact alone.
     if (reducedMotion || !a || attackerId === targetId) {
       if (style === "heal") impact(targetId, { heal: true });
-      else if (reducedMotion) { const s = state(targetId); s.flash = 1; s.flashColor = "#ff4a3a"; }
+      else if (reducedMotion) { if (!miss) { const s = state(targetId); s.flash = 1; s.flashColor = "#ff4a3a"; } }
       else impact(targetId, { ...common, blade: style === "cut" || style === "chop", fist: style === "flurry", color: "#ffe0d0" });
       kick();
       return;
@@ -361,6 +406,11 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       windUp(attackerId, targetId, CHARGE_MS);
       projectile(attackerId, targetId, CHARGE_MS, ms, "arrow", "#ffd58c");
       at(CHARGE_MS + ms, () => impact(targetId, { ...common, color: "#ffd58c" }));
+    } else if (style === "rock") {
+      const ms = travel(320, 620, 240);
+      windUp(attackerId, targetId, CHARGE_MS, true);
+      projectile(attackerId, targetId, CHARGE_MS, ms, "rock", "#8d8272");
+      at(CHARGE_MS + ms, () => impact(targetId, { ...common, fist: true, chips: true, color: "#d8cbb4" }));
     } else if (style === "fire") {
       const ms = travel(280, 520, 200);
       charge(attackerId, "#ff8a3c", CHARGE_MS + 60);
@@ -375,7 +425,7 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       charge(attackerId, hsl(hue, 0.95, 0.68), CHARGE_MS + 60);
       lightning(attackerId, targetId, CHARGE_MS + 60, 1000, hue);
       at(CHARGE_MS + 120, () => impact(targetId, { ...common, crackle: true, color: hsl(hue, 0.95, 0.82), ringColor: `hsla(${Math.round(hue)},95%,72%,` }));
-      sigil(targetId, CHARGE_MS + 420, 2600, hue);
+      if (!miss) sigil(targetId, CHARGE_MS + 420, 2600, hue);
     }
     kick();
   }

@@ -713,3 +713,18 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - Crit sprites come from The Free Archives FA01 pack (`public/effects/fa01-*.png`); its licence requires the credit "The Free Archives © Dreams Circle", shown on DM Settings and the character-sheet footer. The full source pack stays out of git.
 
 **Consequences**: Replaces the tracer/lunge/crescent code. Adding a style means adding a classifier rule (`strikeRules.js`) and an engine sequence. Deferred: a protection dome (no HP change triggers it — needs a "cast on ally" action) and miss effects.
+
+## ADR-032 · DM Take Action: the chosen action rides the HP write
+
+**Status**: Accepted (2026-09-28)
+
+**Context**: ADR-031 plays a strike when HP changes, guessing the attacker from initiative and the attack from the roll history. The DM often applies damage by hand (the −/+ buttons, the damage menu), NPC attacks have no declared rolls at all, and the DM's old long-press menu (Resize / Remove / Cancel) did nothing a tap didn't already do. The approved "DM Map Actions" prototype (`design/prototypes/dm-map-actions.html`) replaces it.
+
+**Decision**:
+- DM long-press on a living token starts an action: the drawer under the map asks for a target (long-press or tap another token, the same token, or "Target self"), then lists actions — the character's weapons, Unarmed Strike, attack spells and Heal; for an NPC, Unarmed Strike / Swing Sword / Throw Rock / Fire Arrow / Heal / Magic (Fire, Force Blast, Lightning). A fallen token's long-press asks first: Take Action / Remove from Board. Resize stays on the hover card.
+- One Deal Damage pop-up behind both entry points (map action, and "Deal Damage" on a player's targeted damage roll in the DM roll log): dice (pre-filled from the weapon, or the dice last used for that NPC + action, remembered per DM browser), Roll (posted to the roll history; Crit doubles the dice), editable amount with ½ / ×2, Crit, Miss, Apply.
+- The HP write carries `fx: { attacker, style, crit, miss, rollId? }`; the server stamps it as `lastFx` in the same write (same trust model as the HP value, ADR-005; whitelisted and bounded). Maps play `lastFx` exactly when its `at` matches the damage/heal stamp, and play a miss from a `lastFx` of kind `miss`. Without `lastFx` (plain −/+ edits) ADR-031's guess still applies. The public variant strips `lastFx.attacker` like `lastDamageFrom`.
+- `fx.rollId` marks that roll `applied` on the roll-history record so the log shows "Applied N" on every DM screen and it can't be applied twice.
+- The engine absorbs a new hit on a token whose strike is still playing, so slow −/+ taps don't stack swings.
+
+**Consequences**: Every screen plays exactly the action the DM chose, NPC attacks included. `fx` is kept out of client state (sent in the request only) so a later commit can't resend a stale action. Misses are now visible (a swing that doesn't connect, "MISS").

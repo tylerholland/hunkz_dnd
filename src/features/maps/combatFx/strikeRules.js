@@ -2,7 +2,7 @@
 // is matched to the declared attack in the shared roll history.
 
 // Effect styles the engine knows how to play.
-export const STYLES = ["cut", "chop", "flurry", "arrow", "fire", "force", "bolt", "heal"];
+export const STYLES = ["cut", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt", "heal"];
 
 const SPELL_RULES = [
   [/fire|flame|burn|scorch|inferno|ember|blaze|firebolt/i, "fire"],

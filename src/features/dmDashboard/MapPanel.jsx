@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, useCallback, useImperativeHandle } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useCallback, useImperativeHandle } from "react";
 import { MAX_TOKEN_SCALE, MIN_TOKEN_SCALE } from "./battleMode/tokenSizes";
 import { liveValuesEqual, useSettlingOverride } from "../../lib/liveSync";
 
@@ -26,7 +26,9 @@ import TokenTray from "./battleMode/TokenTray";
 import { TokenChip, HeldTokenFloater } from "./battleMode/BattleModeController";
 import ConditionGlyphSprite from "./battleMode/ConditionGlyphSprite";
 import CombatFxLayer from "../maps/combatFx/CombatFxLayer";
-import { buildStrikeEvents, isFreshStamp } from "../maps/combatFx/strikeEvents";
+import { buildStrikeEvents, collectTokenHits } from "../maps/combatFx/strikeEvents";
+import TakeActionDrawer from "./takeAction/TakeActionDrawer";
+import { actionGroups } from "./takeAction/actionOptions";
 import {
   resolveDamageState,
   assignAoEStagger,
@@ -57,7 +59,7 @@ function buildMapViewPayload(mapId, viewerState) {
   return payload;
 }
 
-export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, serverTime, initiative, rollHistory, ref }) {
+export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, serverTime, initiative, rollHistory, onRequestAction, ref }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewerState, setViewerState] = useState(null);
@@ -457,6 +459,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   // still carries the same event can't replay it or cut it short.
   const [strikeEvents, setStrikeEvents] = useState([]);
   const healSeenRef = useRef(new Map());
+  const missSeenRef = useRef(new Map());
   useEffect(() => {
     const partyList = party || [];
     const npcList = npcCombat?.npcs || [];
@@ -482,15 +485,18 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
         seenStampsRef.current
       );
       rawDamageStates.set(token.id, state);
-      if (state.phaseAFresh) {
-        freshKeysInOrder.push(token.id);
-        // ADR-031 — every damage-apply path plays a strike (Story 52's
-        // freshness gate, reused: never on first paint, only if recent).
-        hits.push({ kind: "damage", token, stamp: subject?.lastDamagedAt, fromRef: subject?.lastDamageFrom ?? null });
-      }
-      if (isFreshStamp(token.id, subject?.lastHealedAt ?? null, serverTime, healSeenRef.current)) {
-        hits.push({ kind: "heal", token, stamp: subject.lastHealedAt, fromRef: subject?.lastHealFrom ?? null });
-      }
+      if (state.phaseAFresh) freshKeysInOrder.push(token.id);
+      // ADR-031/032 — every damage/heal plays a strike (Story 52's freshness
+      // gate, reused); a chosen action (lastFx) or a miss plays exactly as
+      // chosen. Attacker refs are already stripped server-side when hidden.
+      hits.push(...collectTokenHits({
+        token,
+        subject,
+        damageFresh: state.phaseAFresh,
+        serverTime,
+        healSeen: healSeenRef.current,
+        missSeen: missSeenRef.current,
+      }));
     }
     // Evict stale entries — otherwise every token id ever placed on this map
     // across a multi-day session (NPCs spawned/removed encounter after
@@ -499,8 +505,8 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     for (const id of seenStampsRef.current.keys()) {
       if (!liveTokenIds.has(id)) seenStampsRef.current.delete(id);
     }
-    for (const id of healSeenRef.current.keys()) {
-      if (!liveTokenIds.has(id)) healSeenRef.current.delete(id);
+    for (const seen of [healSeenRef.current, missSeenRef.current]) {
+      for (const id of seen.keys()) if (!liveTokenIds.has(id)) seen.delete(id);
     }
     const staggerByKey = assignAoEStagger(freshKeysInOrder);
     const result = new Map();
@@ -549,6 +555,53 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveTokens, party, npcCombat, serverTime, initiative, tokenScale, debouncedZoom]);
 
+  // ── ADR-032 — DM Take Action: long-press an actor, then its target, then
+  // pick the action; the Deal Damage pop-up (owned by the dashboard) applies it.
+  const [actionFlow, setActionFlow] = useState({ step: "idle", actorId: null, targetId: null });
+  const handleDmAction = useCallback((tokenId) => {
+    setActionFlow((flow) => (flow.step === "target"
+      ? { ...flow, step: "pick", targetId: tokenId }
+      : { step: "target", actorId: tokenId, targetId: null }));
+  }, []);
+  const cancelActionFlow = useCallback(() => setActionFlow({ step: "idle", actorId: null, targetId: null }), []);
+  const actionTokens = useMemo(() => ({
+    actor: effectiveTokens.find((t) => t.id === actionFlow.actorId) || null,
+    target: effectiveTokens.find((t) => t.id === actionFlow.targetId) || null,
+  }), [effectiveTokens, actionFlow.actorId, actionFlow.targetId]);
+  // A token removed mid-flow ends the flow (derived, no effect needed).
+  const flowStep = actionFlow.step !== "idle" && (!actionTokens.actor || (actionFlow.step === "pick" && !actionTokens.target))
+    ? "idle"
+    : actionFlow.step;
+  const describeToken = useCallback((token) => {
+    if (!token) return null;
+    if (token.type === "character") {
+      const member = (party || []).find((m) => m.slug === token.sourceId);
+      return { type: "character", sourceId: token.sourceId, name: member?.name || "Unknown", member };
+    }
+    const npc = (npcCombat?.npcs || []).find((n) => n.id === token.sourceId);
+    return { type: "npc", sourceId: token.sourceId, name: npc?.name || "Unknown" };
+  }, [party, npcCombat]);
+  const actorInfo = describeToken(actionTokens.actor);
+  const targetInfo = describeToken(actionTokens.target);
+  const handlePickAction = useCallback((action) => {
+    if (!actorInfo || !targetInfo) return;
+    onRequestAction?.({
+      actor: { type: actorInfo.type, sourceId: actorInfo.sourceId, name: actorInfo.name },
+      target: { type: targetInfo.type, sourceId: targetInfo.sourceId, name: targetInfo.name },
+      action,
+      onDone: cancelActionFlow,
+    });
+  }, [actorInfo, targetInfo, onRequestAction, cancelActionFlow]);
+  useEffect(() => {
+    if (flowStep === "idle") return undefined;
+    function onKey(e) {
+      if (e.key === "Escape" && !document.querySelector(".ta-overlay")) cancelActionFlow();
+    }
+    document.addEventListener("keydown", onKey);
+    return () => document.removeEventListener("keydown", onKey);
+  }, [flowStep, cancelActionFlow]);
+  const dmTargeting = flowStep === "target";
+
   // Build chip nodes for token layer.
   const tokenChips = (isBattleMode && effectiveNaturalSize) ? (
     <>
@@ -573,6 +626,12 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
             labelHidden={labelsHidden}
             calibTween={calibTweening}
             onResizeToken={handleResizeToken}
+            onDmAction={onRequestAction ? handleDmAction : undefined}
+            dmTargeting={dmTargeting}
+            dmActionRole={flowStep === "idle" ? null
+              : token.id === actionFlow.actorId ? "actor"
+              : flowStep === "pick" && token.id === actionFlow.targetId ? "target"
+              : null}
             damageState={resolved.damageState}
             condBand={resolved.condBand}
             veil={resolved.veil}
@@ -714,6 +773,20 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
                   </button>
                 )}
               </div>
+
+              {isBattleMode && onRequestAction && (
+                <TakeActionDrawer
+                  step={flowStep}
+                  actorName={actorInfo?.name}
+                  targetName={targetInfo?.name}
+                  self={!!actionTokens.actor && actionTokens.actor.id === actionTokens.target?.id}
+                  groups={flowStep === "pick" ? actionGroups(actorInfo) : null}
+                  onPick={handlePickAction}
+                  onTargetSelf={() => actionTokens.actor && handleDmAction(actionTokens.actor.id)}
+                  onRetarget={() => actionTokens.actor && setActionFlow({ step: "target", actorId: actionTokens.actor.id, targetId: null })}
+                  onCancel={cancelActionFlow}
+                />
+              )}
 
               {isBattleMode && (
                 <TokenTray

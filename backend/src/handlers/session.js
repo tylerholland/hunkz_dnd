@@ -5,8 +5,9 @@ const { ok, notFound, forbidden } = require("../lib/response");
 const { isReservedCharacterSlug, INITIATIVE_SLUG } = require("../lib/specialItems");
 const { notifySessionChanged } = require("../lib/broadcast");
 const { addVersionBump, characterVersionKey, withVersions } = require("../lib/versioning");
-const { normalizeInitiativeRecord } = require("../lib/specialRecords");
+const { normalizeInitiativeRecord, markRollApplied } = require("../lib/specialRecords");
 const { resolveAttackerRef } = require("../lib/initiativeProjection");
+const { sanitizeFx, buildLastFx } = require("../lib/combatFx");
 
 // Session fields require owner or DM auth. Empty-string passwords are valid
 // for characters explicitly configured with no password gate.
@@ -69,6 +70,22 @@ exports.handler = async (event) => {
     }
   }
 
+  // ADR-032 — the chosen action (DM map / Deal Damage). A miss changes no
+  // field but still stamps lastFx so every screen plays the swing.
+  const fx = sanitizeFx(body.fx);
+  const setField = (field, value) => {
+    updates.push(`#${field} = :${field}`);
+    names[`#${field}`] = field;
+    values[`:${field}`] = value;
+  };
+  let applied = null;
+  const hpInBody = Object.prototype.hasOwnProperty.call(body, "hpCurrent") && typeof body.hpCurrent === "number";
+  const prevHpForFx = characterItem.hpCurrent ?? characterItem.hp ?? 0;
+  if (fx && fx.miss && (!hpInBody || body.hpCurrent === prevHpForFx)) {
+    setField("lastFx", buildLastFx(fx, "miss", new Date().toISOString()));
+    applied = { kind: "miss", amount: 0 };
+  }
+
   if (updates.length === 0) {
     return ok({ slug });
   }
@@ -96,7 +113,11 @@ exports.handler = async (event) => {
       names["#lastDamageFrom"] = "lastDamageFrom";
       values[":lastDamagedAt"] = new Date().toISOString();
       values[":lastDamageAmount"] = prevHp - body.hpCurrent;
-      values[":lastDamageFrom"] = attackerRef;
+      values[":lastDamageFrom"] = fx?.attacker || attackerRef;
+      if (fx && !fx.miss) {
+        setField("lastFx", buildLastFx(fx, "damage", values[":lastDamagedAt"]));
+        applied = { kind: "damage", amount: prevHp - body.hpCurrent };
+      }
     } else if (typeof prevHp === "number" && body.hpCurrent > prevHp) {
       // Combat FX (ADR-031) — heal stamp, the mirror of the damage stamp,
       // so every map can play the healing effect once. The healer is the
@@ -113,7 +134,11 @@ exports.handler = async (event) => {
       names["#lastHealFrom"] = "lastHealFrom";
       values[":lastHealedAt"] = new Date().toISOString();
       values[":lastHealAmount"] = body.hpCurrent - prevHp;
-      values[":lastHealFrom"] = healerRef;
+      values[":lastHealFrom"] = fx?.attacker || healerRef;
+      if (fx && !fx.miss) {
+        setField("lastFx", buildLastFx(fx, "heal", values[":lastHealedAt"]));
+        applied = { kind: "heal", amount: body.hpCurrent - prevHp };
+      }
     }
   }
 
@@ -134,6 +159,10 @@ exports.handler = async (event) => {
     ExpressionAttributeValues: values,
     ReturnValues: "UPDATED_NEW",
   }));
+
+  if (applied && fx?.rollId) {
+    await markRollApplied(fx.rollId, { ...applied, at: new Date().toISOString() });
+  }
 
   await notifySessionChanged();
 

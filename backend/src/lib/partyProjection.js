@@ -31,11 +31,11 @@ const DM_PARTY_FIELDS = [
   // ADR-030 — record version for client stale-read protection.
   "version",
   // ADR-031 — heal stamp for the combat effects layer.
-  "lastHealedAt", "lastHealAmount", "lastHealFrom",
+  "lastHealedAt", "lastHealAmount", "lastHealFrom", "lastFx",
 ];
 
 const DM_PARTY_PROJECTION_EXPRESSION =
-  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom, stats, speed, weapons, equipment, #ver, lastHealedAt, lastHealAmount, lastHealFrom";
+  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom, stats, speed, weapons, equipment, #ver, lastHealedAt, lastHealAmount, lastHealFrom, lastFx";
 
 const DM_PARTY_EXPRESSION_ATTRIBUTE_NAMES = {
   "#n": "name",
@@ -74,7 +74,7 @@ const PLAYER_VISIBLE_FIELDS = [
   "version",
   // ADR-031 — heal stamp; lastHealFrom is stripped per-case like
   // lastDamageFrom (ADR-023) by getSessionState's public variant.
-  "lastHealedAt", "lastHealAmount", "lastHealFrom",
+  "lastHealedAt", "lastHealAmount", "lastHealFrom", "lastFx",
 ];
 
 function projectPlayerCharacter(item) {
@@ -89,6 +89,7 @@ function projectPlayerCharacter(item) {
   projected.exhaustionLevel = item.exhaustionLevel ?? 0;
   projected.lastDamageFrom = item.lastDamageFrom ?? null;
   projected.lastHealFrom = item.lastHealFrom ?? null;
+  projected.lastFx = item.lastFx ?? null;
   return projected;
 }
 

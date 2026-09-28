@@ -73,7 +73,7 @@ export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false }
   );
 }
 
-export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null }) {
   // Branch on type: "wheel" entries render differently from dice rows
   if (entry.type === "wheel") {
     return <WheelHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider} />;
@@ -163,6 +163,7 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false })
             
           </span>
         </div>
+        {children}
       </div>
 
       <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexShrink: 0 }}>

@@ -1,0 +1,669 @@
+<title>DM Map Actions</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap">
+<!--
+  Implementation note (DM map actions + Deal Damage)
+
+  Behaviour
+  - DM map, battle mode. Long-press a LIVING token → it becomes the actor; the drawer asks for a target.
+    Long-press (or tap) another token, or the actor itself / "Target self", → the drawer lists actions.
+  - Long-press a FALLEN token (0 HP) → small menu: Take Action / Remove from Board / Cancel.
+    A fallen token picked as a TARGET is just selected (so it can be healed) — no menu.
+  - The old Resize / Remove / Cancel long-press menu goes away. Resize stays on the hover card and NPC ⋯ menu.
+  - Actions: player actor → their weapons, attack spells, Unarmed Strike, Heal. NPC actor → Unarmed Strike,
+    Swing Sword, Throw Rock, Fire Arrow, Heal, Magic ▾ (Fire / Force Blast / Lightning).
+  - Choosing an action opens one pop-up: dice field (pre-filled: the weapon's damage, or what the DM last
+    used for that NPC), Roll (posts to roll history; Crit doubles the dice), editable amount, ½ / ×2,
+    Crit, Miss, Apply. Heal variant: Apply Healing, no ½ / ×2 / Crit / Miss.
+  - Roll log: targeted DAMAGE rolls get "Deal Damage", opening the same pop-up pre-filled with the rolled
+    total. After applying the row reads "Applied N" so it can't be applied twice.
+
+  Data
+  - The HP write carries the action: { attacker ref, style, crit } stamped with lastDamagedAt/lastHealedAt,
+    so every screen plays exactly the chosen animation (no roll-history guessing). A Miss writes a
+    "lastActionAt" stamp with no HP change so the swing still plays everywhere.
+  - Plain −/+ HP edits keep today's fallback guess; a new hit on a token still mid-animation is absorbed.
+  - "Applied" state on a log row is saved on the roll event (appliedAmount), so it survives reloads and shows
+    on every DM screen.
+
+  Open: whether players should also see a Miss animation (default: yes, it's the same event).
+-->
+<style>
+  /* Single dark world on purpose: previews the DM's battle map. */
+  :root {
+    color-scheme: dark;
+    --stone: #14120f;
+    --stone-2: #1b1814;
+    --panel: #221e19;
+    --panel-2: #2a241d;
+    --line: #3a332a;
+    --ink: #eadfc8;
+    --ink-soft: #b9ab92;
+    --ink-mute: #8a7d66;
+    --ember: #d9a04a;
+    --ember-bright: #f3c46e;
+    --blood: #c9574b;
+    --blood-deep: #7a2a22;
+    --heal: #7fd4a0;
+    --heal-deep: #2f5f43;
+    --ocean: #6a8fa8;
+    --forest: #5a8a60;
+    --npc: #a0643a;
+    --display: "Cinzel", "Palatino Linotype", Georgia, serif;
+    --body: "Crimson Text", "Palatino Linotype", Georgia, serif;
+    --ui: "IM Fell English", Georgia, serif;
+  }
+  html, body { background: var(--stone); color: var(--ink); }
+  body { font-family: var(--body); font-size: 16px; line-height: 1.5; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 56px; }
+
+  header { display: grid; gap: 4px; margin-bottom: 16px; }
+  .eyebrow { font-family: var(--ui); font-size: 13px; letter-spacing: .22em; text-transform: uppercase; color: var(--ember); }
+  h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw, 34px); letter-spacing: .04em; text-wrap: balance; }
+  .lede { margin: 0; max-width: 68ch; color: var(--ink-soft); }
+
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 16px; align-items: start; }
+  @media (max-width: 860px) { .layout { grid-template-columns: 1fr; } }
+
+  /* ── Map ─────────────────────────────────────────── */
+  .board {
+    position: relative; height: clamp(340px, 46vw, 480px); border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    background:
+      linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px) 0 0 / 44px 44px,
+      linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px) 0 0 / 44px 44px,
+      radial-gradient(ellipse at 30% 40%, #2c2620 0%, #1a1714 70%);
+    touch-action: none; user-select: none; -webkit-user-select: none;
+  }
+  .board-caption { position: absolute; left: 12px; bottom: 8px; font-family: var(--ui); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-mute); pointer-events: none; }
+
+  .token { position: absolute; width: calc(52px * var(--s, 1)); height: calc(52px * var(--s, 1)); transform: translate(-50%, -50%); cursor: pointer; }
+  .token .face {
+    width: 100%; height: 100%; border-radius: 50%; display: grid; place-items: center;
+    background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 55%, #000) 0%, color-mix(in srgb, var(--c) 25%, #000) 100%);
+    border: 3px solid var(--c); box-shadow: 0 4px 12px rgba(0,0,0,.5);
+    font-family: var(--display); font-size: calc(18px * min(var(--s, 1), 1.6)); color: #fff; letter-spacing: .04em;
+    transition: filter .3s, opacity .3s, transform .3s;
+  }
+  /* Name label caps at Large size, as shipped. */
+  .token .name { position: absolute; top: 100%; left: 50%; transform: translate(-50%, 4px); white-space: nowrap; font-family: var(--ui); font-size: 12px; letter-spacing: .1em; background: rgba(0,0,0,.6); padding: 0 5px; border-radius: 2px; pointer-events: none; }
+  .token .hp { position: absolute; left: 12%; right: 12%; bottom: -3px; height: 4px; background: rgba(0,0,0,.65); border-radius: 2px; overflow: hidden; pointer-events: none; }
+  .token .hp i { display: block; height: 100%; background: var(--heal); transition: width .5s ease; }
+  .token .hp i.low { background: var(--blood); }
+  .token.fallen .face { filter: grayscale(.9) brightness(.55); transform: rotate(-80deg) scale(.9); }
+  .token.fallen .name::after { content: " · fallen"; color: var(--blood); }
+  .token.removing { transition: opacity .35s, transform .35s; opacity: 0; transform: translate(-50%, -50%) scale(.6); }
+
+  /* long-press charge ring */
+  .token .ring { position: absolute; inset: -7px; pointer-events: none; }
+  .token .ring circle { fill: none; stroke: var(--ember-bright); stroke-width: 3; stroke-dasharray: 100; stroke-dashoffset: 100; opacity: 0; }
+  .token.charging .ring circle { opacity: 1; stroke-dashoffset: 0; transition: stroke-dashoffset .48s linear; }
+
+  .token.actor .face { box-shadow: 0 0 0 3px var(--stone), 0 0 0 5px var(--ember-bright), 0 0 22px rgba(243,196,110,.55); }
+  .board[data-step="target"] .token:not(.actor):not(.removed) .face { animation: targetable 1.4s ease-in-out infinite; }
+  .token.target .face { box-shadow: 0 0 0 3px var(--stone), 0 0 0 5px var(--blood), 0 0 22px rgba(201,87,75,.6); animation: none !important; }
+  .token.target.self .face { box-shadow: 0 0 0 3px var(--stone), 0 0 0 5px var(--ember-bright), 0 0 0 8px var(--blood); }
+  @keyframes targetable { 50% { box-shadow: 0 0 0 3px var(--stone), 0 0 0 5px rgba(201,87,75,.6); } }
+  .aim { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+  .aim line { stroke: var(--ember-bright); stroke-width: 2; stroke-dasharray: 6 6; opacity: .6; }
+
+  /* fallen-token menu */
+  .fallen-menu { position: absolute; z-index: 40; transform: translate(-50%, 10px); display: grid; min-width: 180px; background: var(--panel); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 12px 30px rgba(0,0,0,.55); overflow: hidden; }
+  .fallen-menu button { min-height: 44px; text-align: left; padding: 0 14px; background: transparent; border: 0; color: var(--ink); font-family: var(--body); font-size: 16px; cursor: pointer; }
+  .fallen-menu button + button { border-top: 1px solid var(--line); }
+  .fallen-menu button:hover { background: var(--panel-2); }
+  .fallen-menu .danger { color: #e48a7f; }
+  .fallen-menu .muted { color: var(--ink-mute); }
+
+  /* effects */
+  .fx { position: absolute; pointer-events: none; z-index: 30; }
+  .proj { width: 14px; height: 14px; border-radius: 50%; transform: translate(-50%, -50%); }
+  .proj.arrow { width: 26px; height: 3px; border-radius: 2px; background: linear-gradient(90deg, transparent, #e9dcc0 40%, #fff); }
+  .proj.rock { width: 13px; height: 11px; border-radius: 45% 55% 50% 40%; background: #8b8174; box-shadow: inset -2px -2px 0 #5c554b; }
+  .proj.fire { background: radial-gradient(circle, #fff3c0 0%, #ff9a2e 45%, rgba(255,80,20,0) 72%); width: 26px; height: 26px; }
+  .proj.force { background: radial-gradient(circle, #fff 0%, hsl(var(--h,275) 90% 72%) 45%, transparent 72%); width: 34px; height: 34px; }
+  .proj.bolt { background: radial-gradient(circle, #fff 0%, hsl(var(--h,205) 95% 65%) 40%, transparent 72%); width: 22px; height: 22px; }
+  .flash { width: 90px; height: 90px; border-radius: 50%; transform: translate(-50%, -50%); background: radial-gradient(circle, rgba(255,90,70,.75), transparent 65%); }
+  .flash.crit { background: radial-gradient(circle, rgba(255,226,140,.95), rgba(255,120,40,.5) 45%, transparent 70%); width: 150px; height: 150px; }
+  .flash.heal { background: radial-gradient(circle, rgba(140,240,170,.8), transparent 65%); }
+  .flash.miss { background: radial-gradient(circle, rgba(220,220,220,.35), transparent 60%); }
+  .slash { width: 84px; height: 4px; border-radius: 3px; background: linear-gradient(90deg, transparent, #fff 50%, transparent); box-shadow: 0 0 12px #cfe8ff; transform-origin: center; }
+  .miss-word { font-family: var(--display); font-size: 15px; letter-spacing: .2em; color: var(--ink-soft); transform: translate(-50%, -50%); }
+
+  /* ── Drawer ──────────────────────────────────────── */
+  .drawer { margin-top: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); padding: 14px 16px; display: grid; gap: 12px; min-height: 92px; }
+  .drawer-head { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .drawer-title { font-family: var(--display); font-size: 18px; letter-spacing: .04em; margin: 0; }
+  .drawer-title .arrow { color: var(--ember); padding: 0 4px; }
+  .drawer-sub { font-family: var(--ui); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-mute); }
+  .drawer-sub.cue { color: var(--ember-bright); animation: cue 1.6s ease-in-out infinite; }
+  @keyframes cue { 50% { opacity: .55; } }
+  .spacer { flex: 1; }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 14px;
+    background: var(--panel-2); color: var(--ink); border: 1px solid var(--line); border-radius: 4px;
+    font-family: var(--body); font-size: 16px; cursor: pointer; transition: border-color .15s, background .15s;
+  }
+  .chip:hover { border-color: var(--ember); }
+  .chip:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible { outline: 2px solid var(--ember-bright); outline-offset: 2px; }
+  .chip .meta { font-family: var(--ui); font-size: 13px; color: var(--ink-mute); letter-spacing: .04em; }
+  .chip .glyph { color: var(--ember); }
+  .chip.heal .glyph { color: var(--heal); }
+  .chip.ghost { background: transparent; color: var(--ink-soft); }
+  .chip-divider { width: 1px; height: 28px; background: var(--line); margin: 0 2px; }
+  .magic { display: inline-flex; align-items: center; min-height: 44px; border: 1px solid var(--line); border-radius: 4px; background: var(--panel-2); padding-left: 12px; gap: 6px; }
+  .magic label { font-family: var(--body); font-size: 16px; }
+  .magic select { min-height: 42px; background: transparent; color: var(--ink); border: 0; border-left: 1px solid var(--line); font-family: var(--body); font-size: 16px; padding: 0 8px; cursor: pointer; }
+  .magic select option { background: var(--panel); }
+  .hint { margin: 0; color: var(--ink-soft); font-size: 15px; }
+  .hint kbd { font-family: var(--ui); font-size: 13px; border: 1px solid var(--line); border-bottom-width: 2px; padding: 0 5px; border-radius: 3px; color: var(--ink); }
+
+  /* ── Roll log ────────────────────────────────────── */
+  .log { border: 1px solid var(--line); border-radius: 6px; background: var(--panel); display: grid; grid-template-rows: auto 1fr; max-height: 620px; }
+  .log h2 { margin: 0; padding: 12px 14px; border-bottom: 1px solid var(--line); font-family: var(--display); font-weight: 400; font-size: 17px; letter-spacing: .05em; }
+  .log ol { list-style: none; margin: 0; padding: 4px 0; overflow-y: auto; }
+  .log li { padding: 10px 14px; display: grid; gap: 4px; border-bottom: 1px solid rgba(58,51,42,.6); }
+  .log li.fresh { animation: fresh 1.2s ease-out; }
+  @keyframes fresh { from { background: rgba(217,160,74,.18); } }
+  .log .who { display: flex; align-items: center; gap: 8px; font-family: var(--ui); font-size: 13px; letter-spacing: .08em; color: var(--ink-soft); }
+  .log .dot { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+  .log .time { margin-left: auto; color: var(--ink-mute); font-variant-numeric: tabular-nums; }
+  .log .what { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; }
+  .log .label { font-size: 16px; }
+  .log .total { font-family: var(--display); font-size: 20px; font-variant-numeric: tabular-nums; }
+  .log .expr { font-family: var(--ui); font-size: 13px; color: var(--ink-mute); }
+  .log .tgt { font-family: var(--ui); font-size: 13px; color: var(--ink-soft); }
+  .log .tgt::before { content: "◎ "; color: var(--blood); }
+  .log .crit { font-family: var(--ui); font-size: 12px; letter-spacing: .14em; color: var(--ember-bright); border: 1px solid var(--ember); border-radius: 3px; padding: 0 5px; }
+  .log .row-actions { display: flex; }
+  .deal { min-height: 36px; padding: 0 12px; border-radius: 4px; border: 1px solid var(--blood); background: rgba(201,87,75,.12); color: #f0b3aa; font-family: var(--ui); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; cursor: pointer; }
+  .deal:hover { background: rgba(201,87,75,.25); }
+  .applied { font-family: var(--ui); font-size: 13px; letter-spacing: .1em; text-transform: uppercase; color: var(--heal); }
+  .log .result-line { font-size: 15px; color: var(--ink-soft); }
+  .log .result-line b { color: var(--ink); font-weight: 600; }
+
+  /* ── Damage pop-up ───────────────────────────────── */
+  .overlay { position: fixed; inset: 0; z-index: 100; background: rgba(8,6,4,.62); display: grid; place-items: center; padding: 16px; }
+  .modal { width: min(440px, 100%); background: var(--panel); border: 1px solid var(--line); border-top: 3px solid var(--blood); border-radius: 8px; box-shadow: 0 24px 60px rgba(0,0,0,.6); padding: 18px 18px 16px; display: grid; gap: 14px; }
+  .modal.heal-mode { border-top-color: var(--heal); }
+  .m-head h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 20px; letter-spacing: .03em; }
+  .m-head h3 .arrow { color: var(--ember); padding: 0 4px; }
+  .m-head p { margin: 2px 0 0; font-family: var(--ui); font-size: 13px; letter-spacing: .12em; text-transform: uppercase; color: var(--ink-mute); }
+  .hpbox { display: grid; gap: 6px; }
+  .hpline { display: flex; justify-content: space-between; font-family: var(--ui); font-size: 13px; letter-spacing: .08em; color: var(--ink-soft); }
+  .hpline b { font-family: var(--display); font-weight: 400; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .hpbar { position: relative; height: 10px; background: #0f0d0b; border-radius: 5px; overflow: hidden; }
+  .hpbar .now { position: absolute; left: 0; top: 0; bottom: 0; background: var(--heal); border-radius: 5px; transition: width .25s; }
+  .hpbar .ghost { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(45deg, var(--blood) 0 4px, var(--blood-deep) 4px 8px); transition: left .25s, width .25s; }
+  .modal.heal-mode .hpbar .ghost { background: repeating-linear-gradient(45deg, var(--heal) 0 4px, var(--heal-deep) 4px 8px); }
+  .field-label { font-family: var(--ui); font-size: 13px; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-mute); }
+  .dice-row { display: flex; gap: 8px; align-items: stretch; }
+  .dice-row input { flex: 1; min-width: 0; min-height: 44px; background: #15120f; border: 1px solid var(--line); border-radius: 4px; color: var(--ink); font-family: var(--display); font-size: 18px; padding: 0 12px; }
+  .btn { min-height: 44px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--line); background: var(--panel-2); color: var(--ink); font-family: var(--ui); font-size: 14px; letter-spacing: .12em; text-transform: uppercase; cursor: pointer; }
+  .btn:hover { border-color: var(--ember); }
+  .btn.primary { background: var(--blood); border-color: var(--blood); color: #fff; }
+  .btn.primary:hover { background: #d9665a; }
+  .modal.heal-mode .btn.primary { background: #3f8a5c; border-color: #3f8a5c; }
+  .btn.quiet { background: transparent; color: var(--ink-soft); }
+  .roll-out { min-height: 22px; font-family: var(--ui); font-size: 14px; color: var(--ink-soft); }
+  .roll-out b { font-family: var(--display); font-weight: 400; color: var(--ember-bright); font-size: 16px; }
+  .source-note { font-size: 15px; color: var(--ink-soft); margin: 0; }
+  .amount-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .stepper { display: inline-flex; border: 1px solid var(--line); border-radius: 4px; overflow: hidden; }
+  .stepper button { width: 44px; min-height: 48px; background: var(--panel-2); color: var(--ink); border: 0; font-size: 22px; cursor: pointer; }
+  .stepper input { width: 72px; text-align: center; background: #15120f; color: var(--ink); border: 0; border-inline: 1px solid var(--line); font-family: var(--display); font-size: 24px; font-variant-numeric: tabular-nums; }
+  .stepper input::-webkit-inner-spin-button { -webkit-appearance: none; }
+  .toggle { display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 4px; cursor: pointer; font-family: var(--ui); font-size: 14px; letter-spacing: .1em; text-transform: uppercase; color: var(--ink-soft); }
+  .toggle[aria-pressed="true"] { border-color: var(--ember); color: var(--ember-bright); background: rgba(217,160,74,.12); }
+  .m-foot { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .m-foot .spacer { flex: 1; }
+
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 24px; margin-top: 30px; }
+  .notes h2 { margin: 0 0 8px; font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: .05em; color: var(--ember-bright); }
+  .notes ul { margin: 0; padding-left: 18px; color: var(--ink-soft); display: grid; gap: 6px; }
+  .reset { margin-top: 10px; }
+
+  @media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 1ms !important; animation-iteration-count: 1 !important; transition-duration: 1ms !important; }
+  }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Preview · DM battle map</span>
+    <h1>Take Action from the Map</h1>
+    <p class="lede">Long-press a token to act with it, then pick its target: long-press another token, or the same one to target itself. Choose an action, roll or type the damage, and apply it. The roll log gets a <b>Deal Damage</b> button on players' targeted damage rolls.</p>
+  </header>
+
+  <div class="layout">
+    <section aria-label="Battle map">
+      <div class="board" id="board" data-step="idle">
+        <svg class="aim" id="aim" aria-hidden="true"></svg>
+        <span class="board-caption">The Sunken Crossroads · round 3</span>
+      </div>
+
+      <div class="drawer" id="drawer" aria-live="polite"></div>
+      <button type="button" class="btn quiet reset" id="reset">Reset the example</button>
+    </section>
+
+    <aside class="log" aria-label="Roll log">
+      <h2>Roll Log</h2>
+      <ol id="log"></ol>
+    </aside>
+  </div>
+
+  <section class="notes">
+    <div>
+      <h2>Try these</h2>
+      <ul>
+        <li>Long-press <b>Carrion</b>, then long-press <b>Eoghan</b>. Pick <b>Magic ▾ → Fire</b>, roll and apply.</li>
+        <li>In the log, <b>Deal Damage</b> on Aesop's unarmed strike. Try ½ and ×2 before applying.</li>
+        <li>Long-press <b>Aesop</b>, then long-press Aesop again (self-target), then pick <b>Heal</b>.</li>
+        <li>Long-press the fallen <b>Goblin Archer</b> to see Take Action / Remove from Board.</li>
+      </ul>
+    </div>
+    <div>
+      <h2>What changes in the app</h2>
+      <ul>
+        <li>The old long-press menu (Resize / Remove / Cancel) goes away. Resize stays on the hover card.</li>
+        <li>Tapping and dragging a token to move it works exactly as today.</li>
+        <li>The animation plays exactly the chosen action on every screen, players' included. The app stops guessing from the roll history.</li>
+        <li>Plain −/+ HP edits still animate, using the old guess.</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="modal" id="modal" role="dialog" aria-modal="true" aria-labelledby="m-title"></div>
+</div>
+
+<script>
+(() => {
+  const HOLD_MS = 480;
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const START = () => ({
+    tokens: [
+      { id: "eoghan", name: "Eoghan", kind: "pc", color: "var(--ocean)", hue: 204, x: 22, y: 58, hp: 31, max: 38,
+        actions: [
+          { id: "longsword", name: "Longsword", kind: "weapon", toHit: "+5", dmg: "1d8+3", style: "cut" },
+          { id: "unarmed", name: "Unarmed Strike", kind: "weapon", toHit: "+4", dmg: "1d4+2", style: "flurry" },
+          { id: "eldritch", name: "Eldritch Blast", kind: "spell", toHit: "+6", dmg: "1d10", style: "force" },
+          { id: "hex", name: "Hex", kind: "spell", dmg: "1d6", style: "bolt" },
+        ] },
+      { id: "aesop", name: "Aesop", kind: "pc", color: "var(--forest)", hue: 128, x: 38, y: 30, hp: 14, max: 27,
+        actions: [
+          { id: "unarmed", name: "Unarmed Strike", kind: "weapon", toHit: "+6", dmg: "1d6+4", style: "flurry" },
+        ] },
+      { id: "carrion", name: "Carrion", kind: "npc", color: "var(--npc)", x: 70, y: 48, hp: 84, max: 110, s: 2 },
+      { id: "scout", name: "Goblin Scout", kind: "npc", color: "var(--npc)", x: 52, y: 22, hp: 9, max: 12 },
+      { id: "archer", name: "Goblin Archer", kind: "npc", color: "var(--npc)", x: 86, y: 18, hp: 0, max: 10 },
+    ],
+    log: [
+      { id: "r4", who: "aesop", label: "Unarmed Strike DMG", expr: "1d6+4", dice: [5], total: 9, target: "scout", attack: "unarmed", dmg: true, time: "8:42" },
+      { id: "r3", who: "aesop", label: "Unarmed Strike ATK", expr: "1d20+6", dice: [14], total: 20, target: "scout", attack: "unarmed", time: "8:42" },
+      { id: "r2", who: "eoghan", label: "Longsword DMG", expr: "2d8+3", dice: [6, 7], total: 16, target: "carrion", attack: "longsword", dmg: true, crit: true, time: "8:41" },
+      { id: "r1", who: "eoghan", label: "Longsword ATK", expr: "1d20+5", dice: [20], total: 25, target: "carrion", attack: "longsword", crit: true, time: "8:41" },
+      { id: "r0", who: "dm", label: "Perception", expr: "1d20+2", dice: [11], total: 13, time: "8:39" },
+    ],
+  });
+
+  const NPC_ACTIONS = [
+    { id: "unarmed", name: "Unarmed Strike", style: "flurry", dmg: "1d4" },
+    { id: "sword", name: "Swing Sword", style: "cut", dmg: "1d8" },
+    { id: "rock", name: "Throw Rock", style: "rock", dmg: "1d4" },
+    { id: "arrow", name: "Fire Arrow", style: "arrow", dmg: "1d6" },
+  ];
+  const MAGIC = { fire: { name: "Fire", style: "fire", dmg: "2d6" }, force: { name: "Force Blast", style: "force", dmg: "2d8" }, bolt: { name: "Lightning", style: "bolt", dmg: "2d8" } };
+
+  let S, flow, lastDice, uid = 0;
+  const $ = (s) => document.querySelector(s);
+  const board = $("#board"), drawer = $("#drawer"), logEl = $("#log"), overlay = $("#overlay"), modal = $("#modal"), aim = $("#aim");
+  const tok = (id) => S.tokens.find((t) => t.id === id);
+  const el = (id) => board.querySelector(`[data-id="${id}"]`);
+  const fallen = (t) => t.hp <= 0;
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const now = () => { const d = new Date(); return `${d.getHours() % 12 || 12}:${String(d.getMinutes()).padStart(2, "0")}`; };
+
+  function reset() {
+    S = START(); flow = { step: "idle" }; lastDice = {};
+    board.querySelectorAll(".token,.fallen-menu,.fx").forEach((n) => n.remove());
+    S.tokens.forEach(renderToken);
+    renderLog(); renderDrawer(); closeModal();
+  }
+
+  // ── Tokens ───────────────────────────────────────────
+  function renderToken(t) {
+    const d = document.createElement("div");
+    d.className = "token"; d.dataset.id = t.id; d.tabIndex = 0;
+    d.setAttribute("role", "button");
+    d.style.left = t.x + "%"; d.style.top = t.y + "%";
+    d.style.setProperty("--c", t.color); d.style.setProperty("--s", t.s || 1);
+    const initials = t.name.split(" ").map((w) => w[0]).join("").slice(0, 2);
+    d.innerHTML = `<div class="face">${initials}</div>
+      <svg class="ring" viewBox="0 0 36 36"><circle cx="18" cy="18" r="16" pathLength="100" transform="rotate(-90 18 18)"/></svg>
+      <div class="hp"><i></i></div><div class="name">${esc(t.name)}</div>`;
+    board.appendChild(d);
+    updateToken(t);
+    bindPress(d, t.id);
+  }
+  function updateToken(t) {
+    const d = el(t.id); if (!d) return;
+    const pct = Math.max(0, Math.min(100, (t.hp / t.max) * 100));
+    const bar = d.querySelector(".hp i"); bar.style.width = pct + "%"; bar.classList.toggle("low", pct < 50);
+    d.classList.toggle("fallen", fallen(t));
+    d.setAttribute("aria-label", `${t.name}, ${t.hp} of ${t.max} HP${fallen(t) ? ", fallen" : ""}`);
+  }
+  function markTokens() {
+    board.dataset.step = flow.step;
+    board.querySelectorAll(".token").forEach((d) => {
+      const id = d.dataset.id;
+      d.classList.toggle("actor", flow.actor === id);
+      d.classList.toggle("target", flow.target === id);
+      d.classList.toggle("self", flow.target === id && flow.actor === id);
+    });
+    aim.innerHTML = "";
+    if (flow.actor && flow.target && flow.actor !== flow.target) {
+      const a = center(flow.actor), b = center(flow.target);
+      aim.innerHTML = `<line x1="${a.x}" y1="${a.y}" x2="${b.x}" y2="${b.y}"/>`;
+    }
+  }
+
+  function bindPress(d, id) {
+    let timer = null, start = null, fired = false;
+    const cancel = () => { clearTimeout(timer); timer = null; d.classList.remove("charging"); };
+    d.addEventListener("pointerdown", (e) => {
+      if (e.button !== 0) return;
+      fired = false; start = { x: e.clientX, y: e.clientY };
+      d.classList.add("charging");
+      timer = setTimeout(() => { fired = true; cancel(); longPress(id); }, HOLD_MS);
+    });
+    d.addEventListener("pointermove", (e) => { if (timer && Math.hypot(e.clientX - start.x, e.clientY - start.y) > 8) cancel(); });
+    d.addEventListener("pointerup", () => { const wasShort = !!timer && !fired; cancel(); if (wasShort) tap(id); });
+    d.addEventListener("pointerleave", cancel);
+    d.addEventListener("pointercancel", cancel);
+    d.addEventListener("contextmenu", (e) => e.preventDefault());
+    d.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); longPress(id); } });
+  }
+
+  function longPress(id) {
+    closeFallenMenu();
+    const t = tok(id);
+    if (flow.step === "target") return chooseTarget(id);
+    if (fallen(t)) return openFallenMenu(id);
+    startAction(id);
+  }
+  // In the target step a plain tap also picks (moving a token mid-action is unlikely).
+  function tap(id) { if (flow.step === "target") chooseTarget(id); }
+
+  function startAction(id) { flow = { step: "target", actor: id }; renderDrawer(); markTokens(); }
+  function chooseTarget(id) { flow = { ...flow, step: "pick", target: id }; renderDrawer(); markTokens(); }
+  function cancelFlow() { flow = { step: "idle" }; renderDrawer(); markTokens(); }
+
+  function openFallenMenu(id) {
+    const t = tok(id), m = document.createElement("div");
+    m.className = "fallen-menu"; m.style.left = t.x + "%"; m.style.top = `calc(${t.y}% + ${26 * (t.s || 1)}px)`;
+    m.innerHTML = `<button type="button" data-a="act">Take Action</button><button type="button" class="danger" data-a="remove">Remove from Board</button><button type="button" class="muted" data-a="cancel">Cancel</button>`;
+    m.addEventListener("click", (e) => {
+      const a = e.target.dataset.a; if (!a) return;
+      closeFallenMenu();
+      if (a === "act") startAction(id);
+      if (a === "remove") { const d = el(id); d.classList.add("removing"); setTimeout(() => { d.remove(); S.tokens = S.tokens.filter((x) => x.id !== id); }, 360); }
+    });
+    board.appendChild(m);
+    m.querySelector("button").focus();
+  }
+  function closeFallenMenu() { board.querySelectorAll(".fallen-menu").forEach((n) => n.remove()); }
+
+  // ── Drawer ───────────────────────────────────────────
+  function renderDrawer() {
+    if (flow.step === "idle") {
+      drawer.innerHTML = `<p class="hint">Long-press a token to take an action with it. Tap and drag still moves tokens. <kbd>Esc</kbd> cancels.</p>`;
+      return;
+    }
+    const a = tok(flow.actor);
+    if (flow.step === "target") {
+      drawer.innerHTML = `<div class="drawer-head">
+          <h2 class="drawer-title">${esc(a.name)}</h2><span class="drawer-sub cue">Select target</span><span class="spacer"></span>
+          <button type="button" class="chip ghost" data-self>Target self</button>
+          <button type="button" class="chip ghost" data-cancel>Cancel</button>
+        </div>
+        <p class="hint">Long-press (or tap) the token ${esc(a.name)} is acting on.</p>`;
+      drawer.querySelector("[data-self]").onclick = () => chooseTarget(a.id);
+      drawer.querySelector("[data-cancel]").onclick = cancelFlow;
+      return;
+    }
+    const t = tok(flow.target);
+    const self = a.id === t.id;
+    let chips = "";
+    if (a.kind === "pc") {
+      const weapons = a.actions.filter((x) => x.kind === "weapon"), spells = a.actions.filter((x) => x.kind === "spell");
+      chips += weapons.map((x) => chip(x.id, x.name, x.toHit || x.dmg)).join("");
+      if (spells.length) chips += `<span class="chip-divider"></span>` + spells.map((x) => chip(x.id, x.name, x.toHit || x.dmg, "✶")).join("");
+      chips += `<span class="chip-divider"></span>` + chip("heal", "Heal", "", "✚", "heal");
+    } else {
+      chips += NPC_ACTIONS.map((x) => chip(x.id, x.name, "")).join("");
+      chips += chip("heal", "Heal", "", "✚", "heal");
+      chips += `<span class="magic"><label for="magic-sel"><span class="glyph" style="color:var(--ember)">✶</span> Magic</label>
+        <select id="magic-sel"><option value="">Choose…</option>${Object.entries(MAGIC).map(([k, v]) => `<option value="${k}">${v.name}</option>`).join("")}</select></span>`;
+    }
+    drawer.innerHTML = `<div class="drawer-head">
+        <h2 class="drawer-title">${esc(a.name)}<span class="arrow">→</span>${self ? "Self" : esc(t.name)}</h2>
+        <span class="spacer"></span>
+        <button type="button" class="chip ghost" data-retarget>Change target</button>
+        <button type="button" class="chip ghost" data-cancel>Cancel</button>
+      </div>
+      <div class="chips">${chips}</div>`;
+    drawer.querySelector("[data-cancel]").onclick = cancelFlow;
+    drawer.querySelector("[data-retarget]").onclick = () => startAction(a.id);
+    drawer.querySelectorAll("[data-act]").forEach((b) => b.onclick = () => pickAction(b.dataset.act));
+    const sel = drawer.querySelector("#magic-sel");
+    if (sel) sel.onchange = () => sel.value && pickAction("magic:" + sel.value);
+  }
+  function chip(id, name, meta, glyph = "", cls = "") {
+    return `<button type="button" class="chip ${cls}" data-act="${id}">${glyph ? `<span class="glyph">${glyph}</span>` : ""}${esc(name)}${meta ? `<span class="meta">${esc(meta)}</span>` : ""}</button>`;
+  }
+
+  function pickAction(actId) {
+    const a = tok(flow.actor), t = tok(flow.target);
+    let act;
+    if (actId === "heal") act = { id: "heal", name: "Heal", style: "heal", dmg: a.kind === "npc" ? (lastDice[a.id + ":heal"] || "2d4+2") : "2d4+2", heal: true };
+    else if (actId.startsWith("magic:")) { const m = MAGIC[actId.slice(6)]; act = { id: actId, name: m.name, style: m.style, dmg: m.dmg }; }
+    else if (a.kind === "pc") act = a.actions.find((x) => x.id === actId);
+    else act = NPC_ACTIONS.find((x) => x.id === actId);
+    const memoKey = a.id + ":" + act.id;
+    const remembered = a.kind === "npc" ? lastDice[memoKey] : null;
+    openModal({ actor: a, target: t, action: act, expr: remembered || act.dmg, remembered: !!remembered, memoKey });
+  }
+
+  // ── Pop-up ───────────────────────────────────────────
+  let M = null;
+  function openModal(cfg) {
+    M = { crit: !!cfg.crit, amount: cfg.amount ?? 0, rolled: cfg.amount != null, ...cfg };
+    const heal = !!M.action.heal;
+    modal.classList.toggle("heal-mode", heal);
+    const self = M.actor.id === M.target.id;
+    modal.innerHTML = `
+      <div class="m-head">
+        <h3 id="m-title">${esc(M.actor.name)}<span class="arrow">→</span>${self ? "Self" : esc(M.target.name)}</h3>
+        <p>${esc(M.action.name)}${heal ? " · healing" : ""}</p>
+      </div>
+      <div class="hpbox">
+        <div class="hpline"><span>${esc(M.target.name)}</span><span><b id="m-hp"></b> / ${M.target.max} HP</span></div>
+        <div class="hpbar"><div class="now" id="m-now"></div><div class="ghost" id="m-ghost"></div></div>
+      </div>
+      ${M.fromLog ? `<p class="source-note">From ${esc(M.actor.name)}'s roll: <b>${esc(M.fromLog.expr)}</b> → ${M.fromLog.total}${M.fromLog.crit ? " (critical hit)" : ""}.</p>` : ""}
+      <div style="display:grid;gap:6px">
+        <label class="field-label" for="m-expr">${M.fromLog ? "Roll again (optional)" : "Dice"}${M.remembered ? " · last used for " + esc(M.actor.name) : ""}</label>
+        <div class="dice-row"><input id="m-expr" value="${esc(M.expr || "")}" autocomplete="off" spellcheck="false"><button type="button" class="btn" id="m-roll">Roll</button></div>
+        <div class="roll-out" id="m-out"></div>
+      </div>
+      <div style="display:grid;gap:6px">
+        <span class="field-label">${heal ? "Healing" : "Damage"}</span>
+        <div class="amount-row">
+          <div class="stepper"><button type="button" id="m-minus" aria-label="Less">−</button><input id="m-amt" type="number" inputmode="numeric" min="0" aria-label="Amount"><button type="button" id="m-plus" aria-label="More">+</button></div>
+          ${heal ? "" : `<button type="button" class="btn" id="m-half" title="Resistance">½</button><button type="button" class="btn" id="m-double" title="Vulnerability">×2</button>
+          <button type="button" class="toggle" id="m-crit" aria-pressed="${M.crit}">Crit</button>`}
+        </div>
+      </div>
+      <div class="m-foot">
+        ${heal ? "" : `<button type="button" class="btn quiet" id="m-miss">Miss</button>`}
+        <span class="spacer"></span>
+        <button type="button" class="btn quiet" id="m-cancel">Cancel</button>
+        <button type="button" class="btn primary" id="m-apply">${heal ? "Apply Healing" : "Apply Damage"}</button>
+      </div>`;
+    overlay.hidden = false;
+    const amt = $("#m-amt");
+    amt.value = M.amount;
+    const sync = () => {
+      M.amount = Math.max(0, parseInt(amt.value, 10) || 0);
+      const hp = Math.max(0, M.target.hp), next = heal ? Math.min(M.target.max, hp + M.amount) : Math.max(0, hp - M.amount);
+      $("#m-hp").textContent = heal ? `${hp} → ${next}` : `${hp} → ${next}`;
+      const pNow = (Math.min(hp, next) / M.target.max) * 100, pGhost = (Math.abs(next - hp) / M.target.max) * 100;
+      $("#m-now").style.width = pNow + "%";
+      const g = $("#m-ghost"); g.style.left = pNow + "%"; g.style.width = pGhost + "%";
+      $("#m-apply").disabled = M.amount === 0;
+    };
+    amt.oninput = sync;
+    $("#m-minus").onclick = () => { amt.value = Math.max(0, (+amt.value || 0) - 1); sync(); };
+    $("#m-plus").onclick = () => { amt.value = (+amt.value || 0) + 1; sync(); };
+    if (!heal) {
+      $("#m-half").onclick = () => { amt.value = Math.floor((+amt.value || 0) / 2); sync(); };
+      $("#m-double").onclick = () => { amt.value = (+amt.value || 0) * 2; sync(); };
+      $("#m-crit").onclick = (e) => { M.crit = !M.crit; e.currentTarget.setAttribute("aria-pressed", M.crit); $("#m-out").textContent = M.crit && !M.rolled ? "Crit: the dice are doubled when you roll." : $("#m-out").textContent; };
+      $("#m-miss").onclick = () => { closeModal(); resolve({ miss: true }); };
+    }
+    $("#m-roll").onclick = () => {
+      const r = roll($("#m-expr").value, M.crit && !heal);
+      if (!r) { $("#m-out").textContent = "Use a format like 2d6+3."; return; }
+      M.rolled = true; M.lastRoll = r;
+      $("#m-out").innerHTML = `${esc(r.expr)} → [${r.dice.join(", ")}]${r.mod ? (r.mod > 0 ? " +" : " ") + r.mod : ""} = <b>${r.total}</b>`;
+      amt.value = r.total; sync();
+      if (M.memoKey) lastDice[M.memoKey] = $("#m-expr").value.trim();
+      addLog({ who: M.actor.id, label: `${M.action.name} ${heal ? "HEAL" : "DMG"}`, expr: r.expr, dice: r.dice, total: r.total, target: M.target.id, crit: M.crit, byDm: true });
+    };
+    $("#m-cancel").onclick = closeModal;
+    $("#m-apply").onclick = () => { const n = M.amount; closeModal(); resolve({ amount: n }); };
+    sync();
+    (M.fromLog ? amt : $("#m-expr")).focus();
+  }
+  function closeModal() { overlay.hidden = true; }
+  overlay.addEventListener("click", (e) => { if (e.target === overlay) closeModal(); });
+
+  function roll(expr, crit) {
+    const m = /^\s*(\d*)d(\d+)\s*([+-]\s*\d+)?\s*$/i.exec(expr || "");
+    if (!m) return null;
+    let n = parseInt(m[1] || "1", 10); const sides = parseInt(m[2], 10), mod = m[3] ? parseInt(m[3].replace(/\s/g, ""), 10) : 0;
+    if (crit) n *= 2;
+    const dice = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * sides));
+    return { expr: `${n}d${sides}${mod ? (mod > 0 ? "+" : "") + mod : ""}`, dice, mod, total: Math.max(0, dice.reduce((s, d) => s + d, 0) + mod) };
+  }
+
+  function resolve({ amount = 0, miss = false }) {
+    const { actor, target, action, crit, fromLog } = M;
+    const heal = !!action.heal;
+    playAction(actor.id, target.id, action.style, { crit: crit && !miss, miss, heal }, () => {
+      if (!miss) {
+        target.hp = heal ? Math.min(target.max, target.hp + amount) : Math.max(0, target.hp - amount);
+        updateToken(target);
+      }
+    });
+    if (fromLog) { fromLog.applied = miss ? "miss" : amount; }
+    addLog({ result: true, who: actor.id, target: target.id, text: miss ? `<b>${esc(actor.name)}</b> missed ${esc(target.name)}` : heal ? `<b>${esc(target.name)}</b> healed ${amount} by ${esc(actor.name)}` : `<b>${esc(target.name)}</b> took ${amount} from ${esc(actor.name)} · ${esc(action.name)}` });
+    cancelFlow();
+  }
+
+  // ── Log ──────────────────────────────────────────────
+  function addLog(entry) { S.log.unshift({ id: "n" + (++uid), time: now(), fresh: true, ...entry }); renderLog(); }
+  function renderLog() {
+    logEl.innerHTML = S.log.map((r) => {
+      const who = r.who === "dm" ? { name: "DM", color: "var(--ember)" } : tok(r.who) || { name: r.who, color: "var(--ink-mute)" };
+      const target = r.target ? tok(r.target) : null;
+      if (r.result) return `<li class="${r.fresh ? "fresh" : ""}"><div class="who"><span class="dot" style="background:var(--ember)"></span>DM<span class="time">${r.time}</span></div><div class="result-line">${r.text}</div></li>`;
+      let action = "";
+      if (r.dmg && target && !r.byDm) {
+        action = r.applied != null
+          ? `<span class="applied">${r.applied === "miss" ? "Marked as a miss" : "✓ Applied " + r.applied}</span>`
+          : `<button type="button" class="deal" data-deal="${r.id}">Deal Damage</button>`;
+      }
+      return `<li class="${r.fresh ? "fresh" : ""}">
+        <div class="who"><span class="dot" style="background:${who.color}"></span>${esc(who.name)}${r.byDm ? " · rolled by DM" : ""}<span class="time">${r.time}</span></div>
+        <div class="what"><span class="label">${esc(r.label)}</span><span class="total">${r.total}</span><span class="expr">${esc(r.expr)} [${r.dice.join(", ")}]</span>${r.crit ? `<span class="crit">CRIT</span>` : ""}</div>
+        ${target ? `<div class="tgt">${esc(target.name)}</div>` : ""}
+        ${action ? `<div class="row-actions">${action}</div>` : ""}
+      </li>`;
+    }).join("");
+    S.log.forEach((r) => { r.fresh = false; });
+    logEl.querySelectorAll("[data-deal]").forEach((b) => b.onclick = () => dealFromLog(b.dataset.deal));
+  }
+  function dealFromLog(id) {
+    const r = S.log.find((x) => x.id === id), a = tok(r.who), t = tok(r.target);
+    if (!a || !t) return;
+    const action = a.actions.find((x) => x.id === r.attack) || { name: r.label.replace(/ DMG$/, ""), style: "cut" };
+    flow = { step: "pick", actor: a.id, target: t.id }; markTokens(); renderDrawer();
+    openModal({ actor: a, target: t, action, expr: action.dmg, amount: r.total, crit: !!r.crit, fromLog: r });
+  }
+
+  // ── Effects (simplified stand-ins for the shipped canvas engine) ──
+  function center(id) {
+    const d = el(id), b = board.getBoundingClientRect(), r = d.getBoundingClientRect();
+    return { x: r.left + r.width / 2 - b.left, y: r.top + r.height / 2 - b.top, r: r.width / 2 };
+  }
+  function fx(cls, x, y, extra = "") {
+    const n = document.createElement("div"); n.className = "fx " + cls; n.style.left = x + "px"; n.style.top = y + "px";
+    if (extra) n.style.cssText += extra; board.appendChild(n); return n;
+  }
+  function playAction(aId, tId, style, { crit, miss, heal }, onImpact) {
+    const A = center(aId), T = center(tId), aEl = el(aId).querySelector(".face"), tEl = el(tId);
+    if (reduced) { onImpact(); flashAt(T, heal ? "heal" : miss ? "miss" : crit ? "crit" : ""); return; }
+    const pace = 1.6;
+    const impact = () => {
+      onImpact();
+      if (heal) return flashAt(T, "heal");
+      if (miss) { const w = fx("miss-word", T.x, T.y - T.r - 16); w.textContent = "MISS"; w.animate([{ opacity: 0, transform: "translate(-50%,-30%)" }, { opacity: 1, transform: "translate(-50%,-60%)" }, { opacity: 0, transform: "translate(-50%,-90%)" }], 1100 * pace / 1.6).onfinish = () => w.remove(); return; }
+      flashAt(T, crit ? "crit" : "");
+      if (["cut", "flurry"].includes(style)) {
+        const cuts = crit ? [-35, 35] : [Math.random() * 60 - 30];
+        cuts.forEach((deg, i) => { const s = fx("slash", T.x - 42, T.y - 2); s.animate([{ opacity: 0, transform: `rotate(${deg}deg) scaleX(.2)` }, { opacity: 1, transform: `rotate(${deg}deg) scaleX(1)` }, { opacity: 0, transform: `rotate(${deg}deg) scaleX(1.1)` }], { duration: 420, delay: i * 90 }).onfinish = () => s.remove(); });
+      }
+      tEl.animate([{ transform: "translate(-50%,-50%)" }, { transform: "translate(calc(-50% + 6px),-50%)" }, { transform: "translate(calc(-50% - 5px),-50%)" }, { transform: "translate(-50%,-50%)" }], 320);
+    };
+    if (heal || aId === tId) {
+      aEl.animate([{ filter: "brightness(1)" }, { filter: "brightness(1.6)" }, { filter: "brightness(1)" }], 500 * pace);
+      return setTimeout(impact, 380 * pace);
+    }
+    const dx = T.x - A.x, dy = T.y - A.y, d = Math.hypot(dx, dy) || 1, ux = dx / d, uy = dy / d;
+    // wind-up
+    aEl.animate([{ transform: "translate(0,0)" }, { transform: `translate(${-ux * 8}px,${-uy * 8}px) scale(1.06)` }, { transform: "translate(0,0)" }], 360 * pace);
+    if (["cut", "flurry"].includes(style)) {
+      const reach = Math.min(d - A.r - T.r + 10, 60);
+      setTimeout(() => {
+        aEl.animate([{ transform: "translate(0,0)" }, { transform: `translate(${ux * reach}px,${uy * reach}px)` }, { transform: "translate(0,0)" }], { duration: 380 * pace, easing: "ease-out" });
+        setTimeout(impact, 170 * pace);
+      }, 300 * pace);
+    } else {
+      setTimeout(() => {
+        const p = fx("proj " + style, A.x, A.y);
+        const hue = tok(aId).hue; if (hue) p.style.setProperty("--h", hue);
+        const ang = Math.atan2(dy, dx) * 180 / Math.PI;
+        const rot = style === "arrow" ? ` rotate(${ang}deg)` : style === "rock" ? " rotate(540deg)" : "";
+        p.animate([{ left: A.x + "px", top: A.y + "px", transform: `translate(-50%,-50%)${style === "arrow" ? ` rotate(${ang}deg)` : ""}` }, { left: T.x + "px", top: T.y + "px", transform: `translate(-50%,-50%)${rot}` }], { duration: Math.min(700, 180 + d * 1.1) * pace, easing: style === "rock" ? "cubic-bezier(.3,.1,.6,1)" : "ease-in" }).onfinish = () => { p.remove(); impact(); };
+      }, 320 * pace);
+    }
+  }
+  function flashAt(T, kind) {
+    const f = fx("flash " + kind, T.x, T.y);
+    f.animate([{ opacity: 0, transform: "translate(-50%,-50%) scale(.4)" }, { opacity: 1, transform: "translate(-50%,-50%) scale(1)" }, { opacity: 0, transform: "translate(-50%,-50%) scale(1.25)" }], kind === "heal" ? 900 : 520).onfinish = () => f.remove();
+  }
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    if (!overlay.hidden) return closeModal();
+    closeFallenMenu(); if (flow.step !== "idle") cancelFlow();
+  });
+  document.addEventListener("pointerdown", (e) => { if (!e.target.closest(".fallen-menu") && !e.target.closest(".token")) closeFallenMenu(); });
+  $("#reset").onclick = reset;
+  reset();
+})();
+</script>

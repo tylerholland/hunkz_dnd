@@ -1,0 +1,472 @@
+/* DM Take Action (ADR-032) — drawer under the battle map + Deal Damage pop-up.
+   Palette-driven through --pal-* so every theme (including light vellum) works. */
+
+.ta-drawer {
+  --ta-damage: #c9574b;
+  --ta-heal: #4f9a6a;
+  margin-top: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  background: var(--pal-surface);
+  display: grid;
+  gap: 8px;
+}
+
+.ta-drawer--idle {
+  padding: 6px 12px;
+}
+
+.ta-hint {
+  margin: 0;
+  font-family: var(--font-body, Georgia, serif);
+  font-size: 14px;
+  color: var(--pal-text-muted);
+}
+
+.ta-drawer-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+}
+
+.ta-drawer-title {
+  margin: 0;
+  font-family: var(--font-display, "Cinzel", Georgia, serif);
+  font-weight: 400;
+  font-size: 17px;
+  letter-spacing: 0.04em;
+  color: var(--pal-text);
+}
+
+.ta-arrow {
+  color: var(--pal-accent-bright);
+  padding: 0 6px;
+}
+
+.ta-drawer-cue {
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-accent-bright);
+  animation: ta-cue 1.6s ease-in-out infinite;
+}
+
+@keyframes ta-cue {
+  50% { opacity: 0.55; }
+}
+
+.ta-spacer {
+  flex: 1;
+}
+
+.ta-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ta-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  background: var(--pal-surface-solid);
+  color: var(--pal-text);
+  font-family: var(--font-body, Georgia, serif);
+  font-size: 16px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.ta-chip:hover {
+  border-color: var(--pal-accent);
+}
+
+.ta-chip:focus-visible,
+.ta-btn:focus-visible,
+.ta-toggle:focus-visible,
+.ta-magic select:focus-visible,
+.ta-dice-input:focus-visible,
+.ta-stepper button:focus-visible,
+.ta-stepper input:focus-visible {
+  outline: 2px solid var(--pal-accent-bright);
+  outline-offset: 2px;
+}
+
+.ta-chip--ghost {
+  background: transparent;
+  color: var(--pal-text-muted);
+}
+
+.ta-chip-glyph {
+  color: var(--pal-accent-bright);
+}
+
+.ta-chip--heal .ta-chip-glyph {
+  color: var(--ta-heal);
+}
+
+.ta-chip-meta {
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 13px;
+  color: var(--pal-text-muted);
+}
+
+.ta-divider {
+  width: 1px;
+  height: 28px;
+  background: var(--pal-border);
+}
+
+.ta-magic {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  padding-left: 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  background: var(--pal-surface-solid);
+  font-family: var(--font-body, Georgia, serif);
+  font-size: 16px;
+  color: var(--pal-text);
+}
+
+.ta-magic select {
+  min-height: 42px;
+  padding: 0 8px;
+  border: 0;
+  border-left: 1px solid var(--pal-border);
+  background: transparent;
+  color: var(--pal-text);
+  font-family: var(--font-body, Georgia, serif);
+  font-size: 16px;
+  cursor: pointer;
+}
+
+.ta-magic select option {
+  background: var(--pal-surface-solid);
+  color: var(--pal-text);
+}
+
+/* Token states while an action is being set up (DM map). */
+.token-chip--dm-actor .token-chip__portrait,
+.token-chip--dm-actor .token-chip__initial {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.55), 0 0 0 5px #f3c46e, 0 0 18px rgba(243, 196, 110, 0.55);
+}
+
+.token-chip--dm-target .token-chip__portrait,
+.token-chip--dm-target .token-chip__initial {
+  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.55), 0 0 0 5px #c9574b, 0 0 18px rgba(201, 87, 75, 0.6);
+}
+
+.token-chip--dm-targetable .token-chip__portrait,
+.token-chip--dm-targetable .token-chip__initial {
+  animation: ta-targetable 1.4s ease-in-out infinite;
+}
+
+@keyframes ta-targetable {
+  50% { box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.45), 0 0 0 5px rgba(201, 87, 75, 0.6); }
+}
+
+/* ── Deal Damage pop-up ───────────────────────────────────────────────── */
+.ta-overlay {
+  --ta-damage: #c9574b;
+  --ta-heal: #4f9a6a;
+  position: fixed;
+  inset: 0;
+  z-index: 400;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(8, 6, 4, 0.62);
+}
+
+.ta-modal {
+  width: min(440px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow-y: auto;
+  display: grid;
+  gap: 14px;
+  padding: 18px 18px 16px;
+  border: 1px solid var(--pal-border);
+  border-top: 3px solid var(--ta-damage);
+  border-radius: 8px;
+  background: var(--pal-surface-solid);
+  color: var(--pal-text);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
+}
+
+.ta-modal--heal {
+  border-top-color: var(--ta-heal);
+}
+
+.ta-modal-title {
+  margin: 0;
+  font-family: var(--font-display, "Cinzel", Georgia, serif);
+  font-weight: 400;
+  font-size: 20px;
+  letter-spacing: 0.03em;
+}
+
+.ta-modal-sub {
+  margin: 2px 0 0;
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.ta-hp {
+  display: grid;
+  gap: 6px;
+}
+
+.ta-hp-line {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--pal-text-muted);
+}
+
+.ta-hp-line b {
+  font-family: var(--font-display, "Cinzel", Georgia, serif);
+  font-weight: 400;
+  color: var(--pal-text);
+}
+
+.ta-hp-bar {
+  position: relative;
+  height: 10px;
+  overflow: hidden;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.35);
+}
+
+.ta-hp-now {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 5px;
+  background: var(--ta-heal);
+  transition: width 0.25s ease;
+}
+
+.ta-hp-ghost {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  background: repeating-linear-gradient(45deg, var(--ta-damage) 0 4px, rgba(122, 42, 34, 0.9) 4px 8px);
+  transition: left 0.25s ease, width 0.25s ease;
+}
+
+.ta-modal--heal .ta-hp-ghost {
+  background: repeating-linear-gradient(45deg, #7fd4a0 0 4px, var(--ta-heal) 4px 8px);
+}
+
+.ta-source {
+  margin: 0;
+  font-family: var(--font-body, Georgia, serif);
+  font-size: 15px;
+  color: var(--pal-text-body, var(--pal-text));
+}
+
+.ta-field {
+  display: grid;
+  gap: 6px;
+}
+
+.ta-label {
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 13px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.ta-dice-row {
+  display: flex;
+  gap: 8px;
+}
+
+.ta-dice-input {
+  flex: 1;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  background: var(--pal-surface);
+  color: var(--pal-text);
+  font-family: var(--font-display, "Cinzel", Georgia, serif);
+  font-size: 18px;
+}
+
+.ta-roll-out {
+  min-height: 20px;
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 14px;
+  color: var(--pal-text-muted);
+}
+
+.ta-roll-out b {
+  font-family: var(--font-display, "Cinzel", Georgia, serif);
+  font-weight: 400;
+  font-size: 16px;
+  color: var(--pal-accent-bright);
+}
+
+.ta-amount-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.ta-stepper {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+}
+
+.ta-stepper button {
+  width: 44px;
+  min-height: 48px;
+  border: 0;
+  background: var(--pal-surface);
+  color: var(--pal-text);
+  font-size: 22px;
+  cursor: pointer;
+}
+
+.ta-stepper input {
+  width: 76px;
+  border: 0;
+  border-inline: 1px solid var(--pal-border);
+  background: var(--pal-surface);
+  color: var(--pal-text);
+  font-family: var(--font-display, "Cinzel", Georgia, serif);
+  font-size: 24px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  appearance: textfield;
+}
+
+.ta-stepper input::-webkit-inner-spin-button,
+.ta-stepper input::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.ta-btn,
+.ta-toggle {
+  min-height: 44px;
+  padding: 0 16px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  background: var(--pal-surface);
+  color: var(--pal-text);
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 14px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ta-btn:hover,
+.ta-toggle:hover {
+  border-color: var(--pal-accent);
+}
+
+.ta-toggle[aria-pressed="true"] {
+  border-color: var(--pal-accent);
+  background: rgba(217, 160, 74, 0.14);
+  color: var(--pal-accent-bright);
+}
+
+.ta-btn--quiet {
+  background: transparent;
+  color: var(--pal-text-muted);
+}
+
+.ta-btn--primary {
+  border-color: var(--ta-damage);
+  background: var(--ta-damage);
+  color: #fff;
+}
+
+.ta-btn--primary:hover {
+  border-color: var(--ta-damage);
+  filter: brightness(1.1);
+}
+
+.ta-modal--heal .ta-btn--primary {
+  border-color: var(--ta-heal);
+  background: var(--ta-heal);
+}
+
+.ta-btn--primary:disabled {
+  opacity: 0.45;
+  cursor: default;
+  filter: none;
+}
+
+.ta-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Roll log: Deal Damage on a player's targeted damage roll. */
+.ta-deal {
+  min-height: 32px;
+  margin-top: 4px;
+  padding: 0 12px;
+  border: 1px solid #c9574b;
+  border-radius: 4px;
+  background: rgba(201, 87, 75, 0.12);
+  color: #d9786d;
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.ta-deal:hover {
+  background: rgba(201, 87, 75, 0.24);
+}
+
+.ta-applied {
+  display: inline-block;
+  margin-top: 4px;
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #4f9a6a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ta-drawer-cue,
+  .token-chip--dm-targetable .token-chip__portrait,
+  .token-chip--dm-targetable .token-chip__initial {
+    animation: none;
+  }
+  .ta-hp-now,
+  .ta-hp-ghost {
+    transition: none;
+  }
+}

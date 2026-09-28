@@ -197,6 +197,12 @@ exports.handler = async (event) => {
     }
     return lastDamageFrom ?? null;
   }
+  // ADR-032 — the chosen action's attacker is stripped exactly like
+  // lastDamageFrom; the effect still plays, just without a visible source.
+  function publicLastFx(lastFx) {
+    if (!lastFx || typeof lastFx !== "object") return null;
+    return { ...lastFx, attacker: publicLastDamageFrom(lastFx.attacker) };
+  }
 
   const partyStatus = visEnabled
     ? {
@@ -207,6 +213,7 @@ exports.handler = async (event) => {
             const projected = projectPlayerCharacter(rawItemsBySlug.get(slug));
             projected.lastDamageFrom = publicLastDamageFrom(projected.lastDamageFrom);
             projected.lastHealFrom = publicLastDamageFrom(projected.lastHealFrom);
+            projected.lastFx = publicLastFx(projected.lastFx);
             return projected;
           }),
       }
@@ -231,6 +238,7 @@ exports.handler = async (event) => {
       lastHealedAt: n.lastHealedAt ?? null,
       lastHealAmount: n.lastHealAmount ?? null,
       lastHealFrom: publicLastDamageFrom(n.lastHealFrom),
+      lastFx: publicLastFx(n.lastFx),
     })),
   };
 
@@ -271,6 +279,9 @@ exports.handler = async (event) => {
       }
       if (Object.prototype.hasOwnProperty.call(character, "lastHealFrom")) {
         character.lastHealFrom = publicLastDamageFrom(character.lastHealFrom);
+      }
+      if (Object.prototype.hasOwnProperty.call(character, "lastFx")) {
+        character.lastFx = publicLastFx(character.lastFx);
       }
       responseBody.character = character;
     }

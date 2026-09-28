@@ -195,3 +195,44 @@ test("session patch does not stamp lastDamageFrom on self-damage (attacker === t
   assert.equal(updates.length, 1);
   assert.equal(updates[0].ExpressionAttributeValues[":lastDamageFrom"], null);
 });
+
+function fxHarness(updates) {
+  return loadHandlerWithMocks({
+    send: async (command) => {
+      if (command.input?.RequestItems) {
+        return { Responses: { "characters-table": [{ slug: "aragorn", passwordHash: "hash", hpCurrent: 20 }] } };
+      }
+      updates.push(command.input);
+      return {};
+    },
+    verifyPasswordImpl: async () => ({ valid: true, role: "dm" }),
+  });
+}
+
+test("session patch stamps the chosen action as lastFx with the damage (ADR-032)", async () => {
+  const updates = [];
+  const { handler } = fxHarness(updates);
+  const result = await handler({
+    pathParameters: { slug: "aragorn" },
+    headers: { "x-character-password": "dm-pass" },
+    body: JSON.stringify({ hpCurrent: 11, fx: { style: "fire", attacker: { type: "npc", sourceId: "carrion" }, crit: true } }),
+  });
+  assert.equal(result.statusCode, 200);
+  const values = updates[0].ExpressionAttributeValues;
+  assert.deepEqual(values[":lastDamageFrom"], { type: "npc", sourceId: "carrion" });
+  assert.deepEqual(values[":lastFx"], { at: values[":lastDamagedAt"], kind: "damage", attacker: { type: "npc", sourceId: "carrion" }, style: "fire", crit: true });
+});
+
+test("session patch records a miss with no HP change (ADR-032)", async () => {
+  const updates = [];
+  const { handler } = fxHarness(updates);
+  const result = await handler({
+    pathParameters: { slug: "aragorn" },
+    headers: { "x-character-password": "dm-pass" },
+    body: JSON.stringify({ fx: { style: "arrow", attacker: { type: "npc", sourceId: "archer" }, miss: true } }),
+  });
+  assert.equal(result.statusCode, 200);
+  assert.equal(updates.length, 1);
+  assert.doesNotMatch(updates[0].UpdateExpression, /hpCurrent/);
+  assert.equal(updates[0].ExpressionAttributeValues[":lastFx"].kind, "miss");
+});

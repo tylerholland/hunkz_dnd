@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildStrikeEvents, isFreshStamp } from "./strikeEvents";
+import { buildStrikeEvents, collectTokenHits, isFreshStamp } from "./strikeEvents";
 
 const tokens = [
   { id: "t-eoghan", type: "character", sourceId: "eoghan", x: 0.30, y: 0.50 },
@@ -40,5 +40,28 @@ describe("isFreshStamp", () => {
     expect(isFreshStamp("t", "2026-09-27T20:00:08.000Z", now, seen)).toBe(true);
     expect(isFreshStamp("t", "2026-09-27T20:00:08.000Z", now, seen)).toBe(false); // same stamp again
     expect(isFreshStamp("t", "2026-09-27T19:00:00.000Z", now, seen)).toBe(false); // too old
+  });
+});
+
+describe("chosen actions (lastFx)", () => {
+  it("plays exactly the chosen action instead of guessing", () => {
+    const fx = { at: "s5", kind: "damage", attacker: { type: "npc", sourceId: "ogre" }, style: "rock", crit: true };
+    const [event] = buildStrikeEvents({ ...common, rolls: [], hits: [{ kind: "damage", token: tokens[0], stamp: "s5", fromRef: { type: "npc", sourceId: "gob" }, fx }] });
+    expect(event).toMatchObject({ style: "rock", crit: true, miss: false, attackerId: "t-ogre", targetId: "t-eoghan" });
+  });
+
+  it("collects a fresh miss once, and pairs lastFx only with its own stamp", () => {
+    const heal = new Map(), miss = new Map();
+    const now = "2026-09-28T20:00:10.000Z";
+    const token = tokens[1];
+    const subject = (fx) => ({ lastDamagedAt: "2026-09-28T20:00:09.000Z", lastFx: fx });
+    const missFx = { at: "2026-09-28T20:00:09.500Z", kind: "miss", attacker: { type: "character", sourceId: "eoghan" }, style: "cut" };
+    expect(collectTokenHits({ token, subject: subject(null), damageFresh: false, serverTime: now, healSeen: heal, missSeen: miss })).toEqual([]);
+    const hits = collectTokenHits({ token, subject: subject(missFx), damageFresh: true, serverTime: now, healSeen: heal, missSeen: miss });
+    expect(hits.map((h) => h.kind)).toEqual(["damage", "miss"]);
+    expect(hits[0].fx).toBe(null); // the damage stamp isn't the miss's stamp
+    expect(collectTokenHits({ token, subject: subject(missFx), damageFresh: false, serverTime: now, healSeen: heal, missSeen: miss })).toEqual([]);
+    const [ev] = buildStrikeEvents({ ...common, rolls: [], hits: [hits[1]] });
+    expect(ev).toMatchObject({ miss: true, style: "cut", attackerId: "t-eoghan" });
   });
 });
