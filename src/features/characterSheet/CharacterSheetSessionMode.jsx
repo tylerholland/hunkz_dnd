@@ -23,7 +23,7 @@
 import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
-import { fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
+import { fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, buildUnarmedStrike, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
 import CharacterTalents from "./CharacterTalents";
 import { patchSession, postCharacterRoll, moveMapToken } from "../../api";
 import { clearExpectedFields, isFieldPending, markExpectedFields, mergeOptimisticLiveFields } from "../../lib/liveSync";
@@ -827,16 +827,31 @@ export default function CharacterSheetSessionMode({
   // Chips for the bar's PICK picker — same weapons-then-spells order as
   // attackEntries.entries (Story 56, consumed unchanged), each annotated
   // with whether its spell slot (if any) is exhausted.
+  // Unarmed Strike is always offered (after weapons, before spells) so a
+  // character with nothing equipped — or a monk — can still attack a target.
+  const unarmedStrike = useMemo(
+    () => buildUnarmedStrike({
+      weapons: char?.weapons || [],
+      charClass: char?.charClass,
+      level: char?.level,
+      mods: { Strength: abilityModifier(char, "Strength"), Dexterity: abilityModifier(char, "Dexterity") },
+    }),
+    [char]
+  );
   const attackChips = useMemo(
-    () => attackEntries.entries.map((entry) => ({
+    () => [
+      ...attackEntries.weaponEntries,
+      ...(unarmedStrike ? [unarmedStrike] : []),
+      ...attackEntries.spellEntries,
+    ].map((entry) => ({
       ...entry,
       spent: entry.kind === "spell" ? isSpellSlotSpent(entry.level, spellSlots) : false,
     })),
-    [attackEntries, spellSlots]
+    [attackEntries, unarmedStrike, spellSlots]
   );
   const hasRollableAttacks = useMemo(
-    () => attackEntries.entries.some((e) => e.toHit || e.damage),
-    [attackEntries]
+    () => attackChips.some((e) => e.toHit || e.damage),
+    [attackChips]
   );
 
   // Read from a ref (updated in an effect below), not closed-over props, so

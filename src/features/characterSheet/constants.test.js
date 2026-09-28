@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { normalizeSpells, buildAttackEntries, applyLongRest, applyShortRest } from "./constants";
+import { normalizeSpells, buildAttackEntries, buildUnarmedStrike, applyLongRest, applyShortRest } from "./constants";
 
 describe("normalizeSpells", () => {
   it("returns [] for a missing/non-array field", () => {
@@ -127,5 +127,22 @@ describe("applyLongRest / applyShortRest (Story 63)", () => {
     const { spellSlots } = applyShortRest(char);
     expect(spellSlots.find((s) => !s.isPactMagic).used).toBe(3);
     expect(spellSlots.find((s) => s.isPactMagic).used).toBe(0);
+  });
+});
+
+describe("buildUnarmedStrike", () => {
+  it("gives a monk the better of STR/DEX and their Martial Arts die", () => {
+    expect(buildUnarmedStrike({ charClass: "Monk", level: 5, mods: { Strength: 0, Dexterity: 3 } }))
+      .toMatchObject({ id: "unarmed-strike", kind: "weapon", name: "Unarmed Strike", toHit: "+6", damage: "1d6+3" });
+  });
+
+  it("gives anyone else proficiency + STR and a d4", () => {
+    expect(buildUnarmedStrike({ charClass: "Wizard", level: 1, mods: { Strength: -1, Dexterity: 2 } }))
+      .toMatchObject({ toHit: "+1", damage: "1d4-1" });
+    expect(buildUnarmedStrike({}).damage).toBe("1d4");
+  });
+
+  it("steps aside when the character already lists an unarmed attack", () => {
+    expect(buildUnarmedStrike({ weapons: [{ name: "Fists of Fury" }], charClass: "Monk" })).toBe(null);
   });
 });

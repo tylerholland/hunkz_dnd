@@ -72,6 +72,35 @@ export function buildAttackEntries({ weapons = [], spells = [] } = {}) {
   return { entries: [...weaponEntries, ...spellEntries], weaponEntries, spellEntries, header };
 }
 
+// Fallback attack so the map's target picker is never empty: everyone can
+// throw a punch. 5e unarmed strike — proficiency + STR to hit (monks use the
+// better of STR/DEX and their Martial Arts die). `mods` is { Strength: n,
+// Dexterity: n } — the same derived modifiers the checks use. Skipped when
+// the character already lists an unarmed weapon of their own.
+export const UNARMED_STRIKE_ID = "unarmed-strike";
+const UNARMED_NAME_RE = /unarmed|fist|punch|martial arts/i;
+
+export function buildUnarmedStrike({ weapons = [], charClass = "", level = 1, mods = {} } = {}) {
+  if (weapons.some((w) => UNARMED_NAME_RE.test(String(w?.name || "")))) return null;
+  const lvl = Math.max(1, Math.min(20, parseInt(level, 10) || 1));
+  const prof = 2 + Math.floor((lvl - 1) / 4);
+  const str = Number.isFinite(mods.Strength) ? mods.Strength : 0;
+  const dex = Number.isFinite(mods.Dexterity) ? mods.Dexterity : 0;
+  const isMonk = /monk/i.test(String(charClass));
+  const mod = isMonk ? Math.max(str, dex) : str;
+  // 5e gives non-monks a flat 1 + STR, but the roller needs at least one die,
+  // so they get 1d4 as the table's brawl die (editable in the bar).
+  const die = isMonk ? (lvl >= 17 ? "1d10" : lvl >= 11 ? "1d8" : lvl >= 5 ? "1d6" : "1d4") : "1d4";
+  return {
+    id: UNARMED_STRIKE_ID,
+    kind: "weapon",
+    name: "Unarmed Strike",
+    toHit: fmtMod(prof + mod),
+    damage: mod === 0 ? die : `${die}${fmtMod(mod)}`,
+    description: isMonk ? "Martial Arts: DEX or STR, Martial Arts die." : "Punch, kick or headbutt.",
+  };
+}
+
 export const RACE_OPTIONS = [
   "Human", "Elf", "Night Elf", "Wood Elf", "High Elf", "Drow", "Eladrin",
   "Dwarf", "Halfling", "Half-Elf", "Half-Orc", "Gnome", "Tiefling", "Dragonborn",
