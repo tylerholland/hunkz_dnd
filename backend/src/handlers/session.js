@@ -5,9 +5,10 @@ const { ok, notFound, forbidden } = require("../lib/response");
 const { isReservedCharacterSlug, INITIATIVE_SLUG } = require("../lib/specialItems");
 const { notifySessionChanged } = require("../lib/broadcast");
 const { addVersionBump, characterVersionKey, withVersions } = require("../lib/versioning");
-const { normalizeInitiativeRecord, markRollApplied } = require("../lib/specialRecords");
+const { normalizeInitiativeRecord, markRollApplied, appendRollHistoryEvents } = require("../lib/specialRecords");
 const { resolveAttackerRef } = require("../lib/initiativeProjection");
 const { sanitizeFx, buildLastFx } = require("../lib/combatFx");
+const { subjectRef, buildHpEvent, buildConditionEvent } = require("../lib/sessionEvents");
 
 // Session fields require owner or DM auth. Empty-string passwords are valid
 // for characters explicitly configured with no password gate.
@@ -51,10 +52,12 @@ exports.handler = async (event) => {
   // x-session-token remains a future escape hatch for an authenticated
   // session-token flow. Otherwise require owner or DM credentials, including
   // the explicit empty string for intentionally passwordless characters.
+  let editor = "player";
   if (!sessionToken) {
     if (password === undefined || password === null) return forbidden();
     const auth = await verifyPassword(password, characterItem);
     if (!auth.valid) return forbidden();
+    if (auth.role === "dm") editor = "dm";
   }
 
   // Build a partial UpdateExpression covering only the provided session fields
@@ -159,6 +162,40 @@ exports.handler = async (event) => {
     ExpressionAttributeValues: values,
     ReturnValues: "UPDATED_NEW",
   }));
+
+  // Story 69 — HP and condition changes join the shared log (session
+  // history). Written after the character update so a failed write never
+  // logs a change that didn't happen.
+  const at = new Date().toISOString();
+  const subject = subjectRef("character", slug, characterItem.name || characterItem.nameAlt);
+  const logEvents = [];
+  if (hpInBody && body.hpCurrent !== prevHpForFx) {
+    logEvents.push(buildHpEvent({ subject, from: prevHpForFx, to: body.hpCurrent, max: characterItem.hpMax ?? characterItem.hp ?? null, fx: fx && !fx.miss ? fx : null, editor, at }));
+  } else if (fx?.miss) {
+    logEvents.push(buildHpEvent({ subject, from: prevHpForFx, to: prevHpForFx, max: characterItem.hpMax ?? characterItem.hp ?? null, fx, editor, at }));
+  }
+  const conditionsInBody = Object.prototype.hasOwnProperty.call(body, "conditions");
+  const exhaustionInBody = Object.prototype.hasOwnProperty.call(body, "exhaustionLevel");
+  if (conditionsInBody || exhaustionInBody) {
+    const conditionEvent = buildConditionEvent({
+      subject,
+      before: characterItem.conditions,
+      after: conditionsInBody ? body.conditions : characterItem.conditions,
+      exhaustionBefore: characterItem.exhaustionLevel ?? 0,
+      exhaustionAfter: exhaustionInBody ? body.exhaustionLevel : undefined,
+      editor,
+      at,
+    });
+    if (conditionEvent) logEvents.push(conditionEvent);
+  }
+  if (logEvents.length) {
+    try {
+      await appendRollHistoryEvents(logEvents);
+    } catch (err) {
+      // History is best-effort: never fail the HP/condition write over it.
+      console.error("[session] could not log session history", err);
+    }
+  }
 
   if (applied && fx?.rollId) {
     await markRollApplied(fx.rollId, { ...applied, at: new Date().toISOString() });

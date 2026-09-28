@@ -252,12 +252,27 @@ exports.handler = async (event) => {
     })),
   };
 
+  // Story 69 — HP/condition log entries: drop any about a hidden or invisible
+  // subject, hide NPC HP totals (players see the change, not what's left),
+  // and strip a hidden attacker the same way lastDamageFrom is stripped.
+  const publicRollHistory = {
+    ...rollHistory,
+    rolls: (rollHistory.rolls || []).flatMap((event) => {
+      if (event?.type !== "hp" && event?.type !== "condition") return [event];
+      if (shouldStripAttackerRef(event.subject, { getCharacterConditions, getNpcConditions, hiddenSubjectKeys })) return [];
+      const out = { ...event };
+      if (out.subject?.type === "npc") { delete out.from; delete out.to; delete out.max; }
+      if (out.by) out.by = publicLastDamageFrom(out.by);
+      return [out];
+    }),
+  };
+
   const responseBody = {
     partyStatus,
     initiativePublic: buildPublicInitiativePayload(initiative, npcCombat),
     npcCombatPublic,
     mapLibrary: publicMapLibrary,
-    rollHistory,
+    rollHistory: publicRollHistory,
     houseRules,
     serverTime,
     buildVersion: appMeta.buildVersion,

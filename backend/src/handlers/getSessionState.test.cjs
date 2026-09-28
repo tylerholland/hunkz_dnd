@@ -477,3 +477,35 @@ test("getSessionState returns buildVersion: null when the app-meta sentinel is a
   const publicResult = await publicHandler({ headers: {} });
   assert.equal(JSON.parse(publicResult.body).buildVersion, null);
 });
+
+test("getSessionState (Story 69) public log hides NPC HP totals and anything about a hidden creature", async () => {
+  const send = makeSend({
+    initiative: {
+      slug: "initiative",
+      entries: [
+        { id: "e1", name: "Hidden Assassin", isPC: false, slug: null, npcId: "n-assassin", initiative: 22, hidden: true },
+        { id: "e2", name: "Goblin", isPC: false, slug: null, npcId: "n1", initiative: 10, hidden: false },
+      ],
+      activeTurnIndex: 0,
+      round: 1,
+    },
+    "roll-history": {
+      slug: "roll-history",
+      rolls: [
+        { id: "h1", type: "hp", subject: { type: "npc", sourceId: "n1", name: "Goblin" }, from: 12, to: 4, max: 12, delta: -8, by: { type: "npc", sourceId: "n-assassin", name: "Hidden Assassin" } },
+        { id: "h2", type: "hp", subject: { type: "npc", sourceId: "n-assassin", name: "Hidden Assassin" }, from: 20, to: 15, delta: -5 },
+        { id: "h3", type: "hp", subject: { type: "character", sourceId: "aragorn", name: "Aragorn" }, from: 30, to: 24, max: 40, delta: -6 },
+        { id: "r1", characterName: "DM", total: 14 },
+      ],
+    },
+  });
+  const { handler } = loadHandlerWithMocks({ send, verifyPasswordImpl: async () => ({ valid: false }) });
+  const body = JSON.parse((await handler({ headers: {} })).body);
+  const byId = Object.fromEntries(body.rollHistory.rolls.map((r) => [r.id, r]));
+  assert.deepEqual(Object.keys(byId).sort(), ["h1", "h3", "r1"]);
+  assert.equal(byId.h1.from, undefined);
+  assert.equal(byId.h1.to, undefined);
+  assert.equal(byId.h1.delta, -8);
+  assert.equal(byId.h1.by, null);
+  assert.equal(byId.h3.to, 24);
+});

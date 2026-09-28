@@ -7,7 +7,7 @@ test("sanitizeFx whitelists style and bounds the attacker", () => {
   assert.equal(sanitizeFx({ style: "laser" }), null);
   assert.deepEqual(
     sanitizeFx({ style: "fire", attacker: { type: "npc", sourceId: " carrion " }, crit: true, rollId: "roll-1", junk: 1 }),
-    { attacker: { type: "npc", sourceId: "carrion" }, style: "fire", crit: true, miss: false, rollId: "roll-1" }
+    { attacker: { type: "npc", sourceId: "carrion" }, name: null, style: "fire", crit: true, miss: false, rollId: "roll-1" }
   );
   assert.equal(sanitizeFx({ style: "cut", attacker: { type: "dragon", sourceId: "x" } }).attacker, null);
 });

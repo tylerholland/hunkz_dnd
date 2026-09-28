@@ -560,7 +560,8 @@ export default function DmDashboardPage() {
     const { actor, target, action, rollId, onDone } = takeAction;
     const heal = !!action.heal;
     const fx = {
-      attacker: { type: actor.type, sourceId: actor.sourceId },
+      attacker: { type: actor.type, sourceId: actor.sourceId, name: actor.name },
+      name: action.name,
       style: action.style,
       crit: !!crit,
       miss: !!miss,

@@ -73,10 +73,95 @@ export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false }
   );
 }
 
+// Story 69 — session history rows: HP changes (damage / healing / a miss,
+// tagged with the attack when one was declared) and condition changes.
+function historyRowStyle(pal, opacity, showDivider) {
+  return {
+    display: "flex",
+    alignItems: "baseline",
+    flexWrap: "wrap",
+    gap: "2px 8px",
+    padding: "7px 0",
+    borderBottom: showDivider ? `1px solid ${pal.border}` : "none",
+    opacity,
+    transition: "opacity 0.4s",
+    fontFamily: pal.fontBody,
+    fontSize: 14,
+    color: pal.text,
+  };
+}
+
+const HP_DAMAGE = "#c06060";
+const HP_HEAL = "#6aa86a";
+
+export function HpHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null }) {
+  const delta = Number.isFinite(entry.delta) ? entry.delta : 0;
+  const kind = entry.miss ? "miss" : delta < 0 ? "damage" : "heal";
+  const glyph = kind === "miss" ? "○" : kind === "damage" ? "⚔" : "✚";
+  const color = kind === "miss" ? pal.textMuted : kind === "damage" ? HP_DAMAGE : HP_HEAL;
+  const byName = entry.by?.name;
+  const actionName = entry.action?.name;
+  return (
+    <div style={historyRowStyle(pal, opacity, showDivider)}>
+      <span style={{ color, fontSize: 13, flexShrink: 0 }} aria-hidden="true">{glyph}</span>
+      <span style={{ color: pal.accentBright }}>{entry.subject?.name || "Someone"}</span>
+      {kind === "miss" ? (
+        <span style={{ fontStyle: "italic", color: pal.textMuted }}>missed</span>
+      ) : (
+        <span style={{ fontFamily: pal.fontDisplay, fontSize: 17, color }}>
+          {delta < 0 ? `−${Math.abs(delta)}` : `+${delta}`}
+        </span>
+      )}
+      {Number.isFinite(entry.from) && Number.isFinite(entry.to) && kind !== "miss" ? (
+        <span style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textMuted }}>
+          {entry.from} → {entry.to}{Number.isFinite(entry.max) ? ` / ${entry.max}` : ""} HP
+        </span>
+      ) : null}
+      {byName || actionName ? (
+        <span style={{ fontStyle: "italic", color: pal.textBody, fontSize: 13 }}>
+          · {[byName, actionName].filter(Boolean).join(", ")}
+        </span>
+      ) : null}
+      {entry.action?.crit ? (
+        <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", padding: "2px 6px", borderRadius: 2, ...badgeStyle("crit") }}>
+          {badgeStyle("crit").label}
+        </span>
+      ) : null}
+      {children ? <div style={{ flexBasis: "100%" }}>{children}</div> : null}
+    </div>
+  );
+}
+
+export function ConditionHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  const added = Array.isArray(entry.added) ? entry.added : [];
+  const removed = Array.isArray(entry.removed) ? entry.removed : [];
+  return (
+    <div style={historyRowStyle(pal, opacity, showDivider)}>
+      <span style={{ color: pal.accent, fontSize: 13, flexShrink: 0 }} aria-hidden="true">◈</span>
+      <span style={{ color: pal.accentBright }}>{entry.subject?.name || "Someone"}</span>
+      {added.map((c) => (
+        <span key={`+${c}`} style={{ fontStyle: "italic" }}>+ {c}</span>
+      ))}
+      {removed.map((c) => (
+        <span key={`-${c}`} style={{ fontStyle: "italic", color: pal.textMuted, textDecoration: "line-through" }}>{c}</span>
+      ))}
+      {entry.exhaustion ? (
+        <span style={{ fontStyle: "italic" }}>Exhaustion {entry.exhaustion.from} → {entry.exhaustion.to}</span>
+      ) : null}
+    </div>
+  );
+}
+
 export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null }) {
   // Branch on type: "wheel" entries render differently from dice rows
   if (entry.type === "wheel") {
     return <WheelHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider} />;
+  }
+  if (entry.type === "hp") {
+    return <HpHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider}>{children}</HpHistoryRow>;
+  }
+  if (entry.type === "condition") {
+    return <ConditionHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider} />;
   }
   const actionLabel = normalizeRollActionLabel(entry.label);
   const nameColor = entry.nameColor || pal.accentBright;

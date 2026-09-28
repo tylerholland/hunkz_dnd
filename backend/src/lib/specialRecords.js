@@ -175,6 +175,19 @@ async function appendRollHistoryEvent(event, limit = ROLL_HISTORY_LIMIT) {
   });
 }
 
+// Several events from one write (e.g. HP + condition) in a single
+// read-append-write.
+async function appendRollHistoryEvents(events, limit = ROLL_HISTORY_LIMIT) {
+  const list = (Array.isArray(events) ? events : []).filter(Boolean);
+  if (!list.length) return null;
+  return withVersionRetry(async () => {
+    const current = await getRollHistoryState();
+    const rolls = [...list.slice().reverse(), ...(current.rolls || [])].slice(0, limit);
+    await saveRollHistoryState({ rolls }, { expectedVersion: current.version });
+    return rolls;
+  });
+}
+
 // ADR-032 — "Deal Damage" from the roll log marks that roll applied so the
 // button can't be used twice (shown on every DM screen, survives reloads).
 async function markRollApplied(rollId, applied) {
@@ -333,6 +346,7 @@ module.exports = {
   getRollHistoryState,
   saveRollHistoryState,
   appendRollHistoryEvent,
+  appendRollHistoryEvents,
   markRollApplied,
   getMapLibraryState,
   saveMapLibraryState,

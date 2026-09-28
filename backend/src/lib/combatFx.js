@@ -19,8 +19,11 @@ function sanitizeFx(raw) {
   const type = raw.attacker?.type === "character" || raw.attacker?.type === "npc" ? raw.attacker.type : null;
   const sourceId = boundedId(raw.attacker?.sourceId);
   const rollId = boundedId(raw.rollId);
+  const attackerName = boundedId(raw.attacker?.name).slice(0, 60);
+  const name = boundedId(raw.name).slice(0, 60);
   return {
-    attacker: type && sourceId ? { type, sourceId } : null,
+    attacker: type && sourceId ? { type, sourceId, ...(attackerName ? { name: attackerName } : {}) } : null,
+    name: name || null,
     style,
     crit: raw.crit === true,
     miss: raw.miss === true,
@@ -31,6 +34,7 @@ function sanitizeFx(raw) {
 // kind: "damage" | "heal" | "miss"
 function buildLastFx(fx, kind, at) {
   const out = { at, kind, attacker: fx.attacker, style: fx.style, crit: kind === "damage" && fx.crit };
+  if (fx.name) out.name = fx.name;
   if (fx.rollId) out.rollId = fx.rollId;
   return out;
 }
