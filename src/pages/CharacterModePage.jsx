@@ -62,6 +62,7 @@ export default function CharacterModePage() {
   // arithmetic on the player's Map sub-tab.
   const [serverTime, setServerTime] = useState(null);
   const [houseRules, setHouseRules] = useState(null);
+  const [rollHistory, setRollHistory] = useState([]);
   const [authState, setAuthState] = useState(() => (slug ? "checking" : "locked"));
   const [sessionPassword, setSessionPassword] = useState(null);
   const [unlockInput, setUnlockInput] = useState("");
@@ -192,6 +193,7 @@ export default function CharacterModePage() {
       }
       setServerTime(d.serverTime || null);
       setHouseRules(d.houseRules || null);
+      setRollHistory(d.rollHistory?.rolls || []);
       reportServerBuildVersion(d.buildVersion);
       setError(null);
     } catch {
@@ -437,6 +439,7 @@ export default function CharacterModePage() {
       wsConnected={wsConnected}
       serverTime={serverTime}
       houseRules={houseRules}
+      rollHistory={rollHistory}
     />
   );
 }

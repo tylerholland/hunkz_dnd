@@ -159,6 +159,9 @@ export default function DmSettingsPage() {
           <p className="dm-settings-footnote">
             Coming later: how skills affect a check (waiting on the rule).
           </p>
+          <p className="dm-settings-footnote dm-settings-credit">
+            Critical-hit effect art: The Free Archives © Dreams Circle
+          </p>
         </main>
       </div>
     </PalCtx.Provider>

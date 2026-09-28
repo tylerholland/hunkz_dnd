@@ -25,8 +25,8 @@ import { isPdfMap } from "../maps/mapFiles";
 import TokenTray from "./battleMode/TokenTray";
 import { TokenChip, HeldTokenFloater } from "./battleMode/BattleModeController";
 import ConditionGlyphSprite from "./battleMode/ConditionGlyphSprite";
-import TracerLayer from "./battleMode/TracerLayer";
-import { getPaletteAccent } from "./battleMode/tokenUtils";
+import CombatFxLayer from "../maps/combatFx/CombatFxLayer";
+import { buildStrikeEvents, isFreshStamp } from "../maps/combatFx/strikeEvents";
 import {
   resolveDamageState,
   assignAoEStagger,
@@ -35,10 +35,6 @@ import {
   useDebouncedValue,
   usePrefersReducedMotion,
   shimmerPhaseOffsetMs,
-  buildTracerEvents,
-  useActiveTracerEvents,
-  computeLungeOffsetPx,
-  NPC_BOLT_TINT,
 } from "./battleMode/tokenEffects";
 import "./battleMode.css";
 
@@ -61,7 +57,7 @@ function buildMapViewPayload(mapId, viewerState) {
   return payload;
 }
 
-export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, serverTime, initiative, ref }) {
+export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, serverTime, initiative, rollHistory, ref }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewerState, setViewerState] = useState(null);
@@ -456,20 +452,17 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
   // on its own tick.
   const reducedMotion = usePrefersReducedMotion();
   const [resolvedByTokenId, setResolvedByTokenId] = useState(new Map());
-  // boltEventsThisTick is the raw per-poll-tick computation (only non-empty
-  // on the single tick a damage stamp is freshly detected); useActiveTracerEvents
-  // gives each fired event its own timer-owned on-screen lifetime so a
-  // WS-nudge-triggered poll landing shortly after (postCharacterRoll and the
-  // damage-apply write each broadcast independently) can't unmount it
-  // mid-flight — see that hook's comment in tokenEffects.js.
-  const [boltEventsThisTick, setBoltEventsThisTick] = useState([]);
-  const tracerLayerEvents = useActiveTracerEvents(boltEventsThisTick);
+  // ADR-031 — combat FX: strike events detected this tick (damage + heal
+  // stamps). CombatFxLayer plays each id exactly once, so a later poll that
+  // still carries the same event can't replay it or cut it short.
+  const [strikeEvents, setStrikeEvents] = useState([]);
+  const healSeenRef = useRef(new Map());
   useEffect(() => {
     const partyList = party || [];
     const npcList = npcCombat?.npcs || [];
     const rawDamageStates = new Map();
     const freshKeysInOrder = [];
-    const freshEventsInOrder = [];
+    const hits = [];
     for (const token of effectiveTokens) {
       const member = token.type === "character" ? partyList.find((m) => m.slug === token.sourceId) : null;
       const npc = token.type === "npc" ? npcList.find((n) => n.id === token.sourceId) : null;
@@ -491,11 +484,12 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       rawDamageStates.set(token.id, state);
       if (state.phaseAFresh) {
         freshKeysInOrder.push(token.id);
-        // Story 55 — every damage-apply path fires the tracer trigger; the
-        // freshness gate is Story 52's, reused verbatim (one shared gate — a
-        // flash without its tracer, or a tracer without its flash, is worse
-        // than neither).
-        freshEventsInOrder.push({ targetTokenId: token.id, attackerRef: subject?.lastDamageFrom ?? null });
+        // ADR-031 — every damage-apply path plays a strike (Story 52's
+        // freshness gate, reused: never on first paint, only if recent).
+        hits.push({ kind: "damage", token, stamp: subject?.lastDamagedAt, fromRef: subject?.lastDamageFrom ?? null });
+      }
+      if (isFreshStamp(token.id, subject?.lastHealedAt ?? null, serverTime, healSeenRef.current)) {
+        hits.push({ kind: "heal", token, stamp: subject.lastHealedAt, fromRef: subject?.lastHealFrom ?? null });
       }
     }
     // Evict stale entries — otherwise every token id ever placed on this map
@@ -505,27 +499,20 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
     for (const id of seenStampsRef.current.keys()) {
       if (!liveTokenIds.has(id)) seenStampsRef.current.delete(id);
     }
+    for (const id of healSeenRef.current.keys()) {
+      if (!liveTokenIds.has(id)) healSeenRef.current.delete(id);
+    }
     const staggerByKey = assignAoEStagger(freshKeysInOrder);
-    const { byTarget: tracerByTarget, byAttacker: tracerByAttacker } = buildTracerEvents({
-      tokens: effectiveTokens,
-      freshEventsInOrder,
-      imageW: effectiveNaturalSize?.w,
-      imageH: effectiveNaturalSize?.h,
-      mapTokenScale: tokenScale,
-    });
     const result = new Map();
     for (const token of effectiveTokens) {
       const rawState = rawDamageStates.get(token.id);
       const stagger = staggerByKey.get(token.id);
-      const tracerAsTarget = tracerByTarget.get(token.id);
-      const tracerAsAttacker = tracerByAttacker.get(token.id);
       const damageState = rawState && {
         ...rawState,
-        // Story 55 — when a tracer is playing against this target, its
-        // choreography-derived delay OVERRIDES the plain AoE stagger delay
-        // (only the token flash waits; HP numerals elsewhere are unaffected,
-        // per ADR-011).
-        delayMs: tracerAsTarget ? tracerAsTarget.phaseADelayMs : (stagger?.delayMs ?? 0),
+        // ADR-031 — the combat FX layer now owns the moment of impact (flash,
+        // shake, knockback); the chip keeps only the lingering wound state.
+        phaseAFresh: false,
+        delayMs: stagger?.delayMs ?? 0,
         washOnly: !!stagger?.washOnly,
       };
       const effectivePx = computeEffectivePx({ tokenScale: token.scale, mapTokenScale: tokenScale, zoom: debouncedZoom });
@@ -536,59 +523,35 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       const veil = token.invisible
         ? { veiled: true, secret: token.type === "npc" }
         : { veiled: false, secret: false };
-      const impactState = tracerAsTarget
-        ? { bearingDeg: tracerAsTarget.geom.bearingDeg, delayMs: tracerAsTarget.impactDelayMs }
-        : null;
-      // Bolt attackers don't lunge — nothing travels for Strike, everything
-      // travels for Bolt (brief §9.3/9.4).
-      const lungeState = tracerAsAttacker && tracerAsAttacker.kind === "strike"
-        ? {
-            ...computeLungeOffsetPx(tracerAsAttacker.geom),
-            bearingDeg: tracerAsAttacker.geom.bearingDeg,
-            unitPx: tracerAsAttacker.geom.U,
-            startDelayMs: tracerAsAttacker.startDelayMs,
-          }
-        : null;
       result.set(token.id, {
         damageState,
         condBand,
         veil,
         shimmerDelayMs: shimmerPhaseOffsetMs(token.id),
-        impactState,
-        lungeState,
       });
     }
     setResolvedByTokenId(result);
 
-    // Story 55 — Bolt tracer geometry for TracerLayer (L4), tinted by the
-    // attacker's own faction ring colour (PC palette accent, neutral steel
-    // for NPCs) so two casters' bolts read as distinguishable at a glance.
-    const boltEvents = [];
-    tracerByTarget.forEach((event) => {
-      if (event.kind !== "bolt") return;
-      const attackerToken = effectiveTokens.find((t) => t.id === event.attackerTokenId);
-      const attackerMember = attackerToken?.type === "character"
-        ? partyList.find((m) => m.slug === attackerToken.sourceId)
-        : null;
-      const tint = attackerToken?.type === "character" ? getPaletteAccent(attackerMember?.palette) : NPC_BOLT_TINT;
-      boltEvents.push({ ...event, tint });
+    const strikes = buildStrikeEvents({
+      hits,
+      tokens: effectiveTokens,
+      party: partyList,
+      rolls: rollHistory || [],
+      imageW: effectiveNaturalSize?.w,
+      imageH: effectiveNaturalSize?.h,
+      mapTokenScale: tokenScale,
     });
-    setBoltEventsThisTick(boltEvents);
-    // effectiveNaturalSize intentionally excluded from deps — it's partly
-    // ref-derived (naturalSizeByMapRef, a cache-on-map-switch fallback) and
-    // its primary driver (viewerState.naturalSize) already changes on the
-    // same poll/pan/zoom cadence as the other deps below; a tracer computed
-    // one tick late against a stale image size is the same "one render's
-    // lag is imperceptible" tradeoff already accepted elsewhere in this
-    // effect (see the comment above).
+    if (strikes.length > 0) setStrikeEvents(strikes);
+    // effectiveNaturalSize and rollHistory intentionally excluded from deps —
+    // the image size is partly ref-derived (naturalSizeByMapRef) and changes
+    // on the same poll/pan/zoom cadence as the deps below, and rollHistory
+    // arrives in the same poll as the damage stamp it explains.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [effectiveTokens, party, npcCombat, serverTime, initiative, tokenScale, debouncedZoom]);
 
-  // Build chip nodes for token layer. TracerLayer is the FIRST child (L4,
-  // below the chips in z-order — explicit z-index, per Architect Notes).
+  // Build chip nodes for token layer.
   const tokenChips = (isBattleMode && effectiveNaturalSize) ? (
     <>
-      <TracerLayer events={tracerLayerEvents} reducedMotion={reducedMotion} />
       {effectiveTokens.map((token) => {
         const resolved = resolvedByTokenId.get(token.id) || {};
         return (
@@ -614,8 +577,6 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
             condBand={resolved.condBand}
             veil={resolved.veil}
             shimmerDelayMs={resolved.shimmerDelayMs}
-            lungeState={resolved.lungeState}
-            impactState={resolved.impactState}
           />
         );
       })}
@@ -740,6 +701,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
                   onTokenLayerClick={isBattleMode && heldSourceId ? handleTokenLayerClick : undefined}
                   onTokenClick={isBattleMode ? handleTokenClick : undefined}
                   tokenLayerChildren={tokenChips}
+                  overlay={isBattleMode ? <CombatFxLayer events={strikeEvents} rotation={effectiveRotation} reducedMotion={reducedMotion} /> : null}
                   containerRefOut={viewerContainerRef}
                 />
                 {isBattleMode && heldSourceId && (

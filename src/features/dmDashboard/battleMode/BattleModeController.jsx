@@ -5,9 +5,6 @@ import {
   condBandSlotCount,
   isInvisibleCondition,
   FAMILY_COLORS,
-  CHEVRON_STEPS_U,
-  CHEVRON_STAGGER_MS,
-  BOLT_CORE_COLOR,
 } from "./tokenEffects";
 import { SIZE_STEPS, SIZE_LABELS, nearestSizeIndex, stepTokenScale } from "./tokenSizes";
 import TokenSizeControl from "./TokenSizeControl";
@@ -51,59 +48,6 @@ function ConditionBadge({ item, slot, stacked }) {
         <svg><use href={`#${meta.glyphId}`} /></svg>
       )}
     </div>
-  );
-}
-
-// ── Story 55 — melee "velocity chevron" burst ───────────────────────────
-// Three small `>` marks stepping outward from the attacker's rim along the
-// real attacker→target bearing, lighting up in sequence during the lunge.
-// A close-in motion cue, not a projectile — travels only CHEVRON_STEPS_U (up
-// to 0.40U) regardless of how far apart the two tokens are. Rendered inside
-// .tk-hit (upright via .token-chip's existing counter-rotation, per the
-// brief's composition rules) — --map-rotation is inherited from .token-layer
-// and added back in CSS so the SCREEN-space bearing is correct at every map
-// rotation without any JS-side correction (see the crescent below for the
-// same trick).
-function ChevronBurst({ bearingDeg, unitPx, startDelayMs }) {
-  return (
-    <>
-      {CHEVRON_STEPS_U.map((stepU, i) => (
-        <div
-          key={i}
-          className="tk-chevron-wrap"
-          style={{
-            transform: `rotate(calc(var(--map-rotation, 0deg) + ${bearingDeg}deg)) translateX(${(stepU * unitPx).toFixed(1)}px)`,
-          }}
-        >
-          <svg
-            className="tk-chevron"
-            viewBox="0 0 10 14"
-            style={{ animationDelay: `${startDelayMs + i * CHEVRON_STAGGER_MS}ms` }}
-            aria-hidden="true"
-          >
-            <path d="M2,1 L8,7 L2,13" fill="none" stroke={BOLT_CORE_COLOR} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-          </svg>
-        </div>
-      ))}
-    </>
-  );
-}
-
-// ── Story 55 — impact crescent ──────────────────────────────────────────
-// A short arc on the TARGET's circumference, oriented on the attacker→target
-// bearing (rendered on the side facing the attacker). Fires for both Strike
-// and Bolt — the one visual element every tracer kind shares. Same
-// --map-rotation trick as the chevrons above.
-function ImpactCrescent({ bearingDeg, delayMs, held }) {
-  return (
-    <div
-      className={`tk-crescent${held ? " tk-crescent--held" : " tk-crescent--play"}`}
-      style={{
-        transform: `rotate(calc(var(--map-rotation, 0deg) + ${bearingDeg}deg + 180deg))`,
-        animationDelay: held ? undefined : `${delayMs}ms`,
-      }}
-      aria-hidden="true"
-    />
   );
 }
 
@@ -251,13 +195,6 @@ export const TokenChip = memo(function TokenChip({
   // exiting: true while this chip is a fading Story 54 vanish ghost
   exiting = false,
   shimmerDelayMs = 0,
-  // Story 55 — resolved once per render in the parent, alongside damageState.
-  // lungeState: { lungeX, lungeY, bearingDeg, unitPx, startDelayMs } | null —
-  // present only while THIS token is the attacker of a live Strike.
-  lungeState = null,
-  // impactState: { bearingDeg, delayMs } | null — present only while THIS
-  // token is the target of a live tracer (Strike or Bolt).
-  impactState = null,
   // Story 57 — player-facing NPC hold-to-target (player view only; absent/
   // undefined for DM chips and for PC tokens, which keeps every existing DM
   // and own-token-drag interaction on this shared component untouched).
@@ -287,11 +224,9 @@ export const TokenChip = memo(function TokenChip({
   const [rmFlash, setRmFlash] = useState(false);
   const rmFlashTimerRef = useRef(null);
   // Story 55 — reduced-motion crescent substitute: held static (no
-  // scale/fade animation) for IMPACT_CRESCENT_MS + 180ms instead of the
+  // scale/fade animation) for a short hold instead of the
   // 120ms scale-and-fade, per the brief's reduced-motion table ("impact
   // crescent held static 300ms so the attack is still readable").
-  const [rmCrescent, setRmCrescent] = useState(false);
-  const rmCrescentTimerRef = useRef(null);
   const chipRef = useRef(null);
   const hoverTimerRef = useRef(null);
   const collapseTimerRef = useRef(null);
@@ -367,21 +302,6 @@ export const TokenChip = memo(function TokenChip({
 
   useEffect(() => () => {
     if (rmFlashTimerRef.current) clearTimeout(rmFlashTimerRef.current);
-  }, []);
-
-  useEffect(() => {
-    if (!impactState) return undefined;
-    const reduced = typeof window !== "undefined"
-      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (!reduced) return undefined;
-    setRmCrescent(true);
-    if (rmCrescentTimerRef.current) clearTimeout(rmCrescentTimerRef.current);
-    rmCrescentTimerRef.current = setTimeout(() => setRmCrescent(false), impactState.delayMs + 300);
-    return undefined;
-  }, [impactState]);
-
-  useEffect(() => () => {
-    if (rmCrescentTimerRef.current) clearTimeout(rmCrescentTimerRef.current);
   }, []);
 
   // HP data — member uses hpCurrent + hpMax (hpMax is always the normalized,
@@ -847,7 +767,6 @@ export const TokenChip = memo(function TokenChip({
   // tracks the pointer instantly instead of easing behind it.
   const lungeClasses = [
     "tk-lunge",
-    lungeState ? "tk-lunge--play" : "",
     !isDm && hasMounted && !isDragging ? "token-chip--poll-animated" : "",
   ].filter(Boolean).join(" ");
 
@@ -857,14 +776,14 @@ export const TokenChip = memo(function TokenChip({
       style={{
         "--token-x": `${left}px`,
         "--token-y": `${top}px`,
-        "--lunge-x": `${lungeState ? lungeState.lungeX.toFixed(1) : 0}px`,
-        "--lunge-y": `${lungeState ? lungeState.lungeY.toFixed(1) : 0}px`,
-        animationDelay: lungeState ? `${lungeState.startDelayMs}ms` : undefined,
       }}
     >
     <div
       ref={chipRef}
       className={chipClasses}
+      // ADR-031 — the combat FX layer finds this chip to read its live screen
+      // position and to move it (via --fx-x/--fx-y on the .tk-lunge wrapper).
+      data-fx-token={token.id}
       data-expanded={expanded ? "true" : "false"}
       data-wounded={showWound ? "1" : undefined}
       data-veil={veiled && !secret ? "1" : undefined}
@@ -908,14 +827,6 @@ export const TokenChip = memo(function TokenChip({
         className={tkHitClasses}
         style={damageState?.phaseAFresh && damageState.delayMs ? { animationDelay: `${damageState.delayMs}ms` } : undefined}
       >
-        {/* Story 55 — impact crescent (target only, both Strike and Bolt). */}
-        {impactState && (
-          <ImpactCrescent bearingDeg={impactState.bearingDeg} delayMs={impactState.delayMs} held={rmCrescent} />
-        )}
-        {/* Story 55 — velocity chevrons (attacker only, Strike only). */}
-        {lungeState && (
-          <ChevronBurst bearingDeg={lungeState.bearingDeg} unitPx={lungeState.unitPx} startDelayMs={lungeState.startDelayMs} />
-        )}
         {/* Portrait or initial — NPC portraits (Story 29b) use the same
             element/classes as PC portraits; the ring stays neutral grey via
             the .token-chip--npc selector regardless of portrait presence. */}

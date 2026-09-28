@@ -46,6 +46,15 @@ exports.handler = async (event) => {
         lastDamageFrom: attackerRef,
       };
     }
+    if (typeof npc.hpCurrent === "number" && typeof prevHp === "number" && npc.hpCurrent > prevHp) {
+      // Combat FX (ADR-031) — heal stamp, mirror of the damage stamp.
+      return {
+        ...npc,
+        lastHealedAt: new Date().toISOString(),
+        lastHealAmount: npc.hpCurrent - prevHp,
+        lastHealFrom: resolveAttackerRef(initiative, { type: "npc", sourceId: npc.id }),
+      };
+    }
     return npc;
   });
 

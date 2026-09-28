@@ -33,8 +33,8 @@ import MapViewer from "../maps/MapViewer";
 import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
 import { TokenChip } from "../dmDashboard/battleMode/BattleModeController";
 import ConditionGlyphSprite from "../dmDashboard/battleMode/ConditionGlyphSprite";
-import TracerLayer from "../dmDashboard/battleMode/TracerLayer";
-import { getPaletteAccent } from "../dmDashboard/battleMode/tokenUtils";
+import CombatFxLayer from "../maps/combatFx/CombatFxLayer";
+import { buildStrikeEvents, isFreshStamp } from "../maps/combatFx/strikeEvents";
 import {
   resolveDamageState,
   assignAoEStagger,
@@ -44,10 +44,6 @@ import {
   usePrefersReducedMotion,
   shimmerPhaseOffsetMs,
   useTokenExitGhosts,
-  buildTracerEvents,
-  useActiveTracerEvents,
-  computeLungeOffsetPx,
-  NPC_BOLT_TINT,
 } from "../dmDashboard/battleMode/tokenEffects";
 import CombatTransitionOverlay from "./CombatTransitionOverlay";
 import { playCombatEnterSound, playCombatExitSound } from "../../lib/combatSound";
@@ -367,6 +363,8 @@ export default function CharacterSheetSessionMode({
   serverTime,
   // DM Settings house rules (GET /session-state) — e.g. ability-check dice.
   houseRules,
+  // Shared roll feed — lets the map's combat FX match a hit to its declared attack.
+  rollHistory,
 }) {
   const navigate = useNavigate();
   const [guideOpen, setGuideOpen] = useState(false);
@@ -1348,6 +1346,7 @@ export default function CharacterSheetSessionMode({
                   ownCharacter={char}
                   targetedTokenId={(isBattleMode && hasRollableAttacks) ? declaration?.target?.tokenId ?? null : null}
                   onTargetToken={(isBattleMode && hasRollableAttacks) ? handleTargetToken : undefined}
+                  rollHistory={rollHistory}
                   height={380}
                 />
               </div>
@@ -1980,7 +1979,7 @@ function SessionNotesSection({ char, pal, onSaveNotes }) {
 // below feeds several Stories 52–54 useMemo/useEffect dependency arrays.
 const EMPTY_TOKENS = [];
 
-const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, isBattleMode, pal, slug, partyStatus, npcCombat, serverTime, initiativeData, ownCharacter, targetedTokenId, onTargetToken, height = 480 }) {
+const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView, isBattleMode, pal, slug, partyStatus, npcCombat, serverTime, initiativeData, ownCharacter, targetedTokenId, onTargetToken, rollHistory, height = 480 }) {
   const [viewerState, setViewerState] = useState(null);
   // Stories 52–54 — persists the last-rendered damage stamp per token id
   // across renders (freshness gate), reset when the active map changes.
@@ -2106,19 +2105,14 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
   // cadence. debouncedZoom only changes on its own tick.
   const reducedMotion = usePrefersReducedMotion();
   const [resolvedByTokenId, setResolvedByTokenId] = useState(new Map());
-  // boltEventsThisTick is the raw per-poll-tick computation (only non-empty
-  // on the single tick a damage stamp is freshly detected); useActiveTracerEvents
-  // gives each fired event its own timer-owned on-screen lifetime so a
-  // WS-nudge-triggered poll landing shortly after (postCharacterRoll and the
-  // damage-apply write each broadcast independently) can't unmount it
-  // mid-flight — see that hook's comment in tokenEffects.js.
-  const [boltEventsThisTick, setBoltEventsThisTick] = useState([]);
-  const tracerLayerEvents = useActiveTracerEvents(boltEventsThisTick);
+  // ADR-031 — combat FX strike events (see MapPanel for the DM twin).
+  const [strikeEvents, setStrikeEvents] = useState([]);
+  const healSeenRef = useRef(new Map());
   useEffect(() => {
     const npcList = npcCombat?.npcs || [];
     const rawDamageStates = new Map();
     const freshKeysInOrder = [];
-    const freshEventsInOrder = [];
+    const hits = [];
     for (const token of visibleTokens) {
       const member = token.type === "character" ? partyForTokens.find((m) => m.slug === token.sourceId) : null;
       const npc = token.type === "npc" ? npcList.find((n) => n.id === token.sourceId) : null;
@@ -2140,12 +2134,13 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
       rawDamageStates.set(token.id, state);
       if (state.phaseAFresh) {
         freshKeysInOrder.push(token.id);
-        // Story 55 — same shared freshness gate as Story 52 (reused
-        // verbatim). `lastDamageFrom` is already stripped server-side
-        // (ADR-023) whenever the referenced attacker is invisible or linked
-        // to a hidden initiative entry, so no client-side visibility check
-        // is needed here — an absent/null value already means "no tracer."
-        freshEventsInOrder.push({ targetTokenId: token.id, attackerRef: subject?.lastDamageFrom ?? null });
+        // ADR-031 — same freshness gate as Story 52. `lastDamageFrom` is
+        // already stripped server-side (ADR-023) when the attacker is
+        // invisible or hidden, so a null ref just means "impact only."
+        hits.push({ kind: "damage", token, stamp: subject?.lastDamagedAt, fromRef: subject?.lastDamageFrom ?? null });
+      }
+      if (isFreshStamp(token.id, subject?.lastHealedAt ?? null, serverTime, healSeenRef.current)) {
+        hits.push({ kind: "heal", token, stamp: subject.lastHealedAt, fromRef: subject?.lastHealFrom ?? null });
       }
     }
     // Evict stale entries — otherwise every token id this viewer has ever
@@ -2158,29 +2153,19 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
     for (const id of seenStampsRef.current.keys()) {
       if (!liveTokenIds.has(id)) seenStampsRef.current.delete(id);
     }
+    for (const id of healSeenRef.current.keys()) {
+      if (!liveTokenIds.has(id)) healSeenRef.current.delete(id);
+    }
     const staggerByKey = assignAoEStagger(freshKeysInOrder);
-    // visibleTokens (not the raw activeMap.tokens list) is deliberately what
-    // buildTracerEvents resolves the attacker token against — if either
-    // endpoint doesn't resolve to a token THIS viewer can see (an invisible
-    // NPC already server-omitted, or an ally PC hidden by
-    // partyVisibilityEnabled), no tracer plays for this viewer. Same
-    // geometry math as the DM board; only the candidate token list differs.
-    const { byTarget: tracerByTarget, byAttacker: tracerByAttacker } = buildTracerEvents({
-      tokens: visibleTokens,
-      freshEventsInOrder,
-      imageW: viewerState?.naturalSize?.w,
-      imageH: viewerState?.naturalSize?.h,
-      mapTokenScale: tokenScale,
-    });
     const result = new Map();
     for (const token of visibleTokens) {
       const rawState = rawDamageStates.get(token.id);
       const stagger = staggerByKey.get(token.id);
-      const tracerAsTarget = tracerByTarget.get(token.id);
-      const tracerAsAttacker = tracerByAttacker.get(token.id);
       const damageState = rawState && {
         ...rawState,
-        delayMs: tracerAsTarget ? tracerAsTarget.phaseADelayMs : (stagger?.delayMs ?? 0),
+        // ADR-031 — the combat FX layer owns the moment of impact now.
+        phaseAFresh: false,
+        delayMs: stagger?.delayMs ?? 0,
         washOnly: !!stagger?.washOnly,
       };
       const effectivePx = computeEffectivePx({ tokenScale: token.scale, mapTokenScale: tokenScale, zoom: debouncedZoom });
@@ -2190,39 +2175,27 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
       // describes a veiled ally PC — VEILED, never SECRET (no ◇ on the
       // player's own map).
       const veil = token.invisible ? { veiled: true, secret: false } : { veiled: false, secret: false };
-      const impactState = tracerAsTarget
-        ? { bearingDeg: tracerAsTarget.geom.bearingDeg, delayMs: tracerAsTarget.impactDelayMs }
-        : null;
-      const lungeState = tracerAsAttacker && tracerAsAttacker.kind === "strike"
-        ? {
-            ...computeLungeOffsetPx(tracerAsAttacker.geom),
-            bearingDeg: tracerAsAttacker.geom.bearingDeg,
-            unitPx: tracerAsAttacker.geom.U,
-            startDelayMs: tracerAsAttacker.startDelayMs,
-          }
-        : null;
       result.set(token.id, {
         damageState,
         condBand,
         veil,
         shimmerDelayMs: shimmerPhaseOffsetMs(token.id),
-        impactState,
-        lungeState,
       });
     }
     setResolvedByTokenId(result);
 
-    const boltEvents = [];
-    tracerByTarget.forEach((event) => {
-      if (event.kind !== "bolt") return;
-      const attackerToken = visibleTokens.find((t) => t.id === event.attackerTokenId);
-      const attackerMember = attackerToken?.type === "character"
-        ? partyForTokens.find((m) => m.slug === attackerToken.sourceId)
-        : null;
-      const tint = attackerToken?.type === "character" ? getPaletteAccent(attackerMember?.palette) : NPC_BOLT_TINT;
-      boltEvents.push({ ...event, tint });
+    // visibleTokens (not the raw token list) is what the attacker resolves
+    // against — an attacker this viewer can't see plays as impact-only.
+    const strikes = buildStrikeEvents({
+      hits,
+      tokens: visibleTokens,
+      party: partyForTokens,
+      rolls: rollHistory || [],
+      imageW: viewerState?.naturalSize?.w,
+      imageH: viewerState?.naturalSize?.h,
+      mapTokenScale: tokenScale,
     });
-    setBoltEventsThisTick(boltEvents);
+    if (strikes.length > 0) setStrikeEvents(strikes);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibleTokens, partyForTokens, npcCombat, serverTime, initiativeData, tokenScale, debouncedZoom, viewerState?.naturalSize?.w, viewerState?.naturalSize?.h]);
 
@@ -2249,8 +2222,6 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         condBand={resolved.condBand}
         veil={resolved.veil}
         shimmerDelayMs={resolved.shimmerDelayMs}
-        lungeState={resolved.lungeState}
-        impactState={resolved.impactState}
         exiting={!!opts.exiting}
         onTargetToken={onTargetToken}
         targeted={token.id === targetedTokenId}
@@ -2259,7 +2230,6 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
   }
 
   const tokenChips = [
-    <TracerLayer key="tracer-layer" events={tracerLayerEvents} reducedMotion={reducedMotion} />,
     ...visibleTokens.map((token) => buildChip(token)),
     ...exitGhosts.map((token) => buildChip(token, { exiting: true })),
   ];
@@ -2280,6 +2250,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         tokenScale={tokenScale}
         rotation={activeMap?.rotation ?? 0}
         tokenLayerChildren={isBattleMode && (visibleTokens.length > 0 || exitGhosts.length > 0) ? tokenChips : undefined}
+        overlay={isBattleMode ? <CombatFxLayer events={strikeEvents} rotation={activeMap?.rotation ?? 0} reducedMotion={reducedMotion} /> : null}
         panSuppressedRef={panSuppressedRef}
       />
     </>

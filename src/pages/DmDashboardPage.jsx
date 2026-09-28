@@ -1134,6 +1134,7 @@ export default function DmDashboardPage() {
               mapSwitching={mapSwitching}
               serverTime={serverTime}
               initiative={initiative}
+              rollHistory={rollHistory}
             />
           </div>
 

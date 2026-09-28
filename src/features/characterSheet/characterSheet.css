@@ -2011,6 +2011,12 @@
   letter-spacing: 0.1em;
   line-height: 1.8;
 }
+.cs-footer-credit {
+  margin-top: 6px;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  opacity: 0.75;
+}
 
 /* ─── Keyframe animations ─────────────────────────────────────────────────────
    Moved from injected <style> tags in the component.                      */

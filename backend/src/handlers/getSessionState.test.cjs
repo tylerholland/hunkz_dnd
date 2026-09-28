@@ -271,7 +271,7 @@ test("getSessionState public variant leaks nothing beyond the old public project
   // projectPlayerCharacter()'s explicit default.
   assert.deepEqual(Object.keys(member).sort(), [
     "concentration", "conditions", "deathSaves", "exhaustionLevel", "hpCurrent", "hpMax", "inspiration",
-    "lastDamageFrom", "name", "palette", "portraitUrl", "slug", "tempHP",
+    "lastDamageFrom", "lastHealFrom", "name", "palette", "portraitUrl", "slug", "tempHP",
   ].sort());
   assert.equal(member.lastDamageFrom, null);
   assert.equal(member.dmNotes, undefined);

@@ -14,29 +14,22 @@
 /* Position is carried as --token-x / --token-y (inline, per-token, dynamic —
    ADR-014). Per ADR-021, this OUTER wrapper (not .token-chip itself) owns
    the position translate — it sits inside .token-layer (which rotates as a
-   whole with the map) but OUTSIDE .token-chip's own counter-rotation, so a
-   Story 55 melee lunge (--lunge-x/-y, translate() only) is expressed in
-   map-frame space and points the right way on a rotated map without any
-   rotation correction. No base transition here: DM placement stays instant
+   whole with the map) but OUTSIDE .token-chip's own counter-rotation, so
+   combat FX motion (--fx-x/-y, ADR-031) is expressed in map-frame space. No base transition here: DM placement stays instant
    (Story 29's deliberate drop behaviour), matching pre-29b. */
 .tk-lunge {
   position: absolute;
   left: 0;
   top: 0;
-  transform: translate(var(--token-x, 0px), var(--token-y, 0px));
+  /* ADR-031 — --fx-x/--fx-y are the combat FX layer's per-frame motion
+     (lunge, knockback, shake), set inline by CombatFxLayer in map-frame px. */
+  transform: translate(calc(var(--token-x, 0px) + var(--fx-x, 0px)), calc(var(--token-y, 0px) + var(--fx-y, 0px)));
 }
 
-.tk-lunge--play {
-  animation: tkLunge 320ms ease-in-out;
-}
-
-/* 140ms out / 180ms back — peak at 140/320 = 43.75%. translate() only, per
-   ADR-021 — no scale/rotate on this wrapper, and no transition (would fight
-   the keyframe). */
-@keyframes tkLunge {
-  0%     { transform: translate(var(--token-x, 0px), var(--token-y, 0px)); }
-  43.75% { transform: translate(calc(var(--token-x, 0px) + var(--lunge-x, 0px)), calc(var(--token-y, 0px) + var(--lunge-y, 0px))); }
-  100%   { transform: translate(var(--token-x, 0px), var(--token-y, 0px)); }
+/* While an effect is moving the token, its motion must be frame-exact: no
+   poll-move glide (set as a data attribute, which React doesn't overwrite). */
+.tk-lunge[data-fx] {
+  transition: none !important;
 }
 
 /* ── Token chip base ──────────────────────────────────────────────────── */
@@ -1446,81 +1439,6 @@
   50% { opacity: 0.85; }
 }
 
-/* ── Story 55 — velocity chevrons (attacker, Strike only) ───────────────
-   Positioned via rotate()+translateX() so a single --map-rotation add-back
-   (inherited from .token-layer) lands each chevron at the correct SCREEN
-   bearing regardless of map rotation — .tk-chevron-wrap sits inside .tk-hit,
-   which is inside .token-chip's counter-rotation (net screen rotation 0),
-   so rotate(mapRotation + bearingDeg) IS the correct screen angle; no JS-side
-   correction. transform-origin: 0 0 keeps the rotation pivot at the token's
-   own center (left/top: 50% already placed it there). */
-.tk-chevron-wrap {
-  position: absolute;
-  left: 50%;
-  top: 50%;
-  width: 0;
-  height: 0;
-  transform-origin: 0 0;
-  pointer-events: none;
-}
-.tk-chevron {
-  position: absolute;
-  left: 0;
-  top: -7px;
-  width: 10px;
-  height: 14px;
-  opacity: 0;
-  overflow: visible;
-}
-.tk-chevron-wrap .tk-chevron {
-  animation: tkChevronFlash 200ms ease-out both;
-}
-@keyframes tkChevronFlash {
-  0%   { opacity: 0; }
-  35%  { opacity: 1; }
-  100% { opacity: 0; }
-}
-
-/* ── Story 55 — impact crescent (target, Strike + Bolt) ──────────────────
-   A short arc on the target's rim, oriented on the attacker→target bearing
-   (rendered on the side facing the attacker — bearing + 180deg). Same
-   --map-rotation add-back trick as the chevrons above. border-top-color
-   trick: only one edge of the ring is coloured, and the whole ring is
-   rotated to aim that edge at the attacker. */
-.tk-crescent {
-  position: absolute;
-  inset: -4px;
-  border-radius: 50%;
-  pointer-events: none;
-  opacity: 0;
-  border: 2px solid transparent;
-  border-top-color: var(--tk-atk-core);
-}
-.tk-crescent--play {
-  animation: tkCrescent 120ms ease-out both;
-}
-.tk-crescent--held {
-  opacity: 1;
-  transform: scale(1);
-}
-@keyframes tkCrescent {
-  0%   { opacity: 0; transform: scale(0.6); }
-  40%  { opacity: 1; transform: scale(1.05); }
-  100% { opacity: 0; transform: scale(1.15); }
-}
-
-/* ── Story 55 — tracer layer (L4, first child of tokenLayerChildren) ─────
-   Natural-image space, explicit z-index below .token-chip's 10 (never
-   relying on document order). Sized to the union bounding box of live
-   tracer geometry + 1U margin (set inline by TracerLayer.jsx) — never the
-   full natural image. Not in the DOM at all when nothing is attacking. */
-.tracer-layer {
-  position: absolute;
-  overflow: visible;
-  pointer-events: none;
-  z-index: 4;
-}
-
 /* ── Story 53 — condition badge column ──────────────────────────────────
    Left-edge column, top-anchored, growing downward. Counter-scaled against
    --token-size-mult only (constant physical size on a Tiny familiar and a
@@ -1955,25 +1873,6 @@
   .tk-token-exit {
     animation-duration: 200ms;
     animation-timing-function: ease;
-  }
-
-  /* Story 55 — lunge + chevrons suppressed outright (per the brief's
-   * reduced-motion table); the impact crescent survives as a JS-driven
-   * static hold (.tk-crescent--held, set by TokenChip's rmCrescent state)
-   * rather than a pure CSS override, since it needs a delayed hold duration
-   * — "meaning may not be removed," and the crescent alone still reads as
-   * "it connected, from that side." The Bolt tracer's own static-path
-   * substitution is handled by TracerLayer.jsx directly (imperative SVG
-   * dash setup, not CSS-suppressible). */
-  .tk-lunge--play {
-    animation: none;
-  }
-  .tk-chevron-wrap .tk-chevron {
-    animation: none;
-    opacity: 0;
-  }
-  .tk-crescent--play {
-    animation: none;
   }
 
   /* Story 57 — target-charge sweep becomes a static dot that simply appears

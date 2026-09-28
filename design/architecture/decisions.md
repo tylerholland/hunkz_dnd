@@ -698,3 +698,18 @@ This is a navigation aid for humans and future agents. It mirrors the feature la
 - Write responses include `versions: { [key]: n }` (`char:<slug>` for characters, the sentinel slug otherwise); `src/api.js` records them centrally. Every poller (`DmDashboardPage`, `CharacterModePage`, `CharacterPage`, `MapViewerPage`) applies a record only if its version is ≥ the newest version that screen has written or applied (`src/lib/versionFloors.js`). Instant optimistic UI (expected-value guards, `useSettlingOverride`) is unchanged.
 
 **Consequences**: Stale or out-of-order reads can no longer overwrite newer state on any screen; concurrent read-modify-write collisions are retried instead of lost. Cost: whole-record writes do one extra small read (the version) before the conditional put. Versions are per-record counters — exact up to 2^53, i.e. ~2.8 million years at 100 writes/second on one record, so they cannot realistically run out. Note: deleting and re-creating a character with the same slug restarts its version at 1; screens that saw the old record need a reload to accept it.
+
+## ADR-031 · Combat effects on one canvas per map, played once per hit
+
+**Status**: Accepted (2026-09-27)
+
+**Context**: The old attack animation (tracer line + token lunge + impact crescent, `TracerLayer.jsx` and TokenChip lunge state) was spread across components and timers. Poll and socket re-renders unmounted pieces mid-flight, so strikes often cut off or never showed. The table wanted more life on the map: attacker winds up, the strike travels, the target reacts — approved in the "Battle Map Strikes" preview.
+
+**Decision**:
+- One `<canvas>` per map viewport (`CombatFxLayer`, passed to `MapViewer` via its `overlay` prop) on the DM map and the player map. The engine (`src/features/maps/combatFx/fxEngine.js`) draws every effect on one clock and only runs its animation loop while effects are active; a drawing error clears effects rather than freezing the map.
+- Tokens stay DOM chips. The adapter reads their live screen positions (`[data-fx-token]`) and moves them imperatively via `--fx-x/--fx-y` on the `.tk-lunge` wrapper (converted into the map frame for zoom/rotation) and `--token-drag-scale` for the swell, so effects follow pan/zoom and don't depend on React state.
+- The trigger is the server's damage/heal stamp (`lastDamagedAt`/`lastDamageFrom`, new `lastHealedAt`/`lastHealAmount`/`lastHealFrom`). The event id is `kind|tokenId|stamp`, and each id plays exactly once per screen — later polls can't replay or interrupt it. Stamps seen on first paint or older than 8s are ignored.
+- The look comes from the attacker's declared attack in the roll history (newest roll by that character in the last 2 minutes, preferring one aimed at this target): spell names → fire / force cone / forked bolt in the caster's theme hue; weapon names → cut / chop / unarmed flurry / arrow. Undeclared damage picks by distance (adjacent → cut, ranged → arrow). Crits (from the attack roll) add art-pack sprites; normal hits use particles. No damage numbers; misses show nothing. Reduced motion plays a flash only. Default speed is table pace (0.3× real time).
+- Crit sprites come from The Free Archives FA01 pack (`public/effects/fa01-*.png`); its licence requires the credit "The Free Archives © Dreams Circle", shown on DM Settings and the character-sheet footer. The full source pack stays out of git.
+
+**Consequences**: Replaces the tracer/lunge/crescent code. Adding a style means adding a classifier rule (`strikeRules.js`) and an engine sequence. Deferred: a protection dome (no HP change triggers it — needs a "cast on ally" action) and miss effects.

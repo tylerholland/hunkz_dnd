@@ -43,6 +43,9 @@ export default function MapViewer({
   onTokenClick,
   interactionMode,
   tokenLayerChildren,
+  // ADR-031 — screen-space overlay above the map viewport (the combat FX
+  // canvas). Not transformed with the map; sits over the whole viewer.
+  overlay,
   containerRefOut,
   // Story 34 — a ref whose .current is set true by the token layer while a
   // player is dragging their own token, so pan doesn't fight the drag.
@@ -491,6 +494,8 @@ export default function MapViewer({
           </div>
         )}
       </div>
+
+      {overlay}
 
       {/* Controls overlay */}
       <div style={{

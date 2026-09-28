@@ -97,6 +97,23 @@ exports.handler = async (event) => {
       values[":lastDamagedAt"] = new Date().toISOString();
       values[":lastDamageAmount"] = prevHp - body.hpCurrent;
       values[":lastDamageFrom"] = attackerRef;
+    } else if (typeof prevHp === "number" && body.hpCurrent > prevHp) {
+      // Combat FX (ADR-031) — heal stamp, the mirror of the damage stamp,
+      // so every map can play the healing effect once. The healer is the
+      // active combatant, resolved the same way as an attacker.
+      const initiative = normalizeInitiativeRecord(initiativeItem);
+      const healerRef = resolveAttackerRef(initiative, { type: "character", sourceId: slug });
+      updates.push(
+        "#lastHealedAt = :lastHealedAt",
+        "#lastHealAmount = :lastHealAmount",
+        "#lastHealFrom = :lastHealFrom"
+      );
+      names["#lastHealedAt"] = "lastHealedAt";
+      names["#lastHealAmount"] = "lastHealAmount";
+      names["#lastHealFrom"] = "lastHealFrom";
+      values[":lastHealedAt"] = new Date().toISOString();
+      values[":lastHealAmount"] = body.hpCurrent - prevHp;
+      values[":lastHealFrom"] = healerRef;
     }
   }
 

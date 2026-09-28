@@ -1095,6 +1095,7 @@ export default function CharacterSheetViewMode({ ctx }) {
 
         <footer className="cs-footer">
           {char.name && <>{char.name}{char.nameAlt ? ` · ${char.nameAlt}` : ""}{" · "}{char.race} {char.charClass}{char.level ? ` · Level ${char.level}` : ""}</>}
+          <div className="cs-footer-credit">Combat effect art: The Free Archives © Dreams Circle</div>
         </footer>
 
         {editingItem && (

@@ -206,6 +206,7 @@ exports.handler = async (event) => {
           .map((slug) => {
             const projected = projectPlayerCharacter(rawItemsBySlug.get(slug));
             projected.lastDamageFrom = publicLastDamageFrom(projected.lastDamageFrom);
+            projected.lastHealFrom = publicLastDamageFrom(projected.lastHealFrom);
             return projected;
           }),
       }
@@ -227,6 +228,9 @@ exports.handler = async (event) => {
       lastDamagedAt: n.lastDamagedAt ?? null,
       lastDamageAmount: n.lastDamageAmount ?? null,
       lastDamageFrom: publicLastDamageFrom(n.lastDamageFrom),
+      lastHealedAt: n.lastHealedAt ?? null,
+      lastHealAmount: n.lastHealAmount ?? null,
+      lastHealFrom: publicLastDamageFrom(n.lastHealFrom),
     })),
   };
 
@@ -264,6 +268,9 @@ exports.handler = async (event) => {
       // bypassed by reading it off this field instead of partyStatus.
       if (Object.prototype.hasOwnProperty.call(character, "lastDamageFrom")) {
         character.lastDamageFrom = publicLastDamageFrom(character.lastDamageFrom);
+      }
+      if (Object.prototype.hasOwnProperty.call(character, "lastHealFrom")) {
+        character.lastHealFrom = publicLastDamageFrom(character.lastHealFrom);
       }
       responseBody.character = character;
     }

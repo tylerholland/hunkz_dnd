@@ -1,0 +1,10 @@
+/* Combat FX canvas (ADR-031) — covers the map viewport, above the tokens,
+   never intercepts input. Idle it draws nothing (the engine stops its loop). */
+.combat-fx-layer {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 30;
+}
