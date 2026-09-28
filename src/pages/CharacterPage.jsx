@@ -16,6 +16,11 @@ export default function CharacterPage() {
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
   const requestSeqRef = useRef(0);
   const activeRequestCountRef = useRef(0);
+  // A live-sync nudge that lands while a fetch is already running must not be
+  // dropped: that fetch may have started before the change, so run once more
+  // when it finishes (otherwise the next chance is the 30s safety poll).
+  const refreshAgainRef = useRef(false);
+  const latestFetchRef = useRef(null);
 
   // Read cached palette for this slug so the spinner matches on return visits
   const cachedPalette = sessionStorage.getItem(`dnd_palette_${slug}`);
@@ -32,7 +37,10 @@ export default function CharacterPage() {
   // sheet is unlocked mid-session.
   const fetchSessionState = useCallback(async ({ background = false, force = false } = {}) => {
     if (!slug) return;
-    if (background && activeRequestCountRef.current > 0 && !force) return;
+    if (background && activeRequestCountRef.current > 0 && !force) {
+      refreshAgainRef.current = true;
+      return;
+    }
 
     const requestId = ++requestSeqRef.current;
     activeRequestCountRef.current += 1;
@@ -62,11 +70,16 @@ export default function CharacterPage() {
       setError("not_found");
     } finally {
       activeRequestCountRef.current = Math.max(0, activeRequestCountRef.current - 1);
+      if (refreshAgainRef.current && activeRequestCountRef.current === 0) {
+        refreshAgainRef.current = false;
+        setTimeout(() => latestFetchRef.current?.({ background: true }), 0);
+      }
       if (!background && requestId === requestSeqRef.current) {
         setLoading(false);
       }
     }
   }, [slug]);
+  useEffect(() => { latestFetchRef.current = fetchSessionState; }, [fetchSessionState]);
 
   const queueSessionSync = useQueuedRefresh(fetchSessionState);
 

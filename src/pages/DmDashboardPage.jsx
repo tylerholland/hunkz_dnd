@@ -110,6 +110,11 @@ export default function DmDashboardPage() {
   const transitionTimersRef = useRef([]);
   const requestSeqRef = useRef(0);
   const activeRequestCountRef = useRef(0);
+  // A live-sync nudge that lands while a fetch is already running must not be
+  // dropped: that fetch may have started before the change, so run once more
+  // when it finishes (otherwise the next chance is the 30s safety poll).
+  const refreshAgainRef = useRef(false);
+  const latestFetchRef = useRef(null);
   const partyRef = useRef(party);
   const partyExpectedValuesRef = useRef(new Map());
   const partyRosterExpectedRef = useRef(null);
@@ -236,7 +241,10 @@ export default function DmDashboardPage() {
 
   const fetchDashboardData = useCallback(async ({ background = false, force = false } = {}) => {
     if (!dmPassword) return;
-    if (background && activeRequestCountRef.current > 0 && !force) return;
+    if (background && activeRequestCountRef.current > 0 && !force) {
+      refreshAgainRef.current = true;
+      return;
+    }
 
     const requestId = ++requestSeqRef.current;
     activeRequestCountRef.current += 1;
@@ -333,8 +341,13 @@ export default function DmDashboardPage() {
       // Show stale data rather than error on poll failure.
     } finally {
       activeRequestCountRef.current = Math.max(0, activeRequestCountRef.current - 1);
+      if (refreshAgainRef.current && activeRequestCountRef.current === 0) {
+        refreshAgainRef.current = false;
+        setTimeout(() => latestFetchRef.current?.({ background: true }), 0);
+      }
     }
   }, [dmPassword]);
+  useEffect(() => { latestFetchRef.current = fetchDashboardData; }, [fetchDashboardData]);
 
   const queueDashboardRefresh = useQueuedRefresh(fetchDashboardData);
 

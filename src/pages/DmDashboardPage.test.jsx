@@ -73,8 +73,12 @@ vi.mock("../features/dmDashboard/ManagePartyModal", () => ({
 // behavior under test, and left unmocked it opens a real WebSocket to
 // VITE_WS_URL (jsdom provides a real WebSocket implementation), which never
 // resolves in this sandbox and hangs the test run indefinitely.
+const socketMock = vi.hoisted(() => ({ onChanged: null, connected: false }));
 vi.mock("../lib/useSessionSocket", () => ({
-  useSessionSocket: () => ({ connected: false }),
+  useSessionSocket: (onChanged) => {
+    socketMock.onChanged = onChanged;
+    return { connected: socketMock.connected };
+  },
 }));
 
 // Unrelated dashboard panel; unlike its sibling feature panels below it isn't
@@ -188,5 +192,49 @@ describe("DmDashboardPage polling (Story 35 consolidation)", () => {
     });
 
     expect(apiMocks.getSessionState.mock.calls.length).toBe(callsAfterMount + 1);
+  });
+});
+
+describe("DmDashboardPage live-sync nudges", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    sessionStorage.clear();
+    apiMocks.getDmParty.mockResolvedValue([]);
+    apiMocks.listCharacters.mockResolvedValue([]);
+    apiMocks.getPartyRoster.mockResolvedValue({ exists: false, members: [] });
+    apiMocks.getNpcLibrary.mockResolvedValue({ templates: [] });
+    apiMocks.getCounterWheels.mockResolvedValue({ wheels: [] });
+  });
+
+  afterEach(() => { socketMock.connected = false; });
+
+  it("refetches once more when a nudge lands while a fetch is already running", async () => {
+    socketMock.connected = true; // live socket: the safety poll is 30s, so only nudges refresh
+    const state = {
+      party: [],
+      initiative: { entries: [], activeTurnIndex: 0 },
+      npcCombat: { npcs: [] },
+      rollHistory: { rolls: [] },
+      mapLibrary: { activeMapId: null, maps: [] },
+      counterWheels: { wheels: [] },
+      serverTime: "2026-09-28T00:00:00.000Z",
+    };
+    apiMocks.getSessionState.mockResolvedValue(state);
+    sessionStorage.setItem("dnd_dm_password", "swordfish");
+    render(<MemoryRouter><DmDashboardPage /></MemoryRouter>);
+    await waitFor(() => expect(apiMocks.getSessionState).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getByRole("button", { name: "More actions" })).toBeInTheDocument());
+
+    let release;
+    apiMocks.getSessionState.mockImplementationOnce(() => new Promise((resolve) => { release = () => resolve(state); }));
+    const before = apiMocks.getSessionState.mock.calls.length;
+    act(() => socketMock.onChanged());
+    await waitFor(() => expect(apiMocks.getSessionState.mock.calls.length).toBe(before + 1));
+    act(() => socketMock.onChanged()); // arrives mid-fetch: must not be dropped
+    // let that nudge's queued refresh fire while the first fetch is still open
+    await act(async () => { await new Promise((r) => setTimeout(r, 50)); });
+    expect(apiMocks.getSessionState.mock.calls.length).toBe(before + 1);
+    await act(async () => { release(); });
+    await waitFor(() => expect(apiMocks.getSessionState.mock.calls.length).toBe(before + 2));
   });
 });
