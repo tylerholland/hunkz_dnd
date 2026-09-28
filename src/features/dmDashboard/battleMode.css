@@ -60,6 +60,9 @@
      menu and resize stepper, so they read at Medium size on any token. Like
      the condition badges, they still follow map zoom/calibration. */
   --tk-popover-counter: calc(1 / var(--token-size-mult, 1));
+  /* The name label grows with the token only up to Large (2×); past that it
+     stays Large-sized so a Colossal token's name doesn't dominate the map. */
+  --tk-label-counter: calc(min(var(--token-size-mult, 1), 2) / var(--token-size-mult, 1));
 }
 
 /* Player-side poll-move: applied only when !isDm and after first mount
@@ -155,7 +158,8 @@
   left: 50%;
   /* Story 53 — offset 2px → 4px, global and unconditional, to clear the
      badge column's slot 3 without a conditional layout. */
-  transform: translateX(-50%) translateY(4px);
+  transform: translateX(-50%) translateY(calc(4px * var(--tk-label-counter, 1))) scale(var(--tk-label-counter, 1));
+  transform-origin: top center;
   white-space: nowrap;
   max-width: 80px;
   overflow: hidden;
