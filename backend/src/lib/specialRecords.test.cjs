@@ -200,9 +200,9 @@ test("getMapLibraryState normalizes legacy map content types from file extension
   });
 });
 
-test("appendRollHistoryEvent keeps the newest 500 rolls by default", async () => {
+test("appendRollHistoryEvent keeps the newest 100 rolls by default", async () => {
   const sent = [];
-  const existingRolls = Array.from({ length: 500 }, (_, index) => ({ id: `existing-${index}` }));
+  const existingRolls = Array.from({ length: 100 }, (_, index) => ({ id: `existing-${index}` }));
   const {
     appendRollHistoryEvent,
     ROLL_HISTORY_LIMIT,
@@ -224,15 +224,15 @@ test("appendRollHistoryEvent keeps the newest 500 rolls by default", async () =>
 
   await appendRollHistoryEvent({ id: "new-roll" });
 
-  assert.equal(ROLL_HISTORY_LIMIT, 500);
+  assert.equal(ROLL_HISTORY_LIMIT, 100);
   const livePuts = sent.filter((input) => input.Item?.slug === "roll-history");
   assert.equal(livePuts.length, 1);
-  assert.equal(livePuts[0].Item.rolls.length, 500);
+  assert.equal(livePuts[0].Item.rolls.length, 100);
   assert.equal(livePuts[0].Item.rolls[0].id, "new-roll");
-  assert.equal(livePuts[0].Item.rolls.at(-1).id, "existing-498");
+  assert.equal(livePuts[0].Item.rolls.at(-1).id, "existing-98");
   // The roll that aged out is archived, not dropped (Story 69).
   const archivePut = sent.find((input) => input.Item?.slug === "roll-history-archive:0");
-  assert.deepEqual(archivePut.Item.events.map((e) => e.id), ["existing-499"]);
+  assert.deepEqual(archivePut.Item.events.map((e) => e.id), ["existing-99"]);
 });
 
 test("whole-record saves bump the stored version and retry when a write lands in between", async () => {

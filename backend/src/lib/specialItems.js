@@ -11,7 +11,7 @@ const HOUSE_RULES_SLUG = "house-rules";
 // Story 36b — stale-client auto-refresh. Written directly by deploy.sh via
 // `aws dynamodb put-item` (no Lambda write path); read by getSessionState.js.
 const APP_META_SLUG = "app-meta";
-// Roll-history archive pages ("roll-history-archive:0".."4" + ":index"):
+// Roll-history archive pages ("roll-history-archive:0".."5" + ":index"):
 // events that age out of the live feed move here instead of being dropped.
 const ROLL_HISTORY_ARCHIVE_PREFIX = "roll-history-archive:";
 const RESERVED_CHARACTER_SLUGS = new Set([INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, APP_META_SLUG, HOUSE_RULES_SLUG]);

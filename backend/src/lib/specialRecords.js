@@ -11,7 +11,9 @@ const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, P
 // normalizes a generic item and doesn't need the slug constant; the sentinel
 // is written directly by deploy.sh and read directly by getSessionState.js.
 
-const ROLL_HISTORY_LIMIT = 500;
+// The live feed rides every poll, so it stays small: the app only ever shows
+// the newest dozen or so. Older events move to the archive ring below.
+const ROLL_HISTORY_LIMIT = 100;
 
 function normalizeInitiativeRecord(item) {
   return {
@@ -196,10 +198,10 @@ async function appendRollHistoryEvents(events, limit = ROLL_HISTORY_LIMIT) {
 }
 
 // ── Archive: a ring of pages ────────────────────────────────────────────────
-// 500 live + 5 × 500 archived ≈ 3000 events kept. Each page stays well under
+// 100 live + 6 × 500 archived ≈ 3100 events kept. Each page stays well under
 // DynamoDB's 400KB item limit (~370 bytes an event). When the ring wraps, the
 // oldest page is overwritten.
-const ROLL_HISTORY_ARCHIVE_PAGES = 5;
+const ROLL_HISTORY_ARCHIVE_PAGES = 6;
 const ROLL_HISTORY_ARCHIVE_PAGE_SIZE = 500;
 const ARCHIVE_INDEX_SLUG = `${ROLL_HISTORY_ARCHIVE_PREFIX}index`;
 const archivePageSlug = (n) => `${ROLL_HISTORY_ARCHIVE_PREFIX}${n}`;
