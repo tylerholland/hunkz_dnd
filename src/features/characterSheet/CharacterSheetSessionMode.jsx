@@ -47,7 +47,7 @@ import {
 } from "../dmDashboard/battleMode/tokenEffects";
 import CombatTransitionOverlay from "./CombatTransitionOverlay";
 import { playCombatEnterSound, playCombatExitSound } from "../../lib/combatSound";
-import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../../lib/useTextScale";
+import { useTextScale } from "../../lib/useTextScale";
 import AttackDeclarationBar from "./AttackDeclarationBar";
 import ItemEditorModal from "./ItemEditorModal";
 import SessionQuickAdd from "./SessionQuickAdd";
@@ -1000,7 +1000,7 @@ export default function CharacterSheetSessionMode({
     />
   );
 
-  const { textScale, textScaleMenuItem } = useTextScale(PLAYER_TEXT_SCALE_KEY);
+  const { textScale, textScaleMenuItem } = useTextScale();
 
   const sharedPalVars = {
     "--pal-bg": pal.bg,

@@ -7,11 +7,13 @@ import MapLibraryModal from "../features/dmDashboard/MapLibraryModal";
 import MapUploadModal from "../features/dmDashboard/MapUploadModal";
 import { isSupportedMapContentType } from "../features/maps/mapFiles";
 import TopNav from "../components/TopNav";
+import { useTextScale } from "../lib/useTextScale";
 
 export default function MapLibraryPage() {
   const [dmPassword, setDmPassword] = useState(() => sessionStorage.getItem("dnd_dm_password") || "");
   const [authed, setAuthed] = useState(() => !!sessionStorage.getItem("dnd_dm_password"));
   const [checking, setChecking] = useState(false);
+  const { textScale, textScaleMenuItem } = useTextScale();
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
   const [uploadOpen, setUploadOpen] = useState(false);
   const [uploadFile, setUploadFile] = useState(null);
@@ -105,6 +107,7 @@ export default function MapLibraryPage() {
           background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}`,
           color: pal.text,
           position: "relative",
+          zoom: textScale,
         }}
         onDragEnter={handleDragEnter}
         onDragLeave={handleDragLeave}
@@ -121,7 +124,7 @@ export default function MapLibraryPage() {
         <TopNav
           backTo="/dm"
           title="Map Library"
-          menuItems={[{ label: "Campaign", href: "/dm" }, { label: "Chronicle", href: "/chronicle" }]}
+          menuItems={[{ label: "Campaign", href: "/dm" }, { label: "Chronicle", href: "/chronicle" }, { divider: true }, textScaleMenuItem]}
         >
           <button
             onClick={() => { setUploadFile(null); setUploadOpen(true); }}

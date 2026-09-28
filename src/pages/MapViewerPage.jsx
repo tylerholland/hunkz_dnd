@@ -7,6 +7,7 @@ import { reportServerBuildVersion } from "../lib/staleClient";
 import MapViewer from "../features/maps/MapViewer";
 import { displayMapName } from "../features/dmDashboard/MapUploadModal";
 import TopNav from "../components/TopNav";
+import { useTextScale } from "../lib/useTextScale";
 import { acceptVersion } from "../lib/versionFloors";
 
 export default function MapViewerPage() {
@@ -14,6 +15,7 @@ export default function MapViewerPage() {
   const themeKey = searchParams.get("theme") || "ocean";
   const pal = PALETTES[themeKey] || PALETTES.ocean;
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
+  const { textScale, textScaleMenuItem } = useTextScale();
 
   // Story 35b — poll the consolidated session-state endpoint (public
   // variant, no password) instead of the standalone map-library endpoint.
@@ -61,10 +63,12 @@ export default function MapViewerPage() {
       minHeight: "100vh",
       background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}`,
       color: pal.text,
+      zoom: textScale,
     }}>
       <TopNav
         backTo="/"
         title={activeMap ? displayMapName(activeMap) : "Map Viewer"}
+        menuItems={[textScaleMenuItem]}
       />
       <div style={{ padding: "16px 24px 30px" }}>
         {activeMap ? (

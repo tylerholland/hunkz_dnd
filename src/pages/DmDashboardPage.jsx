@@ -48,7 +48,6 @@ import { stripNpcServerStamps } from "./npcServerStamps";
 
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
 const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";
-const TEXT_SCALE_STORAGE_KEY = "dnd_dm_text_scale";
 const MAP_TRANSITION_MS = 320;
 const CARD_FLIP_MS = 460;
 const CARD_COMPACT_MS = 240;
@@ -100,7 +99,7 @@ export default function DmDashboardPage() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [restNotice, setRestNotice] = useState("");
   const [palKey, setPalKey] = useState(() => sessionStorage.getItem("dnd_dm_palette") || "ocean");
-  const { textScale, textScaleMenuItem } = useTextScale(TEXT_SCALE_STORAGE_KEY);
+  const { textScale, textScaleMenuItem } = useTextScale();
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
   const cardOpenFnsRef = useRef({});

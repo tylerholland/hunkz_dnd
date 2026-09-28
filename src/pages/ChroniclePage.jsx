@@ -3,6 +3,7 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 import { listCharacters } from "../api";
 import { PALETTES } from "../features/characterSheet/theme";
 import TopNav from "../components/TopNav";
+import { useTextScale } from "../lib/useTextScale";
 import ChronicleList from "../features/chronicle/ChronicleList";
 import RecordSession from "../features/chronicle/RecordSession";
 import SessionView from "../features/chronicle/SessionView";
@@ -19,6 +20,7 @@ export default function ChroniclePage() {
   const viewer = useMemo(() => readChronicleViewer(), []);
   const [asSlug, setAsSlug] = useState(() => viewer.characters[0]?.slug || null);
   const [names, setNames] = useState({});
+  const { textScale, textScaleMenuItem } = useTextScale();
   const isRecord = pathname.replace(/\/+$/, "").endsWith("/chronicle/record");
   const isDm = viewer.role === "dm";
   const creds = viewerCredentials(viewer, asSlug);
@@ -48,9 +50,13 @@ export default function ChroniclePage() {
     "--font-ui": pal.fontUI,
   };
   const backTo = isDm ? "/dm" : asSlug ? `/characters/${asSlug}/session` : "/";
-  const menuItems = isDm
-    ? [{ label: "Campaign", href: "/dm" }, { label: "Map Library", href: "/maps" }, { label: "DM Settings", href: "/dm/settings" }]
-    : [{ label: "Characters", href: "/" }];
+  const menuItems = [
+    ...(isDm
+      ? [{ label: "Campaign", href: "/dm" }, { label: "Map Library", href: "/maps" }, { label: "DM Settings", href: "/dm/settings" }]
+      : [{ label: "Characters", href: "/" }]),
+    { divider: true },
+    textScaleMenuItem,
+  ];
 
   let body;
   if (isRecord) {
@@ -64,7 +70,7 @@ export default function ChroniclePage() {
   }
 
   return (
-    <div className="chr-page" style={{ ...palVars, background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` }}>
+    <div className="chr-page" style={{ ...palVars, zoom: textScale, background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` }}>
       <TopNav backTo={backTo} title="Chronicle" menuItems={menuItems} />
       <main className="chr-main">
         {viewer.role === "player" && viewer.characters.length > 1 && (

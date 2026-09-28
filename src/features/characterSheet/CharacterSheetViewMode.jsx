@@ -10,7 +10,7 @@ import { HR } from "./CharacterSheetPrimitives";
 import { ARMOR_OPTIONS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt, normalizeSpells, spellRoleGlyph } from "./constants";
 import { renderInline } from "./theme";
 import WorldGuideDrawer from "../worldGuide/WorldGuideDrawer";
-import { useTextScale, PLAYER_TEXT_SCALE_KEY } from "../../lib/useTextScale";
+import { useTextScale } from "../../lib/useTextScale";
 import "./characterSheet.css";
 
 function formatXpThreshold(value) {
@@ -137,7 +137,7 @@ export default function CharacterSheetViewMode({ ctx }) {
   } = ctx;
 
   const navigate = useNavigate();
-  const { textScale, textScaleMenuItem } = useTextScale(PLAYER_TEXT_SCALE_KEY);
+  const { textScale, textScaleMenuItem } = useTextScale();
 
   // Close qty stepper when clicking outside the loadout tab
   useEffect(() => {

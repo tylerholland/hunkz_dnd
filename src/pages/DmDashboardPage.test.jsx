@@ -136,7 +136,7 @@ describe("DmDashboardPage text scaling", () => {
       expect(screen.getByText("Text Size: 110%")).toBeInTheDocument();
     });
 
-    expect(sessionStorage.getItem("dnd_dm_text_scale")).toBe("1.1");
+    expect(sessionStorage.getItem("dnd_text_scale")).toBe("1.1");
   });
 });
 

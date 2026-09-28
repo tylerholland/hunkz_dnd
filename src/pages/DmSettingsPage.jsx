@@ -4,6 +4,7 @@ import { PALETTES } from "../components/CharacterSheet";
 import { PalCtx } from "../features/dmDashboard/dashboardShared";
 import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
 import TopNav from "../components/TopNav";
+import { useTextScale } from "../lib/useTextScale";
 import { abilityCheckExpr, DEFAULT_HOUSE_RULES, isValidCheckDice, normalizeHouseRules, parseCheckDice } from "../lib/houseRules";
 import "./dmSettings.css";
 
@@ -18,6 +19,7 @@ export default function DmSettingsPage() {
   const [saved, setSaved] = useState(null); // last house rules the server confirmed
   const [dice, setDice] = useState("");
   const [status, setStatus] = useState({ kind: "idle", message: "" });
+  const { textScale, textScaleMenuItem } = useTextScale();
 
   const palKey = sessionStorage.getItem("dnd_dm_palette") || "ocean";
   const pal = PALETTES[palKey] || PALETTES.ocean;
@@ -86,9 +88,9 @@ export default function DmSettingsPage() {
     <PalCtx.Provider value={pal}>
       <div
         className="dm-settings-page"
-        style={{ ...palVars, background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` }}
+        style={{ ...palVars, zoom: textScale, background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` }}
       >
-        <TopNav backTo="/dm" title="DM Settings" menuItems={[{ label: "Campaign", href: "/dm" }, { label: "Map Library", href: "/maps" }, { label: "Chronicle", href: "/chronicle" }]} />
+        <TopNav backTo="/dm" title="DM Settings" menuItems={[{ label: "Campaign", href: "/dm" }, { label: "Map Library", href: "/maps" }, { label: "Chronicle", href: "/chronicle" }, { divider: true }, textScaleMenuItem]} />
 
         <main className="dm-settings-main">
           <h1 className="dm-settings-heading">House Rules</h1>
