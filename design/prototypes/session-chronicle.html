@@ -193,6 +193,32 @@
   details.log { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; }
   details.log summary { cursor: pointer; padding: 10px 14px; font-family: var(--ui); font-size: 14px; letter-spacing: .08em; color: var(--ink-soft); }
   details.log .preview { border: 0; border-top: 1px solid var(--line); border-radius: 0 0 6px 6px; max-height: 360px; }
+  /* ── Night at a glance chart ──────────── */
+  .glance { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 14px 16px; display: grid; gap: 10px; margin-bottom: 26px; }
+  .glance-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
+  .glance-head h2 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 18px; letter-spacing: .06em; }
+  .inferred { font-family: var(--ui); font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); border: 1px dashed var(--accent); border-radius: 3px; padding: 0 6px; }
+  .order { font-family: var(--ui); font-size: 14px; color: var(--ink-soft); }
+  .order b { font-weight: 400; }
+  .chart-scroll { overflow-x: auto; }
+  .chart { display: block; width: 100%; min-width: 660px; height: auto; font-family: "IM Fell English", Georgia, serif; }
+  .chart text { fill: var(--ink-mute); font-size: 12px; }
+  .chart .lane-label { fill: var(--ink-soft); font-size: 12px; letter-spacing: .12em; text-transform: uppercase; }
+  .chart .round-band { fill: var(--accent-soft); }
+  .chart .round-label { fill: var(--ink-mute); font-size: 11px; }
+  .chart .grid-line { stroke: var(--line); stroke-width: 1; }
+  .chart .axis-line { stroke: var(--ink-mute); stroke-width: 1; }
+  .chart .bar-val { font-size: 11px; fill: var(--ink); font-family: "Cinzel", Georgia, serif; }
+  .chart .hp-empty { fill: var(--ink-mute); font-size: 13px; font-style: italic; }
+  .chart .ill { fill: var(--accent); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; }
+  .chart .hit { cursor: pointer; }
+  .chart .hit:hover rect, .chart .hit:focus rect { filter: brightness(1.2); stroke: var(--ink); stroke-width: 1; }
+  .chart-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-family: var(--ui); font-size: 13px; color: var(--ink-soft); }
+  .chart-legend .sw { display: inline-block; width: 12px; height: 12px; border-radius: 2px; margin-right: 6px; vertical-align: -1px; }
+  .chart-note { margin: 0; font-size: 15px; color: var(--ink-soft); max-width: 78ch; }
+  .chart-detail { min-height: 22px; font-family: var(--ui); font-size: 14px; color: var(--ink); }
+  .toggle-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
   .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%); background: var(--ink); color: var(--bg); font-family: var(--ui); font-size: 14px; letter-spacing: .06em; padding: 8px 16px; border-radius: 4px; z-index: 50; }
   @media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
 </style>
@@ -476,6 +502,121 @@ const LOG = [{"t": "2026-09-28T17:03:34.267Z", "who": "Liu Sha", "pal": "ember",
     const sel = app.querySelector(".bar.in"); if (sel && !rer.done) { sel.scrollIntoView({ block: "nearest", inline: "center" }); }
   }
 
+  // ── Night at a glance: inferred from roll patterns ─────────────
+  // No initiative was run and nothing logged HP, so: a 2d6 roll is an action
+  // (the table's check/attack die), a lone d4–d12 roll is damage, and a new
+  // round starts when someone who already acted this round acts again.
+  const PAIR_MS = 5 * 60 * 1000;
+  function rollKind(e) {
+    if (e.wheel || !e.expr) return null;
+    const x = e.expr.replace(/\s/g, "");
+    if (/check/i.test(e.label || "")) return "check";
+    if (/^1d20/.test(x)) return "d20";
+    if (/^2d6/.test(x)) return "action";
+    if (/^\d*d(4|6|8|10|12)\b/.test(x)) return "damage";
+    return null;
+  }
+  function inferTimeline(evs) {
+    const acts = evs.filter((e) => e.who && e.who !== "DM");
+    const rounds = [];
+    let seen = new Set(), cur = null;
+    const lastAction = new Map();
+    const hits = [], swings = [];
+    for (const e of acts) {
+      const k = rollKind(e), p = personFor(e).short;
+      if (k === "action") {
+        if (!cur || seen.has(p)) { cur = { n: rounds.length + 1, start: e.ms, order: [] }; rounds.push(cur); seen = new Set(); }
+        seen.add(p); cur.order.push(p); cur.end = e.ms;
+        const sw = { e, p, round: cur.n, paired: false };
+        swings.push(sw); lastAction.set(p, sw);
+      } else if (k === "damage") {
+        const a = lastAction.get(p);
+        const paired = !!a && !a.paired && e.ms - a.e.ms <= PAIR_MS;
+        if (paired) a.paired = true;
+        hits.push({ e, p, amount: e.total, after: paired ? a.e : null, round: paired ? a.round : (cur?.n || null) });
+        if (cur) cur.end = Math.max(cur.end, e.ms);
+      }
+    }
+    // Typical turn order: average position of each player across rounds.
+    const pos = new Map();
+    rounds.forEach((r) => r.order.forEach((p, i) => { const v = pos.get(p) || { s: 0, n: 0 }; v.s += i; v.n += 1; pos.set(p, v); }));
+    const order = [...pos.entries()].sort((a, b) => a[1].s / a[1].n - b[1].s / b[1].n).map(([p]) => p);
+    const d20 = acts.filter((e) => rollKind(e) === "d20");
+    return { rounds, hits, misses: swings.filter((s) => !s.paired), order, d20 };
+  }
+  function seeded(seed) { let s = seed; return () => { s = (s * 16807) % 2147483647; return (s - 1) / 2147483646; }; }
+  function chartHtml(s, evs) {
+    const tl = inferTimeline(evs);
+    const W = 1000, padL = 78, padR = 18;
+    const t0 = s.startMs - 3 * 60000, t1 = s.endMs + 3 * 60000;
+    const x = (ms) => padL + ((ms - t0) / (t1 - t0)) * (W - padL - padR);
+    const HP_TOP = 22, HP_BOT = 128, BAND_TOP = 138, BASE = 282, BAR_MAX = 104, AXIS = 304, H = 322;
+    const colorFor = (p) => (Object.values(PEOPLE).find((q) => q.short === p) || {}).c || "var(--ink-mute)";
+    const maxDmg = Math.max(8, ...tl.hits.map((h) => h.amount));
+    let svg = "";
+    // round bands
+    tl.rounds.forEach((r, i) => {
+      const nx = tl.rounds[i + 1] ? x(tl.rounds[i + 1].start) : x(Math.max(r.end, s.endMs));
+      const rx = x(r.start);
+      if (i % 2 === 0) svg += `<rect class="round-band" x="${rx}" y="${BAND_TOP}" width="${Math.max(2, nx - rx)}" height="${BASE - BAND_TOP}"/>`;
+      svg += `<text class="round-label" x="${rx + 4}" y="${BAND_TOP + 13}">R${r.n}</text>`;
+    });
+    // lanes
+    svg += `<text class="lane-label" x="0" y="${HP_TOP + 10}">HP</text>`;
+    svg += `<text class="lane-label" x="0" y="${BAND_TOP + 13}">Rounds</text>`;
+    svg += `<text class="lane-label" x="0" y="${BASE - BAR_MAX + 10}">Damage</text>`;
+    svg += `<line class="grid-line" x1="${padL}" x2="${W - padR}" y1="${HP_BOT}" y2="${HP_BOT}"/><line class="grid-line" x1="${padL}" x2="${W - padR}" y1="${HP_TOP}" y2="${HP_TOP}" stroke-dasharray="2 4"/>`;
+    // HP lane
+    if (S.illustrativeHp) {
+      const rnd = seeded(7);
+      const order = tl.order.length ? tl.order : players(evs);
+      order.forEach((p, i) => {
+        let hp = 100; const pts = [[x(s.startMs), hp]];
+        tl.rounds.forEach((r) => { if (rnd() < 0.55) hp = Math.max(8, hp - Math.round(6 + rnd() * 22)); else if (hp < 60 && rnd() < 0.35) hp = Math.min(100, hp + Math.round(10 + rnd() * 20)); pts.push([x(r.start + (i + 1) * 45000), hp]); });
+        pts.push([x(s.endMs), hp]);
+        const y = (v) => HP_BOT - (v / 100) * (HP_BOT - HP_TOP);
+        svg += `<polyline fill="none" stroke="${colorFor(p)}" stroke-width="2" stroke-dasharray="6 4" stroke-linejoin="round" points="${pts.map(([px, v]) => `${px.toFixed(1)},${y(v).toFixed(1)}`).join(" ")}"/>`;
+      });
+      svg += `<text class="ill" x="${W - padR}" y="${HP_TOP - 6}" text-anchor="end">Illustrative example · not real data</text>`;
+      svg += `<text x="${padL - 6}" y="${HP_TOP + 4}" text-anchor="end">100%</text><text x="${padL - 6}" y="${HP_BOT}" text-anchor="end">0</text>`;
+    } else {
+      svg += `<text class="hp-empty" x="${(padL + W - padR) / 2}" y="${(HP_TOP + HP_BOT) / 2 + 4}" text-anchor="middle">HP wasn't recorded on this night. From the next session, every HP change is drawn here.</text>`;
+    }
+    // clocks
+    evs.filter((e) => e.wheel).forEach((e) => {
+      const cx = x(e.ms), cy = BAND_TOP + 26;
+      svg += `<path d="M${cx} ${cy - 5} L${cx + 5} ${cy} L${cx} ${cy + 5} L${cx - 5} ${cy} Z" fill="var(--accent)" opacity=".75"><title>${esc(e.wheel)}${e.filled != null ? ` ${e.filled}/${e.segments}` : ""} · ${fmtTime(e.ms)}</title></path>`;
+    });
+    // misses (action roll with no damage after it)
+    tl.misses.forEach((m) => { const mx = x(m.e.ms); svg += `<line x1="${mx}" x2="${mx}" y1="${BASE + 3}" y2="${BASE + 11}" stroke="${colorFor(m.p)}" stroke-width="2"><title>${esc(m.p)} · ${esc(m.e.expr)} = ${m.e.total} · no damage roll after it · ${fmtTime(m.e.ms)}</title></line>`; });
+    // damage bars
+    tl.hits.forEach((h, i) => {
+      const hx = x(h.e.ms), bh = Math.max(4, (h.amount / maxDmg) * BAR_MAX);
+      svg += `<g class="hit" tabindex="0" data-hit="${i}" role="button" aria-label="${esc(h.p)} dealt ${h.amount} at ${fmtTime(h.e.ms)}">
+        <rect x="${hx - 6}" y="${BASE - bh}" width="12" height="${bh}" rx="2" fill="${colorFor(h.p)}" ${h.after ? "" : `fill-opacity=".45" stroke="${colorFor(h.p)}" stroke-dasharray="3 2"`}/>
+        <text class="bar-val" x="${hx}" y="${BASE - bh - 4}" text-anchor="middle">${h.amount}</text></g>`;
+    });
+    svg += `<line class="axis-line" x1="${padL}" x2="${W - padR}" y1="${BASE}" y2="${BASE}"/>`;
+    // time axis every 15 min
+    const q = 15 * 60000;
+    for (let t = Math.ceil(t0 / q) * q; t <= t1; t += q) svg += `<line class="grid-line" x1="${x(t)}" x2="${x(t)}" y1="${AXIS - 8}" y2="${AXIS - 4}"/><text x="${x(t)}" y="${AXIS + 8}" text-anchor="middle">${fmtTime(t)}</text>`;
+    const people = tl.order.length ? tl.order : players(evs);
+    const total = tl.hits.reduce((sum, h) => sum + h.amount, 0);
+    return { tl, html: `
+      <section class="glance" aria-labelledby="glance-h">
+        <div class="glance-head">
+          <h2 id="glance-h">The Night at a Glance</h2><span class="inferred">Inferred from rolls</span>
+          <span class="spacer" style="flex:1"></span>
+          <div class="toggle-row"><button type="button" class="chip" id="ill-hp" aria-pressed="${!!S.illustrativeHp}">Show example HP lines</button></div>
+        </div>
+        ${tl.order.length ? `<div class="order">Turn order (inferred): ${tl.order.map((p) => `<b style="color:${colorFor(p)}">${esc(p)}</b>`).join(" → ")} · ${tl.rounds.length} rounds · ${tl.hits.length} damage rolls, ${total} damage in all</div>` : ""}
+        <div class="chart-scroll"><svg class="chart" viewBox="0 0 ${W} ${H}" role="img" aria-label="Timeline of rounds and damage for this session">${svg}</svg></div>
+        <div class="chart-legend">${people.map((p) => `<span><span class="sw" style="background:${colorFor(p)}"></span>${esc(p)}</span>`).join("")}<span><span class="sw" style="background:transparent;border:1px dashed var(--ink-mute)"></span>Damage roll with no action roll just before it</span><span>│ Action roll, no damage after it (likely a miss or a check)</span><span style="color:var(--accent)">◆ Counter wheel ticked</span></div>
+        <div class="chart-detail" id="chart-detail" aria-live="polite">Select a bar for details.</div>
+        <p class="chart-note">Nobody ran initiative on this night, so turns come from the order people rolled: a 2d6 is an action, a damage die right after it by the same player is a hit, and a new round starts when someone acts a second time. From the next session, Take Action and initiative record exactly who hit whom, for how much, and each player's HP.</p>
+      </section>` };
+  }
+
   // ── session page ────────────────────────────
   function highlights(evs) {
     const rolls = evs.filter((e) => !e.wheel && Number.isFinite(e.total));
@@ -506,6 +647,7 @@ const LOG = [{"t": "2026-09-28T17:03:34.267Z", "who": "Liu Sha", "pal": "ember",
     const me = S.role;
     const multi = dayKey(s.startMs) !== dayKey(s.endMs);
     const paras = (s.summary?.text || "").split(/\n{2,}/).filter(Boolean);
+    const glance = chartHtml(s, evs);
     app.innerHTML = `
       <div class="session-head">
         <button type="button" class="link" id="back" style="justify-self:start">← Chronicle</button>
@@ -515,6 +657,7 @@ const LOG = [{"t": "2026-09-28T17:03:34.267Z", "who": "Liu Sha", "pal": "ember",
         <span class="who-row">${who.map((n) => `<span class="who"><span class="dot" style="background:${(Object.values(PEOPLE).find((p) => p.short === n) || {}).c}"></span>${esc(n)}</span>`).join("")}</span>
         ${isDm() ? `<div class="row-actions" style="margin-top:6px"><button type="button" class="btn quiet" id="rename">Rename</button><button type="button" class="btn quiet" id="range">Edit range</button><label class="field" style="grid-auto-flow:column;align-items:center;gap:8px"><span class="lbl">Chapter</span><select id="move">${S.chapters.map((c, i) => `<option value="${c.id}" ${c.id === s.chapterId ? "selected" : ""}>Chapter ${i + 1}</option>`).join("")}</select></label><span class="spacer"></span><button type="button" class="btn quiet danger" id="del">Delete session</button></div>` : ""}
       </div>
+      ${glance.html}
       <div class="grid">
         <div>
           <section class="section" aria-labelledby="sum-h">
@@ -552,6 +695,14 @@ const LOG = [{"t": "2026-09-28T17:03:34.267Z", "who": "Liu Sha", "pal": "ember",
       </div>`;
 
     app.querySelector("#back").onclick = () => go({ name: "list" });
+    app.querySelector("#ill-hp").onclick = () => { S.illustrativeHp = !S.illustrativeHp; renderSession(s); };
+    const detail = app.querySelector("#chart-detail");
+    app.querySelectorAll("[data-hit]").forEach((g) => {
+      const h = glance.tl.hits[+g.dataset.hit];
+      const show = () => { detail.textContent = `${fmtTime(h.e.ms)} · ${h.p} rolled ${h.e.expr} = ${h.amount} damage${h.after ? `, ${Math.max(0, Math.round((h.e.ms - h.after.ms) / 60000))} min after a ${h.after.expr} = ${h.after.total}` : " (no action roll just before it)"}${h.round ? ` · round ${h.round}` : ""}`; };
+      g.addEventListener("click", show); g.addEventListener("focus", show); g.addEventListener("mouseenter", show);
+      g.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); show(); } });
+    });
     app.querySelector("#edit-sum").onclick = () => {
       const body = app.querySelector("#sum-body");
       body.innerHTML = `<div class="field"><label for="sum-text">Summary · everyone can edit</label><textarea id="sum-text">${esc(s.summary?.text || "")}</textarea></div><div class="row-actions" style="margin-top:8px"><span class="meta">Paste a transcript summary or write your own. Blank lines start new paragraphs.</span><span class="spacer"></span><button type="button" class="btn quiet" id="sum-cancel">Cancel</button><button type="button" class="btn primary" id="sum-save">Save</button></div>`;

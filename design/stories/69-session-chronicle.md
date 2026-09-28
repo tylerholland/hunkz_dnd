@@ -30,6 +30,13 @@ Story 40 marked a chapter end by archiving and then **clearing** the live feeds.
 - **Activity log**: the tagged events, collapsed by default.
 - **DM only**: edit the range (reopens the picker), rename, move to another chapter, delete the session. Deleting doesn't touch the live log.
 
+**The Night at a Glance** (session page, above the summary): one timeline across the session.
+- **HP lane**: a line per player showing HP over the night.
+- **Rounds band**: combat rounds, shaded alternately. Counter-wheel ticks appear as markers.
+- **Damage lane**: a bar for each successful hit at the moment it landed, coloured by who dealt it, with the amount on top. Select a bar for details: who, what, how much, round.
+- **Real data from now on**: Take Action / Deal Damage (ADR-032) records attacker, target, amount and misses, and initiative records rounds. The build also has to **log every HP change** (party and NPCs) with who caused it. Nothing records HP history today; characters only keep their current HP and last-damage stamp.
+- **Older sessions without that data** (like Jul 22) get an inferred version, clearly labelled: a 2d6 roll counts as an action, a d4–d12 roll by the same player within 5 minutes counts as a hit, and a new round starts when someone acts a second time. On Jul 22 this recovers a steady turn order (Meanjeans → Quietclaw → Eòghan → Liu Sha → Aesop) over about 8 rounds, with 14 damage rolls. HP can't be recovered for those sessions, so that lane says so instead of guessing.
+
 **Chapters**: the DM names a chapter ("Chapter 1: The Road to Hearthfire"), renames it, reorders sessions between chapters. Chapters are labels only; nothing resets.
 
 ## Rules
@@ -44,6 +51,7 @@ Story 40 marked a chapter end by archiving and then **clearing** the live feeds.
 - One record per session for the heavy parts: `slug: "chronicle-session:<id>"` → `{ events: [...snapshot], summary: { text, updatedAt, updatedBy }, recollections: [{ id, authorSlug, authorName, palette, text, createdAt, updatedAt, hidden }] }`. The reserved `chronicle-session:` prefix is filtered out of character listings, the same way the sentinels are (`specialItems.js`).
 - Versioned per ADR-030, so two people editing the summary at once get a clear "someone else just edited this" instead of silently overwriting each other.
 - Auth: DM password for range, title, chapter and delete, and for hiding recollections. A player's character password (their existing session auth) for editing the summary and their own recollections. Reads are public within the app, like the roll log.
+- HP history: every HP change (session.js, putNpcCombat.js, including −/+ edits) appends `{ at, subject: {type, sourceId}, from, to, by?: attackerRef, fx? }` to a capped `hp-history` sentinel, kept out of the visible roll log. Recording a session copies the matching entries into the session record alongside its events.
 - Carried over from Story 40: `putMapActive` appends a `type: "map"` entry to the roll history, so sessions record which maps were used.
 
 ## Out of scope
