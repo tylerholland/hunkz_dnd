@@ -22,7 +22,7 @@
  */
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import "./topNav.css";
 
 const BOOK_SVG = (
@@ -182,6 +182,21 @@ export function NavMenu({ items }) {
 /**
  * TopNav — the full sticky bar.
  */
+// A signed-in DM can always get back to the dashboard (which reopens the
+// Adventure/Combat view they left) without digging through the ⋯ menu.
+function DmSessionLink() {
+  const { pathname } = useLocation();
+  let isDm = false;
+  try { isDm = !!sessionStorage.getItem("dnd_dm_password"); } catch { /* storage blocked */ }
+  if (!isDm || pathname === "/dm") return null;
+  return (
+    <Link to="/dm" className="topnav-dm-link" aria-label="DM Session" title="Back to the DM session">
+      <span aria-hidden="true">⚔</span>
+      <span className="topnav-dm-link-label">DM Session</span>
+    </Link>
+  );
+}
+
 export default function TopNav({
   backTo = null,
   title,
@@ -228,6 +243,7 @@ export default function TopNav({
 
         {/* Right: children (page-specific buttons) + dot + book + ⋯ */}
         <div className="topnav-right">
+          <DmSessionLink />
           {children}
 
           {showLive && (

@@ -153,12 +153,36 @@
 
 /* ─── Right slot ────────────────────────────────────────────────────────── */
 .topnav-right {
-  grid-column: -1;
+  /* The last explicit column. A bare `-1` starts at the final grid *line*,
+     which spawned an extra implicit column and pushed the center slot left. */
+  grid-column: -2 / -1;
   display: flex;
   align-items: center;
   gap: 2px;
   justify-content: flex-end;
 }
+
+/* DM Session shortcut — shown on every page but /dm while the DM is signed in */
+.topnav-dm-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 34px;
+  padding: 0 12px;
+  margin-right: 4px;
+  border: 1px solid var(--pal-accent);
+  border-radius: 999px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  text-decoration: none;
+  color: var(--pal-accent-bright);
+  transition: background 150ms ease;
+}
+.topnav-dm-link:hover { background: var(--pal-accent-dim); }
+.topnav-dm-link:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }
 
 /* Child action buttons (e.g. Manage Party, Upload) — hidden on mobile */
 .topnav-child-btn {
@@ -387,6 +411,8 @@
   .topnav-center { display: none; }
   .topnav-mobile-row { display: flex; }
   .topnav-child-btn { display: none; }
+  .topnav-dm-link-label { display: none; }
+  .topnav-dm-link { width: 34px; padding: 0; justify-content: center; }
   .topnav-dot-label { display: none; }
   /* Title fills available space between back button and right slot */
   .topnav-title { max-width: none; }
