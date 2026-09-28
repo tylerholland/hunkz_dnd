@@ -3,6 +3,9 @@ import { createFxEngine } from "./fxEngine";
 import "./combatFx.css";
 
 const PLAYED_MEMORY = 200;
+// Hits that land while this tab is hidden are held and played when it's
+// shown again — if they're still this recent. Older ones are history.
+const HIDDEN_REPLAY_MS = 20000;
 
 // One canvas over a map viewport (ADR-031). Plays each strike event exactly
 // once (by id) — later polls that still carry the same event can't replay or
@@ -15,6 +18,7 @@ export default function CombatFxLayer({ events, rotation = 0, reducedMotion = fa
   const playedRef = useRef(new Set());
   const appliedRef = useRef(new Map()); // tokenId -> { dx, dy } currently applied (screen px)
   const rotationRef = useRef(rotation);
+  const pendingRef = useRef([]); // [{ event, at }] received while hidden
 
   useEffect(() => { rotationRef.current = rotation; }, [rotation]);
 
@@ -80,13 +84,29 @@ export default function CombatFxLayer({ events, rotation = 0, reducedMotion = fa
   }, [reducedMotion]);
 
   useEffect(() => {
+    const flush = () => {
+      if (document.visibilityState !== "visible") return;
+      const now = Date.now();
+      const pending = pendingRef.current;
+      pendingRef.current = [];
+      for (const { event, at } of pending) {
+        if (now - at <= HIDDEN_REPLAY_MS) engineRef.current?.play(event);
+      }
+    };
+    document.addEventListener("visibilitychange", flush);
+    return () => document.removeEventListener("visibilitychange", flush);
+  }, []);
+
+  useEffect(() => {
     const engine = engineRef.current;
     if (!engine || !Array.isArray(events)) return;
     const played = playedRef.current;
+    const hidden = typeof document !== "undefined" && document.visibilityState === "hidden";
     for (const event of events) {
       if (!event?.id || played.has(event.id)) continue;
       played.add(event.id);
-      engine.play(event);
+      if (hidden) pendingRef.current.push({ event, at: Date.now() });
+      else engine.play(event);
     }
     if (played.size > PLAYED_MEMORY) {
       const keep = [...played].slice(-PLAYED_MEMORY / 2);

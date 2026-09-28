@@ -140,4 +140,19 @@ describe("useSessionSocket", () => {
 
     unmount();
   });
+
+  it("stays connected while the tab is hidden, so updates still arrive promptly", () => {
+    vi.stubEnv("VITE_WS_URL", "wss://example.test/ws");
+    const onChanged = vi.fn();
+    const { unmount } = renderHook(() => useSessionSocket(onChanged));
+    const socket = MockWebSocket.instances[0];
+    act(() => socket.triggerOpen());
+
+    Object.defineProperty(document, "visibilityState", { value: "hidden", configurable: true });
+    act(() => { document.dispatchEvent(new Event("visibilitychange")); });
+    expect(socket.readyState).toBe(1);
+    act(() => socket.triggerMessage({ type: "changed" }));
+    expect(onChanged).toHaveBeenCalledTimes(1);
+    unmount();
+  });
 });

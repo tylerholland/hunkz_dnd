@@ -833,18 +833,39 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: src/handlers/chronicle.handler
+      # Explicit methods, not ANY: an ANY route also captures the browser's
+      # CORS preflight (OPTIONS), which then 404s instead of being answered
+      # by the API's CorsConfiguration.
       Events:
-        Root:
+        Index:
           Type: HttpApi
           Properties:
             Path: /chronicle
-            Method: ANY
+            Method: get
             ApiId: !Ref CharactersApi
-        Nested:
+        NestedGet:
           Type: HttpApi
           Properties:
             Path: /chronicle/{proxy+}
-            Method: ANY
+            Method: get
+            ApiId: !Ref CharactersApi
+        NestedPost:
+          Type: HttpApi
+          Properties:
+            Path: /chronicle/{proxy+}
+            Method: post
+            ApiId: !Ref CharactersApi
+        NestedPut:
+          Type: HttpApi
+          Properties:
+            Path: /chronicle/{proxy+}
+            Method: put
+            ApiId: !Ref CharactersApi
+        NestedDelete:
+          Type: HttpApi
+          Properties:
+            Path: /chronicle/{proxy+}
+            Method: delete
             ApiId: !Ref CharactersApi
       Policies:
         - DynamoDBCrudPolicy:

@@ -31,6 +31,7 @@ import { useSessionSocket } from "../lib/useSessionSocket";
 import { reportServerBuildVersion } from "../lib/staleClient";
 import { useTextScale } from "../lib/useTextScale";
 import { computeMapSwitch } from "./combatModeToggle";
+import { stripNpcServerStamps } from "./npcServerStamps";
 
 // Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
 // server-side only (putNpcCombat.js) whenever an NPC's hpCurrent drops — a
@@ -44,15 +45,6 @@ import { computeMapSwitch } from "./combatModeToggle";
 // hit). Strip these fields before comparing so reconciliation only cares
 // about what the client itself controls; the value actually stored is
 // always the real, fully-stamped npcData, never the stripped copy.
-function stripNpcServerStamps(npcs) {
-  return (npcs || []).map((npc) => {
-    const stripped = { ...npc };
-    delete stripped.lastDamagedAt;
-    delete stripped.lastDamageAmount;
-    delete stripped.lastDamageFrom;
-    return stripped;
-  });
-}
 
 const COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_combat";
 const LEGACY_COMBAT_MODE_STORAGE_KEY = "dnd_dm_dashboard_prototype_combat";

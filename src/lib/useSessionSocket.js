@@ -49,7 +49,6 @@ export function useSessionSocket(onChanged) {
 
     const scheduleReconnect = () => {
       if (closedByUsRef.current) return;
-      if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
       clearTimeout(reconnectTimerRef.current);
       const delay = backoffRef.current;
       reconnectTimerRef.current = setTimeout(() => {
@@ -103,17 +102,21 @@ export function useSessionSocket(onChanged) {
     setConnected(false);
   }, []);
 
+  // Stay connected while the tab is hidden: a hidden or covered window (on a
+  // Mac, one behind Zoom or another window counts) would otherwise fall back
+  // to a 30s poll, and the DM or a player would see a hit half a minute late —
+  // too late for its animation. A nudge is tiny; polling is what costs.
   useEffect(() => {
     if (!wsUrl) return undefined;
 
-    if (document.visibilityState === "visible") connect();
+    connect();
 
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
+        // Coming back: reconnect straight away if the socket dropped.
         backoffRef.current = MIN_BACKOFF_MS;
+        clearTimeout(reconnectTimerRef.current);
         connect();
-      } else {
-        disconnect();
       }
     };
 
