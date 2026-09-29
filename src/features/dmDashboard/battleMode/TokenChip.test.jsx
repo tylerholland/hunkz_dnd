@@ -255,3 +255,26 @@ describe("TokenChip NPC tap/hold gesture on the player's map (Story 57 tap-to-ex
     expect(chip.getAttribute("data-expanded")).toBe("false");
   });
 });
+
+describe("TokenChip condition ring", () => {
+  it("draws no ring without conditions", () => {
+    const { container } = renderChip();
+    expect(container.querySelector(".tk-cond-ring")).toBeNull();
+  });
+
+  it("rings a token in its most serious condition's colour and counts them", () => {
+    const hurt = [{ ...party[0], conditions: ["Poisoned", "Stunned"] }];
+    const { container } = renderChip({ party: hurt });
+    const ring = container.querySelector(".tk-cond-ring");
+    expect(ring).toBeTruthy();
+    expect(ring.style.getPropertyValue("--fam")).toBe("#b05878"); // Stunned → control
+    expect(container.querySelector(".tk-cond-ring__count").textContent).toBe("2");
+  });
+
+  it("ignores Invisible (it has its own veil) and shows no count for one condition", () => {
+    const one = [{ ...party[0], conditions: ["Invisible", "Prone"] }];
+    const { container } = renderChip({ party: one });
+    expect(container.querySelector(".tk-cond-ring")).toBeTruthy();
+    expect(container.querySelector(".tk-cond-ring__count")).toBeNull();
+  });
+});

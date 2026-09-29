@@ -1289,64 +1289,59 @@
   50% { opacity: 0.85; }
 }
 
-/* ── Story 53 — condition badge column ──────────────────────────────────
-   Left-edge column, top-anchored, growing downward. Counter-scaled against
-   --token-size-mult only (constant physical size on a Tiny familiar and a
-   Gargantuan dragon) — deliberately NOT counter-scaled against the map's
-   zoom/calibration, which should still make badges bigger/smaller together
-   with the rest of the board. No resting animation of any kind (Tier 2,
-   ambient) — motion exists only at the moment a badge appears/clears. */
-.tk-cond-col {
+/* ── Condition ring (replaces Story 53's badge column) ──────────────────
+   A slowly turning rune ring around the token, coloured by the most serious
+   condition's family (--fam). Scales with the token like the portrait; the
+   count pip is counter-scaled so it stays the same size on any token. */
+.tk-cond-ring {
   position: absolute;
-  inset: 0;
+  inset: -30%;
   pointer-events: none;
+  z-index: 1;
+  filter: drop-shadow(0 0 3px color-mix(in srgb, var(--fam) 55%, transparent));
+  animation: tkCondRingIn 260ms ease-out;
+}
+.tk-cond-ring svg {
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.tk-cond-ring__spin {
+  /* Spin about the ring's own centre (fill-box), not the SVG viewport. */
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tkCondRingSpin 24s linear infinite;
+}
+.tk-cond-ring--fallen {
+  opacity: 0.5;
+}
+.tk-cond-ring--fallen .tk-cond-ring__spin {
+  animation: none;
+}
+.tk-cond-ring__count {
+  position: absolute;
+  right: 4%;
+  top: 4%;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  border-radius: 9px;
+  border: 1px solid var(--fam);
+  background: rgba(10, 10, 12, 0.9);
+  color: #f2ede4;
+  font-family: "Cinzel Numerals", "Cinzel", Georgia, serif;
+  font-size: 11px;
+  line-height: 16px;
+  text-align: center;
   transform: scale(calc(1 / var(--token-size-mult, 1)));
-  transform-origin: center right;
+  transform-origin: top right;
 }
-.tk-badge {
-  position: absolute;
-  width: 15px;
-  height: 15px;
-  border-radius: 50%;
-  background: rgba(10, 10, 12, 0.88);
-  box-shadow: 0 0 0 0.5px rgba(255, 255, 255, 0.5);
-  border: 2px solid var(--fam, var(--fam-unknown));
-  color: var(--fam, var(--fam-unknown));
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transform: translate(-50%, -50%) scale(1);
-  animation: tkBadgeIn 180ms ease-out;
+@keyframes tkCondRingSpin {
+  to { transform: rotate(360deg); }
 }
-.tk-badge svg { width: 9.5px; height: 9.5px; }
-.tk-badge[data-slot="1"] { left: calc(50% - 25px); top: calc(50% - 16px); }
-.tk-badge[data-slot="2"] { left: calc(50% - 25px); top: calc(50%); }
-.tk-badge[data-slot="3"] { left: calc(50% - 25px); top: calc(50% + 16px); }
-.tk-badge.tk-badge--summary { width: 18px; height: 18px; left: calc(50% - 25px); top: calc(50%); }
-.tk-badge-stack {
-  position: absolute;
-  inset: 0;
-  transform: translate(2.5px, 2.5px);
-  background: rgba(10, 10, 12, 0.65);
-  border-radius: 50%;
-  z-index: -1;
-}
-@keyframes tkBadgeIn {
-  from { transform: translate(-50%, -50%) scale(0.7); opacity: 0; }
-  to { transform: translate(-50%, -50%) scale(1); opacity: 1; }
-}
-
-/* Exhaustion gauge — six-segment radial fill, drawn as conic-gradient wedges
-   via a filled circle + repeating background; kept simple (no SVG) since it
-   only needs to read as "proportion filled," not precise geometry. */
-.tk-gauge {
-  width: 9.5px;
-  height: 9.5px;
-  border-radius: 50%;
-  background: conic-gradient(
-    var(--fam, var(--fam-physical)) calc(var(--tk-gauge-frac, 0) * 360deg),
-    rgba(255, 255, 255, 0.18) 0
-  );
+@keyframes tkCondRingIn {
+  from { opacity: 0; transform: scale(0.85); }
+  to { opacity: 1; transform: scale(1); }
 }
 
 /* ── Story 54 — invisible veil ──────────────────────────────────────────
@@ -1675,8 +1670,9 @@
     transition-duration: 1ms;
   }
 
-  /* Story 53 — badge entrance/clear snap instead of scaling in. */
-  .tk-badge {
+  /* Condition ring — no rotation or entrance scale; it simply appears. */
+  .tk-cond-ring,
+  .tk-cond-ring__spin {
     animation: none;
   }
 

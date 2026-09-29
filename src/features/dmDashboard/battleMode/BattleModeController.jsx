@@ -2,10 +2,10 @@ import { useState, useRef, useEffect, useCallback, memo, forwardRef } from "reac
 import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
 import {
   getBadgeEligibleConditions,
-  condBandSlotCount,
   isInvisibleCondition,
   FAMILY_COLORS,
 } from "./tokenEffects";
+import ConditionRing from "./ConditionRing";
 import TokenSizeControl from "./TokenSizeControl";
 
 /**
@@ -21,63 +21,6 @@ import TokenSizeControl from "./TokenSizeControl";
  */
 
 // Per-token size presets live in ./tokenSizes (Stories 44/65).
-
-// ── Story 53 — condition badge column ───────────────────────────────────────
-// Badges are pointer-events: none, non-interactive, no resting animation
-// (Tier 2, ambient). 0-HP collapses to one summary badge @0.6 opacity rather
-// than hiding entirely (compressing beats deleting — "this body is also
-// Petrified" occasionally matters).
-function ConditionBadge({ item, slot, stacked }) {
-  const { meta } = item;
-  const color = FAMILY_COLORS[meta.family] || FAMILY_COLORS.unknown;
-  const isSummary = slot === "summary";
-  return (
-    <div
-      className={`tk-badge${isSummary ? " tk-badge--summary" : ""}`}
-      data-slot={isSummary ? undefined : slot}
-      style={{ "--fam": color }}
-    >
-      {stacked && <div className="tk-badge-stack" />}
-      {meta.glyphId === "g-exhaustion" ? (
-        <div
-          className="tk-gauge"
-          style={{ "--fam": color, "--tk-gauge-frac": Math.min(1, (meta.exhaustionLevel || 0) / 6) }}
-        />
-      ) : (
-        <svg><use href={`#${meta.glyphId}`} /></svg>
-      )}
-    </div>
-  );
-}
-
-function ConditionBadgeColumn({ eligible, isFallen, condBand }) {
-  const slots = condBandSlotCount(condBand);
-  if (slots === 0 || !eligible || eligible.length === 0) return null;
-
-  if (isFallen) {
-    return (
-      <div className="tk-cond-col" style={{ opacity: 0.6 }}>
-        <ConditionBadge item={eligible[0]} slot="summary" stacked={eligible.length > 1} />
-      </div>
-    );
-  }
-
-  const shown = eligible.slice(0, slots);
-  const truncated = eligible.length > slots;
-
-  return (
-    <div className="tk-cond-col">
-      {shown.map((item, i) => (
-        <ConditionBadge
-          key={item.name + i}
-          item={item}
-          slot={String(i + 1)}
-          stacked={truncated && i === shown.length - 1}
-        />
-      ))}
-    </div>
-  );
-}
 
 // ── HeldTokenFloater ────────────────────────────────────────────────────────
 export const HeldTokenFloater = forwardRef(function HeldTokenFloater(
@@ -854,13 +797,9 @@ export const TokenChip = memo(function TokenChip({
           <div className="tk-shock" />
         )}
 
-        {/* Story 53 — condition badge column. Absent from the DOM entirely
-            when there are no eligible conditions (the common case). */}
-        <ConditionBadgeColumn
-          eligible={eligibleConditions}
-          isFallen={isFallen}
-          condBand={condBand}
-        />
+        {/* Condition ring (replaces Story 53's badge column). Absent from the
+            DOM when there are no conditions (the common case). */}
+        <ConditionRing eligible={eligibleConditions} isFallen={isFallen} />
       </div>
 
       {/* Story 57 — target charge sweep (player-only, while the hold is in
