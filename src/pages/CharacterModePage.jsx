@@ -7,7 +7,7 @@ import {
   getSessionState,
   verifyPassword as apiVerify,
 } from "../api";
-import { useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
+import { useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, CONNECTED_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { reportServerBuildVersion } from "../lib/staleClient";
 import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
@@ -236,7 +236,7 @@ export default function CharacterModePage() {
   useAdaptivePolling({
     enabled: !!slug && authState === "authed",
     poll: fetchSessionState,
-    activeMs: wsConnected ? BACKGROUND_POLL_MS : ACTIVE_POLL_MS,
+    activeMs: wsConnected ? CONNECTED_POLL_MS : ACTIVE_POLL_MS,
   });
 
   // Auto-switch to session mode when initiative is active and no stored preference

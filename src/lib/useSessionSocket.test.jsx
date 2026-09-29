@@ -155,4 +155,18 @@ describe("useSessionSocket", () => {
     expect(onChanged).toHaveBeenCalledTimes(1);
     unmount();
   });
+
+  it("sends a keep-alive so a quiet socket isn't closed, and rebuilds the socket when the network returns", () => {
+    vi.stubEnv("VITE_WS_URL", "wss://example.test/ws");
+    const { unmount } = renderHook(() => useSessionSocket(vi.fn()));
+    const first = MockWebSocket.instances[0];
+    first.send = vi.fn();
+    act(() => first.triggerOpen());
+    act(() => { vi.advanceTimersByTime(4 * 60 * 1000); });
+    expect(first.send).toHaveBeenCalledWith(JSON.stringify({ action: "ping" }));
+
+    act(() => { window.dispatchEvent(new Event("online")); });
+    expect(MockWebSocket.instances.length).toBe(2);
+    unmount();
+  });
 });

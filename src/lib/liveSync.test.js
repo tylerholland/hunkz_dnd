@@ -65,3 +65,18 @@ describe("liveValuesEqual key order", () => {
     expect(liveValuesEqual([{ a: 1, b: 2 }], [{ b: 2, a: 1 }])).toBe(true);
   });
 });
+
+describe("useAdaptivePolling wake-up", () => {
+  it("fetches straight away when the window regains focus", async () => {
+    const { useAdaptivePolling } = await import("./liveSync");
+    vi.useFakeTimers();
+    Object.defineProperty(document, "visibilityState", { value: "visible", configurable: true });
+    const poll = vi.fn(async () => {});
+    const { unmount } = renderHook(() => useAdaptivePolling({ poll, activeMs: 10000, backgroundMs: 30000 }));
+    expect(poll).not.toHaveBeenCalled();
+    await act(async () => { window.dispatchEvent(new Event("focus")); });
+    expect(poll).toHaveBeenCalledTimes(1);
+    unmount();
+    vi.useRealTimers();
+  });
+});

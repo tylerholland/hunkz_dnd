@@ -26,7 +26,7 @@ import {
 import { PALETTES } from "../features/characterSheet/theme";
 import { applyLongRest, applyShortRest } from "../features/characterSheet/constants";
 import TopNav, { NavSegment } from "../components/TopNav";
-import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, BACKGROUND_POLL_MS } from "../lib/liveSync";
+import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh, ACTIVE_POLL_MS, CONNECTED_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { reportServerBuildVersion } from "../lib/staleClient";
 import { useTextScale } from "../lib/useTextScale";
@@ -896,7 +896,7 @@ export default function DmDashboardPage() {
   useAdaptivePolling({
     enabled: authed,
     poll: fetchDashboardData,
-    activeMs: wsConnected ? BACKGROUND_POLL_MS : ACTIVE_POLL_MS,
+    activeMs: wsConnected ? CONNECTED_POLL_MS : ACTIVE_POLL_MS,
   });
 
   function handleLoginSuccess(pw) {

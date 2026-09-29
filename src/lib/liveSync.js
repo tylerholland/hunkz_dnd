@@ -5,6 +5,9 @@ export const ACTIVE_POLL_MS = 1000;
 // tabs to cut idle Lambda + DynamoDB request volume once polling was
 // consolidated to a single endpoint.
 export const BACKGROUND_POLL_MS = 30000;
+// While a live socket is up, a focused window still checks this often — a
+// backstop for a socket that has died without the browser noticing.
+export const CONNECTED_POLL_MS = 10000;
 
 export function debounce(fn, ms) {
   let timer;
@@ -163,16 +166,31 @@ export function useAdaptivePolling({
       scheduleNext();
     };
 
+    // Coming back to a window (focus, or the tab becoming visible) fetches
+    // straight away rather than waiting out the interval — switching to the
+    // DM window shows what just happened.
+    let lastWakeAt = 0;
+    const wake = async () => {
+      if (stopped) return;
+      if (document.visibilityState !== "visible") { reschedule(); return; }
+      const now = Date.now();
+      if (now - lastWakeAt < 1500) { reschedule(); return; }
+      lastWakeAt = now;
+      clearTimeout(timeoutId);
+      await poll({ background: true });
+      reschedule();
+    };
+
     scheduleNext();
-    document.addEventListener("visibilitychange", reschedule);
-    window.addEventListener("focus", reschedule);
+    document.addEventListener("visibilitychange", wake);
+    window.addEventListener("focus", wake);
     window.addEventListener("blur", reschedule);
 
     return () => {
       stopped = true;
       clearTimeout(timeoutId);
-      document.removeEventListener("visibilitychange", reschedule);
-      window.removeEventListener("focus", reschedule);
+      document.removeEventListener("visibilitychange", wake);
+      window.removeEventListener("focus", wake);
       window.removeEventListener("blur", reschedule);
     };
   }, [activeMs, backgroundMs, enabled, poll]);

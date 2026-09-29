@@ -17,6 +17,10 @@ import { handleReloadBroadcast } from "./staleClient";
 
 const MIN_BACKOFF_MS = 1000;
 const MAX_BACKOFF_MS = 30000;
+// API Gateway closes a WebSocket after 10 minutes without traffic. A small
+// message every few minutes keeps a quiet session's socket open (the API has
+// no route for it and just answers with an error frame, which is ignored).
+const KEEPALIVE_MS = 4 * 60 * 1000;
 
 export function useSessionSocket(onChanged) {
   const wsUrl = import.meta.env.VITE_WS_URL;
@@ -111,6 +115,27 @@ export function useSessionSocket(onChanged) {
 
     connect();
 
+    const keepAlive = setInterval(() => {
+      const socket = wsRef.current;
+      if (socket && socket.readyState === 1) {
+        try { socket.send(JSON.stringify({ action: "ping" })); } catch { /* onclose will reconnect */ }
+      }
+    }, KEEPALIVE_MS);
+
+    // After a network drop the old socket can look open but be dead: rebuild it.
+    const handleOnline = () => {
+      const socket = wsRef.current;
+      if (socket) {
+        socket.onclose = null;
+        try { socket.close(); } catch { /* already closed */ }
+        wsRef.current = null;
+        setConnected(false);
+      }
+      backoffRef.current = MIN_BACKOFF_MS;
+      connect();
+    };
+    window.addEventListener("online", handleOnline);
+
     const handleVisibility = () => {
       if (document.visibilityState === "visible") {
         // Coming back: reconnect straight away if the socket dropped.
@@ -122,6 +147,8 @@ export function useSessionSocket(onChanged) {
 
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
+      clearInterval(keepAlive);
+      window.removeEventListener("online", handleOnline);
       document.removeEventListener("visibilitychange", handleVisibility);
       disconnect();
     };
