@@ -56,3 +56,12 @@ describe("useSettlingOverride", () => {
     expect(result.current.value).toBe("someone-else");
   });
 });
+
+describe("liveValuesEqual key order", () => {
+  it("treats the same object with keys in a different order as equal", async () => {
+    const { liveValuesEqual } = await import("./liveSync");
+    expect(liveValuesEqual({ gp: 5, sp: 2 }, { sp: 2, gp: 5 })).toBe(true);
+    expect(liveValuesEqual({ gp: 5 }, { gp: 6 })).toBe(false);
+    expect(liveValuesEqual([{ a: 1, b: 2 }], [{ b: 2, a: 1 }])).toBe(true);
+  });
+});

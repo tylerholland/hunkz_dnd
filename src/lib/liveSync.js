@@ -22,9 +22,21 @@ export function cloneLiveValue(value) {
     : value;
 }
 
+// JSON with sorted object keys: DynamoDB doesn't preserve a map's key order,
+// so the server can echo back an identical value in a different order, which
+// a plain JSON.stringify comparison would call "different" forever.
+function stableJson(value) {
+  if (value === undefined) return "undefined";
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+}
+
 export function liveValuesEqual(a, b) {
   if (a === undefined && b === undefined) return true;
-  return JSON.stringify(a) === JSON.stringify(b);
+  return stableJson(a) === stableJson(b);
 }
 
 // Pending-write expectations. A screen records the value it just wrote; until

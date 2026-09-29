@@ -31,7 +31,7 @@ import { useSessionSocket } from "../lib/useSessionSocket";
 import { reportServerBuildVersion } from "../lib/staleClient";
 import { useTextScale } from "../lib/useTextScale";
 import { computeMapSwitch } from "./combatModeToggle";
-import { stripNpcServerStamps } from "./npcServerStamps";
+import { NPC_EXPECTED_TTL_MS, npcCombatCaughtUp } from "./npcServerStamps";
 
 // Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
 // server-side only (putNpcCombat.js) whenever an NPC's hpCurrent drops — a
@@ -123,6 +123,8 @@ export default function DmDashboardPage() {
   const queuedInitiativeRef = useRef(null);
   const npcCombatServerRef = useRef(npcCombat);
   const npcCombatExpectedRef = useRef(null);
+  const npcCombatExpectedAtRef = useRef(0);
+  const partyExpectedAtRef = useRef(new Map());
   const [mapSwitching, setMapSwitching] = useState(false);
   const expectedMapIdRef = useRef(null);
 
@@ -282,6 +284,13 @@ export default function DmDashboardPage() {
           return currentCharacter;
         }
         const expectedFields = partyExpectedValuesRef.current.get(incomingCharacter.slug);
+        // An expectation that never matched (someone else changed the field
+        // too) stops holding back the server after NPC_EXPECTED_TTL_MS.
+        const expectedAt = partyExpectedAtRef.current.get(incomingCharacter.slug) || 0;
+        if (expectedFields && Date.now() - expectedAt > NPC_EXPECTED_TTL_MS) {
+          partyExpectedValuesRef.current.delete(incomingCharacter.slug);
+          return incomingCharacter;
+        }
         if (!currentCharacter || !expectedFields || expectedFields.size === 0) {
           return incomingCharacter;
         }
@@ -319,16 +328,13 @@ export default function DmDashboardPage() {
         }
       }
       if (acceptNpcCombat) npcCombatServerRef.current = npcData;
-      const npcCombatCaughtUp = !npcCombatExpectedRef.current || liveValuesEqual(
-        stripNpcServerStamps(npcData?.npcs),
-        stripNpcServerStamps(npcCombatExpectedRef.current?.npcs)
-      );
-      if (!acceptNpcCombat || (npcCombatExpectedRef.current && !npcCombatCaughtUp)) {
+      const npcExpected = npcCombatExpectedRef.current;
+      const npcExpectedExpired = !!npcExpected && Date.now() - npcCombatExpectedAtRef.current > NPC_EXPECTED_TTL_MS;
+      const npcCaughtUp = !npcExpected || npcExpectedExpired || npcCombatCaughtUp(npcData?.npcs, npcExpected.npcs);
+      if (!acceptNpcCombat || !npcCaughtUp) {
         // Stale record, or optimistic NPC state awaiting the server — keep ours.
       } else {
-        if (npcCombatExpectedRef.current && npcCombatCaughtUp) {
-          npcCombatExpectedRef.current = null;
-        }
+        npcCombatExpectedRef.current = null;
         setNpcCombat(npcData);
       }
       setRollHistory(rollHistoryData.rolls || []);
@@ -373,6 +379,7 @@ export default function DmDashboardPage() {
       });
       if (expectedFields.size > 0) {
         partyExpectedValuesRef.current.set(slug, expectedFields);
+        partyExpectedAtRef.current.set(slug, Date.now());
       }
     });
 
@@ -426,6 +433,7 @@ export default function DmDashboardPage() {
 
     if (optimistic) {
       npcCombatExpectedRef.current = normalized;
+      npcCombatExpectedAtRef.current = Date.now();
       setNpcCombat(normalized);
     }
 
@@ -625,6 +633,7 @@ export default function DmDashboardPage() {
     setInitiative(updatedInitiative);
     initiativeExpectedRef.current = updatedInitiative;
     npcCombatExpectedRef.current = updatedNpcCombat;
+    npcCombatExpectedAtRef.current = Date.now();
     setNpcCombat(updatedNpcCombat);
 
     try {
@@ -702,6 +711,7 @@ export default function DmDashboardPage() {
     setInitiative(updatedInitiative);
     initiativeExpectedRef.current = updatedInitiative;
     npcCombatExpectedRef.current = updatedNpcCombat;
+    npcCombatExpectedAtRef.current = Date.now();
     setNpcCombat(updatedNpcCombat);
 
     try {
@@ -752,6 +762,7 @@ export default function DmDashboardPage() {
     setInitiative(updatedInitiative);
     initiativeExpectedRef.current = updatedInitiative;
     npcCombatExpectedRef.current = updatedNpcCombat;
+    npcCombatExpectedAtRef.current = Date.now();
     setNpcCombat(updatedNpcCombat);
 
     try {
