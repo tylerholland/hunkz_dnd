@@ -27,13 +27,13 @@ test("teammates get finished numbers, including equipped gear bonuses", () => {
   assert.deepEqual([card.race, card.charClass, card.subclass, card.level], ["Tortle", "Paladin", "Oath of the Ancients", 1]);
   assert.deepEqual(card.skills, ["heal", "survival"]);
   assert.deepEqual(card.specialAbilities, ["cure", "hardy"]);
-  assert.deepEqual(card.spells, [{ name: "Cure Wounds", description: "Touch heals 1d8.", level: 1, role: "heal" }]);
+  assert.equal(card.spells, undefined);
   assert.deepEqual(card.spellSlots, [{ level: 1, max: 2, used: 1 }]);
 });
 
 test("nothing from the inventory, coin or notes leaks into the card", () => {
   const json = JSON.stringify(buildPartyCard(aesop));
-  for (const secret of ["Shield", "Ring of Wisdom", "Battle Axe", "cloak", "gp", "secret", "toHit"]) {
+  for (const secret of ["Shield", "Ring of Wisdom", "Battle Axe", "cloak", "gp", "secret", "toHit", "Cure Wounds"]) {
     assert.equal(json.includes(secret), false, secret);
   }
 });

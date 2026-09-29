@@ -1,4 +1,5 @@
-// Party member detail for other players (Story 61). Everything is computed
+// Party member detail for other players (Story 61). No spells, inventory,
+// coin or notes. Everything is computed
 // here so players get finished numbers — never the inventory those numbers
 // come from (weapons/equipment stay private between players by design).
 
@@ -32,15 +33,6 @@ function buildPartyCard(item) {
     return [stat, Math.floor((score - 10) / 2) + itemBonus(item, stat)];
   }));
   const armorClass = toInt(item?.armorTotal) + itemBonus(item, "Armor");
-  const spells = (Array.isArray(item?.spells) ? item.spells : [])
-    .map((s) => (typeof s === "string" ? { name: s } : s))
-    .filter((s) => s && typeof s.name === "string" && s.name.trim())
-    .map((s) => ({
-      name: s.name.trim(),
-      ...(typeof s.description === "string" && s.description.trim() ? { description: s.description.trim().slice(0, 600) } : {}),
-      ...(Number.isFinite(s.level) ? { level: s.level } : {}),
-      ...(s.role === "attack" || s.role === "heal" ? { role: s.role } : {}),
-    }));
   // Spell slots (per level: max / used) — shown when a teammate's card is
   // expanded, so the party can tell who still has a heal left.
   const spellSlots = (Array.isArray(item?.spellSlots) ? item.spellSlots : [])
@@ -60,7 +52,8 @@ function buildPartyCard(item) {
     abilityMods,
     skills: names(item?.skills),
     specialAbilities: names(item?.specialAbilities),
-    spells,
+    // Spells stay private to their player (Story 61, revised); only how many
+    // slots are left is shared.
     spellSlots,
   };
 }
