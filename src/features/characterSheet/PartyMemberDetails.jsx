@@ -59,8 +59,8 @@ export default function PartyMemberDetails({ card, id }) {
       <div className="cs-sm-party-mods" role="list" aria-label="Ability modifiers">
         {ABILITY_ABBR.map(([stat, abbr]) => (
           <span key={stat} className="cs-sm-party-mod" role="listitem">
-            <b>{fmtMod(card.abilityMods?.[stat] ?? 0)}</b>
             <small>{abbr}</small>
+            <b>{fmtMod(card.abilityMods?.[stat] ?? 0)}</b>
           </span>
         ))}
       </div>

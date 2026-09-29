@@ -3048,16 +3048,18 @@
 .cs-sm-party-mods {
   display: grid;
   grid-template-columns: repeat(6, minmax(0, 1fr));
-  gap: 4px;
 }
 
+/* Label over value, with only thin dividers between the six columns. */
 .cs-sm-party-mod {
   display: grid;
   justify-items: center;
-  padding: 3px 0;
-  border: 1px solid var(--pal-border);
-  border-radius: 3px;
-  background: var(--pal-surface);
+  gap: 1px;
+  padding: 2px 0;
+}
+
+.cs-sm-party-mod + .cs-sm-party-mod {
+  border-left: 1px solid var(--pal-border);
 }
 
 .cs-sm-party-mod b {
