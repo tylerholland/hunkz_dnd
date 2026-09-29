@@ -12,6 +12,7 @@ import {
   SPELL_LEVEL_LABELS,
   SUBCLASS_OPTIONS,
   normalizeSpells,
+  DESCRIPTION_MAX_LENGTH,
   spellRoleGlyph,
   uid,
 } from "./constants";
@@ -462,7 +463,7 @@ export default function CharacterSheetEditMode({ ctx }) {
                         <textarea
                           className="input-base"
                           style={{ minHeight: 60, resize: "vertical" }}
-                          maxLength={300}
+                          maxLength={DESCRIPTION_MAX_LENGTH}
                           value={spell.description || ""}
                           onChange={(e) => updateSpell(spell.id, "description", e.target.value)}
                           placeholder="What it does…"

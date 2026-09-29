@@ -375,8 +375,8 @@ button.cc-drawer-chip {
 .cc-detail-pop {
   position: fixed;
   z-index: 1000;
-  width: min(300px, calc(100vw - 16px));
-  max-height: min(320px, calc(100vh - 16px));
+  width: min(360px, calc(100vw - 16px));
+  max-height: min(440px, calc(100vh - 16px));
   overflow-y: auto;
   padding: 10px 12px;
   border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.38));

@@ -532,6 +532,7 @@
 }
 
 .cs-item-description {
+  white-space: pre-line; /* keep the line breaks typed into long descriptions */
   font-family: var(--font-body);
   font-size: 14px;
   color: var(--pal-text-body);
@@ -3101,6 +3102,7 @@
 .cs-sm-party-chip:focus-visible { outline: 2px solid var(--pal-accent); outline-offset: 1px; }
 
 .cs-sm-party-chip-desc {
+  white-space: pre-line; /* keep the line breaks typed into long descriptions */
   margin: 0;
   font-family: var(--font-body);
   font-size: 13px;
@@ -3728,6 +3730,7 @@
 }
 
 .cs-sm-weapon-desc {
+  white-space: pre-line; /* keep the line breaks typed into long descriptions */
   padding: 6px 0 10px;
   font-family: var(--font-body);
   font-style: italic;

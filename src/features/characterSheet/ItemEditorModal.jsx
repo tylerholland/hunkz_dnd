@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { MOD_ATTRIBUTES, uid } from "./constants";
+import { DESCRIPTION_MAX_LENGTH, MOD_ATTRIBUTES, uid } from "./constants";
 
 export const ITEM_TYPE_OPTIONS = [
   { value: "", label: "(none)" },
@@ -207,6 +207,7 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
           <textarea
             className="input-base"
             style={{ resize: "vertical", minHeight: 80, lineHeight: 1.6 }}
+            maxLength={DESCRIPTION_MAX_LENGTH}
             value={desc}
             onChange={(e) => setDesc(e.target.value)}
             placeholder="Describe the item…"

@@ -569,6 +569,7 @@
 }
 
 .cs-sm-ld-desc {
+  white-space: pre-line; /* keep the line breaks typed into long descriptions */
   font-family: var(--font-body);
   font-size: 14px;
   font-style: italic;

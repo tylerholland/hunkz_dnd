@@ -1,4 +1,7 @@
 export const modOf = (s) => Math.floor((s - 10) / 2);
+// Spell and item descriptions: room for a full 5e entry with its conditions
+// and "At Higher Levels" text. Line breaks are kept when shown.
+export const DESCRIPTION_MAX_LENGTH = 3000;
 export const fmtMod = (m) => m >= 0 ? `+${m}` : `${m}`;
 export const uid = () => "id" + Date.now() + Math.random().toString(36).slice(2, 7);
 export const parseModInt = (v) => /^[+-]?\d+$/.test(String(v).trim()) ? parseInt(v, 10) : NaN;
