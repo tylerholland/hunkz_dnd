@@ -59,6 +59,7 @@ import { abilityModifier } from "../dmDashboard/cardStats";
 import { abilityCheckExpr, DEFAULT_HOUSE_RULES } from "../../lib/houseRules";
 import { resolveMapBandOpen } from "./sessionMapBand";
 import RollOverlay from "../../components/RollOverlay";
+import { useRollOverlayPref } from "../../lib/rollOverlayPref";
 import PartyMemberCard from "./PartyMemberCard";
 import { CURSE_STYLE, HELPFUL_STYLE, SPELL_EFFECTS } from "../../lib/spellEffects";
 import { readOpenPartyDetails, writeOpenPartyDetails } from "./partyDetailsPrefs";
@@ -902,6 +903,7 @@ export default function CharacterSheetSessionMode({
   const [declaration, setDeclaration] = useState(null);
   const [barRolling, setBarRolling] = useState(false);
   const [rollOverlay, setRollOverlay] = useState(null); // { open, result }
+  const { enabled: rollOverlayOn, menuItem: rollOverlayMenuItem } = useRollOverlayPref();
   const goneMissTicksRef = useRef(0);
   // Mirrors DiceRoller's own advMode state so the bar's Adv/Dis strip
   // re-renders reactively — a ref-exposed value alone wouldn't trigger a
@@ -987,7 +989,7 @@ export default function CharacterSheetSessionMode({
   const handleBarRoll = useCallback(({ step, exprOverride }) => {
     if (!declaration?.attack || !diceRollerRef.current || barRolling) return;
     setBarRolling(true);
-    setRollOverlay({ open: true, result: null });
+    if (rollOverlayOn) setRollOverlay({ open: true, result: null });
     diceRollerRef.current.rollAttack({
       attackEntry: declaration.attack,
       step,
@@ -998,10 +1000,10 @@ export default function CharacterSheetSessionMode({
         setBarRolling(false);
         if (!result) { setRollOverlay(null); return; } // already-rolling no-op (ADR-027)
         setDeclaration((prev) => (prev ? { ...prev, lastRoll: { ...result, step } } : prev));
-        setRollOverlay({ open: true, result });
+        if (rollOverlayOn) setRollOverlay({ open: true, result });
       },
     });
-  }, [declaration, barRolling]);
+  }, [declaration, barRolling, rollOverlayOn]);
 
   // GONE liveness (brief §5/§8) — 2 consecutive poll ticks of absence, so
   // one degraded response can't flicker the bar out mid-turn. Derived from
@@ -1168,6 +1170,7 @@ export default function CharacterSheetSessionMode({
             { label: "Chronicle", href: "/chronicle" },
             { divider: true },
             textScaleMenuItem,
+            rollOverlayMenuItem,
           ]}
         />
 
@@ -1227,6 +1230,7 @@ export default function CharacterSheetSessionMode({
           { label: "Chronicle", href: "/chronicle" },
           { divider: true },
           textScaleMenuItem,
+          rollOverlayMenuItem,
         ]}
       />
 
