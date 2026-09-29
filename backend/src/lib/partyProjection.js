@@ -77,8 +77,14 @@ const PLAYER_VISIBLE_FIELDS = [
   "lastHealedAt", "lastHealAmount", "lastHealFrom", "lastFx",
 ];
 
+const { buildPartyCard } = require("./partyCard");
+
 function projectPlayerCharacter(item) {
   const projected = pickFields(item, PLAYER_VISIBLE_FIELDS);
+  // Story 61 — what teammates may see beyond HP/conditions: AC, ability
+  // modifiers, race/class, and skill/ability/spell names. Computed, so the
+  // inventory behind AC and modifiers never leaves the server.
+  projected.partyCard = buildPartyCard(item);
   projected.hpCurrent = item.hpCurrent ?? item.hp ?? 0;
   projected.hpMax = item.hpMax ?? item.hp ?? 0;
   projected.tempHP = item.tempHP ?? 0;

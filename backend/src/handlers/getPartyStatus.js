@@ -39,7 +39,13 @@ exports.handler = async () => {
   const members = rawItems
     .filter((item) => memberSet.has(item.slug))
     .sort((a, b) => rosterMembers.indexOf(a.slug) - rosterMembers.indexOf(b.slug))
-    .map(projectPlayerCharacter);
+    // This legacy endpoint reads only a few fields, so it can't build the
+    // Story 61 party card correctly — leave it off rather than send zeros.
+    .map((item) => {
+      const projected = projectPlayerCharacter(item);
+      delete projected.partyCard;
+      return projected;
+    });
 
   return ok({ visible: true, members });
 };

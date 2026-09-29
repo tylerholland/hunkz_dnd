@@ -2986,6 +2986,132 @@
   color: var(--pal-text-muted);
 }
 
+/* Story 61 — teammate detail: AC always shown, the rest on request. */
+.cs-sm-party-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.cs-sm-party-name-row .cs-sm-party-name {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.cs-sm-party-ac {
+  flex: none;
+  padding: 1px 6px;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--pal-text-body, var(--pal-text));
+}
+
+.cs-sm-party-toggle {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  margin: -4px -4px -4px 0;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pal-text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  transition: transform 0.15s ease, color 0.15s ease;
+}
+
+.cs-sm-party-toggle:hover { color: var(--pal-accent-bright); }
+.cs-sm-party-toggle.open { transform: rotate(90deg); color: var(--pal-accent-bright); }
+.cs-sm-party-toggle:focus-visible { outline: 2px solid var(--pal-accent); outline-offset: 1px; }
+
+.cs-sm-party-details {
+  display: grid;
+  gap: 8px;
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--pal-border);
+}
+
+.cs-sm-party-identity {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--pal-text-body, var(--pal-text));
+}
+
+.cs-sm-party-mods {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.cs-sm-party-mod {
+  display: grid;
+  justify-items: center;
+  padding: 3px 0;
+  border: 1px solid var(--pal-border);
+  border-radius: 3px;
+  background: var(--pal-surface);
+}
+
+.cs-sm-party-mod b {
+  font-family: var(--font-display);
+  font-size: 14px;
+  font-weight: 400;
+  color: var(--pal-text);
+}
+
+.cs-sm-party-mod small {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  color: var(--pal-text-muted);
+}
+
+.cs-sm-party-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.cs-sm-party-chip {
+  padding: 3px 8px;
+  border: 1px solid var(--pal-border);
+  border-radius: 999px;
+  background: transparent;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--pal-text-body, var(--pal-text));
+  cursor: pointer;
+}
+
+.cs-sm-party-chip:hover:not(:disabled),
+.cs-sm-party-chip.selected {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+.cs-sm-party-chip.no-detail { cursor: default; }
+.cs-sm-party-chip:focus-visible { outline: 2px solid var(--pal-accent); outline-offset: 1px; }
+
+.cs-sm-party-chip-desc {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.45;
+  color: var(--pal-text-body, var(--pal-text));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-sm-party-toggle { transition: none; }
+}
+
 .cs-sm-party-down-label {
   font-family: var(--font-display);
   font-size: 12px;

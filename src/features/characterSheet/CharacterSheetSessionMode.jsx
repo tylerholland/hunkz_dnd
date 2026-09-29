@@ -59,6 +59,8 @@ import { abilityModifier } from "../dmDashboard/cardStats";
 import { abilityCheckExpr, DEFAULT_HOUSE_RULES } from "../../lib/houseRules";
 import { resolveMapBandOpen } from "./sessionMapBand";
 import RollOverlay from "../../components/RollOverlay";
+import PartyMemberDetails from "./PartyMemberDetails";
+import { readOpenPartyDetails, writeOpenPartyDetails } from "./partyDetailsPrefs";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
 
@@ -818,6 +820,15 @@ export default function CharacterSheetSessionMode({
     if (e.key === "ArrowUp") { e.preventDefault(); setMapHeight((h) => clampPlayerMapHeight(h - 40)); }
   };
 
+  // Story 61 — which teammates this player keeps expanded in the Party list.
+  const [openPartyDetails, setOpenPartyDetails] = useState(readOpenPartyDetails);
+  const togglePartyDetails = (memberSlug) => setOpenPartyDetails((current) => {
+    const next = new Set(current);
+    if (next.has(memberSlug)) next.delete(memberSlug); else next.add(memberSlug);
+    writeOpenPartyDetails(next);
+    return next;
+  });
+
   // ── Initiative collapse (mobile) ──────────────────────────────────────────
   const [initExpanded, setInitExpanded] = useState(false);
 
@@ -1344,9 +1355,26 @@ export default function CharacterSheetSessionMode({
                       }
                     </div>
                     <div className="cs-sm-party-info">
-                      <span className="cs-sm-party-name" style={{ color: memberAccent }}>
-                        {member.name}
-                      </span>
+                      <div className="cs-sm-party-name-row">
+                        <span className="cs-sm-party-name" style={{ color: memberAccent }}>
+                          {member.name}
+                        </span>
+                        {member.partyCard?.armorClass ? (
+                          <span className="cs-sm-party-ac" title="Armor Class">AC {member.partyCard.armorClass}</span>
+                        ) : null}
+                        {member.partyCard && (
+                          <button
+                            type="button"
+                            className={`cs-sm-party-toggle${openPartyDetails.has(member.slug) ? " open" : ""}`}
+                            aria-expanded={openPartyDetails.has(member.slug)}
+                            aria-controls={`party-details-${member.slug}`}
+                            aria-label={`${openPartyDetails.has(member.slug) ? "Hide" : "Show"} ${member.name}'s details`}
+                            onClick={() => togglePartyDetails(member.slug)}
+                          >
+                            ▸
+                          </button>
+                        )}
+                      </div>
                       {member.hpCurrent <= 0 ? (
                         <div className="cs-sm-party-down-label">
                           {deathFallen ? "FALLEN" : "DOWN"}
@@ -1366,13 +1394,13 @@ export default function CharacterSheetSessionMode({
                       )}
                       {member.conditions?.length > 0 && (
                         <div className="cs-sm-party-conditions">
-                          {member.conditions.slice(0, 2).map((c) => (
+                          {member.conditions.map((c) => (
                             <span key={c} className="cs-sm-party-cond-chip">{c}</span>
                           ))}
-                          {member.conditions.length > 2 && (
-                            <span className="cs-sm-party-cond-chip">+{member.conditions.length - 2}</span>
-                          )}
                         </div>
+                      )}
+                      {openPartyDetails.has(member.slug) && (
+                        <PartyMemberDetails card={member.partyCard} id={`party-details-${member.slug}`} />
                       )}
                     </div>
                   </div>
