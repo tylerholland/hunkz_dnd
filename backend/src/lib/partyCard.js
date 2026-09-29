@@ -41,6 +41,16 @@ function buildPartyCard(item) {
       ...(Number.isFinite(s.level) ? { level: s.level } : {}),
       ...(s.role === "attack" || s.role === "heal" ? { role: s.role } : {}),
     }));
+  // Spell slots (per level: max / used) — shown when a teammate's card is
+  // expanded, so the party can tell who still has a heal left.
+  const spellSlots = (Array.isArray(item?.spellSlots) ? item.spellSlots : [])
+    .filter((slot) => slot && Number.isFinite(Number(slot.level)) && Number(slot.max) > 0)
+    .map((slot) => ({
+      level: Number(slot.level),
+      max: Number(slot.max),
+      used: Math.max(0, Math.min(Number(slot.max), Number(slot.used) || 0)),
+      ...(slot.isPactMagic ? { isPactMagic: true } : {}),
+    }));
   return {
     race: typeof item?.race === "string" ? item.race : "",
     charClass: typeof item?.charClass === "string" ? item.charClass : "",
@@ -51,6 +61,7 @@ function buildPartyCard(item) {
     skills: names(item?.skills),
     specialAbilities: names(item?.specialAbilities),
     spells,
+    spellSlots,
   };
 }
 

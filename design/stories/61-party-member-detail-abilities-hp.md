@@ -2,7 +2,7 @@
 
 **Status**: Built (2026-09-28)
 
-**Decision (2026-09-28):** Always visible on each teammate in the player's Party list: HP, **AC** and **all conditions**. Expandable per teammate (remembered per device): **race · class · subclass · level**, the six **ability modifiers**, and **skills, special abilities and spells by name** (tap for description). Stays private: inventory/gear, coin, notes, and spell slots. AC and modifiers are computed server-side (`backend/src/lib/partyCard.js`, sent as `partyCard`) so equipped-gear bonuses count without sending the inventory. Governed by the existing party-visibility toggle.
+**Decision (2026-09-28):** Always visible on each teammate in the player's Party list: HP, **AC** and **all conditions**. Expandable per teammate (remembered per device): **race · class · subclass · level**, the six **ability modifiers**, and **skills, special abilities and spells by name** (tap for description). **Revised same day:** the Party list uses compact, read-only versions of the DM party cards (`PartyMemberCard.jsx`: palette background, offset portrait, AC, segmented HP bar, condition pills), includes the player's own character, and is ordered by initiative. Spell slots joined the expandable section. Stays private: inventory/gear, coin and notes. AC and modifiers are computed server-side (`backend/src/lib/partyCard.js`, sent as `partyCard`) so equipped-gear bonuses count without sending the inventory. Governed by the existing party-visibility toggle.
 **Source**: User request
 **Prototype**: (leave blank — ux-designer fills this in)
 

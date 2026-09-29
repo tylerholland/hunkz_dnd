@@ -59,7 +59,7 @@ import { abilityModifier } from "../dmDashboard/cardStats";
 import { abilityCheckExpr, DEFAULT_HOUSE_RULES } from "../../lib/houseRules";
 import { resolveMapBandOpen } from "./sessionMapBand";
 import RollOverlay from "../../components/RollOverlay";
-import PartyMemberDetails from "./PartyMemberDetails";
+import PartyMemberCard from "./PartyMemberCard";
 import { readOpenPartyDetails, writeOpenPartyDetails } from "./partyDetailsPrefs";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
@@ -107,18 +107,6 @@ function hpNumClass(current, max) {
   if (current <= 0) return "death";
   if (max > 0 && current / max <= 0.2) return "critical";
   if (max > 0 && current / max <= 0.5) return "wounded";
-  return "";
-}
-
-function partyRowClass(member) {
-  if (!member) return "";
-  const { hpCurrent, hpMax, deathSaves } = member;
-  if (hpCurrent <= 0) {
-    if (deathSaves?.failures >= 3) return "down";
-    return "down";
-  }
-  if (hpMax > 0 && hpCurrent / hpMax <= 0.2) return "critical";
-  if (hpMax > 0 && hpCurrent / hpMax <= 0.5) return "bloodied";
   return "";
 }
 
@@ -1036,6 +1024,41 @@ export default function CharacterSheetSessionMode({
   // Party strip (filter out self)
   const partyMembers = (partyStatus?.members || []).filter((m) => m.slug !== slug);
   const partyVisible = partyStatus?.visible !== false;
+  // Story 61 — your own character joins the Party list (same card as your
+  // teammates, built from your full sheet), and the list follows initiative.
+  const ownPartyMember = char ? {
+    slug,
+    name: char.name,
+    palette: char.palette,
+    portraitUrl: char.portraitUrl,
+    hpCurrent: char.hpCurrent ?? char.hp ?? 0,
+    hpMax: char.hpMax ?? char.hp ?? 0,
+    tempHP: char.tempHP ?? 0,
+    conditions: char.conditions || [],
+    concentration: char.concentration,
+    inspiration: char.inspiration,
+    deathSaves: char.deathSaves,
+    partyCard: {
+      race: char.race || "",
+      charClass: char.charClass || "",
+      subclass: char.subclass || "",
+      level: char.level ?? null,
+      armorClass: acTotal > 0 ? acTotal : null,
+      abilityMods: Object.fromEntries(stats.map((st) => [st.stat, abilityModifier(char, st.stat)])),
+      skills: (char.skills || []).filter((x) => typeof x === "string"),
+      specialAbilities: (char.specialAbilities || []).filter((x) => typeof x === "string"),
+      spells: spells.map((sp) => ({ name: sp.name, description: sp.description, level: sp.level, role: sp.role })),
+      spellSlots: char.spellSlots || [],
+    },
+  } : null;
+  const initiativeIndex = (memberSlug) => {
+    const i = entries.findIndex((e) => e?.slug === memberSlug);
+    return i === -1 ? Number.POSITIVE_INFINITY : i;
+  };
+  const partyCards = [...(ownPartyMember ? [ownPartyMember] : []), ...(partyVisible ? partyMembers : [])]
+    .map((member, order) => ({ member, order }))
+    .sort((a, b) => (initiativeIndex(a.member.slug) - initiativeIndex(b.member.slug)) || (a.order - b.order))
+    .map(({ member }) => member);
 
   // Auto-expand dice roller on first session mode entry
   useEffect(() => {
@@ -1316,98 +1339,24 @@ export default function CharacterSheetSessionMode({
           <hr className="cs-sm-rule" />
           <span className="cs-sm-label">Party</span>
 
+          <div className="cs-sm-party-list">
+            {partyCards.map((member) => (
+              <PartyMemberCard
+                key={member.slug}
+                member={member}
+                pal={pal}
+                isYou={member.slug === slug}
+                isActiveTurn={entries[activeTurnIndex]?.slug === member.slug}
+                expanded={openPartyDetails.has(member.slug)}
+                onToggle={() => togglePartyDetails(member.slug)}
+              />
+            ))}
+          </div>
           {!partyVisible ? (
-            <p className="cs-sm-party-hidden">Party status hidden by DM.</p>
+            <p className="cs-sm-party-hidden">The DM has hidden the rest of the party.</p>
           ) : partyMembers.length === 0 ? (
             <p className="cs-sm-party-empty">Solo adventure — no other party members.</p>
-          ) : (
-            <div className="cs-sm-party-list">
-              {partyMembers.map((member) => {
-                const memberPal = member.palette ? (PALETTES[member.palette] || null) : null;
-                const memberAccent = memberPal?.accent || pal.accent;
-                const memberHpPct = member.hpMax > 0
-                  ? Math.min(100, (member.hpCurrent / member.hpMax) * 100)
-                  : 0;
-                const isActive = entries[activeTurnIndex]?.slug === member.slug;
-                const rowCls = `cs-sm-party-row${partyRowClass(member) ? ` ${partyRowClass(member)}` : ""}`;
-                const hpNumCls = `cs-sm-party-hp-nums${member.hpMax > 0 && member.hpCurrent / member.hpMax <= 0.2 ? " critical" : ""}`;
-                const hpBarCls = hpBarColor(member.hpCurrent, member.hpMax);
-                const deathFallen = (member.deathSaves?.failures >= 3);
-
-                return (
-                  <div
-                    key={member.slug}
-                    className={rowCls}
-                    style={{
-                      "--cs-party-accent": memberAccent,
-                    }}
-                  >
-                    <div
-                      className={`cs-sm-party-avatar${isActive ? " active-turn" : " resting"}`}
-                      style={{
-                        background: memberPal?.accentDim || pal.accentDim,
-                        borderColor: `${memberAccent}44`,
-                      }}
-                    >
-                      {member.portraitUrl
-                        ? <img src={member.portraitUrl} alt={member.name} />
-                        : avatarInitial(member.name)
-                      }
-                    </div>
-                    <div className="cs-sm-party-info">
-                      <div className="cs-sm-party-name-row">
-                        <span className="cs-sm-party-name" style={{ color: memberAccent }}>
-                          {member.name}
-                        </span>
-                        {member.partyCard?.armorClass ? (
-                          <span className="cs-sm-party-ac" title="Armor Class">AC {member.partyCard.armorClass}</span>
-                        ) : null}
-                        {member.partyCard && (
-                          <button
-                            type="button"
-                            className={`cs-sm-party-toggle${openPartyDetails.has(member.slug) ? " open" : ""}`}
-                            aria-expanded={openPartyDetails.has(member.slug)}
-                            aria-controls={`party-details-${member.slug}`}
-                            aria-label={`${openPartyDetails.has(member.slug) ? "Hide" : "Show"} ${member.name}'s details`}
-                            onClick={() => togglePartyDetails(member.slug)}
-                          >
-                            ▸
-                          </button>
-                        )}
-                      </div>
-                      {member.hpCurrent <= 0 ? (
-                        <div className="cs-sm-party-down-label">
-                          {deathFallen ? "FALLEN" : "DOWN"}
-                        </div>
-                      ) : (
-                        <div className="cs-sm-party-hp-row">
-                          <div className="cs-sm-party-hp-bar">
-                            <div
-                              className={`cs-sm-party-hp-fill ${hpBarCls}`}
-                              style={{ width: `${memberHpPct}%` }}
-                            />
-                          </div>
-                          <span className={hpNumCls}>
-                            {member.hpCurrent}/{member.hpMax}
-                          </span>
-                        </div>
-                      )}
-                      {member.conditions?.length > 0 && (
-                        <div className="cs-sm-party-conditions">
-                          {member.conditions.map((c) => (
-                            <span key={c} className="cs-sm-party-cond-chip">{c}</span>
-                          ))}
-                        </div>
-                      )}
-                      {openPartyDetails.has(member.slug) && (
-                        <PartyMemberDetails card={member.partyCard} id={`party-details-${member.slug}`} />
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          ) : null}
 
         </div>
         {/* ════════════ END LEFT COLUMN ════════════ */}

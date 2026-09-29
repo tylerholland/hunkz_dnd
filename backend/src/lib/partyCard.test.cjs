@@ -15,6 +15,7 @@ const aesop = {
   skills: ["heal", "survival"],
   specialAbilities: ["cure", { name: "hardy" }],
   spells: [{ id: "s1", name: "Cure Wounds", role: "heal", level: 1, description: "Touch heals 1d8.", toHit: "+5" }],
+  spellSlots: [{ level: 1, max: 2, used: 1 }, { level: 2, max: 0, used: 0 }],
   coin: { gp: 40 },
   playerNotes: [{ text: "secret" }],
 };
@@ -27,6 +28,7 @@ test("teammates get finished numbers, including equipped gear bonuses", () => {
   assert.deepEqual(card.skills, ["heal", "survival"]);
   assert.deepEqual(card.specialAbilities, ["cure", "hardy"]);
   assert.deepEqual(card.spells, [{ name: "Cure Wounds", description: "Touch heals 1d8.", level: 1, role: "heal" }]);
+  assert.deepEqual(card.spellSlots, [{ level: 1, max: 2, used: 1 }]);
 });
 
 test("nothing from the inventory, coin or notes leaks into the card", () => {
