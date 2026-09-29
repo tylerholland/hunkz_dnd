@@ -432,7 +432,6 @@
 /* Roll log: Deal Damage on a player's targeted damage roll. */
 .ta-deal {
   min-height: 32px;
-  margin-top: 4px;
   padding: 0 12px;
   border: 1px solid #c9574b;
   border-radius: 4px;
@@ -451,7 +450,7 @@
 
 .ta-applied {
   display: inline-block;
-  margin-top: 4px;
+  white-space: nowrap;
   font-family: var(--font-ui, Georgia, serif);
   font-size: 12px;
   letter-spacing: 0.1em;

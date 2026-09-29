@@ -191,80 +191,64 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
       style={{
         display: "flex",
         alignItems: "center",
-        gap: 12,
+        flexWrap: "wrap",
+        gap: "4px 12px",
         padding: "7px 0",
         borderBottom: showDivider ? `1px solid ${pal.border}` : "none",
         opacity,
         transition: "opacity 0.4s",
       }}
     >
-      <div style={{ flex: 1, minWidth: 0 }}>
-        <div
-          style={{
-              fontFamily: pal.fontBody,
-              fontSize: 11,
-              color: pal.textBody,
-              fontStyle: "italic",
-              textTransform: "uppercase",
+      <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+        {/* Who rolled — small; the action itself carries the emphasis. */}
+        {entry.characterName ? (
+          <div
+            style={{
+              fontFamily: pal.fontUI,
+              fontSize: 12,
+              letterSpacing: "0.06em",
+              color: nameColor,
               minWidth: 0,
               overflow: "hidden",
               textOverflow: "ellipsis",
               whiteSpace: "nowrap",
-          }
-          }
-        >
-         {actionLabel}
-         {/* Story 57 — declared-attack provenance (ADR-026). Rendered from the
-             structured entry.target field, never parsed out of the label.
-             ◎ (U+25CE) is the target glyph, used in exactly two places
-             app-wide: this row and the Attack Bar's own target label. */}
-         {entry.target ? (
-           <span style={{ fontStyle: "italic", textTransform: "none" }}>
-             {" → "}
-             <span style={{ color: pal.accentBright }}>◎</span>
-             {" "}{entry.target.name}
-           </span>
-         ) : null}
-        </div>
-        <div
-          style={{
-            display: "flex",
-            alignItems: "baseline",
-            gap: 4,
-            minWidth: 0,
-            flexWrap: "wrap",
-          }}
-        >
-          {entry.characterName ? (
-            <span
-              style={{
-                fontFamily: pal.fontBody,
-                fontSize: 16,
-                color: nameColor,
-                minWidth: 0,
-              }}
-            >
-              {entry.characterName}
-            </span>
-          ) : null}
-          <span
-            style={{
-              fontFamily: pal.fontUI,
-              fontSize: 14,
-              letterSpacing: "0.12em",
-              // textTransform: "uppercase",
-              color: pal.textMuted,
-              marginBottom: 2,
             }}
           >
-            {entry.exprLabel}
-            
-          </span>
+            {entry.characterName}
+          </div>
+        ) : null}
+        <div
+          style={{
+            fontFamily: pal.fontBody,
+            fontSize: 16,
+            color: pal.text,
+            minWidth: 0,
+            lineHeight: 1.3,
+          }}
+        >
+          {actionLabel}
+          {/* Story 57 — declared-attack provenance (ADR-026). Rendered from the
+              structured entry.target field, never parsed out of the label.
+              ◎ (U+25CE) is the target glyph, used in exactly two places
+              app-wide: this row and the Attack Bar's own target label. */}
+          {entry.target ? (
+            <span>
+              {" → "}
+              <span style={{ color: pal.accentBright }}>◎</span>
+              {" "}{entry.target.name}
+            </span>
+          ) : null}
+          {entry.exprLabel ? (
+            <span style={{ fontFamily: pal.fontUI, fontSize: 13, letterSpacing: "0.08em", color: pal.textMuted }}>
+              {" "}({entry.exprLabel})
+            </span>
+          ) : null}
         </div>
-        {children}
       </div>
 
-      <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexShrink: 0 }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0, marginLeft: "auto" }}>
+        {/* Row actions (e.g. Deal Damage / Applied) sit beside the result. */}
+        {children}
         {rollValuesText ? (
           <span
             style={{

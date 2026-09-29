@@ -50,10 +50,12 @@ describe("DmDiceRoller remote history", () => {
     const name = screen.getByText("Aragorn");
     expect(name).toBeInTheDocument();
     expect(name).toHaveStyle({ color: PALETTES.ember.accent });
-    const action = screen.getByText((_, node) => node?.textContent === "Free Roll");
+    // The action (with its dice formula) is the emphasised line; the roller's
+    // name sits smaller above it.
+    const action = screen.getByText((_, node) => node?.textContent === "Free Roll (3d6 + 1d20)");
     expect(action).toBeInTheDocument();
-    expect(action).toHaveStyle({ color: PALETTES.ocean.textBody });
-    expect(screen.getByText("3d6 + 1d20")).toBeInTheDocument();
+    expect(action).toHaveStyle({ color: PALETTES.ocean.text, fontSize: "16px" });
+    expect(screen.getByText("(3d6 + 1d20)")).toBeInTheDocument();
     expect(screen.getByText("[2, 4, 1, 14]")).toBeInTheDocument();
     const total = screen.getByText("21");
     expect(total).toBeInTheDocument();
@@ -86,7 +88,7 @@ describe("DmDiceRoller remote history", () => {
       vi.advanceTimersByTime(650);
     });
 
-    const freeRollRows = screen.getAllByText((_, node) => node?.textContent === "Free Roll");
+    const freeRollRows = screen.getAllByText((_, node) => /^Free Roll \(/.test(node?.textContent || "") && node.tagName === "DIV" && node.children.length === 1);
     expect(freeRollRows).toHaveLength(3);
   });
 

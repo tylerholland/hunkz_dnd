@@ -248,14 +248,16 @@ export default function AttackDeclarationBar({
             )}
             {state === "result-atk" && (
               <>
+                {/* DAMAGE sits last — where ATTACK was — so a second click on
+                    the same spot rolls damage instead of re-rolling the attack. */}
+                <button type="button" className="cs-atk-secondary btn-ghost" disabled={rolling} onClick={() => fireRoll("atk")}>
+                  ↺ AGAIN
+                </button>
                 {attack?.damage && (
                   <button type="button" className="cs-atk-roll btn-primary" disabled={rolling} onClick={() => fireRoll("dmg")}>
                     ⚔ DAMAGE
                   </button>
                 )}
-                <button type="button" className="cs-atk-secondary btn-ghost" disabled={rolling} onClick={() => fireRoll("atk")}>
-                  ↺ AGAIN
-                </button>
               </>
             )}
             {state === "result-dmg" && (
