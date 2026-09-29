@@ -1,0 +1,300 @@
+<title>Token Condition Rings</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap">
+<!--
+  Implementation note (token condition rings; replaces the Story 53 corner badges)
+  - Every token with a condition or effect gets a ring around it, so players know to hover/tap.
+  - Hover (desktop) or tap (touch) shows the list: each condition's name, its colour, a one-line reminder
+    of what it does, and for spell effects who cast it.
+  - A · Harmful / Helpful: one rune ring for anything bad (colour = the most serious family present),
+    a warm halo for anything good. Count pip when there's more than one.
+  - B · Family arcs: the ring splits into one arc per condition, coloured by family (control, bind,
+    sense, physical), with its glyph at the arc's midpoint.
+  - C · Signature effects (recommended): A's two rings for ordinary conditions, plus distinctive
+    sigils for spell effects (Hex = the curse hexagram in the caster's colour, Bless = gold motes).
+  - Rings scale with the token and keep a minimum size; reduced motion stops the rotation.
+  - Helpful effects (Bless etc.) arrive with Story 70; the 14 standard conditions are all harmful.
+-->
+<style>
+  :root {
+    color-scheme: dark;
+    --bg: #0f1218;
+    --panel: #171c24;
+    --line: #2a313c;
+    --ink: #e4e9ef;
+    --ink-soft: #a9b6c3;
+    --ink-mute: #72808f;
+    --accent: #d9a650;
+    --control: #d0668f;
+    --bind: #d99a45;
+    --sense: #9a8be0;
+    --physical: #9cc04a;
+    --unknown: #c8c0b4;
+    --helpful: #f0cf6a;
+    --display: "Cinzel", Georgia, serif;
+    --body: "Crimson Text", Georgia, serif;
+    --ui: "IM Fell English", Georgia, serif;
+  }
+  html, body { background: var(--bg); color: var(--ink); }
+  body { font-family: var(--body); font-size: 16px; }
+  .wrap { max-width: 1100px; margin: 0 auto; padding-inline: 16px; padding-block: 22px 56px; }
+  header { display: grid; gap: 4px; margin-bottom: 16px; }
+  .eyebrow { font-family: var(--ui); font-size: 13px; letter-spacing: .22em; text-transform: uppercase; color: var(--accent); }
+  h1 { margin: 0; font-family: var(--display); font-weight: 400; font-size: clamp(24px, 3.6vw, 34px); letter-spacing: .04em; }
+  .lede { margin: 0; max-width: 70ch; color: var(--ink-soft); }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin: 14px 0; font-family: var(--ui); font-size: 13px; color: var(--ink-soft); }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+  .seg button { min-height: 36px; padding: 0 14px; border: 0; background: transparent; color: var(--ink-soft); font-family: var(--ui); font-size: 13px; cursor: pointer; }
+  .seg button + button { border-left: 1px solid var(--line); }
+  .seg button[aria-pressed="true"] { background: #2a3444; color: var(--ink); }
+  .seg button:focus-visible, .token:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+  label.zoom { display: inline-flex; gap: 8px; align-items: center; }
+  label.zoom input { accent-color: var(--accent); }
+
+  .board {
+    position: relative; height: clamp(420px, 58vw, 560px); border: 1px solid var(--line); border-radius: 6px; overflow: hidden;
+    background:
+      linear-gradient(rgba(0,0,0,.28) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
+      linear-gradient(90deg, rgba(0,0,0,.28) 1px, transparent 1px) 0 0 / var(--cell) var(--cell),
+      radial-gradient(ellipse at 40% 35%, #5b4b33 0%, #3a3125 55%, #282219 100%);
+    --cell: calc(48px * var(--zoom, 1));
+  }
+  .channel { position: absolute; left: 0; right: 0; top: 52%; height: 15%; background: linear-gradient(#1f2b33, #273641); opacity: .9; }
+
+  .token { position: absolute; transform: translate(-50%, -50%); width: calc(var(--cell) * var(--size, 1)); height: calc(var(--cell) * var(--size, 1)); min-width: 30px; min-height: 30px; cursor: pointer; border-radius: 50%; }
+  .face { position: absolute; inset: 0; border-radius: 50%; display: grid; place-items: center; background: radial-gradient(circle at 35% 30%, color-mix(in srgb, var(--c) 55%, #000), color-mix(in srgb, var(--c) 20%, #000)); border: 3px solid var(--c); box-shadow: 0 4px 12px rgba(0,0,0,.5); font-family: var(--display); color: #fff; font-size: calc(16px * min(var(--size,1), 2)); z-index: 1; }
+  .name { position: absolute; top: 100%; left: 50%; transform: translate(-50%, 8px); white-space: nowrap; font-family: var(--ui); font-size: 12px; letter-spacing: .08em; background: rgba(0,0,0,.6); padding: 0 6px; border-radius: 2px; z-index: 2; pointer-events: none; }
+  .ring { position: absolute; inset: -22%; pointer-events: none; overflow: visible; }
+  .ring svg { width: 100%; height: 100%; overflow: visible; }
+  .spin { transform-origin: 50% 50%; animation: spin 24s linear infinite; }
+  .spin-rev { transform-origin: 50% 50%; animation: spin 40s linear infinite reverse; }
+  .pulse { transform-origin: 50% 50%; animation: pulse 3.2s ease-in-out infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @keyframes pulse { 50% { opacity: .55; transform: scale(1.03); } }
+  .count { position: absolute; right: -6%; top: -6%; min-width: 20px; height: 20px; padding: 0 5px; border-radius: 10px; background: #111; border: 1px solid var(--pip, var(--control)); color: var(--ink); font-family: var(--display); font-size: 12px; display: grid; place-items: center; z-index: 3; pointer-events: none; }
+
+  .pop { position: absolute; z-index: 20; width: 250px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); box-shadow: 0 12px 28px rgba(0,0,0,.55); display: grid; gap: 8px; }
+  .pop h3 { margin: 0; font-family: var(--display); font-weight: 400; font-size: 16px; letter-spacing: .04em; }
+  .pop ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 7px; }
+  .pop li { display: grid; grid-template-columns: 12px 1fr; gap: 8px; align-items: start; }
+  .pop .sw { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; }
+  .pop b { font-family: var(--ui); font-weight: 400; letter-spacing: .06em; font-size: 14px; }
+  .pop small { display: block; color: var(--ink-soft); font-size: 14px; line-height: 1.35; }
+  .pop .by { color: var(--ink-mute); font-family: var(--ui); font-size: 12px; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 10px; font-family: var(--ui); font-size: 13px; color: var(--ink-soft); }
+  .legend i { display: inline-block; width: 11px; height: 11px; border-radius: 50%; margin-right: 6px; vertical-align: -1px; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 22px; margin-top: 26px; }
+  .notes h2 { margin: 0 0 6px; font-family: var(--display); font-weight: 400; font-size: 17px; color: var(--accent); letter-spacing: .05em; }
+  .notes p, .notes li { color: var(--ink-soft); margin: 0; }
+  .notes ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+  @media (prefers-reduced-motion: reduce) { .spin, .spin-rev, .pulse { animation: none; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Preview · battle map</span>
+    <h1>Condition Rings</h1>
+    <p class="lede">A ring around any token with a condition or spell effect, so everyone knows to hover or tap it. Switch styles below; hover or tap a token to see what's on it.</p>
+  </header>
+
+  <div class="controls">
+    <span class="seg" role="group" aria-label="Ring style">
+      <button type="button" data-style="a" aria-pressed="false">A · Harmful / Helpful</button>
+      <button type="button" data-style="b" aria-pressed="false">B · Family arcs</button>
+      <button type="button" data-style="c" aria-pressed="true">C · Signature effects</button>
+    </span>
+    <label class="zoom" for="zoom">Map zoom <input id="zoom" type="range" min="0.5" max="1.4" step="0.05" value="1"></label>
+  </div>
+
+  <div class="board" id="board"><div class="channel"></div></div>
+  <div class="legend" id="legend"></div>
+
+  <section class="notes">
+    <div>
+      <h2>What each style says</h2>
+      <ul>
+        <li><b>A</b>: one question answered at a glance: is something bad (rune ring) or good (warm halo) happening to them?</li>
+        <li><b>B</b>: how many conditions and which kind, without opening anything.</li>
+        <li><b>C</b>: A's rings, plus spell effects that are recognisable on sight (the Hex sigil you liked, Bless motes).</li>
+      </ul>
+    </div>
+    <div>
+      <h2>Colours</h2>
+      <p>Condition families as today: control (stunned, paralyzed…) pink, bind (prone, restrained, grappled) amber, sense (blinded, charmed, frightened, deafened) violet, physical (poisoned, exhaustion) green. Helpful effects are gold. Spell sigils take the caster's colour.</p>
+    </div>
+    <div>
+      <h2>What changes</h2>
+      <p>The small corner badges go away in favour of the ring. Invisible keeps its own veil treatment. Rings grow with the token (the Carrion's is huge) and never get too small to notice when zoomed out.</p>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const FAMILY = {
+    control: { color: "var(--control)", rank: 1, conds: ["Stunned", "Paralyzed", "Unconscious", "Petrified", "Incapacitated"] },
+    bind: { color: "var(--bind)", rank: 2, conds: ["Prone", "Restrained", "Grappled"] },
+    sense: { color: "var(--sense)", rank: 3, conds: ["Blinded", "Charmed", "Frightened", "Deafened"] },
+    physical: { color: "var(--physical)", rank: 4, conds: ["Poisoned", "Exhaustion"] },
+  };
+  const HELP = {
+    Prone: "Attacks against it from nearby have advantage; it crawls to move.",
+    Poisoned: "Disadvantage on attack rolls and ability checks.",
+    Restrained: "Speed 0; attacks against it have advantage; its attacks have disadvantage.",
+    Frightened: "Disadvantage while it can see the source; can't move closer to it.",
+    Stunned: "Can't move or act; fails Str/Dex saves; attacks against it have advantage.",
+    Blinded: "Can't see; its attacks have disadvantage, attacks against it have advantage.",
+  };
+  const familyOf = (c) => Object.entries(FAMILY).find(([, f]) => f.conds.includes(c))?.[0] || "unknown";
+  const tokens = [
+    { id: "carrion", name: "Carrion", c: "#b3402f", x: 66, y: 30, size: 3, conditions: ["Frightened"], effects: [{ name: "Hex", kind: "harmful", by: "Eòghan", hue: 204, sigil: "hex", help: "Disadvantage on Wisdom checks. Eòghan deals +1d6 necrotic on every hit." }] },
+    { id: "scout", name: "Goblin Scout", c: "#9a6a3a", x: 40, y: 26, size: 1, conditions: ["Prone", "Poisoned"], effects: [] },
+    { id: "archer", name: "Goblin Archer", c: "#9a6a3a", x: 86, y: 76, size: 1, conditions: ["Restrained"], effects: [] },
+    { id: "eoghan", name: "Eòghan", c: "#6a8fa8", x: 22, y: 64, size: 1, conditions: [], effects: [] },
+    { id: "aesop", name: "Aesop", c: "#2e9a62", x: 34, y: 80, size: 1, conditions: [], effects: [{ name: "Bless", kind: "helpful", by: "Aesop", sigil: "bless", help: "+1d4 to attack rolls and saving throws." }] },
+    { id: "liu", name: "Liu Sha", c: "#b07a4c", x: 50, y: 70, size: 1, conditions: ["Stunned"], effects: [{ name: "Bless", kind: "helpful", by: "Aesop", sigil: "bless", help: "+1d4 to attack rolls and saving throws." }] },
+  ];
+
+  let style = "c";
+  const board = document.getElementById("board");
+  const svgNS = "http://www.w3.org/2000/svg";
+
+  // Ring geometry in a 100×100 viewBox; the ring box is inset -22% of the token.
+  const R = 44, R2 = 40;
+  function arc(r, a0, a1) {
+    const p = (a) => [50 + r * Math.cos(a), 50 + r * Math.sin(a)];
+    const [x0, y0] = p(a0), [x1, y1] = p(a1);
+    return `M${x0} ${y0} A${r} ${r} 0 ${a1 - a0 > Math.PI ? 1 : 0} 1 ${x1} ${y1}`;
+  }
+  function runeTicks(r, n, color, len = 3) {
+    let s = "";
+    for (let i = 0; i < n; i++) {
+      const a = (i / n) * Math.PI * 2;
+      const x = 50 + r * Math.cos(a), y = 50 + r * Math.sin(a);
+      const nx = 50 + (r + len) * Math.cos(a), ny = 50 + (r + len) * Math.sin(a);
+      s += `<line x1="${x}" y1="${y}" x2="${nx}" y2="${ny}" stroke="${color}" stroke-width="1.2" stroke-linecap="round"/>`;
+    }
+    return s;
+  }
+  const harmfulRing = (color) => `
+    <g class="spin"><circle cx="50" cy="50" r="${R}" fill="none" stroke="${color}" stroke-width="1.6" stroke-dasharray="6 3 1 3" opacity=".9"/>${runeTicks(R, 12, color)}</g>
+    <circle cx="50" cy="50" r="${R2}" fill="none" stroke="${color}" stroke-width=".8" opacity=".55"/>`;
+  const helpfulRing = () => `
+    <g class="pulse"><circle cx="50" cy="50" r="${R + 2}" fill="none" stroke="var(--helpful)" stroke-width="3" opacity=".35"/><circle cx="50" cy="50" r="${R}" fill="none" stroke="var(--helpful)" stroke-width="1.2" opacity=".9"/></g>`;
+  function hexSigil(hue) {
+    const col = `hsl(${hue} 90% 68%)`;
+    let pts = "";
+    for (let i = 0; i < 6; i++) { const a = (i / 6) * Math.PI * 2 - Math.PI / 2; pts += `${50 + (R - 3) * Math.cos(a)},${50 + (R - 3) * Math.sin(a)} `; }
+    const tri = (off) => { let p = ""; for (let i = 0; i < 3; i++) { const a = (i / 3) * Math.PI * 2 + off; p += `${50 + (R - 3) * Math.cos(a)},${50 + (R - 3) * Math.sin(a)} `; } return p; };
+    return `<g class="spin-rev"><circle cx="50" cy="50" r="${R + 1}" fill="none" stroke="${col}" stroke-width="1.4" opacity=".85"/>
+      <circle cx="50" cy="50" r="${R - 4}" fill="none" stroke="rgba(170,110,255,.55)" stroke-width="1"/>
+      <polygon points="${tri(-Math.PI / 2)}" fill="none" stroke="${col}" stroke-width=".9" opacity=".7"/>
+      <polygon points="${tri(Math.PI / 2)}" fill="none" stroke="${col}" stroke-width=".9" opacity=".7"/>
+      ${runeTicks(R + 1, 6, col, 4)}</g>`;
+  }
+  function blessSigil() {
+    let s = `<g class="pulse"><circle cx="50" cy="50" r="${R + 1}" fill="none" stroke="var(--helpful)" stroke-width="1.2" opacity=".85"/></g><g class="spin">`;
+    for (let i = 0; i < 8; i++) { const a = (i / 8) * Math.PI * 2; s += `<circle cx="${50 + (R + 1) * Math.cos(a)}" cy="${50 + (R + 1) * Math.sin(a)}" r="1.9" fill="var(--helpful)"/>`; }
+    return s + "</g>";
+  }
+
+  function worstFamily(t) {
+    return t.conditions.map(familyOf).sort((a, b) => (FAMILY[a]?.rank ?? 5) - (FAMILY[b]?.rank ?? 5))[0];
+  }
+
+  function ringFor(t) {
+    const harmfulCount = t.conditions.length + t.effects.filter((e) => e.kind === "harmful").length;
+    const helpfulCount = t.effects.filter((e) => e.kind === "helpful").length;
+    if (!harmfulCount && !helpfulCount) return { svg: "", count: 0 };
+    let svg = "";
+    if (style === "a") {
+      const fam = worstFamily(t) || "control";
+      if (harmfulCount) svg += harmfulRing(FAMILY[fam]?.color || "var(--control)");
+      if (helpfulCount) svg += `<g transform="translate(50 50) scale(1.12) translate(-50 -50)">${helpfulRing()}</g>`;
+      return { svg, count: harmfulCount + helpfulCount, pip: FAMILY[fam]?.color };
+    }
+    if (style === "b") {
+      const items = [
+        ...t.conditions.map((c) => ({ color: FAMILY[familyOf(c)]?.color || "var(--unknown)" })),
+        ...t.effects.map((e) => ({ color: e.kind === "helpful" ? "var(--helpful)" : `hsl(${e.hue || 275} 85% 65%)` })),
+      ];
+      const gap = items.length > 1 ? 0.18 : 0;
+      items.forEach((it, i) => {
+        const a0 = -Math.PI / 2 + (i / items.length) * Math.PI * 2 + gap / 2;
+        const a1 = -Math.PI / 2 + ((i + 1) / items.length) * Math.PI * 2 - gap / 2;
+        svg += `<path d="${arc(R, a0, a1)}" fill="none" stroke="${it.color}" stroke-width="3" stroke-linecap="round"/>`;
+        const am = (a0 + a1) / 2;
+        svg += `<circle cx="${50 + (R + 6) * Math.cos(am)}" cy="${50 + (R + 6) * Math.sin(am)}" r="3.2" fill="#111" stroke="${it.color}" stroke-width="1.2"/>`;
+      });
+      return { svg, count: 0 };
+    }
+    // C — signature sigils for spell effects, A's rings for plain conditions
+    t.effects.forEach((e) => { svg += e.sigil === "hex" ? hexSigil(e.hue || 275) : e.sigil === "bless" ? blessSigil() : helpfulRing(); });
+    if (t.conditions.length) {
+      const fam = worstFamily(t) || "control";
+      const scale = t.effects.length ? 1.16 : 1;
+      svg += `<g transform="translate(50 50) scale(${scale}) translate(-50 -50)">${harmfulRing(FAMILY[fam]?.color || "var(--control)")}</g>`;
+    }
+    return { svg, count: t.conditions.length + t.effects.length > 1 ? t.conditions.length + t.effects.length : 0, pip: FAMILY[worstFamily(t)]?.color };
+  }
+
+  function render() {
+    board.querySelectorAll(".token, .pop").forEach((n) => n.remove());
+    tokens.forEach((t) => {
+      const el = document.createElement("div");
+      el.className = "token";
+      el.tabIndex = 0;
+      el.setAttribute("role", "button");
+      const list = [...t.conditions, ...t.effects.map((e) => e.name)];
+      el.setAttribute("aria-label", `${t.name}${list.length ? `: ${list.join(", ")}` : ""}`);
+      el.style.left = `${t.x}%`; el.style.top = `${t.y}%`;
+      el.style.setProperty("--c", t.c); el.style.setProperty("--size", t.size);
+      const ring = ringFor(t);
+      el.innerHTML = `${ring.svg ? `<div class="ring"><svg viewBox="0 0 100 100" aria-hidden="true">${ring.svg}</svg></div>` : ""}
+        <div class="face">${t.name.split(" ").map((w) => w[0]).join("").slice(0, 2)}</div>
+        ${ring.count > 1 ? `<span class="count" style="--pip:${ring.pip || "var(--control)"}">${ring.count}</span>` : ""}
+        <span class="name">${t.name}</span>`;
+      const show = () => showPop(t, el);
+      el.addEventListener("mouseenter", show);
+      el.addEventListener("mouseleave", () => board.querySelectorAll(".pop").forEach((n) => n.remove()));
+      el.addEventListener("click", show);
+      el.addEventListener("focus", show);
+      el.addEventListener("blur", () => board.querySelectorAll(".pop").forEach((n) => n.remove()));
+      board.appendChild(el);
+    });
+    renderLegend();
+  }
+
+  function showPop(t, el) {
+    board.querySelectorAll(".pop").forEach((n) => n.remove());
+    const items = [
+      ...t.effects.map((e) => ({ name: e.name, color: e.kind === "helpful" ? "var(--helpful)" : `hsl(${e.hue || 275} 85% 65%)`, help: e.help, by: `Cast by ${e.by}` })),
+      ...t.conditions.map((c) => ({ name: c, color: FAMILY[familyOf(c)]?.color || "var(--unknown)", help: HELP[c] || "" })),
+    ];
+    const pop = document.createElement("div");
+    pop.className = "pop";
+    pop.innerHTML = `<h3>${t.name}</h3>${items.length ? `<ul>${items.map((i) => `<li><span class="sw" style="background:${i.color}"></span><span><b>${i.name}</b>${i.help ? `<small>${i.help}</small>` : ""}${i.by ? `<span class="by">${i.by}</span>` : ""}</span></li>`).join("")}</ul>` : `<small style="color:var(--ink-mute)">No conditions.</small>`}`;
+    board.appendChild(pop);
+    const b = board.getBoundingClientRect(), r = el.getBoundingClientRect();
+    let left = r.right - b.left + 12, top = r.top - b.top;
+    if (left + 260 > b.width) left = r.left - b.left - 262;
+    pop.style.left = `${Math.max(8, left)}px`;
+    pop.style.top = `${Math.max(8, Math.min(top, b.height - pop.offsetHeight - 8))}px`;
+  }
+
+  function renderLegend() {
+    const fams = [["control", "Control"], ["bind", "Bind"], ["sense", "Sense"], ["physical", "Physical"]];
+    document.getElementById("legend").innerHTML = fams.map(([k, n]) => `<span><i style="background:${FAMILY[k].color}"></i>${n}</span>`).join("")
+      + `<span><i style="background:var(--helpful)"></i>Helpful effect</span><span><i style="background:hsl(204 90% 68%)"></i>Spell effect (caster's colour)</span>`;
+  }
+
+  document.querySelectorAll("[data-style]").forEach((btn) => btn.addEventListener("click", () => {
+    style = btn.dataset.style;
+    document.querySelectorAll("[data-style]").forEach((b) => b.setAttribute("aria-pressed", String(b === btn)));
+    render();
+  }));
+  document.getElementById("zoom").addEventListener("input", (e) => board.style.setProperty("--zoom", e.target.value));
+  render();
+})();
+</script>
