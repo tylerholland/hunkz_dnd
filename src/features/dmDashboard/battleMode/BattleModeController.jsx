@@ -189,6 +189,9 @@ export const TokenChip = memo(function TokenChip({
   damageState,
   // condBand: "full" | "two" | "one" | "none" — Story 53's size-band resolver
   condBand = "full",
+  // minBoost: ≥1 — extra scale so the token never drops below
+  // MIN_TOKEN_SCREEN_PX on screen when the map is zoomed out (tokenEffects.js).
+  minBoost = 1,
   // veil: { veiled: boolean, secret: boolean } — Story 54, server-derived
   veil,
   // exiting: true while this chip is a fading Story 54 vanish ghost
@@ -781,7 +784,7 @@ export const TokenChip = memo(function TokenChip({
         "--pal-accent-bright": pal?.accentBright,
         "--pal-surface-solid": pal?.surfaceSolid || pal?.surface,
         // Story 44 — per-token size multiplier, stacked on global --token-scale-multiplier
-        "--token-size-mult": currentScale,
+        "--token-size-mult": currentScale * minBoost,
         "--tk-shimmer-delay": `${shimmerDelayMs}ms`,
       }}
       onMouseEnter={exiting ? undefined : handleMouseEnter}

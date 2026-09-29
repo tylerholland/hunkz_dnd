@@ -210,6 +210,17 @@ export function computeEffectivePx({ tokenScale = 1, mapTokenScale = 1, zoom = 1
     * (Number.isFinite(zoom) ? zoom : 1);
 }
 
+// Tokens never render smaller than this on screen, however far the map is
+// zoomed out: a small token grows just enough to stay visible, while a big one
+// (Huge, Colossal) keeps its true scale, so size differences still read.
+export const MIN_TOKEN_SCREEN_PX = 26;
+
+export function tokenMinBoost(effectivePx) {
+  if (!Number.isFinite(effectivePx) || effectivePx <= 0) return 1;
+  // Rounded so tiny zoom changes don't re-render every chip.
+  return Math.max(1, Math.round((MIN_TOKEN_SCREEN_PX / effectivePx) * 20) / 20);
+}
+
 // Deterministic per-token shimmer phase offset (djb2-style hash, same
 // approach as npcInitialColor in tokenUtils.js) — never random per mount,
 // or every remount would resynchronise every shimmer on the board.

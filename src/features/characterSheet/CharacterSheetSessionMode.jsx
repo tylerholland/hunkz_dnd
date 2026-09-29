@@ -40,6 +40,7 @@ import {
   assignAoEStagger,
   resolveCondBand,
   computeEffectivePx,
+  tokenMinBoost,
   useDebouncedValue,
   usePrefersReducedMotion,
   shimmerPhaseOffsetMs,
@@ -60,6 +61,14 @@ import { resolveMapBandOpen } from "./sessionMapBand";
 import RollOverlay from "../../components/RollOverlay";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
+
+// Player map band height (drag bar): 240px up to the window height minus the
+// top bar, so the map can never push itself entirely off screen.
+const PLAYER_MAP_HEIGHT_KEY = "dnd_player_map_height";
+function clampPlayerMapHeight(h) {
+  const max = typeof window !== "undefined" ? Math.max(240, window.innerHeight - 120) : 900;
+  return Math.round(Math.max(240, Math.min(max, h)));
+}
 
 // Story 57 — is a spell's slot at `level` exhausted? Cantrips (level 0) and
 // spells with no authored level (unspecified — never coerced from an empty
@@ -769,6 +778,46 @@ export default function CharacterSheetSessionMode({
     try { sessionStorage.setItem(mapPrefKey, JSON.stringify(next)); } catch { /* storage unavailable */ }
   };
 
+  // Map height: drag the bar under the map (like the DM's), remembered on
+  // this device. 380px is the old fixed height.
+  const [mapHeight, setMapHeight] = useState(() => {
+    let saved = NaN;
+    try { saved = Number(localStorage.getItem(PLAYER_MAP_HEIGHT_KEY)); } catch { /* storage unavailable */ }
+    return clampPlayerMapHeight(Number.isFinite(saved) && saved > 0 ? saved : 380);
+  });
+  const mapResizeRef = useRef(null);
+  useEffect(() => {
+    try { localStorage.setItem(PLAYER_MAP_HEIGHT_KEY, String(mapHeight)); } catch { /* storage unavailable */ }
+  }, [mapHeight]);
+  useEffect(() => {
+    const move = (e) => {
+      const start = mapResizeRef.current;
+      if (start) setMapHeight(clampPlayerMapHeight(start.height + (e.clientY - start.y)));
+    };
+    const up = () => {
+      if (!mapResizeRef.current) return;
+      mapResizeRef.current = null;
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", up);
+    return () => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", up);
+    };
+  }, []);
+  const startMapResize = (e) => {
+    e.preventDefault();
+    mapResizeRef.current = { y: e.clientY, height: mapHeight };
+    document.body.style.cursor = "ns-resize";
+    document.body.style.userSelect = "none";
+  };
+  const nudgeMapHeight = (e) => {
+    if (e.key === "ArrowDown") { e.preventDefault(); setMapHeight((h) => clampPlayerMapHeight(h + 40)); }
+    if (e.key === "ArrowUp") { e.preventDefault(); setMapHeight((h) => clampPlayerMapHeight(h - 40)); }
+  };
+
   // ── Initiative collapse (mobile) ──────────────────────────────────────────
   const [initExpanded, setInitExpanded] = useState(false);
 
@@ -1364,7 +1413,15 @@ export default function CharacterSheetSessionMode({
                   targetedTokenId={(isBattleMode && hasRollableAttacks) ? declaration?.target?.tokenId ?? null : null}
                   onTargetToken={(isBattleMode && hasRollableAttacks) ? handleTargetToken : undefined}
                   rollHistory={rollHistory}
-                  height={380}
+                  height={mapHeight}
+                />
+                <button
+                  type="button"
+                  className="cs-sm-mapband-grip"
+                  aria-label="Map height: drag, or use the arrow keys"
+                  title="Drag to resize the map"
+                  onPointerDown={startMapResize}
+                  onKeyDown={nudgeMapHeight}
                 />
               </div>
             </section>
@@ -2189,7 +2246,8 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         washOnly: !!stagger?.washOnly,
       };
       const effectivePx = computeEffectivePx({ tokenScale: token.scale, mapTokenScale: tokenScale, zoom: debouncedZoom });
-      const condBand = resolveCondBand(effectivePx);
+      const minBoost = tokenMinBoost(effectivePx);
+      const condBand = resolveCondBand(effectivePx * minBoost);
       // Story 54 — player view: NPC invisible tokens never reach this array
       // at all (server omission), so `token.invisible` here only ever
       // describes a veiled ally PC — VEILED, never SECRET (no ◇ on the
@@ -2198,6 +2256,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
       result.set(token.id, {
         damageState,
         condBand,
+        minBoost,
         veil,
         shimmerDelayMs: shimmerPhaseOffsetMs(token.id),
       });
@@ -2240,6 +2299,7 @@ const PlayerMapViewer = memo(function PlayerMapViewer({ activeMap, activeMapView
         panSuppressedRef={panSuppressedRef}
         damageState={resolved.damageState}
         condBand={resolved.condBand}
+        minBoost={resolved.minBoost}
         veil={resolved.veil}
         shimmerDelayMs={resolved.shimmerDelayMs}
         exiting={!!opts.exiting}

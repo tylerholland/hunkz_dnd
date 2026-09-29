@@ -34,6 +34,7 @@ import {
   assignAoEStagger,
   resolveCondBand,
   computeEffectivePx,
+  tokenMinBoost,
   useDebouncedValue,
   usePrefersReducedMotion,
   shimmerPhaseOffsetMs,
@@ -522,7 +523,8 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
         washOnly: !!stagger?.washOnly,
       };
       const effectivePx = computeEffectivePx({ tokenScale: token.scale, mapTokenScale: tokenScale, zoom: debouncedZoom });
-      const condBand = resolveCondBand(effectivePx);
+      const minBoost = tokenMinBoost(effectivePx);
+      const condBand = resolveCondBand(effectivePx * minBoost);
       // Story 54 — the DM always sees the server-computed flag; NPC invisible
       // renders SECRET (veiled + hatch + ◇), PC invisible renders VEILED
       // identically to the player's own view (no ◇ — false claim otherwise).
@@ -532,6 +534,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       result.set(token.id, {
         damageState,
         condBand,
+        minBoost,
         veil,
         shimmerDelayMs: shimmerPhaseOffsetMs(token.id),
       });
@@ -634,6 +637,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
               : null}
             damageState={resolved.damageState}
             condBand={resolved.condBand}
+            minBoost={resolved.minBoost}
             veil={resolved.veil}
             shimmerDelayMs={resolved.shimmerDelayMs}
           />

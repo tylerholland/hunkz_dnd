@@ -2518,7 +2518,6 @@
 .cs-session-shell {
   display: block; /* single column on mobile */
   min-height: calc(100vh - 48px);
-  max-width: 1200px;
 }
 
 .cs-session-left {
@@ -2535,6 +2534,12 @@
 .cs-session-right {
   padding: 16px 20px 80px;
   min-width: 0;
+}
+
+/* The map band fills the right column on wide screens; everything under it
+   keeps its reading width so nothing stretches across a big monitor. */
+.cs-session-right > :not(.cs-sm-mapband) {
+  max-width: 860px;
 }
 
 /* Mobile full-width mode toggle */
@@ -3693,6 +3698,40 @@
 
 .cs-sm-mapband-body {
   border-top: 1px solid var(--pal-border);
+}
+
+/* Drag to set the map's height (same gesture as the DM map). */
+.cs-sm-mapband-grip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 14px;
+  padding: 0;
+  border: 0;
+  border-top: 1px solid var(--pal-border);
+  background: transparent;
+  cursor: ns-resize;
+  touch-action: none;
+}
+
+.cs-sm-mapband-grip::before {
+  content: "";
+  width: 60px;
+  height: 3px;
+  border-radius: 999px;
+  background: var(--pal-border);
+  box-shadow: 0 0 0 1px var(--pal-border);
+}
+
+.cs-sm-mapband-grip:hover::before,
+.cs-sm-mapband-grip:focus-visible::before {
+  background: var(--pal-accent);
+}
+
+.cs-sm-mapband-grip:focus-visible {
+  outline: 2px solid var(--pal-accent);
+  outline-offset: -2px;
 }
 
 @media (prefers-reduced-motion: reduce) {
