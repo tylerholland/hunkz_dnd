@@ -1312,10 +1312,22 @@
   transform-origin: center;
   animation: tkCondRingSpin 24s linear infinite;
 }
+.tk-cond-ring__spin-rev {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tkCondRingSpin 40s linear infinite reverse;
+}
+.tk-cond-ring__pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tkCondRingPulse 3.2s ease-in-out infinite;
+}
 .tk-cond-ring--fallen {
   opacity: 0.5;
 }
-.tk-cond-ring--fallen .tk-cond-ring__spin {
+.tk-cond-ring--fallen .tk-cond-ring__spin,
+.tk-cond-ring--fallen .tk-cond-ring__spin-rev,
+.tk-cond-ring--fallen .tk-cond-ring__pulse {
   animation: none;
 }
 .tk-cond-ring__count {
@@ -1338,6 +1350,9 @@
 }
 @keyframes tkCondRingSpin {
   to { transform: rotate(360deg); }
+}
+@keyframes tkCondRingPulse {
+  50% { opacity: 0.55; transform: scale(1.03); }
 }
 @keyframes tkCondRingIn {
   from { opacity: 0; transform: scale(0.85); }
@@ -1672,7 +1687,9 @@
 
   /* Condition ring — no rotation or entrance scale; it simply appears. */
   .tk-cond-ring,
-  .tk-cond-ring__spin {
+  .tk-cond-ring__spin,
+  .tk-cond-ring__spin-rev,
+  .tk-cond-ring__pulse {
     animation: none;
   }
 

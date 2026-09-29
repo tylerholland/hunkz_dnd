@@ -1,4 +1,5 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
+import { SPELL_EFFECTS } from "../../lib/spellEffects";
 import { putNpcCombat, presignNpcPortrait } from "../../api";
 import { PALETTES } from "../characterSheet/theme";
 import { useDebouncedOptimisticNumberFlush } from "../../lib/liveSync";
@@ -254,9 +255,9 @@ function NpcConditionPicker({ npc, onAdd, onClose }) {
   return (
     <div className="modal-overlay" style={{ zIndex: 300 }} onClick={onClose}>
       <div style={{ background: pal.surfaceSolid, border: `1px solid ${pal.accent}`, borderRadius: 8, padding: "20px 24px", maxWidth: 360, width: "90%" }} onClick={(e) => e.stopPropagation()}>
-        <div style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.accentBright, marginBottom: 14 }}>Add Condition — {npc.name}</div>
+        <div style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.accentBright, marginBottom: 14 }}>Add Condition or Effect — {npc.name}</div>
         <div className="flex-row" style={{ flexWrap: "wrap", gap: 6 }}>
-          {ALL_CONDITIONS.map((condition) => (
+          {[...ALL_CONDITIONS, ...SPELL_EFFECTS.map((effect) => effect.name)].map((condition) => (
             <button
               key={condition}
               disabled={existing.has(condition)}

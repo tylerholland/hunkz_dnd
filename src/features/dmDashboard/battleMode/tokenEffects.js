@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { spellEffect } from "../../../lib/spellEffects";
 
 /**
  * tokenEffects.js — shared logic for the Stories 52–55 token-effects cluster
@@ -107,6 +108,9 @@ export const FAMILY_COLORS = {
   sense: "#8a7cc8",
   physical: "#8fae3c",
   unknown: "#c8c0b4",
+  // Spell effects (src/lib/spellEffects.js), kept in `conditions` too.
+  helpful: "#e8c060",
+  curse: "#b673e6",
 };
 
 // rank: 1 = incapacitating … 4 = attrition (lower = higher priority)
@@ -151,6 +155,12 @@ export function resolveConditionMeta(name, exhaustionLevel) {
   }
   const entry = CONDITION_TABLE[key];
   if (entry) return { ...entry };
+  const effect = spellEffect(name);
+  if (effect) {
+    return effect.kind === "helpful"
+      ? { family: "helpful", rank: 6, glyphId: "g-unknown", effect: true }
+      : { family: "curse", rank: 3, glyphId: "g-unknown", effect: true };
+  }
   return { family: "unknown", rank: 4, glyphId: "g-unknown" };
 }
 

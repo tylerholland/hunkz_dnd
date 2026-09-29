@@ -60,6 +60,7 @@ import { abilityCheckExpr, DEFAULT_HOUSE_RULES } from "../../lib/houseRules";
 import { resolveMapBandOpen } from "./sessionMapBand";
 import RollOverlay from "../../components/RollOverlay";
 import PartyMemberCard from "./PartyMemberCard";
+import { CURSE_STYLE, HELPFUL_STYLE, SPELL_EFFECTS } from "../../lib/spellEffects";
 import { readOpenPartyDetails, writeOpenPartyDetails } from "./partyDetailsPrefs";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
@@ -302,6 +303,41 @@ function ConditionPickerModal({ activeConditions, onSave, onClose, pal }) {
                   transition: "border-color 0.15s, color 0.15s",
                 }}
               >{cond}</button>
+            );
+          })}
+        </div>
+        {/* Spell effects (manual until Story 70) — kept in the same list. */}
+        <div style={{
+          fontFamily: pal?.fontUI,
+          fontSize: 11,
+          letterSpacing: "0.3em",
+          textTransform: "uppercase",
+          color: pal?.textMuted,
+          marginBottom: 10,
+        }}>Effects</div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
+          {SPELL_EFFECTS.map((effect) => {
+            const isActive = selected.has(effect.name);
+            const tone = effect.kind === "helpful" ? HELPFUL_STYLE : CURSE_STYLE;
+            return (
+              <button
+                key={effect.name}
+                title={effect.help}
+                onClick={() => toggle(effect.name)}
+                style={{
+                  background: isActive ? tone.bg : "transparent",
+                  border: `1px solid ${isActive ? tone.border : pal?.border}`,
+                  borderRadius: 14,
+                  color: isActive ? tone.color : pal?.textMuted,
+                  fontFamily: pal?.fontUI,
+                  fontSize: 11,
+                  letterSpacing: "0.1em",
+                  textTransform: "uppercase",
+                  padding: "4px 12px",
+                  cursor: "pointer",
+                  transition: "border-color 0.15s, color 0.15s",
+                }}
+              >{effect.kind === "helpful" ? "✦ " : "☾ "}{effect.name}</button>
             );
           })}
         </div>

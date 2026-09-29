@@ -278,3 +278,19 @@ describe("TokenChip condition ring", () => {
     expect(container.querySelector(".tk-cond-ring__count")).toBeNull();
   });
 });
+
+describe("TokenChip spell-effect rings", () => {
+  it("draws a gold halo for a helpful effect and the curse sigil for Hexed", () => {
+    const buffed = [{ ...party[0], conditions: ["Blessed"] }];
+    const { container, unmount } = renderChip({ party: buffed });
+    expect(container.querySelector(".tk-cond-ring__pulse")).toBeTruthy();
+    expect(container.querySelector(".tk-cond-ring__spin-rev")).toBeNull();
+    unmount();
+
+    const cursed = [{ ...party[0], conditions: ["Hexed", "Prone", "Blessed"] }];
+    const { container: c2 } = renderChip({ party: cursed });
+    expect(c2.querySelector(".tk-cond-ring__spin-rev")).toBeTruthy(); // Hex sigil
+    expect(c2.querySelector(".tk-cond-ring__pulse")).toBeTruthy();    // Bless halo
+    expect(c2.querySelector(".tk-cond-ring__count").textContent).toBe("3");
+  });
+});

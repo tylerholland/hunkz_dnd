@@ -1,4 +1,5 @@
 import { createContext } from "react";
+import { CURSE_STYLE, HELPFUL_STYLE, spellEffect } from "../../lib/spellEffects";
 import { PALETTES } from "../characterSheet/theme";
 import "./dashboard.css";
 export { debounce } from "../../lib/liveSync";
@@ -134,6 +135,8 @@ export function getPartyCardPalette(basePal, dashboardPal) {
 export function useDashboardStyles() {}
 
 export function conditionStyle(cond) {
+  const effect = spellEffect(cond);
+  if (effect) return effect.kind === "helpful" ? HELPFUL_STYLE : CURSE_STYLE;
   const map = {
     Poisoned: { bg: "rgba(160,70,70,0.15)", border: "rgba(192,96,96,0.38)", color: "#d88c8c" },
     Blinded: { bg: "rgba(160,70,70,0.15)", border: "rgba(192,96,96,0.38)", color: "#d88c8c" },

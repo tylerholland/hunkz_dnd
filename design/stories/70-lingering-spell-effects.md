@@ -1,6 +1,6 @@
 # Feature Story: Lingering Spell Effects (Hex, Bless, Hunter's Mark…)
 
-**Status**: Draft (2026-09-28): not scheduled
+**Status**: Draft (2026-09-28): not scheduled. **Manual step built:** a fixed list of effects (`src/lib/spellEffects.js`: Blessed, Hasted, Heroism, Shielded, Raging, Dodging, Hidden; Hexed, Marked, Baned, Outlined) is set by hand from the condition pickers and stored in the same `conditions` array. The map draws a gold halo for helpful effects and the curse sigil for Hexed. This story later sets them automatically from spells.
 **Source**: Playtest. Casting Hex showed that many spells aren't "roll damage once"
 
 ## The problem

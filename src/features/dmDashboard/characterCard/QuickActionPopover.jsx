@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { ALL_CONDITIONS, conditionStyle, withAlpha } from "../dashboardShared";
+import { SPELL_EFFECTS } from "../../../lib/spellEffects";
 import "../characterCard.css";
 
 function QuickActionPopover({ char, pal, basePal, onClose, onUpdate, onOpenHpModal, onCommitFields, initialMode = null, initialVal = "" }) {
@@ -158,9 +159,9 @@ function QuickActionPopover({ char, pal, basePal, onClose, onUpdate, onOpenHpMod
 
       {mode === "condition" && (
         <div className="cc-popover-inner">
-          <div className="cc-popover-sub-label">Select conditions</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, maxHeight: 180, overflowY: "auto", marginBottom: 10 }}>
-            {ALL_CONDITIONS.map((cond) => {
+          <div className="cc-popover-sub-label">Select conditions &amp; effects</div>
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, maxHeight: 240, overflowY: "auto", marginBottom: 10 }}>
+            {[...ALL_CONDITIONS, ...SPELL_EFFECTS.map((effect) => effect.name)].map((cond) => {
               const cs = conditionStyle(cond);
               const selected = selectedConds.includes(cond);
               return (
