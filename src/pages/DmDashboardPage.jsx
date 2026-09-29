@@ -1153,6 +1153,7 @@ export default function DmDashboardPage() {
           onToggleExpand={() => setExpandedCardSlug((current) => (current === char.slug ? null : char.slug))}
           onRoll={(request) => diceRollerRef.current?.rollFor(request)}
           checkDice={houseRules.abilityCheckDice}
+          featuresEnabled={houseRules.featuresEnabled !== false}
         />
       </div>
     ))

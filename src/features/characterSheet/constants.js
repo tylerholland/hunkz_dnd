@@ -1,3 +1,4 @@
+import { restFeatures } from "./features";
 export const modOf = (s) => Math.floor((s - 10) / 2);
 // Spell and item descriptions: room for a full 5e entry with its conditions
 // and "At Higher Levels" text. Line breaks are kept when shown.
@@ -287,10 +288,15 @@ export function applyLongRest(char) {
   const hdRestore = Math.max(1, Math.floor(level / 2));
   const hitDiceCurrent = Math.min(level, hdCurrent + hdRestore);
   const spellSlots = (char.spellSlots || []).map((slot) => ({ ...slot, used: 0 }));
-  return { spellSlots, hitDiceCurrent };
+  const result = { spellSlots, hitDiceCurrent };
+  // Features & Traits: a long rest refills every use.
+  if (Array.isArray(char.features) && char.features.length) result.features = restFeatures(char.features, "long");
+  return result;
 }
 
 export function applyShortRest(char) {
   const spellSlots = (char.spellSlots || []).map((slot) => (slot.isPactMagic ? { ...slot, used: 0 } : slot));
-  return { spellSlots };
+  const result = { spellSlots };
+  if (Array.isArray(char.features) && char.features.length) result.features = restFeatures(char.features, "short");
+  return result;
 }

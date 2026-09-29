@@ -3,9 +3,9 @@ import { abilityCheckExpr, applyCheckAdvantage, isCheckDiceGroups, isValidCheckD
 
 describe("houseRules", () => {
   it("defaults to 2d6 and validates NdS dice", () => {
-    expect(normalizeHouseRules(null)).toEqual({ abilityCheckDice: "2d6" });
-    expect(normalizeHouseRules({ abilityCheckDice: " 1D20 " })).toEqual({ abilityCheckDice: "1d20" });
-    expect(normalizeHouseRules({ abilityCheckDice: "2d6+1" })).toEqual({ abilityCheckDice: "2d6" });
+    expect(normalizeHouseRules(null)).toEqual({ abilityCheckDice: "2d6", featuresEnabled: true });
+    expect(normalizeHouseRules({ abilityCheckDice: " 1D20 " })).toEqual({ abilityCheckDice: "1d20", featuresEnabled: true });
+    expect(normalizeHouseRules({ abilityCheckDice: "2d6+1", featuresEnabled: false })).toEqual({ abilityCheckDice: "2d6", featuresEnabled: false });
     expect(isValidCheckDice("10d100")).toBe(true);
     expect(isValidCheckDice("11d6")).toBe(false);
     expect(parseCheckDice("3d8")).toEqual({ count: 3, sides: 8 });

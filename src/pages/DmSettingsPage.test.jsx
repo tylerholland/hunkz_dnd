@@ -32,8 +32,17 @@ describe("DmSettingsPage", () => {
     fireEvent.change(input, { target: { value: "1D20" } });
     expect(screen.getByText("1d20+2")).toBeInTheDocument();
     fireEvent.click(screen.getByText("Save"));
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20" }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true }));
     expect(await screen.findByText(/Saved/)).toBeInTheDocument();
+  });
+
+  it("turns Features & Traits off and on", async () => {
+    renderPage();
+    const toggle = await screen.findByRole("switch");
+    expect(toggle).toHaveAttribute("aria-checked", "true");
+    fireEvent.click(toggle);
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false }));
+    expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
   it("blocks invalid dice", async () => {

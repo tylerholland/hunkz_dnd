@@ -57,6 +57,7 @@ export default function CharacterCard({
   onToggleExpand,
   onRoll,
   checkDice,
+  featuresEnabled = true,
 }) {
   const pal = useContext(PalCtx);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -594,7 +595,7 @@ export default function CharacterCard({
       </div>
 
       <DrawerCollapse open={expanded}>
-        <CardLoadoutDrawer char={char} onRoll={cardRoll} onToggleEquipped={toggleItemEquipped} />
+        <CardLoadoutDrawer char={char} onRoll={cardRoll} onToggleEquipped={toggleItemEquipped} featuresEnabled={featuresEnabled} />
       </DrawerCollapse>
 
       <DmNotesStrip

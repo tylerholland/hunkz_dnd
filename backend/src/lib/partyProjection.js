@@ -32,10 +32,11 @@ const DM_PARTY_FIELDS = [
   "version",
   // ADR-031 — heal stamp for the combat effects layer.
   "lastHealedAt", "lastHealAmount", "lastHealFrom", "lastFx",
+  "features",
 ];
 
 const DM_PARTY_PROJECTION_EXPRESSION =
-  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom, stats, speed, weapons, equipment, #ver, lastHealedAt, lastHealAmount, lastHealFrom, lastFx";
+  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom, stats, speed, weapons, equipment, #ver, lastHealedAt, lastHealAmount, lastHealFrom, lastFx, features";
 
 const DM_PARTY_EXPRESSION_ATTRIBUTE_NAMES = {
   "#n": "name",

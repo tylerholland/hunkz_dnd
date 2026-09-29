@@ -60,6 +60,7 @@ import { abilityCheckExpr, DEFAULT_HOUSE_RULES } from "../../lib/houseRules";
 import { resolveMapBandOpen } from "./sessionMapBand";
 import RollOverlay from "../../components/RollOverlay";
 import { useRollOverlayPref } from "../../lib/rollOverlayPref";
+import { featureMaxUses, featureUsesLeft, normalizeFeatures, rechargeLabel, spendFeatureUse, FEATURE_KINDS } from "./features";
 import PartyMemberCard from "./PartyMemberCard";
 import { CURSE_STYLE, HELPFUL_STYLE, SPELL_EFFECTS } from "../../lib/spellEffects";
 import { readOpenPartyDetails, writeOpenPartyDetails } from "./partyDetailsPrefs";
@@ -116,6 +117,7 @@ function hpNumClass(current, max) {
 const SESSION_LIVE_FIELDS = [
   "hpCurrent", "tempHP", "spellSlots", "conditions", "exhaustionLevel", "concentration", "inspiration",
   "weapons", "equipment", "playerNotes", "hitDiceCurrent", "xpCurrent", "coin", "deathSaves",
+  "features",
 ];
 
 function avatarInitial(name) {
@@ -630,9 +632,11 @@ export default function CharacterSheetSessionMode({
       ? applyLongRest({ ...char, spellSlots: prevSlots })
       : applyShortRest({ ...char, spellSlots: prevSlots });
 
+    const prevFeatures = char?.features;
     slotServerRef.current = patch.spellSlots;
     setLocalSpellSlots(patch.spellSlots);
     if (kind === "long") setChar((prev) => ({ ...prev, hitDiceCurrent: patch.hitDiceCurrent }));
+    if (patch.features) setChar((prev) => ({ ...prev, features: patch.features }));
 
     try {
       await patchLive(patch);
@@ -644,14 +648,31 @@ export default function CharacterSheetSessionMode({
       slotServerRef.current = prevSlots;
       setLocalSpellSlots(prevSlots);
       if (kind === "long") setChar((prev) => ({ ...prev, hitDiceCurrent: prevHitDice }));
+      if (patch.features) setChar((prev) => ({ ...prev, features: prevFeatures }));
     }
   }, [char, slug, onSessionSync, patchLive]);
+
 
   // ── Story 58 — Loadout capture + coin/XP ledger ──────────────────────────
   // Every commit rebases on the freshest polled value (charRef), never on a
   // snapshot taken when the compose row or pad opened.
   const charRef = useRef(char);
   useEffect(() => { charRef.current = char; }, [char]);
+
+  // Features & Traits — spend (or restore) one use, instantly, with rollback.
+  const tapFeatureUse = useCallback(async (id, spend) => {
+    const current = charRef.current;
+    const prevFeatures = current?.features;
+    const next = spendFeatureUse(prevFeatures, id, spend ? 1 : -1, current?.level);
+    setChar((prev) => ({ ...prev, features: next }));
+    try {
+      await patchLive({ features: next });
+      onSessionSync?.();
+    } catch {
+      setChar((prev) => ({ ...prev, features: prevFeatures }));
+    }
+  }, [onSessionSync, patchLive]);
+  const [openFeatureId, setOpenFeatureId] = useState(null);
 
   // Story 59 — exhaustion stepper (0–6), moved here from the classic Combat tab.
   const setExhaustion = useCallback(async (level) => {
@@ -874,11 +895,19 @@ export default function CharacterSheetSessionMode({
   const activeConditions = char?.conditions || [];
   const concentration = char?.concentration || { active: false, spell: "" };
   const spellSlots = localSpellSlots;
+  // Features & Traits (DM can switch the whole section off in DM Settings).
+  const featuresEnabled = houseRules?.featuresEnabled !== false;
+  const rawFeatures = char?.features;
+  const features = useMemo(() => (featuresEnabled ? normalizeFeatures(rawFeatures) : []), [rawFeatures, featuresEnabled]);
+  const featureUsesSpent = features.reduce((sum, f) => sum + (f.uses ? Math.min(f.uses.used, featureMaxUses(f, char?.level)) : 0), 0);
+  const shortFeatureSpent = features.filter((f) => f.uses?.recharge === "short").reduce((sum, f) => sum + Math.min(f.uses.used, featureMaxUses(f, char?.level)), 0);
+  const hasShortFeature = features.some((f) => f.uses?.recharge === "short");
   const hasPactSlot = spellSlots.some((s) => s.isPactMagic && (s.max || 0) > 0);
   const totalSlotsSpent = spellSlots.reduce((sum, s) => sum + (s.used || 0), 0);
   const pactSlotsSpent = spellSlots.filter((s) => s.isPactMagic).reduce((sum, s) => sum + (s.used || 0), 0);
-  const longRestIsNoop = totalSlotsSpent === 0 && (char?.hitDiceCurrent ?? (char?.level || 1)) >= (char?.level || 1);
-  const shortRestIsNoop = pactSlotsSpent === 0;
+  const longRestIsNoop = totalSlotsSpent === 0 && featureUsesSpent === 0 && (char?.hitDiceCurrent ?? (char?.level || 1)) >= (char?.level || 1);
+  const shortRestIsNoop = pactSlotsSpent === 0 && shortFeatureSpent === 0;
+  const showShortRest = hasPactSlot || hasShortFeature;
   const skills = char?.skills || [];
   const specialAbilities = char?.specialAbilities || [];
   const weapons = char?.weapons || [];
@@ -1601,14 +1630,14 @@ export default function CharacterSheetSessionMode({
               <div className="cs-sm-slots-header">
                 <span className="cs-sm-label" style={{ marginBottom: 0 }}>Spell Slots</span>
                 <div className="cs-sm-rest-btns">
-                  {hasPactSlot && (
+                  {showShortRest && (
                     <button
                       type="button"
                       className="cs-sm-rest-btn"
                       disabled={shortRestIsNoop}
                       onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}
                     >
-                      {restConfirm === "short" ? `Restore ${pactSlotsSpent} Pact?` : "Short Rest"}
+                      {restConfirm === "short" ? `Restore ${pactSlotsSpent + shortFeatureSpent}?` : "Short Rest"}
                     </button>
                   )}
                   <button
@@ -1617,7 +1646,7 @@ export default function CharacterSheetSessionMode({
                     disabled={longRestIsNoop}
                     onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}
                   >
-                    {restConfirm === "long" ? `Restore All ${totalSlotsSpent}?` : "Long Rest"}
+                    {restConfirm === "long" ? `Restore All ${totalSlotsSpent + featureUsesSpent}?` : "Long Rest"}
                   </button>
                 </div>
               </div>
@@ -1651,6 +1680,74 @@ export default function CharacterSheetSessionMode({
                           `${available}/${slot.max}`
                         )}
                       </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </>
+          )}
+
+          {/* Features & Traits — race/class features with uses (DM Settings can hide it) */}
+          {features.length > 0 && (
+            <>
+              <hr className="cs-sm-rule" />
+              <div className="cs-sm-slots-header">
+                <span className="cs-sm-label" style={{ marginBottom: 0 }}>Features &amp; Traits</span>
+                {spellSlots.length === 0 && features.some((f) => f.uses) && (
+                  <div className="cs-sm-rest-btns">
+                    {showShortRest && (
+                      <button type="button" className="cs-sm-rest-btn" disabled={shortRestIsNoop} onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}>
+                        {restConfirm === "short" ? `Restore ${shortFeatureSpent}?` : "Short Rest"}
+                      </button>
+                    )}
+                    <button type="button" className="cs-sm-rest-btn" disabled={longRestIsNoop} onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}>
+                      {restConfirm === "long" ? `Restore All ${featureUsesSpent}?` : "Long Rest"}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="cs-sm-features">
+                {features.map((feature) => {
+                  const max = featureMaxUses(feature, char?.level);
+                  const left = featureUsesLeft(feature, char?.level);
+                  const open = openFeatureId === feature.id;
+                  return (
+                    <div key={feature.id} className="cs-sm-feature">
+                      <div className="cs-sm-feature-row">
+                        <button
+                          type="button"
+                          className="cs-sm-feature-name"
+                          aria-expanded={open}
+                          disabled={!feature.description}
+                          onClick={() => setOpenFeatureId(open ? null : feature.id)}
+                        >
+                          {feature.name}
+                          <span className="cs-sm-feature-kind">{FEATURE_KINDS.find((k) => k.value === feature.kind)?.label}</span>
+                        </button>
+                        {feature.uses && max > 0 && (
+                          <span className="cs-sm-feature-uses">
+                            {Array.from({ length: max }).map((_, pipIdx) => (
+                              <button
+                                key={pipIdx}
+                                type="button"
+                                className="cs-sm-slot-pip-btn"
+                                onClick={() => tapFeatureUse(feature.id, pipIdx < left)}
+                                aria-label={pipIdx < left ? `Use ${feature.name}` : `Restore a use of ${feature.name}`}
+                              >
+                                <span
+                                  className="cs-sm-slot-pip"
+                                  style={{ borderColor: pipIdx < left ? pal.gem : pal.border, background: pipIdx < left ? pal.gem : "transparent" }}
+                                />
+                              </button>
+                            ))}
+                            <span className="cs-sm-slot-count">{left}/{max}</span>
+                          </span>
+                        )}
+                      </div>
+                      {feature.uses && max > 0 && (
+                        <div className="cs-sm-feature-recharge">Recharges on a {rechargeLabel(feature.uses)}</div>
+                      )}
+                      {open && feature.description && <div className="cs-sm-weapon-desc">{feature.description}</div>}
                     </div>
                   );
                 })}

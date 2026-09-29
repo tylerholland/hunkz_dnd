@@ -201,3 +201,43 @@
   font-style: italic;
   color: var(--pal-text-muted);
 }
+
+/* On/off switch (Features & Traits) */
+.dm-settings-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 14px 0 6px;
+  border: 1px solid var(--pal-border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--pal-text-muted);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.dm-settings-switch-knob {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--pal-border);
+  transition: background 0.15s ease;
+}
+
+.dm-settings-switch.on {
+  border-color: var(--pal-accent);
+  color: var(--pal-accent-bright);
+}
+
+.dm-settings-switch.on .dm-settings-switch-knob {
+  background: var(--pal-accent);
+}
+
+.dm-settings-switch:focus-visible {
+  outline: 2px solid var(--pal-accent-bright);
+  outline-offset: 2px;
+}

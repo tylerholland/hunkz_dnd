@@ -3,6 +3,7 @@ import { formatMod, getSkillNames, groupDrawerContent, titleCase } from "../card
 import { getTalentDetail } from "../../characterSheet/talentCatalog";
 import { itemTypeLabel } from "../../characterSheet/ItemEditorModal";
 import DrawerDetailPopover from "./DrawerDetailPopover";
+import { FEATURE_KINDS, featureMaxUses, featureUsesLeft, normalizeFeatures, rechargeLabel } from "../../characterSheet/features";
 import ItemTypeIcon from "../../characterSheet/ItemTypeIcon";
 import "./cardStatsBand.css";
 
@@ -99,12 +100,13 @@ function ItemList({ items, renderExtra, onDetail, onToggleEquipped }) {
 // Read-only loadout drawer (Stories 51/58). One open at a time — the parent
 // owns which card is expanded. Sections follow the DM's mid-scene questions
 // (see groupDrawerContent); empty sections don't render.
-export default function CardLoadoutDrawer({ char, onRoll, onToggleEquipped }) {
+export default function CardLoadoutDrawer({ char, onRoll, onToggleEquipped, featuresEnabled = true }) {
   const ref = useRef(null);
   const { attacks, gear, spells, pack } = groupDrawerContent(char);
   const [detail, setDetail] = useState(null);
   const closeDetail = useCallback(() => setDetail(null), []);
   // Tap an entry with more to say → one floating detail card (tap again to close).
+  const features = normalizeFeatures(char?.features);
   const openDetail = (e, content) => {
     const anchor = e.currentTarget;
     setDetail((current) => (current?.anchor === anchor ? null : { ...content, anchor, rect: anchor.getBoundingClientRect() }));
@@ -206,6 +208,35 @@ export default function CardLoadoutDrawer({ char, onRoll, onToggleEquipped }) {
               {skills.map((name) => <span key={name} className="cc-drawer-chip">{name}</span>)}
             </div>
           )}
+        </Section>
+      )}
+
+      {featuresEnabled && features.length > 0 && (
+        <Section title="Features" count={features.length}>
+          <ul className="cc-drawer-list">
+            {features.map((feature) => {
+              const max = featureMaxUses(feature, char?.level);
+              const left = featureUsesLeft(feature, char?.level);
+              return (
+                <li key={feature.id} className="cc-drawer-item">
+                  <span className="cc-drawer-name">
+                    {feature.description ? (
+                      <button
+                        type="button"
+                        className="cc-drawer-name-btn cc-has-detail"
+                        onClick={(e) => openDetail(e, { title: feature.name, meta: `${FEATURE_KINDS.find((k) => k.value === feature.kind)?.label || "Feature"}${feature.uses ? ` · ${left}/${max} left, ${rechargeLabel(feature.uses)}` : ""}`, body: feature.description })}
+                      >{feature.name}</button>
+                    ) : feature.name}
+                  </span>
+                  {feature.uses && max > 0 && (
+                    <span className={`cc-drawer-qty${left === 0 ? " depleted" : ""}`}>
+                      <span className="cc-drawer-qty-num">{left}</span>/{max}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
         </Section>
       )}
 

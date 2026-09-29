@@ -17,7 +17,7 @@ import {
 
 export { PALETTES } from "../features/characterSheet/theme";
 
-export default function CharacterSheet({ initialData, slug, onSave, onCreate, onDelete, onSessionSync, activeMap, activeMapView }) {
+export default function CharacterSheet({ initialData, slug, onSave, onCreate, onDelete, onSessionSync, activeMap, activeMapView, featuresEnabled = true }) {
 
   const [mode, setMode] = useState("view");
   const [char, setChar] = useState(() => initialData || BLANK_CHARACTER);
@@ -698,6 +698,7 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
   const activeSec = activeCol?.sections.find((section) => section.id === active?.sectionId);
 
   const sheetCtx = {
+    featuresEnabled,
     rootWrap,
     pal,
     secHead,

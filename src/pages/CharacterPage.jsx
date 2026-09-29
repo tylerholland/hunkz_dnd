@@ -15,6 +15,7 @@ export default function CharacterPage() {
   const [error,   setError]   = useState(null);
   const [mapLibrary, setMapLibrary] = useState({ activeMapId: null, activeMapView: null, maps: [] });
   const requestSeqRef = useRef(0);
+  const [featuresEnabled, setFeaturesEnabled] = useState(true);
   const activeRequestCountRef = useRef(0);
   // A live-sync nudge that lands while a fetch is already running must not be
   // dropped: that fetch may have started before the change, so run once more
@@ -63,6 +64,7 @@ export default function CharacterPage() {
       if (acceptVersion(characterVersionKey(slug), d.character?.version)) setData(d.character);
       if (d.character?.palette) sessionStorage.setItem(`dnd_palette_${slug}`, d.character.palette);
       if (acceptVersion("map-library", d.mapLibrary?.version)) setMapLibrary(d.mapLibrary || { activeMapId: null, activeMapView: null, maps: [] });
+      setFeaturesEnabled(d.houseRules?.featuresEnabled !== false);
       reportServerBuildVersion(d.buildVersion);
       setError(null);
     } catch {
@@ -146,6 +148,7 @@ export default function CharacterPage() {
       onSessionSync={queueSessionSync}
       activeMap={activeMap}
       activeMapView={activeMapView}
+      featuresEnabled={featuresEnabled}
     />
   );
 }

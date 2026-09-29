@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import FeaturesEditor from "./FeaturesEditor";
 import "./characterSheet.css";
 import ChangePasswordForm from "./ChangePasswordForm";
 import { CHARACTER_SKILLS, SPECIAL_ABILITIES, getTalentDetail } from "./talentCatalog";
@@ -83,6 +84,7 @@ export default function CharacterSheetEditMode({ ctx }) {
     addWeapon,
     updateEquipment,
     addEquipment,
+    featuresEnabled = true,
   } = ctx;
 
   // ── Story 56: structured spell list — local state (own drag state; the
@@ -519,6 +521,17 @@ export default function CharacterSheetEditMode({ ctx }) {
               </button>
             </div>
           </div>
+
+          {featuresEnabled && (
+            <FeaturesEditor
+              features={char.features}
+              level={char.level}
+              onChange={(next) => update("features", next)}
+              pal={pal}
+              secHead={secHead}
+              lbl={lbl}
+            />
+          )}
 
           <div style={{ marginBottom: 32 }}>
             <div style={secHead}>Skills</div>

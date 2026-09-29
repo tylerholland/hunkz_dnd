@@ -7,7 +7,8 @@
 // Keep DEFAULT_HOUSE_RULES and the dice format in sync with the server's
 // backend/src/lib/houseRules.js.
 
-export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6" };
+// featuresEnabled — show Features & Traits (race/class features with uses).
+export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true };
 
 const CHECK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)$/;
 
@@ -17,7 +18,10 @@ export function isValidCheckDice(value) {
 
 export function normalizeHouseRules(raw) {
   const dice = typeof raw?.abilityCheckDice === "string" ? raw.abilityCheckDice.trim().toLowerCase() : "";
-  return { abilityCheckDice: isValidCheckDice(dice) ? dice : DEFAULT_HOUSE_RULES.abilityCheckDice };
+  return {
+    abilityCheckDice: isValidCheckDice(dice) ? dice : DEFAULT_HOUSE_RULES.abilityCheckDice,
+    featuresEnabled: raw?.featuresEnabled !== false,
+  };
 }
 
 // "2d6" → { count: 2, sides: 6 } (falls back to the default for bad input).

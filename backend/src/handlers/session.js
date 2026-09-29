@@ -28,6 +28,8 @@ const SESSION_FIELDS = [
   "xpCurrent",
   "coin",
   "deathSaves",
+  // Features & Traits — spending/refilling uses from the Session page.
+  "features",
 ];
 
 exports.handler = async (event) => {

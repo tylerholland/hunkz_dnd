@@ -19,6 +19,7 @@ export default function DmSettingsPage() {
   const [saved, setSaved] = useState(null); // last house rules the server confirmed
   const [dice, setDice] = useState("");
   const [status, setStatus] = useState({ kind: "idle", message: "" });
+  const [featureStatus, setFeatureStatus] = useState("");
   const { textScale, textScaleMenuItem } = useTextScale();
 
   const palKey = sessionStorage.getItem("dnd_dm_palette") || "ocean";
@@ -64,6 +65,22 @@ export default function DmSettingsPage() {
       setStatus({ kind: "saved", message: "Saved — every screen picks this up within a few seconds." });
     } catch (err) {
       setStatus({ kind: "error", message: err?.status === 403 ? "DM password rejected — sign in again from the Campaign page." : "Couldn't save. Try again." });
+    }
+  }
+
+  // Features & Traits on/off — saves immediately (a switch, not a form).
+  async function setFeatures(enabled) {
+    if (!saved) return;
+    const previous = saved;
+    setSaved({ ...saved, featuresEnabled: enabled });
+    setFeatureStatus("Saving…");
+    try {
+      const res = await putHouseRules(dmPassword, { ...previous, featuresEnabled: enabled });
+      setSaved((cur) => ({ ...(cur || previous), featuresEnabled: normalizeHouseRules(res.houseRules).featuresEnabled }));
+      setFeatureStatus(enabled ? "On — players see Features & Traits." : "Off — the section is hidden everywhere.");
+    } catch (err) {
+      setSaved(previous);
+      setFeatureStatus(err?.status === 403 ? "DM password rejected — sign in again from the Campaign page." : "Couldn't save. Try again.");
     }
   }
 
@@ -155,6 +172,31 @@ export default function DmSettingsPage() {
               {status.message && (
                 <span className={`dm-settings-status dm-settings-status--${status.kind}`} role={status.kind === "error" ? "alert" : "status"}>{status.message}</span>
               )}
+            </div>
+          </section>
+
+          <section className="dm-settings-card" aria-labelledby="hr-features">
+            <div className="dm-settings-row">
+              <div className="dm-settings-label-col">
+                <h2 id="hr-features" className="dm-settings-label">Features &amp; Traits</h2>
+                <p className="dm-settings-help">
+                  Lets players list their race and class features (like a Firbolg&apos;s Hidden Step) with uses that a short or long rest refills. Shown on their sheet, their Session page and your party cards. Turn it off to hide the section everywhere; nothing entered is deleted.
+                </p>
+              </div>
+              <div className="dm-settings-control-col">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={saved?.featuresEnabled !== false}
+                  className={`dm-settings-switch${saved?.featuresEnabled !== false ? " on" : ""}`}
+                  disabled={!saved}
+                  onClick={() => setFeatures(saved?.featuresEnabled === false)}
+                >
+                  <span className="dm-settings-switch-knob" aria-hidden="true" />
+                  {saved?.featuresEnabled !== false ? "On" : "Off"}
+                </button>
+                {featureStatus && <span className="dm-settings-status" role="status">{featureStatus}</span>}
+              </div>
             </div>
           </section>
 
