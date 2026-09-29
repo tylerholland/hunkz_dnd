@@ -5,6 +5,7 @@ import {
   getPartyCardActiveSurface,
   getPartyCardPalette,
   getSpellSlotGroups,
+  mixHex,
   withAlpha,
 } from "../dmDashboard/dashboardShared";
 import PartyMemberDetails from "./PartyMemberDetails";
@@ -36,6 +37,13 @@ export default function PartyMemberCard({ member, pal, isYou = false, isActiveTu
   const concentrating = member.concentration?.active ? member.concentration : null;
   const slotGroups = getSpellSlotGroups(card?.spellSlots || []);
   const detailsId = `party-details-${member.slug}`;
+  // Muted text reads a touch dim on these small cards: nudge it a quarter of
+  // the way toward the palette's main text colour (lighter on dark themes,
+  // darker on light ones like vellum).
+  const isHex = (c) => typeof c === "string" && /^#[0-9a-f]{6}$/i.test(c);
+  const mutedText = isHex(cardPal.textMuted) && isHex(cardPal.text)
+    ? mixHex(cardPal.textMuted, cardPal.text, 0.25)
+    : cardPal.textMuted;
 
   const cardPalVars = {
     "--pal-bg": cardPal.bg,
@@ -47,7 +55,7 @@ export default function PartyMemberCard({ member, pal, isYou = false, isActiveTu
     "--pal-accent-dim": cardPal.accentDim,
     "--pal-text": cardPal.text,
     "--pal-text-body": cardPal.textBody,
-    "--pal-text-muted": cardPal.textMuted,
+    "--pal-text-muted": mutedText,
     "--pal-gem": cardPal.gem,
     "--pal-gem-low": cardPal.gemLow,
     "--pal-ui-border": cardPal.uiBorder,
