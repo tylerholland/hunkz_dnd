@@ -60,7 +60,7 @@ function QuickActionPopover({ char, pal, basePal, onClose, onUpdate, onOpenHpMod
   return (
     <div
       ref={ref}
-      className="cc-popover"
+      className={`cc-popover${mode === "condition" ? " cc-popover--wide" : ""}`}
       style={{
         ...popoverPalVars,
         background: withAlpha(basePal?.surfaceSolid || pal.surfaceSolid || pal.bg || "#111111", 0.94),
@@ -159,31 +159,39 @@ function QuickActionPopover({ char, pal, basePal, onClose, onUpdate, onOpenHpMod
 
       {mode === "condition" && (
         <div className="cc-popover-inner">
-          <div className="cc-popover-sub-label">Select conditions &amp; effects</div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 5, maxHeight: 240, overflowY: "auto", marginBottom: 10 }}>
-            {[...ALL_CONDITIONS, ...SPELL_EFFECTS.map((effect) => effect.name)].map((cond) => {
-              const cs = conditionStyle(cond);
-              const selected = selectedConds.includes(cond);
-              return (
-                <span
-                  key={cond}
-                  onClick={() => setSelectedConds((prev) => prev.includes(cond) ? prev.filter((c) => c !== cond) : [...prev, cond])}
-                  style={{
-                    background: selected ? cs.bg : "transparent",
-                    border: `1px solid ${selected ? cs.border : pal.border}`,
-                    borderRadius: 10,
-                    color: selected ? cs.color : pal.textMuted,
-                    fontFamily: pal.fontUI,
-                    fontSize: 10,
-                    letterSpacing: "0.1em",
-                    textTransform: "uppercase",
-                    padding: "2px 8px",
-                    cursor: "pointer",
-                  }}
-                >{cond}</span>
-              );
-            })}
-          </div>
+          {[
+            { title: "Conditions", names: ALL_CONDITIONS },
+            { title: "Effects", names: SPELL_EFFECTS.map((effect) => effect.name) },
+          ].map((group) => (
+            <div key={group.title} className="cc-cond-group">
+              <div className="cc-cond-group-title">{group.title}</div>
+              <div className="cc-cond-group-chips">
+                {group.names.map((cond) => {
+                  const cs = conditionStyle(cond);
+                  const selected = selectedConds.includes(cond);
+                  return (
+                    <span
+                      key={cond}
+                      title={SPELL_EFFECTS.find((effect) => effect.name === cond)?.help}
+                      onClick={() => setSelectedConds((prev) => prev.includes(cond) ? prev.filter((c) => c !== cond) : [...prev, cond])}
+                      style={{
+                        background: selected ? cs.bg : "transparent",
+                        border: `1px solid ${selected ? cs.border : pal.border}`,
+                        borderRadius: 10,
+                        color: selected ? cs.color : pal.textMuted,
+                        fontFamily: pal.fontUI,
+                        fontSize: 10,
+                        letterSpacing: "0.1em",
+                        textTransform: "uppercase",
+                        padding: "2px 8px",
+                        cursor: "pointer",
+                      }}
+                    >{cond}</span>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
           <div style={{ display: "flex", gap: 6 }}>
             <button onClick={applyConditions} disabled={selectedConds.length === 0} style={{
               flex: 1,

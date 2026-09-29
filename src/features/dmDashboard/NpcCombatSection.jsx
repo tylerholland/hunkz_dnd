@@ -254,18 +254,26 @@ function NpcConditionPicker({ npc, onAdd, onClose }) {
   const existing = new Set(npc.conditions || []);
   return (
     <div className="modal-overlay" style={{ zIndex: 300 }} onClick={onClose}>
-      <div style={{ background: pal.surfaceSolid, border: `1px solid ${pal.accent}`, borderRadius: 8, padding: "20px 24px", maxWidth: 360, width: "90%" }} onClick={(e) => e.stopPropagation()}>
+      <div style={{ background: pal.surfaceSolid, border: `1px solid ${pal.accent}`, borderRadius: 8, padding: "20px 24px", maxWidth: 420, width: "90%" }} onClick={(e) => e.stopPropagation()}>
         <div style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.accentBright, marginBottom: 14 }}>Add Condition or Effect — {npc.name}</div>
-        <div className="flex-row" style={{ flexWrap: "wrap", gap: 6 }}>
-          {[...ALL_CONDITIONS, ...SPELL_EFFECTS.map((effect) => effect.name)].map((condition) => (
-            <button
-              key={condition}
-              disabled={existing.has(condition)}
-              onClick={() => onAdd(condition)}
-              style={{ padding: "5px 12px", borderRadius: 10, border: `1px solid ${existing.has(condition) ? pal.border : pal.accent}`, background: existing.has(condition) ? "transparent" : "rgba(106,143,168,0.1)", color: existing.has(condition) ? pal.textMuted : pal.accentBright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.08em", cursor: existing.has(condition) ? "not-allowed" : "pointer" }}
-            >{condition}</button>
-          ))}
-        </div>
+        {[
+          { title: "Conditions", names: ALL_CONDITIONS },
+          { title: "Effects", names: SPELL_EFFECTS.map((effect) => effect.name) },
+        ].map((group) => (
+          <div key={group.title} style={{ marginTop: group.title === "Effects" ? 12 : 0 }}>
+            <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 6 }}>{group.title}</div>
+            <div className="flex-row" style={{ flexWrap: "wrap", gap: 6 }}>
+              {group.names.map((condition) => (
+                <button
+                  key={condition}
+                  disabled={existing.has(condition)}
+                  onClick={() => onAdd(condition)}
+                  style={{ padding: "5px 12px", borderRadius: 10, border: `1px solid ${existing.has(condition) ? pal.border : pal.accent}`, background: existing.has(condition) ? "transparent" : "rgba(106,143,168,0.1)", color: existing.has(condition) ? pal.textMuted : pal.accentBright, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.08em", cursor: existing.has(condition) ? "not-allowed" : "pointer" }}
+                >{condition}</button>
+              ))}
+            </div>
+          </div>
+        ))}
         <button className="btn-ghost" onClick={onClose} style={{ marginTop: 16, width: "100%", borderRadius: 4, padding: "8px 0" }}>Close</button>
       </div>
     </div>

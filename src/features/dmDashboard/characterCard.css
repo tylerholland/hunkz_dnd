@@ -1104,6 +1104,34 @@
   padding: 12px 14px;
 }
 
+/* Wider while picking conditions & effects, so the list needs less scrolling. */
+.cc-popover--wide {
+  width: min(380px, calc(100vw - 32px));
+}
+
+.cc-cond-group + .cc-cond-group {
+  margin-top: 10px;
+}
+
+.cc-cond-group-title {
+  margin-bottom: 6px;
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cc-cond-group-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+}
+
+.cc-cond-group:last-of-type {
+  margin-bottom: 10px;
+}
+
 .cc-popover-sub-label {
   font-family: var(--font-ui);
   font-size: 11px;
