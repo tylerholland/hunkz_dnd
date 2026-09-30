@@ -56,6 +56,7 @@ import SessionLoadoutRow from "./SessionLoadoutRow";
 import SessionLedger from "./SessionLedger";
 import { applyDelta, normalizeCoin } from "./sessionLoadout";
 import { abilityModifier } from "../dmDashboard/cardStats";
+import { armorClassOf } from "./armorClass";
 import { abilityCheckExpr, DEFAULT_HOUSE_RULES } from "../../lib/houseRules";
 import { resolveMapBandOpen } from "./sessionMapBand";
 import RollOverlay from "../../components/RollOverlay";
@@ -1065,18 +1066,13 @@ export default function CharacterSheetSessionMode({
   const abilityModsByName = Object.fromEntries(abilityMods.map((a) => [a.name, a.mod]));
   const checkDice = houseRules?.abilityCheckDice || DEFAULT_HOUSE_RULES.abilityCheckDice;
 
-  // AC and Speed from item mods
-  const acBonus = [...weapons, ...equipment]
-    .filter((i) => i.equipped !== false)
-    .flatMap((i) => i.mods || [])
-    .filter((m) => m.attribute === "Armor")
-    .reduce((acc, m) => acc + (m.value || 0), 0);
+  // AC from equipped armor/shield + Dex + item mods; Speed from item mods
   const speedBonus = [...weapons, ...equipment]
     .filter((i) => i.equipped !== false)
     .flatMap((i) => i.mods || [])
     .filter((m) => m.attribute === "Speed")
     .reduce((acc, m) => acc + (m.value || 0), 0);
-  const acTotal = (char?.armorTotal || 0) + acBonus;
+  const acTotal = armorClassOf(char);
 
   // Initiative entries
   const entries = initiativeData?.entries || [];

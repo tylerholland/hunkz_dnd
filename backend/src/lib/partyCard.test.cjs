@@ -37,3 +37,17 @@ test("nothing from the inventory, coin or notes leaks into the card", () => {
     assert.equal(json.includes(secret), false, secret);
   }
 });
+
+test("party card AC comes from worn armor + Dex, a shield and Armor mods", () => {
+  const card = buildPartyCard({
+    stats: [{ stat: "Dexterity", score: 14 }],
+    equipment: [
+      { name: "Leather", type: "armor", acBase: 11, acDex: "full" },
+      { name: "Shield", type: "shield", acBonus: 2 },
+      { name: "Cloak", mods: [{ attribute: "Armor", value: "+1" }] },
+    ],
+  });
+  assert.equal(card.armorClass, 16); // 11 + 2 Dex + 2 shield + 1 cloak
+  assert.equal(buildPartyCard({ stats: [{ stat: "Dexterity", score: 14 }] }).armorClass, 12); // 10 + Dex
+  assert.equal(buildPartyCard({ stats: [{ stat: "Dexterity", score: 20 }], equipment: [{ name: "Half plate", type: "armor", acBase: 15, acDex: "max2" }] }).armorClass, 17);
+});

@@ -26,6 +26,7 @@ import CardStatsBand from "./characterCard/CardStatsBand";
 import CardLoadoutDrawer from "./characterCard/CardLoadoutDrawer";
 import DrawerCollapse from "./characterCard/DrawerCollapse";
 import { abilityModifier, formatMod } from "./cardStats";
+import { armorClassOf } from "../characterSheet/armorClass";
 import "./characterCard.css";
 
 export { AwardXpModal } from "./characterCard/AwardXpModal";
@@ -427,7 +428,7 @@ export default function CharacterCard({
             title="More actions"
           >⋯</button>
           <div className="cc-ac-badge">
-            AC {char.armorTotal ?? "—"}
+            AC {armorClassOf(char)}
           </div>
 
           {popoverOpen && (

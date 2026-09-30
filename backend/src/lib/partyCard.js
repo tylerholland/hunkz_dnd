@@ -3,6 +3,8 @@
 // here so players get finished numbers — never the inventory those numbers
 // come from (weapons/equipment stay private between players by design).
 
+const { computeArmorClass } = require("./armorClass");
+
 const ABILITIES = ["Strength", "Dexterity", "Constitution", "Intelligence", "Wisdom", "Charisma"];
 
 function toInt(value) {
@@ -32,7 +34,7 @@ function buildPartyCard(item) {
     const score = entry && Number.isFinite(Number(entry.score)) ? Number(entry.score) : 10;
     return [stat, Math.floor((score - 10) / 2) + itemBonus(item, stat)];
   }));
-  const armorClass = toInt(item?.armorTotal) + itemBonus(item, "Armor");
+  const armorClass = computeArmorClass(item, abilityMods.Dexterity);
   // Spell slots (per level: max / used) — shown when a teammate's card is
   // expanded, so the party can tell who still has a heal left.
   const spellSlots = (Array.isArray(item?.spellSlots) ? item.spellSlots : [])

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { DESCRIPTION_MAX_LENGTH, MOD_ATTRIBUTES, uid } from "./constants";
+import { ARMOR_DEX_OPTIONS } from "./armorClass";
 
 export const ITEM_TYPE_OPTIONS = [
   { value: "", label: "(none)" },
@@ -30,6 +31,10 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
     // Normalize legacy free-text values to lowercase for select matching
     return ITEM_TYPE_OPTIONS.find((o) => o.value === raw.toLowerCase()) ? raw.toLowerCase() : "";
   });
+  // Armor Class: body armor has a base AC and a Dex rule; a shield adds a bonus.
+  const [acBase, setAcBase] = useState(item?.acBase ?? "");
+  const [acDex, setAcDex] = useState(item?.acDex || "full");
+  const [acBonus, setAcBonus] = useState(item?.acBonus ?? "");
   const [requiresAttunement, setRequiresAttunement] = useState(item?.requiresAttunement || false);
   const [attuned, setAttuned] = useState(item?.attuned || false);
   const hadQty = (item?.qty ?? seed?.qty) != null;
@@ -56,6 +61,19 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
       ...(showType ? { type } : {}),
       equipped,
     };
+    // Armor Class — only on armor and shields
+    const acType = showType ? type : String(item?.type || "").toLowerCase();
+    const baseValue = parseInt(acBase, 10);
+    const bonusValue = parseInt(acBonus, 10);
+    delete saved.acBase;
+    delete saved.acDex;
+    delete saved.acBonus;
+    if (acType === "armor" && baseValue > 0) {
+      saved.acBase = baseValue;
+      saved.acDex = acDex;
+    } else if (acType === "shield" && Number.isFinite(bonusValue) && bonusValue !== 0) {
+      saved.acBonus = bonusValue;
+    }
     // Attunement
     if (requiresAttunement) {
       saved.requiresAttunement = true;
@@ -114,7 +132,10 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
                 className="input-base"
                 style={{ appearance: "none", WebkitAppearance: "none" }}
                 value={type}
-                onChange={(e) => setType(e.target.value)}
+                onChange={(e) => {
+                  setType(e.target.value);
+                  if (e.target.value === "shield" && acBonus === "") setAcBonus(2);
+                }}
               >
                 {ITEM_TYPE_OPTIONS.map((opt) => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -123,6 +144,31 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
             </div>
           )}
         </div>
+
+        {showType && type === "armor" && (
+          <div className="em-ac-row">
+            <div>
+              <label className="label-ui" style={{ marginBottom: 5 }} htmlFor="em-ac-base">Armor Class</label>
+              <input id="em-ac-base" className="input-base" type="number" min={0} value={acBase} onChange={(e) => setAcBase(e.target.value)} placeholder="e.g. 11" />
+            </div>
+            <div>
+              <label className="label-ui" style={{ marginBottom: 5 }} htmlFor="em-ac-dex">Dexterity</label>
+              <select id="em-ac-dex" className="input-base" style={{ appearance: "none", WebkitAppearance: "none" }} value={acDex} onChange={(e) => setAcDex(e.target.value)}>
+                {ARMOR_DEX_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
+              </select>
+            </div>
+            <div className="em-toggle-hint em-ac-hint">Leather 11 · Studded leather 12 · Chain shirt 13 · Scale / Breastplate 14 · Half plate 15 · Chain mail 16 · Splint 17 · Plate 18. Counts while equipped.</div>
+          </div>
+        )}
+        {showType && type === "shield" && (
+          <div className="em-ac-row">
+            <div>
+              <label className="label-ui" style={{ marginBottom: 5 }} htmlFor="em-ac-bonus">AC bonus</label>
+              <input id="em-ac-bonus" className="input-base" type="number" value={acBonus} onChange={(e) => setAcBonus(e.target.value)} placeholder="2" />
+            </div>
+            <div className="em-toggle-hint em-ac-hint">A shield adds +2 (more if magic). Counts while equipped.</div>
+          </div>
+        )}
 
         {/* Attunement */}
         <div className="em-toggle-row">

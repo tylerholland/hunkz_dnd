@@ -360,9 +360,12 @@ export default function CharacterSheetEditMode({ ctx }) {
                   })}
                 </div>
               </div>
-              <div style={{ minWidth: 110 }}>
-                <label style={lbl}>Total Armor</label>
-                <input className="input-base" type="number" min={0} value={char.armorTotal ?? ""} onChange={(e) => update("armorTotal", parseInt(e.target.value, 10) || 0)} placeholder="e.g. 16" />
+              <div style={{ minWidth: 150, maxWidth: 220 }}>
+                <label style={lbl}>AC without armor</label>
+                <input className="input-base" type="number" min={0} value={char.armorTotal || ""} onChange={(e) => update("armorTotal", parseInt(e.target.value, 10) || 0)} placeholder="10 + Dex" />
+                <div style={{ fontFamily: pal.fontBody, fontSize: 12, color: pal.textMuted, fontStyle: "italic", marginTop: 6, lineHeight: 1.4 }}>
+                  For natural armor or Unarmored Defense. Worn armor and shields set their AC on the item.
+                </div>
               </div>
             </div>
           </div>

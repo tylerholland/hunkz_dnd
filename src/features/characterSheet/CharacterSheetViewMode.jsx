@@ -5,6 +5,7 @@ import TopNav, { NavSegment } from "../../components/TopNav";
 import { InfoBadge } from "./CharacterTalents";
 import { getTalentTooltip } from "./talentCatalog";
 import ItemEditorModal, { itemTypeLabel } from "./ItemEditorModal";
+import { computeArmorClass } from "./armorClass";
 import ItemEquipToggle from "./ItemEquipToggle";
 import { HR } from "./CharacterSheetPrimitives";
 import { ARMOR_OPTIONS, XP_THRESHOLDS, COIN_COLORS, fmtMod, modOf, parseModInt, normalizeSpells, spellRoleGlyph } from "./constants";
@@ -119,7 +120,6 @@ export default function CharacterSheetViewMode({ ctx }) {
     hpPct,
     hpBarColor,
     hpBonus,
-    _itemBonuses,
     secHead,
     inputStyle,
     movedTabsNotice,
@@ -333,20 +333,8 @@ export default function CharacterSheetViewMode({ ctx }) {
           <>
             <div className="cs-stats-panel">
               {((char.hpMax ?? char.hp ?? 0) > 0 || char.armorType || char.armorTotal > 0) && (() => {
-                const acBonus = _itemBonuses["Armor"] || 0;
-                const effectiveAc = (char.armorTotal || 0) + acBonus;
+                const { total: effectiveAc, parts: armorBreakdown } = computeArmorClass(char);
                 const armorOpt = ARMOR_OPTIONS.find((option) => option.value === char.armorType);
-                const armorBreakdown = [
-                  { label: "Base", value: char.armorTotal || 0 },
-                  ...[...(char.weapons || []), ...(char.equipment || [])].filter((item) => item.equipped !== false)
-                    .flatMap((item) => (item.mods || [])
-                      .filter((mod) => mod.attribute === "Armor")
-                      .map((mod) => ({
-                        label: item.name,
-                        value: parseModInt(mod.value) || 0,
-                      })))
-                    .filter((entry) => entry.value !== 0),
-                ];
                 const armorFlyoutOpen = hoveredStat === "armor";
                 const armorHandlers = {
                   onMouseEnter: () => setHoveredStat("armor"),
@@ -381,7 +369,7 @@ export default function CharacterSheetViewMode({ ctx }) {
                         </div>
                       </div>
                     )}
-                    {(armorOpt || char.armorTotal > 0 || acBonus > 0) && (
+                    {effectiveAc > 0 && (
                       <div className="cs-vital-cell" style={{ position: "relative" }}>
                         <div className="cs-vital-label">Armor</div>
                         <div style={{ height: 14 }} />
@@ -410,8 +398,8 @@ export default function CharacterSheetViewMode({ ctx }) {
                             <div className="divider-tight" />
                             {armorBreakdown.map((entry, index) => (
                               <div key={`${entry.label}-${index}`} className="cs-flyout-row" style={{ marginBottom: index < armorBreakdown.length - 1 ? 4 : 0 }}>
-                                <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: entry.label === "Base" ? pal.textMuted : pal.textBody, fontStyle: entry.label === "Base" ? "italic" : "normal" }}>{entry.label}</span>
-                                <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: entry.value >= 0 ? pal.gem : pal.gemLow }}>{entry.value >= 0 ? `+${entry.value}` : entry.value}</span>
+                                <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: entry.base ? pal.textMuted : pal.textBody, fontStyle: entry.base ? "italic" : "normal" }}>{entry.label}</span>
+                                <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: entry.value >= 0 ? pal.gem : pal.gemLow }}>{entry.base ? entry.value : entry.value >= 0 ? `+${entry.value}` : entry.value}</span>
                               </div>
                             ))}
                             <div className="divider-tight" />
