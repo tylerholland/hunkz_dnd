@@ -309,7 +309,7 @@ export default function SessionView({ sessionId, viewer, creds, pal }) {
                   <div className="chr-actions"><span className="chr-spacer" /><button type="submit" className="chr-btn chr-btn--primary" disabled={!newRec.trim()}>Add</button></div>
                 </form>
               )}
-              {viewer.role === "anon" && <p className="chr-meta">Open your character sheet first to add recollections or edit the summary.</p>}
+              {viewer.role === "anon" && <p className="chr-meta">Sign in at the top of the page to add a recollection.</p>}
             </div>
           </section>
         </div>

@@ -750,3 +750,30 @@
   font-size: 15px;
   color: var(--pal-text-body, var(--pal-text));
 }
+
+/* In-page sign-in for a Chronicle link opened in a fresh tab */
+.chr-signin {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 14px;
+  border: 1px solid var(--pal-accent);
+  border-radius: 8px;
+  background: var(--pal-surface);
+}
+
+.chr-signin-title {
+  margin: 0;
+  color: var(--pal-text);
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 15px;
+}
+
+.chr-signin-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: end;
+  gap: 10px 14px;
+}
+
+.chr-signin-row .chr-field { flex: 1 1 160px; }

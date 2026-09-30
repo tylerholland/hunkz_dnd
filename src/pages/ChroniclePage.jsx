@@ -7,6 +7,7 @@ import { useTextScale } from "../lib/useTextScale";
 import ChronicleList from "../features/chronicle/ChronicleList";
 import RecordSession from "../features/chronicle/RecordSession";
 import SessionView from "../features/chronicle/SessionView";
+import ChronicleSignIn from "../features/chronicle/ChronicleSignIn";
 import { readChronicleViewer, viewerCredentials, viewerPaletteKey } from "../features/chronicle/chronicleViewer";
 import "../features/chronicle/chronicle.css";
 
@@ -17,7 +18,10 @@ export default function ChroniclePage() {
   const { sessionId } = useParams();
   const { pathname } = useLocation();
   const [searchParams] = useSearchParams();
-  const viewer = useMemo(() => readChronicleViewer(), []);
+  const [viewerVersion, setViewerVersion] = useState(0);
+  // viewerVersion bumps after an in-page sign-in so the saved credentials are re-read.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const viewer = useMemo(() => readChronicleViewer(), [viewerVersion]);
   const [asSlug, setAsSlug] = useState(() => viewer.characters[0]?.slug || null);
   const [names, setNames] = useState({});
   const { textScale, textScaleMenuItem } = useTextScale();
@@ -80,6 +84,9 @@ export default function ChroniclePage() {
               {viewer.characters.map((c) => <option key={c.slug} value={c.slug}>{names[c.slug] || c.slug}</option>)}
             </select>
           </label>
+        )}
+        {viewer.role === "anon" && !isRecord && (
+          <ChronicleSignIn onSignedIn={(slug) => { setAsSlug(slug); setViewerVersion((v) => v + 1); }} />
         )}
         {body}
       </main>
