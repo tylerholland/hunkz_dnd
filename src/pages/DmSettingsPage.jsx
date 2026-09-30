@@ -6,6 +6,7 @@ import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
 import TopNav from "../components/TopNav";
 import { useTextScale } from "../lib/useTextScale";
 import { abilityCheckExpr, DEFAULT_HOUSE_RULES, isValidCheckDice, normalizeHouseRules, parseCheckDice } from "../lib/houseRules";
+import DmPasswordReset from "./DmPasswordReset";
 import "./dmSettings.css";
 
 const CHECK_PRESETS = ["2d6", "1d20", "3d6", "1d12"];
@@ -199,6 +200,9 @@ export default function DmSettingsPage() {
               </div>
             </div>
           </section>
+
+          <h2 className="dm-settings-heading dm-settings-heading--section">Players</h2>
+          <DmPasswordReset dmPassword={dmPassword} />
 
           <p className="dm-settings-footnote">
             Coming later: how skills affect a check (waiting on the rule).

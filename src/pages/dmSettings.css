@@ -241,3 +241,17 @@
   outline: 2px solid var(--pal-accent-bright);
   outline-offset: 2px;
 }
+
+/* Players — password reset */
+.dm-settings-heading--section {
+  margin: 36px 0 14px;
+}
+
+.dm-settings-control-col > .dm-settings-input + .dm-settings-input {
+  margin-top: 8px;
+}
+
+.dm-settings-save--confirm {
+  border-color: #d08080;
+  color: #e8a0a0;
+}
