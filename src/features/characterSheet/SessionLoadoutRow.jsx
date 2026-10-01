@@ -5,7 +5,7 @@ import "./sessionLoadout.css";
 // equip icon on the left, expand caret on the right. Expanding shows the
 // description and modifiers inline, with Use Item for qty-tracked items. A
 // pencil (Edit) appears beside the caret on hover.
-export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse, onAdjustQty }) {
+export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse, onAdjustQty, onToggleAttuned, attuneFlash = false }) {
   const isEquipped = item.equipped !== false;
   const canUse = !!onUse && item.qty != null && item.qty > 0;
   const toggle = () => { if (expandable) onToggleExpand?.(); };
@@ -32,13 +32,25 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
             {item.name}
             {hasQty && item.qty !== 1 && <span className={`cs-sm-ld-qty${item.qty === 0 ? " depleted" : ""}`}> (<span className="cs-sm-ld-qty-num">{item.qty}</span>)</span>}
           </span>
-          {item.requiresAttunement && (
+          {item.requiresAttunement && !onToggleAttuned && (
             <span
               className={`cs-sm-ld-attune${item.attuned ? " on" : ""}`}
               title={item.attuned ? "Attuned" : "Requires attunement"}
             />
           )}
         </button>
+        {item.requiresAttunement && onToggleAttuned && (
+          <button
+            type="button"
+            className="cs-sm-ld-attune-btn"
+            onClick={onToggleAttuned}
+            aria-pressed={!!item.attuned}
+            aria-label={item.attuned ? `${item.name}: attuned. Tap to end attunement` : `${item.name}: requires attunement. Tap to attune`}
+            title={item.attuned ? "Attuned — tap to end attunement" : "Requires attunement — tap to attune"}
+          >
+            <span className={`cs-sm-ld-attune${item.attuned ? " on attuned-gem" : ""}${attuneFlash ? " over-limit-flash" : ""}`} />
+          </button>
+        )}
         {/* Edit — pencil revealed on row hover/focus (always shown when
             expanded, and on touch screens that can't hover) */}
         <button

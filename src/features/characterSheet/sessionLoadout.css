@@ -437,6 +437,56 @@
   border-color: var(--pal-gem);
 }
 
+/* Tap target around the attunement gem (InventoryPanel) */
+.cs-sm-ld-attune-btn {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 44px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.cs-sm-ld-attune-btn:focus-visible {
+  outline: 2px solid var(--pal-accent);
+  outline-offset: -4px;
+}
+
+.cs-sm-ld-attune-btn:hover .cs-sm-ld-attune:not(.on) {
+  border-color: var(--pal-accent-bright);
+}
+
+/* Attunement count above the inventory columns */
+.cs-inv-attune {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+}
+
+.cs-inv-attune-gem {
+  color: var(--pal-gem);
+}
+
+.cs-inv-attune.over,
+.cs-inv-attune.over .cs-inv-attune-gem {
+  color: #d08080;
+}
+
+.cs-inv-attune-note {
+  text-transform: none;
+  letter-spacing: 0;
+}
+
 .cs-sm-ld-qty {
   flex-shrink: 0;
   font-family: var(--font-ui);

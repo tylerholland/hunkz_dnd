@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 import FeaturesEditor from "./FeaturesEditor";
 import "./characterSheet.css";
@@ -19,7 +20,6 @@ import {
 } from "./constants";
 import { DragHandle } from "./CharacterSheetPrimitives";
 import { InfoBadge } from "./CharacterTalents";
-import ItemEditorModal from "./ItemEditorModal";
 import { PALETTES } from "./theme";
 
 export default function CharacterSheetEditMode({ ctx }) {
@@ -57,9 +57,6 @@ export default function CharacterSheetEditMode({ ctx }) {
     addInPlay,
     updateInPlay,
     removeInPlay,
-    setEditingItem,
-    removeWeapon,
-    removeEquipment,
     unlockedPassword,
     setUnlockedPassword,
     addCollection,
@@ -79,11 +76,6 @@ export default function CharacterSheetEditMode({ ctx }) {
     removeListItem,
     addListItem,
     addSection,
-    editingItem,
-    updateWeapon,
-    addWeapon,
-    updateEquipment,
-    addEquipment,
     featuresEnabled = true,
   } = ctx;
 
@@ -607,55 +599,15 @@ export default function CharacterSheetEditMode({ ctx }) {
             </button>
           </div>
 
-          <div style={{ marginBottom: 32 }}>
-            <div className="flex-row-spread" style={{ marginBottom: 12 }}>
-              <div style={secHead}>Weapons</div>
-              <button onClick={() => setEditingItem({ listType: "weapons", item: null })} className="btn-ghost" style={{ width: "auto", padding: "7px 16px", color: pal.accentBright, borderStyle: "dashed" }}>+ Add Weapon</button>
-            </div>
-            {(char.weapons || []).length === 0 && (
-              <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>No weapons added.</div>
-            )}
-            {(char.weapons || []).map((item) => (
-              <div key={item.id} className="em-item-row">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="em-item-name">{item.name}</div>
-                  {item.mods?.length > 0 && (
-                    <div className="em-item-mods">
-                      {item.mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => setEditingItem({ listType: "weapons", item })} className="btn-ghost" style={{ width: "auto", padding: "5px 12px", fontSize: 12, color: pal.accentBright }}>Edit</button>
-                <button onClick={() => removeWeapon(item.id)} className="btn-ghost" style={{ width: 34, padding: 0, flexShrink: 0, color: pal.textMuted, fontSize: 20, textAlign: "center" }}>×</button>
-              </div>
-            ))}
-          </div>
-
           <div style={{ marginBottom: 40 }}>
-            <div className="flex-row-spread" style={{ marginBottom: 12 }}>
-              <div style={secHead}>Equipment</div>
-              <button onClick={() => setEditingItem({ listType: "equipment", item: null, showType: true })} className="btn-ghost" style={{ width: "auto", padding: "7px 16px", color: pal.accentBright, borderStyle: "dashed" }}>+ Add Item</button>
-            </div>
-            {(char.equipment || []).length === 0 && (
-              <div style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.textMuted, fontStyle: "italic" }}>No equipment added.</div>
-            )}
-            {(char.equipment || []).map((item) => (
-              <div key={item.id} className="em-item-row">
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div className="flex-row" style={{ gap: 8, alignItems: "baseline" }}>
-                    <span className="em-item-name">{item.name}</span>
-                    {item.type && <span className="em-item-type-tag">{item.type}</span>}
-                  </div>
-                  {item.mods?.length > 0 && (
-                    <div className="em-item-mods">
-                      {item.mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}
-                    </div>
-                  )}
-                </div>
-                <button onClick={() => setEditingItem({ listType: "equipment", item, showType: true })} className="btn-ghost" style={{ width: "auto", padding: "5px 12px", fontSize: 12, color: pal.accentBright }}>Edit</button>
-                <button onClick={() => removeEquipment(item.id)} className="btn-ghost" style={{ width: 34, padding: 0, flexShrink: 0, color: pal.textMuted, fontSize: 20, textAlign: "center" }}>×</button>
-              </div>
-            ))}
+            <div style={secHead}>Inventory</div>
+            <p className="em-inventory-note">
+              {slug ? (
+                <>Weapons, equipment and coin are managed in the Inventory on the <Link to={`/characters/${slug}/profile`}>Profile</Link> and <Link to={`/characters/${slug}/session`}>Session</Link> pages — add, edit, equip and use items there.</>
+              ) : (
+                "Weapons, equipment and coin are added after the character is created, from the Inventory on its Profile or Session page."
+              )}
+            </p>
           </div>
 
           {/* Leveling Mode & XP */}
@@ -790,22 +742,6 @@ export default function CharacterSheetEditMode({ ctx }) {
         </div>
       </div>
 
-      {editingItem && (
-        <ItemEditorModal
-          item={editingItem.item}
-          pal={pal}
-          showType={editingItem.showType}
-          onSave={(saved) => {
-            if (editingItem.item) {
-              if (editingItem.listType === "weapons") updateWeapon(saved.id, saved);
-              else updateEquipment(saved.id, saved);
-            } else if (editingItem.listType === "weapons") addWeapon(saved);
-            else addEquipment(saved);
-            setEditingItem(null);
-          }}
-          onClose={() => setEditingItem(null)}
-        />
-      )}
     </>
   );
 }

@@ -44,7 +44,6 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
   const [deleteStatus, setDeleteStatus] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
 
-  const [editingItem, setEditingItem] = useState(null);
   // Story 59 — the profile tab strip is gone. A stored tab naming Combat or
   // Map gets one notice pointing at Session mode; the key is then retired.
   const [movedTabsNotice, setMovedTabsNotice] = useState(() => {
@@ -58,7 +57,6 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     }
   });
   const dismissMovedTabsNotice = () => setMovedTabsNotice(false);
-  const [expandedItems, setExpandedItems] = useState(new Set());
   const [hoveredStat, setHoveredStat] = useState(null);
 
   const [hpEditMode, setHpEditMode] = useState(false);
@@ -318,21 +316,6 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
   });
   const addInPlay = () => setChar((current) => ({ ...current, inPlay: [...current.inPlay, ""] }));
   const removeInPlay = (index) => setChar((current) => ({ ...current, inPlay: current.inPlay.filter((_, itemIndex) => itemIndex !== index) }));
-
-  const addWeapon = (item) => setChar((current) => ({ ...current, weapons: [...(current.weapons || []), item] }));
-  const updateWeapon = (id, item) => setChar((current) => ({ ...current, weapons: (current.weapons || []).map((weapon) => weapon.id === id ? item : weapon) }));
-  const removeWeapon = (id) => setChar((current) => ({ ...current, weapons: (current.weapons || []).filter((weapon) => weapon.id !== id) }));
-
-  const addEquipment = (item) => setChar((current) => ({ ...current, equipment: [...(current.equipment || []), item] }));
-  const updateEquipment = (id, item) => setChar((current) => ({ ...current, equipment: (current.equipment || []).map((entry) => entry.id === id ? item : entry) }));
-  const removeEquipment = (id) => setChar((current) => ({ ...current, equipment: (current.equipment || []).filter((entry) => entry.id !== id) }));
-
-  const toggleExpanded = (id) => setExpandedItems((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id);
-    else next.add(id);
-    return next;
-  });
 
   const onDragStart = (collectionId, index) => setDragInfo({ collectionId, fromIdx: index });
   const onDragOver = (e, collectionId, index) => {
@@ -732,9 +715,6 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     addInPlay,
     updateInPlay,
     removeInPlay,
-    setEditingItem,
-    removeWeapon,
-    removeEquipment,
     unlockedPassword,
     setUnlockedPassword,
     addCollection,
@@ -754,11 +734,6 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     removeListItem,
     addListItem,
     addSection,
-    editingItem,
-    updateWeapon,
-    addWeapon,
-    updateEquipment,
-    addEquipment,
     handleEditClick,
     unlockLoading,
     unlockChecking,
@@ -794,9 +769,6 @@ export default function CharacterSheet({ initialData, slug, onSave, onCreate, on
     hpBonus,
     _itemBonuses,
     isActiveTurn,
-    expandedItems,
-    setExpandedItems,
-    toggleExpanded,
     hoveredStat,
     setHoveredStat,
     movedTabsNotice,

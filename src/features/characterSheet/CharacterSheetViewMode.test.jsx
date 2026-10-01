@@ -137,4 +137,16 @@ describe("CharacterSheetViewMode simplified profile", () => {
     fireEvent.click(screen.getByLabelText("Dismiss"));
     expect(dismissMovedTabsNotice).toHaveBeenCalled();
   });
+
+  it("uses the shared Inventory panel: edit pencil, equip, and saves through the session patch", () => {
+    const applySessionPatch = vi.fn(() => Promise.resolve());
+    const char = { ...makeCtx().char, weapons: [{ id: "w1", name: "Longsword", equipped: true, mods: [] }], coin: { gp: 12 } };
+    renderView({ char, applySessionPatch });
+
+    expect(screen.getByRole("button", { name: "Edit Longsword" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "+ Add Weapon" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /Gold: 12/ })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Longsword" }));
+    expect(screen.getByTestId("item-editor-modal")).toBeInTheDocument();
+  });
 });

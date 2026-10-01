@@ -50,11 +50,8 @@ import CombatTransitionOverlay from "./CombatTransitionOverlay";
 import { playCombatEnterSound, playCombatExitSound } from "../../lib/combatSound";
 import { useTextScale } from "../../lib/useTextScale";
 import AttackDeclarationBar from "./AttackDeclarationBar";
-import ItemEditorModal from "./ItemEditorModal";
-import SessionQuickAdd from "./SessionQuickAdd";
-import SessionLoadoutRow from "./SessionLoadoutRow";
-import SessionLedger from "./SessionLedger";
-import { applyDelta, normalizeCoin } from "./sessionLoadout";
+import InventoryPanel from "./InventoryPanel";
+import { useInventoryWrites } from "./useInventoryWrites";
 import { abilityModifier } from "../dmDashboard/cardStats";
 import { armorClassOf } from "./armorClass";
 import { abilityCheckExpr, DEFAULT_HOUSE_RULES } from "../../lib/houseRules";
@@ -689,108 +686,12 @@ export default function CharacterSheetSessionMode({
     }
   }, [onSessionSync, patchLive]);
 
-  const [recentAdds, setRecentAdds] = useState({}); // id → stagger index
-  const [itemDetails, setItemDetails] = useState(null); // { kind, seed }
-  const [quickAddOpen, setQuickAddOpen] = useState(null); // "weapons" | "equipment" | null
-
-  const addLoadoutItems = useCallback(async (kind, items) => {
-    if (!slug || items.length === 0) return false;
-    const next = [...(charRef.current?.[kind] || []), ...items];
-    const addedIds = new Set(items.map((item) => item.id));
-    setChar((prev) => ({ ...prev, [kind]: next }));
-    setRecentAdds((prev) => {
-      const merged = { ...prev };
-      items.forEach((item, index) => { merged[item.id] = index; });
-      return merged;
-    });
-    setTimeout(() => setRecentAdds((prev) => {
-      const rest = { ...prev };
-      addedIds.forEach((id) => delete rest[id]);
-      return rest;
-    }), 1000);
-    try {
-      await patchLive({ [kind]: next });
-      onSessionSync?.();
-      return true;
-    } catch {
-      setChar((prev) => ({ ...prev, [kind]: (prev?.[kind] || []).filter((item) => !addedIds.has(item.id)) }));
-      return false;
-    }
-  }, [slug, onSessionSync, patchLive]);
-
-  // Edit / equip / delete apply a transform to the latest array by item id,
-  // so a concurrent change to a different item is never clobbered.
-  const writeLoadout = useCallback(async (kind, transform) => {
-    if (!slug) return false;
-    const prev = charRef.current?.[kind] || [];
-    const next = transform(prev);
-    setChar((current) => ({ ...current, [kind]: next }));
-    try {
-      await patchLive({ [kind]: next });
-      onSessionSync?.();
-      return true;
-    } catch {
-      setChar((current) => ({ ...current, [kind]: prev }));
-      return false;
-    }
-  }, [slug, onSessionSync, patchLive]);
-
-  const updateLoadoutItem = useCallback((kind, id, changes) => writeLoadout(kind, (items) => items.map((item) => {
-    if (item.id !== id) return item;
-    // A full item from the editor replaces the row; a partial (equip toggle) merges.
-    return changes.id === id ? changes : { ...item, ...changes };
-  })), [writeLoadout]);
-
-  const deleteLoadoutItem = useCallback((kind, id) => writeLoadout(kind, (items) => items.filter((item) => item.id !== id)), [writeLoadout]);
-
-  // Use one of a qty-tracked item (potion, arrows, rations). Stops at 0.
-  const consumeLoadoutItem = useCallback((kind, id) => writeLoadout(kind, (items) => items.map((item) => (
-    item.id === id && item.qty != null ? { ...item, qty: Math.max(0, item.qty - 1) } : item
-  ))), [writeLoadout]);
-
-  const adjustLoadoutQty = useCallback((kind, id, delta) => writeLoadout(kind, (items) => items.map((item) => (
-    item.id === id && item.qty != null ? { ...item, qty: Math.max(0, item.qty + delta) } : item
-  ))), [writeLoadout]);
-
-  const [expandedLoadout, setExpandedLoadout] = useState(() => new Set());
-  const toggleLoadoutExpanded = (id) => setExpandedLoadout((prev) => {
-    const next = new Set(prev);
-    if (next.has(id)) next.delete(id); else next.add(id);
-    return next;
-  });
-
-  const commitCoin = useCallback(async (denom, op, amount) => {
-    const prevCoin = normalizeCoin(charRef.current?.coin);
-    const { value, clamped } = applyDelta(prevCoin[denom], op, amount);
-    const nextCoin = { ...prevCoin, [denom]: value };
-    setChar((prev) => ({ ...prev, coin: nextCoin }));
-    try {
-      await patchLive({ coin: nextCoin });
-      onSessionSync?.();
-      return { ok: true, clamped };
-    } catch {
-      setChar((prev) => ({ ...prev, coin: prevCoin }));
-      return { ok: false, clamped: false };
-    }
+  // Inventory, coin and XP writes (shared with the Profile view's inventory).
+  const persistLive = useCallback(async (fields) => {
+    await patchLive(fields);
+    onSessionSync?.();
   }, [onSessionSync, patchLive]);
-
-  const commitXp = useCallback(async (op, amount) => {
-    const prevXp = charRef.current?.xpCurrent ?? 0;
-    const { value, clamped } = applyDelta(prevXp, op, amount);
-    setChar((prev) => ({ ...prev, xpCurrent: value }));
-    try {
-      await patchLive({ xpCurrent: value });
-      onSessionSync?.();
-      return { ok: true, clamped };
-    } catch {
-      setChar((prev) => ({ ...prev, xpCurrent: prevXp }));
-      return { ok: false, clamped: false };
-    }
-  }, [onSessionSync, patchLive]);
-
-  const rowEnterProps = (id) => (id in recentAdds
-    ? { className: "cs-spell-row-enter", style: { animationDelay: `${recentAdds[id] * 40}ms` } }
-    : {});
+  const { writeLoadout, commitCoin, commitXp } = useInventoryWrites({ char, setChar, persist: persistLive });
 
   const saveNotes = useCallback(async (nextNotes) => {
     const prevNotes = charRef.current?.playerNotes || [];
@@ -1877,85 +1778,7 @@ export default function CharacterSheetSessionMode({
 
           {/* ── LOADOUT sub-tab ── */}
           <div className={`cs-sm-tab-panel${sessionSubTab === "loadout" ? " active" : ""}`}>
-            {/* Two-column grid identical to Inventory tab */}
-            <div className="cs-sm-loadout-grid">
-              {/* Weapons column */}
-              <div>
-                <div className="cs-col-header">
-                  <div className="cs-col-label">Weapons</div>
-                  <button
-                    type="button"
-                    className={`cs-sm-ld-addbtn${quickAddOpen === "weapons" ? " active" : ""}`}
-                    // Keep focus in an open compose row so its blur-to-close
-                    // doesn't fire first and turn this toggle into a reopen.
-                    onMouseDown={(e) => { if (quickAddOpen === "weapons") e.preventDefault(); }}
-                    onClick={() => setQuickAddOpen((current) => (current === "weapons" ? null : "weapons"))}
-                    aria-expanded={quickAddOpen === "weapons"}
-                  >+ Add Weapon</button>
-                </div>
-                <SessionQuickAdd
-                  kind="weapons"
-                  label="Weapon"
-                  open={quickAddOpen === "weapons"}
-                  onClose={() => setQuickAddOpen((current) => (current === "weapons" ? null : current))}
-                  onAdd={(items) => addLoadoutItems("weapons", items)}
-                  onOpenDetails={(seed) => setItemDetails({ kind: "weapons", seed })}
-                />
-                {weapons.map((w) => (
-                  <SessionLoadoutRow
-                    key={w.id}
-                    item={w}
-                    kind="weapons"
-                    enterProps={rowEnterProps(w.id)}
-                    onEdit={() => setItemDetails({ kind: "weapons", item: w })}
-                    expanded={expandedLoadout.has(w.id)}
-                    onToggleExpand={() => toggleLoadoutExpanded(w.id)}
-                    onUse={() => consumeLoadoutItem("weapons", w.id)}
-                    onAdjustQty={(delta) => adjustLoadoutQty("weapons", w.id, delta)}
-                    onToggleEquipped={() => updateLoadoutItem("weapons", w.id, { equipped: w.equipped === false })}
-                  />
-                ))}
-              </div>
-
-              {/* Equipment column */}
-              <div>
-                <div className="cs-col-header">
-                  <div className="cs-col-label">Equipment</div>
-                  <button
-                    type="button"
-                    className={`cs-sm-ld-addbtn${quickAddOpen === "equipment" ? " active" : ""}`}
-                    // Keep focus in an open compose row so its blur-to-close
-                    // doesn't fire first and turn this toggle into a reopen.
-                    onMouseDown={(e) => { if (quickAddOpen === "equipment") e.preventDefault(); }}
-                    onClick={() => setQuickAddOpen((current) => (current === "equipment" ? null : "equipment"))}
-                    aria-expanded={quickAddOpen === "equipment"}
-                  >+ Add Item</button>
-                </div>
-                <SessionQuickAdd
-                  kind="equipment"
-                  label="Item"
-                  open={quickAddOpen === "equipment"}
-                  onClose={() => setQuickAddOpen((current) => (current === "equipment" ? null : current))}
-                  onAdd={(items) => addLoadoutItems("equipment", items)}
-                  onOpenDetails={(seed) => setItemDetails({ kind: "equipment", seed })}
-                />
-                {equipment.map((e) => (
-                  <SessionLoadoutRow
-                    key={e.id}
-                    item={e}
-                    kind="equipment"
-                    enterProps={rowEnterProps(e.id)}
-                    onEdit={() => setItemDetails({ kind: "equipment", item: e })}
-                    expanded={expandedLoadout.has(e.id)}
-                    onToggleExpand={() => toggleLoadoutExpanded(e.id)}
-                    onUse={() => consumeLoadoutItem("equipment", e.id)}
-                    onAdjustQty={(delta) => adjustLoadoutQty("equipment", e.id, delta)}
-                    onToggleEquipped={() => updateLoadoutItem("equipment", e.id, { equipped: e.equipped === false })}
-                  />
-                ))}
-              </div>
-            </div>
-            <SessionLedger char={char} onCommitCoin={commitCoin} onCommitXp={commitXp} />
+            <InventoryPanel char={char} pal={pal} writeLoadout={writeLoadout} onCommitCoin={commitCoin} onCommitXp={commitXp} />
           </div>
 
           {/* ── NOTES sub-tab ── */}
@@ -1988,27 +1811,6 @@ export default function CharacterSheetSessionMode({
           pal={pal}
           onConfirm={(amount) => applyDamageHeal(hpModal, amount)}
           onClose={() => setHpModal(null)}
-        />
-      )}
-
-      {itemDetails && (
-        <ItemEditorModal
-          item={itemDetails.item}
-          seed={itemDetails.seed}
-          pal={pal}
-          showType={itemDetails.kind === "equipment"}
-          onClose={() => setItemDetails(null)}
-          onSave={(item) => {
-            const { kind, item: existing } = itemDetails;
-            setItemDetails(null);
-            if (existing) updateLoadoutItem(kind, existing.id, item);
-            else addLoadoutItems(kind, [item]);
-          }}
-          onDelete={itemDetails.item ? () => {
-            const { kind, item: existing } = itemDetails;
-            setItemDetails(null);
-            deleteLoadoutItem(kind, existing.id);
-          } : undefined}
         />
       )}
 

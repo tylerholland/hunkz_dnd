@@ -4554,3 +4554,17 @@
   font-size: 12px;
   color: var(--pal-text-muted);
 }
+
+/* Edit Character — pointer to the shared Inventory (Profile / Session) */
+.em-inventory-note {
+  margin: 0;
+  font-family: var(--font-body);
+  font-size: 14px;
+  line-height: 1.5;
+  font-style: italic;
+  color: var(--pal-text-muted);
+}
+
+.em-inventory-note a {
+  color: var(--pal-accent-bright);
+}
