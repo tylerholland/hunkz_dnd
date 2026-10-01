@@ -641,7 +641,7 @@
   font-size: 11px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--pal-accent-dim);
+  color: var(--pal-accent);
 }
 
 /* ─── Coin section ───────────────────────────────────────────────────────────*/
