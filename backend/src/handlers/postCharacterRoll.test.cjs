@@ -189,3 +189,43 @@ test("postCharacterRoll rejects a wheel-type activity note with no name", async 
 
   assert.equal(result.statusCode, 400);
 });
+
+test("postCharacterRoll keeps a player's roll description as `tag` and returns the event id", async () => {
+  const appended = [];
+  const { handler } = loadHandlerWithMocks({
+    getItem: { slug: "eoghan", name: "Eòghan", palette: "ember" },
+    appendRollHistoryEvent: async (eventRecord) => { appended.push(eventRecord); return [eventRecord]; },
+  });
+  const result = await handler({
+    pathParameters: { slug: "eoghan" },
+    body: JSON.stringify({ exprLabel: "1d20", label: "Free Roll", total: 12, rollValues: [12], tag: "  Climbing the grate " }),
+  });
+  assert.equal(result.statusCode, 200);
+  assert.equal(appended[0].tag, "Climbing the grate");
+  assert.equal(JSON.parse(result.body).id, appended[0].id);
+});
+
+test("postCharacterRoll records a spell effect for the DM to apply", async () => {
+  const appended = [];
+  const { handler } = loadHandlerWithMocks({
+    getItem: { slug: "eoghan", name: "Eòghan", palette: "ember" },
+    appendRollHistoryEvent: async (eventRecord) => { appended.push(eventRecord); return [eventRecord]; },
+  });
+  const ok = await handler({
+    pathParameters: { slug: "eoghan" },
+    body: JSON.stringify({
+      type: "effect",
+      effect: "Hexed",
+      attack: { kind: "spell", id: "sp-hex", name: "Hex" },
+      target: { type: "npc", sourceId: "npc-1", name: "Carrion Crawler" },
+      castRollId: "roll-9",
+    }),
+  });
+  assert.equal(ok.statusCode, 200);
+  assert.equal(appended[0].type, "effect");
+  assert.equal(appended[0].effect, "Hexed");
+  assert.deepEqual(appended[0].target, { type: "npc", sourceId: "npc-1", name: "Carrion Crawler" });
+  assert.equal(appended[0].castRollId, "roll-9");
+  const bad = await handler({ pathParameters: { slug: "eoghan" }, body: JSON.stringify({ type: "effect", effect: "Hexed" }) });
+  assert.equal(bad.statusCode, 400);
+});

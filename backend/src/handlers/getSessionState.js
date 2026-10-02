@@ -199,6 +199,11 @@ exports.handler = async (event) => {
   }
   // ADR-032 — the chosen action's attacker is stripped exactly like
   // lastDamageFrom; the effect still plays, just without a visible source.
+  function publicEffectNotes(notes, conditions) {
+    if (!notes || typeof notes !== "object") return {};
+    return Object.fromEntries(Object.entries(notes).filter(([name, text]) => conditions.includes(name) && typeof text === "string" && text));
+  }
+
   function publicLastFx(lastFx) {
     if (!lastFx || typeof lastFx !== "object") return null;
     return { ...lastFx, attacker: publicLastDamageFrom(lastFx.attacker) };
@@ -239,6 +244,9 @@ exports.handler = async (event) => {
       lastHealAmount: n.lastHealAmount ?? null,
       lastHealFrom: publicLastDamageFrom(n.lastHealFrom),
       lastFx: publicLastFx(n.lastFx),
+      // The DM's note on what a spell effect does ("Hexed — loses its hold
+      // on Aesop"), only for effects the token currently shows.
+      effectNotes: publicEffectNotes(n.effectNotes, publicNpcConditions[n.id] ?? []),
     })),
   };
 

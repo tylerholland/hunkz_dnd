@@ -272,6 +272,14 @@ export const putCounterWheels = (dmPassword, wheels, wheelEvent) =>
   });
 
 // House rules (DM Settings) — read via getSessionState().houseRules.
+// DM: label any logged event, live or archived. An empty tag removes it.
+export const putRollTag = (dmPassword, rollId, tag) =>
+  request(`/roll-history/${encodeURIComponent(rollId)}/tag`, {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ tag }),
+  });
+
 export const putHouseRules = (dmPassword, rules) =>
   request("/house-rules", {
     method: "PUT",

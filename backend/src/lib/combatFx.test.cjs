@@ -18,3 +18,11 @@ test("buildLastFx only keeps crit on damage", () => {
   assert.equal(buildLastFx(fx, "miss", "t").crit, false);
   assert.deepEqual(buildLastFx(fx, "heal", "t"), { at: "t", kind: "heal", attacker: { type: "character", sourceId: "eoghan" }, style: "cut", crit: false });
 });
+
+test("a spell effect carries its condition and the DM's note, and lastFx keeps the effect", () => {
+  const fx = sanitizeFx({ style: "curse", effect: " Hexed ", note: "  loses its hold on Aesop ", attacker: { type: "character", sourceId: "eoghan" }, rollId: "effect-1" });
+  assert.equal(fx.effect, "Hexed");
+  assert.equal(fx.note, "loses its hold on Aesop");
+  assert.equal(sanitizeFx({ style: "bless", note: "ignored without an effect" }).note, undefined);
+  assert.deepEqual(buildLastFx(fx, "effect", "t"), { at: "t", kind: "effect", attacker: { type: "character", sourceId: "eoghan" }, style: "curse", crit: false, rollId: "effect-1", effect: "Hexed" });
+});

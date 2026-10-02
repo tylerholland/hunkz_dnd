@@ -75,6 +75,32 @@ exports.handler = async (event) => {
     return ok({ success: true });
   }
 
+  // A spell's effect, sent from the attack bar after the cast roll ("✦ Hex
+  // takes effect → Carrion Crawler"). Nothing changes yet: the DM applies it
+  // from the log (Apply Effect), which sets the condition and plays the FX.
+  if (body.type === "effect") {
+    const target = sanitizeTarget(body.target);
+    const attack = sanitizeAttack(body.attack);
+    const effect = boundedString(body.effect);
+    if (!target || !attack || !effect) return badRequest("effect, attack and target are required");
+    const castRollId = boundedString(body.castRollId);
+    const eventRecord = {
+      id: `effect-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: "effect",
+      slug,
+      characterName: result.Item.name || result.Item.nameAlt || slug,
+      paletteKey: result.Item.palette || "ember",
+      effect,
+      attack,
+      target,
+      ...(castRollId ? { castRollId } : {}),
+      createdAt: new Date().toISOString(),
+    };
+    await appendRollHistoryEvent(eventRecord);
+    await notifySessionChanged();
+    return ok({ success: true, id: eventRecord.id });
+  }
+
   const exprLabel = typeof body.exprLabel === "string" ? body.exprLabel.trim() : "";
   const label = typeof body.label === "string" ? body.label.trim() : "";
   const total = parseInt(body.total, 10);
@@ -104,8 +130,12 @@ exports.handler = async (event) => {
   const attack = sanitizeAttack(body.attack);
   if (target) eventRecord.target = target;
   if (attack) eventRecord.attack = attack;
+  // What the roll was for, typed by the player (free rolls); the DM can
+  // change it later (putRollTag).
+  const tag = boundedString(body.tag);
+  if (tag) eventRecord.tag = tag;
 
   await appendRollHistoryEvent(eventRecord);
   await notifySessionChanged();
-  return ok({ success: true });
+  return ok({ success: true, id: eventRecord.id });
 };

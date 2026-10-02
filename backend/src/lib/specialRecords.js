@@ -260,6 +260,48 @@ async function markRollApplied(rollId, applied) {
   });
 }
 
+// A short label on any logged event ("Climbing the grate", "Persuade the
+// goblin king") — set by the player when rolling, or by the DM at any time
+// afterwards, including on events that have aged into the archive (the
+// Chronicle is where most relabelling happens). Empty clears it.
+// Returns true when the event was found.
+async function setRollTag(rollId, tag) {
+  if (!rollId) return false;
+  const apply = (event) => {
+    if (tag) return { ...event, tag };
+    const { tag: _drop, ...rest } = event;
+    return rest;
+  };
+  const inLive = await withVersionRetry(async () => {
+    const current = await getRollHistoryState();
+    let found = false;
+    const rolls = (current.rolls || []).map((roll) => {
+      if (roll?.id !== rollId) return roll;
+      found = true;
+      return apply(roll);
+    });
+    if (!found) return false;
+    await saveRollHistoryState({ rolls }, { expectedVersion: current.version });
+    return true;
+  });
+  if (inLive) return true;
+  for (let n = 0; n < ROLL_HISTORY_ARCHIVE_PAGES; n += 1) {
+    const slug = archivePageSlug(n);
+    const done = await withVersionRetry(async () => {
+      const page = await getSpecialRecord(slug);
+      const events = Array.isArray(page?.events) ? page.events : [];
+      const index = events.findIndex((event) => event?.id === rollId);
+      if (index < 0) return false;
+      const next = events.slice();
+      next[index] = apply(events[index]);
+      await putSpecialRecord(slug, { seq: page.seq, events: next }, { expectedVersion: currentVersion(page) });
+      return true;
+    });
+    if (done) return true;
+  }
+  return false;
+}
+
 function normalizeMapLibraryRecord(item) {
   return {
     activeMapId: item?.activeMapId ?? null,
@@ -409,6 +451,7 @@ module.exports = {
   ROLL_HISTORY_ARCHIVE_PAGES,
   ROLL_HISTORY_ARCHIVE_PAGE_SIZE,
   markRollApplied,
+  setRollTag,
   getMapLibraryState,
   saveMapLibraryState,
   getPartyRosterState,

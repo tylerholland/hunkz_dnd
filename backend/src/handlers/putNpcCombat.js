@@ -91,6 +91,16 @@ exports.handler = async (event) => {
       if (fx.rollId) appliedRolls.push([fx.rollId, { kind: "miss", amount: 0, at }]);
       return { ...npc, lastFx: buildLastFx(fx, "miss", at) };
     }
+    // A spell effect applied from the log: the client has already added the
+    // condition; stamp the FX, keep the DM's note for the token's hover card,
+    // and mark the effect row applied.
+    if (fx?.effect) {
+      if (fx.rollId) appliedRolls.push([fx.rollId, { kind: "effect", effect: fx.effect, ...(fx.note ? { note: fx.note } : {}), at }]);
+      const effectNotes = { ...(prev?.effectNotes || npc.effectNotes || {}) };
+      if (fx.note) effectNotes[fx.effect] = fx.note;
+      else delete effectNotes[fx.effect];
+      return { ...npc, effectNotes, lastFx: buildLastFx(fx, "effect", at) };
+    }
     return npc;
   });
 

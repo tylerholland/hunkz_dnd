@@ -3,7 +3,8 @@
 // and is stamped as `lastFx` in the same write so every screen plays exactly
 // that animation instead of guessing from initiative + roll history.
 
-const FX_STYLES = ["cut", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt", "heal"];
+// "curse" / "bless" — a spell effect applied without damage (Hexed, Blessed…).
+const FX_STYLES = ["cut", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt", "heal", "curse", "bless"];
 const MAX_ID_LEN = 80;
 
 function boundedId(value) {
@@ -21,7 +22,12 @@ function sanitizeFx(raw) {
   const rollId = boundedId(raw.rollId);
   const attackerName = boundedId(raw.attacker?.name).slice(0, 60);
   const name = boundedId(raw.name).slice(0, 60);
+  // A spell effect (Apply Effect from the log): the condition it sets and the
+  // DM's note on what it does.
+  const effect = boundedId(raw.effect).slice(0, 40);
+  const note = typeof raw.note === "string" ? raw.note.trim().slice(0, 200) : "";
   return {
+    ...(effect ? { effect, ...(note ? { note } : {}) } : {}),
     attacker: type && sourceId ? { type, sourceId, ...(attackerName ? { name: attackerName } : {}) } : null,
     name: name || null,
     style,
@@ -31,11 +37,12 @@ function sanitizeFx(raw) {
   };
 }
 
-// kind: "damage" | "heal" | "miss"
+// kind: "damage" | "heal" | "miss" | "effect"
 function buildLastFx(fx, kind, at) {
   const out = { at, kind, attacker: fx.attacker, style: fx.style, crit: kind === "damage" && fx.crit };
   if (fx.name) out.name = fx.name;
   if (fx.rollId) out.rollId = fx.rollId;
+  if (kind === "effect" && fx.effect) out.effect = fx.effect;
   return out;
 }
 

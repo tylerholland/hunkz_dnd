@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Spell Effects & Roll Labels</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<style>
+  /* Palette tokens — copied from src/features/characterSheet/theme.jsx */
+  :root, [data-pal="ember"] {
+    --pal-bg: #120d0a; --pal-surface: rgba(50,28,14,0.55); --pal-surface-solid: #2a160a;
+    --pal-border: rgba(160,100,55,0.22); --pal-accent: #a06840; --pal-accent-bright: #c89060;
+    --pal-accent-dim: #4a2e12; --pal-text: #d4c4b0; --pal-text-body: #b8a888; --pal-text-muted: #8a6848;
+    --pal-gem: #c8904c; --glow: rgba(100,45,10,0.35);
+    --curse: #b678ec; --curse-soft: rgba(170,100,230,0.15); --curse-line: rgba(182,120,236,0.42);
+    --shadow: rgba(0,0,0,0.35);
+  }
+  [data-pal="vellum"] {
+    --pal-bg: #f5f0e8; --pal-surface: rgba(220,208,185,0.5); --pal-surface-solid: #e8e0cc;
+    --pal-border: rgba(140,110,70,0.22); --pal-accent: #7a5c30; --pal-accent-bright: #4a3418;
+    --pal-accent-dim: rgba(140,110,70,0.15); --pal-text: #2a2018; --pal-text-body: #3c2e1c; --pal-text-muted: #8a7050;
+    --pal-gem: #4a3418; --glow: rgba(180,155,100,0.25);
+    --curse: #7a3fb0; --curse-soft: rgba(122,63,176,0.10); --curse-line: rgba(122,63,176,0.38);
+    --shadow: rgba(60,40,10,0.15);
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: radial-gradient(ellipse at 50% 0%, var(--glow) 0%, transparent 60%), var(--pal-bg);
+    color: var(--pal-text-body); font-family: 'Crimson Text', Georgia, serif; font-size: 16px; line-height: 1.5;
+  }
+  .ui { font-family: 'Cinzel', 'IM Fell English', Georgia, serif; letter-spacing: 0.14em; text-transform: uppercase; }
+  .page { max-width: 1100px; margin: 0 auto; padding: 24px 16px 80px; }
+  h1 { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); font-size: 26px; letter-spacing: 0.06em; margin: 0 0 4px; }
+  h2 { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); font-size: 19px; letter-spacing: 0.06em; margin: 0 0 6px; }
+  .lede { color: var(--pal-text-body); margin: 0 0 16px; max-width: 760px; }
+  .brief { border: 1px solid var(--pal-border); background: var(--pal-surface); border-radius: 6px; padding: 14px 16px; margin: 0 0 28px; }
+  .brief ul { margin: 6px 0 0; padding-left: 20px; }
+  .brief li { margin: 2px 0; }
+  .label { font-size: 11px; color: var(--pal-accent); }
+  .muted { color: var(--pal-text-muted); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin: 0 0 18px; }
+  .seg { display: inline-flex; border: 1px solid var(--pal-border); border-radius: 4px; overflow: hidden; }
+  .seg button { background: transparent; border: none; padding: 7px 12px; color: var(--pal-text-muted); cursor: pointer; font: inherit; font-size: 11px; }
+  .seg button.on { background: var(--pal-accent-dim); color: var(--pal-accent-bright); }
+  section.card { border: 1px solid var(--pal-border); background: var(--pal-surface); border-radius: 8px; padding: 18px; margin: 0 0 24px; }
+  .note { font-style: italic; color: var(--pal-text-muted); font-size: 14px; margin: 8px 0 0; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 760px) { .two { grid-template-columns: 1fr; } }
+  input, select, textarea {
+    font: inherit; color: var(--pal-text); background: var(--pal-surface); border: 1px solid var(--pal-border);
+    border-radius: 3px; padding: 7px 9px; min-width: 0;
+  }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--pal-accent); outline-offset: 0; }
+  button { font: inherit; }
+  .btn { min-height: 40px; padding: 0 14px; border-radius: 3px; cursor: pointer; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .btn-primary { background: var(--pal-accent-dim); border: 1px solid var(--pal-accent); color: var(--pal-accent-bright); }
+  .btn-ghost { background: transparent; border: 1px solid var(--pal-border); color: var(--pal-text-muted); }
+  .btn-effect { background: var(--curse-soft); border: 1px solid var(--curse-line); color: var(--curse); }
+  .btn:disabled { opacity: 0.4; cursor: default; }
+
+  /* ── 1. Spell editor row ───────────────────────────── */
+  .spell-row { display: grid; grid-template-columns: 1.4fr 0.9fr 0.8fr 0.9fr 1.2fr; gap: 10px; align-items: end; }
+  .spell-row label { display: grid; gap: 4px; }
+  @media (max-width: 760px) { .spell-row { grid-template-columns: 1fr 1fr; } }
+  .effect-hint { font-size: 13px; color: var(--pal-text-muted); font-style: italic; margin-top: 8px; }
+  .effect-hint b { color: var(--curse); font-style: normal; font-weight: 400; }
+
+  /* ── 2. Attack bar (shown in a phone-width frame) ──── */
+  .phone { max-width: 420px; border: 1px solid var(--pal-border); border-radius: 14px; overflow: hidden; background: var(--pal-bg); }
+  .phone-screen { height: 120px; display: flex; align-items: center; justify-content: center; color: var(--pal-text-muted); font-style: italic; font-size: 14px; }
+  .atk-bar { background: var(--pal-surface-solid); border-top: 1px solid var(--pal-border); box-shadow: 0 -6px 20px var(--shadow); padding: 10px 12px; display: grid; gap: 10px; }
+  .atk-top { display: flex; align-items: center; gap: 8px; }
+  .atk-target { font-family: 'Crimson Text', serif; color: var(--pal-text); font-size: 15px; flex: 1; min-width: 0; }
+  .atk-target .glyph { color: var(--pal-accent-bright); margin-right: 4px; }
+  .atk-x { background: transparent; border: none; color: var(--pal-text-muted); font-size: 20px; cursor: pointer; width: 36px; height: 36px; }
+  .atk-chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 6px 12px; background: var(--pal-surface); border: 1px solid var(--pal-border); border-radius: 3px; cursor: pointer; color: var(--pal-text); font-family: 'Crimson Text', serif; font-size: 15px; }
+  .chip.chosen { background: var(--pal-accent-dim); border-color: var(--pal-accent); }
+  .chip .star { color: var(--curse); }
+  .chip .expr { font-family: 'Cinzel', serif; font-size: 11px; color: var(--pal-text-muted); letter-spacing: 0.06em; }
+  .atk-mid { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .atk-result { display: flex; align-items: baseline; gap: 8px; margin-left: auto; }
+  .atk-result .dice { font-size: 11px; color: var(--pal-text-muted); font-family: 'Cinzel', serif; }
+  .atk-result .total { font-family: 'Cinzel', serif; font-size: 28px; color: var(--pal-gem); line-height: 1; }
+  .atk-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+  .atk-sent { display: flex; align-items: center; gap: 8px; color: var(--curse); font-size: 15px; }
+  .atk-sent .sub { color: var(--pal-text-muted); font-style: italic; font-size: 13px; }
+  .state-strip { display: flex; gap: 6px; flex-wrap: wrap; margin: 0 0 10px; }
+
+  /* ── 3. Event log ─────────────────────────────────── */
+  .log { border: 1px solid var(--pal-border); border-radius: 6px; background: var(--pal-surface); padding: 4px 14px; }
+  .log-head { display: flex; align-items: center; justify-content: space-between; padding: 8px 0 6px; border-bottom: 1px solid var(--pal-border); }
+  .row { padding: 8px 0; border-bottom: 1px solid var(--pal-border); display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; align-items: center; }
+  .row:last-child { border-bottom: none; }
+  .row.fresh { animation: fresh 1.2s ease; }
+  @keyframes fresh { from { background: var(--pal-accent-dim); } to { background: transparent; } }
+  .who { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; color: var(--pal-accent-bright); }
+  .what { color: var(--pal-text); font-size: 16px; line-height: 1.3; }
+  .what .tgt { color: var(--pal-accent-bright); }
+  .what .lbl { color: var(--pal-text-muted); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; }
+  .what .eff { color: var(--curse); }
+  .what .cast-verb { font-style: italic; }
+  .right { display: flex; align-items: center; gap: 10px; justify-self: end; }
+  .total-sm { font-family: 'Cinzel', serif; font-size: 20px; color: var(--pal-gem); min-width: 28px; text-align: right; }
+  .dice-sm { font-family: 'Cinzel', serif; font-size: 11px; color: var(--pal-text-muted); }
+  .act { min-height: 30px; padding: 0 10px; font-size: 11px; }
+  .applied { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-text-muted); }
+  .row-note { grid-column: 1 / -1; font-size: 14px; color: var(--pal-text-body); font-style: italic; padding-left: 10px; border-left: 2px solid var(--curse-line); }
+  .pencil { background: transparent; border: none; color: var(--pal-text-muted); cursor: pointer; opacity: 0; width: 28px; height: 28px; border-radius: 3px; transition: opacity 0.15s; }
+  .row:hover .pencil, .pencil:focus-visible { opacity: 0.8; }
+  @media (hover: none) { .pencil { opacity: 0.55; } }
+  .pencil:hover { color: var(--pal-accent-bright); opacity: 1; }
+  .label-edit { display: flex; gap: 6px; align-items: center; margin-top: 4px; }
+  .label-edit input { flex: 1; font-size: 15px; padding: 4px 8px; }
+  .label-edit .hint { font-size: 12px; color: var(--pal-text-muted); font-style: italic; white-space: nowrap; }
+  .apply-pop { grid-column: 1 / -1; border: 1px solid var(--curse-line); background: var(--curse-soft); border-radius: 5px; padding: 10px; display: grid; gap: 8px; margin-top: 4px; }
+  .apply-pop textarea { width: 100%; resize: vertical; min-height: 54px; font-size: 15px; }
+  .apply-pop .acts { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* Mini map with two tokens */
+  .map { position: relative; height: 230px; border: 1px solid var(--pal-border); border-radius: 6px; overflow: hidden;
+    background: repeating-linear-gradient(0deg, transparent 0 31px, var(--pal-border) 31px 32px), repeating-linear-gradient(90deg, transparent 0 31px, var(--pal-border) 31px 32px), var(--pal-surface-solid); }
+  .tok { position: absolute; width: 58px; height: 58px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+    font-family: 'Cinzel', serif; font-size: 18px; color: #f2e6d2; border: 2px solid rgba(255,255,255,0.35); box-shadow: 0 2px 8px rgba(0,0,0,0.5); cursor: default; }
+  .tok .name { position: absolute; top: 62px; left: 50%; transform: translateX(-50%); white-space: nowrap; font-size: 11px; color: var(--pal-text); letter-spacing: 0.04em; font-family: 'Crimson Text', serif; }
+  .tok-a { left: 50px; top: 120px; background: #4a6a8a; }
+  .tok-b { right: 70px; top: 50px; background: #5a3a2a; width: 76px; height: 76px; }
+  .tok-b .name { top: 80px; }
+  .ring { position: absolute; inset: -14px; pointer-events: none; opacity: 0; transform: scale(0.6); transition: opacity 0.5s, transform 0.6s cubic-bezier(0.2, 0.8, 0.2, 1); }
+  .ring.on { opacity: 1; transform: scale(1); }
+  .ring svg { width: 100%; height: 100%; animation: spinrev 18s linear infinite; }
+  @keyframes spinrev { to { transform: rotate(-360deg); } }
+  .bolt { position: absolute; height: 3px; transform-origin: 0 50%; background: linear-gradient(90deg, transparent, var(--curse)); border-radius: 2px; opacity: 0; box-shadow: 0 0 10px var(--curse); }
+  .bolt.go { animation: bolt 0.7s ease-out forwards; }
+  @keyframes bolt { 0% { opacity: 0; clip-path: inset(0 100% 0 0); } 30% { opacity: 1; } 70% { opacity: 1; clip-path: inset(0 0 0 0); } 100% { opacity: 0; clip-path: inset(0 0 0 0); } }
+  .hover-card { position: absolute; right: 10px; bottom: 10px; max-width: 260px; background: var(--pal-surface-solid); border: 1px solid var(--pal-border); border-radius: 5px; padding: 8px 10px; font-size: 14px; box-shadow: 0 4px 14px var(--shadow); display: none; }
+  .hover-card.show { display: block; }
+  .hover-card .hc-name { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.08em; color: var(--pal-text); }
+  .hover-card .hc-eff { color: var(--curse); margin-top: 4px; }
+
+  /* ── 4. Dice roller free roll ──────────────────────── */
+  .roller { border: 1px solid var(--pal-border); border-radius: 6px; padding: 14px; background: var(--pal-surface); display: grid; gap: 10px; max-width: 420px; }
+  .dice-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .die { min-width: 46px; min-height: 40px; border: 1px solid var(--pal-border); background: transparent; color: var(--pal-text-body); border-radius: 3px; cursor: pointer; font-family: 'Cinzel', serif; }
+  .die.on { border-color: var(--pal-accent); color: var(--pal-accent-bright); background: var(--pal-accent-dim); }
+  .desc-field { display: flex; align-items: center; gap: 8px; border-bottom: 1px dashed var(--pal-border); padding-bottom: 2px; }
+  .desc-field span { color: var(--pal-text-muted); font-size: 14px; }
+  .desc-field input { flex: 1; border: none; background: transparent; padding: 6px 2px; font-style: italic; }
+  .desc-field input:focus { outline: none; }
+  .desc-field:focus-within { border-bottom-color: var(--pal-accent); }
+  .roll-btn { width: 100%; min-height: 44px; }
+  .view-badge { font-size: 11px; color: var(--pal-text-muted); }
+</style>
+</head>
+<body data-pal="ember">
+<div class="page">
+  <h1>Spell Effects &amp; Roll Labels</h1>
+  <p class="lede">Prototype for four connected changes. Everything is clickable, and the event log in section 3 collects what you do in sections 2 and 4, as the real app's shared log does.</p>
+
+  <div class="brief">
+    <div class="label ui">Scenarios</div>
+    <ul>
+      <li><b>Hex without damage:</b> Eòghan casts Hex on the Carrion Crawler. The cast is rolled. On success the player sends <i>✦ Effect</i>. The DM applies it with a note on what it does. The token gets the hex sigil and the cast animation plays.</li>
+      <li><b>Free roll with a reason:</b> a player types what a free roll is for. It becomes the log label and the field clears.</li>
+      <li><b>DM relabels afterwards:</b> the DM adds a short label to any roll from the ✎ on the log row.</li>
+    </ul>
+    <div class="label ui" style="margin-top:10px">Open questions</div>
+    <ul>
+      <li>Should a failed cast still offer ✦ Effect? Here it's always offered and the table decides, matching how Deal Damage works today.</li>
+      <li>Should a player be able to remove an effect they cast (end the Hex), or only the DM? Here, only the DM (via the existing condition menu).</li>
+      <li>Should the DM's labels also apply to rows in the Chronicle archive, or only to the live log?</li>
+    </ul>
+  </div>
+
+  <div class="toolbar">
+    <span class="label ui">Palette</span>
+    <div class="seg" id="palSeg"><button class="ui on" data-v="ember">Ember</button><button class="ui" data-v="vellum">Vellum</button></div>
+    <span class="label ui" style="margin-left:12px">Log viewed as</span>
+    <div class="seg" id="viewSeg"><button class="ui on" data-v="dm">DM</button><button class="ui" data-v="player">Player</button></div>
+  </div>
+
+  <!-- 1 -->
+  <section class="card">
+    <h2>1 · Spell setup <span class="muted" style="font-size:14px">(Edit Character → Spells)</span></h2>
+    <div class="spell-row">
+      <label><span class="label ui">Spell</span><input value="Hex" /></label>
+      <label><span class="label ui">Role</span><select><option>Attack</option><option>Heal</option></select></label>
+      <label><span class="label ui">Cast roll</span><input value="2d6+3" /></label>
+      <label><span class="label ui">Damage</span><input id="spellDmg" value="" placeholder="none" /></label>
+      <label><span class="label ui">Effect</span>
+        <select id="spellEffect">
+          <option value="">None</option>
+          <optgroup label="Curses"><option selected>Hexed</option><option>Marked</option><option>Baned</option><option>Outlined</option></optgroup>
+          <optgroup label="Helpful"><option>Blessed</option><option>Hasted</option><option>Heroism</option><option>Shielded</option><option>Raging</option><option>Dodging</option><option>Hidden</option></optgroup>
+        </select>
+      </label>
+    </div>
+    <div class="effect-hint" id="effectHint"></div>
+    <p class="note">One new control: <b>Effect</b>. Damage stays optional, so a spell can have damage, an effect, or both. Try clearing the effect or adding damage to see how the attack bar below changes.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="card">
+    <h2>2 · Player attack bar <span class="muted" style="font-size:14px">(Session view, phone width)</span></h2>
+    <div class="state-strip" id="barStates"></div>
+    <div class="phone">
+      <div class="phone-screen">Session map: Eòghan has targeted the Carrion Crawler</div>
+      <div class="atk-bar" id="atkBar"></div>
+    </div>
+    <p class="note">For spells, ATTACK reads <b>CAST</b>, and it always rolls (your table rolls to see if spells succeed). Afterwards the bar offers <b>✦ EFFECT</b> if the spell has one and <b>⚔ DAMAGE</b> if it has damage dice. Sending the effect leaves a calm "sent" state; the DM decides.</p>
+  </section>
+
+  <!-- 3 -->
+  <section class="card">
+    <h2>3 · Event log &amp; Apply Effect</h2>
+    <div class="two">
+      <div>
+        <div class="log" id="log">
+          <div class="log-head"><span class="label ui">Roll Log</span><span class="view-badge ui" id="viewBadge">DM view</span></div>
+          <div id="rows"></div>
+        </div>
+        <p class="note">The DM gets <b>[Apply Effect]</b> on effect rows, styled like Deal Damage, and a faint <b>✎</b> on hover to label any roll. Players see the same rows without either.</p>
+      </div>
+      <div>
+        <div class="map" id="map">
+          <div class="tok tok-a" id="tokA">E<span class="name">Eòghan</span></div>
+          <div class="tok tok-b" id="tokB">CC
+            <span class="name">Carrion Crawler</span>
+            <div class="ring" id="hexRing">
+              <svg viewBox="0 0 100 100" aria-hidden="true">
+                <circle cx="50" cy="50" r="45" fill="none" stroke="var(--curse)" stroke-width="1.6" />
+                <circle cx="50" cy="50" r="40" fill="none" stroke="var(--curse-line)" stroke-width="1" />
+                <polygon points="50,9 85.5,70.5 14.5,70.5" fill="none" stroke="var(--curse)" stroke-width="1" opacity="0.7" />
+                <polygon points="50,91 14.5,29.5 85.5,29.5" fill="none" stroke="var(--curse)" stroke-width="1" opacity="0.7" />
+              </svg>
+            </div>
+          </div>
+          <div class="bolt" id="bolt"></div>
+          <div class="hover-card" id="hoverCard">
+            <div class="hc-name">Carrion Crawler</div>
+            <div class="hc-eff">✦ Hexed</div>
+            <div id="hcNote" class="muted" style="font-style:italic"></div>
+          </div>
+        </div>
+        <p class="note">Applying sets <b>Hexed</b> on the target. Its sigil ring appears, a cast bolt plays from caster to target on every map, and hovering the token shows the DM's note.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="card">
+    <h2>4 · Free roll description</h2>
+    <div class="two">
+      <div class="roller">
+        <span class="label ui">Free Roll</span>
+        <div class="dice-row" id="dice"></div>
+        <label class="desc-field"><span>For:</span><input id="desc" placeholder="What's this roll for? (optional)" maxlength="60" /></label>
+        <button class="btn btn-primary roll-btn" id="rollBtn">Roll 1d20</button>
+      </div>
+      <div>
+        <p class="note" style="margin-top:0">The description sits right above Roll, so it's easy to fill in but never required. Its text becomes the log label (<i>Free Roll · Climbing the grate</i>), and it clears after every roll. Enter in the field also rolls.</p>
+        <p class="note">The DM's ✎ (section 3) covers rolls a player didn't label: click it, type, and press Enter to save or Esc to cancel. The label shows for everyone and feeds the Chronicle timeline.</p>
+      </div>
+    </div>
+  </section>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let view = "dm";
+let barState = "pick"; // pick | armed | result | sent | dmg
+let lastCast = null;
+let dieSides = 20;
+
+// ── Shared log ──────────────────────────────
+const rows = [
+  { id: 1, who: "Liu Sha", kind: "roll", text: "Dexterity Check", total: 9, dice: "4 + 4 + 1" },
+  { id: 2, who: "Aesop", kind: "roll", text: "Free Roll", total: 14, dice: "14" },
+];
+let nextId = 3;
+let editing = null;   // row id whose label is being edited
+let applying = null;  // effect row id with the Apply popover open
+
+function addRow(row) { rows.unshift({ id: nextId++, fresh: true, ...row }); renderLog(); }
+
+function renderLog() {
+  $("viewBadge").textContent = view === "dm" ? "DM view" : "Player view";
+  const html = rows.map((r) => {
+    const fresh = r.fresh ? " fresh" : ""; r.fresh = false;
+    let what = "";
+    if (r.kind === "cast") what = `<span class="cast-verb">casts</span> ${r.spell} → <span class="tgt">◎</span> ${r.target}`;
+    else if (r.kind === "effect") what = `<span class="eff">✦ ${r.spell} takes effect</span> → <span class="tgt">◎</span> ${r.target}`;
+    else if (r.kind === "dmg") what = `${r.spell} damage → <span class="tgt">◎</span> ${r.target}`;
+    else what = r.text;
+    if (r.label) what += ` <span class="lbl">· ${esc(r.label)}</span>`;
+    const pencil = view === "dm" && r.kind !== "effect" && editing !== r.id
+      ? `<button class="pencil" title="Label this roll" aria-label="Label this roll" data-edit="${r.id}">✎</button>` : "";
+    let right = "";
+    if (r.kind === "effect") {
+      if (r.applied) right = `<span class="applied">✓ Applied</span>`;
+      else if (view === "dm") right = `<button class="btn btn-effect act" data-apply="${r.id}">Apply Effect</button>`;
+      else right = `<span class="applied">Waiting for DM</span>`;
+    } else if (r.kind === "dmg") {
+      right = (view === "dm" ? `<button class="btn btn-primary act">Deal Damage</button>` : "") + `<span class="dice-sm">${r.dice}</span><span class="total-sm">${r.total}</span>`;
+    } else {
+      right = `${pencil}<span class="dice-sm">${r.dice}</span><span class="total-sm">${r.total}</span>`;
+    }
+    const editor = editing === r.id ? `<div class="label-edit"><input id="labelInput" value="${esc(r.label || "")}" placeholder="e.g. Persuade the goblin king" maxlength="60" /><span class="hint">Enter to save · Esc</span></div>` : "";
+    const pop = applying === r.id ? `<div class="apply-pop"><span class="label ui">What does it do? <span class="muted" style="text-transform:none;letter-spacing:0">(optional)</span></span><textarea id="noteInput" placeholder="e.g. loses its hold on Aesop; +1d6 necrotic from each hit while hexed"></textarea><div class="acts"><button class="btn btn-ghost act" data-cancel>Cancel</button><button class="btn btn-effect act" data-confirm="${r.id}">Apply Hexed</button></div></div>` : "";
+    const note = r.note ? `<div class="row-note">${esc(r.note)}</div>` : "";
+    return `<div class="row${fresh}"><div><div class="who">${r.who}</div><div class="what">${what}</div>${editor}</div><div class="right">${right}</div>${note}${pop}</div>`;
+  }).join("");
+  $("rows").innerHTML = html;
+  const li = $("labelInput"); if (li) { li.focus(); li.select(); }
+  const ni = $("noteInput"); if (ni) ni.focus();
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c])); }
+
+$("rows").addEventListener("click", (e) => {
+  const t = e.target.closest("button"); if (!t) return;
+  if (t.dataset.edit) { editing = +t.dataset.edit; renderLog(); }
+  if (t.dataset.apply) { applying = +t.dataset.apply; renderLog(); }
+  if (t.hasAttribute("data-cancel")) { applying = null; renderLog(); }
+  if (t.dataset.confirm) {
+    const r = rows.find((x) => x.id === +t.dataset.confirm);
+    r.note = $("noteInput").value.trim(); r.applied = true; applying = null;
+    renderLog(); playHex(r.note);
+    if (barState === "sent") { barState = "applied"; renderBar(); }
+  }
+});
+$("rows").addEventListener("keydown", (e) => {
+  if (e.target.id !== "labelInput") return;
+  if (e.key === "Enter") { rows.find((x) => x.id === editing).label = e.target.value.trim(); editing = null; renderLog(); }
+  if (e.key === "Escape") { editing = null; renderLog(); }
+});
+
+// ── Map: bolt + ring + hover card ───────────
+function playHex(note) {
+  const map = $("map").getBoundingClientRect(), a = $("tokA").getBoundingClientRect(), b = $("tokB").getBoundingClientRect();
+  const x1 = a.left + a.width / 2 - map.left, y1 = a.top + a.height / 2 - map.top;
+  const x2 = b.left + b.width / 2 - map.left, y2 = b.top + b.height / 2 - map.top;
+  const bolt = $("bolt");
+  bolt.style.left = x1 + "px"; bolt.style.top = y1 + "px";
+  bolt.style.width = Math.hypot(x2 - x1, y2 - y1) + "px";
+  bolt.style.transform = `rotate(${Math.atan2(y2 - y1, x2 - x1)}rad)`;
+  bolt.classList.remove("go"); void bolt.offsetWidth; bolt.classList.add("go");
+  setTimeout(() => $("hexRing").classList.add("on"), 450);
+  $("hcNote").textContent = note || "";
+}
+$("tokB").addEventListener("mouseenter", () => { if ($("hexRing").classList.contains("on")) $("hoverCard").classList.add("show"); });
+$("tokB").addEventListener("mouseleave", () => $("hoverCard").classList.remove("show"));
+
+// ── Spell setup → bar options ───────────────
+function spell() { return { name: "Hex", effect: $("spellEffect").value, dmg: $("spellDmg").value.trim() }; }
+function renderHint() {
+  const s = spell();
+  $("effectHint").innerHTML = s.effect && s.dmg ? `After casting: offers <b>✦ Effect</b> (${s.effect}) and ⚔ Damage (${esc(s.dmg)}).`
+    : s.effect ? `After casting: offers <b>✦ Effect</b> — puts <b>${s.effect}</b> on the target.`
+    : s.dmg ? `After casting: offers ⚔ Damage (${esc(s.dmg)}), as today.` : `After casting: nothing to follow up; the cast roll is logged.`;
+}
+$("spellEffect").addEventListener("change", () => { renderHint(); renderBar(); });
+$("spellDmg").addEventListener("input", () => { renderHint(); renderBar(); });
+
+// ── Attack bar ──────────────────────────────
+const STATES = [["pick", "Pick"], ["armed", "Armed"], ["result", "Cast result"], ["sent", "Effect sent"], ["applied", "DM applied"]];
+function renderStates() {
+  $("barStates").innerHTML = STATES.map(([k, l]) => `<button class="btn ${barState === k ? "btn-primary" : "btn-ghost"} act" data-s="${k}">${l}</button>`).join("");
+}
+$("barStates").addEventListener("click", (e) => { const s = e.target.dataset.s; if (s) { barState = s; if (!lastCast && s !== "pick" && s !== "armed") lastCast = { total: 9, dice: "5 + 1 + 3" }; renderBar(); } });
+
+function renderBar() {
+  renderStates();
+  const s = spell();
+  const top = `<div class="atk-top"><div class="atk-target"><span class="glyph">◎</span>Carrion Crawler</div><button class="atk-x" aria-label="Cancel" data-b="cancel">×</button></div>`;
+  let body = "";
+  if (barState === "pick") {
+    body = `<div class="atk-chips"><button class="chip" data-b="pickWeapon">Dagger <span class="expr">+3</span></button><button class="chip" data-b="pickHex"><span class="star">✶</span> Hex <span class="expr">2d6+3</span></button></div>`;
+  } else {
+    const chosen = `<button class="chip chosen" data-b="repick"><span class="star">✶</span> Hex <span class="expr">2d6+3</span></button>`;
+    const result = lastCast && barState !== "armed" ? `<div class="atk-result"><span class="dice">${lastCast.dice}</span><span class="total">${lastCast.total}</span></div>` : "";
+    let actions = "";
+    if (barState === "armed") actions = `<button class="btn btn-primary" data-b="cast">✶ Cast</button>`;
+    if (barState === "result") {
+      actions = `<button class="btn btn-ghost" data-b="cast">↺ Again</button>`
+        + (s.dmg ? `<button class="btn btn-primary" data-b="dmg">⚔ Damage</button>` : "")
+        + (s.effect ? `<button class="btn btn-effect" data-b="effect">✦ Effect</button>` : "");
+    }
+    if (barState === "sent") actions = `<div class="atk-sent">✦ ${s.effect || "Effect"} sent <span class="sub">— the DM will apply it</span></div><button class="btn btn-ghost" data-b="cast">↺ Again</button>`;
+    if (barState === "applied") actions = `<div class="atk-sent">✦ Carrion Crawler is ${s.effect || "affected"}</div><button class="btn btn-ghost" data-b="done">Done</button>`;
+    if (barState === "dmg") actions = `<button class="btn btn-primary" data-b="cast">↺ Again</button>`;
+    body = `<div class="atk-mid">${chosen}${result}</div><div class="atk-actions">${actions}</div>`;
+  }
+  $("atkBar").innerHTML = top + body;
+}
+$("atkBar").addEventListener("click", (e) => {
+  const b = e.target.closest("button")?.dataset.b; if (!b) return;
+  const s = spell();
+  if (b === "pickHex" || b === "pickWeapon") barState = "armed";
+  if (b === "repick" || b === "cancel" || b === "done") { barState = "pick"; lastCast = null; }
+  if (b === "cast") {
+    const d1 = 1 + Math.floor(Math.random() * 6), d2 = 1 + Math.floor(Math.random() * 6);
+    lastCast = { total: d1 + d2 + 3, dice: `${d1} + ${d2} + 3` };
+    addRow({ who: "Eòghan MacGille Fàth", kind: "cast", spell: "Hex", target: "Carrion Crawler", total: lastCast.total, dice: lastCast.dice });
+    barState = "result";
+  }
+  if (b === "effect") { addRow({ who: "Eòghan MacGille Fàth", kind: "effect", spell: "Hex", target: "Carrion Crawler" }); barState = "sent"; }
+  if (b === "dmg") {
+    const n = 1 + Math.floor(Math.random() * 6);
+    addRow({ who: "Eòghan MacGille Fàth", kind: "dmg", spell: "Hex", target: "Carrion Crawler", total: n, dice: `${n}` });
+    barState = "dmg";
+  }
+  renderBar();
+});
+
+// ── Free roll ───────────────────────────────
+function renderDice() {
+  $("dice").innerHTML = [4, 6, 8, 10, 12, 20].map((d) => `<button class="die ${dieSides === d ? "on" : ""}" data-d="${d}">d${d}</button>`).join("");
+  $("rollBtn").textContent = `Roll 1d${dieSides}`;
+}
+$("dice").addEventListener("click", (e) => { const d = +e.target.dataset.d; if (d) { dieSides = d; renderDice(); } });
+function freeRoll() {
+  const n = 1 + Math.floor(Math.random() * dieSides);
+  const desc = $("desc").value.trim();
+  addRow({ who: "Eòghan MacGille Fàth", kind: "roll", text: "Free Roll", label: desc || "", total: n, dice: `${n}` });
+  $("desc").value = "";
+}
+$("rollBtn").addEventListener("click", freeRoll);
+$("desc").addEventListener("keydown", (e) => { if (e.key === "Enter") freeRoll(); });
+
+// ── Toggles ─────────────────────────────────
+function seg(id, fn) {
+  $(id).addEventListener("click", (e) => {
+    const v = e.target.dataset.v; if (!v) return;
+    [...$(id).children].forEach((c) => c.classList.toggle("on", c.dataset.v === v));
+    fn(v);
+  });
+}
+seg("palSeg", (v) => { document.body.dataset.pal = v; });
+seg("viewSeg", (v) => { view = v; editing = null; applying = null; renderLog(); });
+
+renderHint(); renderBar(); renderDice(); renderLog();
+</script>
+</body>
+</html>

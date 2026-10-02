@@ -72,3 +72,16 @@ test("the archive is a ring: when every page is full the oldest page is reused",
   assert.equal(archived[0].id, `e${total - 5}`);
   assert.equal(new Set(archived.map((e) => e.id)).size, archived.length);
 });
+
+test("setRollTag labels an event in the live feed or the archive, and clears it", async () => {
+  const { items, send } = fakeTable();
+  const lib = load(send);
+  for (let n = 1; n <= 8; n += 1) await lib.appendRollHistoryEvent(ev(n), 5);
+  assert.equal(await lib.setRollTag("e7", "Climbing the grate"), true); // live
+  assert.equal(items.get("roll-history").rolls.find((e) => e.id === "e7").tag, "Climbing the grate");
+  assert.equal(await lib.setRollTag("e2", "Persuade the goblin king"), true); // archived
+  assert.equal((await lib.getRollHistoryArchive()).find((e) => e.id === "e2").tag, "Persuade the goblin king");
+  assert.equal(await lib.setRollTag("e2", ""), true);
+  assert.equal("tag" in (await lib.getRollHistoryArchive()).find((e) => e.id === "e2"), false);
+  assert.equal(await lib.setRollTag("nope", "x"), false);
+});
