@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 import FeaturesEditor from "./FeaturesEditor";
+import { CURSE_EFFECTS, HELPFUL_EFFECTS } from "../../lib/spellEffects";
 import "./characterSheet.css";
 import ChangePasswordForm from "./ChangePasswordForm";
 import { CHARACTER_SKILLS, SPECIAL_ABILITIES, getTalentDetail } from "./talentCatalog";
@@ -495,6 +496,23 @@ export default function CharacterSheetEditMode({ ctx }) {
                         <div style={{ flex: 1, minWidth: 90 }}>
                           <label style={lbl}>Damage</label>
                           <input className="input-base" value={spell.damage || ""} onChange={(e) => updateSpell(spell.id, "damage", e.target.value)} placeholder="2d6+3" />
+                        </div>
+                        <div style={{ flex: 1.3, minWidth: 130 }}>
+                          <label style={lbl}>Effect</label>
+                          <select
+                            className="input-base"
+                            value={spell.effect || ""}
+                            onChange={(e) => updateSpell(spell.id, "effect", e.target.value)}
+                            title="An effect this spell puts on its target (offered after casting)"
+                          >
+                            <option value="">None</option>
+                            <optgroup label="Curses">
+                              {CURSE_EFFECTS.map((name) => <option key={name} value={name}>{name}</option>)}
+                            </optgroup>
+                            <optgroup label="Helpful">
+                              {HELPFUL_EFFECTS.map((name) => <option key={name} value={name}>{name}</option>)}
+                            </optgroup>
+                          </select>
                         </div>
                       </div>
                     </div>

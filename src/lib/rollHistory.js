@@ -45,7 +45,7 @@ export function formatRollValues(rollValues = []) {
     : "";
 }
 
-export function buildRollHistoryPayload({ id, label, result, characterName, paletteKey, source, target, attack }) {
+export function buildRollHistoryPayload({ id, label, result, characterName, paletteKey, source, target, attack, tag }) {
   const payload = {
     exprLabel: buildDiceExprLabel(result.groups, result.flat, { spaced: true }),
     label: normalizeRollActionLabel(label),
@@ -64,6 +64,8 @@ export function buildRollHistoryPayload({ id, label, result, characterName, pale
   // declaration — a roll fired from the ordinary roller panel is unaffected.
   if (target && typeof target === "object") payload.target = target;
   if (attack && typeof attack === "object") payload.attack = attack;
+  // What the roll was for (free rolls); the DM can change it later.
+  if (typeof tag === "string" && tag.trim()) payload.tag = tag.trim().slice(0, 60);
 
   return payload;
 }
@@ -72,7 +74,7 @@ export function buildCharacterRollPayload(args) {
   return buildRollHistoryPayload(args);
 }
 
-export function buildLocalRollHistoryEntry({ id, label, result, timestamp, characterName, source, target, attack }) {
+export function buildLocalRollHistoryEntry({ id, label, result, timestamp, characterName, source, target, attack, tag }) {
   const entry = {
     id,
     exprLabel: result.exprLabel || buildDiceExprLabel(result.groups, result.flat),
@@ -91,6 +93,7 @@ export function buildLocalRollHistoryEntry({ id, label, result, timestamp, chara
   // shows the declared target/attack.
   if (target && typeof target === "object") entry.target = target;
   if (attack && typeof attack === "object") entry.attack = attack;
+  if (typeof tag === "string" && tag.trim()) entry.tag = tag.trim().slice(0, 60);
 
   return entry;
 }

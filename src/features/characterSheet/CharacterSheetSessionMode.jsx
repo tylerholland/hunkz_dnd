@@ -867,7 +867,7 @@ export default function CharacterSheetSessionMode({
     [attackEntries, unarmedStrike, spellSlots]
   );
   const hasRollableAttacks = useMemo(
-    () => attackChips.some((e) => e.toHit || e.damage),
+    () => attackChips.some((e) => e.toHit || e.damage || e.effect),
     [attackChips]
   );
 
@@ -904,13 +904,14 @@ export default function CharacterSheetSessionMode({
   const handleSelectAttack = useCallback((chip) => {
     setDeclaration((prev) => (prev ? {
       ...prev,
-      attack: { id: chip.id, kind: chip.kind, name: chip.name, toHit: chip.toHit, damage: chip.damage, level: chip.level },
+      attack: { id: chip.id, kind: chip.kind, name: chip.name, toHit: chip.toHit, damage: chip.damage, level: chip.level, effect: chip.effect },
       lastRoll: null,
+      effectSent: null,
     } : prev));
   }, []);
 
   const handleReopenPicker = useCallback(() => {
-    setDeclaration((prev) => (prev ? { ...prev, attack: null, lastRoll: null } : prev));
+    setDeclaration((prev) => (prev ? { ...prev, attack: null, lastRoll: null, effectSent: null } : prev));
   }, []);
 
   const handleCancelDeclaration = useCallback(() => {
@@ -930,11 +931,48 @@ export default function CharacterSheetSessionMode({
       onComplete: (result) => {
         setBarRolling(false);
         if (!result) { setRollOverlay(null); return; } // already-rolling no-op (ADR-027)
-        setDeclaration((prev) => (prev ? { ...prev, lastRoll: { ...result, step } } : prev));
+        setDeclaration((prev) => (prev ? { ...prev, lastRoll: { ...result, step }, effectSent: null } : prev));
         if (rollOverlayOn) setRollOverlay({ open: true, result });
+      },
+      // The cast roll's log id, so the effect row can point back at it.
+      onPosted: (id) => {
+        if (step !== "atk" || !id) return;
+        setDeclaration((prev) => (prev ? { ...prev, castRollId: id } : prev));
       },
     });
   }, [declaration, barRolling, rollOverlayOn]);
+
+  // Spell effects — ✦ EFFECT after the cast: post "✦ Hex takes effect →
+  // target" to the log; the DM applies it (sets the condition, plays the FX).
+  const handleSendEffect = useCallback(async () => {
+    const current = declaration;
+    if (!slug || !current?.attack?.effect || current.gone) return;
+    const effect = current.attack.effect;
+    setDeclaration((prev) => (prev ? { ...prev, effectSent: { effect, id: null } } : prev));
+    try {
+      const res = await postCharacterRoll(slug, {
+        type: "effect",
+        effect,
+        attack: { kind: current.attack.kind, id: current.attack.id, name: current.attack.name },
+        target: { type: "npc", sourceId: current.target.sourceId, name: current.target.name },
+        ...(current.castRollId ? { castRollId: current.castRollId } : {}),
+      });
+      setDeclaration((prev) => (prev?.effectSent ? { ...prev, effectSent: { ...prev.effectSent, id: res?.id ?? null } } : prev));
+      onSessionSync?.();
+    } catch {
+      setDeclaration((prev) => (prev ? { ...prev, effectSent: null } : prev));
+    }
+  }, [declaration, slug, onSessionSync]);
+
+  // The bar shows "✦ Carrion Crawler is Hexed" once the DM has applied it.
+  const effectApplied = useMemo(() => {
+    const id = declaration?.effectSent?.id;
+    if (!id) return false;
+    return (rollHistory || []).some((entry) => entry?.id === id && entry.applied);
+  }, [declaration?.effectSent?.id, rollHistory]);
+  const barDeclaration = useMemo(() => (
+    declaration?.effectSent ? { ...declaration, effectSent: { ...declaration.effectSent, applied: effectApplied } } : declaration
+  ), [declaration, effectApplied]);
 
   // GONE liveness (brief §5/§8) — 2 consecutive poll ticks of absence, so
   // one degraded response can't flicker the bar out mid-turn. Derived from
@@ -1829,7 +1867,7 @@ export default function CharacterSheetSessionMode({
       {declaration && (
         <AttackDeclarationBar
           pal={pal}
-          declaration={declaration}
+          declaration={barDeclaration}
           chips={attackChips}
           rolling={barRolling}
           advMode={mirroredAdvMode}
@@ -1839,6 +1877,8 @@ export default function CharacterSheetSessionMode({
           onReopenPicker={handleReopenPicker}
           onCancel={handleCancelDeclaration}
           onRoll={handleBarRoll}
+          onSendEffect={handleSendEffect}
+          onDone={handleCancelDeclaration}
         />
       )}
 

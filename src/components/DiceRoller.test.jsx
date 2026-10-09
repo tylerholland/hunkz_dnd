@@ -151,3 +151,27 @@ describe("DiceRoller.rollAttack (imperative handle, Story 57)", () => {
     expect(ref.current.advMode).toBe("advantage");
   });
 });
+
+describe("DiceRoller free roll description", () => {
+  it("sends what the roll is for as its tag, then clears the field", async () => {
+    vi.useFakeTimers();
+    const { getByLabelText, getByText } = render(<DiceRoller pal={PALETTES.ember} slug="eoghan" />);
+    const field = getByLabelText("What's this roll for?");
+    act(() => { field.focus(); });
+    const { fireEvent } = await import("@testing-library/react");
+    fireEvent.change(field, { target: { value: "Climbing the grate" } });
+    fireEvent.click(getByText(/^Roll 1d20/i));
+    expect(field.value).toBe("");
+    act(() => { vi.advanceTimersByTime(1200); });
+    expect(apiMocks.postCharacterRoll).toHaveBeenCalledWith("eoghan", expect.objectContaining({ label: "Free Roll", tag: "Climbing the grate" }));
+  });
+
+  it("labels a spell's first roll as its cast", () => {
+    vi.useFakeTimers();
+    const ref = createRef();
+    render(<DiceRoller ref={ref} pal={PALETTES.ember} slug="eoghan" />);
+    act(() => { ref.current.rollAttack({ attackEntry: { id: "s1", kind: "spell", name: "Hex", toHit: "+3" }, step: "atk" }); });
+    act(() => { vi.advanceTimersByTime(1200); });
+    expect(apiMocks.postCharacterRoll).toHaveBeenCalledWith("eoghan", expect.objectContaining({ label: "Hex CAST" }));
+  });
+});

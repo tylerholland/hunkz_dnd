@@ -109,6 +109,9 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   const [comboDice, setComboDice] = useState([]);
   const [comboMod, setComboMod] = useState(0);
   const [exprInput, setExprInput] = useState("");
+  // What a free roll is for ("Climbing the grate") — sent as the roll's tag
+  // so the log, and later the Chronicle, show it. Clears after each roll.
+  const [rollTag, setRollTag] = useState("");
   const [exprError, setExprError] = useState("");
 
   // Cycling number during animation
@@ -153,7 +156,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   //     pre-existing call site, so the shared roll feed is unaffected there.
   const executeRoll = useCallback(({
     groups, flat, label, isD20Attack = false, isCheck = false,
-    advModeOverride, onComplete, suppressOpenPanel = false, target, attack,
+    advModeOverride, onComplete, onPosted, suppressOpenPanel = false, target, attack, tag,
   }) => {
     if (rollState.rolling) { onComplete?.(null); return; }
 
@@ -230,6 +233,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
           result: resultObj,
           target,
           attack,
+          tag,
         }),
         ...prev,
       ].slice(0, 5));
@@ -240,7 +244,8 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
           result: resultObj,
           target,
           attack,
-        })).catch(() => {});
+          tag,
+        })).then((res) => onPosted?.(res?.id ?? null)).catch(() => onPosted?.(null));
       }
 
       onComplete?.(resultObj);
@@ -292,18 +297,20 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   // "1d20+7"); `parseDiceExpr` naturally yields the same
   // `{count:1,sides:20}` shape `isD20Attack`'s crit/fumble/adv-dis logic
   // already keys off, so no extra branch is needed.
-  const rollAttack = useCallback(({ attackEntry, step = "atk", exprOverride, advMode: advModeOverride, target, attack, onComplete, suppressOpenPanel = true }) => {
+  const rollAttack = useCallback(({ attackEntry, step = "atk", exprOverride, advMode: advModeOverride, target, attack, onComplete, onPosted, suppressOpenPanel = true }) => {
     if (!attackEntry) { onComplete?.(null); return; }
     const attackRef = attack || { kind: attackEntry.kind, id: attackEntry.id, name: attackEntry.name };
+    // A spell's first roll is its cast ("Hex CAST"); a weapon's is an attack.
+    const firstStepLabel = `${attackEntry.name} ${attackEntry.kind === "spell" ? "CAST" : "ATK"}`;
 
     if (typeof exprOverride === "string" && exprOverride.trim()) {
       const parsed = parseDiceExpr(exprOverride.trim());
       if (!parsed || parsed.groups.length === 0) { onComplete?.(null); return; }
       executeRoll({
         groups: parsed.groups, flat: parsed.flat,
-        label: `${attackEntry.name} ${step === "dmg" ? "DMG" : "ATK"}`,
+        label: step === "dmg" ? `${attackEntry.name} DMG` : firstStepLabel,
         isD20Attack: step !== "dmg",
-        advModeOverride, onComplete, suppressOpenPanel, target, attack: attackRef,
+        advModeOverride, onComplete, onPosted, suppressOpenPanel, target, attack: attackRef,
       });
       return;
     }
@@ -314,7 +321,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
       executeRoll({
         groups: parsed.groups, flat: parsed.flat,
         label: `${attackEntry.name} DMG`, isD20Attack: false,
-        advModeOverride, onComplete, suppressOpenPanel, target, attack: attackRef,
+        advModeOverride, onComplete, onPosted, suppressOpenPanel, target, attack: attackRef,
       });
       return;
     }
@@ -322,8 +329,8 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
     const bonus = parseInt(String(attackEntry.toHit ?? "").trim(), 10);
     executeRoll({
       groups: [{ count: 1, sides: 20 }], flat: Number.isFinite(bonus) ? bonus : 0,
-      label: `${attackEntry.name} ATK`, isD20Attack: true,
-      advModeOverride, onComplete, suppressOpenPanel, target, attack: attackRef,
+      label: firstStepLabel, isD20Attack: true,
+      advModeOverride, onComplete, onPosted, suppressOpenPanel, target, attack: attackRef,
     });
   }, [executeRoll]);
 
@@ -359,7 +366,8 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
     } else {
       groups = [{ count: dieCount, sides: selectedSides }]; flat = comboMod;
     }
-    executeRoll({ groups, flat, label: "Free Roll", isD20Attack: false });
+    executeRoll({ groups, flat, label: "Free Roll", isD20Attack: false, tag: rollTag.trim() });
+    setRollTag("");
   };
 
   const rollExpr = () => {
@@ -369,7 +377,8 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
       setExprError("Could not parse — use NdX or N terms, e.g. 2d6+1d4+3"); return;
     }
     setExprError("");
-    executeRoll({ groups: parsed.groups, flat: parsed.flat, label: "Free Roll", isD20Attack: false });
+    executeRoll({ groups: parsed.groups, flat: parsed.flat, label: "Free Roll", isD20Attack: false, tag: rollTag.trim() });
+    setRollTag("");
   };
 
   // ── Combo builder ────────────────────────────────────────────────────────────
@@ -808,6 +817,21 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
               style={{ width: 72, fontSize: 18, padding: "2px 6px" }}
             />
           </div>
+
+          {/* What the roll is for — optional, becomes the log label */}
+          <label className="dice-tag-field">
+            <span className="dice-tag-label">For</span>
+            <input
+              type="text"
+              value={rollTag}
+              maxLength={60}
+              onChange={(e) => setRollTag(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !rolling) rollFree(); }}
+              placeholder="What's this roll for? (optional)"
+              aria-label="What's this roll for?"
+              autoComplete="off"
+            />
+          </label>
 
           {/* Big roll button */}
           <button

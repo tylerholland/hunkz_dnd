@@ -63,6 +63,9 @@ export function buildAttackEntries({ weapons = [], spells = [] } = {}) {
       name: s.name,
       toHit: s.toHit,
       damage: s.damage,
+      // Spell effects — the condition this spell can put on its target
+      // (offered as ✦ EFFECT after the cast roll).
+      effect: s.effect || undefined,
       description: s.description,
       // Story 57 — the Attack Bar's only consumer of `level` (0 = cantrip,
       // absent = unspecified/unknown, never coerced via `|| 0`, ADR-025).

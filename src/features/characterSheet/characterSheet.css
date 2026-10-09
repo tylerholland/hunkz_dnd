@@ -4321,6 +4321,39 @@
   min-height: 44px;
 }
 
+/* Spell effects — ✦ EFFECT and its sent/applied note (curse purple, the
+   same family colour as the Hexed ring). */
+.cs-atk-effect {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(182, 120, 236, 0.5);
+  background: rgba(170, 100, 230, 0.16);
+  color: #cda2f2;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cs-atk-effect:hover:not(:disabled) { background: rgba(170, 100, 230, 0.26); }
+.cs-atk-effect:disabled { opacity: 0.45; cursor: default; }
+.cs-atk-effect:focus-visible { outline: 2px solid #cda2f2; outline-offset: 2px; }
+
+.cs-atk-effect-note {
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: #cda2f2;
+}
+.cs-atk-effect-sub {
+  color: var(--pal-text-muted);
+  font-style: italic;
+  font-size: 13px;
+}
+
 /* ── Size-degradation ladder (brief §9) ─────────────────────────────────── */
 @media (max-width: 560px) {
   .cs-atk-bar-inner {

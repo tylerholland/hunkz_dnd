@@ -23,6 +23,8 @@ function deriveBarState(declaration) {
   if (!declaration) return null;
   if (declaration.gone) return "gone";
   if (!declaration.attack) return "pick";
+  // Spell effects — ✦ EFFECT was sent; the DM applies it from the log.
+  if (declaration.effectSent) return "effect-sent";
   if (!declaration.lastRoll) return "armed";
   return declaration.lastRoll.step === "dmg" ? "result-dmg" : "result-atk";
 }
@@ -39,6 +41,8 @@ export default function AttackDeclarationBar({
   onReopenPicker,
   onCancel,
   onRoll, // ({ step: "atk"|"dmg", exprOverride? })
+  onSendEffect, // () — post "✦ <spell> takes effect" for the DM to apply
+  onDone, // () — clear the declaration after an applied effect
 }) {
   const state = deriveBarState(declaration);
 
@@ -73,6 +77,8 @@ export default function AttackDeclarationBar({
   // step only, never damage).
   const nextStep = state === "result-atk" ? "dmg" : "atk";
   const showAdvStrip = !declaration.gone && (state === "armed" || state === "result-dmg");
+  const isSpell = attack?.kind === "spell";
+  const effectSent = declaration.effectSent || null; // { effect, applied }
 
   function startEdit(step) {
     if (declaration.gone || rolling) return;
@@ -243,7 +249,7 @@ export default function AttackDeclarationBar({
           <div className="cs-atk-actions">
             {state === "armed" && (
               <button type="button" className="cs-atk-roll btn-primary" disabled={rolling} onClick={() => fireRoll("atk")}>
-                ATTACK
+                {isSpell ? "✶ CAST" : "ATTACK"}
               </button>
             )}
             {state === "result-atk" && (
@@ -258,7 +264,29 @@ export default function AttackDeclarationBar({
                     ⚔ DAMAGE
                   </button>
                 )}
+                {attack?.effect && (
+                  <button type="button" className="cs-atk-roll cs-atk-effect" disabled={rolling} onClick={() => onSendEffect?.()}>
+                    ✦ EFFECT
+                  </button>
+                )}
               </>
+            )}
+            {state === "effect-sent" && (
+              effectSent?.applied ? (
+                <>
+                  <span className="cs-atk-effect-note" role="status">✦ {targetName} is {effectSent.effect}</span>
+                  <button type="button" className="cs-atk-secondary btn-ghost" onClick={() => onDone?.()}>DONE</button>
+                </>
+              ) : (
+                <>
+                  <span className="cs-atk-effect-note" role="status">
+                    ✦ {effectSent?.effect} sent <span className="cs-atk-effect-sub">— the DM will apply it</span>
+                  </span>
+                  <button type="button" className="cs-atk-secondary btn-ghost" disabled={rolling} onClick={() => fireRoll("atk")}>
+                    ↺ AGAIN
+                  </button>
+                </>
+              )
             )}
             {state === "result-dmg" && (
               <button type="button" className="cs-atk-roll btn-primary" disabled={rolling} onClick={() => fireRoll("atk")}>
