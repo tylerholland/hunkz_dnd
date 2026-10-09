@@ -17,6 +17,9 @@ exports.handler = async (event) => {
   if (!isValidCheckDice(body.abilityCheckDice)) {
     return badRequest("abilityCheckDice must look like NdS (e.g. 2d6 or 1d20), 1–10 dice of 2–100 sides");
   }
+  if (body.spellCastDice !== undefined && !isValidCheckDice(body.spellCastDice)) {
+    return badRequest("spellCastDice must look like NdS (e.g. 1d20 or 2d6), 1–10 dice of 2–100 sides");
+  }
 
   const houseRules = normalizeHouseRulesRecord(body);
   const savedVersion = await saveHouseRulesState(houseRules);

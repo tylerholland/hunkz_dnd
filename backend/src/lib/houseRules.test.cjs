@@ -8,6 +8,9 @@ test("house rules default to 2d6 ability checks", () => {
   assert.equal(DEFAULT_HOUSE_RULES.abilityCheckDice, "2d6");
   assert.equal(normalizeHouseRulesRecord(undefined).featuresEnabled, true);
   assert.equal(normalizeHouseRulesRecord({ featuresEnabled: false }).featuresEnabled, false);
+  assert.equal(normalizeHouseRulesRecord(undefined).spellCastDice, "1d20");
+  assert.equal(normalizeHouseRulesRecord({ spellCastDice: "2D6" }).spellCastDice, "2d6");
+  assert.equal(normalizeHouseRulesRecord({ spellCastDice: "nonsense" }).spellCastDice, "1d20");
 });
 
 test("valid dice are kept (normalized), invalid fall back", () => {

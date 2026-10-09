@@ -32,11 +32,11 @@ describe("DmSettingsPage", () => {
   it("loads the current ability-check dice and saves a change", async () => {
     renderPage();
     const input = await screen.findByDisplayValue("2d6");
-    expect(screen.getByText("Save")).toBeDisabled();
+    expect(screen.getAllByText("Save")[0]).toBeDisabled();
     fireEvent.change(input, { target: { value: "1D20" } });
     expect(screen.getByText("1d20+2")).toBeInTheDocument();
-    fireEvent.click(screen.getByText("Save"));
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true }));
+    fireEvent.click(screen.getAllByText("Save")[0]);
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20" }));
     expect(await screen.findByText(/Saved/)).toBeInTheDocument();
   });
 
@@ -45,7 +45,7 @@ describe("DmSettingsPage", () => {
     const toggle = await screen.findByRole("switch");
     expect(toggle).toHaveAttribute("aria-checked", "true");
     fireEvent.click(toggle);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20" }));
     expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
@@ -54,7 +54,7 @@ describe("DmSettingsPage", () => {
     const input = await screen.findByDisplayValue("2d6");
     fireEvent.change(input, { target: { value: "2d6+1" } });
     expect(screen.getByText(/Use a format like/)).toBeInTheDocument();
-    expect(screen.getByText("Save")).toBeDisabled();
+    expect(screen.getAllByText("Save")[0]).toBeDisabled();
   });
 
   it("resets a player's password to a temporary one after a confirm step", async () => {
@@ -81,5 +81,14 @@ describe("DmSettingsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Reset password" }));
     fireEvent.click(screen.getByRole("button", { name: "Confirm: reset Aesop" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("DM password rejected");
+  });
+
+  it("saves the spell casting dice separately from ability checks", async () => {
+    renderPage();
+    // The card remounts once the rules load, so query after that.
+    await waitFor(() => expect(screen.getByRole("textbox", { name: "Spell casting dice" })).toHaveValue("1d20"));
+    fireEvent.click(screen.getByRole("button", { name: "2d6" }));
+    fireEvent.click(screen.getAllByText("Save")[1]);
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "2d6" }));
   });
 });

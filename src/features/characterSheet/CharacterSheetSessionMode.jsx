@@ -1833,6 +1833,7 @@ export default function CharacterSheetSessionMode({
             slug={slug}
             onAdvModeChange={setMirroredAdvMode}
             checkDice={checkDice}
+            spellDice={houseRules?.spellCastDice || DEFAULT_HOUSE_RULES.spellCastDice}
             abilityMods={abilityModsByName}
           />
 

@@ -8,7 +8,8 @@
 // backend/src/lib/houseRules.js.
 
 // featuresEnabled — show Features & Traits (race/class features with uses).
-export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true };
+// spellCastDice — a spell's cast roll (plus its to-hit); separate from checks.
+export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20" };
 
 const CHECK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)$/;
 
@@ -21,6 +22,7 @@ export function normalizeHouseRules(raw) {
   return {
     abilityCheckDice: isValidCheckDice(dice) ? dice : DEFAULT_HOUSE_RULES.abilityCheckDice,
     featuresEnabled: raw?.featuresEnabled !== false,
+    spellCastDice: isValidCheckDice(raw?.spellCastDice) ? raw.spellCastDice.trim().toLowerCase() : DEFAULT_HOUSE_RULES.spellCastDice,
   };
 }
 

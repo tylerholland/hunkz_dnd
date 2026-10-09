@@ -85,7 +85,9 @@ const STAT_SHORT = { Strength: "STR", Dexterity: "DEX", Constitution: "CON", Wis
 // `checkDice` — the DM's house-rule ability-check dice (DM Settings; default
 // 2d6). `abilityMods` — optional { Strength: n, … } from the shared
 // abilityModifier() so checks match the DM card (includes equipped items).
-const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pal, slug, onAdvModeChange, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice, abilityMods }, ref) {
+// `spellDice` — the DM's spell casting dice (DM Settings; default 1d20): a
+// spell's cast roll is these dice plus its to-hit. Weapons always use 1d20.
+const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pal, slug, onAdvModeChange, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice, spellDice = DEFAULT_HOUSE_RULES.spellCastDice, abilityMods }, ref) {
   const [isOpen, setIsOpen] = useState(() => {
     if (!slug) return true;
     return sessionStorage.getItem(`dnd_dice_open_${slug}`) !== "false";
@@ -327,12 +329,16 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
     }
 
     const bonus = parseInt(String(attackEntry.toHit ?? "").trim(), 10);
+    // Spells cast with the table's spell dice; a single d20 keeps crit/fumble
+    // and adv/dis on the d20, other dice get adv/dis the way checks do.
+    const firstDice = attackEntry.kind === "spell" ? parseCheckDice(spellDice) : { count: 1, sides: 20 };
+    const isD20 = firstDice.count === 1 && firstDice.sides === 20;
     executeRoll({
-      groups: [{ count: 1, sides: 20 }], flat: Number.isFinite(bonus) ? bonus : 0,
-      label: firstStepLabel, isD20Attack: true,
+      groups: [firstDice], flat: Number.isFinite(bonus) ? bonus : 0,
+      label: firstStepLabel, isD20Attack: isD20, isCheck: !isD20,
       advModeOverride, onComplete, onPosted, suppressOpenPanel, target, attack: attackRef,
     });
-  }, [executeRoll]);
+  }, [executeRoll, spellDice]);
 
   // Story 57 (§3.4) — the Attack Bar computes and displays the loaded
   // expression per step so it can offer it as an editable default. Exposed
@@ -343,8 +349,9 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
     if (!attackEntry) return "";
     if (step === "dmg") return attackEntry.damage || "";
     const bonus = String(attackEntry.toHit ?? "").trim();
-    return bonus ? `1d20${bonus.startsWith("+") || bonus.startsWith("-") ? bonus : `+${bonus}`}` : "1d20";
-  }, []);
+    const dice = attackEntry.kind === "spell" ? (() => { const d = parseCheckDice(spellDice); return `${d.count}d${d.sides}`; })() : "1d20";
+    return bonus ? `${dice}${bonus.startsWith("+") || bonus.startsWith("-") ? bonus : `+${bonus}`}` : dice;
+  }, [spellDice]);
 
   // `advMode`/`setAdvMode` are exposed directly (not wrapped) so the Attack
   // Bar's Adv/Dis strip (brief §3.4) drives the SAME state the panel's own

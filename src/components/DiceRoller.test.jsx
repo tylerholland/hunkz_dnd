@@ -175,3 +175,12 @@ describe("DiceRoller free roll description", () => {
     expect(apiMocks.postCharacterRoll).toHaveBeenCalledWith("eoghan", expect.objectContaining({ label: "Hex CAST" }));
   });
 });
+
+describe("DiceRoller spell casting dice (DM Settings)", () => {
+  it("casts spells with the table's spell dice plus to-hit; weapons stay on 1d20", () => {
+    const ref = createRef();
+    render(<DiceRoller ref={ref} pal={PALETTES.ember} slug="eoghan" spellDice="2d6" />);
+    expect(ref.current.getAttackExpr({ kind: "spell", name: "Hex", toHit: "+3" }, "atk")).toBe("2d6+3");
+    expect(ref.current.getAttackExpr({ kind: "weapon", name: "Dagger", toHit: "+3" }, "atk")).toBe("1d20+3");
+  });
+});
