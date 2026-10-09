@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useImperativeHandle } from "react";
 import { parseDiceExpr, rollDie, DieShape } from "./DiceRoller";
 import { RollHistoryRow } from "./RollHistoryList";
+import EffectLogRow from "./ApplyEffectAction";
 import { PALETTES } from "../features/characterSheet/theme";
 import { postDmRoll } from "../api";
 import { applyCheckAdvantage, DEFAULT_HOUSE_RULES, isCheckDiceGroups } from "../lib/houseRules";
@@ -77,7 +78,7 @@ function createClientRollId(timestamp, index) {
 }
 
 // ── DmDiceRoller ───────────────────────────────────────────────────────────────
-export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, onDealDamage, appliedRollIds, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice }) {
+export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, onDealDamage, onApplyEffect, onSaveTag, appliedRollIds, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
     sessionStorage.getItem("dnd_dice_dm_open") !== "false"
@@ -272,6 +273,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
         ? entry.rollValues
         : extractRollValues(entry),
       source: entry.source === "dm" ? "dm" : "character",
+      fromServer: true,
       sortTime: Date.parse(entry.createdAt || "") || 0,
     })),
   ]
@@ -572,15 +574,34 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
                     : null;
                   const isDmEntry = entry.source === "dm";
 
+                  const shownEntry = {
+                    ...entry,
+                    nameColor: palette?.accent || (isDmEntry ? pal.accentBright : undefined),
+                    totalAccentColor: palette?.accent || (isDmEntry ? pal.gem : undefined),
+                  };
+                  // Only events from the shared log can be labelled (the DM's own
+                  // panel rolls shown locally have no server id).
+                  const canTag = onSaveTag && entry.fromServer;
+                  if (entry.type === "effect" && onApplyEffect) {
+                    return (
+                      <EffectLogRow
+                        key={entry.id}
+                        pal={pal}
+                        entry={shownEntry}
+                        applied={!!entry.applied || !!appliedRollIds?.has(entry.id)}
+                        onApplyEffect={onApplyEffect}
+                        onSaveTag={canTag ? onSaveTag : undefined}
+                        opacity={opacity}
+                        showDivider={i < combinedHistory.length - 1}
+                      />
+                    );
+                  }
                   return (
                     <RollHistoryRow
                       key={entry.id}
                       pal={pal}
-                      entry={{
-                        ...entry,
-                        nameColor: palette?.accent || (isDmEntry ? pal.accentBright : undefined),
-                        totalAccentColor: palette?.accent || (isDmEntry ? pal.gem : undefined),
-                      }}
+                      entry={shownEntry}
+                      onSaveTag={canTag ? onSaveTag : undefined}
                       opacity={opacity}
                       showDivider={i < combinedHistory.length - 1}
                     >

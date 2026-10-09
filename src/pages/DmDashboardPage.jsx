@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll } from "../api";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag } from "../api";
+import { isHelpfulEffect } from "../lib/spellEffects";
 import DmDiceRoller from "../components/DmDiceRoller";
 import { DEFAULT_HOUSE_RULES, normalizeHouseRules } from "../lib/houseRules";
 import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
@@ -551,6 +552,39 @@ export default function DmDashboardPage() {
       rollId: entry.id,
     });
   }, [npcCombat.npcs, rollHistory]);
+
+  // Spell effects — apply a player's "✦ Hex takes effect" from the log: add
+  // the condition to the target NPC, and send the effect (with the DM's note)
+  // as the fx so every map plays the cast and the row is marked applied.
+  const handleApplyEffect = useCallback((entry, note) => {
+    const npc = (npcCombat.npcs || []).find((n) => n.id === entry.target?.sourceId);
+    const effect = entry.effect;
+    if (!npc || !effect) return false;
+    const fx = {
+      attacker: { type: "character", sourceId: entry.slug, name: entry.characterName },
+      name: entry.attack?.name || effect,
+      style: isHelpfulEffect(effect) ? "bless" : "curse",
+      effect,
+      ...(note ? { note } : {}),
+      rollId: entry.id,
+    };
+    setAppliedRollIds((current) => new Set(current).add(entry.id));
+    const npcs = (npcCombat.npcs || []).map((n) => {
+      if (n.id !== npc.id) return n;
+      const conditions = (n.conditions || []).includes(effect) ? n.conditions : [...(n.conditions || []), effect];
+      const effectNotes = { ...(n.effectNotes || {}) };
+      if (note) effectNotes[effect] = note; else delete effectNotes[effect];
+      return { ...n, conditions, effectNotes };
+    });
+    commitNpcCombatUpdate({ npcs }, { optimistic: true, fxById: { [npc.id]: fx } });
+    return true;
+  }, [npcCombat.npcs, commitNpcCombatUpdate]);
+
+  // DM labels on any logged event ("Persuade the goblin king").
+  const handleSaveRollTag = useCallback(async (entry, tag) => {
+    await putRollTag(dmPassword, entry.id, tag);
+    queueDashboardRefresh(0);
+  }, [dmPassword, queueDashboardRefresh]);
 
   const closeTakeAction = useCallback(() => setTakeAction(null), []);
 
@@ -1365,6 +1399,8 @@ export default function DmDashboardPage() {
                   onApplyDamage={handleApplyDamage}
                   onApplyNpcDamage={handleApplyNpcDamage}
                   onDealDamage={handleDealDamageFromRoll}
+                  onApplyEffect={handleApplyEffect}
+                  onSaveTag={handleSaveRollTag}
                   appliedRollIds={appliedRollIds}
                   remoteHistory={rollHistory}
                   marginTop={0}

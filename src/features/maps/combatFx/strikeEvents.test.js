@@ -65,3 +65,18 @@ describe("chosen actions (lastFx)", () => {
     expect(ev).toMatchObject({ miss: true, style: "cut", attackerId: "t-eoghan" });
   });
 });
+
+describe("spell effects on the map", () => {
+  it("plays a fresh applied effect once, as its own curse/bless style", () => {
+    const seen = new Map();
+    const fx = { kind: "effect", at: "2026-10-08T02:00:00.000Z", style: "curse", effect: "Hexed", attacker: { type: "character", sourceId: "eoghan" } };
+    const subject = { lastFx: fx };
+    // First sight is history, not an event.
+    expect(collectTokenHits({ token: tokens[2], subject, damageFresh: false, serverTime: fx.at, healSeen: new Map(), missSeen: seen })).toEqual([]);
+    const next = { lastFx: { ...fx, at: "2026-10-08T02:00:05.000Z" } };
+    const hits = collectTokenHits({ token: tokens[2], subject: next, damageFresh: false, serverTime: "2026-10-08T02:00:06.000Z", healSeen: new Map(), missSeen: seen });
+    expect(hits.map((h) => h.kind)).toEqual(["effect"]);
+    const [event] = buildStrikeEvents({ ...common, rolls: [], hits });
+    expect(event).toMatchObject({ style: "curse", effect: true, attackerId: "t-eoghan", targetId: "t-ogre" });
+  });
+});

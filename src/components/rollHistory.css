@@ -1,0 +1,97 @@
+/* Roll log rows — labels (tags), the DM's ✎, and spell effect rows. */
+
+.rh-tag {
+  font-size: 12px;
+  letter-spacing: 0.06em;
+}
+
+/* The DM's ✎: faint until the row is hovered or the pencil focused; always
+   visible (dimmed) on touch screens that can't hover. */
+.rh-tag-pencil {
+  margin-left: 4px;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: none;
+  border-radius: 3px;
+  background: transparent;
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s;
+  vertical-align: middle;
+}
+.rh-row:hover .rh-tag-pencil,
+.rh-tag-pencil:focus-visible,
+.rh-tag-pencil.failed {
+  opacity: 0.85;
+}
+@media (hover: none) {
+  .rh-tag-pencil { opacity: 0.5; }
+}
+
+.rh-tag-edit input {
+  margin-left: 6px;
+  width: min(260px, 100%);
+  padding: 2px 6px;
+  font-size: 14px;
+  background: transparent;
+  border: 1px solid;
+  border-radius: 3px;
+  outline: none;
+}
+
+.rh-effect-name {
+  color: #cda2f2;
+}
+
+.rh-effect-note {
+  margin-top: 4px;
+  padding-left: 10px;
+  border-left: 2px solid rgba(182, 120, 236, 0.45);
+  font-size: 14px;
+  font-style: italic;
+}
+
+/* Apply Effect (DM) — curse purple, same shape as Deal Damage */
+.rh-apply-effect {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid rgba(182, 120, 236, 0.6);
+  border-radius: 4px;
+  background: rgba(170, 100, 230, 0.14);
+  color: #cda2f2;
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.rh-apply-effect:hover { background: rgba(170, 100, 230, 0.26); }
+
+.rh-apply-pop {
+  margin-top: 8px;
+  padding: 10px;
+  border: 1px solid rgba(182, 120, 236, 0.45);
+  border-radius: 5px;
+  background: rgba(170, 100, 230, 0.10);
+  display: grid;
+  gap: 8px;
+}
+.rh-apply-pop textarea {
+  width: 100%;
+  min-height: 54px;
+  resize: vertical;
+  font: inherit;
+  font-size: 15px;
+  padding: 6px 8px;
+  border-radius: 3px;
+  background: transparent;
+}
+.rh-apply-pop-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}

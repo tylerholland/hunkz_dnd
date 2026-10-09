@@ -47,6 +47,12 @@ export function collectTokenHits({ token, subject, damageFresh, serverTime, heal
   if (isFreshStamp(token.id, missStamp, serverTime, missSeen)) {
     hits.push({ kind: "miss", token, stamp: missStamp, fromRef: fx.attacker ?? null, fx });
   }
+  // Spell effects (Apply Effect from the log) — like a miss, only a lastFx
+  // stamp; tracked in the same caller-owned map under its own key.
+  const effectStamp = fx?.kind === "effect" ? fx.at : null;
+  if (isFreshStamp(`${token.id}|effect`, effectStamp, serverTime, missSeen)) {
+    hits.push({ kind: "effect", token, stamp: effectStamp, fromRef: fx.attacker ?? null, fx });
+  }
   return hits;
 }
 
@@ -60,7 +66,7 @@ function isAdjacent(a, b, imageW, imageH, mapTokenScale) {
 
 /**
  * @param {object} p
- * @param {Array} p.hits    [{ kind: "damage"|"heal"|"miss", token, stamp, fromRef: {type, sourceId}|null, fx? }]
+ * @param {Array} p.hits    [{ kind: "damage"|"heal"|"miss"|"effect", token, stamp, fromRef: {type, sourceId}|null, fx? }]
  * @param {Array} p.tokens  all tokens on this map
  * @param {Array} p.party   party members ({ slug, palette })
  * @param {Array} p.rolls   shared roll history
@@ -86,10 +92,10 @@ export function buildStrikeEvents({ hits, tokens, party, rolls, imageW, imageH, 
     };
     if (fx) {
       // ADR-032 — the action was chosen explicitly: play exactly that.
-      events.push({ ...base, style: fx.style, crit: hit.kind === "damage" && fx.crit === true, miss: hit.kind === "miss" });
+      events.push({ ...base, style: fx.style, crit: hit.kind === "damage" && fx.crit === true, miss: hit.kind === "miss", effect: hit.kind === "effect" });
       continue;
     }
-    if (hit.kind === "miss") continue;
+    if (hit.kind === "miss" || hit.kind === "effect") continue;
     const { attack, crit } = ref?.type === "character"
       ? matchDeclaredAttack(rolls, { attackerSlug: ref.sourceId, targetSourceId: target.sourceId, at: hit.stamp })
       : { attack: null, crit: false };

@@ -364,6 +364,27 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
     const bearing = a ? Math.atan2(t.y - a.y, t.x - a.x) : Math.PI / 2;
     const common = { style, crit, bearing, hue };
 
+    // Spell effects (no damage): a curse flies to the target and leaves the
+    // hex sigil; a blessing drifts over as gold motes and leaves a gold halo.
+    if (style === "curse" || style === "bless") {
+      const effectHue = style === "curse" ? 275 : 45;
+      const color = style === "curse" ? "#b678ec" : "#ecc970";
+      if (reducedMotion || !a || attackerId === targetId) {
+        sigil(targetId, 0, 1600, effectHue);
+      } else if (style === "curse") {
+        const ms = Math.min(620, Math.max(320, 240 + Math.hypot(t.x - a.x, t.y - a.y) * 0.45));
+        charge(attackerId, color, CHARGE_MS + 60);
+        projectile(attackerId, targetId, CHARGE_MS + 60, ms, "orb", color, effectHue);
+        sigil(targetId, CHARGE_MS + 60 + ms - 80, 2600, effectHue);
+      } else {
+        charge(attackerId, color, CHARGE_MS);
+        healMotes(attackerId, targetId, CHARGE_MS - 40, 520);
+        sigil(targetId, CHARGE_MS + 380, 2400, effectHue);
+      }
+      kick();
+      return;
+    }
+
     // Reduced motion, or no attacker on this map: the impact alone.
     if (reducedMotion || !a || attackerId === targetId) {
       if (style === "heal") impact(targetId, { heal: true });

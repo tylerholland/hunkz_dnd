@@ -1,4 +1,73 @@
+import { useState } from "react";
 import { formatRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
+import "./rollHistory.css";
+
+// A label on any logged event ("Climbing the grate"), set by the player when
+// rolling or by the DM at any time. With `onSaveTag` (DM only) a faint ✎
+// edits it inline: Enter saves, Esc cancels. `onSaveTag(entry, tag)` returns a
+// promise; the new label shows at once and reverts if the save fails.
+export function RowTag({ pal, entry, onSaveTag }) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [localTag, setLocalTag] = useState(null); // shown until the log catches up
+  const [failed, setFailed] = useState(false);
+  const tag = localTag ?? entry.tag ?? "";
+
+  function start(e) {
+    e.stopPropagation();
+    setDraft(tag);
+    setFailed(false);
+    setEditing(true);
+  }
+  async function save() {
+    const next = draft.trim().slice(0, 60);
+    setEditing(false);
+    if (next === tag) return;
+    setLocalTag(next);
+    try {
+      await onSaveTag(entry, next);
+    } catch {
+      setLocalTag(null);
+      setFailed(true);
+    }
+  }
+
+  if (editing) {
+    return (
+      <span className="rh-tag-edit" onClick={(e) => e.stopPropagation()}>
+        <input
+          autoFocus
+          value={draft}
+          maxLength={60}
+          aria-label="Label this roll"
+          placeholder="e.g. Persuade the goblin king"
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") { e.preventDefault(); save(); }
+            if (e.key === "Escape") { e.preventDefault(); setEditing(false); }
+          }}
+          onBlur={save}
+          style={{ fontFamily: pal.fontBody, color: pal.text, borderColor: pal.accent }}
+        />
+      </span>
+    );
+  }
+  return (
+    <>
+      {tag ? <span className="rh-tag" style={{ fontFamily: pal.fontUI, color: pal.textMuted }}> · {tag}</span> : null}
+      {onSaveTag ? (
+        <button
+          type="button"
+          className={`rh-tag-pencil${failed ? " failed" : ""}`}
+          onClick={start}
+          aria-label={tag ? "Change this label" : "Label this roll"}
+          title={failed ? "Couldn't save the label — try again" : tag ? "Change the label" : "Label this roll"}
+          style={{ color: failed ? "#d08080" : pal.textMuted }}
+        >✎</button>
+      ) : null}
+    </>
+  );
+}
 
 function badgeStyle(kind) {
   if (kind === "crit") {
@@ -17,10 +86,11 @@ function badgeStyle(kind) {
   };
 }
 
-export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false, onSaveTag }) {
   const isFillChange = Number.isFinite(entry.filledCount);
   return (
     <div
+      className="rh-row"
       style={{
         display: "flex",
         alignItems: "center",
@@ -69,6 +139,7 @@ export function WheelHistoryRow({ pal, entry, opacity = 1, showDivider = false }
       >
         {entry.note ? `— ${entry.note}` : isFillChange ? `— ${entry.filledCount}/${entry.segments} filled` : `— ${entry.segments} segments`}
       </span>
+      <RowTag pal={pal} entry={entry} onSaveTag={onSaveTag} />
     </div>
   );
 }
@@ -94,7 +165,7 @@ function historyRowStyle(pal, opacity, showDivider) {
 const HP_DAMAGE = "#c06060";
 const HP_HEAL = "#6aa86a";
 
-export function HpHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null }) {
+export function HpHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null, onSaveTag }) {
   const delta = Number.isFinite(entry.delta) ? entry.delta : 0;
   const kind = entry.miss ? "miss" : delta < 0 ? "damage" : "heal";
   const glyph = kind === "miss" ? "○" : kind === "damage" ? "⚔" : "✚";
@@ -102,7 +173,7 @@ export function HpHistoryRow({ pal, entry, opacity = 1, showDivider = false, chi
   const byName = entry.by?.name;
   const actionName = entry.action?.name;
   return (
-    <div style={historyRowStyle(pal, opacity, showDivider)}>
+    <div className="rh-row" style={historyRowStyle(pal, opacity, showDivider)}>
       <span style={{ color, fontSize: 13, flexShrink: 0 }} aria-hidden="true">{glyph}</span>
       <span style={{ color: pal.accentBright }}>{entry.subject?.name || "Someone"}</span>
       {kind === "miss" ? (
@@ -127,16 +198,17 @@ export function HpHistoryRow({ pal, entry, opacity = 1, showDivider = false, chi
           {badgeStyle("crit").label}
         </span>
       ) : null}
+      <RowTag pal={pal} entry={entry} onSaveTag={onSaveTag} />
       {children ? <div style={{ flexBasis: "100%" }}>{children}</div> : null}
     </div>
   );
 }
 
-export function ConditionHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+export function ConditionHistoryRow({ pal, entry, opacity = 1, showDivider = false, onSaveTag }) {
   const added = Array.isArray(entry.added) ? entry.added : [];
   const removed = Array.isArray(entry.removed) ? entry.removed : [];
   return (
-    <div style={historyRowStyle(pal, opacity, showDivider)}>
+    <div className="rh-row" style={historyRowStyle(pal, opacity, showDivider)}>
       <span style={{ color: pal.accent, fontSize: 13, flexShrink: 0 }} aria-hidden="true">◈</span>
       <span style={{ color: pal.accentBright }}>{entry.subject?.name || "Someone"}</span>
       {added.map((c) => (
@@ -148,35 +220,66 @@ export function ConditionHistoryRow({ pal, entry, opacity = 1, showDivider = fal
       {entry.exhaustion ? (
         <span style={{ fontStyle: "italic" }}>Exhaustion {entry.exhaustion.from} → {entry.exhaustion.to}</span>
       ) : null}
+      <RowTag pal={pal} entry={entry} onSaveTag={onSaveTag} />
     </div>
   );
 }
 
-export function TurnHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+export function TurnHistoryRow({ pal, entry, opacity = 1, showDivider = false, onSaveTag }) {
   return (
-    <div style={{ ...historyRowStyle(pal, opacity, showDivider), color: pal.textMuted }}>
+    <div className="rh-row" style={{ ...historyRowStyle(pal, opacity, showDivider), color: pal.textMuted }}>
       <span style={{ color: pal.accent, fontSize: 12, flexShrink: 0 }} aria-hidden="true">⏵</span>
       <span style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", textTransform: "uppercase" }}>Round {entry.round}</span>
       <span style={{ fontStyle: "italic" }}>{entry.subject?.name || "Someone"}&apos;s turn</span>
+      <RowTag pal={pal} entry={entry} onSaveTag={onSaveTag} />
     </div>
   );
 }
 
-export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null }) {
+// Spell effects — "✦ Hex takes effect → ◎ Carrion Crawler", posted by the
+// caster for the DM to apply. Once applied, the DM's note on what it does
+// shows underneath. `children` holds the DM's Apply Effect action.
+export function EffectHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null, below = null, onSaveTag }) {
+  const note = entry.applied?.note;
+  return (
+    <div
+      className="rh-row rh-effect-row"
+      style={{ padding: "7px 0", borderBottom: showDivider ? `1px solid ${pal.border}` : "none", opacity, transition: "opacity 0.4s" }}
+    >
+      <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: "4px 12px" }}>
+        <div style={{ flex: "1 1 160px", minWidth: 0 }}>
+          {entry.characterName ? (
+            <div style={{ fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.06em", color: entry.nameColor || pal.accentBright, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              {entry.characterName}
+            </div>
+          ) : null}
+          <div style={{ fontFamily: pal.fontBody, fontSize: 16, color: pal.text, lineHeight: 1.3 }}>
+            <span className="rh-effect-name">✦ {entry.attack?.name || entry.effect} takes effect</span>
+            {entry.target ? (
+              <span>{" → "}<span style={{ color: pal.accentBright }}>◎</span>{" "}{entry.target.name}</span>
+            ) : null}
+            <RowTag pal={pal} entry={entry} onSaveTag={onSaveTag} />
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 12, flexShrink: 0, marginLeft: "auto" }}>{children}</div>
+      </div>
+      {note ? <div className="rh-effect-note" style={{ fontFamily: pal.fontBody, color: pal.textBody }}>{note}</div> : null}
+      {below}
+    </div>
+  );
+}
+
+export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null, below = null, onSaveTag }) {
   // Branch on type: "wheel" entries render differently from dice rows
-  if (entry.type === "wheel") {
-    return <WheelHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider} />;
-  }
-  if (entry.type === "hp") {
-    return <HpHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider}>{children}</HpHistoryRow>;
-  }
-  if (entry.type === "condition") {
-    return <ConditionHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider} />;
-  }
-  if (entry.type === "turn") {
-    return <TurnHistoryRow pal={pal} entry={entry} opacity={opacity} showDivider={showDivider} />;
-  }
-  const actionLabel = normalizeRollActionLabel(entry.label);
+  const rowProps = { pal, entry, opacity, showDivider, onSaveTag };
+  if (entry.type === "wheel") return <WheelHistoryRow {...rowProps} />;
+  if (entry.type === "hp") return <HpHistoryRow {...rowProps}>{children}</HpHistoryRow>;
+  if (entry.type === "condition") return <ConditionHistoryRow {...rowProps} />;
+  if (entry.type === "turn") return <TurnHistoryRow {...rowProps} />;
+  if (entry.type === "effect") return <EffectHistoryRow {...rowProps} below={below}>{children}</EffectHistoryRow>;
+  // A spell's cast roll reads "casts Hex" rather than "Hex CAST".
+  const isCast = entry.attack?.kind === "spell" && /\bCAST\b/.test(String(entry.label || ""));
+  const actionLabel = isCast ? null : normalizeRollActionLabel(entry.label);
   const nameColor = entry.nameColor || pal.accentBright;
   const totalAccentColor = entry.totalAccentColor || pal.gem;
   const rollValuesText = formatRollValues(entry.rollValues);
@@ -188,6 +291,7 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
 
   return (
     <div
+      className="rh-row"
       style={{
         display: "flex",
         alignItems: "center",
@@ -226,7 +330,9 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
             lineHeight: 1.3,
           }}
         >
-          {actionLabel}
+          {isCast ? (
+            <><span style={{ fontStyle: "italic" }}>casts</span> {entry.attack.name}</>
+          ) : actionLabel}
           {/* Story 57 — declared-attack provenance (ADR-026). Rendered from the
               structured entry.target field, never parsed out of the label.
               ◎ (U+25CE) is the target glyph, used in exactly two places
@@ -243,6 +349,7 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
               {" "}({entry.exprLabel})
             </span>
           ) : null}
+          <RowTag pal={pal} entry={entry} onSaveTag={onSaveTag} />
         </div>
       </div>
 

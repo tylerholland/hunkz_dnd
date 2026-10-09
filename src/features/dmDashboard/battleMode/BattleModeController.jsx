@@ -868,11 +868,18 @@ export const TokenChip = memo(function TokenChip({
             list). Exhaustion is the one item shown numerically here. */}
         {eligibleConditions.length > 0 && (
           <div className="token-hp-card__cond-block">
-            {eligibleConditions.map((item, i) => (
-              <div key={item.name + i} className="token-hp-card__cond-line" style={{ color: FAMILY_COLORS[item.meta.family] }}>
-                {item.name === "Exhaustion" ? `EXHAUSTION ${item.meta.exhaustionLevel}` : String(item.name).toUpperCase()}
-              </div>
-            ))}
+            {eligibleConditions.map((item, i) => {
+              // Spell effects — the DM's note on what it does (Apply Effect).
+              const effectNote = npc?.effectNotes?.[item.name];
+              return (
+                <div key={item.name + i}>
+                  <div className="token-hp-card__cond-line" style={{ color: FAMILY_COLORS[item.meta.family] }}>
+                    {item.name === "Exhaustion" ? `EXHAUSTION ${item.meta.exhaustionLevel}` : String(item.name).toUpperCase()}
+                  </div>
+                  {effectNote ? <div className="token-hp-card__cond-note">{effectNote}</div> : null}
+                </div>
+              );
+            })}
           </div>
         )}
 

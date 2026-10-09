@@ -384,6 +384,18 @@
   line-height: 15px;
 }
 
+/* Spell effects — the DM's note on what an effect does. */
+.token-hp-card__cond-note {
+  max-width: 220px;
+  margin: 1px 0 4px;
+  font-family: "Crimson Text", Georgia, serif;
+  font-size: 13px;
+  font-style: italic;
+  line-height: 1.3;
+  color: rgba(230, 215, 245, 0.85);
+  white-space: normal;
+}
+
 /* Story 52 — Phase B wound line. */
 .token-hp-card__wound-line {
   font-family: "Crimson Text", Georgia, serif;
