@@ -54,7 +54,7 @@ export default function ChronicleSignIn({ onSignedIn }) {
 
   return (
     <form className="chr-signin" onSubmit={submit} aria-labelledby="chr-signin-h">
-      <p id="chr-signin-h" className="chr-signin-title">Sign in to add your recollections or edit the summary</p>
+      <p id="chr-signin-h" className="chr-signin-title">Sign in to add your recollections, edit the summary or label rolls</p>
       <div className="chr-signin-row">
         <label className="chr-field">
           <span className="chr-label">Character</span>

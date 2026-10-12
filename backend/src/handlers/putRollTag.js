@@ -1,8 +1,10 @@
+const { GetCommand } = require("@aws-sdk/lib-dynamodb");
+const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok, forbidden, notFound } = require("../lib/response");
 const { setRollTag, getSpecialRecord, putSpecialRecord } = require("../lib/specialRecords");
 const { withVersionRetry, currentVersion } = require("../lib/versioning");
-const { CHRONICLE_SESSION_PREFIX } = require("../lib/specialItems");
+const { CHRONICLE_SESSION_PREFIX, isReservedCharacterSlug } = require("../lib/specialItems");
 const { notifySessionChanged } = require("../lib/broadcast");
 
 const MAX_TAG_LEN = 60;
@@ -25,16 +27,27 @@ async function setSessionEventTag(sessionId, rollId, tag) {
   });
 }
 
-// DM-only: label any logged event ("Persuade the goblin king"), wherever it
-// lives now: the live log, the archive, and — with `sessionId` — that
-// Chronicle session's saved copy. Body { tag, sessionId? }; empty clears.
+// Anyone signed in — the DM, or a player with their character's password
+// (body.asSlug) — may label events; labels are table notes, not secrets, and
+// sharing the work takes it off the DM.
+async function canLabel(password, asSlug) {
+  const dm = await verifyPassword(password, { passwordHash: "$2b$10$invalid" });
+  if (dm.valid && dm.role === "dm") return true;
+  if (typeof asSlug !== "string" || !asSlug || isReservedCharacterSlug(asSlug)) return false;
+  const result = await db.send(new GetCommand({ TableName: TABLE, Key: { slug: asSlug } }));
+  if (!result.Item?.passwordHash) return false;
+  return (await verifyPassword(password, result.Item)).valid === true;
+}
+
+// Label any logged event ("Persuade the goblin king"), wherever it lives now:
+// the live log, the archive, and — with `sessionId` — that Chronicle
+// session's saved copy. Body { tag, sessionId?, asSlug? }; empty clears.
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
-  const auth = await verifyPassword(password, { passwordHash: "$2b$10$invalid" });
-  if (!auth.valid || auth.role !== "dm") return forbidden("DM password required");
+  const body = JSON.parse(event.body || "{}");
+  if (!password || !(await canLabel(password, body.asSlug))) return forbidden("Sign in to label rolls");
 
   const rollId = decodeURIComponent(event.pathParameters?.id || "");
-  const body = JSON.parse(event.body || "{}");
   const tag = typeof body.tag === "string" ? body.tag.trim().slice(0, MAX_TAG_LEN) : "";
   const sessionId = typeof body.sessionId === "string" ? body.sessionId.trim().slice(0, 80) : "";
 

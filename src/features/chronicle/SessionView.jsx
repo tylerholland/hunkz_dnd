@@ -161,10 +161,12 @@ export default function SessionView({ sessionId, viewer, creds, pal }) {
   const chapter = chapters[chapterIndex];
   const canPost = viewer.role === "player" && creds?.asSlug;
 
-  // DM — label any event in this session ("Persuade the goblin king"). Saved
-  // on the session's own copy and on the log/archive copy if it's still there.
+  // Anyone signed in (DM or player) can label any event in this session
+  // ("Persuade the goblin king"). Saved on the session's own copy and on the
+  // log/archive copy if it's still there.
+  const canTag = isDm || !!canPost;
   async function saveTag(entry, tag) {
-    await putRollTag(creds.password, entry.id, tag, session.id);
+    await putRollTag(creds.password, entry.id, tag, session.id, isDm ? undefined : creds.asSlug);
     setSession((s) => ({
       ...s,
       events: (s.events || []).map((e) => {
@@ -347,7 +349,7 @@ export default function SessionView({ sessionId, viewer, creds, pal }) {
               {[...events].reverse().map((entry, i, list) => (
                 <div key={entry.id} className="chr-log-row">
                   <span className="chr-ev-time">{fmtTime(eventMs(entry))}</span>
-                  <RollHistoryRow pal={pal} entry={entry} showDivider={i < list.length - 1} onSaveTag={isDm ? saveTag : undefined} />
+                  <RollHistoryRow pal={pal} entry={entry} showDivider={i < list.length - 1} onSaveTag={canTag ? saveTag : undefined} />
                 </div>
               ))}
             </div>

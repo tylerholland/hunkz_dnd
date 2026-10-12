@@ -94,14 +94,26 @@ describe("SessionView", () => {
     const input = screen.getByRole("textbox", { name: "Label this roll" });
     fireEvent.change(input, { target: { value: "Persuade the goblin king" } });
     fireEvent.keyDown(input, { key: "Enter" });
-    await waitFor(() => expect(api.putRollTag).toHaveBeenCalledWith("dm", "r1", "Persuade the goblin king", "s1"));
+    await waitFor(() => expect(api.putRollTag).toHaveBeenCalledWith("dm", "r1", "Persuade the goblin king", "s1", undefined));
     // Shown on the row and in the "Highest roll" highlight, which uses the label.
     expect((await screen.findAllByText(/Persuade the goblin king/)).length).toBe(2);
   });
 
-  it("gives players no label pencil", async () => {
+  it("lets a signed-in player label events too, as their character", async () => {
     api.getChronicleSession.mockResolvedValue({ session: { ...meta, events, summary: null, recollections: [] }, chapters: [] });
+    api.putRollTag.mockResolvedValue({});
     render(<MemoryRouter><SessionView sessionId="s1" viewer={{ role: "player", characters: [{ slug: "aesop", password: "pw" }] }} creds={{ password: "pw", asSlug: "aesop" }} pal={PALETTES.ocean} /></MemoryRouter>);
+    await screen.findByText("The Night at a Glance");
+    fireEvent.click(screen.getAllByRole("button", { name: "Label this roll" })[1]);
+    const input = screen.getByRole("textbox", { name: "Label this roll" });
+    fireEvent.change(input, { target: { value: "Climbing the grate" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(api.putRollTag).toHaveBeenCalledWith("pw", "r1", "Climbing the grate", "s1", "aesop"));
+  });
+
+  it("gives signed-out visitors no label pencil", async () => {
+    api.getChronicleSession.mockResolvedValue({ session: { ...meta, events, summary: null, recollections: [] }, chapters: [] });
+    render(<MemoryRouter><SessionView sessionId="s1" viewer={{ role: "anon", characters: [] }} creds={null} pal={PALETTES.ocean} /></MemoryRouter>);
     await screen.findByText("The Night at a Glance");
     expect(screen.queryByRole("button", { name: "Label this roll" })).toBeNull();
   });

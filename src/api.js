@@ -272,13 +272,14 @@ export const putCounterWheels = (dmPassword, wheels, wheelEvent) =>
   });
 
 // House rules (DM Settings) — read via getSessionState().houseRules.
-// DM: label any logged event, live or archived — and, with `sessionId`, in
-// that Chronicle session's saved copy too. An empty tag removes it.
-export const putRollTag = (dmPassword, rollId, tag, sessionId) =>
+// Label any logged event, live or archived — and, with `sessionId`, in that
+// Chronicle session's saved copy too. An empty tag removes it. The DM signs
+// with their password; a player with theirs plus `asSlug`.
+export const putRollTag = (password, rollId, tag, sessionId, asSlug) =>
   request(`/roll-history/${encodeURIComponent(rollId)}/tag`, {
     method: "PUT",
-    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
-    body: JSON.stringify(sessionId ? { tag, sessionId } : { tag }),
+    headers: { "Content-Type": "application/json", "x-character-password": password },
+    body: JSON.stringify({ tag, ...(sessionId ? { sessionId } : {}), ...(asSlug ? { asSlug } : {}) }),
   });
 
 export const putHouseRules = (dmPassword, rules) =>
