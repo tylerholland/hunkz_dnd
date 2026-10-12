@@ -105,6 +105,7 @@ export function buildTimeline(events, people) {
       crit: !!e.action?.crit,
       attributed: !!e.by,
       recorded: true,
+      tag: e.tag || null,
     }));
   const recordedMisses = hpEvents.filter((e) => e.miss).map((e) => ({ ms: eventMs(e), color: colorOfRef(e.by), who: nameOfRef(e.by), target: e.subject?.name || "" }));
 
@@ -153,6 +154,7 @@ export function buildTimeline(events, people) {
         crit: !!e.isCrit,
         attributed: paired,
         recorded: false,
+        tag: e.tag || (paired ? a.e.tag : null) || null,
       });
     }
   }
@@ -213,7 +215,7 @@ export function buildHighlights(events, people) {
   return [
     { key: "nat20", label: "Natural 20s", value: nat20.length, detail: nat20.length ? unique(nat20) : "None this time", tone: nat20.length ? "good" : "" },
     { key: "nat1", label: "Natural 1s", value: nat1.length, detail: nat1.length ? unique(nat1) : "A clean night", tone: nat1.length ? "bad" : "" },
-    top ? { key: "top", label: "Highest roll", value: top.total, detail: `${shortName(nameOf(top))} · ${top.label || "Roll"} (${top.exprLabel})` } : null,
+    top ? { key: "top", label: "Highest roll", value: top.total, detail: `${shortName(nameOf(top))} · ${top.tag || top.label || "Roll"} (${top.exprLabel})` } : null,
     busiest ? { key: "busy", label: "Most rolls", value: busiest[1], detail: shortName(busiest[0]) } : null,
     topDealer ? { key: "dealer", label: "Most damage", value: topDealer[1], detail: shortName(topDealer[0]) } : null,
     downed.length ? { key: "down", label: "Went down", value: downed.length, detail: downed.join(", "), tone: "bad" } : null,

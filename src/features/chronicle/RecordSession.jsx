@@ -9,6 +9,12 @@ import {
 const DAY = 86400000;
 
 function eventText(e) {
+  const { who, what } = eventTextParts(e);
+  return { who, what: e.tag ? `${what} · ${e.tag}` : what };
+}
+
+function eventTextParts(e) {
+  if (e.type === "effect") return { who: e.characterName || "?", what: `✦ ${e.attack?.name || e.effect} takes effect${e.target?.name ? ` ◎ ${e.target.name}` : ""}` };
   if (e.type === "wheel") return { who: "◷", what: `${e.name}${Number.isFinite(e.filledCount) ? ` ${e.filledCount}/${e.segments}` : ""}` };
   if (e.type === "hp") {
     const change = e.miss ? "missed" : e.delta < 0 ? `−${-e.delta}` : `+${e.delta}`;

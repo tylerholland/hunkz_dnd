@@ -35,7 +35,8 @@ export default function NightAtAGlance({ timeline, startMs, endMs, people }) {
     const who = h.attacker || "Someone";
     const what = h.action ? ` with ${h.action}` : "";
     const on = h.target ? ` to ${h.target}` : "";
-    return `${fmtTime(h.ms)} · ${who} dealt ${h.amount}${on}${what}${h.crit ? " (critical)" : ""}${h.attributed ? "" : h.recorded ? " · not tagged to an attack" : " · no action roll just before it"}`;
+    const label = h.tag ? ` · ${h.tag}` : "";
+    return `${fmtTime(h.ms)} · ${who} dealt ${h.amount}${on}${what}${h.crit ? " (critical)" : ""}${label}${h.attributed ? "" : h.recorded ? " · not tagged to an attack" : " · no action roll just before it"}`;
   };
 
   return (

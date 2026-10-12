@@ -18,6 +18,7 @@ vi.mock("../../api", () => ({
   putChronicleSummary: vi.fn(),
   addChronicleRecollection: vi.fn(),
   updateChronicleRecollection: vi.fn(),
+  putRollTag: vi.fn(),
 }));
 
 const at = (min) => new Date(Date.UTC(2026, 6, 23, 2, min)).toISOString();
@@ -81,6 +82,28 @@ describe("SessionView", () => {
     await waitFor(() => expect(screen.getByText("We won.")).toBeTruthy());
     expect(api.putChronicleSummary).toHaveBeenCalledWith(creds, "s1", { text: "We won.", baseUpdatedAt: null });
     expect(screen.getByText("Add a recollection")).toBeTruthy();
+  });
+
+  it("lets the DM label any event in the activity log, saved with the session", async () => {
+    api.getChronicleSession.mockResolvedValue({ session: { ...meta, events, summary: null, recollections: [] }, chapters: [] });
+    api.putRollTag.mockResolvedValue({ id: "r1", tag: "Persuade the goblin king" });
+    render(<MemoryRouter><SessionView sessionId="s1" viewer={{ role: "dm", password: "dm", characters: [] }} creds={{ password: "dm" }} pal={PALETTES.ocean} /></MemoryRouter>);
+    await screen.findByText("The Night at a Glance");
+    fireEvent.click(screen.getByText(/Activity log/));
+    fireEvent.click(screen.getAllByRole("button", { name: "Label this roll" })[1]); // oldest event (r1) is last
+    const input = screen.getByRole("textbox", { name: "Label this roll" });
+    fireEvent.change(input, { target: { value: "Persuade the goblin king" } });
+    fireEvent.keyDown(input, { key: "Enter" });
+    await waitFor(() => expect(api.putRollTag).toHaveBeenCalledWith("dm", "r1", "Persuade the goblin king", "s1"));
+    // Shown on the row and in the "Highest roll" highlight, which uses the label.
+    expect((await screen.findAllByText(/Persuade the goblin king/)).length).toBe(2);
+  });
+
+  it("gives players no label pencil", async () => {
+    api.getChronicleSession.mockResolvedValue({ session: { ...meta, events, summary: null, recollections: [] }, chapters: [] });
+    render(<MemoryRouter><SessionView sessionId="s1" viewer={{ role: "player", characters: [{ slug: "aesop", password: "pw" }] }} creds={{ password: "pw", asSlug: "aesop" }} pal={PALETTES.ocean} /></MemoryRouter>);
+    await screen.findByText("The Night at a Glance");
+    expect(screen.queryByRole("button", { name: "Label this roll" })).toBeNull();
   });
 
   it("keeps a player's draft when someone else saved the summary first", async () => {

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import {
   addChronicleRecollection, deleteChronicleSession, getChronicleSession,
-  putChronicleSummary, updateChronicleRecollection, updateChronicleSession,
+  putChronicleSummary, putRollTag, updateChronicleRecollection, updateChronicleSession,
 } from "../../api";
 import { RollHistoryRow } from "../../components/RollHistoryList";
 import { buildHighlights, buildTimeline, dayKey, eventMs, fmtDay, fmtTime, peopleIndex, playerColor, timeAgo } from "./chronicleData";
@@ -160,6 +160,20 @@ export default function SessionView({ sessionId, viewer, creds, pal }) {
   const chapterIndex = chapters.findIndex((c) => c.id === session.chapterId);
   const chapter = chapters[chapterIndex];
   const canPost = viewer.role === "player" && creds?.asSlug;
+
+  // DM — label any event in this session ("Persuade the goblin king"). Saved
+  // on the session's own copy and on the log/archive copy if it's still there.
+  async function saveTag(entry, tag) {
+    await putRollTag(creds.password, entry.id, tag, session.id);
+    setSession((s) => ({
+      ...s,
+      events: (s.events || []).map((e) => {
+        if (e.id !== entry.id) return e;
+        if (tag) return { ...e, tag };
+        return Object.fromEntries(Object.entries(e).filter(([key]) => key !== "tag"));
+      }),
+    }));
+  }
 
   async function saveMeta(payload) {
     setMetaError("");
@@ -333,7 +347,7 @@ export default function SessionView({ sessionId, viewer, creds, pal }) {
               {[...events].reverse().map((entry, i, list) => (
                 <div key={entry.id} className="chr-log-row">
                   <span className="chr-ev-time">{fmtTime(eventMs(entry))}</span>
-                  <RollHistoryRow pal={pal} entry={entry} showDivider={i < list.length - 1} />
+                  <RollHistoryRow pal={pal} entry={entry} showDivider={i < list.length - 1} onSaveTag={isDm ? saveTag : undefined} />
                 </div>
               ))}
             </div>
