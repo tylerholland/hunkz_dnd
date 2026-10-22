@@ -99,7 +99,11 @@ exports.handler = async (event) => {
       const effectNotes = { ...(prev?.effectNotes || npc.effectNotes || {}) };
       if (fx.note) effectNotes[fx.effect] = fx.note;
       else delete effectNotes[fx.effect];
-      return { ...npc, effectNotes, lastFx: buildLastFx(fx, "effect", at) };
+      // Story 70 — who cast it (and with what), so the caster's attack bar can
+      // add the effect's damage rider (Hex +1d6) to their hits on this target.
+      const effectSources = { ...(prev?.effectSources || npc.effectSources || {}) };
+      if (fx.attacker) effectSources[fx.effect] = { ...fx.attacker, ...(fx.name ? { spell: fx.name } : {}) };
+      return { ...npc, effectNotes, effectSources, lastFx: buildLastFx(fx, "effect", at) };
     }
     return npc;
   });

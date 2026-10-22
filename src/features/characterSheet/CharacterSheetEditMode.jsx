@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useMemo, useState } from "react";
 import FeaturesEditor from "./FeaturesEditor";
-import { CURSE_EFFECTS, HELPFUL_EFFECTS } from "../../lib/spellEffects";
+import { CURSE_EFFECTS, HELPFUL_EFFECTS, NEUTRAL_EFFECTS } from "../../lib/spellEffects";
 import "./characterSheet.css";
 import ChangePasswordForm from "./ChangePasswordForm";
 import { CHARACTER_SKILLS, SPECIAL_ABILITIES, getTalentDetail } from "./talentCatalog";
@@ -511,6 +511,9 @@ export default function CharacterSheetEditMode({ ctx }) {
                             </optgroup>
                             <optgroup label="Helpful">
                               {HELPFUL_EFFECTS.map((name) => <option key={name} value={name}>{name}</option>)}
+                            </optgroup>
+                            <optgroup label="Other">
+                              {NEUTRAL_EFFECTS.map((name) => <option key={name} value={name}>{name}</option>)}
                             </optgroup>
                           </select>
                         </div>

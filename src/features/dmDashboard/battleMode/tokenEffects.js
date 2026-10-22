@@ -111,6 +111,7 @@ export const FAMILY_COLORS = {
   // Spell effects (src/lib/spellEffects.js), kept in `conditions` too.
   helpful: "#e8c060",
   curse: "#b673e6",
+  neutral: "#8ec5e8", // e.g. Flying, or a custom neutral effect
 };
 
 // rank: 1 = incapacitating … 4 = attrition (lower = higher priority)
@@ -157,9 +158,9 @@ export function resolveConditionMeta(name, exhaustionLevel) {
   if (entry) return { ...entry };
   const effect = spellEffect(name);
   if (effect) {
-    return effect.kind === "helpful"
-      ? { family: "helpful", rank: 6, glyphId: "g-unknown", effect: true }
-      : { family: "curse", rank: 3, glyphId: "g-unknown", effect: true };
+    if (effect.kind === "helpful") return { family: "helpful", rank: 6, glyphId: "g-unknown", effect: true };
+    if (effect.kind === "neutral") return { family: "neutral", rank: 5, glyphId: "g-unknown", effect: true };
+    return { family: "curse", rank: 3, glyphId: "g-unknown", effect: true };
   }
   return { family: "unknown", rank: 4, glyphId: "g-unknown" };
 }

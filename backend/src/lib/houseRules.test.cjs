@@ -11,6 +11,10 @@ test("house rules default to 2d6 ability checks", () => {
   assert.equal(normalizeHouseRulesRecord(undefined).spellCastDice, "1d20");
   assert.equal(normalizeHouseRulesRecord(undefined).playersEndTurn, true);
   assert.equal(normalizeHouseRulesRecord({ playersEndTurn: false }).playersEndTurn, false);
+  assert.deepEqual(
+    normalizeHouseRulesRecord({ customEffects: [{ name: " Covered in slime ", kind: "curse" }, { name: "covered in SLIME" }, { name: "Blur", kind: "odd" }, { name: "" }] }).customEffects,
+    [{ name: "Covered in slime", kind: "curse" }, { name: "Blur", kind: "neutral" }]
+  );
   assert.equal(normalizeHouseRulesRecord({ spellCastDice: "2D6" }).spellCastDice, "2d6");
   assert.equal(normalizeHouseRulesRecord({ spellCastDice: "nonsense" }).spellCastDice, "1d20");
 });

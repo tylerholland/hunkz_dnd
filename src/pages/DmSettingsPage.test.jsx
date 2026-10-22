@@ -36,7 +36,7 @@ describe("DmSettingsPage", () => {
     fireEvent.change(input, { target: { value: "1D20" } });
     expect(screen.getByText("1d20+2")).toBeInTheDocument();
     fireEvent.click(screen.getAllByText("Save")[0]);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [] }));
     expect(await screen.findByText(/Saved/)).toBeInTheDocument();
   });
 
@@ -45,7 +45,7 @@ describe("DmSettingsPage", () => {
     const toggle = await screen.findByRole("switch", { name: "Features & Traits" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
     fireEvent.click(toggle);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [] }));
     expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
@@ -89,7 +89,7 @@ describe("DmSettingsPage", () => {
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Spell casting dice" })).toHaveValue("1d20"));
     fireEvent.click(screen.getByRole("button", { name: "2d6" }));
     fireEvent.click(screen.getAllByText("Save")[1]);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "2d6", playersEndTurn: true }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "2d6", playersEndTurn: true, customEffects: [] }));
   });
 
   it("turns player turn-ending off", async () => {

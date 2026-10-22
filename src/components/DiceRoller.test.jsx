@@ -184,3 +184,23 @@ describe("DiceRoller spell casting dice (DM Settings)", () => {
     expect(ref.current.getAttackExpr({ kind: "weapon", name: "Dagger", toHit: "+3" }, "atk")).toBe("1d20+3");
   });
 });
+
+describe("DiceRoller effect riders (Story 70)", () => {
+  it("rolls a rider as its own dice, adds it to the total and records its share", () => {
+    vi.useFakeTimers();
+    const ref = createRef();
+    render(<DiceRoller ref={ref} pal={PALETTES.ember} slug="eoghan" />);
+    const onComplete = vi.fn();
+    act(() => {
+      ref.current.rollAttack({ attackEntry: { id: "w", kind: "weapon", name: "Dagger", damage: "1d6" }, step: "dmg", riders: [{ effect: "Hexed", dice: "1d6", label: "Hex" }], onComplete });
+    });
+    act(() => { vi.advanceTimersByTime(1500); });
+    const result = onComplete.mock.calls[0][0];
+    expect(result.riders).toHaveLength(1);
+    const riderTotal = result.riders[0].total;
+    const base = result.groups.filter((g) => !g.rider).reduce((s, g) => s + g.rolls.reduce((a, b) => a + b, 0), 0);
+    expect(result.total).toBe(base + riderTotal);
+    expect(result.groups.filter((g) => g.rider)).toHaveLength(1); // not merged into the weapon's d6
+    expect(apiMocks.postCharacterRoll).toHaveBeenCalledWith("eoghan", expect.objectContaining({ riders: [expect.objectContaining({ label: "Hex", total: riderTotal })] }));
+  });
+});

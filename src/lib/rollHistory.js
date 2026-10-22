@@ -45,7 +45,14 @@ export function formatRollValues(rollValues = []) {
     : "";
 }
 
-export function buildRollHistoryPayload({ id, label, result, characterName, paletteKey, source, target, attack, tag }) {
+function cleanRiders(riders) {
+  return (Array.isArray(riders) ? riders : [])
+    .filter((r) => r && typeof r.label === "string" && Number.isFinite(r.total))
+    .slice(0, 3)
+    .map((r) => ({ label: r.label.slice(0, 40), total: r.total, ...(typeof r.effect === "string" ? { effect: r.effect.slice(0, 40) } : {}) }));
+}
+
+export function buildRollHistoryPayload({ id, label, result, characterName, paletteKey, source, target, attack, tag, riders }) {
   const payload = {
     exprLabel: buildDiceExprLabel(result.groups, result.flat, { spaced: true }),
     label: normalizeRollActionLabel(label),
@@ -66,6 +73,9 @@ export function buildRollHistoryPayload({ id, label, result, characterName, pale
   if (attack && typeof attack === "object") payload.attack = attack;
   // What the roll was for (free rolls); the DM can change it later.
   if (typeof tag === "string" && tag.trim()) payload.tag = tag.trim().slice(0, 60);
+  // Story 70 — effect riders included in this damage roll (Hex +4).
+  const riderList = cleanRiders(riders);
+  if (riderList.length) payload.riders = riderList;
 
   return payload;
 }
@@ -74,7 +84,7 @@ export function buildCharacterRollPayload(args) {
   return buildRollHistoryPayload(args);
 }
 
-export function buildLocalRollHistoryEntry({ id, label, result, timestamp, characterName, source, target, attack, tag }) {
+export function buildLocalRollHistoryEntry({ id, label, result, timestamp, characterName, source, target, attack, tag, riders }) {
   const entry = {
     id,
     exprLabel: result.exprLabel || buildDiceExprLabel(result.groups, result.flat),
@@ -94,6 +104,8 @@ export function buildLocalRollHistoryEntry({ id, label, result, timestamp, chara
   if (target && typeof target === "object") entry.target = target;
   if (attack && typeof attack === "object") entry.attack = attack;
   if (typeof tag === "string" && tag.trim()) entry.tag = tag.trim().slice(0, 60);
+  const riderList = cleanRiders(riders);
+  if (riderList.length) entry.riders = riderList;
 
   return entry;
 }

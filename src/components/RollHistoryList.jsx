@@ -349,6 +349,10 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
               {" "}({entry.exprLabel})
             </span>
           ) : null}
+          {/* Story 70 — effect riders rolled into this damage (Hex +4). */}
+          {Array.isArray(entry.riders) && entry.riders.length ? (
+            <span className="rh-rider"> · incl. ✦ {entry.riders.map((r) => `${r.label} +${r.total}`).join(", ")}</span>
+          ) : null}
           <RowTag pal={pal} entry={entry} onSaveTag={onSaveTag} />
         </div>
       </div>

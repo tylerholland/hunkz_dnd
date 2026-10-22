@@ -59,3 +59,18 @@ describe("AttackDeclarationBar — spell effects", () => {
     expect(onDone).toHaveBeenCalled();
   });
 });
+
+describe("AttackDeclarationBar — effect riders", () => {
+  it("shows the caster's +1d6 Hex chip on the damage step, on by default, and lets them drop it", () => {
+    const onToggleRiders = vi.fn();
+    const dagger = { id: "w1", kind: "weapon", name: "Dagger", damage: "1d4+2" };
+    renderBar({ attack: dagger, lastRoll: { step: "atk", total: 15, groups: [], flat: 3 } }, {
+      riders: [{ effect: "Hexed", dice: "1d6", label: "Hex" }], ridersOn: true, onToggleRiders, getAttackExpr: () => "1d4+2",
+    });
+    const chip = screen.getByRole("button", { name: /\+1d6 Hex/ });
+    expect(chip).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: /DAMAGE · 1d4\+2 \+ 1d6/ })).toBeInTheDocument();
+    fireEvent.click(chip);
+    expect(onToggleRiders).toHaveBeenCalled();
+  });
+});

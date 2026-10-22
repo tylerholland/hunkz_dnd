@@ -1,0 +1,57 @@
+/* Story 70 — "+ Custom effect…" in the DM's condition pickers. */
+.cfx-open {
+  margin-top: 8px;
+  padding: 4px 10px;
+  border: 1px dashed var(--pal-border, rgba(255,255,255,0.2));
+  border-radius: 10px;
+  background: transparent;
+  color: var(--pal-text-muted, #8a8a8a);
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  cursor: pointer;
+}
+.cfx-open:hover { color: var(--pal-accent-bright, #ddd); border-color: var(--pal-accent, #aaa); }
+.cfx-form {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+.cfx-form input {
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: 3px;
+  border: 1px solid var(--pal-border, rgba(255,255,255,0.2));
+  background: transparent;
+  color: var(--pal-text, #eee);
+  font-family: var(--font-body, Georgia, serif);
+  font-size: 15px;
+}
+.cfx-form input:focus { outline: 2px solid var(--pal-accent, #aaa); outline-offset: 0; }
+.cfx-kinds { display: flex; gap: 6px; flex-wrap: wrap; }
+.cfx-kind {
+  padding: 3px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--pal-border, rgba(255,255,255,0.2));
+  background: transparent;
+  color: var(--pal-text-muted, #8a8a8a);
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cfx-actions { display: flex; justify-content: flex-end; gap: 8px; }
+.cfx-cancel, .cfx-add {
+  padding: 5px 12px;
+  border-radius: 3px;
+  font-family: var(--font-ui, Georgia, serif);
+  font-size: 11px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+.cfx-cancel { border: 1px solid var(--pal-border, rgba(255,255,255,0.2)); background: transparent; color: var(--pal-text-muted, #8a8a8a); }
+.cfx-add { border: 1px solid var(--pal-accent, #aaa); background: var(--pal-accent-dim, rgba(255,255,255,0.08)); color: var(--pal-accent-bright, #eee); }
+.cfx-add:disabled { opacity: 0.45; cursor: default; }
+.cfx-error { color: #d08080; font-size: 13px; }

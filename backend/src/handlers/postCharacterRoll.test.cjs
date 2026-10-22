@@ -229,3 +229,16 @@ test("postCharacterRoll records a spell effect for the DM to apply", async () =>
   const bad = await handler({ pathParameters: { slug: "eoghan" }, body: JSON.stringify({ type: "effect", effect: "Hexed" }) });
   assert.equal(bad.statusCode, 400);
 });
+
+test("postCharacterRoll keeps a damage roll's effect riders (bounded)", async () => {
+  const appended = [];
+  const { handler } = loadHandlerWithMocks({
+    getItem: { slug: "eoghan", name: "Eòghan", palette: "ember" },
+    appendRollHistoryEvent: async (eventRecord) => { appended.push(eventRecord); return [eventRecord]; },
+  });
+  await handler({
+    pathParameters: { slug: "eoghan" },
+    body: JSON.stringify({ exprLabel: "1d4+2+1d6", label: "Dagger DMG", total: 10, rollValues: [3, 5], riders: [{ label: "Hex", total: 5, effect: "Hexed" }, { label: "", total: 1 }, { label: "x", total: "nope" }] }),
+  });
+  assert.deepEqual(appended[0].riders, [{ label: "Hex", total: 5, effect: "Hexed" }]);
+});

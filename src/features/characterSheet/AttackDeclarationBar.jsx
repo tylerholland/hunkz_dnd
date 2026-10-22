@@ -43,6 +43,9 @@ export default function AttackDeclarationBar({
   onRoll, // ({ step: "atk"|"dmg", exprOverride? })
   onSendEffect, // () — post "✦ <spell> takes effect" for the DM to apply
   onDone, // () — clear the declaration after an applied effect
+  riders = [], // Story 70 — [{ effect, dice, label }]: effects YOU put on this target that add damage
+  ridersOn = true,
+  onToggleRiders, // () — include / drop the riders for this damage roll
 }) {
   const state = deriveBarState(declaration);
 
@@ -213,12 +216,27 @@ export default function AttackDeclarationBar({
               )}
             </button>
 
+            {state === "result-atk" && attack?.damage && riders.length > 0 && (
+              <button
+                type="button"
+                className="cs-atk-rider"
+                aria-pressed={ridersOn}
+                onClick={() => onToggleRiders?.()}
+                title={ridersOn ? "Included in the damage roll — tap to leave it out this time" : "Left out — tap to include it"}
+              >
+                ✦ +{riders.map((r) => `${r.dice} ${r.label}`).join(" +")}
+              </button>
+            )}
+
             {lastRoll && (
               <div className="cs-atk-result">
                 {rollValuesText && <span className="cs-atk-result-dice">{rollValuesText}</span>}
                 <span className="cs-atk-result-total" style={{ color: totalColor }}>{lastRoll.total}</span>
                 {lastRoll.isCrit && <span className="cs-atk-result-badge cs-atk-result-badge--crit">CRIT</span>}
                 {lastRoll.isFumble && <span className="cs-atk-result-badge cs-atk-result-badge--fumble">FUMBLE</span>}
+                {lastRoll.riders?.length ? (
+                  <span className="cs-atk-result-rider">incl. ✦ {lastRoll.riders.map((r) => `${r.label} +${r.total}`).join(", ")}</span>
+                ) : null}
               </div>
             )}
           </div>
@@ -261,7 +279,7 @@ export default function AttackDeclarationBar({
                 </button>
                 {attack?.damage && (
                   <button type="button" className="cs-atk-roll btn-primary" disabled={rolling} onClick={() => fireRoll("dmg")}>
-                    ⚔ DAMAGE
+                    ⚔ DAMAGE{ridersOn && riders.length ? ` · ${chosenExpr} + ${riders.map((r) => r.dice).join(" + ")}` : ""}
                   </button>
                 )}
                 {attack?.effect && (

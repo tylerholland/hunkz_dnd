@@ -1,6 +1,6 @@
 # Feature Story: Lingering Spell Effects (Hex, Bless, Hunter's Mark…)
 
-**Status**: In design (2026-10-21) — damage-rider prototype for a choice. Earlier: Draft (2026-09-28). **Manual step built:** a fixed list of effects (`src/lib/spellEffects.js`: Blessed, Hasted, Heroism, Shielded, Raging, Dodging, Hidden; Hexed, Marked, Baned, Outlined) is set by hand from the condition pickers and stored in the same `conditions` array. The map draws a gold halo for helpful effects and the curse sigil for Hexed. This story later sets them automatically from spells.
+**Status**: Implemented (2026-10-21) — caster on effects, damage riders (option A), Flying, custom effects. Deferred: concentration link, moving effects, saves/durations. **Manual step built:** a fixed list of effects (`src/lib/spellEffects.js`: Blessed, Hasted, Heroism, Shielded, Raging, Dodging, Hidden; Hexed, Marked, Baned, Outlined) is set by hand from the condition pickers and stored in the same `conditions` array. The map draws a gold halo for helpful effects and the curse sigil for Hexed. This story later sets them automatically from spells.
 **Source**: Playtest. Casting Hex showed that many spells aren't "roll damage once"
 
 ## Decisions (2026-10-21)

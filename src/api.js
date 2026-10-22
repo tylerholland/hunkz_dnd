@@ -1,4 +1,6 @@
 import { noteVersions } from "./lib/versionFloors";
+import { setCustomEffects } from "./lib/spellEffects";
+
 const BASE = import.meta.env.VITE_API_URL;
 const OPTIONAL_ENDPOINT_SUPPORT = {
   rollHistory: null,
@@ -314,6 +316,11 @@ export const getSessionState = ({ dmPassword, slug } = {}) => {
   const qs = params.toString();
   return request(`/session-state${qs ? `?${qs}` : ""}`, {
     headers: dmPassword !== undefined && dmPassword !== null ? { "x-character-password": dmPassword } : {},
+  }).then((data) => {
+    // Story 70 — the DM's custom effects ride house rules; register them so
+    // every picker, pill and ring on this page knows their kind.
+    setCustomEffects(data?.houseRules?.customEffects);
+    return data;
   });
 };
 

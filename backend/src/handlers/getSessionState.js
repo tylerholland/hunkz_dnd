@@ -204,6 +204,13 @@ exports.handler = async (event) => {
     return Object.fromEntries(Object.entries(notes).filter(([name, text]) => conditions.includes(name) && typeof text === "string" && text));
   }
 
+  function publicEffectSources(sources, conditions) {
+    if (!sources || typeof sources !== "object") return {};
+    return Object.fromEntries(Object.entries(sources)
+      .filter(([name, src]) => conditions.includes(name) && src && typeof src === "object")
+      .map(([name, src]) => [name, { type: src.type, sourceId: src.sourceId, ...(src.name ? { name: src.name } : {}), ...(src.spell ? { spell: src.spell } : {}) }]));
+  }
+
   function publicLastFx(lastFx) {
     if (!lastFx || typeof lastFx !== "object") return null;
     return { ...lastFx, attacker: publicLastDamageFrom(lastFx.attacker) };
@@ -247,6 +254,9 @@ exports.handler = async (event) => {
       // The DM's note on what a spell effect does ("Hexed — loses its hold
       // on Aesop"), only for effects the token currently shows.
       effectNotes: publicEffectNotes(n.effectNotes, publicNpcConditions[n.id] ?? []),
+      // Story 70 — who cast each effect on the token (for the caster's damage
+      // riders), only for effects it currently shows.
+      effectSources: publicEffectSources(n.effectSources, publicNpcConditions[n.id] ?? []),
     })),
   };
 

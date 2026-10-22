@@ -6,11 +6,13 @@
 //
 // Keep DEFAULT_HOUSE_RULES and the dice format in sync with the server's
 // backend/src/lib/houseRules.js.
+import { normalizeCustomEffects } from "./spellEffects";
 
 // featuresEnabled — show Features & Traits (race/class features with uses).
 // spellCastDice — a spell's cast roll (plus its to-hit); separate from checks.
 // playersEndTurn — players may end their own turn in initiative (Story 49).
-export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true };
+// customEffects — the DM's own effects ([{ name, kind }]), Story 70.
+export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [] };
 
 const CHECK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)$/;
 
@@ -25,6 +27,7 @@ export function normalizeHouseRules(raw) {
     featuresEnabled: raw?.featuresEnabled !== false,
     spellCastDice: isValidCheckDice(raw?.spellCastDice) ? raw.spellCastDice.trim().toLowerCase() : DEFAULT_HOUSE_RULES.spellCastDice,
     playersEndTurn: raw?.playersEndTurn !== false,
+    customEffects: normalizeCustomEffects(raw?.customEffects).map(({ name, kind }) => ({ name, kind })),
   };
 }
 

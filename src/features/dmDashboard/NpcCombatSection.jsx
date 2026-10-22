@@ -1,5 +1,6 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
-import { SPELL_EFFECTS } from "../../lib/spellEffects";
+import { allSpellEffects } from "../../lib/spellEffects";
+import CustomEffectForm from "./CustomEffectForm";
 import { putNpcCombat, presignNpcPortrait } from "../../api";
 import { PALETTES } from "../characterSheet/theme";
 import { useDebouncedOptimisticNumberFlush } from "../../lib/liveSync";
@@ -258,7 +259,7 @@ function NpcConditionPicker({ npc, onAdd, onClose }) {
         <div style={{ fontFamily: pal.fontDisplay, fontSize: 14, color: pal.accentBright, marginBottom: 14 }}>Add Condition or Effect — {npc.name}</div>
         {[
           { title: "Conditions", names: ALL_CONDITIONS },
-          { title: "Effects", names: SPELL_EFFECTS.map((effect) => effect.name) },
+          { title: "Effects", names: allSpellEffects().map((effect) => effect.name) },
         ].map((group) => (
           <div key={group.title} style={{ marginTop: group.title === "Effects" ? 12 : 0 }}>
             <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, marginBottom: 6 }}>{group.title}</div>
@@ -272,6 +273,7 @@ function NpcConditionPicker({ npc, onAdd, onClose }) {
                 >{condition}</button>
               ))}
             </div>
+            {group.title === "Effects" && <CustomEffectForm onCreated={(name) => onAdd(name)} />}
           </div>
         ))}
         <button className="btn-ghost" onClick={onClose} style={{ marginTop: 16, width: "100%", borderRadius: 4, padding: "8px 0" }}>Close</button>

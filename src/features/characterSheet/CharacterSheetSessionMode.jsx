@@ -63,7 +63,7 @@ import RollOverlay from "../../components/RollOverlay";
 import { useRollOverlayPref } from "../../lib/rollOverlayPref";
 import { featureMaxUses, featureUsesLeft, normalizeFeatures, rechargeLabel, spendFeatureUse, FEATURE_KINDS } from "./features";
 import PartyMemberCard from "./PartyMemberCard";
-import { CURSE_STYLE, HELPFUL_STYLE, SPELL_EFFECTS } from "../../lib/spellEffects";
+import { allSpellEffects, effectStyle, ridersFor } from "../../lib/spellEffects";
 import { readOpenPartyDetails, writeOpenPartyDetails } from "./partyDetailsPrefs";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
@@ -320,9 +320,9 @@ function ConditionPickerModal({ activeConditions, onSave, onClose, pal }) {
           marginBottom: 10,
         }}>Effects</div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginBottom: 16 }}>
-          {SPELL_EFFECTS.map((effect) => {
+          {allSpellEffects().map((effect) => {
             const isActive = selected.has(effect.name);
-            const tone = effect.kind === "helpful" ? HELPFUL_STYLE : CURSE_STYLE;
+            const tone = effectStyle(effect.kind);
             return (
               <button
                 key={effect.name}
@@ -911,6 +911,7 @@ export default function CharacterSheetSessionMode({
       attack: { id: chip.id, kind: chip.kind, name: chip.name, toHit: chip.toHit, damage: chip.damage, level: chip.level, effect: chip.effect },
       lastRoll: null,
       effectSent: null,
+      ridersOff: false,
     } : prev));
   }, []);
 
@@ -920,6 +921,18 @@ export default function CharacterSheetSessionMode({
 
   const handleCancelDeclaration = useCallback(() => {
     setDeclaration(null);
+  }, []);
+
+  // Story 70 — damage riders: effects on the declared target that THIS
+  // character cast and that add damage (Hex +1d6). On by default for the
+  // damage roll; the player can leave them out for one roll.
+  const targetRiders = useMemo(() => {
+    const npc = (npcCombat?.npcs || []).find((n) => n.id === declaration?.target?.sourceId);
+    return npc ? ridersFor({ conditions: npc.conditions, sources: npc.effectSources, attackerSlug: slug }) : [];
+  }, [npcCombat, declaration?.target?.sourceId, slug]);
+  const ridersOn = !declaration?.ridersOff;
+  const toggleRiders = useCallback(() => {
+    setDeclaration((prev) => (prev ? { ...prev, ridersOff: !prev.ridersOff } : prev));
   }, []);
 
   const handleBarRoll = useCallback(({ step, exprOverride }) => {
@@ -932,6 +945,7 @@ export default function CharacterSheetSessionMode({
       exprOverride,
       target: { type: "npc", sourceId: declaration.target.sourceId, name: declaration.target.name },
       attack: { kind: declaration.attack.kind, id: declaration.attack.id, name: declaration.attack.name },
+      riders: step === "dmg" && ridersOn ? targetRiders : [],
       onComplete: (result) => {
         setBarRolling(false);
         if (!result) { setRollOverlay(null); return; } // already-rolling no-op (ADR-027)
@@ -944,7 +958,7 @@ export default function CharacterSheetSessionMode({
         setDeclaration((prev) => (prev ? { ...prev, castRollId: id } : prev));
       },
     });
-  }, [declaration, barRolling, rollOverlayOn]);
+  }, [declaration, barRolling, rollOverlayOn, ridersOn, targetRiders]);
 
   // Spell effects — ✦ EFFECT after the cast: post "✦ Hex takes effect →
   // target" to the log; the DM applies it (sets the condition, plays the FX).
@@ -1926,6 +1940,9 @@ export default function CharacterSheetSessionMode({
           onRoll={handleBarRoll}
           onSendEffect={handleSendEffect}
           onDone={handleCancelDeclaration}
+          riders={targetRiders}
+          ridersOn={ridersOn}
+          onToggleRiders={toggleRiders}
         />
       )}
 

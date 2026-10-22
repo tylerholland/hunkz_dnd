@@ -70,3 +70,10 @@ describe("spell effects & roll labels", () => {
     expect(screen.queryByRole("button", { name: /label/i })).toBeNull();
   });
 });
+
+describe("effect riders in the log", () => {
+  it("shows the rider's share of a damage roll", () => {
+    render(<RollHistoryRow pal={pal} entry={{ id: "d1", characterName: "Eòghan", label: "Dagger DMG", attack: { kind: "weapon", name: "Dagger" }, total: 9, rollValues: [3, 4], riders: [{ label: "Hex", total: 4 }] }} />);
+    expect(screen.getByText(/incl\. ✦ Hex \+4/)).toBeTruthy();
+  });
+});

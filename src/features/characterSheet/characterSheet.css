@@ -4738,3 +4738,45 @@
 @media (prefers-reduced-motion: reduce) {
   .cs-sm-turn-banner { animation-name: csTurnBannerFade; }
 }
+
+/* ─── Story 70 — effect rider chip in the attack bar (Hex +1d6) ──────────── */
+.cs-session-root {
+  --rider-ink: #cda2f2;
+  --rider-wash: rgba(170, 100, 230, 0.16);
+  --rider-edge: rgba(182, 120, 236, 0.5);
+}
+.cs-session-root[data-light="true"] {
+  --rider-ink: #6a3399;
+  --rider-wash: rgba(122, 63, 176, 0.08);
+  --rider-edge: rgba(122, 63, 176, 0.35);
+}
+.cs-atk-rider {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--rider-edge);
+  background: var(--rider-wash);
+  color: var(--rider-ink);
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.cs-atk-rider[aria-pressed="false"] {
+  border-style: dashed;
+  background: transparent;
+  color: var(--pal-text-muted);
+  text-decoration: line-through;
+}
+.cs-atk-rider:focus-visible { outline: 2px solid var(--rider-ink); outline-offset: 2px; }
+.cs-atk-result-rider {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-style: italic;
+  color: var(--rider-ink);
+}

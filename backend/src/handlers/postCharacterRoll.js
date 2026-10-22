@@ -134,6 +134,13 @@ exports.handler = async (event) => {
   // change it later (putRollTag).
   const tag = boundedString(body.tag);
   if (tag) eventRecord.tag = tag;
+  // Story 70 — effect riders in a damage roll ([{ label: "Hex", total: 4 }]).
+  const riders = (Array.isArray(body.riders) ? body.riders : [])
+    .map((r) => ({ label: boundedString(r?.label), total: parseInt(r?.total, 10), effect: boundedString(r?.effect) }))
+    .filter((r) => r.label && Number.isFinite(r.total))
+    .slice(0, 3)
+    .map(({ effect, ...r }) => (effect ? { ...r, effect } : r));
+  if (riders.length) eventRecord.riders = riders;
 
   await appendRollHistoryEvent(eventRecord);
   await notifySessionChanged();

@@ -159,6 +159,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   const executeRoll = useCallback(({
     groups, flat, label, isD20Attack = false, isCheck = false,
     advModeOverride, onComplete, onPosted, suppressOpenPanel = false, target, attack, tag,
+    riders = [],
   }) => {
     if (rollState.rolling) { onComplete?.(null); return; }
 
@@ -195,8 +196,25 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
       droppedRoll = applied.droppedRoll;
     }
 
+    // Story 70 — effect riders (Hex +1d6) are rolled as their own groups,
+    // never merged with same-sized base dice, so each rider's share is known.
+    const riderResults = [];
+    for (const rider of riders || []) {
+      const parsed = parseDiceExpr(String(rider.dice || ""));
+      if (!parsed) continue;
+      let riderSum = parsed.flat;
+      for (const g of parsed.groups) {
+        const rolls = Array.from({ length: g.count }, () => rollDie(g.sides));
+        rolledGroups.push({ sides: g.sides, rolls, rider: rider.label });
+        riderSum += rolls.reduce((s, r) => s + r, 0);
+      }
+      riderResults.push({ label: rider.label, effect: rider.effect, dice: rider.dice, total: riderSum, ...(rider.type ? { type: rider.type } : {}) });
+    }
+    const riderFlat = riderResults.reduce((sum, r) => sum + r.total, 0)
+      - rolledGroups.filter((g) => g.rider).reduce((sum, g) => sum + g.rolls.reduce((s, r) => s + r, 0), 0);
+
     const diceTotal = rolledGroups.reduce((sum, g) => sum + g.rolls.reduce((s, r) => s + r, 0), 0);
-    const total = diceTotal + flat;
+    const total = diceTotal + flat + riderFlat;
     const rawRoll = isSingleD20 ? rolledGroups[0].rolls[0] : null;
     const isCrit = isD20Attack && rawRoll === 20;
     const isFumble = isD20Attack && rawRoll === 1;
@@ -220,8 +238,10 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
         groups: rolledGroups, flat, total, isCrit, isFumble,
         label, advKept, advDiscarded, isMultiGroup,
         keptRolls, droppedRoll,
+        ...(riderResults.length ? { riders: riderResults } : {}),
       };
-      resultObj.exprLabel = buildDiceExprLabel(groups, flat);
+      resultObj.exprLabel = buildDiceExprLabel(groups, flat)
+        + riderResults.map((r) => `+${r.dice}`).join("");
 
       setRollState({ rolling: false, result: resultObj });
 
@@ -236,6 +256,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
           target,
           attack,
           tag,
+          riders: riderResults,
         }),
         ...prev,
       ].slice(0, 5));
@@ -247,6 +268,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
           target,
           attack,
           tag,
+          riders: riderResults,
         })).then((res) => onPosted?.(res?.id ?? null)).catch(() => onPosted?.(null));
       }
 
@@ -299,7 +321,9 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   // "1d20+7"); `parseDiceExpr` naturally yields the same
   // `{count:1,sides:20}` shape `isD20Attack`'s crit/fumble/adv-dis logic
   // already keys off, so no extra branch is needed.
-  const rollAttack = useCallback(({ attackEntry, step = "atk", exprOverride, advMode: advModeOverride, target, attack, onComplete, onPosted, suppressOpenPanel = true }) => {
+  const rollAttack = useCallback(({ attackEntry, step = "atk", exprOverride, advMode: advModeOverride, target, attack, onComplete, onPosted, suppressOpenPanel = true, riders }) => {
+    // Effect riders only ever ride the damage step.
+    const dmgRiders = step === "dmg" && Array.isArray(riders) ? riders : [];
     if (!attackEntry) { onComplete?.(null); return; }
     const attackRef = attack || { kind: attackEntry.kind, id: attackEntry.id, name: attackEntry.name };
     // A spell's first roll is its cast ("Hex CAST"); a weapon's is an attack.
@@ -312,7 +336,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
         groups: parsed.groups, flat: parsed.flat,
         label: step === "dmg" ? `${attackEntry.name} DMG` : firstStepLabel,
         isD20Attack: step !== "dmg",
-        advModeOverride, onComplete, onPosted, suppressOpenPanel, target, attack: attackRef,
+        advModeOverride, onComplete, onPosted, suppressOpenPanel, target, attack: attackRef, riders: dmgRiders,
       });
       return;
     }
@@ -323,7 +347,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
       executeRoll({
         groups: parsed.groups, flat: parsed.flat,
         label: `${attackEntry.name} DMG`, isD20Attack: false,
-        advModeOverride, onComplete, onPosted, suppressOpenPanel, target, attack: attackRef,
+        advModeOverride, onComplete, onPosted, suppressOpenPanel, target, attack: attackRef, riders: dmgRiders,
       });
       return;
     }

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ALL_CONDITIONS, conditionStyle, withAlpha } from "../dashboardShared";
-import { SPELL_EFFECTS } from "../../../lib/spellEffects";
+import { allSpellEffects, spellEffect } from "../../../lib/spellEffects";
+import CustomEffectForm from "../CustomEffectForm";
 import "../characterCard.css";
 
 function QuickActionPopover({ char, pal, basePal, onClose, onUpdate, onOpenHpModal, onCommitFields, initialMode = null, initialVal = "" }) {
@@ -161,7 +162,7 @@ function QuickActionPopover({ char, pal, basePal, onClose, onUpdate, onOpenHpMod
         <div className="cc-popover-inner">
           {[
             { title: "Conditions", names: ALL_CONDITIONS },
-            { title: "Effects", names: SPELL_EFFECTS.map((effect) => effect.name) },
+            { title: "Effects", names: allSpellEffects().map((effect) => effect.name) },
           ].map((group) => (
             <div key={group.title} className="cc-cond-group">
               <div className="cc-cond-group-title">{group.title}</div>
@@ -172,7 +173,7 @@ function QuickActionPopover({ char, pal, basePal, onClose, onUpdate, onOpenHpMod
                   return (
                     <span
                       key={cond}
-                      title={SPELL_EFFECTS.find((effect) => effect.name === cond)?.help}
+                      title={spellEffect(cond)?.help}
                       onClick={() => setSelectedConds((prev) => prev.includes(cond) ? prev.filter((c) => c !== cond) : [...prev, cond])}
                       style={{
                         background: selected ? cs.bg : "transparent",
@@ -190,6 +191,9 @@ function QuickActionPopover({ char, pal, basePal, onClose, onUpdate, onOpenHpMod
                   );
                 })}
               </div>
+              {group.title === "Effects" && (
+                <CustomEffectForm onCreated={(name) => setSelectedConds((prev) => (prev.includes(name) ? prev : [...prev, name]))} />
+              )}
             </div>
           ))}
           <div style={{ display: "flex", gap: 6 }}>

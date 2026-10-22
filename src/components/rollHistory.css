@@ -95,3 +95,10 @@
   justify-content: flex-end;
   gap: 8px;
 }
+
+/* Story 70 — effect riders in a damage roll ("incl. ✦ Hex +4") */
+.rh-rider {
+  color: #b885e6;
+  font-size: 14px;
+  font-style: italic;
+}

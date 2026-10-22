@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback, useLayoutEffect } from "react";
+import { useState, useEffect, useRef, useCallback, useLayoutEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag } from "../api";
-import { isHelpfulEffect } from "../lib/spellEffects";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag, putHouseRules } from "../api";
+import { CustomEffectsCtx } from "../features/dmDashboard/customEffectsContext";
+import { isHelpfulEffect, setCustomEffects, spellEffect } from "../lib/spellEffects";
 import DmDiceRoller from "../components/DmDiceRoller";
 import { DEFAULT_HOUSE_RULES, normalizeHouseRules } from "../lib/houseRules";
 import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
@@ -563,7 +564,7 @@ export default function DmDashboardPage() {
     const fx = {
       attacker: { type: "character", sourceId: entry.slug, name: entry.characterName },
       name: entry.attack?.name || effect,
-      style: isHelpfulEffect(effect) ? "bless" : "curse",
+      style: isHelpfulEffect(effect) || spellEffect(effect)?.kind === "neutral" ? "bless" : "curse",
       effect,
       ...(note ? { note } : {}),
       rollId: entry.id,
@@ -574,11 +575,32 @@ export default function DmDashboardPage() {
       const conditions = (n.conditions || []).includes(effect) ? n.conditions : [...(n.conditions || []), effect];
       const effectNotes = { ...(n.effectNotes || {}) };
       if (note) effectNotes[effect] = note; else delete effectNotes[effect];
-      return { ...n, conditions, effectNotes };
+      // Story 70 — remember the caster (the server stamps the same).
+      const effectSources = { ...(n.effectSources || {}), [effect]: { type: "character", sourceId: entry.slug, name: entry.characterName, ...(entry.attack?.name ? { spell: entry.attack.name } : {}) } };
+      return { ...n, conditions, effectNotes, effectSources };
     });
     commitNpcCombatUpdate({ npcs }, { optimistic: true, fxById: { [npc.id]: fx } });
     return true;
   }, [npcCombat.npcs, commitNpcCombatUpdate]);
+
+  // Story 70 — the DM's custom effects ("Covered in slime"), saved into the
+  // table's house rules so every screen knows their kind. Reusing an existing
+  // name just returns it.
+  const houseRulesRef = useRef(houseRules);
+  useEffect(() => { houseRulesRef.current = houseRules; }, [houseRules]);
+  const customEffectsApi = useMemo(() => ({
+    create: async (name, kind) => {
+      const existing = spellEffect(name);
+      if (existing) return existing.name;
+      const rules = houseRulesRef.current;
+      const next = { ...rules, customEffects: [...(rules.customEffects || []), { name, kind }] };
+      const res = await putHouseRules(dmPassword, next);
+      const saved = normalizeHouseRules(res.houseRules);
+      setHouseRules(saved);
+      setCustomEffects(saved.customEffects);
+      return name;
+    },
+  }), [dmPassword]);
 
   // DM labels on any logged event ("Persuade the goblin king").
   const handleSaveRollTag = useCallback(async (entry, tag) => {
@@ -1229,6 +1251,7 @@ export default function DmDashboardPage() {
 
   return (
     <PalCtx.Provider value={pal}>
+    <CustomEffectsCtx.Provider value={customEffectsApi}>
       <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
       <div style={{
         ...palVars,
@@ -1511,6 +1534,7 @@ export default function DmDashboardPage() {
           />
         )}
       </div>
+    </CustomEffectsCtx.Provider>
     </PalCtx.Provider>
   );
 }
