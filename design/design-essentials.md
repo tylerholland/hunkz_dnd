@@ -15,6 +15,7 @@ A D&D tool used during play: players need quick character actions; the DM must s
 
 - Cinzel: headings/stat numbers; Crimson Text: body; IM Fell English: labels/UI.
 - Use existing palette roles (`bg`, `surface`, `surfaceSolid`, `border`, `accent`, `accentBright`, `text`, `textBody`, `textMuted`) through CSS variables. Exact values: `src/features/characterSheet/theme.jsx`. Use the affected character's palette or ocean by default; shared UI must also support light vellum.
+- **Light palettes (vellum) invert the tokens**: `accentBright` is its darkest brown, `accentDim` is translucent, and `accent` is dark. Treatments that read well on dark palettes — "mix in N% accent", fills built from `accentDim`, glows — come out muddy, dark or see-through there. For any wash, highlight or fill, set a per-palette value (light palettes use roughly a third of the accent strength, over a warm off-white), always put an opaque base under overlays (`surfaceSolid`), and check vellum in the prototype before calling it done.
 - Typical headings 18–24px, body 15–16px, stats 28–36px. Keep text at least 12px unless the user approves a specific exception. Match existing spacing and component shapes.
 - Touch targets at least 44×44px; keyboard access and visible focus. Hover must not be required. Label icon-only actions accessibly.
 - Motion should explain a change. Prefer existing durations/easing, preserve meaningful transitions, and provide reduced-motion alternatives. Do not add animation to every incidental update.

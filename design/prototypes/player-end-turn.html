@@ -63,11 +63,17 @@
   .end-turn[data-state="next"] { background: var(--next-wash); border: 1px solid var(--next-edge); color: var(--pal-accent-bright); }
   /* Dark palettes take a stronger wash; light ones (vellum) a much lighter
      one, or the dark accent turns it muddy. */
-  :root, [data-pal="ember"] { --next-wash: color-mix(in srgb, var(--pal-accent) 22%, transparent); --next-edge: color-mix(in srgb, var(--pal-accent) 60%, transparent); }
-  [data-pal="vellum"] { --next-wash: color-mix(in srgb, var(--pal-accent) 8%, transparent); --next-edge: color-mix(in srgb, var(--pal-accent) 40%, transparent); }
+  :root, [data-pal="ember"] {
+    --next-wash: color-mix(in srgb, var(--pal-accent) 22%, transparent); --next-edge: color-mix(in srgb, var(--pal-accent) 60%, transparent);
+    --mine-fill: color-mix(in srgb, var(--pal-accent) 45%, var(--pal-surface-solid)); --mine-glow: color-mix(in srgb, var(--pal-accent) 45%, transparent);
+  }
+  [data-pal="vellum"] {
+    --next-wash: color-mix(in srgb, var(--pal-accent) 8%, transparent); --next-edge: color-mix(in srgb, var(--pal-accent) 40%, transparent);
+    --mine-fill: color-mix(in srgb, var(--pal-accent) 20%, #fffaf0); --mine-glow: color-mix(in srgb, var(--pal-accent) 30%, transparent);
+  }
   /* Your turn — lit and solid, but steady (no pulse) so it doesn't invite an
      early click. */
-  .end-turn[data-state="mine"] { background: color-mix(in srgb, var(--pal-accent) 45%, var(--pal-surface-solid)); border: 1px solid var(--pal-accent-bright); color: var(--pal-text); cursor: pointer; box-shadow: 0 0 10px color-mix(in srgb, var(--pal-accent) 45%, transparent); }
+  .end-turn[data-state="mine"] { background: var(--mine-fill); border: 1px solid var(--pal-accent-bright); color: var(--pal-text); cursor: pointer; box-shadow: 0 0 10px var(--mine-glow); }
   .end-turn[data-state="mine"]:hover { filter: brightness(1.1); }
   .end-turn-sub { display: block; font-family: 'Crimson Text', serif; text-transform: none; letter-spacing: 0; font-style: italic; font-size: 13px; opacity: 0.85; }
 

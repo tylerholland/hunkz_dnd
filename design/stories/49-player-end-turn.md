@@ -36,7 +36,7 @@ None expected. Initiative entries for PCs already reference the owning character
 
 - **End Turn button — always visible in the player's Session view, disabled until it's their turn.** Discoverable without explanation. States:
   - *Someone else's turn*: muted, disabled, reads "Liu Sha's turn" (doubles as a who's-up readout).
-  - *You're next*: still disabled, reads "You're next", with a light, partly see-through accent background — clearly above the muted state, clearly below End Turn. Light palettes (vellum) use a much lighter wash (~8% accent) than dark ones (~22%), so it doesn't turn muddy. A heads-up to plan; visual only, no sound.
+  - *You're next*: still disabled, reads "You're next", with a light, partly see-through accent background — clearly above the muted state, clearly below End Turn. Light palettes (vellum) use a much lighter wash (~8% accent) than dark ones (~22%), so it doesn't turn muddy. Likewise End Turn's fill: ~45% accent on dark palettes, ~20% accent over a warm off-white on light ones. A heads-up to plan; visual only, no sound.
   - *Your turn*: lit in the character's palette, solid and **steady (no pulsing)** so it doesn't invite clicking before acting; reads "End Turn · when you're done"; pressing it advances initiative.
 - **Not in the attack bar** for now (idea for later).
 - **"Your turn" cue** — one tier below the Battle/Adventure splash, because turns come round constantly:
