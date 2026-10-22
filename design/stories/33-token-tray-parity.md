@@ -1,7 +1,7 @@
 # Feature Story: Token Tray Parity — Avatars, Hover Card, and Card Highlight
 
-**Status**: Ready for Architect Notes
-**Source**: DM feedback
+**Status**: Decisions made 2026-10-21 — needs a short prototype (highlight style + tray hover card) before build
+**Source**: DM feedback; decisions from the player 2026-10-21
 
 ---
 
@@ -26,9 +26,17 @@ This story closes all three gaps so a token — PC or NPC, on the map or in the 
 - **Cross-component card highlight**: this is new — there is currently no hover-linking mechanism anywhere between a token (map or tray) and its corresponding party card or NPC card. Hovering a token (of either placement state, either type) needs to visually highlight the matching card (existing `.dm-active-turn`-style highlight treatment, or similar, on `CharacterCard`/`NpcCard`). This requires lifting hover state up to a shared ancestor (likely `MapPanel.jsx` or `DmDashboardPrototypePage.jsx`, since party cards, NPC cards, and the map/tray are siblings) so a hovered token's `sourceId`/`npc.id` can be compared against each card's own id to decide whether to apply the highlight.
 - Player-side (`PlayerMapViewer`) is unaffected — players have no token interaction, on-map or in-tray, per existing scope boundaries.
 
+## Decisions (2026-10-21)
+
+1. **Highlight style**: distinct from the active-turn treatment (a card can be both) — a thin bright outline with a soft glow in the token's colour, layered on top of whatever active-turn background the card already has.
+2. **Tray hover card**: reuse the on-map token hover card, opening **upward** from the tray chip and clamped to the viewport.
+3. **Bidirectional**: hovering a token (map or tray) highlights its party/NPC card, **and** hovering a card highlights its token — a pulse ring on the map token, or on the tray chip if it isn't placed yet. (Supersedes the out-of-scope line below.)
+4. **No scrolling** to an off-screen card or token on hover; the highlight shows only when it's visible.
+5. Prototype must be checked in vellum (design-essentials light-palette rule).
+
 ## Out of scope
 
-- Highlighting a token when hovering the reverse direction (hovering a party/NPC card to highlight its token) — this story is token→card only.
+- ~~Highlighting a token when hovering the reverse direction~~ — now in scope (Decision 3).
 - Any change to the on-map `TokenChip` hover-expand card's own content or timing.
 - Any change to tray placement/selection logic (`onSelect`, held-token state machine) — this story is purely about hover/visual parity, not interaction.
 
