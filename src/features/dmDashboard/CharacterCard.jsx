@@ -27,6 +27,7 @@ import CardLoadoutDrawer from "./characterCard/CardLoadoutDrawer";
 import DrawerCollapse from "./characterCard/DrawerCollapse";
 import { abilityModifier, formatMod } from "./cardStats";
 import { armorClassOf } from "../characterSheet/armorClass";
+import { clearLinkHover, setLinkHover, useLinkHover } from "./battleMode/tokenLink";
 import "./characterCard.css";
 
 export { AwardXpModal } from "./characterCard/AwardXpModal";
@@ -344,8 +345,13 @@ export default function CharacterCard({
     "--pal-portrait-glow": withAlpha(cardPal.accent, 0.25),
   };
 
+  // Story 33 — hovering this character's token (map or tray) lights the
+  // card in the token's colour; hovering the card pulses the token.
+  const linked = useLinkHover("character", char.slug) === "token";
+  const linkGlow = linked ? `0 0 ${pal.light ? 8 : 14}px ${withAlpha(cardPal.accent, pal.light ? 0.35 : 0.55)}` : "";
   const isHpZero = hasHp && optimisticHp === 0;
   const cardClasses = [
+    linked ? "tk-linked" : "",
     "cc-card",
     isActiveTurn ? "dm-active-turn" : "",
     isHpZero ? "hp-zero" : "",
@@ -361,9 +367,12 @@ export default function CharacterCard({
         border: `1px solid ${cardBorderColor}`,
         zIndex: popoverOpen ? 200 : isActiveTurn ? 2 : 1,
         transform: isActiveTurn ? "translateY(-1px)" : "translateY(0)",
-        boxShadow: isActiveTurn ? `0 4px 18px ${cardPal.accent}24` : "none",
+        boxShadow: [isActiveTurn ? `0 4px 18px ${cardPal.accent}24` : "", linkGlow].filter(Boolean).join(", ") || "none",
         opacity: isStable && !isFallen ? 0.85 : undefined,
+        "--tk-link-color": cardPal.accent,
       }}
+      onMouseEnter={() => setLinkHover("character", char.slug, "card")}
+      onMouseLeave={() => clearLinkHover("character", char.slug)}
     >
       {/* Left accent stripe — color is dynamic (hp danger vs normal) */}
       <div className="cc-stripe" style={{ background: stripeColor }} />

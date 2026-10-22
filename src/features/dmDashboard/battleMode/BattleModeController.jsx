@@ -1,9 +1,11 @@
 import { useState, useRef, useEffect, useCallback, memo, forwardRef } from "react";
+import { clearLinkHover, setLinkHover, useLinkHover } from "./tokenLink";
+import TokenCardConditions from "./TokenCardConditions";
 import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
+import { mixHex } from "../dashboardShared";
 import {
   getBadgeEligibleConditions,
   isInvisibleCondition,
-  FAMILY_COLORS,
 } from "./tokenEffects";
 import ConditionRing from "./ConditionRing";
 import TokenSizeControl from "./TokenSizeControl";
@@ -340,6 +342,18 @@ export const TokenChip = memo(function TokenChip({
       if (collapseTimerRef.current) clearTimeout(collapseTimerRef.current);
     };
   }, []);
+
+  // Story 33 — DM view: hovering this token lights up its card; hovering the
+  // card pulses this token.
+  const linkHover = useLinkHover(isDm ? token.type : null, isDm ? token.sourceId : null);
+  const handleChipEnter = useCallback(() => {
+    if (isDm) setLinkHover(token.type, token.sourceId, "token");
+    handleMouseEnter();
+  }, [isDm, token.type, token.sourceId, handleMouseEnter]);
+  const handleChipLeave = useCallback(() => {
+    if (isDm) clearLinkHover(token.type, token.sourceId);
+    handleMouseLeave();
+  }, [isDm, token.type, token.sourceId, handleMouseLeave]);
 
   const handleClick = useCallback((e) => {
     if (suppressClickRef.current) {
@@ -719,6 +733,9 @@ export const TokenChip = memo(function TokenChip({
       style={{
         "--token-ring-color": ringColor,
         "--token-fill-color": fillColor,
+        // Story 33 — the card-hover pulse ring: the character's colour, or a
+        // lifted NPC colour on dark palettes so it reads on the map.
+        "--tk-link-color": token.type === "npc" ? (pal?.light ? fillColor : mixHex(fillColor, "#ffffff", 0.4)) : ringColor,
         "--pal-border": pal?.border,
         "--pal-text": pal?.text,
         "--pal-text-muted": pal?.textMuted,
@@ -730,8 +747,8 @@ export const TokenChip = memo(function TokenChip({
         "--token-size-mult": currentScale * minBoost,
         "--tk-shimmer-delay": `${shimmerDelayMs}ms`,
       }}
-      onMouseEnter={exiting ? undefined : handleMouseEnter}
-      onMouseLeave={exiting ? undefined : handleMouseLeave}
+      onMouseEnter={exiting ? undefined : handleChipEnter}
+      onMouseLeave={exiting ? undefined : handleChipLeave}
       onClick={exiting ? undefined : handleClick}
       onPointerDown={exiting ? undefined : handlePointerDown}
       onPointerMove={exiting ? undefined : handlePointerMove}
@@ -842,6 +859,9 @@ export const TokenChip = memo(function TokenChip({
         </svg>
       )}
 
+      {/* Story 33 — its card is hovered: pulse a ring round the portrait. */}
+      {linkHover === "card" && <span className="tk-link-ring" aria-hidden="true" />}
+
       {/* Name label */}
       <div className="token-chip__label" style={{ color: pal?.text }}>
         {name.split(" ")[0]}
@@ -866,22 +886,7 @@ export const TokenChip = memo(function TokenChip({
         {/* Story 53 — every active condition by name, in the same priority
             order as the badge column (superset, not a differently-sorted
             list). Exhaustion is the one item shown numerically here. */}
-        {eligibleConditions.length > 0 && (
-          <div className="token-hp-card__cond-block">
-            {eligibleConditions.map((item, i) => {
-              // Spell effects — the DM's note on what it does (Apply Effect).
-              const effectNote = npc?.effectNotes?.[item.name];
-              return (
-                <div key={item.name + i}>
-                  <div className="token-hp-card__cond-line" style={{ color: FAMILY_COLORS[item.meta.family] }}>
-                    {item.name === "Exhaustion" ? `EXHAUSTION ${item.meta.exhaustionLevel}` : String(item.name).toUpperCase()}
-                  </div>
-                  {effectNote ? <div className="token-hp-card__cond-note">{effectNote}</div> : null}
-                </div>
-              );
-            })}
-          </div>
-        )}
+        <TokenCardConditions eligibleConditions={eligibleConditions} effectNotes={npc?.effectNotes} />
 
         {/* Story 52 — Phase B wound line. Suppressed on FALLEN; damage
             amount hidden for a player viewing an NPC (whose exact HP is

@@ -1253,7 +1253,7 @@ export default function DmDashboardPage() {
     <PalCtx.Provider value={pal}>
     <CustomEffectsCtx.Provider value={customEffectsApi}>
       <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
-      <div style={{
+      <div data-light={pal.light ? "true" : undefined} style={{
         ...palVars,
         background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), radial-gradient(ellipse at 80% 100%, ${pal.glow2} 0%, transparent 55%), ${pal.bg}`,
         minHeight: "100vh",

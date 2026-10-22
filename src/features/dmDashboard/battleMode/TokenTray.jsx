@@ -2,6 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { npcInitialColor, npcInitials, getPaletteAccent } from "./tokenUtils";
 import { isInvisibleCondition } from "./tokenEffects";
+import TrayChip from "./TrayChip";
+import { mixHex } from "../dashboardShared";
 
 function isVeiled(conditions) {
   return Array.isArray(conditions) && conditions.some(isInvisibleCondition);
@@ -75,41 +77,28 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
           <span className="token-tray__empty" style={{ color: pal.textMuted }}>—</span>
         )}
         {unplacedPcs.map((member) => {
-          const isSelected = heldId === member.slug;
           const ringColor = (member.palette && pal.name === member.palette)
             ? pal.accent
             : getPaletteAccent(member.palette);
-          const veiled = isVeiled(member.conditions);
           return (
-            <div
+            <TrayChip
               key={member.slug}
-              className={`tray-chip${isSelected ? " tray-chip--selected" : ""}${veiled ? " tray-chip--veiled" : ""}`}
-              style={{ "--token-ring-color": ringColor, "--pal-accent": pal.accent }}
-              onClick={() => onSelect(member.slug, "character")}
-              title={member.name}
-            >
-              {member.portraitUrl ? (
-                <img
-                  className="tray-chip__portrait"
-                  src={member.portraitUrl}
-                  alt={member.name}
-                  draggable={false}
-                  style={{ "--token-ring-color": ringColor }}
-                />
-              ) : (
-                <div
-                  className="tray-chip__initial"
-                  style={{ background: ringColor, boxShadow: `0 0 0 2px ${ringColor}` }}
-                >
-                  {(member.name || "?")[0].toUpperCase()}
-                </div>
-              )}
-              {veiled && (
-                <svg className="tk-veil-ring" viewBox="0 0 40 40" aria-hidden="true">
-                  <circle cx="20" cy="20" r="18" />
-                </svg>
-              )}
-            </div>
+              type="character"
+              sourceId={member.slug}
+              name={member.name}
+              portraitUrl={member.portraitUrl}
+              initials={(member.name || "?")[0].toUpperCase()}
+              ringColor={ringColor}
+              fillColor={ringColor}
+              conditions={member.conditions}
+              exhaustionLevel={member.exhaustionLevel ?? 0}
+              hpCurrent={member.hpCurrent ?? null}
+              hpMax={member.hpMax ?? member.hp ?? null}
+              selected={heldId === member.slug}
+              veiled={isVeiled(member.conditions)}
+              onSelect={onSelect}
+              pal={pal}
+            />
           );
         })}
       </div>
@@ -125,30 +114,27 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
           </span>
         )}
         {unplacedNpcs.map((npc) => {
-          const isSelected = heldId === npc.id;
           const fillColor = npcInitialColor(npc.id);
-          const initials = npcInitials(npc.name);
-          const veiled = isVeiled(npc.conditions);
           return (
-            <div
+            <TrayChip
               key={npc.id}
-              className={`tray-chip${isSelected ? " tray-chip--selected" : ""}${veiled ? " tray-chip--veiled" : ""}`}
-              style={{ "--token-fill-color": fillColor, "--pal-accent": pal.accent, "--token-ring-color": pal.border }}
-              onClick={() => onSelect(npc.id, "npc")}
-              title={npc.name}
-            >
-              <div
-                className="tray-chip__initial"
-                style={{ background: fillColor, boxShadow: `0 0 0 2px ${pal.border}` }}
-              >
-                {initials}
-              </div>
-              {veiled && (
-                <svg className="tk-veil-ring" viewBox="0 0 40 40" aria-hidden="true">
-                  <circle cx="20" cy="20" r="18" />
-                </svg>
-              )}
-            </div>
+              type="npc"
+              sourceId={npc.id}
+              name={npc.name}
+              portraitUrl={npc.portraitUrl}
+              initials={npcInitials(npc.name)}
+              ringColor={pal.border}
+              fillColor={fillColor}
+              linkColor={pal.light ? fillColor : mixHex(fillColor, "#ffffff", 0.4)}
+              conditions={npc.conditions}
+              hpCurrent={npc.hpCurrent ?? null}
+              hpMax={npc.hpMax ?? null}
+              effectNotes={npc.effectNotes}
+              selected={heldId === npc.id}
+              veiled={isVeiled(npc.conditions)}
+              onSelect={onSelect}
+              pal={pal}
+            />
           );
         })}
       </div>

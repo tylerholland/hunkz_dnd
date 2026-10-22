@@ -1,6 +1,8 @@
 import { useCallback, useContext, useEffect, useRef, useState } from "react";
 import { allSpellEffects } from "../../lib/spellEffects";
 import CustomEffectForm from "./CustomEffectForm";
+import { clearLinkHover, setLinkHover, useLinkHover } from "./battleMode/tokenLink";
+import { npcInitialColor } from "./battleMode/tokenUtils";
 import { putNpcCombat, presignNpcPortrait } from "../../api";
 import { PALETTES } from "../characterSheet/theme";
 import { useDebouncedOptimisticNumberFlush } from "../../lib/liveSync";
@@ -726,6 +728,11 @@ function NpcCard({
 }) {
   const pal = useContext(PalCtx);
   const npcPal = getNpcCardPalette(pal);
+  // Story 33 — hovering this NPC's token (map or tray) lights the card in
+  // the token's colour; hovering the card pulses the token.
+  const linked = useLinkHover("npc", npc.id) === "token";
+  // NPC token colours are deep; lift them on dark palettes so the outline reads.
+  const linkColor = pal.light ? npcInitialColor(npc.id) : mixHex(npcInitialColor(npc.id), "#ffffff", 0.4);
 
   const serverHp = npc.hpCurrent;
   const hpMax = npc.hpMax;
@@ -880,13 +887,17 @@ function NpcCard({
       data-active-turn={isActiveTurn && !isDead ? "true" : undefined}
       data-active={isActiveTurn && !isDead ? "true" : undefined}
       data-dead={isDead ? "true" : undefined}
-      className={`npc-card${isActiveTurn && !isDead ? " dm-active-turn" : ""}`}
+      className={`npc-card${isActiveTurn && !isDead ? " dm-active-turn" : ""}${linked ? " tk-linked" : ""}`}
       style={{
         background: activeSurface,
         border: `1px solid ${cardBorder}`,
         zIndex: isActiveTurn && !isDead ? 2 : 1,
         ...activeTurnStyle,
+        "--tk-link-color": linkColor,
+        ...(linked ? { boxShadow: `0 0 ${pal.light ? 8 : 14}px ${linkColor}${pal.light ? "59" : "8c"}` } : {}),
       }}
+      onMouseEnter={() => setLinkHover("npc", npc.id, "card")}
+      onMouseLeave={() => clearLinkHover("npc", npc.id)}
     >
       <div className={bloodiedFlash ? "npc-stripe dm-bloodied-flash" : "npc-stripe"} style={{ background: leftStripe }} />
       <div className="npc-header">

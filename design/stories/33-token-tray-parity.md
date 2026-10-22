@@ -1,6 +1,6 @@
 # Feature Story: Token Tray Parity — Avatars, Hover Card, and Card Highlight
 
-**Status**: Prototype for approval — design/prototypes/token-tray-parity.html
+**Status**: Implemented (2026-10-22) — prototype: design/prototypes/token-tray-parity.html
 **Source**: DM feedback; decisions from the player 2026-10-21
 
 ---
