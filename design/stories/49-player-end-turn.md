@@ -40,7 +40,7 @@ None expected. Initiative entries for PCs already reference the owning character
   - *Your turn*: lit in the character's palette, solid and **steady (no pulsing)** so it doesn't invite clicking before acting; reads "End Turn · when you're done"; pressing it advances initiative.
 - **Not in the attack bar** for now (idea for later).
 - **"Your turn" cue** — one tier below the Battle/Adventure splash, because turns come round constantly:
-  - A banner covers **only the left panel** (portrait, initiative, party cards): portrait + "Your turn" + round number. It appears for ~1.5s, then slides back / fades out. It doesn't block the rest of the page.
+  - A banner covers **only the left panel** (portrait, initiative, party cards): portrait + "Your turn" + round number. It appears for ~1.5s, then slides back / fades out. It doesn't block the rest of the page. **Fully opaque in every palette** (solid base under the glow — vellum's accent-dim is translucent).
   - A single soft chime (the same sound for every character) — played **only for the player whose turn it is**; everyone else just sees their button change.
   - The End Turn button stays lit until pressed; the browser tab title shows "● Your turn".
   - No phone vibration.
