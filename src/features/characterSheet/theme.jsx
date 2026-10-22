@@ -104,6 +104,10 @@ export const PALETTES = {
   },
   vellum: {
     name: "Vellum",
+    // Light palette: its tokens run the other way (accentBright is the darkest
+    // brown, accentDim is translucent) — CSS uses [data-light] for lighter
+    // washes and fills (design-essentials).
+    light: true,
     bg: "#f5f0e8", surface: "rgba(220,208,185,0.5)", surfaceSolid: "#e8e0cc",
     border: "rgba(140,110,70,0.22)", accent: "#7a5c30", accentBright: "#4a3418",
     accentDim: "rgba(140,110,70,0.15)", text: "#2a2018", textBody: "#3c2e1c", textMuted: "#9a8060",

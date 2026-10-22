@@ -25,7 +25,10 @@ import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
 import { fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, buildUnarmedStrike, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
 import CharacterTalents from "./CharacterTalents";
-import { patchSession, postCharacterRoll, moveMapToken } from "../../api";
+import { patchSession, postCharacterRoll, moveMapToken, endTurn } from "../../api";
+import { EndTurnButton, YourTurnBanner } from "./TurnCue";
+import { useYourTurnCue } from "./useYourTurnCue";
+import { useTurnAlertsPref } from "../../lib/turnAlertsPref";
 import { clearExpectedFields, isFieldPending, markExpectedFields, mergeOptimisticLiveFields } from "../../lib/liveSync";
 import DiceRoller from "../../components/DiceRoller";
 import TopNav, { NavSegment } from "../../components/TopNav";
@@ -835,6 +838,7 @@ export default function CharacterSheetSessionMode({
   const [barRolling, setBarRolling] = useState(false);
   const [rollOverlay, setRollOverlay] = useState(null); // { open, result }
   const { enabled: rollOverlayOn, menuItem: rollOverlayMenuItem } = useRollOverlayPref();
+  const { enabled: turnAlertsOn, menuItem: turnAlertsMenuItem } = useTurnAlertsPref();
   const goneMissTicksRef = useRef(0);
   // Mirrors DiceRoller's own advMode state so the bar's Adv/Dis strip
   // re-renders reactively — a ref-exposed value alone wouldn't trigger a
@@ -1023,6 +1027,33 @@ export default function CharacterSheetSessionMode({
   const activeEntry = entries[activeTurnIndex] ?? null;
   const isOurTurn = activeEntry?.slug === slug;
 
+  // Story 49 — End Turn + the "Your turn" cue. The button is shown whenever
+  // initiative is running and this character is in it (unless the DM has
+  // turned player turn-ending off); it's only live on your own turn.
+  const turnKey = hasInitiative && activeEntry ? `${round}:${activeEntry.id}` : null;
+  const inInitiative = entries.some((entry) => entry.slug === slug);
+  const showEndTurn = hasInitiative && inInitiative && houseRules?.playersEndTurn !== false;
+  const nextEntry = entries.length ? entries[(activeTurnIndex + 1) % entries.length] : null;
+  const endTurnState = isOurTurn ? "mine" : nextEntry?.slug === slug ? "next" : "waiting";
+  const turnBannerKey = useYourTurnCue({ isOurTurn: hasInitiative && isOurTurn, turnKey, alertsOn: turnAlertsOn });
+  // "Ending…" until the turn actually moves on (the poll/nudge brings it).
+  const [endingTurnKey, setEndingTurnKey] = useState(null);
+  const [endTurnError, setEndTurnError] = useState(null);
+  const endingTurn = !!endingTurnKey && endingTurnKey === turnKey;
+  const handleEndTurn = async () => {
+    if (!slug || !activeEntry?.id || endingTurn) return;
+    setEndTurnError(null);
+    setEndingTurnKey(turnKey);
+    try {
+      await endTurn(slug, activeEntry.id);
+      onSessionSync?.();
+    } catch (err) {
+      setEndingTurnKey(null);
+      if (err?.status === 409) onSessionSync?.(); // already moved on — catch up
+      else setEndTurnError(err?.status === 403 ? (err.message || "The DM advances turns at this table.") : "Couldn't end your turn — try again.");
+    }
+  };
+
   // Party strip (filter out self)
   const partyMembers = (partyStatus?.members || []).filter((m) => m.slug !== slug);
   const partyVisible = partyStatus?.visible !== false;
@@ -1118,6 +1149,7 @@ export default function CharacterSheetSessionMode({
           zoom: textScale,
         }}
         className="cs-session-root"
+        data-light={pal.light ? "true" : undefined}
       >
         <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
         <TopNav
@@ -1135,6 +1167,7 @@ export default function CharacterSheetSessionMode({
             { divider: true },
             textScaleMenuItem,
             rollOverlayMenuItem,
+          turnAlertsMenuItem,
           ]}
         />
 
@@ -1177,6 +1210,7 @@ export default function CharacterSheetSessionMode({
         zoom: textScale,
       }}
       className="cs-session-root"
+        data-light={pal.light ? "true" : undefined}
     >
       <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
       {/* ── Top bar (shared TopNav) ── */}
@@ -1195,6 +1229,7 @@ export default function CharacterSheetSessionMode({
           { divider: true },
           textScaleMenuItem,
           rollOverlayMenuItem,
+          turnAlertsMenuItem,
         ]}
       />
 
@@ -1203,6 +1238,7 @@ export default function CharacterSheetSessionMode({
 
         {/* ════════════ LEFT COLUMN ════════════ */}
         <div className="cs-session-left">
+          <YourTurnBanner playKey={turnBannerKey} portraitUrl={char?.portraitUrl} initial={avatarInitial(char?.name)} round={round} />
 
           {/* Identity strip */}
           <div className="cs-sm-identity">
@@ -1338,6 +1374,16 @@ export default function CharacterSheetSessionMode({
               )}
             </div>
           </div>
+
+          {showEndTurn && (
+            <EndTurnButton
+              state={endTurnState}
+              activeName={activeEntry?.name}
+              busy={endingTurn}
+              error={endTurnError}
+              onEnd={handleEndTurn}
+            />
+          )}
 
           {/* Party status strip */}
           <hr className="cs-sm-rule" />

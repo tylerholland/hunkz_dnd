@@ -5,7 +5,8 @@
 // with uses) on character sheets, the Session page and the DM card.
 // spellCastDice — what a spell's cast roll uses (plus its to-hit); separate
 // from ability checks, defaulting to the usual attack d20.
-const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20" };
+// playersEndTurn — players may end their own turn in initiative (Story 49).
+const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true };
 const CHECK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)$/;
 
 function isValidCheckDice(value) {
@@ -23,6 +24,7 @@ function normalizeHouseRulesRecord(item) {
     abilityCheckDice: isValidCheckDice(dice) ? dice : DEFAULT_HOUSE_RULES.abilityCheckDice,
     featuresEnabled: item?.featuresEnabled !== false,
     spellCastDice: normalizeDice(item?.spellCastDice, DEFAULT_HOUSE_RULES.spellCastDice),
+    playersEndTurn: item?.playersEndTurn !== false,
     version: Number.isFinite(item?.version) ? item.version : 0,
   };
 }

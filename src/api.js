@@ -282,6 +282,15 @@ export const putRollTag = (password, rollId, tag, sessionId, asSlug) =>
     body: JSON.stringify({ tag, ...(sessionId ? { sessionId } : {}), ...(asSlug ? { asSlug } : {}) }),
   });
 
+// Story 49 — a player ends their own turn. `entryId` is the initiative entry
+// the player sees as active; the server refuses if that's no longer so.
+export const endTurn = (slug, entryId) =>
+  request("/initiative/end-turn", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ slug, entryId }),
+  });
+
 export const putHouseRules = (dmPassword, rules) =>
   request("/house-rules", {
     method: "PUT",

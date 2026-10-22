@@ -1,6 +1,6 @@
 # Feature Story: Player End Turn
 
-**Status**: Design agreed (2026-10-21) — prototype for approval
+**Status**: Implemented (2026-10-21)
 **Source**: RPG Consultant (live-session feedback); decisions from the player (2026-10-21)
 **Prototype**: design/prototypes/player-end-turn.html
 

@@ -407,6 +407,28 @@ Resources:
         - DynamoDBCrudPolicy:
             TableName: !Ref CharactersTable
 
+  # Story 49 — a player ends their own turn (no auth; own entry only).
+  EndTurnFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/endTurn.handler
+      Events:
+        Api:
+          Type: HttpApi
+          Properties:
+            Path: /initiative/end-turn
+            Method: post
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
+
   InitiativeFunction:
     Type: AWS::Serverless::Function
     Properties:

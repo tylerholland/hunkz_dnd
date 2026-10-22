@@ -9,7 +9,8 @@
 
 // featuresEnabled — show Features & Traits (race/class features with uses).
 // spellCastDice — a spell's cast roll (plus its to-hit); separate from checks.
-export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20" };
+// playersEndTurn — players may end their own turn in initiative (Story 49).
+export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true };
 
 const CHECK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)$/;
 
@@ -23,6 +24,7 @@ export function normalizeHouseRules(raw) {
     abilityCheckDice: isValidCheckDice(dice) ? dice : DEFAULT_HOUSE_RULES.abilityCheckDice,
     featuresEnabled: raw?.featuresEnabled !== false,
     spellCastDice: isValidCheckDice(raw?.spellCastDice) ? raw.spellCastDice.trim().toLowerCase() : DEFAULT_HOUSE_RULES.spellCastDice,
+    playersEndTurn: raw?.playersEndTurn !== false,
   };
 }
 

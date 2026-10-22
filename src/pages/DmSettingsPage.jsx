@@ -22,6 +22,7 @@ export default function DmSettingsPage() {
   const [dice, setDice] = useState("");
   const [status, setStatus] = useState({ kind: "idle", message: "" });
   const [featureStatus, setFeatureStatus] = useState("");
+  const [endTurnStatus, setEndTurnStatus] = useState("");
   const { textScale, textScaleMenuItem } = useTextScale();
 
   const palKey = sessionStorage.getItem("dnd_dm_palette") || "ocean";
@@ -70,21 +71,24 @@ export default function DmSettingsPage() {
     }
   }
 
-  // Features & Traits on/off — saves immediately (a switch, not a form).
-  async function setFeatures(enabled) {
+  // On/off house rules — save immediately (a switch, not a form), with undo
+  // on failure. `messages` = [on text, off text].
+  async function setRuleFlag(key, enabled, setMsg, messages) {
     if (!saved) return;
     const previous = saved;
-    setSaved({ ...saved, featuresEnabled: enabled });
-    setFeatureStatus("Saving…");
+    setSaved({ ...saved, [key]: enabled });
+    setMsg("Saving…");
     try {
-      const res = await putHouseRules(dmPassword, { ...previous, featuresEnabled: enabled });
-      setSaved((cur) => ({ ...(cur || previous), featuresEnabled: normalizeHouseRules(res.houseRules).featuresEnabled }));
-      setFeatureStatus(enabled ? "On — players see Features & Traits." : "Off — the section is hidden everywhere.");
+      const res = await putHouseRules(dmPassword, { ...previous, [key]: enabled });
+      setSaved((cur) => ({ ...(cur || previous), [key]: normalizeHouseRules(res.houseRules)[key] }));
+      setMsg(enabled ? messages[0] : messages[1]);
     } catch (err) {
       setSaved(previous);
-      setFeatureStatus(err?.status === 403 ? "DM password rejected — sign in again from the Campaign page." : "Couldn't save. Try again.");
+      setMsg(err?.status === 403 ? "DM password rejected — sign in again from the Campaign page." : "Couldn't save. Try again.");
     }
   }
+  const setFeatures = (enabled) => setRuleFlag("featuresEnabled", enabled, setFeatureStatus, ["On — players see Features & Traits.", "Off — the section is hidden everywhere."]);
+  const setPlayersEndTurn = (enabled) => setRuleFlag("playersEndTurn", enabled, setEndTurnStatus, ["On — players can end their own turn.", "Off — only you advance turns."]);
 
   const palVars = {
     "--pal-bg": pal.bg,
@@ -192,6 +196,7 @@ export default function DmSettingsPage() {
                   type="button"
                   role="switch"
                   aria-checked={saved?.featuresEnabled !== false}
+                  aria-label="Features & Traits"
                   className={`dm-settings-switch${saved?.featuresEnabled !== false ? " on" : ""}`}
                   disabled={!saved}
                   onClick={() => setFeatures(saved?.featuresEnabled === false)}
@@ -200,6 +205,32 @@ export default function DmSettingsPage() {
                   {saved?.featuresEnabled !== false ? "On" : "Off"}
                 </button>
                 {featureStatus && <span className="dm-settings-status" role="status">{featureStatus}</span>}
+              </div>
+            </div>
+          </section>
+
+          <section className="dm-settings-card" aria-labelledby="hr-end-turn">
+            <div className="dm-settings-row">
+              <div className="dm-settings-label-col">
+                <h2 id="hr-end-turn" className="dm-settings-label">Players can end their own turn</h2>
+                <p className="dm-settings-help">
+                  Gives each player an End Turn button in initiative, live only on their own turn, so you don&apos;t have to click Next Turn for every handoff. Turn it off for fights you want to narrate turn by turn.
+                </p>
+              </div>
+              <div className="dm-settings-control-col">
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={saved?.playersEndTurn !== false}
+                  aria-label="Players can end their own turn"
+                  className={`dm-settings-switch${saved?.playersEndTurn !== false ? " on" : ""}`}
+                  disabled={!saved}
+                  onClick={() => setPlayersEndTurn(saved?.playersEndTurn === false)}
+                >
+                  <span className="dm-settings-switch-knob" aria-hidden="true" />
+                  {saved?.playersEndTurn !== false ? "On" : "Off"}
+                </button>
+                {endTurnStatus && <span className="dm-settings-status" role="status">{endTurnStatus}</span>}
               </div>
             </div>
           </section>
