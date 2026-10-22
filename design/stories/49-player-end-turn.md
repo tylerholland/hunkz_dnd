@@ -36,13 +36,13 @@ None expected. Initiative entries for PCs already reference the owning character
 
 - **End Turn button — always visible in the player's Session view, disabled until it's their turn.** Discoverable without explanation. States:
   - *Someone else's turn*: muted, disabled, reads "Liu Sha's turn" (doubles as a who's-up readout).
-  - *You're next*: still disabled, reads "You're next" — a heads-up to plan. Visual only, no sound.
-  - *Your turn*: lit in the character's palette with a gentle glow, reads "End Turn"; pressing it advances initiative.
+  - *You're next*: still disabled, reads "You're next", with a light, partly see-through accent background — clearly above the muted state, clearly below End Turn. A heads-up to plan; visual only, no sound.
+  - *Your turn*: lit in the character's palette, solid and **steady (no pulsing)** so it doesn't invite clicking before acting; reads "End Turn · when you're done"; pressing it advances initiative.
 - **Not in the attack bar** for now (idea for later).
 - **"Your turn" cue** — one tier below the Battle/Adventure splash, because turns come round constantly:
   - A banner covers **only the left panel** (portrait, initiative, party cards): portrait + "Your turn" + round number. It appears for ~1.5s, then slides back / fades out. It doesn't block the rest of the page.
   - A single soft chime (the same sound for every character) — played **only for the player whose turn it is**; everyone else just sees their button change.
-  - The End Turn button keeps glowing until pressed; the browser tab title shows "● Your turn".
+  - The End Turn button stays lit until pressed; the browser tab title shows "● Your turn".
   - No phone vibration.
   - Fires once per turn — not on page refreshes, not on first load mid-turn (the glowing button covers that).
   - Works whenever initiative is running, in Battle or Adventure mode. Banner and chime are for that player only — never the other players or the DM.

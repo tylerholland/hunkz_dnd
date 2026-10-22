@@ -58,10 +58,13 @@
   /* End Turn button — always present, three states */
   .end-turn { width: 100%; margin-top: 12px; min-height: 44px; border-radius: 4px; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; cursor: default; transition: background 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s; }
   .end-turn[data-state="waiting"] { background: transparent; border: 1px solid var(--pal-border); color: var(--pal-text-muted); }
-  .end-turn[data-state="next"] { background: transparent; border: 1px dashed var(--pal-accent); color: var(--pal-accent-bright); }
-  .end-turn[data-state="mine"] { background: var(--pal-accent-dim); border: 1px solid var(--pal-accent-bright); color: var(--pal-accent-bright); cursor: pointer; animation: glow 2.2s ease-in-out infinite; }
-  .end-turn[data-state="mine"]:hover { filter: brightness(1.12); }
-  @keyframes glow { 0%, 100% { box-shadow: 0 0 0 rgba(0,0,0,0); } 50% { box-shadow: 0 0 14px var(--pal-accent); } }
+  /* You're next — a light, partly see-through accent wash: clearly above the
+     muted state, clearly below End Turn. */
+  .end-turn[data-state="next"] { background: color-mix(in srgb, var(--pal-accent) 22%, transparent); border: 1px solid color-mix(in srgb, var(--pal-accent) 60%, transparent); color: var(--pal-accent-bright); }
+  /* Your turn — lit and solid, but steady (no pulse) so it doesn't invite an
+     early click. */
+  .end-turn[data-state="mine"] { background: color-mix(in srgb, var(--pal-accent) 45%, var(--pal-surface-solid)); border: 1px solid var(--pal-accent-bright); color: var(--pal-text); cursor: pointer; box-shadow: 0 0 10px color-mix(in srgb, var(--pal-accent) 45%, transparent); }
+  .end-turn[data-state="mine"]:hover { filter: brightness(1.1); }
   .end-turn-sub { display: block; font-family: 'Crimson Text', serif; text-transform: none; letter-spacing: 0; font-style: italic; font-size: 13px; opacity: 0.85; }
 
   .party { margin-top: 10px; display: grid; gap: 8px; }
@@ -108,9 +111,9 @@
   <div class="brief">
     <div class="label ui">What to look at</div>
     <ul>
-      <li><b>End Turn</b> (in the Initiative block) is always there. It's muted on others' turns ("Liu Sha's turn"), dashed when "You're next", and lit with a glow on your turn.</li>
+      <li><b>End Turn</b> (in the Initiative block) is always there. It's muted on others' turns ("Liu Sha's turn"), has a light wash when "You're next", and is lit, but steady with no pulsing, on your turn ("End Turn · when you're done").</li>
       <li><b>Your turn cue:</b> a banner covers only the left panel for about 1.5s, then slides back (or fades with reduced motion). It plays a soft chime and the tab title becomes "● Your turn".</li>
-      <li><b>Turn alerts</b> is a player menu switch. Off means no banner and no chime, but the button still glows.</li>
+      <li><b>Turn alerts</b> is a player menu switch. Off means no banner and no chime; the button still lights up.</li>
     </ul>
   </div>
 
@@ -176,7 +179,7 @@ function render() {
   const next = ORDER[(active + 1) % ORDER.length];
   if (current === ME) {
     btn.dataset.state = "mine"; btn.disabled = false;
-    btn.innerHTML = `End Turn`;
+    btn.innerHTML = `End Turn<span class="end-turn-sub">when you're done</span>`;
   } else if (next === ME) {
     btn.dataset.state = "next"; btn.disabled = true;
     btn.innerHTML = `You're next<span class="end-turn-sub">${current}'s turn</span>`;
