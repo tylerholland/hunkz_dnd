@@ -60,7 +60,11 @@
   .end-turn[data-state="waiting"] { background: transparent; border: 1px solid var(--pal-border); color: var(--pal-text-muted); }
   /* You're next — a light, partly see-through accent wash: clearly above the
      muted state, clearly below End Turn. */
-  .end-turn[data-state="next"] { background: color-mix(in srgb, var(--pal-accent) 22%, transparent); border: 1px solid color-mix(in srgb, var(--pal-accent) 60%, transparent); color: var(--pal-accent-bright); }
+  .end-turn[data-state="next"] { background: var(--next-wash); border: 1px solid var(--next-edge); color: var(--pal-accent-bright); }
+  /* Dark palettes take a stronger wash; light ones (vellum) a much lighter
+     one, or the dark accent turns it muddy. */
+  :root, [data-pal="ember"] { --next-wash: color-mix(in srgb, var(--pal-accent) 22%, transparent); --next-edge: color-mix(in srgb, var(--pal-accent) 60%, transparent); }
+  [data-pal="vellum"] { --next-wash: color-mix(in srgb, var(--pal-accent) 8%, transparent); --next-edge: color-mix(in srgb, var(--pal-accent) 40%, transparent); }
   /* Your turn — lit and solid, but steady (no pulse) so it doesn't invite an
      early click. */
   .end-turn[data-state="mine"] { background: color-mix(in srgb, var(--pal-accent) 45%, var(--pal-surface-solid)); border: 1px solid var(--pal-accent-bright); color: var(--pal-text); cursor: pointer; box-shadow: 0 0 10px color-mix(in srgb, var(--pal-accent) 45%, transparent); }
