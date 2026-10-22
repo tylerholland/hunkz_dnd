@@ -1,8 +1,8 @@
 # Feature Story: Player End Turn
 
-**Status**: Needs UX design
-**Source**: RPG Consultant (live-session feedback)
-**Prototype**: (leave blank — ux-designer fills this in)
+**Status**: Design agreed (2026-10-21) — prototype for approval
+**Source**: RPG Consultant (live-session feedback); decisions from the player (2026-10-21)
+**Prototype**: design/prototypes/player-end-turn.html
 
 ## Goal
 
@@ -31,6 +31,26 @@ None expected. Initiative entries for PCs already reference the owning character
 - Any DM approval step before a player-triggered turn advance takes effect (this is directly actionable, not a request/notify pattern) — see Open Questions if that assumption should change.
 - NPC turn advancement (NPCs are DM-controlled; only PC-owned entries can be ended by that player).
 - Undo/rewind of a turn advance — same as the DM's existing Next Turn, this is a one-way action (the DM's manual ± round steppers already exist for correction).
+
+## Decisions (2026-10-21)
+
+- **End Turn button — always visible in the player's Session view, disabled until it's their turn.** Discoverable without explanation. States:
+  - *Someone else's turn*: muted, disabled, reads "Liu Sha's turn" (doubles as a who's-up readout).
+  - *You're next*: still disabled, reads "You're next" — a heads-up to plan. Visual only, no sound.
+  - *Your turn*: lit in the character's palette with a gentle glow, reads "End Turn"; pressing it advances initiative.
+- **Not in the attack bar** for now (idea for later).
+- **"Your turn" cue** — one tier below the Battle/Adventure splash, because turns come round constantly:
+  - A banner covers **only the left panel** (portrait, initiative, party cards): portrait + "Your turn" + round number. It appears for ~1.5s, then slides back / fades out. It doesn't block the rest of the page.
+  - A single soft chime (the same sound for every character) — played **only for the player whose turn it is**; everyone else just sees their button change.
+  - The End Turn button keeps glowing until pressed; the browser tab title shows "● Your turn".
+  - No phone vibration.
+  - Fires once per turn — not on page refreshes, not on first load mid-turn (the glowing button covers that).
+  - Works whenever initiative is running, in Battle or Adventure mode. Banner and chime are for that player only — never the other players or the DM.
+  - Respects a new player menu switch **"Turn alerts: On/Off"** (next to Roll animation) and reduced motion (fade instead of slide).
+- **DM Settings switch "Players can end their own turn"**, on by default — off for fights the DM wants to narrate.
+- **Reactions**: no pause or confirmation; table talk handles it. The DM's existing steppers fix an early end.
+- **Multiple entries**: End Turn only ends the currently active entry.
+- **Logging**: the advance writes the same "Round N · X's turn" event as the DM's Next Turn.
 
 ## Open questions
 

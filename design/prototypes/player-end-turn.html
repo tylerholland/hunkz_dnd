@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Player End Turn</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+  /* Palette tokens — from src/features/characterSheet/theme.jsx */
+  :root, [data-pal="ember"] {
+    --pal-bg: #120d0a; --pal-surface: rgba(50,28,14,0.55); --pal-surface-solid: #2a160a;
+    --pal-border: rgba(160,100,55,0.22); --pal-accent: #a06840; --pal-accent-bright: #c89060;
+    --pal-accent-dim: #4a2e12; --pal-text: #d4c4b0; --pal-text-body: #b8a888; --pal-text-muted: #8a6848;
+    --pal-gem: #c8904c; --glow: rgba(100,45,10,0.35); --shadow: rgba(0,0,0,0.45);
+  }
+  [data-pal="vellum"] {
+    --pal-bg: #f5f0e8; --pal-surface: rgba(220,208,185,0.5); --pal-surface-solid: #e8e0cc;
+    --pal-border: rgba(140,110,70,0.22); --pal-accent: #7a5c30; --pal-accent-bright: #4a3418;
+    --pal-accent-dim: rgba(140,110,70,0.15); --pal-text: #2a2018; --pal-text-body: #3c2e1c; --pal-text-muted: #8a7050;
+    --pal-gem: #4a3418; --glow: rgba(180,155,100,0.25); --shadow: rgba(60,40,10,0.18);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(ellipse at 50% 0%, var(--glow) 0%, transparent 60%), var(--pal-bg); color: var(--pal-text-body); font-family: 'Crimson Text', Georgia, serif; font-size: 16px; line-height: 1.5; }
+  .ui { font-family: 'Cinzel', Georgia, serif; letter-spacing: 0.16em; text-transform: uppercase; }
+  .page { max-width: 1120px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); font-size: 24px; letter-spacing: 0.06em; margin: 0 0 6px; }
+  .lede { margin: 0 0 14px; max-width: 760px; }
+  .brief { border: 1px solid var(--pal-border); background: var(--pal-surface); border-radius: 6px; padding: 12px 16px; margin-bottom: 18px; font-size: 15px; }
+  .brief ul { margin: 4px 0 0; padding-left: 18px; }
+  .label { font-size: 11px; color: var(--pal-accent); }
+  .muted { color: var(--pal-text-muted); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 16px; }
+  .seg { display: inline-flex; border: 1px solid var(--pal-border); border-radius: 4px; overflow: hidden; }
+  .seg button { background: transparent; border: none; padding: 7px 12px; color: var(--pal-text-muted); cursor: pointer; font: inherit; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .seg button.on { background: var(--pal-accent-dim); color: var(--pal-accent-bright); }
+  .dm-btn { min-height: 36px; padding: 0 14px; border-radius: 3px; border: 1px dashed var(--pal-border); background: transparent; color: var(--pal-text-muted); cursor: pointer; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .dm-btn:hover { color: var(--pal-accent-bright); border-color: var(--pal-accent); }
+
+  /* ── Session view shell ── */
+  .shell { display: grid; grid-template-columns: 300px minmax(0, 1fr); border: 1px solid var(--pal-border); border-radius: 10px; overflow: hidden; background: var(--pal-bg); min-height: 620px; }
+  @media (max-width: 760px) { .shell { grid-template-columns: 1fr; } .right { display: none; } }
+  .left { position: relative; border-right: 1px solid var(--pal-border); padding: 18px 16px; overflow: hidden; }
+  .right { padding: 18px; display: grid; gap: 14px; align-content: start; }
+  .me { display: flex; gap: 12px; align-items: center; }
+  .avatar { width: 54px; height: 54px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; font-size: 22px; color: #f2e6d2; flex-shrink: 0; border: 2px solid var(--pal-accent); }
+  .me-name { font-family: 'Cinzel', serif; color: var(--pal-text); font-size: 18px; letter-spacing: 0.08em; }
+  .me-sub { font-size: 13px; color: var(--pal-text-muted); }
+  .sec { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--pal-border); }
+  .sec-head { display: flex; justify-content: space-between; align-items: baseline; }
+  .round { font-family: 'Cinzel', serif; font-size: 12px; color: var(--pal-accent-bright); letter-spacing: 0.12em; }
+  .order { margin: 10px 0 0; padding: 0; list-style: none; display: grid; gap: 3px; }
+  .order li { display: flex; align-items: center; gap: 8px; font-size: 15px; color: var(--pal-text-body); padding: 3px 6px; border-radius: 3px; }
+  .order li.active { background: var(--pal-accent-dim); color: var(--pal-text); }
+  .order li.me-row .who::after { content: " · you"; color: var(--pal-text-muted); font-size: 13px; }
+  .order .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--pal-border); flex-shrink: 0; }
+  .order li.active .dot { background: var(--pal-accent-bright); box-shadow: 0 0 6px var(--pal-accent-bright); }
+
+  /* End Turn button — always present, three states */
+  .end-turn { width: 100%; margin-top: 12px; min-height: 44px; border-radius: 4px; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.16em; text-transform: uppercase; cursor: default; transition: background 0.3s, color 0.3s, border-color 0.3s, box-shadow 0.3s; }
+  .end-turn[data-state="waiting"] { background: transparent; border: 1px solid var(--pal-border); color: var(--pal-text-muted); }
+  .end-turn[data-state="next"] { background: transparent; border: 1px dashed var(--pal-accent); color: var(--pal-accent-bright); }
+  .end-turn[data-state="mine"] { background: var(--pal-accent-dim); border: 1px solid var(--pal-accent-bright); color: var(--pal-accent-bright); cursor: pointer; animation: glow 2.2s ease-in-out infinite; }
+  .end-turn[data-state="mine"]:hover { filter: brightness(1.12); }
+  @keyframes glow { 0%, 100% { box-shadow: 0 0 0 rgba(0,0,0,0); } 50% { box-shadow: 0 0 14px var(--pal-accent); } }
+  .end-turn-sub { display: block; font-family: 'Crimson Text', serif; text-transform: none; letter-spacing: 0; font-style: italic; font-size: 13px; opacity: 0.85; }
+
+  .party { margin-top: 10px; display: grid; gap: 8px; }
+  .pc { border: 1px solid var(--pal-border); border-radius: 5px; padding: 8px 10px; background: var(--pal-surface); display: flex; gap: 10px; align-items: center; }
+  .pc .avatar { width: 34px; height: 34px; font-size: 14px; border-width: 1.5px; }
+  .pc-name { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.08em; color: var(--pal-text); }
+  .hp { height: 5px; border-radius: 3px; background: var(--pal-border); margin-top: 5px; overflow: hidden; }
+  .hp i { display: block; height: 100%; background: var(--pal-gem); }
+
+  .map { height: 300px; border: 1px solid var(--pal-border); border-radius: 6px; background: repeating-linear-gradient(0deg, transparent 0 31px, var(--pal-border) 31px 32px), repeating-linear-gradient(90deg, transparent 0 31px, var(--pal-border) 31px 32px), var(--pal-surface-solid); display: flex; align-items: center; justify-content: center; color: var(--pal-text-muted); font-style: italic; }
+  .card { border: 1px solid var(--pal-border); border-radius: 6px; padding: 14px; background: var(--pal-surface); }
+
+  /* ── "Your turn" banner — covers only the left panel ── */
+  .turn-banner { position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center;
+    background: radial-gradient(ellipse at 50% 45%, var(--pal-accent-dim) 0%, var(--pal-surface-solid) 70%); border-right: 1px solid var(--pal-accent);
+    pointer-events: none; opacity: 0; transform: translateX(-100%); }
+  .turn-banner .avatar { width: 92px; height: 92px; font-size: 36px; border-width: 3px; box-shadow: 0 0 24px var(--pal-accent); }
+  .turn-banner .title { font-family: 'Cinzel', serif; font-size: 30px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-accent-bright); text-shadow: 0 0 18px var(--pal-accent); }
+  .turn-banner .sub { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pal-text-muted); }
+  .turn-banner .rule { width: 60%; height: 1px; background: linear-gradient(90deg, transparent, var(--pal-accent), transparent); }
+  .turn-banner.show { animation: bannerSlide 2.1s cubic-bezier(0.2, 0.8, 0.2, 1) forwards; }
+  .turn-banner.show.fade { animation: bannerFade 2.1s ease forwards; }
+  @keyframes bannerSlide {
+    0% { opacity: 0; transform: translateX(-100%); }
+    14% { opacity: 1; transform: translateX(0); }
+    86% { opacity: 1; transform: translateX(0); }
+    100% { opacity: 0; transform: translateX(-100%); }
+  }
+  @keyframes bannerFade { 0% { opacity: 0; transform: none; } 14%, 86% { opacity: 1; transform: none; } 100% { opacity: 0; transform: none; } }
+
+  .tab-sim { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; border: 1px solid var(--pal-border); border-bottom: none; border-radius: 6px 6px 0 0; display: inline-block; padding: 6px 14px; background: var(--pal-surface-solid); color: var(--pal-text); margin-bottom: -1px; }
+  .note { font-style: italic; color: var(--pal-text-muted); font-size: 14px; margin: 10px 0 0; }
+  .menu { display: inline-flex; gap: 8px; align-items: center; font-size: 14px; }
+  .switch { width: 38px; height: 20px; border-radius: 10px; border: 1px solid var(--pal-border); background: var(--pal-surface); position: relative; cursor: pointer; }
+  .switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--pal-text-muted); transition: left 0.2s, background 0.2s; }
+  .switch.on { background: var(--pal-accent-dim); border-color: var(--pal-accent); }
+  .switch.on::after { left: 20px; background: var(--pal-accent-bright); }
+</style>
+</head>
+<body data-pal="ember">
+<div class="page">
+  <h1>Player End Turn</h1>
+  <p class="lede">You are <b>Eòghan</b>. Use <b>DM: Next Turn</b> to move initiative along and watch the End Turn button and the "Your turn" cue. On Eòghan's turn, press <b>End Turn</b> yourself.</p>
+  <div class="brief">
+    <div class="label ui">What to look at</div>
+    <ul>
+      <li><b>End Turn</b> (in the Initiative block) is always there. It's muted on others' turns ("Liu Sha's turn"), dashed when "You're next", and lit with a glow on your turn.</li>
+      <li><b>Your turn cue:</b> a banner covers only the left panel for about 1.5s, then slides back (or fades with reduced motion). It plays a soft chime and the tab title becomes "● Your turn".</li>
+      <li><b>Turn alerts</b> is a player menu switch. Off means no banner and no chime, but the button still glows.</li>
+    </ul>
+  </div>
+
+  <div class="toolbar">
+    <span class="label ui">Palette</span>
+    <div class="seg" id="palSeg"><button class="on" data-v="ember">Ember</button><button data-v="vellum">Vellum</button></div>
+    <button class="dm-btn" id="dmNext">DM: Next Turn →</button>
+    <span class="menu"><span class="label ui">Turn alerts</span><span class="switch on" id="alertsSw" role="switch" aria-checked="true" tabindex="0"></span></span>
+    <span class="menu"><span class="label ui">Reduce motion</span><span class="switch" id="motionSw" role="switch" aria-checked="false" tabindex="0"></span></span>
+  </div>
+
+  <div class="tab-sim" id="tabTitle">Hunkz Adventures</div>
+  <div class="shell">
+    <aside class="left" id="left">
+      <div class="me">
+        <div class="avatar" style="background:#4a6a8a">E</div>
+        <div><div class="me-name">Eòghan</div><div class="me-sub">Firbolg Warlock · Level 1 · AC 12</div></div>
+      </div>
+
+      <div class="sec">
+        <div class="sec-head"><span class="label ui">Initiative</span><span class="round" id="roundLbl">Round 1</span></div>
+        <ul class="order" id="order"></ul>
+        <button class="end-turn" id="endTurn" type="button"></button>
+      </div>
+
+      <div class="sec">
+        <span class="label ui">Party</span>
+        <div class="party">
+          <div class="pc"><div class="avatar" style="background:#6a6a6a">Q</div><div style="flex:1"><div class="pc-name">Quietclaw</div><div class="hp"><i style="width:50%"></i></div></div></div>
+          <div class="pc"><div class="avatar" style="background:#8a6a2a">M</div><div style="flex:1"><div class="pc-name">Mr. Meanjeans</div><div class="hp"><i style="width:100%"></i></div></div></div>
+          <div class="pc"><div class="avatar" style="background:#a0603a">L</div><div style="flex:1"><div class="pc-name">Liu Sha</div><div class="hp"><i style="width:100%"></i></div></div></div>
+          <div class="pc"><div class="avatar" style="background:#2a7a4a">A</div><div style="flex:1"><div class="pc-name">Aesop</div><div class="hp"><i style="width:83%"></i></div></div></div>
+        </div>
+      </div>
+
+      <div class="turn-banner" id="banner" aria-hidden="true">
+        <div class="avatar" style="background:#4a6a8a">E</div>
+        <div class="title">Your turn</div>
+        <div class="rule"></div>
+        <div class="sub" id="bannerSub">Round 1</div>
+      </div>
+    </aside>
+
+    <main class="right">
+      <div class="map">Battle map</div>
+      <div class="card"><span class="label ui">Hit points</span><div style="font-family:Cinzel,serif;font-size:30px;color:var(--pal-text)">18 <span class="muted" style="font-size:18px">/ 18</span></div></div>
+      <p class="note">The rest of the page stays usable while the banner shows. It only covers the left panel and doesn't block taps.</p>
+    </main>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const ORDER = ["Carrion Crawler", "Quietclaw", "Mr. Meanjeans", "Eòghan", "Liu Sha", "Aesop"];
+const ME = "Eòghan";
+let active = 0, round = 1, alerts = true, reduceMotion = false;
+
+function render() {
+  $("roundLbl").textContent = `Round ${round}`;
+  $("order").innerHTML = ORDER.map((name, i) => `<li class="${i === active ? "active" : ""} ${name === ME ? "me-row" : ""}"><span class="dot"></span><span class="who">${name}</span></li>`).join("");
+  const btn = $("endTurn");
+  const current = ORDER[active];
+  const next = ORDER[(active + 1) % ORDER.length];
+  if (current === ME) {
+    btn.dataset.state = "mine"; btn.disabled = false;
+    btn.innerHTML = `End Turn`;
+  } else if (next === ME) {
+    btn.dataset.state = "next"; btn.disabled = true;
+    btn.innerHTML = `You're next<span class="end-turn-sub">${current}'s turn</span>`;
+  } else {
+    btn.dataset.state = "waiting"; btn.disabled = true;
+    btn.innerHTML = `${current}'s turn`;
+  }
+  $("tabTitle").textContent = current === ME ? "● Your turn — Hunkz Adventures" : "Hunkz Adventures";
+}
+
+function advance() {
+  active = (active + 1) % ORDER.length;
+  if (active === 0) round += 1;
+  render();
+  if (ORDER[active] === ME) yourTurn();
+}
+
+function yourTurn() {
+  if (!alerts) return;
+  const b = $("banner");
+  $("bannerSub").textContent = `Round ${round}`;
+  b.classList.remove("show", "fade"); void b.offsetWidth;
+  b.classList.add("show"); if (reduceMotion) b.classList.add("fade");
+  chime();
+}
+
+// One soft chime: two quiet sine partials with a gentle decay.
+let audio;
+function chime() {
+  try {
+    audio = audio || new (window.AudioContext || window.webkitAudioContext)();
+    const now = audio.currentTime;
+    [[880, 0.10], [1320, 0.04]].forEach(([freq, gainLevel]) => {
+      const osc = audio.createOscillator(), gain = audio.createGain();
+      osc.type = "sine"; osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(gainLevel, now + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.2);
+      osc.connect(gain).connect(audio.destination);
+      osc.start(now); osc.stop(now + 1.25);
+    });
+  } catch { /* audio unavailable */ }
+}
+
+$("dmNext").addEventListener("click", advance);
+$("endTurn").addEventListener("click", () => { if (ORDER[active] === ME) advance(); });
+function sw(id, fn) {
+  const el = $(id);
+  const toggle = () => { const on = !el.classList.contains("on"); el.classList.toggle("on", on); el.setAttribute("aria-checked", String(on)); fn(on); };
+  el.addEventListener("click", toggle);
+  el.addEventListener("keydown", (e) => { if (e.key === " " || e.key === "Enter") { e.preventDefault(); toggle(); } });
+}
+sw("alertsSw", (on) => { alerts = on; });
+sw("motionSw", (on) => { reduceMotion = on; });
+$("palSeg").addEventListener("click", (e) => {
+  const v = e.target.dataset.v; if (!v) return;
+  [...$("palSeg").children].forEach((c) => c.classList.toggle("on", c.dataset.v === v));
+  document.body.dataset.pal = v;
+});
+render();
+</script>
+</body>
+</html>
