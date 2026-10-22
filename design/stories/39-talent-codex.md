@@ -1,7 +1,20 @@
 # Feature Story: Talent Codex — Rich Ability/Spell/Skill Library
 
-**Status**: Approved — Ready to Build (assumptions flagged below; confirm with DM if any feel wrong)
-**Source**: DM priority list 2026-07-16 (#2)
+**Status**: Re-scoped 2026-10-21 — needs a prototype (DM Settings subpage + tooltip) before build
+**Source**: DM priority list 2026-07-16 (#2); scope decisions from the player 2026-10-21 (see "Decisions" — they override the sections below where they differ)
+
+---
+
+## Decisions (2026-10-21)
+
+The app changed after this story was written: skills and special abilities already show fixed one-line descriptions from `talentCatalog.js`; spells carry per-character, player-written descriptions (Story 56); DM Settings exists. So:
+
+- **Scope: skills and special abilities only** (the ones this table uses), seeded from today's `talentCatalog.js` descriptions so the DM refines rather than starts blank. Untouched entries keep showing today's text.
+- **Spells later, and only from a reliable source** — a table-wide spell library is fine if it can be seeded with real descriptions (e.g. an openly licensed source); never a list of blank spells to fill in. Per-character spell descriptions stay as they are.
+- **DM only** edits it, on a **subpage of DM Settings** (e.g. `/dm/settings/codex`), linked from the Settings page — not a modal in All Actions.
+- **Each entry: description + optional "At the table" ruling** (house rule text, no automation — the natural home for Noam's skill rules). In the pop-up info boxes during play, the "At the table" section appears **only when it's filled in** for that entry; empty means nothing extra shows.
+- **No hidden entries** — everything is visible to players.
+- Keep from below: description formatting (bold/italic/lists via the World Guide mini-renderer), Enemies-Gallery-style list + editor (duplicate, two-step delete, unsaved-changes guard), the "not in codex" pencil on unmatched badges for the DM, mount-fetch (not polled).
 
 ---
 
