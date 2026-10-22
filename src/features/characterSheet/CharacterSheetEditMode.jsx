@@ -5,6 +5,7 @@ import { CURSE_EFFECTS, HELPFUL_EFFECTS, NEUTRAL_EFFECTS } from "../../lib/spell
 import "./characterSheet.css";
 import ChangePasswordForm from "./ChangePasswordForm";
 import { CHARACTER_SKILLS, SPECIAL_ABILITIES, getTalentDetail } from "./talentCatalog";
+import { useTalentCodexVersion } from "./talentCodexStore";
 import {
   ALIGNMENT_OPTIONS,
   ALL_SUBCLASS_OPTIONS,
@@ -24,6 +25,7 @@ import { InfoBadge } from "./CharacterTalents";
 import { PALETTES } from "./theme";
 
 export default function CharacterSheetEditMode({ ctx }) {
+  useTalentCodexVersion(); // re-render when the DM's codex arrives
   const {
     rootWrap,
     pal,

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { getSessionState, putHouseRules } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import { PalCtx } from "../features/dmDashboard/dashboardShared";
@@ -231,6 +232,20 @@ export default function DmSettingsPage() {
                   {saved?.playersEndTurn !== false ? "On" : "Off"}
                 </button>
                 {endTurnStatus && <span className="dm-settings-status" role="status">{endTurnStatus}</span>}
+              </div>
+            </div>
+          </section>
+
+          <section className="dm-settings-card" aria-labelledby="hr-codex">
+            <div className="dm-settings-row">
+              <div className="dm-settings-label-col">
+                <h2 id="hr-codex" className="dm-settings-label">Talent Codex</h2>
+                <p className="dm-settings-help">
+                  Your own descriptions for each skill and special ability, plus optional &ldquo;At the table&rdquo; rulings. Players see them in the info boxes on their sheets and party cards.
+                </p>
+              </div>
+              <div className="dm-settings-control-col">
+                <Link to="/dm/settings/codex" className="dm-settings-save dm-settings-link">Edit the codex →</Link>
               </div>
             </div>
           </section>

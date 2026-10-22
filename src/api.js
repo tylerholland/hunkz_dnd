@@ -1,5 +1,6 @@
 import { noteVersions } from "./lib/versionFloors";
 import { setCustomEffects } from "./lib/spellEffects";
+import { needsTalentCodex, setTalentCodex, talentCodexFetchFailed } from "./features/characterSheet/talentCodexStore";
 
 const BASE = import.meta.env.VITE_API_URL;
 const OPTIONAL_ENDPOINT_SUPPORT = {
@@ -320,9 +321,25 @@ export const getSessionState = ({ dmPassword, slug } = {}) => {
     // Story 70 — the DM's custom effects ride house rules; register them so
     // every picker, pill and ring on this page knows their kind.
     setCustomEffects(data?.houseRules?.customEffects);
+    // Story 39 — fetch the Talent Codex only when its version changes.
+    if (needsTalentCodex(data?.talentCodexVersion)) {
+      getTalentCodex()
+        .then((codex) => setTalentCodex(codex.entries, codex.version))
+        .catch(() => talentCodexFetchFailed());
+    }
     return data;
   });
 };
+
+// Story 39 — the Talent Codex (anyone reads; the DM writes).
+export const getTalentCodex = () => request("/talent-codex");
+
+export const putTalentCodex = (dmPassword, entries) =>
+  request("/talent-codex", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ entries }),
+  });
 
 // ── Story 69 — Session Chronicle ────────────────────────────────────────────
 // `viewer` is { password, asSlug? } (DM: password only; a player: their

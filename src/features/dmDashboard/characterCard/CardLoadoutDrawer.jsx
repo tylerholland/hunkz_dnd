@@ -1,6 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import { formatMod, getSkillNames, groupDrawerContent, titleCase } from "../cardStats";
 import { getTalentDetail } from "../../characterSheet/talentCatalog";
+import { useTalentCodexVersion } from "../../characterSheet/talentCodexStore";
 import { itemTypeLabel } from "../../characterSheet/ItemEditorModal";
 import DrawerDetailPopover from "./DrawerDetailPopover";
 import { FEATURE_KINDS, featureMaxUses, featureUsesLeft, normalizeFeatures, rechargeLabel } from "../../characterSheet/features";
@@ -101,6 +102,7 @@ function ItemList({ items, renderExtra, onDetail, onToggleEquipped }) {
 // owns which card is expanded. Sections follow the DM's mid-scene questions
 // (see groupDrawerContent); empty sections don't render.
 export default function CardLoadoutDrawer({ char, onRoll, onToggleEquipped, featuresEnabled = true }) {
+  useTalentCodexVersion(); // re-render when the DM's codex arrives
   const ref = useRef(null);
   const { attacks, gear, spells, pack } = groupDrawerContent(char);
   const [detail, setDetail] = useState(null);
@@ -195,7 +197,7 @@ export default function CardLoadoutDrawer({ char, onRoll, onToggleEquipped, feat
                     key={ability}
                     type="button"
                     className="cc-drawer-chip cc-has-detail"
-                    onClick={(e) => openDetail(e, { title: label, meta: "Special ability", body: info.description })}
+                    onClick={(e) => openDetail(e, { title: label, meta: "Special ability", body: info.atTable ? `${info.description}\n\nAt the table: ${info.atTable}` : info.description })}
                   >{label}</button>
                 ) : (
                   <span key={ability} className="cc-drawer-chip">{label}</span>

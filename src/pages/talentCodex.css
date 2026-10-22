@@ -1,0 +1,149 @@
+/* Story 39 — Talent Codex (DM Settings → Talent Codex). */
+.tc-main {
+  max-width: 1040px;
+  margin: 0 auto;
+  padding: 24px 20px 64px;
+}
+.tc-link { color: var(--pal-accent-bright); }
+
+.tc-layout {
+  display: grid;
+  grid-template-columns: 240px minmax(0, 1fr);
+  gap: 20px;
+  align-items: start;
+}
+
+.tc-rail {
+  display: grid;
+  gap: 14px;
+  padding: 12px;
+  border: 1px solid var(--pal-border);
+  border-radius: 8px;
+  background: var(--pal-surface);
+  position: sticky;
+  top: 12px;
+}
+.tc-filter { width: 100%; }
+.tc-group { display: grid; gap: 2px; }
+.tc-group-title {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--pal-text-muted);
+  margin-bottom: 4px;
+}
+.tc-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 36px;
+  padding: 4px 10px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--pal-text-body);
+  font-family: var(--font-body);
+  font-size: 15px;
+  text-align: left;
+  cursor: pointer;
+}
+.tc-item:hover { color: var(--pal-text); border-color: var(--pal-border); }
+.tc-item.on {
+  background: var(--pal-accent-dim);
+  border-color: var(--pal-accent);
+  color: var(--pal-text);
+}
+.tc-item:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 1px; }
+.tc-edited { color: var(--pal-accent-bright); font-size: 10px; }
+
+.tc-editor {
+  display: grid;
+  gap: 14px;
+  padding: 18px;
+  border: 1px solid var(--pal-border);
+  border-radius: 8px;
+  background: var(--pal-surface);
+}
+.tc-back { display: none; }
+.tc-editor-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tc-kind {
+  font-family: var(--font-body);
+  font-size: 14px;
+  font-style: italic;
+  color: var(--pal-text-muted);
+}
+
+.tc-field { display: grid; gap: 6px; }
+.tc-field-label {
+  font-family: var(--font-ui);
+  font-size: 12px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-accent);
+}
+.tc-optional { text-transform: none; letter-spacing: 0; color: var(--pal-text-muted); }
+.tc-field textarea {
+  width: 100%;
+  resize: vertical;
+  padding: 8px 10px;
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  background: var(--pal-surface-solid);
+  color: var(--pal-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.5;
+}
+.tc-field textarea:focus { outline: 2px solid var(--pal-accent); outline-offset: 0; }
+.tc-hint { font-family: var(--font-body); font-size: 13px; font-style: italic; color: var(--pal-text-muted); }
+
+.tc-preview { display: grid; gap: 6px; }
+.tc-preview-box {
+  max-width: 300px;
+  padding: 8px 10px;
+  border: 1px solid var(--pal-border);
+  border-radius: 6px;
+  background: var(--pal-surface-solid);
+  color: var(--pal-text);
+  font-family: var(--font-body);
+  font-size: 13px;
+  line-height: 1.35;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.tc-guard {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--pal-accent);
+  border-radius: 6px;
+  background: var(--pal-surface-solid);
+  font-family: var(--font-body);
+  color: var(--pal-text);
+}
+.tc-guard span { flex: 1 1 200px; }
+
+/* Phones: list first, tap an entry to open its editor (drill-in). */
+@media (max-width: 720px) {
+  .tc-layout { grid-template-columns: 1fr; }
+  .tc-rail { position: static; }
+  .tc-layout .tc-editor { display: none; }
+  .tc-layout.tc-editing .tc-rail { display: none; }
+  .tc-layout.tc-editing .tc-editor { display: grid; }
+  .tc-back {
+    display: inline-block;
+    justify-self: start;
+    padding: 4px 0;
+    border: none;
+    background: transparent;
+    color: var(--pal-accent-bright);
+    font-family: var(--font-ui);
+    font-size: 12px;
+    letter-spacing: 0.08em;
+    cursor: pointer;
+  }
+}

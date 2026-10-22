@@ -35,8 +35,10 @@ const {
   COUNTER_WHEELS_SLUG,
   APP_META_SLUG,
   HOUSE_RULES_SLUG,
+  TALENT_CODEX_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
+const { currentVersion } = require("../lib/versioning");
 const {
   normalizeInitiativeRecord,
   normalizeNpcCombatRecord,
@@ -88,6 +90,7 @@ const SENTINEL_SLUGS = [
   COUNTER_WHEELS_SLUG,
   APP_META_SLUG,
   HOUSE_RULES_SLUG,
+  TALENT_CODEX_SLUG,
 ];
 
 exports.handler = async (event) => {
@@ -118,6 +121,9 @@ exports.handler = async (event) => {
   const counterWheels = normalizeCounterWheelsRecord(sentinelBySlug.get(COUNTER_WHEELS_SLUG));
   const appMeta = normalizeAppMetaRecord(sentinelBySlug.get(APP_META_SLUG));
   const houseRules = normalizeHouseRulesRecord(sentinelBySlug.get(HOUSE_RULES_SLUG));
+  // Story 39 — just the Talent Codex's version; screens fetch the codex itself
+  // (GET /talent-codex) only when this changes.
+  const talentCodexVersion = currentVersion(sentinelBySlug.get(TALENT_CODEX_SLUG));
   const serverTime = new Date().toISOString();
 
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.
@@ -164,6 +170,7 @@ exports.handler = async (event) => {
       mapLibrary: annotatedMapLibrary,
       counterWheels,
       houseRules,
+      talentCodexVersion,
       serverTime,
       buildVersion: appMeta.buildVersion,
     };
@@ -292,6 +299,7 @@ exports.handler = async (event) => {
     mapLibrary: publicMapLibrary,
     rollHistory: publicRollHistory,
     houseRules,
+    talentCodexVersion,
     serverTime,
     buildVersion: appMeta.buildVersion,
   };

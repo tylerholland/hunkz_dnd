@@ -18,8 +18,11 @@ const ROLL_HISTORY_ARCHIVE_PREFIX = "roll-history-archive:";
 // record per session ("chronicle-session:<id>") holding its event snapshot,
 // summary and recollections.
 const CHRONICLE_SLUG = "chronicle";
+// Story 39 — the Talent Codex: the DM's own descriptions (+ "At the table"
+// rulings) for skills and special abilities, overriding the built-in text.
+const TALENT_CODEX_SLUG = "talent-codex";
 const CHRONICLE_SESSION_PREFIX = "chronicle-session:";
-const RESERVED_CHARACTER_SLUGS = new Set([INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, APP_META_SLUG, HOUSE_RULES_SLUG, CHRONICLE_SLUG]);
+const RESERVED_CHARACTER_SLUGS = new Set([INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, APP_META_SLUG, HOUSE_RULES_SLUG, CHRONICLE_SLUG, TALENT_CODEX_SLUG]);
 
 function isReservedCharacterSlug(slug) {
   return RESERVED_CHARACTER_SLUGS.has(slug)
@@ -40,6 +43,7 @@ module.exports = {
   COUNTER_WHEELS_SLUG,
   APP_META_SLUG,
   HOUSE_RULES_SLUG,
+  TALENT_CODEX_SLUG,
   ROLL_HISTORY_ARCHIVE_PREFIX,
   CHRONICLE_SLUG,
   CHRONICLE_SESSION_PREFIX,

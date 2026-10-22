@@ -1,3 +1,5 @@
+import { getTalentOverride } from "./talentCodexStore";
+
 export const CHARACTER_SKILLS = [
   "athletics",
   "awareness",
@@ -56,17 +58,24 @@ export const TALENT_DETAILS = {
   wild: { kind: "special", label: "Wild", description: "Channels primal, feral, or nature-touched power in distinctive ways." },
 };
 
+// Built-in text, with the DM's Talent Codex override (Story 39) on top:
+// their description replaces ours; "At the table" is theirs alone.
 export function getTalentDetail(key) {
-  return TALENT_DETAILS[key] || {
-    kind: "special",
-    label: key,
-    description: "",
+  const base = TALENT_DETAILS[key] || { kind: "special", label: key, description: "" };
+  const override = getTalentOverride(key);
+  if (!override) return base;
+  return {
+    ...base,
+    description: override.description || base.description,
+    ...(override.atTable ? { atTable: override.atTable } : {}),
+    edited: true,
   };
 }
 
+/** For info boxes: { description, atTable? } (falls back to the label). */
 export function getTalentTooltip(key) {
   const detail = getTalentDetail(key);
-  return detail.description || detail.label;
+  return { description: detail.description || detail.label, ...(detail.atTable ? { atTable: detail.atTable } : {}) };
 }
 
 export function getOrderedTalentEntries(skills = [], specialAbilities = []) {

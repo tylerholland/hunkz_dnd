@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import TopNav, { NavSegment } from "../../components/TopNav";
 import { InfoBadge } from "./CharacterTalents";
 import { getTalentTooltip } from "./talentCatalog";
+import { useTalentCodexVersion } from "./talentCodexStore";
 import { computeArmorClass } from "./armorClass";
 import InventoryPanel from "./InventoryPanel";
 import { useInventoryWrites } from "./useInventoryWrites";
@@ -14,6 +15,7 @@ import { useTextScale } from "../../lib/useTextScale";
 import "./characterSheet.css";
 
 export default function CharacterSheetViewMode({ ctx }) {
+  useTalentCodexVersion(); // re-render when the DM's codex arrives
   const [guideOpen, setGuideOpen] = useState(false);
   const {
     rootWrap,

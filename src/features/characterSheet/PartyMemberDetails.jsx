@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { getTalentDetail } from "./talentCatalog";
+import { useTalentCodexVersion } from "./talentCodexStore";
+import MarkdownLite from "../../components/MarkdownLite";
 
 const ABILITY_ABBR = [
   ["Strength", "STR"], ["Dexterity", "DEX"], ["Constitution", "CON"],
@@ -15,6 +17,7 @@ const fmtMod = (n) => (n >= 0 ? `+${n}` : `${n}`);
  * (tap one for its description). Never inventory — the server doesn't send it.
  */
 export default function PartyMemberDetails({ card, id }) {
+  useTalentCodexVersion(); // re-render when the DM's codex arrives
   const [selected, setSelected] = useState(null); // { key, label, description }
   if (!card) return null;
 
@@ -24,7 +27,7 @@ export default function PartyMemberDetails({ card, id }) {
     ...(card.specialAbilities || []).map((key) => ({ key: `ability:${key}`, raw: key })),
   ].map(({ key, raw }) => {
     const info = getTalentDetail(raw);
-    return { key, label: info.label && info.label !== raw ? info.label : titleCase(raw), description: info.description || "" };
+    return { key, label: info.label && info.label !== raw ? info.label : titleCase(raw), description: info.description || "", atTable: info.atTable || "" };
   });
   const spells = (card.spells || []).map((spell) => ({
     key: `spell:${spell.name}`,
@@ -71,9 +74,16 @@ export default function PartyMemberDetails({ card, id }) {
         </div>
       )}
       {selected?.description && (
-        <p className="cs-sm-party-chip-desc" aria-live="polite">
-          <b>{selected.label}.</b> {selected.description}
-        </p>
+        <div className="cs-sm-party-chip-desc" aria-live="polite">
+          <b>{selected.label}.</b>
+          <MarkdownLite text={selected.description} className="cs-tip-desc" />
+          {selected.atTable ? (
+            <span className="cs-tip-table" style={{ borderTopColor: "var(--pal-border)" }}>
+              <span className="cs-tip-table-label" style={{ color: "var(--pal-accent-bright)" }}>At the table</span>
+              <MarkdownLite text={selected.atTable} className="cs-tip-desc" />
+            </span>
+          ) : null}
+        </div>
       )}
     </div>
   );

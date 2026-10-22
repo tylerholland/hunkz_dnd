@@ -1,6 +1,6 @@
 # Feature Story: Talent Codex — Rich Ability/Spell/Skill Library
 
-**Status**: Re-scoped 2026-10-21 — needs a prototype (DM Settings subpage + tooltip) before build
+**Status**: Implemented (2026-10-21) — skills + special abilities; DM Settings → Talent Codex (/dm/settings/codex)
 **Source**: DM priority list 2026-07-16 (#2); scope decisions from the player 2026-10-21 (see "Decisions" — they override the sections below where they differ)
 
 ---

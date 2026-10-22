@@ -1,5 +1,25 @@
 import { useState } from "react";
 import { getOrderedTalentEntries, getTalentTooltip } from "./talentCatalog";
+import { useTalentCodexVersion } from "./talentCodexStore";
+import MarkdownLite from "../../components/MarkdownLite";
+
+// Story 39 — an info box body: plain text, or a Talent Codex entry
+// ({ description, atTable }) — formatted text, plus "At the table" only when
+// the DM has written one.
+export function TooltipBody({ tooltip, pal }) {
+  if (!tooltip || typeof tooltip !== "object") return tooltip ?? null;
+  return (
+    <>
+      <MarkdownLite inline text={tooltip.description} className="cs-tip-desc" />
+      {tooltip.atTable ? (
+        <span className="cs-tip-table" style={{ borderTopColor: pal.border }}>
+          <span className="cs-tip-table-label" style={{ color: pal.accentBright, fontFamily: pal.fontUI }}>At the table</span>
+          <MarkdownLite inline text={tooltip.atTable} className="cs-tip-desc" />
+        </span>
+      ) : null}
+    </>
+  );
+}
 
 export function InfoBadge({
   pal,
@@ -53,7 +73,9 @@ export function InfoBadge({
             transform: "translateX(-50%)",
             zIndex: 80,
             minWidth: compact ? 120 : 150,
-            maxWidth: 220,
+            maxWidth: tooltip && typeof tooltip === "object" ? 300 : 220,
+            maxHeight: 260,
+            overflowY: "auto",
             padding: compact ? "6px 8px" : "8px 10px",
             borderRadius: 6,
             border: `1px solid ${pal.border}`,
@@ -66,10 +88,11 @@ export function InfoBadge({
             textTransform: "none",
             whiteSpace: "normal",
             boxShadow: "0 8px 24px rgba(0,0,0,0.35)",
-            pointerEvents: "none",
+            // Codex entries can be long: let them scroll.
+            pointerEvents: tooltip && typeof tooltip === "object" ? "auto" : "none",
           }}
         >
-          {tooltip}
+          <TooltipBody tooltip={tooltip} pal={pal} />
         </span>
       )}
     </button>
@@ -84,6 +107,7 @@ export default function CharacterTalents({
   compact = false,
   maxVisible = null,
 }) {
+  useTalentCodexVersion(); // re-render when the DM's codex arrives
   const entries = getOrderedTalentEntries(skills, specialAbilities);
   if (!entries.length) return null;
 

@@ -872,6 +872,34 @@ Resources:
               Action: execute-api:ManageConnections
               Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
+  # Story 39 — Talent Codex (GET: anyone; PUT: DM).
+  TalentCodexFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/talentCodex.handler
+      Events:
+        GetApi:
+          Type: HttpApi
+          Properties:
+            Path: /talent-codex
+            Method: get
+            ApiId: !Ref CharactersApi
+        PutApi:
+          Type: HttpApi
+          Properties:
+            Path: /talent-codex
+            Method: put
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
+
   # Story 69 — Session Chronicle (one function routes every /chronicle path).
   ChronicleFunction:
     Type: AWS::Serverless::Function

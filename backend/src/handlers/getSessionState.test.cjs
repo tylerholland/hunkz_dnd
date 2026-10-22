@@ -218,7 +218,7 @@ test("getSessionState DM variant returns full consolidated payload", async () =>
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(Object.keys(body).sort(), [
-    "buildVersion", "counterWheels", "houseRules", "initiative", "mapLibrary", "npcCombat", "party", "rollHistory", "serverTime",
+    "buildVersion", "counterWheels", "houseRules", "initiative", "mapLibrary", "npcCombat", "party", "rollHistory", "serverTime", "talentCodexVersion",
   ].sort());
   assert.equal(body.buildVersion, "abc1234");
 
@@ -256,7 +256,7 @@ test("getSessionState public variant leaks nothing beyond the old public project
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(Object.keys(body).sort(), [
-    "buildVersion", "houseRules", "initiativePublic", "mapLibrary", "npcCombatPublic", "partyStatus", "rollHistory", "serverTime",
+    "buildVersion", "houseRules", "initiativePublic", "mapLibrary", "npcCombatPublic", "partyStatus", "rollHistory", "serverTime", "talentCodexVersion",
   ].sort());
   assert.equal(body.buildVersion, "abc1234");
 

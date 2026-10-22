@@ -7,6 +7,7 @@ import DmDashboardPage from "./pages/DmDashboardPage";
 import MapLibraryPage from "./pages/MapLibraryPage";
 import MapViewerPage from "./pages/MapViewerPage";
 import DmSettingsPage from "./pages/DmSettingsPage";
+import DmTalentCodexPage from "./pages/DmTalentCodexPage";
 import ChroniclePage from "./pages/ChroniclePage";
 import ErrorBoundary from "./components/ErrorBoundary";
 
@@ -18,6 +19,7 @@ export default function App() {
         <Route path="/"                          element={<CharactersListPage />} />
         <Route path="/dm"                        element={<DmDashboardPage />} />
         <Route path="/dm/settings"               element={<DmSettingsPage />} />
+        <Route path="/dm/settings/codex"         element={<DmTalentCodexPage />} />
         <Route path="/chronicle"                 element={<ChroniclePage />} />
         <Route path="/chronicle/record"          element={<ChroniclePage />} />
         <Route path="/chronicle/:sessionId"      element={<ChroniclePage />} />

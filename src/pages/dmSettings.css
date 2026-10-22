@@ -255,3 +255,10 @@
   border-color: #d08080;
   color: #e8a0a0;
 }
+
+/* A link styled like the Save button (e.g. "Edit the codex →"). */
+.dm-settings-link {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none;
+}
