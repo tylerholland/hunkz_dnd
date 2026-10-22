@@ -1,7 +1,19 @@
 # Feature Story: Lingering Spell Effects (Hex, Bless, Hunter's Mark…)
 
-**Status**: Draft (2026-09-28): not scheduled. **Manual step built:** a fixed list of effects (`src/lib/spellEffects.js`: Blessed, Hasted, Heroism, Shielded, Raging, Dodging, Hidden; Hexed, Marked, Baned, Outlined) is set by hand from the condition pickers and stored in the same `conditions` array. The map draws a gold halo for helpful effects and the curse sigil for Hexed. This story later sets them automatically from spells.
+**Status**: In design (2026-10-21) — damage-rider prototype for a choice. Earlier: Draft (2026-09-28). **Manual step built:** a fixed list of effects (`src/lib/spellEffects.js`: Blessed, Hasted, Heroism, Shielded, Raging, Dodging, Hidden; Hexed, Marked, Baned, Outlined) is set by hand from the condition pickers and stored in the same `conditions` array. The map draws a gold halo for helpful effects and the curse sigil for Hexed. This story later sets them automatically from spells.
 **Source**: Playtest. Casting Hex showed that many spells aren't "roll damage once"
+
+## Decisions (2026-10-21)
+
+- **Record the caster on an applied effect** (who cast it, from which spell) — needed for anything below.
+- **Damage riders, documented on the effect**: Hexed = +1d6 necrotic and Marked (Hunter's Mark) = +1d6, applying only to the **caster's** hits on that target. How the +1d6 reaches the damage roll is to be chosen from a prototype (`design/prototypes/effect-damage-riders.html`):
+  - **A — attack bar adds it**: when the caster rolls damage against a target they've hexed, the DAMAGE step shows a "✦ +1d6 Hex" chip (on by default, tap to drop it) and rolls it in.
+  - **B — DM log offers it**: a damage roll from the caster against the hexed target shows "✦ Hexed by Eòghan: +1d6 necrotic" with a [Roll +1d6] button, so Deal Damage applies the total.
+  - Players tend to forget riders or mistype the dice, so the app should carry it rather than rely on memory.
+- **Concentration: not tied to anything yet** — it hasn't come up at the table. Effects last until removed by hand. Revisit after checking with the DM.
+- **Helpful effects** (Blessed, etc.) work the same way as curses; no concentration link.
+- **Flying** and a **custom effect** (DM types a name, picks curse / helpful / neutral; gets a ring) — folded in from Noam's notes.
+- Out of scope still: saves each turn, durations by the clock, moving an effect when its target falls (revisit with concentration).
 
 ## The problem
 

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Effect Damage Riders</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+  /* Palette tokens — from src/features/characterSheet/theme.jsx */
+  :root, [data-pal="ember"] {
+    --pal-bg: #120d0a; --pal-surface: rgba(50,28,14,0.55); --pal-surface-solid: #2a160a;
+    --pal-border: rgba(160,100,55,0.22); --pal-accent: #a06840; --pal-accent-bright: #c89060;
+    --pal-accent-dim: #4a2e12; --pal-text: #d4c4b0; --pal-text-body: #b8a888; --pal-text-muted: #8a6848;
+    --pal-gem: #c8904c; --glow: rgba(100,45,10,0.35); --shadow: rgba(0,0,0,0.4);
+    --curse: #cda2f2; --curse-wash: rgba(170,100,230,0.16); --curse-edge: rgba(182,120,236,0.5);
+    --chip-off: rgba(255,255,255,0.04);
+  }
+  /* Light palette: lighter washes, darker curse ink (see design-essentials). */
+  [data-pal="vellum"] {
+    --pal-bg: #f5f0e8; --pal-surface: rgba(220,208,185,0.5); --pal-surface-solid: #e8e0cc;
+    --pal-border: rgba(140,110,70,0.22); --pal-accent: #7a5c30; --pal-accent-bright: #4a3418;
+    --pal-accent-dim: rgba(140,110,70,0.15); --pal-text: #2a2018; --pal-text-body: #3c2e1c; --pal-text-muted: #8a7050;
+    --pal-gem: #4a3418; --glow: rgba(180,155,100,0.25); --shadow: rgba(60,40,10,0.15);
+    --curse: #6a3399; --curse-wash: rgba(122,63,176,0.08); --curse-edge: rgba(122,63,176,0.35);
+    --chip-off: rgba(0,0,0,0.03);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(ellipse at 50% 0%, var(--glow) 0%, transparent 60%), var(--pal-bg); color: var(--pal-text-body); font-family: 'Crimson Text', Georgia, serif; font-size: 16px; line-height: 1.5; }
+  .page { max-width: 1120px; margin: 0 auto; padding: 20px 16px 60px; }
+  h1 { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); font-size: 24px; letter-spacing: 0.06em; margin: 0 0 6px; }
+  h2 { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); font-size: 18px; letter-spacing: 0.06em; margin: 0 0 4px; }
+  .lede { margin: 0 0 14px; max-width: 800px; }
+  .label { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-accent); }
+  .muted { color: var(--pal-text-muted); }
+  .brief { border: 1px solid var(--pal-border); background: var(--pal-surface); border-radius: 6px; padding: 12px 16px; margin-bottom: 18px; font-size: 15px; }
+  .brief ul { margin: 4px 0 0; padding-left: 18px; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; margin-bottom: 16px; }
+  .seg { display: inline-flex; border: 1px solid var(--pal-border); border-radius: 4px; overflow: hidden; }
+  .seg button { background: transparent; border: none; padding: 7px 12px; color: var(--pal-text-muted); cursor: pointer; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .seg button.on { background: var(--pal-accent-dim); color: var(--pal-accent-bright); }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px; }
+  @media (max-width: 860px) { .two { grid-template-columns: 1fr; } }
+  section.opt { border: 1px solid var(--pal-border); background: var(--pal-surface); border-radius: 8px; padding: 16px; }
+  .note { font-style: italic; color: var(--pal-text-muted); font-size: 14px; margin: 10px 0 0; }
+  .btn { min-height: 40px; padding: 0 14px; border-radius: 3px; cursor: pointer; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .btn-primary { background: var(--pal-accent-dim); border: 1px solid var(--pal-accent); color: var(--pal-accent-bright); }
+  .btn-ghost { background: transparent; border: 1px solid var(--pal-border); color: var(--pal-text-muted); }
+  .btn-sm { min-height: 30px; padding: 0 10px; font-size: 11px; }
+  .btn-deal { min-height: 30px; padding: 0 10px; border-radius: 4px; border: 1px solid #c9574b; background: rgba(201,87,75,0.12); color: #d9786d; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+  [data-pal="vellum"] .btn-deal { color: #9a3328; background: rgba(201,87,75,0.06); }
+  .btn-rider { min-height: 30px; padding: 0 10px; border-radius: 4px; border: 1px solid var(--curse-edge); background: var(--curse-wash); color: var(--curse); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; }
+  .applied { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: #4f9a6a; }
+
+  /* Target strip shared by both options */
+  .target { display: flex; align-items: center; gap: 10px; margin: 10px 0 14px; }
+  .tok { position: relative; width: 52px; height: 52px; border-radius: 50%; background: #5a3a2a; color: #f2e6d2; display: flex; align-items: center; justify-content: center; font-family: 'Cinzel', serif; border: 2px solid rgba(255,255,255,0.3); flex-shrink: 0; }
+  .tok svg { position: absolute; inset: -9px; width: calc(100% + 18px); height: calc(100% + 18px); animation: spin 18s linear infinite; }
+  @keyframes spin { to { transform: rotate(-360deg); } }
+  .eff { color: var(--curse); font-size: 14px; }
+
+  /* ── Option A: attack bar ── */
+  .phone { max-width: 400px; border: 1px solid var(--pal-border); border-radius: 12px; overflow: hidden; background: var(--pal-bg); }
+  .bar { background: var(--pal-surface-solid); border-top: 1px solid var(--pal-border); padding: 10px 12px; display: grid; gap: 10px; }
+  .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .who { font-size: 15px; color: var(--pal-text); flex: 1; }
+  .who .g { color: var(--pal-accent-bright); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 4px 10px; border-radius: 3px; border: 1px solid var(--pal-accent); background: var(--pal-accent-dim); color: var(--pal-text); font-size: 15px; }
+  .chip .x { font-family: 'Cinzel', serif; font-size: 11px; color: var(--pal-text-muted); }
+  .rider-chip { display: inline-flex; align-items: center; gap: 6px; min-height: 38px; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--curse-edge); background: var(--curse-wash); color: var(--curse); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.08em; cursor: pointer; }
+  .rider-chip[aria-pressed="false"] { background: var(--chip-off); color: var(--pal-text-muted); border-style: dashed; text-decoration: line-through; }
+  .result { margin-left: auto; display: flex; align-items: baseline; gap: 6px; }
+  .result .dice { font-family: 'Cinzel', serif; font-size: 11px; color: var(--pal-text-muted); }
+  .result .total { font-family: 'Cinzel', serif; font-size: 28px; color: var(--pal-gem); line-height: 1; }
+  .actions { display: flex; gap: 8px; justify-content: flex-end; }
+
+  /* ── Log rows (both options) ── */
+  .log { border: 1px solid var(--pal-border); border-radius: 6px; padding: 2px 12px; margin-top: 14px; background: var(--pal-surface); }
+  .lrow { padding: 8px 0; border-bottom: 1px solid var(--pal-border); }
+  .lrow:last-child { border-bottom: none; }
+  .lmain { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .lname { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; color: var(--pal-accent-bright); }
+  .ltext { color: var(--pal-text); flex: 1 1 180px; min-width: 0; }
+  .ltext .t { color: var(--pal-accent-bright); }
+  .lright { display: flex; align-items: center; gap: 10px; margin-left: auto; }
+  .ltotal { font-family: 'Cinzel', serif; font-size: 20px; color: var(--pal-gem); }
+  .ldice { font-family: 'Cinzel', serif; font-size: 11px; color: var(--pal-text-muted); }
+  .rider-hint { margin-top: 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 6px 10px; border-radius: 4px; border: 1px solid var(--curse-edge); background: var(--curse-wash); color: var(--curse); font-size: 14px; }
+  .rider-hint .sum { color: var(--pal-text); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; }
+  .fresh { animation: fresh 1.1s ease; }
+  @keyframes fresh { from { background: var(--pal-accent-dim); } to { background: transparent; } }
+</style>
+</head>
+<body data-pal="ember">
+<div class="page">
+  <h1>Effect Damage Riders</h1>
+  <p class="lede">The <b>Carrion Crawler</b> is <span class="eff">✦ Hexed by Eòghan</span>. Hex adds <b>+1d6 necrotic</b> to <i>Eòghan's</i> hits on it, and nobody else's. Two ways the app could carry that +1d6 so nobody has to remember it. Try both, in both palettes.</p>
+  <div class="brief">
+    <div class="label">Compare</div>
+    <ul>
+      <li><b>A · Attack bar adds it:</b> the player's DAMAGE step shows a "✦ +1d6 Hex" chip, on by default, and rolls it in. The log shows the split, and Deal Damage applies the total.</li>
+      <li><b>B · DM log offers it:</b> the player rolls damage as now, and the DM's log row shows "✦ Hexed by Eòghan: +1d6 necrotic" with a <b>Roll +1d6</b> button before Deal Damage.</li>
+      <li><b>Liu Sha's hit</b> (bottom of each log) shows no Hex prompt, because Hex only adds to the caster's hits.</li>
+    </ul>
+  </div>
+
+  <div class="toolbar">
+    <span class="label">Palette</span>
+    <div class="seg" id="palSeg"><button class="on" data-v="ember">Ember</button><button data-v="vellum">Vellum</button></div>
+    <button class="btn btn-ghost btn-sm" id="reset">Reset both</button>
+  </div>
+
+  <div class="two">
+    <!-- A -->
+    <section class="opt">
+      <h2>A · Attack bar adds it</h2>
+      <div class="muted" style="font-size:14px">Eòghan's phone, after Eldritch Blast hits (14 to hit).</div>
+      <div class="target">
+        <div class="tok">CC<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="none" stroke="var(--curse)" stroke-width="1.6"/><polygon points="50,9 85.5,70.5 14.5,70.5" fill="none" stroke="var(--curse)" stroke-width="1" opacity=".7"/><polygon points="50,91 14.5,29.5 85.5,29.5" fill="none" stroke="var(--curse)" stroke-width="1" opacity=".7"/></svg></div>
+        <div><div style="color:var(--pal-text)">Carrion Crawler</div><div class="eff">✦ Hexed by Eòghan</div></div>
+      </div>
+      <div class="phone">
+        <div class="bar" id="barA"></div>
+      </div>
+      <div class="log" id="logA"></div>
+      <p class="note">The chip only appears for the caster, against the target they hexed. Tapping it drops the rider for one roll, e.g. if the DM rules it doesn't apply.</p>
+    </section>
+
+    <!-- B -->
+    <section class="opt">
+      <h2>B · DM log offers it</h2>
+      <div class="muted" style="font-size:14px">The DM's roll log, after Eòghan rolls Eldritch Blast damage (1d10 = 7).</div>
+      <div class="target">
+        <div class="tok">CC<svg viewBox="0 0 100 100" aria-hidden="true"><circle cx="50" cy="50" r="45" fill="none" stroke="var(--curse)" stroke-width="1.6"/><polygon points="50,9 85.5,70.5 14.5,70.5" fill="none" stroke="var(--curse)" stroke-width="1" opacity=".7"/><polygon points="50,91 14.5,29.5 85.5,29.5" fill="none" stroke="var(--curse)" stroke-width="1" opacity=".7"/></svg></div>
+        <div><div style="color:var(--pal-text)">Carrion Crawler</div><div class="eff">✦ Hexed by Eòghan</div></div>
+      </div>
+      <div class="log" id="logB" style="margin-top:0"></div>
+      <p class="note">The player does nothing different. The DM sees the reminder exactly when applying the damage, rolls the +1d6 with one click, and Deal Damage uses the new total.</p>
+    </section>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const d = (n) => 1 + Math.floor(Math.random() * n);
+let A, B;
+function reset() {
+  A = { state: "result-atk", rider: true, dmg: null, dealt: false };
+  B = { rider: null, dealt: false, liuDealt: false };
+  renderA(); renderB();
+}
+
+// ── Option A ──
+function renderA() {
+  const bar = $("barA");
+  const top = `<div class="row"><div class="who"><span class="g">◎</span> Carrion Crawler</div></div>`;
+  const chosen = `<span class="chip">✶ Eldritch Blast <span class="x">${A.state === "result-atk" ? "1d10" : ""}</span></span>`;
+  if (A.state === "result-atk") {
+    bar.innerHTML = top + `<div class="row">${chosen}
+      <button class="rider-chip" id="riderA" aria-pressed="${A.rider}" title="Hex adds 1d6 necrotic to your hits on this target">✦ +1d6 Hex</button>
+      <div class="result"><span class="dice">[9] +5</span><span class="total">14</span></div></div>
+      <div class="actions"><button class="btn btn-ghost">↺ Again</button><button class="btn btn-primary" id="dmgA">⚔ Damage${A.rider ? " · 1d10 + 1d6" : ""}</button></div>`;
+    $("riderA").onclick = () => { A.rider = !A.rider; renderA(); };
+    $("dmgA").onclick = () => {
+      const base = d(10), extra = A.rider ? d(6) : 0;
+      A.dmg = { base, extra, total: base + extra }; A.state = "result-dmg"; renderA();
+    };
+  } else {
+    const r = A.dmg;
+    bar.innerHTML = top + `<div class="row">${chosen}<div class="result"><span class="dice">[${r.base}]${r.extra ? ` + [${r.extra}] Hex` : ""}</span><span class="total">${r.total}</span></div></div>
+      <div class="actions"><button class="btn btn-ghost" id="againA">↺ Again</button></div>`;
+    $("againA").onclick = () => { A.state = "result-atk"; A.dmg = null; A.dealt = false; renderA(); };
+  }
+  renderLogA();
+}
+function renderLogA() {
+  const rows = [];
+  if (A.dmg) {
+    const r = A.dmg;
+    rows.push(`<div class="lrow fresh"><div class="lname">Eòghan MacGille Fàth</div><div class="lmain">
+      <div class="ltext">Eldritch Blast damage → <span class="t">◎</span> Carrion Crawler${r.extra ? ` <span class="eff">· incl. ✦ Hex +${r.extra}</span>` : ""}</div>
+      <div class="lright">${A.dealt ? `<span class="applied">✓ Applied ${r.total}</span>` : `<button class="btn-deal" id="dealA">Deal Damage</button>`}<span class="ldice">${r.extra ? `${r.base} + ${r.extra}` : r.base}</span><span class="ltotal">${r.total}</span></div></div></div>`);
+  }
+  rows.push(liuRow("A"));
+  $("logA").innerHTML = `<div class="label" style="padding:8px 0 2px">DM's log</div>` + rows.join("");
+  const deal = $("dealA"); if (deal) deal.onclick = () => { A.dealt = true; renderLogA(); };
+  wireLiu("A");
+}
+
+// ── Option B ──
+function renderB() {
+  const rider = B.rider;
+  const total = 7 + (rider || 0);
+  const hint = B.dealt ? "" : rider == null
+    ? `<div class="rider-hint">✦ Hexed by Eòghan: +1d6 necrotic <button class="btn-rider" id="rollRider">Roll +1d6</button><button class="btn btn-ghost btn-sm" id="skipRider">Not this time</button></div>`
+    : rider === 0
+      ? `<div class="rider-hint">✦ Hex skipped for this hit</div>`
+      : `<div class="rider-hint">✦ Hex <span class="sum">+${rider} necrotic · total ${total}</span></div>`;
+  $("logB").innerHTML = `<div class="label" style="padding:8px 0 2px">DM's log</div>
+    <div class="lrow"><div class="lname">Eòghan MacGille Fàth</div><div class="lmain">
+      <div class="ltext">Eldritch Blast damage → <span class="t">◎</span> Carrion Crawler</div>
+      <div class="lright">${B.dealt ? `<span class="applied">✓ Applied ${total}</span>` : `<button class="btn-deal" id="dealB">Deal Damage${rider ? ` ${total}` : ""}</button>`}<span class="ldice">7${rider ? ` + ${rider}` : ""}</span><span class="ltotal">${total}</span></div></div>${hint}</div>
+    ${liuRow("B")}`;
+  const roll = $("rollRider"); if (roll) roll.onclick = () => { B.rider = d(6); renderB(); };
+  const skip = $("skipRider"); if (skip) skip.onclick = () => { B.rider = 0; renderB(); };
+  $("dealB") && ($("dealB").onclick = () => { B.dealt = true; renderB(); });
+  wireLiu("B");
+}
+
+// Liu Sha's hit on the same target — no Hex prompt (not the caster).
+const liuDealt = { A: false, B: false };
+function liuRow(k) {
+  return `<div class="lrow"><div class="lname">Liu Sha</div><div class="lmain">
+    <div class="ltext">Unarmed Strike damage → <span class="t">◎</span> Carrion Crawler</div>
+    <div class="lright">${liuDealt[k] ? `<span class="applied">✓ Applied 5</span>` : `<button class="btn-deal" id="liu${k}">Deal Damage</button>`}<span class="ldice">4 + 1</span><span class="ltotal">5</span></div></div></div>`;
+}
+function wireLiu(k) { const b = $("liu" + k); if (b) b.onclick = () => { liuDealt[k] = true; k === "A" ? renderLogA() : renderB(); }; }
+
+$("reset").onclick = () => { liuDealt.A = liuDealt.B = false; reset(); };
+$("palSeg").addEventListener("click", (e) => {
+  const v = e.target.dataset.v; if (!v) return;
+  [...$("palSeg").children].forEach((c) => c.classList.toggle("on", c.dataset.v === v));
+  document.body.dataset.pal = v;
+});
+reset();
+</script>
+</body>
+</html>
