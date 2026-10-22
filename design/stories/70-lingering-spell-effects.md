@@ -10,6 +10,7 @@
   - **A — attack bar adds it**: when the caster rolls damage against a target they've hexed, the DAMAGE step shows a "✦ +1d6 Hex" chip (on by default, tap to drop it) and rolls it in.
   - **B — DM log offers it**: a damage roll from the caster against the hexed target shows "✦ Hexed by Eòghan: +1d6 necrotic" with a [Roll +1d6] button, so Deal Damage applies the total.
   - Players tend to forget riders or mistype the dice, so the app should carry it rather than rely on memory.
+  - **Chosen: A only** (2026-10-21). B can't work reliably: rolls from the dice panel carry no target (and no attack), so the DM's log has nothing to match against the hexed target — and the only other case (the caster switching the chip off) is deliberate. The rider is part of the attack bar's damage roll for the caster against the target they hexed; the log row shows the split ("incl. ✦ Hex +4") and Deal Damage applies the total.
 - **Concentration: not tied to anything yet** — it hasn't come up at the table. Effects last until removed by hand. Revisit after checking with the DM.
 - **Helpful effects** (Blessed, etc.) work the same way as curses; no concentration link.
 - **Flying** and a **custom effect** (DM types a name, picks curse / helpful / neutral; gets a ring) — folded in from Noam's notes.
