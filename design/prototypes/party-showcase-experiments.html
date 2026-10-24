@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Party Showcase Experiments</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #0d0f14; --text: #c8bfaf; --muted: #7d93a0; --accent: #6a8fa8; --bright: #a0c0d0;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; background: radial-gradient(ellipse at 50% -10%, rgba(20,45,80,0.45) 0%, transparent 60%), var(--bg); color: var(--text); font-family: 'Crimson Text', Georgia, serif; overflow-x: hidden; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px dashed rgba(100,130,160,0.25); font-size: 13px; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid rgba(100,130,160,0.25); border-radius: 4px; overflow: hidden; }
+  .seg button { background: transparent; border: none; padding: 6px 12px; color: var(--muted); cursor: pointer; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .seg button.on { background: #1e3a4e; color: var(--bright); }
+  main { max-width: 1180px; margin: 0 auto; padding: 30px 20px 80px; }
+  h2 { font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; font-size: 20px; margin: 0 0 6px; }
+  .lede { color: var(--muted); font-style: italic; margin: 0 0 30px; max-width: 70ch; }
+  .view { display: none; }
+  .view.on { display: block; }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; } }
+
+  /* ═════════ 1. Orbs on pedestals ═════════ */
+  .orbs { display: flex; flex-wrap: wrap; justify-content: center; gap: 30px 26px; padding-top: 10px; }
+  .shrine { --size: 150px; width: 190px; display: flex; flex-direction: column; align-items: center; cursor: pointer; }
+  .orb-wrap { position: relative; height: 200px; width: var(--size); display: flex; align-items: flex-end; justify-content: center; }
+  /* The orb: the portrait slides behind a circular window, back and forth like a slowly turning
+     globe, with spherical shading on top (a highlight, a terminator shadow, a rim of the character's colour). */
+  .orb { position: relative; width: var(--size); height: var(--size); border-radius: 50%; margin-bottom: 26px;
+    background-image: var(--img); background-size: auto 118%; background-position: 0% 30%; background-repeat: no-repeat;
+    animation: sway 14s ease-in-out infinite alternate, bob 3.6s ease-in-out infinite;
+    box-shadow: 0 0 34px color-mix(in srgb, var(--c) 45%, transparent), 0 0 0 1px color-mix(in srgb, var(--c) 70%, transparent); }
+  .orb::before { content: ""; position: absolute; inset: 0; border-radius: 50%;
+    background:
+      radial-gradient(circle at 34% 28%, rgba(255,255,255,0.55) 0%, rgba(255,255,255,0.12) 18%, transparent 34%),
+      radial-gradient(circle at 50% 50%, transparent 52%, rgba(0,0,0,0.35) 72%, rgba(0,0,0,0.8) 100%),
+      radial-gradient(circle at 70% 78%, color-mix(in srgb, var(--c) 40%, transparent) 0%, transparent 40%); }
+  .orb::after { content: ""; position: absolute; inset: -6px; border-radius: 50%; border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); animation: halo 3.6s ease-in-out infinite; }
+  @keyframes sway { from { background-position: 20% 30%; } to { background-position: 80% 30%; } }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-14px); } }
+  @keyframes halo { 0%, 100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 0.25; transform: scale(1.06); } }
+  /* Its shadow on the pedestal top shrinks as it rises. */
+  .orb-shadow { position: absolute; bottom: 4px; left: 50%; width: 110px; height: 16px; margin-left: -55px; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,0.65), transparent 70%); animation: shadow 3.6s ease-in-out infinite; }
+  @keyframes shadow { 0%, 100% { transform: scale(1); opacity: 0.9; } 50% { transform: scale(0.72); opacity: 0.5; } }
+  .shrine:hover .orb { animation-duration: 5s, 1.8s; }
+
+  /* The pedestal: a square prism turning slowly; each face carries one thing. */
+  .pedestal-stage { perspective: 700px; width: 170px; height: 132px; margin-top: -4px; }
+  .tilt { transform-style: preserve-3d; transform: rotateX(-16deg); }
+  .pedestal { position: relative; width: 150px; height: 112px; margin: 0 auto; transform-style: preserve-3d; animation: turn 32s linear infinite; }
+  .shrine:nth-child(2n) .pedestal { animation-direction: reverse; }
+  .face { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 10px; text-align: center;
+    background: linear-gradient(180deg, color-mix(in srgb, var(--c) 22%, #15181f), #0d0f14 85%);
+    border: 1px solid color-mix(in srgb, var(--c) 55%, transparent);
+    box-shadow: inset 0 0 0 3px color-mix(in srgb, var(--c) 12%, transparent), inset 0 -18px 30px rgba(0,0,0,0.5);
+    backface-visibility: hidden; }
+  .face:nth-child(1) { transform: rotateY(0deg) translateZ(75px); }
+  .face:nth-child(2) { transform: rotateY(90deg) translateZ(75px); }
+  .face:nth-child(3) { transform: rotateY(180deg) translateZ(75px); }
+  .face:nth-child(4) { transform: rotateY(270deg) translateZ(75px); }
+  .cap { position: absolute; left: 0; top: 0; width: 150px; height: 150px; transform: rotateX(90deg) translateZ(75px); background: radial-gradient(circle, color-mix(in srgb, var(--c) 30%, #1a1d24), #0d0f14 75%); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); }
+  @keyframes turn { to { transform: rotateY(360deg); } }
+  .f-name { font-family: 'Cinzel', serif; font-size: 16px; letter-spacing: 0.06em; color: #efe6d6; line-height: 1.15; }
+  .f-sub { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--c); }
+  .f-ep { font-style: italic; font-size: 16px; color: color-mix(in srgb, var(--c) 70%, #fff); }
+  .f-hp { width: 100%; display: grid; gap: 5px; }
+  .f-hp .barx { height: 6px; border-radius: 3px; background: rgba(255,255,255,0.12); overflow: hidden; }
+  .f-hp i { display: block; height: 100%; background: var(--c); }
+  .f-hp span { font-family: 'Cinzel', serif; font-size: 13px; color: #d8cdbb; }
+  .plinth { width: 176px; height: 12px; margin-top: -2px; border-radius: 3px; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, #1a1d24), #0b0d11); box-shadow: 0 10px 22px rgba(0,0,0,0.6); }
+
+  /* ═════════ 2. Tarot ═════════ */
+  .tarot { display: flex; flex-wrap: wrap; justify-content: center; gap: 26px; perspective: 1400px; }
+  .tcard { width: 200px; height: 340px; position: relative; cursor: pointer; }
+  .tinner { position: absolute; inset: 0; transform-style: preserve-3d; transition: transform 0.8s cubic-bezier(.3,1.3,.5,1); }
+  .tcard:hover .tinner, .tcard:focus-within .tinner { transform: rotateY(180deg); }
+  .tface { position: absolute; inset: 0; border-radius: 14px; backface-visibility: hidden; overflow: hidden;
+    border: 2px solid #b8975a; box-shadow: 0 14px 34px rgba(0,0,0,0.55), inset 0 0 0 5px #0f0d0a, inset 0 0 0 6px #8a6d3b; background: #0f0d0a; }
+  .tfront { display: flex; flex-direction: column; }
+  .tnum { text-align: center; padding: 10px 0 6px; font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 0.3em; color: #d8b878; }
+  /* Arched window for the portrait. */
+  .tart { margin: 0 14px; flex: 1; border-radius: 80px 80px 6px 6px; overflow: hidden; border: 1px solid #8a6d3b; position: relative; }
+  .tart img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 20%; display: block; filter: saturate(1.05) contrast(1.05); }
+  .tart::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 60%, color-mix(in srgb, var(--c) 35%, transparent)); mix-blend-mode: multiply; }
+  .tbanner { margin: 10px 10px 12px; padding: 7px 4px; text-align: center; background: linear-gradient(180deg, #2a2116, #16110b); border: 1px solid #8a6d3b; font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: #ecd9a8;
+    clip-path: polygon(0 0, 100% 0, 96% 50%, 100% 100%, 0 100%, 4% 50%); }
+  .tback { transform: rotateY(180deg); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 22px 18px; text-align: center;
+    background: radial-gradient(circle at 50% 35%, color-mix(in srgb, var(--c) 30%, #1a140c), #0f0d0a 70%); }
+  .tback .sigil { width: 70px; height: 70px; color: #b8975a; opacity: 0.8; }
+  .tback .tn { font-family: 'Cinzel', serif; font-size: 18px; color: #f0e2bf; letter-spacing: 0.06em; }
+  .tback .te { font-style: italic; color: #d8b878; }
+  .tback .tk { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: #a48a5e; }
+  .tback .f-hp { width: 80%; }
+  .tback .f-hp i { background: #d8b878; }
+  .tglow { position: absolute; inset: -2px; border-radius: 16px; pointer-events: none; background: linear-gradient(115deg, transparent 30%, rgba(255,230,170,0.35) 45%, transparent 60%); background-size: 250% 100%; animation: foil 6s linear infinite; mix-blend-mode: screen; }
+  @keyframes foil { from { background-position: 150% 0; } to { background-position: -150% 0; } }
+
+  /* ═════════ 3. Campfire circle ═════════ */
+  .camp { position: relative; height: 640px; perspective: 1100px; overflow: visible; }
+  .ground { position: absolute; left: 50%; top: 58%; width: 900px; height: 900px; margin: -450px 0 0 -450px; border-radius: 50%; transform: rotateX(72deg);
+    background: radial-gradient(circle, rgba(255,150,60,0.35) 0%, rgba(160,80,30,0.16) 22%, rgba(40,25,15,0.1) 45%, transparent 62%); animation: flick 0.18s steps(2) infinite alternate; }
+  @keyframes flick { from { opacity: 0.85; } to { opacity: 1; } }
+  .ring { position: absolute; left: 50%; top: 58%; width: 560px; height: 560px; margin: -280px 0 0 -280px; border-radius: 50%; transform: rotateX(72deg); border: 1px dashed rgba(255,190,120,0.18); }
+  .fire { position: absolute; left: 50%; top: 58%; width: 90px; height: 120px; margin: -110px 0 0 -45px; }
+  .flame { position: absolute; bottom: 0; left: 50%; border-radius: 50% 50% 45% 45% / 60% 60% 40% 40%; transform-origin: 50% 100%; filter: blur(1.5px); mix-blend-mode: screen; }
+  .flame.a { width: 70px; height: 100px; margin-left: -35px; background: radial-gradient(ellipse at 50% 80%, #ffcf6a 0%, #ff8a2a 40%, rgba(200,50,10,0) 70%); animation: dance 0.9s ease-in-out infinite alternate; }
+  .flame.b { width: 44px; height: 76px; margin-left: -30px; background: radial-gradient(ellipse at 50% 80%, #fff1b0 0%, #ffb24a 45%, rgba(220,80,10,0) 72%); animation: dance 0.7s ease-in-out infinite alternate-reverse; }
+  .flame.c { width: 40px; height: 64px; margin-left: -6px; background: radial-gradient(ellipse at 50% 80%, #fff6d0 0%, #ffc060 45%, rgba(220,80,10,0) 72%); animation: dance 0.8s ease-in-out 0.2s infinite alternate; }
+  @keyframes dance { from { transform: scale(1, 1) skewX(-3deg); } to { transform: scale(0.88, 1.12) skewX(4deg); } }
+  .logs { position: absolute; left: 50%; top: 58%; width: 100px; height: 18px; margin: -14px 0 0 -50px; }
+  .logs i { position: absolute; width: 90px; height: 12px; border-radius: 6px; background: linear-gradient(180deg, #5a3a22, #2a1a10); left: 5px; }
+  .logs i:nth-child(1) { transform: rotate(16deg); } .logs i:nth-child(2) { transform: rotate(-16deg); }
+  .spark { position: absolute; left: 50%; top: 58%; width: 3px; height: 3px; border-radius: 50%; background: #ffcf7a; box-shadow: 0 0 6px #ff9a3a; opacity: 0; animation: spark linear infinite; }
+  @keyframes spark { 0% { opacity: 0; transform: translate(0, -60px); } 10% { opacity: 1; } 100% { opacity: 0; transform: translate(var(--dx), -260px); } }
+  .seat { position: absolute; width: 112px; text-align: center; cursor: pointer; transition: transform 0.3s ease; }
+  .seat:hover { transform: translateY(-10px) scale(1.06); z-index: 50 !important; }
+  .medal { width: 104px; height: 104px; margin: 0 auto; border-radius: 50%; overflow: hidden; border: 2px solid var(--c);
+    box-shadow: 0 0 0 4px rgba(0,0,0,0.5), 0 0 26px color-mix(in srgb, var(--c) 40%, transparent), inset 0 0 20px rgba(0,0,0,0.6); position: relative; }
+  .medal img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; }
+  /* Firelight from the centre: warm on the side facing the fire. */
+  .medal::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at var(--lx) var(--ly), rgba(255,170,80,0.42), transparent 60%); mix-blend-mode: screen; animation: flick 0.2s steps(2) infinite alternate; }
+  .plate { margin-top: 8px; display: inline-block; padding: 4px 10px; border-radius: 4px; background: rgba(13,15,20,0.8); border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); }
+  .plate b { display: block; font-family: 'Cinzel', serif; font-weight: 400; font-size: 13px; letter-spacing: 0.06em; color: #efe6d6; }
+  .plate em { display: block; font-size: 12px; color: var(--muted); }
+  .seat .more { max-height: 0; overflow: hidden; transition: max-height 0.3s ease; }
+  .seat:hover .more { max-height: 60px; }
+  .seat .f-hp { margin-top: 5px; }
+</style>
+</head>
+<body>
+<div class="bar">
+  <span>Prototype · party showcase experiments</span>
+  <div class="seg" id="seg">
+    <button class="on" data-v="orbs">Orbs on pedestals</button>
+    <button data-v="tarot">Tarot</button>
+    <button data-v="camp">Campfire circle</button>
+  </div>
+</div>
+
+<main>
+  <section class="view on" id="orbs">
+    <h2>Orbs on pedestals</h2>
+    <p class="lede">Each portrait is the skin of a glowing orb that turns (sways like a globe) and bobs above a slowly rotating pedestal. The pedestal's four faces carry the name, the epithet, race · class · level, and HP. Hover an orb to quicken it.</p>
+    <div class="orbs" id="orbsHost"></div>
+  </section>
+
+  <section class="view" id="tarot">
+    <h2>Tarot</h2>
+    <p class="lede">The party as a tarot spread: gilt frames, an arched portrait, a numeral and a title banner, with a slow foil shimmer. Hover a card to turn it over for the stats.</p>
+    <div class="tarot" id="tarotHost"></div>
+  </section>
+
+  <section class="view" id="camp">
+    <h2>Campfire circle</h2>
+    <p class="lede">The party seated round a fire, seen at an angle: medallions on an ellipse, warmed on the side facing the flames, sparks rising. Those nearer the fire's front sit larger. Hover someone to lift them and show their HP.</p>
+    <div class="camp" id="campHost">
+      <div class="ground"></div><div class="ring"></div>
+      <div class="logs"><i></i><i></i></div>
+      <div class="fire"><div class="flame a"></div><div class="flame b"></div><div class="flame c"></div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+const S3 = "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/";
+const PARTY = [
+  { name: "Quietclaw", ep: "Crackle", kind: "Kenku · Rogue", lvl: 1, c: "#b8b8b8", img: "the-sound-of-a-hearthfire-burning-quietclaw-1778262066730.png", hp: [3, 6] },
+  { name: "Aesop", ep: "Slow Justice", kind: "Tortle · Paladin", lvl: 1, c: "#58c890", img: "aesop.jpg", hp: [15, 18] },
+  { name: "Eòghan", ep: "Mistbourne", kind: "Firbolg · Warlock", lvl: 1, c: "#a0c0d0", img: "eoghan-1784698034076.png", hp: [18, 18], pos: "80% 20%" },
+  { name: "Liu Sha", ep: "Louie", kind: "Goliath · Monk", lvl: 1, c: "#c89060", img: "liu-sha.jpg", hp: [12, 12] },
+  { name: "Meanjeans", ep: "I didn't ask for this", kind: "Halfling · Rogue", lvl: 1, c: "#d8c49a", img: "david-1784666229879.png", hp: [12, 12] },
+];
+const ROMAN = ["0", "I", "II", "III", "IV", "V", "VI", "VII"];
+const TITLES = ["The Hermit", "Justice", "The Moon", "Strength", "The Fool"];
+const hp = (p) => `<div class="f-hp"><div class="barx"><i style="width:${Math.round(p.hp[0] / p.hp[1] * 100)}%"></i></div><span>${p.hp[0]} / ${p.hp[1]} HP</span></div>`;
+
+// 1. Orbs
+document.getElementById("orbsHost").innerHTML = PARTY.map((p, i) => `
+  <div class="shrine" style="--c:${p.c}">
+    <div class="orb-wrap">
+      <div class="orb" style="--img:url('${S3}${p.img}');animation-delay:${-i * 3}s, ${-i * 0.7}s"></div>
+      <div class="orb-shadow" style="animation-delay:${-i * 0.7}s"></div>
+    </div>
+    <div class="pedestal-stage"><div class="tilt"><div class="pedestal" style="animation-delay:${-i * 6}s">
+      <div class="face"><div class="f-name">${p.name}</div><div class="f-sub">Lv ${p.lvl}</div></div>
+      <div class="face"><div class="f-ep">“${p.ep}”</div></div>
+      <div class="face"><div class="f-sub">${p.kind}</div></div>
+      <div class="face">${hp(p)}</div>
+      <div class="cap"></div>
+    </div></div></div>
+    <div class="plinth"></div>
+  </div>`).join("");
+
+// 2. Tarot
+const SIGIL = `<svg class="sigil" viewBox="0 0 100 100" fill="none" stroke="currentColor" stroke-width="1.2"><circle cx="50" cy="50" r="44"/><polygon points="50,8 86,72 14,72"/><polygon points="50,92 14,28 86,28"/><circle cx="50" cy="50" r="14"/></svg>`;
+document.getElementById("tarotHost").innerHTML = PARTY.map((p, i) => `
+  <div class="tcard" tabindex="0" style="--c:${p.c}">
+    <div class="tinner">
+      <div class="tface tfront">
+        <div class="tnum">${ROMAN[i + 1]}</div>
+        <div class="tart"><img src="${S3}${p.img}" alt="" style="object-position:${p.pos || "50% 20%"}" /></div>
+        <div class="tbanner">${p.name}</div>
+        <div class="tglow" style="animation-delay:${-i * 1.2}s"></div>
+      </div>
+      <div class="tface tback">
+        ${SIGIL}
+        <div class="tk">${TITLES[i]}</div>
+        <div class="tn">${p.name}</div>
+        <div class="te">“${p.ep}”</div>
+        <div class="tk">${p.kind} · Lv ${p.lvl}</div>
+        ${hp(p)}
+      </div>
+    </div>
+  </div>`).join("");
+
+// 3. Campfire — seats on an ellipse (the ring seen at an angle), nearer = lower, larger, in front.
+const camp = document.getElementById("campHost");
+function seatAll() {
+  camp.querySelectorAll(".seat").forEach((s) => s.remove());
+  const W = camp.clientWidth, cx = W / 2, cy = camp.clientHeight * 0.58;
+  const rx = Math.min(470, W * 0.44), ry = rx * 0.36;
+  // The ground ring and the firelight on the ground follow the seats' ellipse.
+  const ring = camp.querySelector(".ring");
+  ring.style.cssText = `width:${rx * 2}px;height:${ry * 2}px;margin:${-ry}px 0 0 ${-rx}px;transform:none`;
+  camp.querySelector(".ground").style.cssText = `width:${rx * 2.4}px;height:${ry * 2.4}px;margin:${-ry * 1.2}px 0 0 ${-rx * 1.2}px;transform:none`;
+  PARTY.forEach((p, i) => {
+    const a = (i / PARTY.length) * Math.PI * 2 + Math.PI / 2 + 0.35;
+    const x = cx + Math.cos(a) * rx, y = cy + Math.sin(a) * ry;
+    const depth = (Math.sin(a) + 1) / 2; // 0 = far side, 1 = near side
+    const scale = 0.78 + depth * 0.32;
+    // Light comes from the fire: towards the centre from this seat.
+    const lx = 50 - Math.cos(a) * 40, ly = 50 - Math.sin(a) * 40;
+    const el = document.createElement("div");
+    el.className = "seat";
+    el.style.cssText = `--c:${p.c};--lx:${lx}%;--ly:${ly}%;left:${x - 56}px;top:${y - 130 * scale}px;transform-origin:50% 100%;z-index:${Math.round(depth * 20) + (depth > 0.5 ? 10 : 0)};scale:${scale}`;
+    el.innerHTML = `<div class="medal"><img src="${S3}${p.img}" alt="" style="object-position:${p.pos || "50% 22%"}" /></div>
+      <div class="plate"><b>${p.name}</b><em>${p.kind}</em><div class="more">${hp(p)}</div></div>`;
+    camp.appendChild(el);
+  });
+}
+for (let i = 0; i < 14; i++) {
+  const s = document.createElement("span");
+  s.className = "spark";
+  s.style.cssText = `--dx:${(Math.random() - 0.5) * 120}px;animation-duration:${2 + Math.random() * 2.5}s;animation-delay:${-Math.random() * 4}s;margin-left:${(Math.random() - 0.5) * 30}px`;
+  camp.appendChild(s);
+}
+addEventListener("resize", seatAll);
+
+document.getElementById("seg").addEventListener("click", (e) => {
+  const v = e.target.dataset.v; if (!v) return;
+  document.querySelectorAll("#seg button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+  document.querySelectorAll(".view").forEach((s) => s.classList.toggle("on", s.id === v));
+  if (v === "camp") seatAll();
+});
+</script>
+</body>
+</html>
