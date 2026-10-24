@@ -198,10 +198,13 @@
   border-color: var(--c-bright);
   box-shadow: 0 0 0 2px var(--c-bright), 0 0 26px color-mix(in srgb, var(--c-bright) 45%, transparent), 0 10px 28px rgba(0, 0, 0, 0.35);
 }
-.home-card-portrait { position: relative; aspect-ratio: 3 / 3.4; overflow: hidden; background: #000; }
+/* Backed by the card's own colour (not black), so the sub-pixel gaps the hover
+   tilt and zoom open at the edges never show as a dark line — most visible on
+   light cards. */
+.home-card-portrait { position: relative; aspect-ratio: 3 / 3.4; overflow: hidden; background: var(--c-surface); }
 .home-card-portrait img { width: 100%; height: 100%; object-fit: cover; object-position: 50% 22%; display: block; transition: transform 0.6s ease; }
 .home-card:hover .home-card-portrait img { transform: scale(1.04); }
-.home-card-portrait::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 55%, var(--c-surface) 100%); }
+.home-card-portrait::after { content: ""; position: absolute; inset: 0 0 -1px; background: linear-gradient(180deg, transparent 55%, var(--c-surface) 100%); }
 .home-card-initial {
   display: flex; align-items: center; justify-content: center; width: 100%; height: 100%;
   background: color-mix(in srgb, var(--c-accent) 20%, var(--c-surface));
