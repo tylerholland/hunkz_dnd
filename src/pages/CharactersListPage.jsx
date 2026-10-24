@@ -255,8 +255,8 @@ export default function CharactersListPage() {
         {/* Campaign header: where we left off, and the road so far */}
         <section className="home-hero" aria-labelledby="home-hero-h">
           <div className="home-kicker">The Chronicle{chapter ? ` · Chapter ${toRoman(chapterIndex + 1)}` : ""}</div>
-          <h1 id="home-hero-h">Hunkz Adventures</h1>
-          {chapter && <div className="home-chapter">{chapter.name}</div>}
+          {/* The campaign's name is in the top nav; the hero leads with the chapter. */}
+          <h1 id="home-hero-h">{chapter?.name || "The Chronicle"}</h1>
           <div className="home-rule" />
 
           {latest ? (

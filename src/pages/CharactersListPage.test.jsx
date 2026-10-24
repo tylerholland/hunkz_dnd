@@ -97,7 +97,8 @@ describe("CharactersListPage", () => {
 
     expect(await screen.findByText("Through the Lair")).toBeInTheDocument();
     expect(screen.getByText("The Chronicle · Chapter I")).toBeInTheDocument();
-    expect(screen.getByText("We Must All Hang Together")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1, name: "We Must All Hang Together" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { level: 1, name: "Hunkz Adventures" })).not.toBeInTheDocument();
     expect(screen.getByText(/days since the party last gathered/)).toBeInTheDocument();
     expect(screen.getByText(/in 7 days/)).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Read the Chronicle/ })).toHaveAttribute("href", "/chronicle/s2");
