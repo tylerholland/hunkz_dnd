@@ -9,7 +9,6 @@
   --hero-veil: linear-gradient(180deg, color-mix(in srgb, var(--pal-bg) 10%, transparent), color-mix(in srgb, var(--pal-bg) 60%, transparent));
   /* Just see-through enough for the fog to drift by behind it. */
   --hero-base: color-mix(in srgb, var(--pal-surface-solid) 78%, transparent);
-  --hero-mist: color-mix(in srgb, var(--pal-accent-bright) 6%, transparent);
   position: relative;
   min-height: 100vh;
   overflow-x: hidden;
@@ -21,7 +20,6 @@
   --fog-o1: 0.3; --fog-o2: 0.22; --fog-o3: 0.26; --arcane-o: 0.08; --rune-o: 0.4;
   --hero-veil: linear-gradient(180deg, color-mix(in srgb, var(--pal-bg) 10%, transparent), color-mix(in srgb, var(--pal-bg) 65%, transparent));
   --hero-base: color-mix(in srgb, var(--pal-surface-solid) 82%, transparent);
-  --hero-mist: color-mix(in srgb, var(--pal-accent) 6%, transparent);
 }
 .home-page > .topnav { position: relative; z-index: 2; }
 
@@ -76,7 +74,6 @@
   padding: 34px 32px 28px; margin-bottom: 26px;
   background:
     var(--hero-veil),
-    repeating-linear-gradient(115deg, transparent 0 22px, var(--hero-mist) 22px 23px),
     radial-gradient(ellipse at 15% 0%, var(--pal-accent-dim) 0%, transparent 65%),
     var(--hero-base);
 }
