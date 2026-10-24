@@ -29,14 +29,21 @@
 
   /* ── Atmosphere: slow fog banks, a turning arcane circle, rising runes ── */
   .atmos { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-  .fog { position: absolute; left: 0; width: 200%; background-repeat: repeat-x; background-size: 50% 100%; will-change: transform; }
-  .fog.f1 { top: -10%; height: 70%; opacity: var(--fog-o1); animation: fogdrift 150s linear infinite; }
-  .fog.f2 { top: 30%; height: 80%; opacity: var(--fog-o2); animation: fogdrift 220s linear infinite reverse; }
-  .fog.f3 { top: 60%; height: 60%; opacity: var(--fog-o3); animation: fogdrift 110s linear infinite; }
+  .fog { position: absolute; left: 0; width: 200%; background-repeat: repeat-x; background-size: 50% 100%; will-change: transform;
+    /* Fade each band out top and bottom so no cloud ever shows a cut edge. */
+    -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
+            mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%); }
+  .fog.f1 { top: -10%; height: 70%; opacity: var(--fog-o1); animation: fogdrift 75s linear infinite; }
+  .fog.f2 { top: 30%; height: 80%; opacity: var(--fog-o2); animation: fogdrift 105s linear infinite reverse; }
+  .fog.f3 { top: 60%; height: 60%; opacity: var(--fog-o3); animation: fogdrift 55s linear infinite; }
   @keyframes fogdrift { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
-  .arcane { position: absolute; width: 760px; height: 760px; right: -180px; top: -120px; opacity: var(--arcane-o); color: var(--pal-accent-bright); }
-  .arcane .ring-a { transform-origin: 50% 50%; animation: spin 240s linear infinite; }
-  .arcane .ring-b { transform-origin: 50% 50%; animation: spin 180s linear infinite reverse; }
+  /* Sigils lie on a tilted plane, like circles chalked on a floor seen at an angle. */
+  .arcane { position: absolute; width: 820px; height: 820px; right: -200px; top: -170px; opacity: var(--arcane-o); color: var(--pal-accent-bright);
+    transform: perspective(1100px) rotateX(58deg) rotateZ(-14deg); }
+  .arcane.second { width: 560px; height: 560px; left: -170px; right: auto; top: auto; bottom: -150px;
+    transform: perspective(900px) rotateX(62deg) rotateZ(18deg); opacity: calc(var(--arcane-o) * 0.9); }
+  .arcane .ring-a { transform-origin: 50% 50%; transform-box: view-box; animation: spin 200s linear infinite; }
+  .arcane .ring-b { transform-origin: 50% 50%; transform-box: view-box; animation: spin 150s linear infinite reverse; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .rune { position: absolute; font-family: 'Cinzel', serif; font-size: 22px; color: var(--pal-accent-bright); text-shadow: 0 0 10px var(--pal-accent), 0 0 22px var(--pal-accent); opacity: 0; animation: runeRise ease-in-out infinite; }
   @keyframes runeRise {
@@ -107,6 +114,25 @@
   .here .flag { fill: var(--pal-accent); }
   .here text { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; fill: var(--pal-text-muted); text-anchor: middle; text-transform: uppercase; }
   @media (prefers-reduced-motion: reduce) { .wp.latest .halo { animation: none; } }
+  .road .today-mark { stroke: var(--pal-text-muted); stroke-width: 1; }
+  .road .today-txt { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; fill: var(--pal-text-muted); text-anchor: middle; }
+  .orbit { transform-box: view-box; animation: orbit linear infinite; }
+  .orbit .upright { transform-box: fill-box; transform-origin: center; animation: orbit linear infinite reverse; }
+  @keyframes orbit { to { transform: rotate(360deg); } }
+  .orbit-token { stroke: var(--pal-accent); stroke-width: 1.5; }
+  .orbit-initial { font-family: 'Cinzel', serif; font-size: 10px; fill: #f2e6d2; text-anchor: middle; }
+  .orbit-path { fill: none; stroke: var(--pal-accent); stroke-width: 0.6; stroke-dasharray: 1 5; opacity: 0.5; }
+  @media (prefers-reduced-motion: reduce) { .orbit, .orbit .upright { animation: none; } }
+  .next-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 4px; font-size: 15px; color: var(--pal-text-body); }
+  .next-line b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-accent-bright); letter-spacing: 0.04em; }
+  .linkish { background: none; border: none; padding: 0; color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; }
+  .sched { position: fixed; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); }
+  .sched.open { display: flex; }
+  .sched-box { width: min(360px, 92vw); padding: 18px; border-radius: 10px; border: 1px solid var(--pal-accent); background: var(--pal-surface-solid); display: grid; gap: 12px; }
+  .sched-box h3 { margin: 0; font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.08em; color: var(--pal-text); }
+  .sched-box label { display: grid; gap: 4px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-accent); }
+  .sched-box input { padding: 7px 9px; border-radius: 4px; border: 1px solid var(--pal-border); background: transparent; color: var(--pal-text); font-family: 'Crimson Text', serif; font-size: 16px; }
+  .sched-actions { display: flex; justify-content: flex-end; gap: 8px; }
   /* ── #5 Continue as (only when this tab is signed in) ── */
   .continue { display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin: -8px 0 26px; border-radius: 10px; border: 1px solid var(--me-accent); background: linear-gradient(90deg, color-mix(in srgb, var(--me-accent) 22%, transparent), transparent 70%); }
   [data-pal="vellum"] .continue { background: linear-gradient(90deg, color-mix(in srgb, var(--me-accent) 10%, transparent), transparent 70%); }
@@ -176,10 +202,27 @@
       <g id="ringRunes" font-family="Cinzel, serif" font-size="14" fill="currentColor" stroke="none"></g>
     </g>
     <g class="ring-b">
-      <circle cx="200" cy="200" r="132" stroke-width="0.8" />
-      <polygon points="200,72 311,264 89,264" stroke-width="0.8" />
-      <polygon points="200,328 89,136 311,136" stroke-width="0.8" />
-      <circle cx="200" cy="200" r="62" stroke-width="0.6" stroke-dasharray="1 4" />
+      <circle cx="200" cy="200" r="138" stroke-width="0.8" />
+      <!-- eight-pointed star: two squares, one turned 45° -->
+      <polygon points="200,62 338,200 200,338 62,200" stroke-width="0.8" />
+      <rect x="102.4" y="102.4" width="195.2" height="195.2" stroke-width="0.8" />
+      <circle cx="200" cy="200" r="70" stroke-width="0.6" stroke-dasharray="1 4" />
+      <circle cx="200" cy="200" r="22" stroke-width="0.8" />
+    </g>
+  </svg>
+  <!-- A second, different sigil: an astrolabe of moon phases -->
+  <svg class="arcane second" viewBox="0 0 400 400" fill="none" stroke="currentColor">
+    <g class="ring-b">
+      <circle cx="200" cy="200" r="186" stroke-width="1" />
+      <circle cx="200" cy="200" r="150" stroke-width="0.6" stroke-dasharray="6 4 1 4" />
+      <g id="moons" fill="currentColor" stroke="none"></g>
+    </g>
+    <g class="ring-a">
+      <circle cx="200" cy="200" r="104" stroke-width="0.8" />
+      <line x1="200" y1="40" x2="200" y2="360" stroke-width="0.6" />
+      <line x1="40" y1="200" x2="360" y2="200" stroke-width="0.6" />
+      <path d="M200 120 L214 200 L200 280 L186 200 Z" stroke-width="0.8" />
+      <path d="M120 200 L200 186 L280 200 L200 214 Z" stroke-width="0.8" />
     </g>
   </svg>
   <div id="runes"></div>
@@ -191,6 +234,8 @@
   <div class="seg" id="palSeg"><button class="on" data-v="ocean">Ocean</button><button data-v="vellum">Vellum</button></div>
   <span>Sessions</span>
   <div class="seg" id="sessSeg"><button class="on" data-v="real">Your 2</button><button data-v="sample">A longer campaign</button></div>
+  <span>Next session</span>
+  <div class="seg" id="nextSeg"><button class="on" data-v="set">Scheduled</button><button data-v="">Not set</button></div>
   <span>Signed in as</span>
   <div class="seg" id="meSeg"><button class="on" data-v="">No one</button><button data-v="eoghan">Eòghan</button><button data-v="david">Meanjeans</button></div>
 </div>
@@ -201,6 +246,19 @@
   <button type="button">DM Login</button>
   <button type="button">Aa</button>
 </nav>
+
+<div class="sched" id="sched" role="dialog" aria-modal="true" aria-labelledby="sched-h">
+  <form class="sched-box" id="schedForm">
+    <h3 id="sched-h">Schedule the next session</h3>
+    <label>Date <input type="date" id="schedDate" required /></label>
+    <label>Time <input type="time" id="schedTime" /></label>
+    <div class="sched-actions">
+      <button type="button" class="linkish" id="schedClear">Clear</button>
+      <button type="button" class="linkish" id="schedCancel">Cancel</button>
+      <button type="submit" class="btn">Save</button>
+    </div>
+  </form>
+</div>
 
 <main class="page">
   <!-- #1 Campaign header: where we left off -->
@@ -222,7 +280,8 @@
         <span class="last-label">The road so far</span>
         <span class="road-since" id="roadSince"></span>
       </div>
-      <svg id="roadSvg" viewBox="0 0 1000 130" role="img"></svg>
+      <div class="next-line" id="nextLine"></div>
+      <svg id="roadSvg" viewBox="0 0 1000 190" role="img"></svg>
     </div>
   </section>
 
@@ -320,11 +379,13 @@ function paintFog() {
   // Cloud banks: a few clusters of overlapping puffs, with clear gaps between
   // them so they read as drifting clouds rather than an even haze.
   for (let c = 0; c < 7; c++) {
-    const cx = (c + Math.random() * 0.6) * (W / 7), cy = H * (0.2 + Math.random() * 0.6);
+    const cx = (c + Math.random() * 0.6) * (W / 7), cy = H * (0.38 + Math.random() * 0.24);
     const puffs = 6 + Math.floor(Math.random() * 6);
     for (let i = 0; i < puffs; i++) {
       const x = cx + (Math.random() - 0.5) * 260, y = cy + (Math.random() - 0.5) * 90;
-      const r = 50 + Math.random() * 120, a = 0.12 + Math.random() * 0.12;
+      // Keep every puff inside the canvas vertically, or it gets a flat edge.
+      const r = Math.min(50 + Math.random() * 120, y - 4, H - y - 4), a = 0.12 + Math.random() * 0.12;
+      if (r < 20) continue;
       for (const dx of [0, -W, W]) {
         const grd = g.createRadialGradient(x + dx, y, 0, x + dx, y, r);
         grd.addColorStop(0, `rgba(${rgb},${a})`);
@@ -339,6 +400,22 @@ function paintFog() {
   document.querySelectorAll(".fog").forEach((el) => { el.style.backgroundImage = `url(${url})`; });
 }
 const RUNES = "ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃᛇᛈᛉᛊᛏᛒᛖᛗᛚᛜᛞᛟ";
+(function moons() {
+  // Eight moon phases round the astrolabe: a disc with a shadow disc offset.
+  const host = document.getElementById("moons"), NS = "http://www.w3.org/2000/svg";
+  for (let i = 0; i < 8; i++) {
+    const a = (i / 8) * Math.PI * 2 - Math.PI / 2, x = 200 + Math.cos(a) * 168, y = 200 + Math.sin(a) * 168;
+    const g = document.createElementNS(NS, "g");
+    const m = document.createElementNS(NS, "mask"); m.setAttribute("id", `moon${i}`);
+    const full = document.createElementNS(NS, "circle"); full.setAttribute("cx", x); full.setAttribute("cy", y); full.setAttribute("r", 9); full.setAttribute("fill", "#fff");
+    const shade = document.createElementNS(NS, "circle"); shade.setAttribute("cx", x + 18 * Math.cos((i / 8) * Math.PI * 2)); shade.setAttribute("cy", y); shade.setAttribute("r", 9); shade.setAttribute("fill", "#000");
+    m.append(full, shade);
+    const disc = document.createElementNS(NS, "circle"); disc.setAttribute("cx", x); disc.setAttribute("cy", y); disc.setAttribute("r", 9); disc.setAttribute("mask", `url(#moon${i})`);
+    const ring = document.createElementNS(NS, "circle"); ring.setAttribute("cx", x); ring.setAttribute("cy", y); ring.setAttribute("r", 9); ring.setAttribute("fill", "none"); ring.setAttribute("stroke", "currentColor"); ring.setAttribute("stroke-width", "0.6");
+    g.append(m, disc, ring);
+    host.appendChild(g);
+  }
+})();
 (function ringRunes() {
   const host = document.getElementById("ringRunes");
   for (let i = 0; i < 24; i++) {
@@ -369,69 +446,110 @@ paintFog();
 
 // ── The road so far ──
 const TODAY = new Date("2026-10-23T12:00:00");
+const CRAWLER = "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/npc-portraits/7c00bf24-8f8a-4ab7-951e-567be834b6b2.png";
+// npcs: the creatures that took damage that session (from its log).
 const REAL_SESSIONS = [
-  { title: "Up From The Gutter", date: "2026-07-22" },
-  { title: "Through the Lair of the Carrion Crawler", date: "2026-09-29" },
+  { title: "Up From The Gutter", date: "2026-07-22", npcs: [] },
+  { title: "Through the Lair of the Carrion Crawler", date: "2026-09-29", npcs: [{ name: "Carrion Crawler", img: CRAWLER }] },
 ];
 const SAMPLE_SESSIONS = [
-  { title: "The Caravan to Greyhawk", date: "2026-05-06" },
-  { title: "Customs at the Highway Gate", date: "2026-05-20" },
-  { title: "An Errand for Delvel", date: "2026-06-10" },
-  { title: "Up From The Gutter", date: "2026-07-22" },
-  { title: "Sewer Goblins", date: "2026-08-19" },
-  { title: "Ordinary Johan", date: "2026-09-02" },
-  { title: "Through the Lair of the Carrion Crawler", date: "2026-09-29" },
+  { title: "The Caravan to Greyhawk", date: "2026-05-06", npcs: [{ name: "Bandit Captain", color: "#5a2a2a" }] },
+  { title: "Customs at the Highway Gate", date: "2026-05-20", npcs: [] },
+  { title: "An Errand for Delvel", date: "2026-06-10", npcs: [{ name: "Wererat", color: "#4a3a2a" }, { name: "Giant Rat", color: "#3a4a2a" }] },
+  { title: "Up From The Gutter", date: "2026-07-22", npcs: [{ name: "Goblin King", color: "#2a5a4a" }, { name: "Goblin", color: "#2a3a5a" }, { name: "Goblin", color: "#4a2a5a" }] },
+  { title: "Sewer Goblins", date: "2026-08-19", npcs: [{ name: "Goblin Scout", color: "#2a5a4a" }] },
+  { title: "Ordinary Johan", date: "2026-09-02", npcs: [] },
+  { title: "Through the Lair of the Carrion Crawler", date: "2026-09-29", npcs: [{ name: "Carrion Crawler", img: CRAWLER }, { name: "Gelatinous Cube", color: "#2a5a5a" }] },
 ];
+let nextSession = { date: "2026-10-30", time: "19:00" };
 let sessions = REAL_SESSIONS;
 const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 const GLYPHS = "ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃ";
 
 function renderRoad() {
   const svg = document.getElementById("roadSvg");
-  const days = (d) => (d - new Date(sessions[0].date + "T12:00:00")) / 86400000;
-  const start = new Date(sessions[0].date + "T12:00:00");
-  // Start a little before the first session, end a little after today.
+  const at = (d) => new Date(d + "T12:00:00");
+  const start = at(sessions[0].date);
+  const next = nextSession ? at(nextSession.date) : null;
+  const end = next && next > TODAY ? next : TODAY;
   const t0 = new Date(start); t0.setDate(t0.getDate() - 10);
-  const t1 = new Date(TODAY); t1.setDate(t1.getDate() + 8);
+  const t1 = new Date(end); t1.setDate(t1.getDate() + 9);
   const span = (t1 - t0) / 86400000;
-  const X = (d) => 40 + ((d - t0) / 86400000) / span * 920;
-  // A gently winding road: y wanders with position.
-  const Y = (x) => 62 + Math.sin(x / 95) * 16 + Math.sin(x / 41) * 5;
+  const X = (d) => 50 + ((d - t0) / 86400000) / span * 900;
+  const Y = (x) => 104 + Math.sin(x / 95) * 22 + Math.sin(x / 41) * 6;
   const pathTo = (xEnd, xStart = 20) => {
     let d = `M${xStart},${Y(xStart).toFixed(1)}`;
     for (let x = xStart + 10; x <= xEnd; x += 10) d += ` L${x},${Y(x).toFixed(1)}`;
     return d;
   };
-  const last = new Date(sessions[sessions.length - 1].date + "T12:00:00");
-  let out = "";
-  // Month ticks along the bottom.
+  const last = at(sessions[sessions.length - 1].date);
+  let out = "<defs>";
+  let defs = "", body = "";
   const m = new Date(t0.getFullYear(), t0.getMonth() + 1, 1);
   for (; m < t1; m.setMonth(m.getMonth() + 1)) {
     const x = X(m);
-    out += `<line class="tick" x1="${x}" y1="104" x2="${x}" y2="110"/><text class="month" x="${x + 4}" y="124">${MONTHS[m.getMonth()]}</text>`;
+    body += `<line class="tick" x1="${x}" y1="166" x2="${x}" y2="172"/><text class="month" x="${x + 4}" y="186">${MONTHS[m.getMonth()]}</text>`;
   }
-  // Travelled road up to the latest session, then the faint road ahead to today.
-  out += `<path class="trail" d="${pathTo(X(last))}"/>`;
-  out += `<path class="trail-ahead" d="${pathTo(X(TODAY), X(last))}"/>`;
-  // Waypoints.
+  body += `<path class="trail" d="${pathTo(X(last))}"/>`;
+  body += `<path class="trail-ahead" d="${pathTo(X(end), X(last))}"/>`;
   sessions.forEach((sess, i) => {
-    const d = new Date(sess.date + "T12:00:00"), x = X(d), y = Y(x);
+    const d = at(sess.date), x = X(d), y = Y(x);
     const latest = i === sessions.length - 1;
     const dateTxt = `${MONTHS[d.getMonth()]} ${d.getDate()}`;
-    out += `<g class="wp${latest ? " latest" : ""}" tabindex="0" role="link" aria-label="${sess.title}, ${dateTxt}">
+    // The creatures that took damage that session circle its waypoint.
+    let orbit = "";
+    // Shrink the orbit when waypoints are close together, so neighbours don't collide.
+    const gaps = [sessions[i - 1], sessions[i + 1]].filter(Boolean).map((o) => Math.abs(X(at(o.date)) - x));
+    const R = Math.max(22, Math.min(40, (Math.min(...gaps, 999) / 2) - 4));
+    if (sess.npcs.length) {
+      const period = 26 + i * 3;
+      const tr = Math.round(R * 0.38);
+      orbit += `<circle class="orbit-path" cx="${x}" cy="${y}" r="${R}"/>`;
+      sess.npcs.slice(0, 2).forEach((npc, k) => {
+        const delay = -(period / Math.min(2, sess.npcs.length)) * k;
+        const tx = x + R, ty = y;
+        let face;
+        if (npc.img) {
+          const cid = `clip${i}-${k}`;
+          defs += `<clipPath id="${cid}"><circle cx="${tx}" cy="${ty}" r="${tr}"/></clipPath>`;
+          face = `<image href="${npc.img}" x="${tx - tr}" y="${ty - tr}" width="${tr * 2}" height="${tr * 2}" clip-path="url(#${cid})" preserveAspectRatio="xMidYMid slice"/><circle class="orbit-token" cx="${tx}" cy="${ty}" r="${tr}" fill="none"/>`;
+        } else {
+          const initials = npc.name.split(/\s+/).map((w) => w[0]).join("").slice(0, 2).toUpperCase();
+          face = `<circle class="orbit-token" cx="${tx}" cy="${ty}" r="${tr}" fill="${npc.color}"/><text class="orbit-initial" x="${tx}" y="${ty + 3.5}">${initials}</text>`;
+        }
+        orbit += `<g class="orbit" style="transform-origin:${x}px ${y}px;animation-duration:${period}s;animation-delay:${delay}s"><g class="upright" style="animation-duration:${period}s;animation-delay:${delay}s"><title>${npc.name}</title>${face}</g></g>`;
+      });
+    }
+    body += `${orbit}<g class="wp${latest ? " latest" : ""}" tabindex="0" role="link" aria-label="${sess.title}, ${dateTxt}">
       <title>${sess.title} · ${dateTxt}</title>
       <circle class="halo" cx="${x}" cy="${y}" r="${latest ? 20 : 15}"/>
       <circle class="seal" cx="${x}" cy="${y}" r="${latest ? 11 : 8}"/>
       <text class="glyph" x="${x}" y="${y + 4}">${GLYPHS[i % GLYPHS.length]}</text>
-      <text class="lbl" x="${x > 760 ? x + 12 : x < 240 ? x - 12 : x}" y="${y - (latest ? 24 : 20)}" style="text-anchor:${x > 760 ? "end" : x < 240 ? "start" : "middle"}">${sess.title} · ${dateTxt}</text>
+      <text class="lbl" x="${x > 760 ? x + 12 : x < 240 ? x - 12 : x}" y="${y - (sess.npcs.length ? R + 22 : latest ? 24 : 20)}" style="text-anchor:${x > 760 ? "end" : x < 240 ? "start" : "middle"}">${sess.title} · ${dateTxt}</text>
     </g>`;
   });
-  // "You are here" — today.
-  const hx = X(TODAY), hy = Y(hx);
-  out += `<g class="here"><line x1="${hx}" y1="${hy}" x2="${hx}" y2="${hy - 26}" stroke="currentColor" stroke-width="1" style="color:var(--pal-text-muted)"/><path class="flag" d="M${hx},${hy - 26} l14,5 l-14,5 z"/><text x="${hx}" y="${hy + 22}">Today</text></g>`;
-  svg.innerHTML = out;
+  // Today: a small marker on the road; the flag marks the next session if one is set.
+  const tx = X(TODAY), ty = Y(tx);
+  if (next && next > TODAY) {
+    body += `<line class="today-mark" x1="${tx}" y1="${ty - 7}" x2="${tx}" y2="${ty + 7}"/><text class="today-txt" x="${tx}" y="${ty + 22}">TODAY</text>`;
+    const fx = X(next), fy = Y(fx);
+    body += `<g class="here"><line x1="${fx}" y1="${fy}" x2="${fx}" y2="${fy - 30}" stroke="currentColor" stroke-width="1" style="color:var(--pal-accent-bright)"/><path class="flag" d="M${fx},${fy - 30} l16,6 l-16,6 z"/><text x="${fx}" y="${fy - 40}">NEXT · ${MONTHS[next.getMonth()]} ${next.getDate()}</text></g>`;
+  } else {
+    body += `<g class="here"><line x1="${tx}" y1="${ty}" x2="${tx}" y2="${ty - 26}" stroke="currentColor" stroke-width="1" style="color:var(--pal-text-muted)"/><path class="flag" d="M${tx},${ty - 26} l14,5 l-14,5 z"/><text x="${tx}" y="${ty + 22}">TODAY</text></g>`;
+  }
+  svg.innerHTML = `${out}${defs}</defs>${body}`;
   const since = Math.round((TODAY - last) / 86400000);
   document.getElementById("roadSince").innerHTML = `<b>${since}</b> days since the party last gathered · ${sessions.length} sessions`;
+  const nl = document.getElementById("nextLine");
+  if (next && next > TODAY) {
+    const days = Math.round((next - TODAY) / 86400000);
+    const [hh, mm] = (nextSession.time || "").split(":").map(Number);
+    const timeTxt = Number.isFinite(hh) ? `, ${((hh + 11) % 12) + 1}${mm ? `:${String(mm).padStart(2, "0")}` : ""} ${hh < 12 ? "AM" : "PM"}` : "";
+    nl.innerHTML = `Next session: <b>${["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][next.getDay()]}, ${MONTHS[next.getMonth()]} ${next.getDate()}${timeTxt}</b> · in ${days} day${days === 1 ? "" : "s"} <button type="button" class="linkish" id="openSched">Change</button>`;
+  } else {
+    nl.innerHTML = `No next session set yet. <button type="button" class="linkish" id="openSched">Schedule the next session</button>`;
+  }
+  document.getElementById("openSched").onclick = openSchedule;
 }
 renderRoad();
 
@@ -445,6 +563,22 @@ function seg(id, fn) {
 seg("palSeg", (v) => { document.body.dataset.pal = v; paintFog(); });
 seg("meSeg", (v) => { me = v; render(); });
 seg("sessSeg", (v) => { sessions = v === "sample" ? SAMPLE_SESSIONS : REAL_SESSIONS; renderRoad(); });
+seg("nextSeg", (v) => { nextSession = v ? { date: "2026-10-30", time: "19:00" } : null; renderRoad(); });
+function openSchedule() {
+  document.getElementById("schedDate").value = nextSession?.date || "";
+  document.getElementById("schedTime").value = nextSession?.time || "19:00";
+  document.getElementById("sched").classList.add("open");
+  document.getElementById("schedDate").focus();
+}
+const closeSchedule = () => document.getElementById("sched").classList.remove("open");
+document.getElementById("schedCancel").onclick = closeSchedule;
+document.getElementById("schedClear").onclick = () => { nextSession = null; closeSchedule(); renderRoad(); };
+document.getElementById("schedForm").onsubmit = (e) => {
+  e.preventDefault();
+  nextSession = { date: document.getElementById("schedDate").value, time: document.getElementById("schedTime").value };
+  closeSchedule(); renderRoad();
+};
+document.getElementById("sched").addEventListener("click", (e) => { if (e.target.id === "sched") closeSchedule(); });
 render();
 </script>
 </body>
