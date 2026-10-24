@@ -6,7 +6,7 @@ React 19 + Vite + React Router SPA in plain JavaScript; AWS SAM/Node.js Lambdas,
 
 - Handle ordinary tasks directly in the main conversation: investigate, implement, and verify. Do not require a story, design brief, Architect Notes, or specialist handoffs for a clear request.
 - For new UI or substantial interaction changes, use one `ux-designer` to design and produce an interactive HTML prototype. Obtain user approval of that design before implementation; approval already given in the conversation counts. Small fixes and minor styling adjustments do not require a prototype.
-- After design approval, the main agent implements. Other specialists are optional and used only when requested or when a specific unresolved problem warrants their expertise. Do not run a fixed agent pipeline.
+- After design approval, the main agent implements. There are no other project specialist agents; do not run a fixed agent pipeline.
 - Keep scope tied to the request. Resolve routine implementation choices independently; ask about material product ambiguity. Preserve unrelated working-tree changes.
 - These defaults replace the former Consult → Strategise → Design → Architect → Build workflow, including its mandatory stage gates.
 

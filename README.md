@@ -111,9 +111,7 @@ This project uses **Claude Code** as an AI coding assistant. The `CLAUDE.md` fil
 - Full component and handler descriptions
 - Auth model, data shapes, and session field semantics
 - Key conventions (styling, sessionStorage keys, coordinate systems)
-- The five-agent design pipeline (`rpg-consultant → design-strategist → ux-designer → code-architect → feature-builder`)
-
-**If you use Claude Code**, it will read `CLAUDE.md` and have full project context. The agents in the pipeline each have a specific role — read the "Agents" section in `CLAUDE.md` before kicking off new feature work.
+**If you use Claude Code**, it will read `CLAUDE.md` (which imports `AGENTS.md`) for project context. Work is done directly in the main conversation; new UI gets an HTML prototype in `design/prototypes/` for approval first. (The old five-agent design pipeline was retired.)
 
 ---
 

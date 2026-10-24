@@ -34,8 +34,8 @@ Genuinely unfinished (verified against source, not just doc status):
 2. ~~Sync consolidation → WebSocket nudge~~ — done (Stories 35, 35b, 36, 36b).
 3. ~~Shared top nav~~ — done (Story 37).
 4. ~~CharacterCard.jsx breakup~~ — done (Story 38).
-5. **Rich talent/ability library + admin page** — Story 39, still open, full pipeline needed (design-strategist → ux-designer → code-architect → feature-builder).
-6. **Adventure/arc breakpoints** — Story 40, still open, `rpg-consultant` model already defined in the story doc.
+5. ~~Rich talent/ability library + admin page~~ — done (Story 39, Talent Codex, 2026-10-21).
+6. **Adventure/arc breakpoints** — Story 40, still open.
 
 ---
 
