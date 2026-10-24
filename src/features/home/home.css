@@ -219,7 +219,9 @@
   background: var(--c-bright); color: var(--c-surface);
   font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase;
 }
-.home-card-body { position: relative; z-index: 1; flex: 1; padding: 0 14px 12px; margin-top: -26px; display: flex; flex-direction: column; gap: 4px; }
+/* Bottom-aligned so every card's HP meter sits on the same line; taller
+   content (long names, conditions) grows upward into the portrait fade. */
+.home-card-body { position: relative; z-index: 1; flex: 1; padding: 0 14px 12px; margin-top: -26px; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; }
 .home-card-name { font-family: 'Cinzel', serif; font-size: 17px; letter-spacing: 0.05em; color: var(--c-text); line-height: 1.2; overflow-wrap: anywhere; }
 .home-card-epithet { font-style: italic; font-size: 14px; color: var(--c-bright); }
 .home-card-kind { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c-muted); }

@@ -75,18 +75,18 @@ export default function PartyCard({ character, status, isMe }) {
           {kind}
           {character.level ? <span className="home-card-lvl">Lv {character.level}</span> : null}
         </div>
-        {hpMax > 0 && (
-          <div className="home-card-hp" aria-label={`${hpCurrent} of ${hpMax} hit points`}>
-            <div className="home-card-hp-bar"><i style={{ width: `${Math.round(pct * 100)}%`, background: hpFill(pct, p.accentBright) }} /></div>
-            <span className="home-card-hp-num">{hpCurrent}/{hpMax}</span>
-          </div>
-        )}
         {conditions.length > 0 && (
           <div className="home-card-pills">
             {conditions.map((name) => {
               const s = conditionStyle(name.startsWith("Exhaustion") ? "Exhaustion" : name);
               return <span key={name} className="home-card-pill" style={{ "--pill": s.color, "--pill-border": s.border }}>{name}</span>;
             })}
+          </div>
+        )}
+        {hpMax > 0 && (
+          <div className="home-card-hp" aria-label={`${hpCurrent} of ${hpMax} hit points`}>
+            <div className="home-card-hp-bar"><i style={{ width: `${Math.round(pct * 100)}%`, background: hpFill(pct, p.accentBright) }} /></div>
+            <span className="home-card-hp-num">{hpCurrent}/{hpMax}</span>
           </div>
         )}
       </div>
