@@ -1,8 +1,11 @@
 // Story 69 — Session Chronicle: pure helpers (no DynamoDB).
 //
-// Index record (`chronicle`): { chapters: [{ id, name }], sessions: [meta] }
+// Index record (`chronicle`): { chapters: [{ id, name }], sessions: [meta],
+//   nextSession: { at, setBy, updatedAt } | null }
 //   meta = { id, chapterId, title, startAt, endAt, eventCount, players,
-//            summaryExcerpt, recollectionCount, createdAt }
+//            foes, summaryExcerpt, recollectionCount, createdAt }
+//   foes = the creatures the party damaged that session, most-hurt first:
+//          [{ name, portraitUrl }] (portraits looked up when it's recorded).
 // Session record (`chronicle-session:<id>`): { id, events, excludedEventIds,
 //   summary: { text, updatedAt, updatedBy } | null, recollections: [...] }
 
@@ -13,6 +16,7 @@ const MAX_RECOLLECTION = 2000;
 const EXCERPT_LEN = 220;
 // Leave headroom under DynamoDB's 400KB item limit for summary/recollections.
 const MAX_SNAPSHOT_BYTES = 300000;
+const MAX_FOES = 3;
 
 const clip = (value, n) => (typeof value === "string" ? value.trim().slice(0, n) : "");
 const newId = (prefix) => `${prefix}${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
@@ -23,7 +27,45 @@ function normalizeChronicle(item) {
       ? item.chapters.filter((c) => c && c.id).map((c) => ({ id: String(c.id), name: clip(c.name, MAX_CHAPTER) || "Untitled chapter" }))
       : [],
     sessions: Array.isArray(item?.sessions) ? item.sessions.filter((s) => s && s.id) : [],
+    nextSession: normalizeNextSession(item?.nextSession),
   };
+}
+
+function normalizeNextSession(value) {
+  if (!value || typeof value !== "object" || !Number.isFinite(Date.parse(value.at || ""))) return null;
+  return {
+    at: new Date(Date.parse(value.at)).toISOString(),
+    setBy: value.setBy && typeof value.setBy === "object" ? value.setBy : null,
+    updatedAt: typeof value.updatedAt === "string" ? value.updatedAt : null,
+  };
+}
+
+// "Goblin 2" and "Goblin #2" are the same kind of creature as "Goblin".
+const creatureKey = (name) => String(name || "").trim().toLowerCase().replace(/\s*#?\d+$/, "");
+
+/**
+ * The creatures (NPCs) that lost HP during a session, most damage first.
+ * `portraits` = { byId: Map(npc id → url), byName: Map(creatureKey → url) },
+ * from the NPCs in play and the NPC library when the session is recorded.
+ */
+function foesFromEvents(events, portraits = {}) {
+  const byId = new Map();
+  for (const event of events || []) {
+    if (event?.type !== "hp" || event.subject?.type !== "npc" || event.miss) continue;
+    const delta = Number(event.delta ?? (event.to - event.from));
+    if (!Number.isFinite(delta) || delta >= 0) continue;
+    const id = event.subject.sourceId || event.subject.name;
+    const entry = byId.get(id) || { id, name: event.subject.name || "Unknown", damage: 0 };
+    entry.damage += -delta;
+    byId.set(id, entry);
+  }
+  return [...byId.values()]
+    .sort((a, b) => b.damage - a.damage)
+    .slice(0, MAX_FOES)
+    .map(({ id, name }) => ({
+      name,
+      portraitUrl: portraits.byId?.get(id) || portraits.byName?.get(creatureKey(name)) || null,
+    }));
 }
 
 function normalizeSessionRecord(item) {
@@ -104,7 +146,10 @@ module.exports = {
   clip,
   newId,
   normalizeChronicle,
+  normalizeNextSession,
   normalizeSessionRecord,
+  creatureKey,
+  foesFromEvents,
   gatherSessionEvents,
   playersFromEvents,
   excerpt,

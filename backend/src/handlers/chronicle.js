@@ -2,6 +2,7 @@
 // /chronicle/{proxy+}:
 //   GET    /chronicle                                   index (anyone)
 //   PUT    /chronicle/chapters                          { chapters } (DM)
+//   PUT    /chronicle/next-session                      { at | null, asSlug? } (DM or a player)
 //   POST   /chronicle/sessions                          record a session (DM)
 //   GET    /chronicle/sessions/:id                      session (anyone; NPC HP totals hidden unless DM)
 //   PUT    /chronicle/sessions/:id                      title / chapter / range (DM)
@@ -13,12 +14,12 @@ const { GetCommand, DeleteCommand } = require("@aws-sdk/lib-dynamodb");
 const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok, created, notFound, forbidden, badRequest, conflict } = require("../lib/response");
-const { getSpecialRecord, putSpecialRecord, getRollHistoryState, getRollHistoryArchive } = require("../lib/specialRecords");
+const { getSpecialRecord, putSpecialRecord, getRollHistoryState, getRollHistoryArchive, getNpcCombatState, getNpcLibraryState } = require("../lib/specialRecords");
 const { withVersionRetry, currentVersion } = require("../lib/versioning");
 const { CHRONICLE_SLUG, CHRONICLE_SESSION_PREFIX, isReservedCharacterSlug } = require("../lib/specialItems");
 const {
   MAX_TITLE, MAX_CHAPTER, MAX_SUMMARY, MAX_RECOLLECTION,
-  clip, newId, normalizeChronicle, normalizeSessionRecord, gatherSessionEvents,
+  clip, newId, normalizeChronicle, normalizeSessionRecord, gatherSessionEvents, creatureKey, foesFromEvents,
   playersFromEvents, excerpt, rangesOverlap, publicSessionEvents, snapshotTooLarge,
 } = require("../lib/chronicle");
 
@@ -44,7 +45,38 @@ async function readIndex() {
 }
 
 async function writeIndex(index, version) {
-  return putSpecialRecord(CHRONICLE_SLUG, { chapters: index.chapters, sessions: index.sessions }, { expectedVersion: version });
+  return putSpecialRecord(CHRONICLE_SLUG, { chapters: index.chapters, sessions: index.sessions, nextSession: index.nextSession ?? null }, { expectedVersion: version });
+}
+
+// Portraits for the creatures a session damaged: the NPCs in play (by id),
+// then the NPC library (by name). Best effort — a session saves without them.
+async function creaturePortraits() {
+  const [combat, library] = await Promise.all([getNpcCombatState().catch(() => ({ npcs: [] })), getNpcLibraryState().catch(() => ({ templates: [] }))]);
+  const byId = new Map();
+  const byName = new Map();
+  for (const t of library.templates || []) if (t.portraitUrl && t.name) byName.set(creatureKey(t.name), t.portraitUrl);
+  for (const npc of combat.npcs || []) {
+    if (!npc?.portraitUrl) continue;
+    if (npc.id) byId.set(npc.id, npc.portraitUrl);
+    if (npc.name && !byName.has(creatureKey(npc.name))) byName.set(creatureKey(npc.name), npc.portraitUrl);
+  }
+  return { byId, byName };
+}
+
+// Sessions recorded before foes existed get them filled in once, from their
+// saved events, the first time the index is read.
+async function backfillFoes(index) {
+  const missing = index.sessions.filter((s) => !Array.isArray(s.foes));
+  if (!missing.length) return index;
+  const [portraits, records] = await Promise.all([creaturePortraits(), Promise.all(missing.map((s) => readSession(s.id)))]);
+  const foesById = new Map(missing.map((s, i) => [s.id, foesFromEvents(records[i]?.events || [], portraits)]));
+  const sessions = index.sessions.map((s) => (foesById.has(s.id) ? { ...s, foes: foesById.get(s.id) } : s));
+  try {
+    await writeIndex({ ...index, sessions }, index.version);
+  } catch {
+    // Lost a race with another write — serve the filled-in copy; the next read retries.
+  }
+  return { ...index, sessions };
 }
 
 async function readSession(id) {
@@ -126,8 +158,30 @@ exports.handler = async (event) => {
 
   // GET /chronicle
   if (parts.length === 1 && method === "GET") {
-    const { chapters, sessions } = await readIndex();
-    return ok({ chapters, sessions });
+    const { chapters, sessions, nextSession } = await backfillFoes(await readIndex());
+    return ok({ chapters, sessions, nextSession });
+  }
+
+  // PUT /chronicle/next-session — anyone at the table can set the date
+  if (parts[1] === "next-session" && parts.length === 2 && method === "PUT") {
+    const viewer = await whoIs(event, body.asSlug);
+    if (viewer.role !== "dm" && viewer.role !== "player") return forbidden("Sign in as your character (or the DM) to schedule the next session");
+    let nextSession = null;
+    if (body.at !== null && body.at !== undefined && body.at !== "") {
+      const ms = Date.parse(body.at);
+      if (!Number.isFinite(ms)) return badRequest("at must be a valid time");
+      const now = new Date().toISOString();
+      nextSession = {
+        at: new Date(ms).toISOString(),
+        setBy: viewer.role === "dm" ? { role: "dm", name: "DM" } : { role: "player", slug: viewer.slug, name: viewer.name },
+        updatedAt: now,
+      };
+    }
+    await withVersionRetry(async () => {
+      const index = await readIndex();
+      await writeIndex({ ...index, nextSession }, index.version);
+    });
+    return ok({ nextSession });
   }
 
   // PUT /chronicle/chapters
@@ -158,7 +212,7 @@ exports.handler = async (event) => {
     if ((await whoIs(event)).role !== "dm") return forbidden("DM password required");
     const range = parseRange(body);
     if (!range) return badRequest("startAt and endAt must be valid times, start first");
-    const sources = await allLogSources();
+    const [sources, portraits] = await Promise.all([allLogSources(), creaturePortraits()]);
     const id = newId("s-");
     const outcome = await withVersionRetry(async () => {
       const index = await readIndex();
@@ -175,6 +229,7 @@ exports.handler = async (event) => {
         endAt: snap.endAt,
         eventCount: snap.events.length,
         players: playersFromEvents(snap.events),
+        foes: foesFromEvents(snap.events, portraits),
         summaryExcerpt: "",
         recollectionCount: 0,
         createdAt: new Date().toISOString(),
@@ -182,7 +237,7 @@ exports.handler = async (event) => {
       // Session record first: if the index write then loses a race and
       // retries, re-putting the same record is harmless.
       await putSpecialRecord(sessionSlug(id), record);
-      await writeIndex({ chapters, sessions: [...index.sessions, meta] }, index.version);
+      await writeIndex({ ...index, chapters, sessions: [...index.sessions, meta] }, index.version);
       return { meta };
     });
     if (outcome.error) return outcome.error;
@@ -214,7 +269,7 @@ exports.handler = async (event) => {
   if (parts.length === 3 && method === "PUT") {
     if ((await whoIs(event)).role !== "dm") return forbidden("DM password required");
     const rangeChange = body.startAt !== undefined || body.endAt !== undefined || body.excludedEventIds !== undefined;
-    const sources = rangeChange ? await allLogSources() : null;
+    const [sources, portraits] = rangeChange ? await Promise.all([allLogSources(), creaturePortraits()]) : [null, null];
     const outcome = await withVersionRetry(async () => {
       const index = await readIndex();
       const meta = index.sessions.find((s) => s.id === sessionId);
@@ -242,9 +297,9 @@ exports.handler = async (event) => {
         const { version, ...toSave } = nextRecord;
         if (snapshotTooLarge(toSave)) return { error: badRequest(`That range holds ${snap.events.length} events — too many for one session. Narrow it.`) };
         await putSpecialRecord(sessionSlug(sessionId), toSave, { expectedVersion: version });
-        nextMeta = { ...nextMeta, startAt: snap.startAt, endAt: snap.endAt, eventCount: snap.events.length, players: playersFromEvents(snap.events) };
+        nextMeta = { ...nextMeta, startAt: snap.startAt, endAt: snap.endAt, eventCount: snap.events.length, players: playersFromEvents(snap.events), foes: foesFromEvents(snap.events, portraits) };
       }
-      await writeIndex({ chapters, sessions: index.sessions.map((s) => (s.id === sessionId ? nextMeta : s)) }, index.version);
+      await writeIndex({ ...index, chapters, sessions: index.sessions.map((s) => (s.id === sessionId ? nextMeta : s)) }, index.version);
       return { meta: nextMeta, chapters };
     });
     if (outcome.error) return outcome.error;

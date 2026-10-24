@@ -155,3 +155,50 @@ test("the DM can rename, move and delete a session", async () => {
   assert.equal(items.has(`chronicle-session:${session.id}`), false);
   assert.equal(JSON.parse((await handler(req("GET", "/chronicle"))).body).sessions.length, 0);
 });
+
+test("a recorded session lists the creatures the party damaged, with portraits from the NPC library", async () => {
+  const table = fakeTable({
+    ...seed(),
+    "npc-library": { version: 1, templates: [{ id: "t1", name: "Goblin", portraitUrl: "https://x/goblin.png" }] },
+  });
+  table.items.get("roll-history").rolls.push(
+    { id: "hp2", type: "hp", createdAt: at(45), subject: { type: "npc", sourceId: "gob2", name: "Goblin Boss" }, from: 20, to: 18, delta: -2 },
+    { id: "hp3", type: "hp", createdAt: at(46), subject: { type: "npc", sourceId: "gob2", name: "Goblin Boss" }, from: 18, to: 18, delta: 0, miss: true },
+    { id: "hp4", type: "hp", createdAt: at(47), subject: { type: "character", sourceId: "aesop", name: "Aesop" }, from: 10, to: 5, delta: -5 },
+  );
+  const handler = load(table.send);
+  const res = await handler(req("POST", "/chronicle/sessions", { password: "dm", body: { startAt: at(0), endAt: at(60) } }));
+  assert.deepEqual(JSON.parse(res.body).session.foes, [
+    { name: "Goblin", portraitUrl: "https://x/goblin.png" },
+    { name: "Goblin Boss", portraitUrl: null },
+  ]);
+});
+
+test("sessions recorded before foes existed get them filled in when the index is read", async () => {
+  const table = fakeTable(seed());
+  const handler = load(table.send);
+  await handler(req("POST", "/chronicle/sessions", { password: "dm", body: { startAt: at(0), endAt: at(60) } }));
+  const stored = table.items.get("chronicle");
+  stored.sessions = stored.sessions.map(({ foes, ...rest }) => rest);
+  const index = JSON.parse((await handler(req("GET", "/chronicle"))).body);
+  assert.deepEqual(index.sessions[0].foes, [{ name: "Goblin", portraitUrl: null }]);
+  assert.ok(Array.isArray(table.items.get("chronicle").sessions[0].foes));
+});
+
+test("anyone signed in can schedule the next session; it survives recording a session", async () => {
+  const { send } = fakeTable(seed());
+  const handler = load(send);
+  assert.equal((await handler(req("PUT", "/chronicle/next-session", { body: { at: "2026-10-31T02:00:00.000Z" } }))).statusCode, 403);
+  const set = await handler(req("PUT", "/chronicle/next-session", { password: "aesop", body: { asSlug: "aesop", at: "2026-10-31T02:00:00.000Z" } }));
+  assert.equal(set.statusCode, 200);
+  assert.equal(JSON.parse(set.body).nextSession.setBy.name, "Aesop");
+  assert.equal((await handler(req("PUT", "/chronicle/next-session", { password: "dm", body: { at: "not a date" } }))).statusCode, 400);
+
+  await handler(req("POST", "/chronicle/sessions", { password: "dm", body: { startAt: at(0), endAt: at(60) } }));
+  let index = JSON.parse((await handler(req("GET", "/chronicle"))).body);
+  assert.equal(index.nextSession.at, "2026-10-31T02:00:00.000Z");
+
+  await handler(req("PUT", "/chronicle/next-session", { password: "dm", body: { at: null } }));
+  index = JSON.parse((await handler(req("GET", "/chronicle"))).body);
+  assert.equal(index.nextSession, null);
+});

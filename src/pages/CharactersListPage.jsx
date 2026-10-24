@@ -1,12 +1,20 @@
 import { useState, useEffect } from "react";
-import { useNavigate } from "react-router-dom";
-import { listCharacters, verifyPassword, getPartyRoster } from "../api";
+import { Link } from "react-router-dom";
+import { listCharacters, verifyPassword, getPartyRoster, getChronicle, getSessionState, putChronicleNextSession } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import TopNav from "../components/TopNav";
 import { useTextScale } from "../lib/useTextScale";
+import { readChronicleViewer, viewerCredentials } from "../features/chronicle/chronicleViewer";
+import HomeAtmosphere from "../features/home/HomeAtmosphere";
+import PartyCard from "../features/home/PartyCard";
+import RoadSoFar from "../features/home/RoadSoFar";
+import ScheduleDialog from "../features/home/ScheduleDialog";
+import { daysBetween, sessionTitle, toRoman, upcomingSession, WEEKDAYS, shortDate } from "../features/home/roadLayout";
 import "./pages.css";
+import "../features/home/home.css";
 
 const RESERVED_CHARACTER_SLUGS = new Set(["initiative", "npc-combat", "party-roster"]);
+const NUMBER_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
 
 function isRenderableCharacterSummary(entry) {
   if (!entry || typeof entry !== "object") return false;
@@ -17,6 +25,30 @@ function isRenderableCharacterSummary(entry) {
   return true;
 }
 
+function hexRgb(hex) {
+  const m = /^#?([0-9a-f]{6})$/i.exec(String(hex || ""));
+  if (!m) return [150, 185, 220];
+  const n = parseInt(m[1], 16);
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+
+// The fog takes the page palette's light: its bright accent on dark
+// palettes; on a light palette, its accent softened toward the paper.
+function fogRgb(pal) {
+  if (!pal.light) return hexRgb(pal.accentBright).join(", ");
+  const a = hexRgb(pal.accent);
+  const b = hexRgb(pal.bg);
+  return a.map((v, i) => Math.round(v * 0.6 + b[i] * 0.4)).join(", ");
+}
+
+function readDmPalette() {
+  try {
+    return sessionStorage.getItem("dnd_dm_palette");
+  } catch {
+    return null;
+  }
+}
+
 export default function CharactersListPage() {
   const [characters,  setCharacters]  = useState([]);
   const [loading,     setLoading]     = useState(true);
@@ -25,7 +57,11 @@ export default function CharactersListPage() {
   const [dmError,     setDmError]     = useState(null);
   const [dmActive,    setDmActive]    = useState(() => !!sessionStorage.getItem("dnd_dm_password"));
   const [partyMemberSlugs, setPartyMemberSlugs] = useState(() => new Set());
-  const navigate = useNavigate();
+  const [chronicle, setChronicle] = useState(null); // { chapters, sessions, nextSession }
+  const [statusBySlug, setStatusBySlug] = useState(() => new Map());
+  const [scheduling, setScheduling] = useState(false);
+  const [scheduleState, setScheduleState] = useState({ saving: false, error: null });
+  const [viewer, setViewer] = useState(readChronicleViewer);
   const { textScale, textScaleMenuItem } = useTextScale();
 
   useEffect(() => {
@@ -47,6 +83,16 @@ export default function CharactersListPage() {
         setPartyMemberSlugs(new Set());
       })
       .finally(() => setLoading(false));
+
+    // The Chronicle (hero + road) and the party's public HP/conditions are
+    // extras: the library still works if either fails.
+    getChronicle().then(setChronicle).catch(() => setChronicle({ chapters: [], sessions: [], nextSession: null }));
+    getSessionState()
+      .then((state) => {
+        const members = state?.partyStatus?.visible ? state.partyStatus.members || [] : [];
+        setStatusBySlug(new Map(members.map((m) => [m.slug, m])));
+      })
+      .catch(() => {});
   }, []);
 
   const handleDmLogin = async (e) => {
@@ -60,6 +106,7 @@ export default function CharactersListPage() {
       if (result.valid && result.role === "dm") {
         sessionStorage.setItem("dnd_dm_password", dmInput);
         setDmActive(true);
+        setViewer(readChronicleViewer());
         setDmPrompt(false);
         setDmInput("");
       } else {
@@ -73,10 +120,20 @@ export default function CharactersListPage() {
   const handleDmLogout = () => {
     sessionStorage.removeItem("dnd_dm_password");
     setDmActive(false);
+    setViewer(readChronicleViewer());
   };
 
-  const pal = PALETTES.ember;
   const visibleCharacters = characters.filter(isRenderableCharacterSummary);
+  const party = visibleCharacters.filter((c) => partyMemberSlugs.has(c.slug));
+  const others = visibleCharacters.filter((c) => !partyMemberSlugs.has(c.slug));
+
+  // Who this tab is signed in as: the first unlocked character, party first.
+  const signedInSlugs = new Set(viewer.characters.map((c) => c.slug));
+  const me = party.find((c) => signedInSlugs.has(c.slug)) || visibleCharacters.find((c) => signedInSlugs.has(c.slug)) || null;
+  const orderedParty = me && partyMemberSlugs.has(me.slug) ? [me, ...party.filter((c) => c.slug !== me.slug)] : party;
+
+  const palKey = me?.palette || (dmActive ? readDmPalette() : null) || "ocean";
+  const pal = PALETTES[palKey] || PALETTES.ocean;
 
   // Palette CSS variables set once at root; children reference var(--pal-*)
   const palVars = {
@@ -94,6 +151,7 @@ export default function CharactersListPage() {
     "--pal-glow-2":        pal.glow2,
     "--pal-gem":           pal.gem,
     "--pal-gem-low":       pal.gemLow,
+    "--fog-rgb":           fogRgb(pal),
   };
 
   const menuItems = dmActive
@@ -113,21 +171,43 @@ export default function CharactersListPage() {
         textScaleMenuItem,
       ];
 
+  // ── The Chronicle: last time, the road so far, the next session ──
+  const sessions = [...(chronicle?.sessions || [])].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
+  const latest = sessions[sessions.length - 1] || null;
+  const chapterIndex = latest ? (chronicle.chapters || []).findIndex((c) => c.id === latest.chapterId) : -1;
+  const chapter = chapterIndex >= 0 ? chronicle.chapters[chapterIndex] : null;
+  const latestDay = latest ? new Date(latest.startAt) : null;
+  const sinceDays = latestDay ? daysBetween(latestDay, new Date()) : null;
+  const upcoming = upcomingSession(chronicle?.nextSession);
+  const canSchedule = viewer.role === "dm" || !!me;
+
+  async function saveNextSession(at) {
+    const credentials = viewer.role === "dm" ? viewerCredentials(viewer) : viewerCredentials(viewer, me?.slug);
+    if (!credentials) return;
+    setScheduleState({ saving: true, error: null });
+    try {
+      const res = await putChronicleNextSession(credentials, at);
+      setChronicle((prev) => ({ ...(prev || { chapters: [], sessions: [] }), nextSession: res.nextSession ?? null }));
+      setScheduleState({ saving: false, error: null });
+      setScheduling(false);
+    } catch (err) {
+      setScheduleState({ saving: false, error: err?.status === 403 ? "Sign in again to schedule the session." : "Couldn't save. Try again." });
+    }
+  }
+
   return (
-    <div style={{
-      ...palVars,
-      minHeight: "100vh",
-      background: "#0d0f14",
-      color: "#c8bfaf",
-      fontFamily: "'Crimson Text', Georgia, serif",
-      zoom: textScale,
-    }}>
+    <div
+      className="home-page"
+      data-light={pal.light ? "true" : undefined}
+      style={{ ...palVars, zoom: textScale }}
+    >
+      <HomeAtmosphere fogRgb={palVars["--fog-rgb"]} />
       <TopNav
-        title="Character Library"
+        title="Hunkz Adventures"
         menuItems={menuItems}
       />
 
-      <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 32px 80px" }}>
+      <main className="home-main">
 
         {/* DM password modal */}
         {dmPrompt && (
@@ -172,96 +252,126 @@ export default function CharactersListPage() {
           </div>
         )}
 
-        {/* Character grid */}
-        {loading ? (
-          <div style={{ textAlign: "center", color: "#3a5a6a", fontStyle: "italic", fontSize: 18 }}>
-            Loading characters…
-          </div>
-        ) : (
-          <div className="char-list-grid">
-            {visibleCharacters.map(c => {
-              const p = PALETTES[c.palette] || PALETTES.ember;
-              return (
-                <button
-                  key={c.slug}
-                  onClick={() => navigate(`/characters/${c.slug}`)}
-                  className="char-card-btn"
-                  style={{ border: `1px solid ${p.border}` }}
-                >
-                  {/* Portrait */}
-                  {c.portraitUrl ? (
-                    <div style={{ width: "100%", aspectRatio: "4/3", overflow: "hidden" }}>
-                      <img
-                        src={c.portraitUrl}
-                        alt={c.name}
-                        style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                      />
-                    </div>
-                  ) : (
-                    <div className="char-card-portrait-placeholder" style={{ background: p.surface }}>
-                      <span style={{ fontFamily: "'Cinzel', serif", fontSize: 32, color: p.accentDim }}>
-                        {c.name?.[0] || "?"}
-                      </span>
-                    </div>
-                  )}
+        {/* Campaign header: where we left off, and the road so far */}
+        <section className="home-hero" aria-labelledby="home-hero-h">
+          <div className="home-kicker">The Chronicle{chapter ? ` · Chapter ${toRoman(chapterIndex + 1)}` : ""}</div>
+          <h1 id="home-hero-h">Hunkz Adventures</h1>
+          {chapter && <div className="home-chapter">{chapter.name}</div>}
+          <div className="home-rule" />
 
-                  {/* Info */}
-                  <div style={{ padding: "14px 16px", background: `${p.bg}cc` }}>
-                    <div style={{
-                      fontFamily: "'Cinzel', Georgia, serif", fontWeight: 400,
-                      fontSize: 16, color: p.text, letterSpacing: "0.04em", marginBottom: 4,
-                    }}>
-                      {c.name}
-                    </div>
-                    {partyMemberSlugs.has(c.slug) && (
-                      <div style={{
-                        display: "inline-block",
-                        marginBottom: 6,
-                        background: `${p.accentDim}55`,
-                        border: `1px solid ${p.border}`,
-                        borderRadius: 999,
-                        color: p.accent,
-                        fontFamily: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
-                        fontSize: 10,
-                        letterSpacing: "0.18em",
-                        textTransform: "uppercase",
-                        padding: "2px 8px",
-                      }}>
-                        In Party
-                      </div>
-                    )}
-                    {c.nameAlt && (
-                      <div style={{ fontStyle: "italic", fontSize: 13, color: p.accent, marginBottom: 4 }}>
-                        "{c.nameAlt}"
-                      </div>
-                    )}
-                    <div style={{
-                      fontFamily: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
-                      fontSize: 12, letterSpacing: "0.15em", textTransform: "uppercase",
-                      color: p.textMuted,
-                    }}>
-                      {c.race && c.charClass ? `${c.race} · ${c.charClass}` : c.charClass || c.race || ""}
-                      {c.level ? ` · Lv ${c.level}` : ""}
-                    </div>
-                  </div>
-                </button>
-              );
-            })}
-
-            {/* New character card */}
-            <button onClick={() => navigate("/characters/new")} className="char-card-new">
-              <div style={{ fontSize: 28, color: "rgba(100,130,160,0.4)", marginBottom: 10 }}>+</div>
-              <div style={{
-                fontFamily: "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
-                fontSize: 12, letterSpacing: "0.2em", textTransform: "uppercase",
-                color: "rgba(100,130,160,0.4)",
-              }}>
-                New Character
+          {latest ? (
+            <>
+              <div className="home-label">Last time</div>
+              <div className="home-last-title">
+                {sessionTitle(latest.title)}{" "}
+                <span className="home-last-date">· {WEEKDAYS[latestDay.getDay()]}, {shortDate(latestDay)}</span>
               </div>
-            </button>
+              {latest.summaryExcerpt
+                ? <p className="home-excerpt">{latest.summaryExcerpt}</p>
+                : <p className="home-excerpt home-excerpt--empty">No one has written up this session yet.</p>}
+              <div className="home-hero-actions">
+                <Link className="home-btn" to={`/chronicle/${encodeURIComponent(latest.id)}`}>Read the Chronicle →</Link>
+                <span className="home-meta">
+                  {sessions.length} session{sessions.length === 1 ? "" : "s"} so far · add your recollections
+                </span>
+              </div>
+            </>
+          ) : chronicle ? (
+            <p className="home-excerpt home-excerpt--empty">
+              The Chronicle begins with the first recorded session. <Link to="/chronicle">Open the Chronicle →</Link>
+            </p>
+          ) : null}
+
+          {chronicle && (
+            <div className="home-road">
+              {latest && (
+                <div className="home-road-head">
+                  <span className="home-label">The road so far</span>
+                  <span className="home-road-since">
+                    <b>{sinceDays}</b> day{sinceDays === 1 ? "" : "s"} since the party last gathered · {sessions.length} session{sessions.length === 1 ? "" : "s"}
+                  </span>
+                </div>
+              )}
+              <div className="home-next">
+                {upcoming ? (
+                  <>
+                    Next session: <b>{upcoming.label}</b> · {upcoming.when}
+                    {canSchedule && <button type="button" className="home-linkish" onClick={() => setScheduling(true)}>Change</button>}
+                  </>
+                ) : (
+                  <>
+                    No next session set yet.
+                    {canSchedule && <button type="button" className="home-linkish" onClick={() => setScheduling(true)}>Schedule the next session</button>}
+                  </>
+                )}
+              </div>
+              {sessions.length > 0 && <RoadSoFar sessions={sessions} next={upcoming?.at || null} />}
+            </div>
+          )}
+        </section>
+
+        {scheduling && (
+          <ScheduleDialog
+            current={upcoming?.at || null}
+            saving={scheduleState.saving}
+            error={scheduleState.error}
+            onSave={saveNextSession}
+            onClose={() => { setScheduling(false); setScheduleState({ saving: false, error: null }); }}
+          />
+        )}
+
+        {/* Continue as… (only when this tab is signed in) */}
+        {me && (
+          <div className="home-continue" style={{ "--me-accent": (PALETTES[me.palette] || pal).light ? "#a07840" : (PALETTES[me.palette] || pal).accentBright }}>
+            {me.portraitUrl && <img src={me.portraitUrl} alt="" />}
+            <div className="home-continue-who">
+              <b>Continue as {me.name.replace(/^"[^"]*"\s*/, "").split(" ")[0]}</b>
+              <span>You're signed in on this device.</span>
+            </div>
+            <Link className="home-btn" to={`/characters/${me.slug}/session`}>⚔ To the session</Link>
           </div>
         )}
-      </div>
+
+        {loading ? (
+          <div className="home-loading">Gathering the party…</div>
+        ) : (
+          <>
+            {orderedParty.length > 0 && (
+              <section aria-labelledby="home-party-h">
+                <div className="home-section-head">
+                  <h2 id="home-party-h">The Party</h2>
+                  <span className="home-count">{NUMBER_WORDS[orderedParty.length] || orderedParty.length} adventurer{orderedParty.length === 1 ? "" : "s"}</span>
+                </div>
+                <div className="home-party">
+                  {orderedParty.map((c) => (
+                    <PartyCard key={c.slug} character={c} status={statusBySlug.get(c.slug)} isMe={me?.slug === c.slug} />
+                  ))}
+                </div>
+              </section>
+            )}
+
+            <section className="home-others" aria-labelledby="home-others-h">
+              <div className="home-section-head">
+                <h2 id="home-others-h" className="home-others-h">{orderedParty.length ? "Other characters" : "Characters"}</h2>
+              </div>
+              <div className="home-others-row">
+                {others.map((c) => (
+                  <Link key={c.slug} className="home-mini" to={`/characters/${c.slug}`}>
+                    {c.portraitUrl
+                      ? <img src={c.portraitUrl} alt="" />
+                      : <span className="home-mini-initial">{c.name?.[0] || "?"}</span>}
+                    <span>
+                      {c.name}
+                      <em>{[c.race, c.charClass].filter(Boolean).join(" ")}{c.level ? ` · Lv ${c.level}` : ""}</em>
+                    </span>
+                  </Link>
+                ))}
+                <Link className="home-mini home-mini--new" to="/characters/new">+ New character</Link>
+              </div>
+            </section>
+          </>
+        )}
+      </main>
     </div>
   );
 }

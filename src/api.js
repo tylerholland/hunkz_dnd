@@ -372,6 +372,14 @@ export const deleteChronicleSession = (dmPassword, id) =>
 export const putChronicleChapters = (dmPassword, chapters) =>
   request("/chronicle/chapters", { method: "PUT", headers: chronicleHeaders({ password: dmPassword }, true), body: JSON.stringify({ chapters }) });
 
+// Homepage — the date of the next session (null clears it). DM or any player.
+export const putChronicleNextSession = (viewer, at) =>
+  request("/chronicle/next-session", {
+    method: "PUT",
+    headers: chronicleHeaders(viewer, true),
+    body: JSON.stringify({ at, asSlug: viewer?.asSlug }),
+  });
+
 export const putChronicleSummary = (viewer, id, { text, baseUpdatedAt }) =>
   request(`/chronicle/sessions/${encodeURIComponent(id)}/summary`, {
     method: "PUT",
