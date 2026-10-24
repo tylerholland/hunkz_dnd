@@ -69,12 +69,7 @@ export default function PartyCard({ character, status, isMe }) {
         <span className="home-card-sheen" />
       </div>
       <div className="home-card-body">
-        <div className="home-card-name" title={character.name}>{cardName(character.name)}</div>
-        {character.nameAlt && <div className="home-card-epithet">“{character.nameAlt}”</div>}
-        <div className="home-card-kind">
-          {kind}
-          {character.level ? <span className="home-card-lvl">Lv {character.level}</span> : null}
-        </div>
+        {/* Conditions and effects (rare) sit above the name. */}
         {conditions.length > 0 && (
           <div className="home-card-pills">
             {conditions.map((name) => {
@@ -83,6 +78,12 @@ export default function PartyCard({ character, status, isMe }) {
             })}
           </div>
         )}
+        <div className="home-card-name" title={character.name}>{cardName(character.name)}</div>
+        {character.nameAlt && <div className="home-card-epithet">“{character.nameAlt}”</div>}
+        <div className="home-card-kind">
+          {kind}
+          {character.level ? <span className="home-card-lvl">Lv {character.level}</span> : null}
+        </div>
         {hpMax > 0 && (
           <div className="home-card-hp" aria-label={`${hpCurrent} of ${hpMax} hit points`}>
             <div className="home-card-hp-bar"><i style={{ width: `${Math.round(pct * 100)}%`, background: hpFill(pct, p.accentBright) }} /></div>

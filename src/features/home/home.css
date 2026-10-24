@@ -239,6 +239,8 @@
 .home-card-pills { display: flex; flex-wrap: wrap; gap: 4px; }
 .home-card-pill {
   padding: 1px 7px; border-radius: 999px; border: 1px solid var(--pill-border);
+  /* They sit over the portrait's fade, so give them a backing to read against. */
+  background: color-mix(in srgb, var(--c-surface) 85%, transparent);
   color: var(--pill); font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase;
 }
 /* Pill inks are made for dark cards; darken them on a light one. */
