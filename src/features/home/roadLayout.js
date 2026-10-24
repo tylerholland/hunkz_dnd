@@ -26,10 +26,10 @@ export function sessionTitle(title) {
   return String(title || "").replace(/\s*·\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*,?\s+\w+\s+\d{1,2}\s*$/i, "").trim() || "Untitled session";
 }
 
-const NAME_MAX_WORDS = 4;
+const NAME_MAX_WORDS = 5;
 const NAME_MAX_CHARS = 24;
 
-/** A card-sized name: at most four words or 24 characters, whichever is shorter. */
+/** A card-sized name: at most five words or 24 characters, whichever is shorter. */
 export function cardName(name) {
   const full = String(name || "").trim().replace(/\s+/g, " ");
   const words = full.split(" ");
