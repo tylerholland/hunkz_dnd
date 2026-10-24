@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { PALETTES } from "../characterSheet/theme";
 import { conditionStyle } from "../dmDashboard/dashboardShared";
+import { cardName } from "./roadLayout";
 
 const conditionName = (c) => (typeof c === "string" ? c : c?.name);
 
@@ -68,7 +69,7 @@ export default function PartyCard({ character, status, isMe }) {
         <span className="home-card-sheen" />
       </div>
       <div className="home-card-body">
-        <div className="home-card-name">{character.name}</div>
+        <div className="home-card-name" title={character.name}>{cardName(character.name)}</div>
         {character.nameAlt && <div className="home-card-epithet">“{character.nameAlt}”</div>}
         <div className="home-card-kind">
           {kind}

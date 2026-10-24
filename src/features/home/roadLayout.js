@@ -26,6 +26,18 @@ export function sessionTitle(title) {
   return String(title || "").replace(/\s*·\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\w*,?\s+\w+\s+\d{1,2}\s*$/i, "").trim() || "Untitled session";
 }
 
+const NAME_MAX_WORDS = 3;
+const NAME_MAX_CHARS = 24;
+
+/** A card-sized name: at most three words or 24 characters, whichever is shorter. */
+export function cardName(name) {
+  const full = String(name || "").trim().replace(/\s+/g, " ");
+  const words = full.split(" ");
+  let short = words.slice(0, NAME_MAX_WORDS).join(" ");
+  if (short.length > NAME_MAX_CHARS) short = short.slice(0, NAME_MAX_CHARS).trimEnd();
+  return short.length < full.length ? `${short}…` : full;
+}
+
 export function initials(name) {
   return String(name || "?").split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 }
