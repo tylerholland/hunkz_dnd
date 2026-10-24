@@ -1,0 +1,64 @@
+/* Atmosphere — a page's "live" backdrop: drifting fog banks, sigils chalked
+   on a tilted plane, and glyphs that rise and fade. Colours come from the
+   page palette (--pal-*); the fog texture's colour from --fog-rgb (see
+   src/lib/atmosphere.js). Decorative only: fixed, behind content, no
+   pointer events. Pages put their content above it (position + z-index). */
+
+.atmos {
+  --fog-o1: 0.45; --fog-o2: 0.35; --fog-o3: 0.4; --sigil-o: 0.09; --glyph-o: 0.55;
+  position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden;
+}
+.atmos-fogs { position: absolute; inset: 0; }
+.atmos[data-light] { --fog-o1: 0.3; --fog-o2: 0.22; --fog-o3: 0.26; --sigil-o: 0.08; --glyph-o: 0.4; }
+
+/* The Chronicle is for reading: lighter mist, thinned further across the
+   middle of the page where the text sits. */
+.atmos--chronicle { --fog-o1: 0.28; --fog-o2: 0.2; --fog-o3: 0.24; --sigil-o: 0.07; --glyph-o: 0.4; }
+.atmos--chronicle[data-light] { --fog-o1: 0.2; --fog-o2: 0.14; --fog-o3: 0.17; --sigil-o: 0.06; --glyph-o: 0.3; }
+.atmos--chronicle .atmos-fogs {
+  -webkit-mask-image: linear-gradient(90deg, #000 0%, #000 12%, rgba(0, 0, 0, 0.35) 32%, rgba(0, 0, 0, 0.35) 68%, #000 88%, #000 100%);
+          mask-image: linear-gradient(90deg, #000 0%, #000 12%, rgba(0, 0, 0, 0.35) 32%, rgba(0, 0, 0, 0.35) 68%, #000 88%, #000 100%);
+}
+
+.atmos-fog {
+  position: absolute; left: 0; width: 200%;
+  background-repeat: repeat-x; background-size: 50% 100%;
+  will-change: transform;
+  /* Each band fades out top and bottom so no cloud shows a cut edge. */
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
+          mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
+}
+.atmos-fog--1 { top: -10%; height: 70%; opacity: var(--fog-o1); animation: atmosFog 75s linear infinite; }
+.atmos-fog--2 { top: 30%; height: 80%; opacity: var(--fog-o2); animation: atmosFog 105s linear infinite reverse; }
+.atmos-fog--3 { top: 60%; height: 60%; opacity: var(--fog-o3); animation: atmosFog 55s linear infinite; }
+.atmos--chronicle .atmos-fog--1 { animation-duration: 120s; }
+.atmos--chronicle .atmos-fog--2 { animation-duration: 160s; }
+.atmos--chronicle .atmos-fog--3 { animation-duration: 95s; }
+@keyframes atmosFog { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
+
+/* Sigils lie on a tilted plane, like circles chalked on a floor seen at an angle. */
+.atmos-sigil { position: absolute; opacity: var(--sigil-o); color: var(--pal-accent-bright); }
+.atmos-sigil--top-right { width: 820px; height: 820px; right: -200px; top: -170px; transform: perspective(1100px) rotateX(58deg) rotateZ(-14deg); }
+.atmos-sigil--bottom-left { width: 560px; height: 560px; left: -170px; bottom: -150px; transform: perspective(900px) rotateX(62deg) rotateZ(18deg); opacity: calc(var(--sigil-o) * 0.9); }
+.atmos--chronicle .atmos-sigil--top-right { width: 700px; height: 700px; right: -220px; top: -120px; transform: perspective(1000px) rotateX(54deg) rotateZ(22deg); }
+.atmos--chronicle .atmos-sigil--bottom-left { width: 640px; height: 640px; left: -200px; bottom: -190px; transform: perspective(1000px) rotateX(60deg) rotateZ(-26deg); }
+.atmos-ring-a { transform-origin: 50% 50%; transform-box: view-box; animation: atmosSpin 200s linear infinite; }
+.atmos-ring-b { transform-origin: 50% 50%; transform-box: view-box; animation: atmosSpin 150s linear infinite reverse; }
+@keyframes atmosSpin { to { transform: rotate(360deg); } }
+
+.atmos-glyph {
+  position: absolute; font-family: 'Cinzel', serif; color: var(--pal-accent-bright);
+  text-shadow: 0 0 10px var(--pal-accent), 0 0 22px var(--pal-accent);
+  opacity: 0; animation: atmosGlyph ease-in-out infinite;
+}
+@keyframes atmosGlyph {
+  0% { opacity: 0; transform: translateY(20px) scale(0.9); }
+  25% { opacity: var(--glyph-o); }
+  70% { opacity: var(--glyph-o); }
+  100% { opacity: 0; transform: translateY(-70px) scale(1.05); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .atmos-fog, .atmos-ring-a, .atmos-ring-b { animation: none; }
+  .atmos-glyph { display: none; }
+}

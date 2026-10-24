@@ -5,64 +5,18 @@
 
 .home-page {
   --home-muted: color-mix(in srgb, var(--pal-text-muted) 45%, var(--pal-text-body));
-  --fog-o1: 0.45; --fog-o2: 0.35; --fog-o3: 0.4; --arcane-o: 0.09; --rune-o: 0.55;
   --hero-veil: linear-gradient(180deg, color-mix(in srgb, var(--pal-bg) 10%, transparent), color-mix(in srgb, var(--pal-bg) 60%, transparent));
   /* Just see-through enough for the fog to drift by behind it. */
   --hero-base: color-mix(in srgb, var(--pal-surface-solid) 78%, transparent);
   position: relative;
   min-height: 100vh;
-  overflow-x: hidden;
   background: radial-gradient(ellipse at 50% -10%, var(--pal-glow-1) 0%, transparent 60%), var(--pal-bg);
   color: var(--pal-text-body);
   font-family: 'Crimson Text', Georgia, serif;
 }
 .home-page[data-light] {
-  --fog-o1: 0.3; --fog-o2: 0.22; --fog-o3: 0.26; --arcane-o: 0.08; --rune-o: 0.4;
   --hero-veil: linear-gradient(180deg, color-mix(in srgb, var(--pal-bg) 10%, transparent), color-mix(in srgb, var(--pal-bg) 65%, transparent));
   --hero-base: color-mix(in srgb, var(--pal-surface-solid) 82%, transparent);
-}
-.home-page > .topnav { position: relative; z-index: 2; }
-
-/* ── Atmosphere ── */
-.home-atmos { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
-.home-fog {
-  position: absolute; left: 0; width: 200%;
-  background-repeat: repeat-x; background-size: 50% 100%;
-  will-change: transform;
-  /* Each band fades out top and bottom so no cloud shows a cut edge. */
-  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
-          mask-image: linear-gradient(180deg, transparent 0%, #000 22%, #000 78%, transparent 100%);
-}
-.home-fog--1 { top: -10%; height: 70%; opacity: var(--fog-o1); animation: homeFog 75s linear infinite; }
-.home-fog--2 { top: 30%; height: 80%; opacity: var(--fog-o2); animation: homeFog 105s linear infinite reverse; }
-.home-fog--3 { top: 60%; height: 60%; opacity: var(--fog-o3); animation: homeFog 55s linear infinite; }
-@keyframes homeFog { from { transform: translate3d(0, 0, 0); } to { transform: translate3d(-50%, 0, 0); } }
-
-/* Sigils lie on a tilted plane, like circles chalked on a floor seen at an angle. */
-.home-sigil {
-  position: absolute; width: 820px; height: 820px; right: -200px; top: -170px;
-  opacity: var(--arcane-o); color: var(--pal-accent-bright);
-  transform: perspective(1100px) rotateX(58deg) rotateZ(-14deg);
-}
-.home-sigil--astrolabe {
-  width: 560px; height: 560px; left: -170px; right: auto; top: auto; bottom: -150px;
-  transform: perspective(900px) rotateX(62deg) rotateZ(18deg);
-  opacity: calc(var(--arcane-o) * 0.9);
-}
-.home-sigil-ring-a { transform-origin: 50% 50%; transform-box: view-box; animation: homeSpin 200s linear infinite; }
-.home-sigil-ring-b { transform-origin: 50% 50%; transform-box: view-box; animation: homeSpin 150s linear infinite reverse; }
-@keyframes homeSpin { to { transform: rotate(360deg); } }
-
-.home-rune {
-  position: absolute; font-family: 'Cinzel', serif; color: var(--pal-accent-bright);
-  text-shadow: 0 0 10px var(--pal-accent), 0 0 22px var(--pal-accent);
-  opacity: 0; animation: homeRune ease-in-out infinite;
-}
-@keyframes homeRune {
-  0% { opacity: 0; transform: translateY(20px) scale(0.9); }
-  25% { opacity: var(--rune-o); }
-  70% { opacity: var(--rune-o); }
-  100% { opacity: 0; transform: translateY(-70px) scale(1.05); }
 }
 
 .home-main { position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 28px 20px 80px; }
@@ -280,8 +234,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .home-fog, .home-sigil-ring-a, .home-sigil-ring-b, .road-orbit, .road-orbit-upright, .road-wp--latest .road-wp-halo { animation: none; }
-  .home-rune { display: none; }
+  .road-orbit, .road-orbit-upright, .road-wp--latest .road-wp-halo { animation: none; }
   .home-card, .home-card-portrait img { transition: none; }
   .home-card:hover .home-card-sheen { animation: none; }
 }

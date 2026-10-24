@@ -3,6 +3,8 @@ import { Link, useLocation, useParams, useSearchParams } from "react-router-dom"
 import { listCharacters } from "../api";
 import { PALETTES } from "../features/characterSheet/theme";
 import TopNav from "../components/TopNav";
+import Atmosphere from "../components/Atmosphere";
+import { fogRgbFor } from "../lib/atmosphere";
 import { useTextScale } from "../lib/useTextScale";
 import ChronicleList from "../features/chronicle/ChronicleList";
 import RecordSession from "../features/chronicle/RecordSession";
@@ -75,6 +77,7 @@ export default function ChroniclePage() {
 
   return (
     <div className="chr-page" style={{ ...palVars, zoom: textScale, background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` }}>
+      <Atmosphere variant="chronicle" fogRgb={fogRgbFor(pal)} light={!!pal.light} />
       <TopNav backTo={backTo} title="Chronicle" menuItems={menuItems} />
       <main className="chr-main">
         {viewer.role === "player" && viewer.characters.length > 1 && (

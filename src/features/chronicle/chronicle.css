@@ -4,12 +4,16 @@
 .chr-page {
   --chr-good: #4f9a6a;
   --chr-bad: #c0605a;
+  position: relative;
   min-height: 100vh;
   color: var(--pal-text);
   font-family: var(--font-body, Georgia, serif);
 }
 
 .chr-main {
+  /* Above the drifting Atmosphere backdrop. */
+  position: relative;
+  z-index: 1;
   max-width: 1080px;
   margin: 0 auto;
   padding: 20px 16px 64px;
