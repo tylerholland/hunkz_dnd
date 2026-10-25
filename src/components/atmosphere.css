@@ -58,6 +58,15 @@
   100% { opacity: 0; transform: translateY(-70px) scale(1.05); }
 }
 
+/* Phones and tablets (no hover, coarse pointer): everything holds still.
+   Drifting fog bands, turning sigils and rising glyphs are cheap on a desktop
+   but make scrolling stutter on a phone. The glyphs stay, softly lit. */
+@media (hover: none) and (pointer: coarse) {
+  .atmos-fog, .atmos-ring-a, .atmos-ring-b { animation: none; }
+  .atmos-fog { will-change: auto; }
+  .atmos-glyph { animation: none; opacity: calc(var(--glyph-o) * 0.6); text-shadow: 0 0 8px var(--pal-accent); }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .atmos-fog, .atmos-ring-a, .atmos-ring-b { animation: none; }
   .atmos-glyph { display: none; }

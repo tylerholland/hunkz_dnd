@@ -51,10 +51,16 @@ function paintFog(rgb, { clusters, rMin, rRange, aMin, aRange }) {
   return canvas.toDataURL();
 }
 
+// Phones and tablets get a still backdrop (see atmosphere.css), with fewer glyphs.
+function touchDevice() {
+  return typeof window !== "undefined" && window.matchMedia?.("(hover: none) and (pointer: coarse)").matches;
+}
+
 function makeGlyphs(variant) {
   if (reducedMotion()) return [];
   const { glyphs, glyphCount } = VARIANTS[variant];
-  return Array.from({ length: glyphCount }, (_, i) => ({
+  const count = touchDevice() ? Math.ceil(glyphCount / 2) : glyphCount;
+  return Array.from({ length: count }, (_, i) => ({
     id: i,
     glyph: glyphs[Math.floor(Math.random() * glyphs.length)],
     style: {
