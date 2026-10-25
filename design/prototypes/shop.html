@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Ironwhistle's Emporium</title>
+<title>Magpie Ironwhistle's Emporium</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
 <style>
   /* The app's palettes (ocean / ember / vellum here); the shop takes the
@@ -68,9 +68,11 @@
   [data-pal="vellum"] .scene::after { background: linear-gradient(180deg, transparent, rgba(22, 15, 9, 0.82)); }
 
   /* Mags speaks from beside her face. */
-  .speech { position: absolute; z-index: 3; left: 32%; top: 9%; max-width: min(340px, 30%); padding: 12px 16px; border-radius: 12px; background: var(--parchment); color: var(--ink);
+  /* Centred at the height of her face (about 43% down) with the tail pointing
+     at her; never wider than the gap before the item card, so long lines wrap. */
+  .speech { position: absolute; z-index: 3; left: 39%; top: 41%; transform: translateY(-50%); max-width: min(360px, calc(58.5% - min(320px, 32%) - 24px)); padding: 12px 16px; border-radius: 12px; background: var(--parchment); color: var(--ink);
     font-family: 'IM Fell English', serif; font-size: clamp(15px, 1.6vw, 19px); line-height: 1.35; box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
-  .speech::before { content: ""; position: absolute; left: -11px; bottom: 18px; border: 8px solid transparent; border-right: 12px solid var(--parchment); border-left: 0; }
+  .speech::before { content: ""; position: absolute; left: -11px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-right: 12px solid var(--parchment); border-left: 0; }
   .speech .who { display: block; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8a6a3a; margin-bottom: 2px; }
   .speech .caret { display: inline-block; width: 2px; height: 1em; background: var(--ink); vertical-align: -2px; animation: caret 0.9s steps(1) infinite; }
   @keyframes caret { 50% { opacity: 0; } }
@@ -252,7 +254,7 @@
     .scene { height: auto; background: var(--pal-surface-solid); }
     .scene > img { position: relative; display: block; height: auto; aspect-ratio: 5 / 3; }
     .scene::before, .scene::after { display: none; }
-    .speech, .float, .counter { position: static; max-width: none; width: auto; margin: 10px; }
+    .speech, .float, .counter { position: static; max-width: none; width: auto; margin: 10px; transform: none; }
     .speech::before { display: none; }
     .counter { display: flex; }
     .float .orb { width: 120px; height: 120px; }
@@ -278,20 +280,20 @@
 <section class="view on" id="v-shop">
   <nav class="nav">
     <a class="back" href="#">‹</a>
-    <span class="t">Session · Ironwhistle's Emporium</span>
+    <span class="t">Session · Magpie Ironwhistle's Emporium</span>
     <span class="who"><img id="whoImg" src="" alt="" /><span id="whoName"></span></span>
   </nav>
   <main id="shopMain">
     <header class="shop-head">
       <div>
         <div class="kicker">Greyhawk · Low Market</div>
-        <h1>Ironwhistle's Emporium</h1>
-        <div class="sub">Arms, armour &amp; oddities — Mags Ironwhistle, proprietor, appraiser, liar</div>
+        <h1>Magpie Ironwhistle's Emporium</h1>
+        <div class="sub">Arms, armour &amp; oddities — Magpie “Mags” Ironwhistle, proprietor, appraiser, liar</div>
       </div>
     </header>
 
     <div class="scene" id="scene">
-      <img src="assets/shop-mags.jpg" alt="Mags Ironwhistle behind her counter, in a vast cluttered shop" />
+      <img src="assets/shop-mags.jpg" alt="Magpie Ironwhistle behind her counter, in a vast cluttered shop" />
       <div class="speech" aria-live="polite"><span class="who">Mags</span><span id="speech"></span><span class="caret"></span></div>
       <div class="float" id="float"></div>
       <div class="counter">
@@ -335,8 +337,8 @@
     <div class="card">
       <h3>The shop</h3>
       <div class="grid2">
-        <label class="f">Shop name <input class="in" value="Ironwhistle's Emporium" /></label>
-        <label class="f">Shopkeeper <input class="in" value="Mags Ironwhistle" /></label>
+        <label class="f">Shop name <input class="in" value="Magpie Ironwhistle's Emporium" /></label>
+        <label class="f">Shopkeeper <input class="in" value="Magpie &quot;Mags&quot; Ironwhistle" /></label>
         <label class="f">Price markup <input class="in" value="0%" /></label>
         <label class="f">Currency <input class="in" value="Silver (s)" /></label>
       </div>
@@ -475,7 +477,7 @@ const ITEMS = [
 
 // Mags's lines — the shop's voice. Most are picked at random from a bucket.
 const LINES = {
-  greet: ["Mind the step, the last one was a mimic.", "Ah, {name}. Coin first, questions never.", "Welcome to Ironwhistle's. Everything's for sale except the cat."],
+  greet: ["Mind the step, the last one was a mimic.", "Ah, {name}. Coin first, questions never.", "Welcome to Magpie's. Everything's for sale except the cat."],
   hover: {
     arms: ["That one's only been used the once. Honest.", "Sharp end goes in the other fellow.", "Bought it off a knight. He won't be needing it."],
     armor: ["Stops arrows. Mostly. Some arrows.", "Fits anyone, if you believe hard enough.", "The dent's a feature."],
@@ -705,7 +707,7 @@ document.getElementById("payBtn").onclick = () => {
     sheet.classList.remove("open");
     say(pick(LINES.pay));
     veil.innerHTML = `<div class="receipt" role="dialog" aria-label="Receipt">
-      <h3>Ironwhistle's Emporium</h3><small style="margin:0">Sold to ${who.name}</small>
+      <h3>Magpie Ironwhistle's Emporium</h3><small style="margin:0">Sold to ${who.name}</small>
       <div class="r-lines">${bought.map((l) => `<div><span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>${(l.item.price * l.qty).toLocaleString()}s</span></div>`).join("")}
       ${h ? `<div><span>${h.mult < 1 ? "Haggled" : "Haggled badly"}</span><span>${(t - sub).toLocaleString()}s</span></div>` : ""}
       <div style="font-weight:600"><span>Paid</span><span>${t.toLocaleString()}s</span></div></div>
