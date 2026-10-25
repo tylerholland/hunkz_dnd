@@ -71,8 +71,9 @@
       radial-gradient(circle at 34% 28%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 18%, transparent 34%),
       radial-gradient(circle at 50% 50%, transparent 50%, rgba(0,0,0,0.35) 72%, rgba(0,0,0,0.8) 100%),
       radial-gradient(circle at 70% 78%, color-mix(in srgb, var(--c-bright) 35%, transparent) 0%, transparent 40%);
-    transition: opacity 0.35s ease; }
-  .slot.open .glass { opacity: 0; }
+    /* Closing: the shine waits until the card is most of the way back to an orb. */
+    transition: opacity 0.35s ease calc(var(--dur) * 0.6); }
+  .slot.open .glass { opacity: 0; transition-delay: 0s; }
 
   /* ── The frame: the orb's glowing rim grows into the card's border ── */
   .frame { position: absolute; z-index: 3; pointer-events: none;
