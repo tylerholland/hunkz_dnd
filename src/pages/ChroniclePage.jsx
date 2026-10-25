@@ -48,6 +48,7 @@ export default function ChroniclePage() {
     "--pal-border": pal.border,
     "--pal-accent": pal.accent,
     "--pal-accent-bright": pal.accentBright,
+    "--pal-accent-dim": pal.accentDim,
     "--pal-text": pal.text,
     "--pal-text-body": pal.textBody,
     "--pal-text-muted": pal.textMuted,
@@ -72,7 +73,7 @@ export default function ChroniclePage() {
   } else if (sessionId) {
     body = <SessionView key={`${sessionId}|${asSlug}`} sessionId={sessionId} viewer={viewer} creds={creds} pal={pal} />;
   } else {
-    body = <ChronicleList isDm={isDm} dmPassword={viewer.password} />;
+    body = <ChronicleList isDm={isDm} dmPassword={viewer.password} creds={creds} light={!!pal.light} />;
   }
 
   return (

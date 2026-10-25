@@ -19,6 +19,7 @@ vi.mock("../../api", () => ({
   addChronicleRecollection: vi.fn(),
   updateChronicleRecollection: vi.fn(),
   putRollTag: vi.fn(),
+  putChronicleNextSession: vi.fn(),
 }));
 
 const at = (min) => new Date(Date.UTC(2026, 6, 23, 2, min)).toISOString();
@@ -33,6 +34,29 @@ describe("ChronicleList", () => {
     expect(await screen.findByText("The Road to Hearthfire")).toBeTruthy();
     expect(screen.getByText("Session 1 · Wed Jul 22")).toBeTruthy();
     expect(screen.getByText("+ Record a session")).toBeTruthy();
+  });
+
+  it("shows the next session to everyone, but only someone signed in can schedule it", async () => {
+    const next = new Date();
+    next.setDate(next.getDate() + 3);
+    next.setHours(19, 0, 0, 0);
+    api.getChronicle.mockResolvedValue({ chapters: [], sessions: [], nextSession: { at: next.toISOString() } });
+    render(<MemoryRouter><ChronicleList isDm={false} /></MemoryRouter>);
+    expect(await screen.findByText(/in 3 days/)).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Change" })).toBeNull();
+  });
+
+  it("lets a signed-in player schedule the next session", async () => {
+    api.getChronicle.mockResolvedValue({ chapters: [], sessions: [], nextSession: null });
+    api.putChronicleNextSession.mockImplementation(async (_creds, when) => ({ nextSession: { at: when } }));
+    const creds = { password: "pw", asSlug: "aesop" };
+    render(<MemoryRouter><ChronicleList isDm={false} creds={creds} /></MemoryRouter>);
+    fireEvent.click(await screen.findByRole("button", { name: "Schedule the next session" }));
+    fireEvent.change(screen.getByLabelText("Date"), { target: { value: "2099-01-02" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(api.putChronicleNextSession).toHaveBeenCalled());
+    expect(api.putChronicleNextSession.mock.calls[0][0]).toEqual(creds);
+    expect(await screen.findByRole("button", { name: "Change" })).toBeTruthy();
   });
 });
 

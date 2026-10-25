@@ -21,6 +21,16 @@
   gap: 18px;
 }
 
+/* Next session (list view): when, and a link to schedule it if signed in. */
+.chr-next {
+  display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px;
+  padding: 12px 16px; border: 1px solid var(--pal-border); border-radius: 8px; background: var(--pal-surface);
+}
+.chr-next-label { font-family: var(--font-ui, "Cinzel", serif); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pal-accent); }
+.chr-next-when { font-size: 16px; color: var(--pal-text-body, var(--pal-text)); }
+.chr-next-when--none { font-style: italic; opacity: 0.8; }
+.chr-next-when b { font-family: var(--font-display, "Cinzel", serif); font-weight: 400; letter-spacing: 0.04em; color: var(--pal-accent-bright); }
+
 .chr-h1 {
   margin: 4px 0 0;
   font-family: var(--font-display, "Cinzel", Georgia, serif);

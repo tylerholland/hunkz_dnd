@@ -101,23 +101,6 @@
 .road-foe-ring { stroke: var(--pal-accent); stroke-width: 1.5; }
 .road-foe-initials { font-family: 'Cinzel', serif; font-size: 10px; fill: #f2e6d2; text-anchor: middle; }
 
-/* ── Schedule dialog ── */
-.home-sched { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); }
-.home-sched-box {
-  width: min(360px, 92vw); padding: 18px; display: grid; gap: 12px;
-  border-radius: 10px; border: 1px solid var(--pal-accent); background: var(--pal-surface-solid);
-}
-.home-sched-box h3 { margin: 0; font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.08em; color: var(--pal-text); }
-.home-sched-box label { display: grid; gap: 4px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-accent); }
-.home-sched-box input {
-  padding: 7px 9px; border-radius: 4px; border: 1px solid var(--pal-border);
-  background: var(--pal-bg); color: var(--pal-text);
-  font-family: 'Crimson Text', serif; font-size: 16px; color-scheme: dark;
-}
-.home-page[data-light] .home-sched-box input { color-scheme: light; }
-.home-sched-error { color: #c06060; font-size: 14px; }
-.home-sched-actions { display: flex; justify-content: flex-end; align-items: center; gap: 14px; }
-
 /* ── Continue as ── */
 .home-continue {
   display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin: -8px 0 26px;

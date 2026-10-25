@@ -1,0 +1,29 @@
+/* Schedule the next session — a small dialog shared by the homepage and the
+   Chronicle. Palette-driven (--pal-*); data-light switches the date and time
+   pickers to their light look. */
+.sched { position: fixed; inset: 0; z-index: 100; display: flex; align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.45); }
+.sched-box {
+  width: min(360px, 92vw); padding: 18px; display: grid; gap: 12px;
+  border-radius: 10px; border: 1px solid var(--pal-accent); background: var(--pal-surface-solid);
+}
+.sched-box h3 { margin: 0; font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.08em; color: var(--pal-text); }
+.sched-box label { display: grid; gap: 4px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-accent); }
+.sched-box input {
+  padding: 7px 9px; border-radius: 4px; border: 1px solid var(--pal-border);
+  background: var(--pal-bg); color: var(--pal-text);
+  font-family: 'Crimson Text', serif; font-size: 16px; color-scheme: dark;
+}
+.sched[data-light] .sched-box input { color-scheme: light; }
+.sched-error { color: #c06060; font-size: 14px; }
+.sched-actions { display: flex; justify-content: flex-end; align-items: center; gap: 14px; }
+.sched-link {
+  background: none; border: none; padding: 0; cursor: pointer; color: var(--pal-accent-bright);
+  font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.sched-link:hover { text-decoration: underline; }
+.sched-save {
+  min-height: 38px; padding: 0 16px; border-radius: 4px; cursor: pointer;
+  border: 1px solid var(--pal-accent); background: var(--pal-accent-dim); color: var(--pal-accent-bright);
+  font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.sched-save:disabled { opacity: 0.55; cursor: default; }

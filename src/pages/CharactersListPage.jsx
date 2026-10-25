@@ -10,7 +10,7 @@ import Atmosphere from "../components/Atmosphere";
 import { fogRgbFor } from "../lib/atmosphere";
 import PartyCard from "../features/home/PartyCard";
 import RoadSoFar from "../features/home/RoadSoFar";
-import ScheduleDialog from "../features/home/ScheduleDialog";
+import ScheduleDialog from "../components/ScheduleDialog";
 import { daysBetween, sessionTitle, toRoman, upcomingSession, WEEKDAYS, shortDate } from "../features/home/roadLayout";
 import "./pages.css";
 import "../features/home/home.css";
@@ -302,6 +302,7 @@ export default function CharactersListPage() {
             current={upcoming?.at || null}
             saving={scheduleState.saving}
             error={scheduleState.error}
+            light={!!pal.light}
             onSave={saveNextSession}
             onClose={() => { setScheduling(false); setScheduleState({ saving: false, error: null }); }}
           />

@@ -1,6 +1,8 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { getChronicle, putChronicleChapters } from "../../api";
+import { getChronicle, putChronicleChapters, putChronicleNextSession } from "../../api";
+import ScheduleDialog from "../../components/ScheduleDialog";
+import { upcomingSession } from "../home/roadLayout";
 import { fmtDay, fmtTime, dayKey, playerColor } from "./chronicleData";
 
 function SessionCard({ session }) {
@@ -64,7 +66,53 @@ function ChapterName({ chapter, editable, onRename }) {
   );
 }
 
-export default function ChronicleList({ isDm, dmPassword }) {
+/**
+ * The next session, and (for anyone signed in) a way to schedule or change it.
+ * `creds` are the viewer's credentials: the DM's, or a signed-in character's.
+ */
+function NextSession({ nextSession, creds, light, onSaved }) {
+  const [open, setOpen] = useState(false);
+  const [state, setState] = useState({ saving: false, error: null });
+  const upcoming = upcomingSession(nextSession);
+
+  async function save(at) {
+    setState({ saving: true, error: null });
+    try {
+      const res = await putChronicleNextSession(creds, at);
+      onSaved(res.nextSession ?? null);
+      setState({ saving: false, error: null });
+      setOpen(false);
+    } catch (err) {
+      setState({ saving: false, error: err?.status === 403 ? "Sign in again to schedule the session." : "Couldn't save. Try again." });
+    }
+  }
+
+  return (
+    <div className="chr-next">
+      <span className="chr-next-label">Next session</span>
+      {upcoming
+        ? <span className="chr-next-when"><b>{upcoming.label}</b> · {upcoming.when}</span>
+        : <span className="chr-next-when chr-next-when--none">Not scheduled yet.</span>}
+      {creds && (
+        <button type="button" className="chr-link" onClick={() => setOpen(true)}>
+          {upcoming ? "Change" : "Schedule the next session"}
+        </button>
+      )}
+      {open && (
+        <ScheduleDialog
+          current={upcoming?.at || null}
+          saving={state.saving}
+          error={state.error}
+          light={light}
+          onSave={save}
+          onClose={() => { setOpen(false); setState({ saving: false, error: null }); }}
+        />
+      )}
+    </div>
+  );
+}
+
+export default function ChronicleList({ isDm, dmPassword, creds = null, light = false }) {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
 
@@ -104,6 +152,7 @@ export default function ChronicleList({ isDm, dmPassword }) {
         </div>
         {isDm && <Link className="chr-btn chr-btn--primary" to="/chronicle/record">+ Record a session</Link>}
       </div>
+      {data && <NextSession nextSession={data.nextSession} creds={creds} light={light} onSaved={(nextSession) => setData((d) => ({ ...d, nextSession }))} />}
       {error && <p className="chr-error" role="alert">{error}</p>}
       {!data && !error && <p className="chr-muted">Loading…</p>}
       {data && chapters.length === 0 && (
