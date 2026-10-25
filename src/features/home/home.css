@@ -19,7 +19,9 @@
   --hero-base: color-mix(in srgb, var(--pal-surface-solid) 82%, transparent);
 }
 
-.home-main { position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 28px 20px 80px; }
+/* Bottom padding covers the hidden cards that hang below the last row of orbs,
+   so the page background always reaches the end of the scroll. */
+.home-main { position: relative; z-index: 1; max-width: 1120px; margin: 0 auto; padding: 28px 20px 200px; }
 
 /* ── Campaign hero ── */
 .home-hero {
@@ -250,6 +252,16 @@
 .home-orb-frame::after { content: ""; position: absolute; inset: -7px; border-radius: inherit; border: 1px solid color-mix(in srgb, var(--c-glow) 30%, transparent); animation: homeHalo var(--bob-dur, 3.6s) ease-in-out var(--bob-delay, 0s) infinite; }
 .home-slot--open .home-orb-frame::after { animation: none; opacity: 0; }
 @keyframes homeHalo { 0%, 100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 0.2; transform: scale(1.05); } }
+/* On a light page (vellum) the bright accents wash out against the paper:
+   rims take the character's deeper accent, a little stronger, and a soft
+   shadow lifts the orb off the page. */
+.home-page[data-light] .home-slot:not(.home-slot--me):not(.home-slot--open) .home-orb-frame {
+  border-color: color-mix(in srgb, var(--c-accent) 80%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--c-accent) 45%, transparent), 0 6px 16px rgba(80, 60, 30, 0.22);
+}
+.home-page[data-light] .home-slot:not(.home-slot--me):not(.home-slot--open) .home-orb-frame::after { border-color: color-mix(in srgb, var(--c-accent) 45%, transparent); }
+.home-page[data-light] .home-slot--other:not(.home-slot--open) .home-orb-frame { border-color: color-mix(in srgb, var(--pal-text-body) 50%, transparent); box-shadow: 0 0 16px color-mix(in srgb, var(--pal-text-body) 18%, transparent), 0 6px 16px rgba(80, 60, 30, 0.2); }
+
 /* You (the character this tab is signed in as): a golden aura round the
    orb, and round the card when it opens — no badge to crowd the nameplate. */
 .home-slot--me { --gold: #e6bd62; }
@@ -308,7 +320,7 @@
 .home-section-head h2.home-others-h { font-size: 15px; }
 
 @media (max-width: 560px) {
-  .home-main { padding: 20px 16px 60px; }
+  .home-main { padding: 20px 16px 200px; }
   .home-hero { padding: 24px 18px 20px; }
   .home-party { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .home-card-name { font-size: 15px; }
