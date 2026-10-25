@@ -26,17 +26,25 @@ export default function ChroniclePage() {
   const viewer = useMemo(() => readChronicleViewer(), [viewerVersion]);
   const [asSlug, setAsSlug] = useState(() => viewer.characters[0]?.slug || null);
   const [names, setNames] = useState({});
+  const [palettes, setPalettes] = useState({}); // slug → palette key, from the character list
   const { textScale, textScaleMenuItem } = useTextScale();
   const isRecord = pathname.replace(/\/+$/, "").endsWith("/chronicle/record");
   const isDm = viewer.role === "dm";
   const creds = viewerCredentials(viewer, asSlug);
-  const pal = PALETTES[viewerPaletteKey(viewer, asSlug)] || PALETTES.ocean;
+  // A signed-in character's own palette (from the character list, so it's right
+  // even if they signed in here); the DM's chosen palette; else ocean.
+  const charSlug = viewer.role === "player" ? (asSlug || viewer.characters[0]?.slug) : null;
+  const pal = PALETTES[(charSlug && palettes[charSlug]) || viewerPaletteKey(viewer, asSlug)] || PALETTES.ocean;
 
   useEffect(() => {
-    if (viewer.role !== "player" || viewer.characters.length < 2) return undefined;
+    if (viewer.role !== "player") return undefined;
     let cancelled = false;
     listCharacters()
-      .then((list) => { if (!cancelled) setNames(Object.fromEntries((list || []).map((c) => [c.slug, c.name]))); })
+      .then((list) => {
+        if (cancelled) return;
+        setNames(Object.fromEntries((list || []).map((c) => [c.slug, c.name])));
+        setPalettes(Object.fromEntries((list || []).filter((c) => c.palette).map((c) => [c.slug, c.palette])));
+      })
       .catch(() => {});
     return () => { cancelled = true; };
   }, [viewer]);
