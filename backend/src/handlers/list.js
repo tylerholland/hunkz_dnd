@@ -6,7 +6,7 @@ const { filterPublicCharacterItems } = require("../lib/specialItems");
 exports.handler = async () => {
   const result = await db.send(new ScanCommand({
     TableName: TABLE,
-    ProjectionExpression: "slug, #n, nameAlt, race, charClass, subclass, #l, palette, portraitUrl",
+    ProjectionExpression: "slug, #n, nameAlt, race, charClass, subclass, #l, palette, portraitUrl, portraitFocus",
     ExpressionAttributeNames: { "#n": "name", "#l": "level" },
   }));
 

@@ -338,19 +338,16 @@ export default function CharactersListPage() {
               <div className="home-section-head">
                 <h2 id="home-others-h" className="home-others-h">{orderedParty.length ? "Other characters" : "Characters"}</h2>
               </div>
-              <div className="home-others-row">
+              <div className="home-party">
                 {others.map((c) => (
-                  <Link key={c.slug} className="home-mini" to={`/characters/${c.slug}`}>
-                    {c.portraitUrl
-                      ? <img src={c.portraitUrl} alt="" />
-                      : <span className="home-mini-initial">{c.name?.[0] || "?"}</span>}
-                    <span>
-                      {c.name}
-                      <em>{[c.race, c.charClass].filter(Boolean).join(" ")}{c.level ? ` · Lv ${c.level}` : ""}</em>
-                    </span>
-                  </Link>
+                  <PartyCard key={c.slug} character={c} isMe={me?.slug === c.slug} other />
                 ))}
-                <Link className="home-mini home-mini--new" to="/characters/new">+ New character</Link>
+                <Link className="home-slot-new" to="/characters/new">
+                  <div className="home-slot-float">
+                    <span className="home-new-orb" aria-hidden="true">+</span>
+                    <div className="home-orb-plate"><b>New character</b></div>
+                  </div>
+                </Link>
               </div>
             </section>
           </>

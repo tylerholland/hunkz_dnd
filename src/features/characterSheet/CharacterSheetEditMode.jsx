@@ -23,6 +23,7 @@ import {
 import { DragHandle } from "./CharacterSheetPrimitives";
 import { InfoBadge } from "./CharacterTalents";
 import { PALETTES } from "./theme";
+import PortraitFocusPicker from "./PortraitFocusPicker";
 
 export default function CharacterSheetEditMode({ ctx }) {
   useTalentCodexVersion(); // re-render when the DM's codex arrives
@@ -277,6 +278,9 @@ export default function CharacterSheetEditMode({ ctx }) {
                 )}
               </div>
             </div>
+            {(char.portraitUrl || char.portrait) && (
+              <PortraitFocusPicker src={char.portraitUrl || char.portrait} focus={char.portraitFocus} onChange={(f) => update("portraitFocus", f)} />
+            )}
           </div>
 
           <div style={{ marginBottom: 32 }}>

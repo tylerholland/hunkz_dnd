@@ -38,6 +38,17 @@ export function cardName(name) {
   return short.length < full.length ? `${short}…` : full;
 }
 
+/**
+ * The short name under an orb: drop a leading quoted phrase ("The Sound of a
+ * Hearthfire Burning" Quietclaw → Quietclaw) and a title ("Mr."), then the
+ * first word.
+ */
+export function plateName(name) {
+  const words = String(name || "").replace(/^\s*["“][^"”]*["”]\s*/, "").trim().split(/\s+/).filter(Boolean);
+  const first = words.find((w) => !/^[A-Z][a-z]{0,3}\.$/.test(w)) || words[0] || "";
+  return first || String(name || "").trim();
+}
+
 export function initials(name) {
   return String(name || "?").split(/\s+/).filter(Boolean).map((w) => w[0]).join("").slice(0, 2).toUpperCase() || "?";
 }

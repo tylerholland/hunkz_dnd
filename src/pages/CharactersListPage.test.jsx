@@ -67,11 +67,11 @@ describe("CharactersListPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText("Aragorn")).toBeInTheDocument();
-    expect(screen.getByText("Liu Sha")).toBeInTheDocument();
+    expect(await screen.findByLabelText(/^Aragorn/)).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Liu Sha/)).toBeInTheDocument();
     expect(screen.queryByText("NPC Combat")).not.toBeInTheDocument();
     expect(screen.queryByText("Missing Slug")).not.toBeInTheDocument();
-    expect(screen.getByText("+ New character")).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "New character" })).toHaveAttribute("href", "/characters/new");
   });
 
   it("splits the party from other characters and shows party HP when it's public", async () => {
@@ -86,7 +86,7 @@ describe("CharactersListPage", () => {
     expect(await within(party).findByText("7/12")).toBeInTheDocument();
     expect(within(party).getByText("Poisoned")).toBeInTheDocument();
     expect(within(party).queryByText("Aragorn")).not.toBeInTheDocument();
-    expect(within(screen.getByRole("region", { name: "Other characters" })).getByText("Aragorn")).toBeInTheDocument();
+    expect(within(screen.getByRole("region", { name: "Other characters" })).getByLabelText(/^Aragorn/)).toBeInTheDocument();
   });
 
   it("leads with the Chronicle's latest session and the next session; only signed-in people can schedule", async () => {
@@ -128,5 +128,21 @@ describe("CharactersListPage", () => {
     expect(credentials).toEqual({ password: "pw", asSlug: "liu-sha" });
     expect(new Date(at).getFullYear()).toBe(2099);
     expect(await screen.findByText(/Next session:/)).toBeInTheDocument();
+  });
+
+  it("opens a character's orb into their card on hover, making its links reachable", async () => {
+    apiMocks.listCharacters.mockResolvedValueOnce([LIU]);
+
+    renderPage();
+
+    const slot = await screen.findByLabelText(/^Liu Sha/);
+    const session = within(slot).getByRole("link", { name: /Session/ });
+    expect(session).toHaveAttribute("tabindex", "-1");
+    fireEvent.mouseEnter(slot);
+    expect(slot).toHaveClass("home-slot--open");
+    expect(session).toHaveAttribute("tabindex", "0");
+    expect(session).toHaveAttribute("href", "/characters/liu-sha/session");
+    fireEvent.mouseLeave(slot);
+    expect(slot).not.toHaveClass("home-slot--open");
   });
 });
