@@ -161,7 +161,7 @@
 }
 .home-main:has(.home-slot--open) .home-dim { opacity: 1; transition-delay: 0.12s; }
 /* A live blur behind the card is costly on phones; dim only. */
-@media (hover: none) and (pointer: coarse) { .home-dim { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in srgb, var(--pal-bg) 40%, transparent); } }
+@media (hover: none) and (pointer: coarse) { .home-dim { -webkit-backdrop-filter: none; backdrop-filter: none; background: color-mix(in srgb, var(--pal-bg) 65%, transparent); } }
 .home-slot-float {
   --orb: min(150px, calc(100cqw - 30px));
   --side: calc((100cqw - var(--orb)) / 2);
