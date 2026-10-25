@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import { getBadgeEligibleConditions } from "./tokenEffects";
 import TokenCardConditions from "./TokenCardConditions";
 import { clearLinkHover, setLinkHover, useLinkHover } from "./tokenLink";
+import PortraitImg from "../../../components/PortraitImg";
 
 const CARD_W = 150;
 
@@ -20,7 +21,7 @@ function hpTier(cur, max) {
  * hover card (opening upward, kept on screen), and the two-way card link.
  */
 export default function TrayChip({
-  type, sourceId, name, portraitUrl, initials, ringColor, fillColor, linkColor,
+  type, sourceId, name, portraitUrl, portraitFocus, initials, ringColor, fillColor, linkColor,
   conditions, exhaustionLevel = 0, hpCurrent = null, hpMax = null, effectNotes,
   selected = false, veiled = false, onSelect, pal,
 }) {
@@ -59,7 +60,8 @@ export default function TrayChip({
       aria-label={name}
     >
       {showPortrait ? (
-        <img
+        <PortraitImg
+          focus={portraitFocus}
           className="tray-chip__portrait"
           src={portraitUrl}
           alt={name}

@@ -8,6 +8,7 @@ import {
   isInvisibleCondition,
 } from "./tokenEffects";
 import ConditionRing from "./ConditionRing";
+import { usePortraitPosition } from "../../../lib/usePortraitPosition";
 import TokenSizeControl from "./TokenSizeControl";
 
 /**
@@ -50,6 +51,7 @@ export const HeldTokenFloater = forwardRef(function HeldTokenFloater(
   // the player-vs-DM omission, which this floater never participates in.
   const heldConditions = member?.conditions ?? npc?.conditions ?? [];
   const veiled = Array.isArray(heldConditions) && heldConditions.some(isInvisibleCondition);
+  const framing = usePortraitPosition(member?.portraitUrl, member?.portraitFocus);
 
   return (
     <div
@@ -70,7 +72,8 @@ export const HeldTokenFloater = forwardRef(function HeldTokenFloater(
           src={member.portraitUrl}
           alt={member.name}
           draggable={false}
-          style={veiled ? { filter: "grayscale(0.35)", opacity: 0.55 } : undefined}
+          onLoad={framing.onLoad}
+          style={{ objectPosition: framing.objectPosition, ...(veiled ? { filter: "grayscale(0.35)", opacity: 0.55 } : null) }}
         />
       ) : (
         <div
@@ -230,6 +233,7 @@ export const TokenChip = memo(function TokenChip({
   const initials = npc ? npcInitials(npc.name) : (name[0] || "?").toUpperCase();
   const portraitUrl = token.type === "character" ? member?.portraitUrl : npc?.portraitUrl;
   const showPortrait = !!portraitUrl && !portraitError;
+  const framing = usePortraitPosition(portraitUrl, member?.portraitFocus);
 
   useEffect(() => {
     setPortraitError(false);
@@ -780,6 +784,8 @@ export const TokenChip = memo(function TokenChip({
             draggable={false}
             loading="lazy"
             decoding="async"
+            onLoad={framing.onLoad}
+            style={framing.objectPosition ? { objectPosition: framing.objectPosition } : undefined}
             onError={() => setPortraitError(true)}
           />
         ) : (

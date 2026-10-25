@@ -129,7 +129,6 @@ export default function PartyCard({ character, status, isMe = false, other = fal
         <div className="home-orb-glass" aria-hidden="true" />
         <div className="home-orb-frame" aria-hidden="true" />
         <div className="home-orb-plate" aria-hidden="true">
-          {isMe && <span className="home-orb-you">You</span>}
           <b>{plateName(character.name)}</b>
           {kind && <em>{kind}</em>}
         </div>

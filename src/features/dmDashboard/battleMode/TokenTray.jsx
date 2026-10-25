@@ -87,6 +87,7 @@ export default function TokenTray({ party, npcCombat, placedTokens, heldId, onSe
               sourceId={member.slug}
               name={member.name}
               portraitUrl={member.portraitUrl}
+              portraitFocus={member.portraitFocus}
               initials={(member.name || "?")[0].toUpperCase()}
               ringColor={ringColor}
               fillColor={ringColor}

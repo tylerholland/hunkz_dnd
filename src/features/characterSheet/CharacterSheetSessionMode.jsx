@@ -67,6 +67,7 @@ import { allSpellEffects, effectStyle, ridersFor } from "../../lib/spellEffects"
 import { readOpenPartyDetails, writeOpenPartyDetails } from "./partyDetailsPrefs";
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
+import PortraitImg from "../../components/PortraitImg";
 
 // Player map band height (drag bar): 240px up to the window height minus the
 // top bar, so the map can never push itself entirely off screen.
@@ -1252,7 +1253,7 @@ export default function CharacterSheetSessionMode({
 
         {/* ════════════ LEFT COLUMN ════════════ */}
         <div className="cs-session-left">
-          <YourTurnBanner playKey={turnBannerKey} portraitUrl={char?.portraitUrl} initial={avatarInitial(char?.name)} round={round} />
+          <YourTurnBanner playKey={turnBannerKey} portraitUrl={char?.portraitUrl} portraitFocus={char?.portraitFocus} initial={avatarInitial(char?.name)} round={round} />
 
           {/* Identity strip */}
           <div className="cs-sm-identity">
@@ -1261,7 +1262,7 @@ export default function CharacterSheetSessionMode({
               style={{ background: pal.accentDim, borderColor: `${pal.accent}55` }}
             >
               {char?.portraitUrl
-                ? <img src={char.portraitUrl} alt={char.name} />
+                ? <PortraitImg src={char.portraitUrl} focus={char.portraitFocus} alt={char.name} />
                 : avatarInitial(char?.name)
               }
             </div>

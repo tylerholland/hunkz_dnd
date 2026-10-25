@@ -16,7 +16,7 @@ function pickFields(item, fields) {
 
 // Matches the ProjectionExpression used by dmParty.js's ScanCommand.
 const DM_PARTY_FIELDS = [
-  "slug", "name", "nameAlt", "palette", "portraitUrl", "hpCurrent", "hpMax", "hp", "tempHP",
+  "slug", "name", "nameAlt", "palette", "portraitUrl", "portraitFocus", "hpCurrent", "hpMax", "hp", "tempHP",
   "armorTotal", "conditions", "exhaustionLevel", "concentration", "inspiration", "spellSlots",
   "spells", "level", "race", "charClass", "skills", "specialAbilities", "dmNotes", "playerNotes",
   "hitDiceCurrent", "xpCurrent", "levelingMode", "coin", "coinMode", "deathSaves",
@@ -36,7 +36,7 @@ const DM_PARTY_FIELDS = [
 ];
 
 const DM_PARTY_PROJECTION_EXPRESSION =
-  "slug, #n, nameAlt, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom, stats, speed, weapons, equipment, #ver, lastHealedAt, lastHealAmount, lastHealFrom, lastFx, features";
+  "slug, #n, nameAlt, palette, portraitUrl, portraitFocus, hpCurrent, hpMax, #hp, tempHP, armorTotal, #c, exhaustionLevel, concentration, inspiration, spellSlots, spells, #l, race, charClass, skills, specialAbilities, #dmNotes, playerNotes, hitDiceCurrent, xpCurrent, levelingMode, coin, coinMode, deathSaves, lastDamagedAt, lastDamageAmount, lastDamageFrom, stats, speed, weapons, equipment, #ver, lastHealedAt, lastHealAmount, lastHealFrom, lastFx, features";
 
 const DM_PARTY_EXPRESSION_ATTRIBUTE_NAMES = {
   "#n": "name",
@@ -62,7 +62,7 @@ function projectDmPartyItem(item) {
 
 // Fields visible to players in the party status strip (mirrors getPartyStatus.js).
 const PLAYER_VISIBLE_FIELDS = [
-  "slug", "name", "palette", "portraitUrl", "hpCurrent", "hpMax", "hp", "tempHP",
+  "slug", "name", "palette", "portraitUrl", "portraitFocus", "hpCurrent", "hpMax", "hp", "tempHP",
   "conditions", "concentration", "inspiration", "deathSaves",
   // Story 53 — exhaustion badge on the map token. Story 52 — damage flash sync.
   "exhaustionLevel", "lastDamagedAt", "lastDamageAmount",

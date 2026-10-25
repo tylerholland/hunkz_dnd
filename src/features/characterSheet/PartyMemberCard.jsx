@@ -10,6 +10,7 @@ import {
 } from "../dmDashboard/dashboardShared";
 import PartyMemberDetails from "./PartyMemberDetails";
 import "../dmDashboard/characterCard.css";
+import PortraitImg from "../../components/PortraitImg";
 
 /**
  * Story 61 — a read-only, narrower cousin of the DM's party card for the
@@ -87,7 +88,7 @@ export default function PartyMemberCard({ member, pal, isYou = false, isActiveTu
       <div className="cc-header-grid">
         <div className="cc-portrait">
           {member.portraitUrl
-            ? <img src={member.portraitUrl} alt="" />
+            ? <PortraitImg src={member.portraitUrl} focus={member.portraitFocus} alt="" />
             : <span className="cc-portrait-initial">{(member.name || "?").charAt(0).toUpperCase()}</span>}
         </div>
         <div className="cc-identity">

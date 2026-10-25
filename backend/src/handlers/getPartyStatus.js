@@ -17,7 +17,7 @@ exports.handler = async () => {
   const result = await db.send(new ScanCommand({
     TableName: TABLE,
     ProjectionExpression:
-      "slug, #n, palette, portraitUrl, hpCurrent, hpMax, #hp, tempHP, #c, concentration, inspiration, deathSaves",
+      "slug, #n, palette, portraitUrl, portraitFocus, hpCurrent, hpMax, #hp, tempHP, #c, concentration, inspiration, deathSaves",
     ExpressionAttributeNames: {
       "#n": "name",
       "#c": "conditions",

@@ -1,6 +1,8 @@
 
 // Story 49 — the player's End Turn button and the "Your turn" cue.
 
+import PortraitImg from "../../components/PortraitImg";
+
 /**
  * The End Turn button: always shown while initiative is running and you're in
  * it; disabled until it's your turn.
@@ -40,12 +42,12 @@ export function EndTurnButton({ state, activeName, busy = false, error = null, o
  * in every palette. Doesn't block taps. Each new `playKey` remounts it, which
  * replays the CSS animation; it ends invisible.
  */
-export function YourTurnBanner({ playKey, portraitUrl, initial, round }) {
+export function YourTurnBanner({ playKey, portraitUrl, portraitFocus, initial, round }) {
   if (!playKey) return null;
   return (
     <div className="cs-sm-turn-banner" key={playKey} aria-hidden="true">
       <div className="cs-sm-turn-banner-portrait">
-        {portraitUrl ? <img src={portraitUrl} alt="" /> : initial}
+        {portraitUrl ? <PortraitImg src={portraitUrl} focus={portraitFocus} alt="" /> : initial}
       </div>
       <div className="cs-sm-turn-banner-title">Your turn</div>
       <div className="cs-sm-turn-banner-rule" />

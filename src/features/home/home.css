@@ -279,9 +279,18 @@
 .home-orb-frame::after { content: ""; position: absolute; inset: -7px; border-radius: inherit; border: 1px solid color-mix(in srgb, var(--c-glow) 30%, transparent); animation: homeHalo var(--bob-dur, 3.6s) ease-in-out var(--bob-delay, 0s) infinite; }
 .home-slot--open .home-orb-frame::after { animation: none; opacity: 0; }
 @keyframes homeHalo { 0%, 100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 0.2; transform: scale(1.05); } }
-/* You: a stronger rim and glow. */
-.home-slot--me .home-orb-frame { border: 2px solid var(--c-glow); box-shadow: 0 0 40px color-mix(in srgb, var(--c-glow) 60%, transparent); }
-.home-slot--me.home-slot--open .home-orb-frame { border-color: var(--c-glow); box-shadow: 0 0 0 1px var(--c-glow), 0 0 26px color-mix(in srgb, var(--c-glow) 45%, transparent), 0 16px 36px rgba(0, 0, 0, 0.45); }
+/* You (the character this tab is signed in as): a golden aura round the
+   orb, and round the card when it opens — no badge to crowd the nameplate. */
+.home-slot--me { --gold: #e6bd62; }
+.home-slot--me .home-orb-frame {
+  border: 2px solid color-mix(in srgb, var(--gold) 85%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--gold) 60%, transparent), 0 0 60px color-mix(in srgb, var(--gold) 28%, transparent);
+}
+.home-slot--me .home-orb-frame::after { border-color: color-mix(in srgb, var(--gold) 50%, transparent); }
+.home-slot--me.home-slot--open .home-orb-frame {
+  border-color: color-mix(in srgb, var(--gold) 85%, transparent);
+  box-shadow: 0 0 22px color-mix(in srgb, var(--gold) 50%, transparent), 0 0 60px color-mix(in srgb, var(--gold) 22%, transparent), 0 16px 36px rgba(0, 0, 0, 0.45);
+}
 
 /* The nameplate under the orb, which gives way to the card's own name. */
 .home-orb-plate {
@@ -290,11 +299,6 @@
 }
 .home-orb-plate b { display: block; font-family: 'Cinzel', serif; font-weight: 400; font-size: 15px; letter-spacing: 0.06em; color: var(--pal-text); }
 .home-orb-plate em { display: block; font-size: 13px; color: var(--home-muted); }
-.home-orb-you {
-  display: inline-block; margin-bottom: 3px; padding: 1px 8px; border-radius: 999px;
-  background: var(--c-glow); color: #15120e;
-  font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.16em; text-transform: uppercase;
-}
 .home-slot--open .home-orb-plate { opacity: 0; transform: translateY(8px); }
 
 /* Other characters (and New character) are the quieter supporting cast:

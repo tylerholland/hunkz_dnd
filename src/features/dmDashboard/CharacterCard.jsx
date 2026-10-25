@@ -29,6 +29,7 @@ import { abilityModifier, formatMod } from "./cardStats";
 import { armorClassOf } from "../characterSheet/armorClass";
 import { clearLinkHover, setLinkHover, useLinkHover } from "./battleMode/tokenLink";
 import "./characterCard.css";
+import PortraitImg from "../../components/PortraitImg";
 
 export { AwardXpModal } from "./characterCard/AwardXpModal";
 export { DistributeCoinModal } from "./characterCard/DistributeCoinModal";
@@ -392,7 +393,7 @@ export default function CharacterCard({
         {/* Portrait */}
         <div className="cc-portrait">
           {char.portraitUrl ? (
-            <img src={char.portraitUrl} alt={char.name} />
+            <PortraitImg src={char.portraitUrl} focus={char.portraitFocus} alt={char.name} />
           ) : (
             <span className="cc-portrait-initial">{initial}</span>
           )}

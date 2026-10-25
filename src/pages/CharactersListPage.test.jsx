@@ -116,7 +116,7 @@ describe("CharactersListPage", () => {
     renderPage();
 
     expect(await screen.findByText("Continue as Liu")).toBeInTheDocument();
-    expect(screen.getByText("You")).toBeInTheDocument();
+    expect(screen.getByLabelText(/^Liu Sha/)).toHaveClass("home-slot--me");
 
     fireEvent.click(await screen.findByRole("button", { name: "Schedule the next session" }));
     const dialog = screen.getByRole("dialog", { name: "Schedule the next session" });
