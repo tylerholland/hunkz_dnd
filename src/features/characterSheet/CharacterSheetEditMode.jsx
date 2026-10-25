@@ -305,7 +305,7 @@ export default function CharacterSheetEditMode({ ctx }) {
                 <div key={field}>
                   <label style={lbl}>{label}</label>
                   {type === "select" ? (
-                    <select className="input-base" style={{ appearance: "none", WebkitAppearance: "none", MozAppearance: "none" }} value={char[field] || ""} onChange={(e) => update(field, e.target.value)}>
+                    <select className="input-base" value={char[field] || ""} onChange={(e) => update(field, e.target.value)}>
                       <option value="">{label}</option>
                       {(typeof options === "function" ? options() : options).map((option) => (
                         <option key={option} value={option}>{option}</option>

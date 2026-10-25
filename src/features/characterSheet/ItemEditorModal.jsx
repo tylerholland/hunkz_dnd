@@ -130,7 +130,6 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
               <label className="label-ui" style={{ marginBottom: 5 }}>Type <span style={{ opacity: 0.5, textTransform: "none", fontSize: 11, letterSpacing: 0 }}>(optional)</span></label>
               <select
                 className="input-base"
-                style={{ appearance: "none", WebkitAppearance: "none" }}
                 value={type}
                 onChange={(e) => {
                   setType(e.target.value);
@@ -153,7 +152,7 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
             </div>
             <div>
               <label className="label-ui" style={{ marginBottom: 5 }} htmlFor="em-ac-dex">Dexterity</label>
-              <select id="em-ac-dex" className="input-base" style={{ appearance: "none", WebkitAppearance: "none" }} value={acDex} onChange={(e) => setAcDex(e.target.value)}>
+              <select id="em-ac-dex" className="input-base" value={acDex} onChange={(e) => setAcDex(e.target.value)}>
                 {ARMOR_DEX_OPTIONS.map((opt) => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
               </select>
             </div>
@@ -274,7 +273,7 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
                 value={mod.attribute}
                 onChange={(e) => updateMod(index, "attribute", e.target.value)}
                 className="input-base"
-                style={{ width: "auto", flex: 2, appearance: "none", WebkitAppearance: "none" }}
+                style={{ width: "auto", flex: 2 }}
               >
                 {MOD_ATTRIBUTES.map((attribute) => <option key={attribute} value={attribute}>{attribute}</option>)}
               </select>

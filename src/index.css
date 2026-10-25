@@ -56,6 +56,32 @@ select option:focus {
   background: var(--pal-accent-dim, rgba(255,255,255,0.12));
 }
 
+/* Customizable selects (Chrome 135+): the open list is drawn by the page, not
+   the OS, so it takes the palette's colours and fonts like everything else.
+   Other browsers ignore this and keep their native menu. Colours come from
+   the --pal-* vars of whatever page the select sits in. */
+@supports (appearance: base-select) {
+  select, ::picker(select) { appearance: base-select; }
+  /* The closed box: the chosen text and the arrow on one centred line. */
+  select { display: inline-flex; align-items: center; gap: 8px; }
+  select::picker-icon { margin-inline-start: auto; color: var(--pal-accent, currentColor); transition: rotate 0.2s ease; }
+  select:open::picker-icon { rotate: 180deg; }
+  ::picker(select) {
+    margin-block: 4px; padding: 4px; max-height: min(320px, 60vh); overflow-y: auto;
+    border: 1px solid var(--pal-border, rgba(255,255,255,0.18)); border-radius: 6px;
+    background: var(--pal-surface-solid, #14171e); color: var(--pal-text, #fff);
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+  }
+  select option {
+    padding: 7px 12px; border-radius: 4px;
+    background: transparent; color: inherit; font: inherit;
+  }
+  select option:hover,
+  select option:focus-visible { background: color-mix(in srgb, var(--pal-accent, #8a7050) 22%, transparent); outline: none; }
+  select option:checked { color: var(--pal-accent-bright, inherit); }
+  select option::checkmark { color: var(--pal-accent, currentColor); }
+}
+
 /* Spinner */
 @keyframes spin { to { transform: rotate(360deg); } }
 .dnd-spinner {
