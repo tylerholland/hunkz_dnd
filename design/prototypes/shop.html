@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>The Rusted Lantern</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
+<style>
+  /* Page chrome follows the viewer's palette (ocean / vellum here); the shop
+     interior has its own warm, lamplit look in each. */
+  :root, [data-pal="ocean"] {
+    --pal-bg: #0d0f14; --pal-surface: rgba(18,32,48,0.55); --pal-surface-solid: #111e2c; --pal-border: rgba(100,130,160,0.22);
+    --pal-accent: #6a8fa8; --pal-accent-bright: #a0c0d0; --pal-accent-dim: #1e3a4e; --pal-text: #c8bfaf; --pal-text-body: #b0a898; --pal-muted: #7d93a0;
+    /* shop interior: candlelit wood and brass */
+    --wood-1: #2a1a10; --wood-2: #3a2416; --wood-3: #4e321e; --wood-edge: #1a0f08; --plank-line: rgba(0,0,0,0.35);
+    --brass: #d2a85a; --brass-dim: #8a6a34; --parchment: #e9dcc0; --ink: #2a1d12; --lamp: rgba(255,186,96,0.35);
+    --shop-text: #ecdcc0; --shop-muted: #b49a78; --tag: #efe2c6; --tag-ink: #3a2a18; --danger: #d0675e; --good: #8fc27a;
+  }
+  [data-pal="vellum"] {
+    --pal-bg: #f5f0e8; --pal-surface: rgba(220,208,185,0.5); --pal-surface-solid: #e8e0cc; --pal-border: rgba(140,110,70,0.25);
+    --pal-accent: #7a5c30; --pal-accent-bright: #4a3418; --pal-accent-dim: rgba(140,110,70,0.15); --pal-text: #2a2018; --pal-text-body: #3c2e1c; --pal-muted: #8a7050;
+    /* shop interior by daylight: pale oak and sun through the window */
+    --wood-1: #c9ab84; --wood-2: #d8bd96; --wood-3: #e6cfaa; --wood-edge: #a4825a; --plank-line: rgba(90,60,30,0.18);
+    --brass: #8a6424; --brass-dim: #b08a4a; --parchment: #f6eedb; --ink: #2a1d12; --lamp: rgba(255,236,180,0.5);
+    --shop-text: #2c1e10; --shop-muted: #6e5434; --tag: #fbf4e2; --tag-ink: #3a2a18; --danger: #a8423a; --good: #4f8a3c;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; background: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--pal-accent) 18%, transparent) 0%, transparent 60%), var(--pal-bg); color: var(--pal-text-body); font-family: 'Crimson Text', Georgia, serif; font-size: 16px; line-height: 1.5; }
+  button { font-family: inherit; cursor: pointer; }
+
+  /* ── Prototype controls ── */
+  .proto { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 16px; border-bottom: 1px dashed var(--pal-border); font-size: 13px; color: var(--pal-muted); }
+  .seg { display: inline-flex; border: 1px solid var(--pal-border); border-radius: 4px; overflow: hidden; }
+  .seg button { background: transparent; border: none; padding: 5px 10px; color: var(--pal-muted); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .seg button.on { background: var(--pal-accent-dim); color: var(--pal-accent-bright); }
+
+  /* ── Top nav (as in the app) ── */
+  .nav { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--pal-border); background: var(--pal-bg); }
+  .nav .back { color: var(--pal-muted); text-decoration: none; font-size: 18px; }
+  .nav .t { font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 0.1em; color: var(--pal-text); flex: 1; }
+  .nav .who { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--pal-muted); }
+  .nav .who img { width: 28px; height: 28px; border-radius: 50%; object-fit: cover; border: 1px solid var(--pal-accent); }
+
+  .view { display: none; }
+  .view.on { display: block; }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 18px 120px; }
+
+  /* ══════════════ THE SHOP ══════════════ */
+  .shop { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--wood-edge);
+    background:
+      radial-gradient(ellipse at 18% 0%, var(--lamp), transparent 55%),
+      radial-gradient(ellipse at 85% 10%, color-mix(in srgb, var(--lamp) 60%, transparent), transparent 45%),
+      repeating-linear-gradient(90deg, var(--wood-2) 0 118px, var(--plank-line) 118px 120px),
+      var(--wood-2);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 0 120px rgba(0,0,0,0.35); color: var(--shop-text); }
+  [data-pal="vellum"] .shop { box-shadow: 0 18px 40px rgba(90,60,30,0.22), inset 0 0 90px rgba(120,80,30,0.12); }
+
+  /* Hanging sign */
+  .sign-row { display: flex; justify-content: center; padding-top: 6px; }
+  .sign-chains { position: relative; display: flex; flex-direction: column; align-items: center; transform-origin: 50% 0; animation: swing 6s ease-in-out infinite; }
+  .sign-chains::before { content: ""; width: 220px; height: 18px; border-left: 2px solid var(--brass-dim); border-right: 2px solid var(--brass-dim); }
+  @keyframes swing { 0%,100% { transform: rotate(-1.4deg); } 50% { transform: rotate(1.4deg); } }
+  .sign { padding: 12px 34px 10px; border-radius: 6px; text-align: center;
+    background: linear-gradient(180deg, var(--wood-3), var(--wood-1)); border: 2px solid var(--brass-dim);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.45), inset 0 0 0 4px rgba(0,0,0,0.15); }
+  .sign h1 { margin: 0; font-family: 'IM Fell English', serif; font-weight: 400; font-size: 34px; letter-spacing: 0.04em; color: var(--brass); text-shadow: 0 1px 0 rgba(0,0,0,0.5); }
+  .sign small { display: block; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--shop-muted); }
+
+  /* Keeper + counter */
+  .counter { display: grid; grid-template-columns: 240px 1fr 260px; gap: 22px; align-items: end; padding: 18px 26px 0; }
+  .keeper { position: relative; height: 270px; border-radius: 120px 120px 10px 10px; overflow: hidden; border: 2px solid var(--brass-dim);
+    background: radial-gradient(circle at 50% 30%, #6a4a30, #2a1a10 70%); box-shadow: 0 0 40px var(--lamp); }
+  .keeper .art { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 18px; color: #e8d2a8; }
+  .keeper .art svg { width: 120px; height: 140px; opacity: 0.9; }
+  .keeper .art em { font-size: 11px; color: #b49a78; }
+  .keeper .blink { animation: blink 5s infinite; transform-origin: 50% 40%; }
+  @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
+  .keeper-name { text-align: center; margin-top: 8px; font-family: 'Cinzel', serif; letter-spacing: 0.08em; color: var(--brass); }
+  .keeper-name small { display: block; font-family: 'Crimson Text', serif; font-style: italic; letter-spacing: 0; color: var(--shop-muted); font-size: 13px; }
+
+  .speech { position: relative; align-self: start; margin-top: 30px; padding: 14px 18px; border-radius: 12px; background: var(--parchment); color: var(--ink);
+    font-family: 'IM Fell English', serif; font-size: 19px; line-height: 1.35; box-shadow: 0 8px 22px rgba(0,0,0,0.35); min-height: 74px; }
+  .speech::before { content: ""; position: absolute; left: -12px; top: 26px; border: 8px solid transparent; border-right: 12px solid var(--parchment); border-left: 0; }
+  .speech .typed { white-space: pre-wrap; }
+  .speech .caret { display: inline-block; width: 2px; height: 1em; background: var(--ink); vertical-align: -2px; animation: caret 0.9s steps(1) infinite; }
+  @keyframes caret { 50% { opacity: 0; } }
+
+  /* Purse and satchel, on the counter */
+  .purse { display: grid; gap: 10px; justify-items: end; }
+  .coins { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.25); border: 1px solid var(--brass-dim); }
+  [data-pal="vellum"] .coins { background: rgba(255,255,255,0.4); }
+  .coin-stack { position: relative; width: 34px; height: 34px; }
+  .coin-stack i { position: absolute; left: 0; width: 34px; height: 12px; border-radius: 50%; background: radial-gradient(ellipse at 40% 30%, #f2f2f2, #a9adb3 60%, #7b8087); border: 1px solid #6c7077; }
+  .coins b { font-family: 'Cinzel', serif; font-size: 22px; font-weight: 400; color: var(--shop-text); }
+  .coins span { font-size: 13px; color: var(--shop-muted); }
+  .satchel-btn { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--brass); background: linear-gradient(180deg, color-mix(in srgb, var(--brass) 30%, transparent), transparent); color: var(--shop-text); font-family: 'Cinzel', serif; letter-spacing: 0.08em; }
+  .satchel-btn .n { min-width: 22px; height: 22px; border-radius: 11px; background: var(--brass); color: #1a120a; font-size: 12px; display: grid; place-items: center; }
+  .satchel-btn.bump { animation: bump 0.4s ease; }
+  @keyframes bump { 40% { transform: scale(1.08); } }
+
+  /* The counter edge */
+  .counter-top { height: 26px; margin: 0 -1px; background: linear-gradient(180deg, var(--wood-3), var(--wood-1)); border-top: 1px solid var(--brass-dim); box-shadow: 0 8px 18px rgba(0,0,0,0.35); }
+
+  /* Shelf tabs — little hanging signs */
+  .tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px 22px 6px; }
+  .tab { position: relative; padding: 7px 14px 6px; border-radius: 5px; border: 1px solid var(--brass-dim); background: linear-gradient(180deg, var(--wood-3), var(--wood-1)); color: var(--shop-muted);
+    font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; }
+  .tab.on { color: var(--brass); border-color: var(--brass); box-shadow: 0 0 16px color-mix(in srgb, var(--brass) 35%, transparent); }
+  .tab svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; }
+  .tab.sell { margin-left: auto; }
+
+  /* Shelves */
+  .shelves { padding: 6px 22px 26px; }
+  /* One plank per row of goods: rows are a fixed height and the planks are a
+     repeating band in the background, so they line up with every row. */
+  .shelf { --row: 186px; position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); grid-auto-rows: var(--row); column-gap: 16px; padding: 6px 16px 0;
+    background: repeating-linear-gradient(180deg, transparent 0 calc(var(--row) - 16px), var(--wood-edge) calc(var(--row) - 16px) calc(var(--row) - 14px), var(--wood-3) calc(var(--row) - 14px) calc(var(--row) - 6px), var(--wood-1) calc(var(--row) - 6px) var(--row));
+    background-position: 0 6px; }
+  .item { position: relative; z-index: 1; align-self: end; margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 10px 8px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: inherit; text-align: center; transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease; }
+  .item:hover, .item:focus-visible { transform: translateY(-4px); background: rgba(255,255,255,0.05); border-color: color-mix(in srgb, var(--brass) 40%, transparent); outline: none; }
+  [data-pal="vellum"] .item:hover { background: rgba(255,255,255,0.35); }
+  .item .art { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center;
+    background: radial-gradient(circle at 40% 30%, color-mix(in srgb, var(--lamp) 80%, transparent), transparent 70%); filter: drop-shadow(0 8px 8px rgba(0,0,0,0.45)); }
+  .item .art svg { width: 58px; height: 58px; color: var(--brass); }
+  .item .nm { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.04em; line-height: 1.2; color: var(--shop-text); }
+  .item .st { font-size: 13px; color: var(--shop-muted); }
+  /* Price tag on a string */
+  .tagp { position: absolute; top: 8px; right: 6px; transform: rotate(8deg); padding: 2px 8px 2px 12px; background: var(--tag); color: var(--tag-ink); font-family: 'Cinzel', serif; font-size: 12px;
+    clip-path: polygon(8px 0, 100% 0, 100% 100%, 8px 100%, 0 50%); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
+  .tagp::before { content: ""; position: absolute; left: 4px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--wood-1); }
+  .item.poor .tagp { color: var(--danger); }
+  .item.poor .art { opacity: 0.55; }
+  .item .stock { position: absolute; top: 46px; left: 50%; transform: translateX(-50%) rotate(-12deg); padding: 2px 8px; border: 2px solid var(--danger); color: var(--danger); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; background: rgba(0,0,0,0.25); }
+  .item.out { pointer-events: none; }
+  .item.out .art { opacity: 0.3; filter: grayscale(1); }
+  .note { padding: 0 22px 20px; font-style: italic; color: var(--shop-muted); font-size: 14px; }
+
+  /* Closed (combat) shutters */
+  .shutters { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; text-align: center;
+    background: repeating-linear-gradient(180deg, #3a2a1c 0 26px, #241810 26px 30px); color: #ecdcc0; }
+  .shop.closed .shutters { display: flex; animation: shut 0.7s cubic-bezier(.6,0,.3,1); }
+  @keyframes shut { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+  .shutters .plaque { padding: 18px 28px; border-radius: 8px; background: var(--parchment); color: var(--ink); box-shadow: 0 12px 30px rgba(0,0,0,0.5); transform: rotate(-2deg); }
+  .shutters h2 { margin: 0; font-family: 'IM Fell English', serif; font-weight: 400; font-size: 30px; }
+  .shutters p { margin: 4px 0 0; font-style: italic; }
+
+  /* ── Item detail (a parchment card that unrolls) ── */
+  .veil { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); backdrop-filter: blur(2px); }
+  .veil.on { display: flex; }
+  .detail { width: min(560px, 94vw); display: grid; grid-template-columns: 170px 1fr; gap: 18px; padding: 22px; border-radius: 10px; background: var(--parchment); color: var(--ink);
+    box-shadow: 0 24px 60px rgba(0,0,0,0.5); animation: unroll 0.45s cubic-bezier(.3,1.2,.5,1); }
+  @keyframes unroll { from { transform: scaleY(0.2) translateY(-30px); opacity: 0; } }
+  .detail .big { width: 170px; height: 170px; border-radius: 12px; display: grid; place-items: center; background: radial-gradient(circle at 40% 30%, #fff8e6, #e2cfa4 70%); border: 1px solid #c2a676; }
+  .detail .big svg { width: 110px; height: 110px; color: #6a4a20; }
+  .detail .big small { display: block; font-size: 10px; color: #8a6a3a; text-align: center; }
+  .detail h3 { margin: 0; font-family: 'IM Fell English', serif; font-weight: 400; font-size: 28px; }
+  .detail .cat { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8a6a3a; }
+  .detail .stat { display: inline-block; margin: 8px 0; padding: 2px 10px; border: 1px solid #b08a4a; border-radius: 999px; font-family: 'Cinzel', serif; font-size: 13px; }
+  .detail p { margin: 6px 0; }
+  .detail .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .qty { display: inline-flex; border: 1px solid #b08a4a; border-radius: 6px; overflow: hidden; }
+  .qty button { width: 32px; height: 34px; border: none; background: #ecdcb8; color: var(--ink); font-size: 18px; }
+  .qty span { width: 38px; display: grid; place-items: center; font-family: 'Cinzel', serif; }
+  .btn-brass { padding: 8px 16px; border-radius: 6px; border: 1px solid #8a6424; background: linear-gradient(180deg, #e5c27a, #b88a3c); color: #2a1a08; font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 0 3px 0 #7a5420; }
+  .btn-brass:active { transform: translateY(2px); box-shadow: 0 1px 0 #7a5420; }
+  .btn-brass:disabled { opacity: 0.5; cursor: default; }
+  .btn-plain { padding: 8px 14px; border-radius: 6px; border: 1px solid #b08a4a; background: transparent; color: var(--ink); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .owned { font-size: 13px; color: #6a5030; font-style: italic; }
+
+  /* ── The satchel (bottom sheet) ── */
+  .sheet { position: fixed; left: 50%; bottom: 0; z-index: 40; width: min(720px, 100vw); transform: translate(-50%, calc(100% - 58px)); transition: transform 0.45s cubic-bezier(.3,1,.4,1);
+    border-radius: 16px 16px 0 0; background: linear-gradient(180deg, #5a3a22, #3a2416); border: 1px solid #8a6a34; border-bottom: none; color: #ecdcc0; box-shadow: 0 -12px 40px rgba(0,0,0,0.5); }
+  .sheet.open { transform: translate(-50%, 0); }
+  .sheet-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px; cursor: pointer; }
+  .sheet-head b { font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.1em; font-size: 15px; flex: 1; }
+  .sheet-head .sum { font-family: 'Cinzel', serif; color: #e5c27a; }
+  .sheet-body { padding: 0 20px 18px; max-height: 60vh; overflow: auto; }
+  .line { display: grid; grid-template-columns: 34px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.08); }
+  .line svg { width: 26px; height: 26px; color: #e5c27a; }
+  .line .x { background: none; border: none; color: #b49a78; font-size: 18px; }
+  .totals { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); display: grid; gap: 4px; }
+  .totals div { display: flex; justify-content: space-between; }
+  .totals .disc { color: var(--good); }
+  .totals .bad { color: var(--danger); }
+  .totals .grand { font-family: 'Cinzel', serif; font-size: 18px; color: #e5c27a; }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 14px; }
+  .btn-ghost { padding: 8px 14px; border-radius: 6px; border: 1px solid #b49a78; background: transparent; color: #ecdcc0; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .btn-ghost:disabled { opacity: 0.45; cursor: default; }
+
+  /* Haggle dice */
+  .haggle { display: none; align-items: center; gap: 14px; margin-top: 12px; padding: 12px; border-radius: 10px; background: rgba(0,0,0,0.25); }
+  .haggle.on { display: flex; }
+  .die { width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center; background: #f1e6cc; color: #2a1a08; font-family: 'Cinzel', serif; font-size: 20px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+  .die.rolling { animation: tumble 0.6s ease; }
+  @keyframes tumble { 0% { transform: rotate(0) scale(0.6); } 60% { transform: rotate(320deg) scale(1.1); } 100% { transform: rotate(360deg) scale(1); } }
+  .haggle .verdict { flex: 1; font-size: 15px; }
+  .haggle .verdict b { font-family: 'Cinzel', serif; font-weight: 400; }
+
+  /* Coins flying to the till */
+  .flycoin { position: fixed; z-index: 60; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b8bcc2 55%, #7b8087); border: 1px solid #6c7077; pointer-events: none; }
+
+  /* Receipt */
+  .receipt { width: min(380px, 92vw); padding: 22px 24px 26px; background: var(--parchment); color: var(--ink); box-shadow: 0 24px 60px rgba(0,0,0,0.5);
+    clip-path: polygon(0 0, 100% 0, 100% 96%, 95% 100%, 90% 96%, 85% 100%, 80% 96%, 75% 100%, 70% 96%, 65% 100%, 60% 96%, 55% 100%, 50% 96%, 45% 100%, 40% 96%, 35% 100%, 30% 96%, 25% 100%, 20% 96%, 15% 100%, 10% 96%, 5% 100%, 0 96%);
+    animation: unroll 0.5s cubic-bezier(.3,1.2,.5,1); text-align: center; }
+  .receipt h3 { margin: 0; font-family: 'IM Fell English', serif; font-weight: 400; font-size: 26px; }
+  .receipt .r-lines { margin: 12px 0; text-align: left; font-size: 15px; }
+  .receipt .r-lines div { display: flex; justify-content: space-between; border-bottom: 1px dotted #b08a4a; padding: 3px 0; }
+  .receipt .stamp { display: inline-block; margin-top: 8px; padding: 4px 12px; border: 3px double #8a2a2a; color: #8a2a2a; font-family: 'Cinzel', serif; letter-spacing: 0.2em; transform: rotate(-6deg); }
+  .receipt small { display: block; margin-top: 10px; color: #6a5030; font-style: italic; }
+
+  /* ══════════════ DM: ITEM CATALOG ══════════════ */
+  .dm h2 { font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.1em; color: var(--pal-text); margin: 0 0 4px; }
+  .dm .intro { margin: 0 0 18px; color: var(--pal-muted); max-width: 75ch; }
+  .card { border: 1px solid var(--pal-border); border-radius: 10px; background: var(--pal-surface); padding: 16px 18px; margin-bottom: 18px; }
+  .card h3 { margin: 0 0 10px; font-family: 'Cinzel', serif; font-weight: 400; font-size: 15px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pal-accent); }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px 18px; }
+  label.f { display: grid; gap: 4px; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-muted); }
+  .in { padding: 7px 9px; border-radius: 4px; border: 1px solid var(--pal-border); background: var(--pal-surface-solid); color: var(--pal-text); font-family: 'Crimson Text', serif; font-size: 15px; letter-spacing: 0; text-transform: none; }
+  .switch { display: flex; align-items: center; gap: 10px; font-size: 15px; color: var(--pal-text-body); }
+  .switch i { width: 38px; height: 20px; border-radius: 10px; background: var(--pal-accent-dim); border: 1px solid var(--pal-border); position: relative; }
+  .switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--pal-muted); transition: left 0.2s; }
+  .switch.on i { background: color-mix(in srgb, var(--pal-accent) 45%, transparent); }
+  .switch.on i::after { left: 20px; background: var(--pal-accent-bright); }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .toolbar .in { min-width: 220px; }
+  .tbtn { padding: 7px 12px; border-radius: 5px; border: 1px solid var(--pal-border); background: var(--pal-surface-solid); color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .tbtn.primary { border-color: var(--pal-accent); background: var(--pal-accent-dim); }
+  table.cat { width: 100%; border-collapse: collapse; font-size: 15px; }
+  table.cat th { text-align: left; font-family: 'Cinzel', serif; font-weight: 400; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-muted); padding: 6px 8px; border-bottom: 1px solid var(--pal-border); }
+  table.cat td { padding: 4px 8px; border-bottom: 1px solid color-mix(in srgb, var(--pal-border) 60%, transparent); color: var(--pal-text); vertical-align: middle; }
+  table.cat td .in { width: 100%; padding: 4px 6px; background: transparent; border-color: transparent; }
+  table.cat td .in:hover, table.cat td .in:focus { border-color: var(--pal-border); background: var(--pal-surface-solid); outline: none; }
+  table.cat td.ico svg { width: 22px; height: 22px; color: var(--pal-accent); }
+  table.cat tr.hidden td { opacity: 0.45; }
+  .eye { background: none; border: none; color: var(--pal-accent-bright); font-size: 16px; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.1em; border: 1px solid var(--pal-border); color: var(--pal-muted); }
+  .pill.new { color: #7fc27a; border-color: rgba(127,194,122,0.5); }
+  .pill.chg { color: #d8b45a; border-color: rgba(216,180,90,0.5); }
+  .pill.gone { color: #d0675e; border-color: rgba(208,103,94,0.5); }
+  .dmmodal { width: min(640px, 94vw); padding: 20px; border-radius: 10px; background: var(--pal-surface-solid); border: 1px solid var(--pal-accent); color: var(--pal-text); }
+  .dmmodal h3 { margin: 0 0 6px; font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.08em; }
+  .dmmodal ul { margin: 10px 0; padding: 0; list-style: none; display: grid; gap: 6px; }
+  .dmmodal li { display: flex; gap: 10px; align-items: baseline; }
+  .dmmodal .safe { padding: 10px 12px; border-radius: 6px; background: color-mix(in srgb, var(--pal-accent) 12%, transparent); border: 1px solid var(--pal-border); font-size: 15px; }
+  code { font-size: 13px; }
+
+  @media (max-width: 820px) {
+    .counter { grid-template-columns: 1fr; justify-items: center; }
+    .keeper { width: 200px; height: 220px; }
+    .speech { margin-top: 0; }
+    .speech::before { display: none; }
+    .purse { justify-items: center; }
+    .detail { grid-template-columns: 1fr; }
+    .detail .big { margin: 0 auto; }
+  }
+  @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
+</style>
+</head>
+<body data-pal="ocean">
+<div class="proto">
+  <span>Prototype</span>
+  <div class="seg" id="viewSeg"><button class="on" data-v="shop">Player · Shop</button><button data-v="dm">DM · Item catalog</button></div>
+  <span>Shopper</span>
+  <div class="seg" id="whoSeg"><button class="on" data-v="david">Meanjeans · 64s</button><button data-v="eoghan">Eòghan · 12s</button></div>
+  <span>Table</span>
+  <div class="seg" id="stateSeg"><button class="on" data-v="open">Exploring</button><button data-v="combat">Combat round</button></div>
+  <span>Palette</span>
+  <div class="seg" id="palSeg"><button class="on" data-v="ocean">Ocean</button><button data-v="vellum">Vellum</button></div>
+</div>
+
+<!-- ═════════ PLAYER: SHOP ═════════ -->
+<section class="view on" id="v-shop">
+  <nav class="nav">
+    <a class="back" href="#">‹</a>
+    <span class="t">Session · The Rusted Lantern</span>
+    <span class="who"><img id="whoImg" src="https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/david-1784666229879.png" alt="" /><span id="whoName">Meanjeans</span></span>
+  </nav>
+  <main>
+    <div class="shop" id="shop">
+      <div class="sign-row"><div class="sign-chains"><div class="sign"><small>Provisions · Arms · Curiosities</small><h1>The Rusted Lantern</h1><small>Est. before the last plague</small></div></div></div>
+
+      <div class="counter">
+        <div>
+          <div class="keeper" title="Midjourney art goes here">
+            <div class="art">
+              <!-- Placeholder keeper: a hooded figure with one lit lantern eye -->
+              <svg viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="1.6">
+                <path d="M20 138 C22 96 36 70 60 70 C84 70 98 96 100 138" />
+                <path d="M30 70 C28 30 44 12 60 12 C76 12 92 30 90 70 C80 58 70 54 60 54 C50 54 40 58 30 70Z" />
+                <g class="blink"><circle cx="50" cy="48" r="3" fill="currentColor" /><circle cx="72" cy="48" r="5" stroke="#ffcf7a" /><circle cx="72" cy="48" r="2" fill="#ffcf7a" /></g>
+                <path d="M48 62 Q60 68 72 62" />
+              </svg>
+              <em>Mags Ironwhistle — portrait from Midjourney</em>
+            </div>
+          </div>
+          <div class="keeper-name">Mags Ironwhistle<small>proprietor, appraiser, liar</small></div>
+        </div>
+        <div class="speech" aria-live="polite"><span class="typed" id="speech"></span><span class="caret"></span></div>
+        <div class="purse">
+          <div class="coins" title="Your purse"><div class="coin-stack"><i style="top:18px"></i><i style="top:11px"></i><i style="top:4px"></i></div><div><b id="purse">64</b> <span>silver</span></div></div>
+          <button class="satchel-btn" id="satchelBtn" type="button">Satchel <span class="n" id="satchelN">0</span></button>
+        </div>
+      </div>
+      <div class="counter-top"></div>
+
+      <div class="tabs" id="tabs"></div>
+      <div class="shelves"><div class="shelf" id="shelf"></div></div>
+      <p class="note" id="shelfNote"></p>
+
+      <div class="shutters" aria-live="polite">
+        <div class="plaque"><h2>Closed for the Fighting</h2><p>“Steel's out in the street. Come back when it's sheathed.” — Mags</p></div>
+        <p style="font-style:italic;opacity:.8">The shop reopens when the round ends. Your satchel keeps.</p>
+      </div>
+    </div>
+  </main>
+
+  <!-- Satchel -->
+  <div class="sheet" id="sheet">
+    <div class="sheet-head" id="sheetHead"><b>Your satchel</b><span class="sum" id="sheetSum">empty</span><span>▴</span></div>
+    <div class="sheet-body">
+      <div id="lines"></div>
+      <div class="totals" id="totals"></div>
+      <div class="haggle" id="haggle"><div class="die" id="d1">?</div><div class="die" id="d2">?</div><div class="verdict" id="verdict"></div></div>
+      <div class="actions">
+        <button class="btn-ghost" id="haggleBtn" type="button" title="Roll 2d6 + CHA">⚂ Haggle</button>
+        <button class="btn-brass" id="payBtn" type="button">Pay</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═════════ DM: ITEM CATALOG ═════════ -->
+<section class="view" id="v-dm">
+  <nav class="nav"><a class="back" href="#">‹</a><span class="t">DM Settings · Shops &amp; Items</span></nav>
+  <main class="dm">
+    <h2>Shops &amp; Items</h2>
+    <p class="intro">The items players can buy, seeded from <b>World of Dungeons</b>. Edit them in place, or export the whole list as a spreadsheet (CSV), change it, and import it back. Items already in someone's pack are their own copies, so changing or removing an item here never changes what anyone owns.</p>
+
+    <div class="card">
+      <h3>The shop</h3>
+      <div class="grid2">
+        <label class="f">Shop name <input class="in" value="The Rusted Lantern" /></label>
+        <label class="f">Shopkeeper <input class="in" value="Mags Ironwhistle" /></label>
+        <label class="f">Price markup <input class="in" value="0%" /></label>
+        <label class="f">Currency <input class="in" value="Silver (s)" /></label>
+      </div>
+      <div class="grid2" style="margin-top:14px">
+        <div class="switch on" data-sw>Shop open to players <i></i></div>
+        <div class="switch on" data-sw>Close automatically during combat rounds <i></i></div>
+        <div class="switch on" data-sw>Allow haggling (2d6 + CHA, once per visit) <i></i></div>
+        <div class="switch" data-sw>Players can sell items back (half price) <i></i></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h3>Item catalog</h3>
+      <div class="toolbar">
+        <input class="in" placeholder="Search items…" id="dmSearch" />
+        <select class="in" id="dmCat"><option value="">All categories</option></select>
+        <span style="flex:1"></span>
+        <button class="tbtn" type="button" id="exportBtn">⇩ Export CSV</button>
+        <button class="tbtn" type="button" id="importBtn">⇧ Import CSV</button>
+        <button class="tbtn" type="button">Reset to World of Dungeons</button>
+        <button class="tbtn primary" type="button">+ Add item</button>
+      </div>
+      <table class="cat">
+        <thead><tr><th></th><th>Item</th><th>Category</th><th>Price</th><th>Effect</th><th>Notes</th><th>Stock</th><th title="Shown in the shop">Shown</th></tr></thead>
+        <tbody id="dmRows"></tbody>
+      </table>
+    </div>
+  </main>
+</section>
+
+<!-- Overlays -->
+<div class="veil" id="veil"></div>
+
+<script>
+// ── Icons (simple line drawings; stand-ins for Midjourney item art) ──
+const I = {
+  blade: '<path d="M10 54 L46 18 L50 10 L42 14 L6 50 Z"/><path d="M14 40 L24 50"/><path d="M8 52 L12 56"/>',
+  sword: '<path d="M32 4 L36 10 L36 40 L28 40 L28 10 Z"/><path d="M20 40 H44"/><path d="M32 40 V54"/><circle cx="32" cy="57" r="3"/>',
+  great: '<path d="M32 2 L37 9 L37 38 L27 38 L27 9 Z"/><path d="M16 38 H48"/><path d="M32 38 V58"/><path d="M28 50 H36"/><circle cx="32" cy="60" r="2"/>',
+  bow: '<path d="M18 6 C44 18 44 46 18 58"/><path d="M18 6 V58"/><path d="M10 32 H54"/><path d="M48 28 L54 32 L48 36"/>',
+  xbow: '<path d="M8 26 C24 16 40 16 56 26"/><path d="M32 18 V58"/><path d="M8 26 L32 34 L56 26"/><path d="M26 50 H38"/>',
+  armor: '<path d="M18 10 L26 6 H38 L46 10 L52 22 L46 26 V56 H18 V26 L12 22 Z"/><path d="M26 6 C28 14 36 14 38 6"/>',
+  heavy: '<path d="M16 12 L26 6 H38 L48 12 L54 24 L48 28 V56 H16 V28 L10 24 Z"/><path d="M20 30 H44 M20 38 H44 M20 46 H44"/>',
+  shield: '<path d="M32 4 L54 12 V30 C54 44 44 54 32 60 C20 54 10 44 10 30 V12 Z"/><path d="M32 12 V52 M16 26 H48"/>',
+  rope: '<ellipse cx="32" cy="32" rx="20" ry="12"/><ellipse cx="32" cy="32" rx="12" ry="7"/><path d="M50 36 C56 44 52 54 44 56"/>',
+  torch: '<path d="M28 60 L30 26 H34 L36 60 Z"/><path d="M32 24 C22 18 28 10 32 4 C36 10 42 18 32 24 Z"/>',
+  pack: '<path d="M16 22 C16 12 48 12 48 22 V54 H16 Z"/><path d="M24 22 V14 M40 22 V14"/><path d="M22 32 H42 V44 H22 Z"/>',
+  pick: '<path d="M10 20 C24 8 40 8 54 20"/><path d="M32 12 V58"/>',
+  key: '<circle cx="20" cy="22" r="10"/><path d="M28 28 L54 54 M44 44 L50 38 M50 50 L56 44"/>',
+  flask: '<path d="M26 6 H38 M28 6 V24 L14 50 C12 56 16 60 22 60 H42 C48 60 52 56 50 50 L36 24 V6"/><path d="M18 44 H46"/>',
+  skull: '<path d="M14 30 C14 14 50 14 50 30 C50 40 44 42 44 48 H20 C20 42 14 40 14 30 Z"/><circle cx="25" cy="31" r="4"/><circle cx="39" cy="31" r="4"/><path d="M26 48 V56 M32 48 V56 M38 48 V56"/>',
+  lantern: '<path d="M24 14 H40 L44 20 V48 L40 54 H24 L20 48 V20 Z"/><path d="M28 6 H36 V14 M26 6 C26 0 38 0 38 6"/><path d="M32 26 C27 32 30 40 32 42 C34 40 37 32 32 26 Z"/>',
+  mirror: '<ellipse cx="32" cy="24" rx="14" ry="18"/><path d="M32 42 V60 M26 56 H38"/>',
+  fire: '<path d="M32 60 C16 60 12 46 18 36 C20 44 26 44 26 38 C26 28 34 22 32 6 C46 16 52 32 46 42 C44 34 40 34 40 40 C44 48 42 60 32 60 Z"/>',
+  horse: '<path d="M14 56 L18 36 C14 30 16 20 26 16 L32 6 L36 16 C46 18 50 26 48 34 L44 30 L40 40 V56"/><path d="M30 40 H40"/>',
+  cart: '<path d="M6 22 H50 L46 40 H12 Z"/><circle cx="18" cy="48" r="7"/><circle cx="40" cy="48" r="7"/><path d="M50 22 L58 14"/>',
+  boat: '<path d="M6 40 H58 L50 54 H14 Z"/><path d="M32 40 V6 L50 34 H32"/>',
+  person: '<circle cx="32" cy="16" r="9"/><path d="M14 58 C14 38 50 38 50 58"/>',
+  bed: '<path d="M6 44 V20 M6 36 H58 V52 M58 44 H6"/><path d="M12 36 V30 C12 26 24 26 24 30 V36"/>',
+  house: '<path d="M8 30 L32 8 L56 30"/><path d="M14 26 V56 H50 V26"/><path d="M28 56 V42 H36 V56"/>',
+  coin: '<circle cx="32" cy="32" r="22"/><circle cx="32" cy="32" r="15"/>',
+};
+const ico = (k) => `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${I[k] || I.pack}</svg>`;
+
+// ── The World of Dungeons list (prices in silver) ──
+const CATS = [
+  { id: "arms", name: "Arms", icon: "sword", line: "Steel for the hand and the string." },
+  { id: "armor", name: "Armour", icon: "shield", line: "Stops what it can. Mostly." },
+  { id: "gear", name: "Adventuring gear", icon: "pack", line: "Two silver apiece. Don't go underground without it." },
+  { id: "tools", name: "Tools", icon: "pick", line: "Five silver apiece, and worth every one." },
+  { id: "occult", name: "Occult", icon: "skull", line: "Ten silver, no questions — and no refunds." },
+  { id: "fancy", name: "Fancy goods", icon: "lantern", line: "Twenty silver for the finer things." },
+  { id: "travel", name: "Mounts & carts", icon: "horse", line: "Out back in the yard. Mind the mule." },
+  { id: "hire", name: "Hirelings", icon: "person", line: "Priced by the day. Paid up front." },
+];
+const ITEMS = [
+  { id: "light-weapon", cat: "arms", name: "Light Weapon", price: 10, icon: "blade", stat: "d6", notes: "Daggers, short swords, hand axes. Wield as a second weapon to re-roll damage once per attack." },
+  { id: "martial-weapon", cat: "arms", name: "Martial Weapon", price: 30, icon: "sword", stat: "d6+1", notes: "Long swords, hammers, axes, spears. Main hand only." },
+  { id: "great-weapon", cat: "arms", name: "Great Weapon", price: 40, icon: "great", stat: "d6+2", notes: "Two-handed swords, battle-axes, pole arms. Uses both hands." },
+  { id: "shortbow", cat: "arms", name: "Shortbow", price: 10, icon: "bow", stat: "d6", notes: "Also slings." },
+  { id: "bow", cat: "arms", name: "Bow", price: 30, icon: "bow", stat: "d6+1", notes: "Also crossbows, pistols." },
+  { id: "heavy-bow", cat: "arms", name: "Heavy Bow / Gun", price: 50, icon: "xbow", stat: "d6+2", notes: "When firing from a stationary position. Arbalests, muskets.", stock: 1 },
+  { id: "light-armor", cat: "armor", name: "Light Armour", price: 30, icon: "armor", stat: "Armour 1", notes: "Leathers and padded coats." },
+  { id: "full-armor", cat: "armor", name: "Full Armour", price: 60, icon: "heavy", stat: "Armour 2", notes: "Always has a helm. Very hard to run, sneak, swim or leap in." },
+  { id: "shield", cat: "armor", name: "Shield", price: 10, icon: "shield", stat: "+1 Armour", notes: "" },
+  { id: "rope", cat: "gear", name: "20ft Rope", price: 2, icon: "rope" },
+  { id: "spike", cat: "gear", name: "Iron Spike", price: 2, icon: "pick" },
+  { id: "chalk", cat: "gear", name: "Chalk", price: 2, icon: "pack" },
+  { id: "parchment", cat: "gear", name: "Parchment", price: 2, icon: "pack" },
+  { id: "flint", cat: "gear", name: "Flint & Steel", price: 2, icon: "fire" },
+  { id: "torches", cat: "gear", name: "Torches (4)", price: 2, icon: "torch" },
+  { id: "tent", cat: "gear", name: "Tent", price: 2, icon: "house" },
+  { id: "dice", cat: "gear", name: "Dice", price: 2, icon: "pack", notes: "Bone, slightly loaded. Allegedly." },
+  { id: "caltrops", cat: "gear", name: "Caltrops", price: 2, icon: "pack", stat: "slows pursuers" },
+  { id: "bandages", cat: "gear", name: "Bandages", price: 2, icon: "pack" },
+  { id: "rations", cat: "gear", name: "Travel Rations", price: 2, icon: "pack", notes: "Consume one when you rest to re-roll your HP." },
+  { id: "waterskin", cat: "gear", name: "Waterskin", price: 2, icon: "flask" },
+  { id: "wineskin", cat: "gear", name: "Wineskin", price: 2, icon: "flask" },
+  { id: "crowbar", cat: "tools", name: "Crowbar", price: 5, icon: "pick" },
+  { id: "hatchet", cat: "tools", name: "Hatchet", price: 5, icon: "blade" },
+  { id: "trap", cat: "tools", name: "Animal Trap", price: 5, icon: "pack" },
+  { id: "lockpicks", cat: "tools", name: "Lockpicks", price: 5, icon: "key", notes: "Tinker, in the right hands." },
+  { id: "ink", cat: "tools", name: "Pen & Pot of Ink", price: 5, icon: "flask" },
+  { id: "fishing", cat: "tools", name: "Fishing Pole", price: 5, icon: "pick" },
+  { id: "shovel", cat: "tools", name: "Shovel", price: 5, icon: "pick" },
+  { id: "grapple", cat: "tools", name: "Grappling Hook", price: 5, icon: "key" },
+  { id: "pickaxe", cat: "tools", name: "Pickaxe", price: 5, icon: "pick" },
+  { id: "pole", cat: "tools", name: "Collapsible Pole", price: 5, icon: "pick" },
+  { id: "quicksilver", cat: "occult", name: "Quicksilver (dose)", price: 10, icon: "flask", stat: "summons a spirit", notes: "A mild poison and addictive drug. More doses in a day than your level: resist with CON.", stock: 3 },
+  { id: "bone-dust", cat: "occult", name: "Pouch of Bone Dust", price: 10, icon: "skull" },
+  { id: "holy-water", cat: "occult", name: "Vial of Holy Water", price: 10, icon: "flask", stat: "one use", notes: "Clerics may Bless or seek a Vision with it." },
+  { id: "blood", cat: "occult", name: "Vial of Blood", price: 10, icon: "flask", stock: 0 },
+  { id: "incense", cat: "occult", name: "Ritual Incense & Oils", price: 10, icon: "fire" },
+  { id: "mirror", cat: "fancy", name: "Mirror", price: 20, icon: "mirror" },
+  { id: "lantern", cat: "fancy", name: "Lantern", price: 20, icon: "lantern" },
+  { id: "spyglass", cat: "fancy", name: "Spyglass", price: 20, icon: "pick" },
+  { id: "timer", cat: "fancy", name: "Sand Timer", price: 20, icon: "mirror" },
+  { id: "boardgame", cat: "fancy", name: "Board Game", price: 20, icon: "pack" },
+  { id: "clothes", cat: "fancy", name: "Elaborate Clothes", price: 20, icon: "armor" },
+  { id: "holy-symbol", cat: "fancy", name: "Holy Symbol", price: 20, icon: "coin", notes: "And other charms." },
+  { id: "fire-oil", cat: "fancy", name: "Fire Oil (flask)", price: 20, icon: "fire", stat: "d6+1 / round, 3 rounds", notes: "Sets an area alight unless put out. Fills a lantern ten times." },
+  { id: "mule", cat: "travel", name: "Mule", price: 30, icon: "horse" },
+  { id: "horse", cat: "travel", name: "Horse", price: 100, icon: "horse" },
+  { id: "warhorse", cat: "travel", name: "Warhorse", price: 1000, icon: "horse", stock: 1 },
+  { id: "cart", cat: "travel", name: "Cart", price: 30, icon: "cart" },
+  { id: "wagon", cat: "travel", name: "Wagon", price: 100, icon: "cart" },
+  { id: "rowboat", cat: "travel", name: "Rowboat", price: 50, icon: "boat" },
+  { id: "torchbearer", cat: "hire", name: "Torch Bearer", price: 2, per: "day", icon: "torch", stat: "3 HP · knife" },
+  { id: "guide", cat: "hire", name: "Guide", price: 5, per: "day", icon: "person", stat: "6 HP · knife, lantern, rope" },
+  { id: "armsman", cat: "hire", name: "Armsman", price: 20, per: "day", icon: "shield", stat: "12 HP · spear, shield, light armour" },
+  { id: "expert", cat: "hire", name: "Expert", price: 20, per: "day", icon: "person", stat: "6 HP · skill 4 · dagger, bow" },
+  { id: "champion", cat: "hire", name: "Champion", price: 60, per: "day", icon: "great", stat: "18 HP · full armour, halberd, sword, shield, dagger" },
+];
+
+// Mags's lines — the shop's voice. Most are picked at random from a bucket.
+const LINES = {
+  greet: ["Mind the step, the last one was a mimic.", "Ah, {name}. Coin first, questions never.", "Welcome to the Lantern. Everything's for sale except the cat."],
+  hover: {
+    arms: ["That one's only been used the once. Honest.", "Sharp end goes in the other fellow.", "Bought it off a knight. He won't be needing it."],
+    armor: ["Stops arrows. Mostly. Some arrows.", "Fits anyone, if you believe hard enough.", "The dent's a feature."],
+    gear: ["Rope. You'll want rope. Everyone wants rope, eventually.", "Two silver. Cheapest thing between you and a hole.", "Torches: because the dark is full of teeth."],
+    tools: ["Lockpicks? For your own locks, I'm sure.", "A good crowbar opens more doors than charm.", "Shovels dig graves and treasure alike."],
+    occult: ["Don't drink it on an empty stomach. Or a full one.", "Bone dust. Whose? Don't ask whose.", "Holy water. Blessed by a very sincere man."],
+    fancy: ["A lantern! For the adventurer who's tired of being eaten.", "Spyglass — see trouble before trouble sees you.", "Fire oil. Handle like it hates you, because it does."],
+    travel: ["The mule bites. That's extra.", "A warhorse! Out back, eating my profits.", "Boats are cheaper than swimming. Usually."],
+    hire: ["They work by the day and run by the hour.", "Torch bearers: cheap, cheerful, flammable.", "The Champion charges more because he lives longer."],
+  },
+  poor: ["That's more silver than you've got jingling, friend.", "Come back richer. Or braver. Richer's better."],
+  out: ["Sold the last one to a fellow with too many teeth."],
+  add: ["Good choice.", "A fine pick.", "Into the satchel it goes.", "Ha! Knew you'd want that."],
+  haggle: {
+    crit: ["Fine! Fine! Take it and get out before I come to my senses.", "You'd talk a dragon out of its hoard. A fifth off — now go."],
+    full: ["Hmph. You drive a hard bargain. A tenth off, and not a copper more."],
+    partial: ["A few silver off... but you'll owe me a favour, {name}.", "Alright, a little off — and you'll tell your friends, yes?"],
+    miss: ["Haggle with me? The price just went up.", "Out of pity, I'll pretend I didn't hear that. Prices stand. Plus one."],
+  },
+  pay: ["Pleasure doing business. Don't die with it unpaid.", "Coin's good. Mostly silver, even.", "Come back alive, and come back rich."],
+  combat: ["Steel's out — I'm closing the shutters!"],
+};
+const pick = (a) => a[Math.floor(Math.random() * a.length)];
+
+const SHOPPERS = {
+  david: { name: "Meanjeans", coin: 64, cha: 2, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/david-1784666229879.png", owned: ["light-weapon", "torches"] },
+  eoghan: { name: "Eòghan", coin: 12, cha: 1, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/eoghan-1784698034076.png", owned: ["light-armor", "rope", "waterskin", "light-weapon"] },
+};
+let who = SHOPPERS.david;
+let coin = who.coin;
+let cat = "arms";
+let satchel = []; // { item, qty }
+let haggled = null; // null | { mult, label, cls }
+
+// ── Speech, typed out ──
+let typing;
+function say(text) {
+  const el = document.getElementById("speech");
+  clearInterval(typing);
+  const t = text.replace("{name}", who.name);
+  let i = 0;
+  el.textContent = "";
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = `“${t}”`; return; }
+  const full = `“${t}”`;
+  typing = setInterval(() => { el.textContent = full.slice(0, ++i); if (i >= full.length) clearInterval(typing); }, 18);
+}
+
+// ── Shelves ──
+function renderTabs() {
+  document.getElementById("tabs").innerHTML = CATS.map((c) => `<button class="tab${c.id === cat ? " on" : ""}" data-cat="${c.id}">${ico(c.icon)}${c.name}</button>`).join("")
+    + `<button class="tab sell${cat === "sell" ? " on" : ""}" data-cat="sell">${ico("coin")}Sell</button>`;
+}
+function priceLabel(it) { return `${it.price.toLocaleString()}s${it.per ? `/${it.per}` : ""}`; }
+function renderShelf() {
+  const shelf = document.getElementById("shelf");
+  const note = document.getElementById("shelfNote");
+  if (cat === "sell") {
+    const owned = who.owned.map((id) => ITEMS.find((i) => i.id === id)).filter(Boolean);
+    shelf.innerHTML = owned.map((it) => `<button class="item" data-sell="${it.id}"><span class="tagp">${Math.floor(it.price / 2)}s</span><span class="art">${ico(it.icon)}</span><span class="nm">${it.name}</span><span class="st">from your pack</span></button>`).join("");
+    note.textContent = "Mags buys back at half price. She'll find something wrong with it either way.";
+    return;
+  }
+  const c = CATS.find((x) => x.id === cat);
+  shelf.innerHTML = ITEMS.filter((i) => i.cat === cat).map((it) => {
+    const out = it.stock === 0;
+    const poor = !out && it.price > coin;
+    return `<button class="item${poor ? " poor" : ""}${out ? " out" : ""}" data-id="${it.id}" ${out ? 'aria-disabled="true"' : ""}>
+      <span class="tagp">${priceLabel(it)}</span>
+      <span class="art">${ico(it.icon)}</span>
+      ${out ? '<span class="stock">Sold out</span>' : ""}
+      <span class="nm">${it.name}</span>
+      <span class="st">${it.stat || (it.stock ? `only ${it.stock} left` : "&nbsp;")}</span>
+    </button>`;
+  }).join("");
+  note.textContent = c.line;
+}
+
+// ── Item detail ──
+const veil = document.getElementById("veil");
+function closeVeil() { veil.classList.remove("on"); veil.innerHTML = ""; }
+veil.addEventListener("click", (e) => { if (e.target === veil) closeVeil(); });
+function openItem(it) {
+  let qty = 1;
+  const owned = who.owned.includes(it.id);
+  veil.innerHTML = `<div class="detail" role="dialog" aria-label="${it.name}">
+    <div class="big">${ico(it.icon)}<small>Midjourney item art</small></div>
+    <div>
+      <div class="cat">${CATS.find((c) => c.id === it.cat).name}</div>
+      <h3>${it.name}</h3>
+      ${it.stat ? `<span class="stat">${it.stat}</span>` : ""}
+      <p>${it.notes || "Exactly what it says on the tag."}</p>
+      ${owned ? `<p class="owned">You already carry one.</p>` : ""}
+      <div class="row">
+        <div class="qty"><button type="button" data-q="-1">−</button><span id="q">1</span><button type="button" data-q="1">+</button></div>
+        <b style="font-family:Cinzel,serif" id="qprice">${priceLabel(it)}</b>
+      </div>
+      <div class="row">
+        <button class="btn-brass" id="addBtn" type="button">Into the satchel</button>
+        <button class="btn-plain" type="button" id="cancelBtn">Put it back</button>
+      </div>
+    </div>
+  </div>`;
+  veil.classList.add("on");
+  veil.querySelectorAll("[data-q]").forEach((b) => b.onclick = () => {
+    qty = Math.max(1, Math.min(it.stock ?? 99, qty + Number(b.dataset.q)));
+    veil.querySelector("#q").textContent = qty;
+    veil.querySelector("#qprice").textContent = `${(it.price * qty).toLocaleString()}s${it.per ? ` (${qty} ${it.per}s)` : ""}`;
+  });
+  veil.querySelector("#cancelBtn").onclick = closeVeil;
+  veil.querySelector("#addBtn").onclick = () => { addToSatchel(it, qty); closeVeil(); };
+}
+
+function addToSatchel(it, qty) {
+  const line = satchel.find((l) => l.item.id === it.id);
+  if (line) line.qty += qty; else satchel.push({ item: it, qty });
+  haggled = null;
+  say(pick(LINES.add));
+  const btn = document.getElementById("satchelBtn");
+  btn.classList.remove("bump"); void btn.offsetWidth; btn.classList.add("bump");
+  renderSatchel();
+}
+
+// ── Satchel ──
+const sheet = document.getElementById("sheet");
+document.getElementById("sheetHead").onclick = () => sheet.classList.toggle("open");
+document.getElementById("satchelBtn").onclick = () => sheet.classList.add("open");
+function subtotal() { return satchel.reduce((s, l) => s + l.item.price * l.qty, 0); }
+function total() { const s = subtotal(); return haggled ? Math.max(0, Math.round(s * haggled.mult)) : s; }
+function renderSatchel() {
+  const n = satchel.reduce((s, l) => s + l.qty, 0);
+  document.getElementById("satchelN").textContent = n;
+  document.getElementById("sheetSum").textContent = n ? `${n} item${n === 1 ? "" : "s"} · ${total().toLocaleString()}s` : "empty";
+  document.getElementById("lines").innerHTML = satchel.map((l, i) => `<div class="line">${ico(l.item.icon)}<span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>${(l.item.price * l.qty).toLocaleString()}s</span><button class="x" data-rm="${i}" aria-label="Remove">×</button></div>`).join("") || '<p style="opacity:.7;font-style:italic">Nothing yet. Browse the shelves.</p>';
+  const s = subtotal(), t = total(), after = coin - t;
+  document.getElementById("totals").innerHTML = satchel.length ? `
+    <div><span>Subtotal</span><span>${s.toLocaleString()}s</span></div>
+    ${haggled ? `<div class="${haggled.cls}"><span>${haggled.label}</span><span>${t - s > 0 ? "+" : ""}${(t - s).toLocaleString()}s</span></div>` : ""}
+    <div class="grand"><span>Total</span><span>${t.toLocaleString()}s</span></div>
+    <div><span>Your purse after</span><span class="${after < 0 ? "bad" : ""}">${after.toLocaleString()}s</span></div>` : "";
+  document.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => { satchel.splice(Number(b.dataset.rm), 1); haggled = null; renderSatchel(); });
+  document.getElementById("payBtn").disabled = !satchel.length || after < 0;
+  document.getElementById("haggleBtn").disabled = !satchel.length || !!haggled;
+  document.getElementById("haggle").classList.toggle("on", !!haggled);
+}
+
+// ── Haggling: 2d6 + CHA, World of Dungeons style ──
+document.getElementById("haggleBtn").onclick = () => {
+  const a = 1 + Math.floor(Math.random() * 6), b = 1 + Math.floor(Math.random() * 6), sum = a + b + who.cha;
+  const d1 = document.getElementById("d1"), d2 = document.getElementById("d2");
+  document.getElementById("haggle").classList.add("on");
+  [d1, d2].forEach((d) => { d.classList.remove("rolling"); void d.offsetWidth; d.classList.add("rolling"); d.textContent = "?"; });
+  setTimeout(() => {
+    d1.textContent = a; d2.textContent = b;
+    if (sum >= 12) haggled = { mult: 0.8, label: `Haggled (${a}+${b}+${who.cha} = ${sum}, critical)`, cls: "disc", line: pick(LINES.haggle.crit) };
+    else if (sum >= 10) haggled = { mult: 0.9, label: `Haggled (${a}+${b}+${who.cha} = ${sum})`, cls: "disc", line: pick(LINES.haggle.full) };
+    else if (sum >= 7) haggled = { mult: 0.95, label: `Haggled (${a}+${b}+${who.cha} = ${sum}, a favour owed)`, cls: "disc", line: pick(LINES.haggle.partial) };
+    else haggled = { mult: 1.1, label: `Haggled badly (${a}+${b}+${who.cha} = ${sum})`, cls: "bad", line: pick(LINES.haggle.miss) };
+    document.getElementById("verdict").innerHTML = `<b>${sum >= 10 ? "Success" : sum >= 7 ? "Partial" : "Miss"}</b> — ${haggled.line.replace("{name}", who.name)}`;
+    say(haggled.line);
+    renderSatchel();
+  }, 600);
+};
+
+// ── Paying: coins fly from the purse to the till, then a receipt ──
+document.getElementById("payBtn").onclick = () => {
+  const t = total();
+  const from = document.getElementById("payBtn").getBoundingClientRect();
+  const to = document.querySelector(".keeper").getBoundingClientRect();
+  const n = Math.min(14, Math.max(4, Math.round(t / 8)));
+  for (let i = 0; i < n; i++) {
+    const c = document.createElement("div");
+    c.className = "flycoin";
+    c.style.left = `${from.left + from.width / 2}px`; c.style.top = `${from.top}px`;
+    document.body.appendChild(c);
+    c.animate([
+      { transform: "translate(0,0) scale(1)", opacity: 1 },
+      { transform: `translate(${(to.left + to.width / 2 - from.left - from.width / 2) / 2 + (Math.random() - 0.5) * 80}px, ${(to.top - from.top) / 2 - 120}px) scale(1.2)`, opacity: 1, offset: 0.5 },
+      { transform: `translate(${to.left + to.width / 2 - from.left - from.width / 2}px, ${to.top + to.height * 0.7 - from.top}px) scale(0.6)`, opacity: 0.2 },
+    ], { duration: 700 + i * 45, easing: "cubic-bezier(.4,0,.6,1)" }).onfinish = () => c.remove();
+  }
+  const bought = satchel.slice();
+  setTimeout(() => {
+    coin -= t;
+    who.owned.push(...bought.map((l) => l.item.id));
+    document.getElementById("purse").textContent = coin;
+    sheet.classList.remove("open");
+    say(pick(LINES.pay));
+    veil.innerHTML = `<div class="receipt" role="dialog" aria-label="Receipt">
+      <h3>The Rusted Lantern</h3><small style="margin:0">Sold to ${who.name}</small>
+      <div class="r-lines">${bought.map((l) => `<div><span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>${(l.item.price * l.qty).toLocaleString()}s</span></div>`).join("")}
+      ${haggled ? `<div><span>${haggled.mult < 1 ? "Haggled" : "Haggled badly"}</span><span>${(t - subtotal()).toLocaleString()}s</span></div>` : ""}
+      <div style="font-weight:600"><span>Paid</span><span>${t.toLocaleString()}s</span></div></div>
+      <span class="stamp">Paid in full</span>
+      <small>Added to ${who.name}'s pack. The purchase appears in the session log.</small>
+      <div style="margin-top:14px"><button class="btn-brass" type="button" id="doneBtn">Back to the shelves</button></div>
+    </div>`;
+    veil.classList.add("on");
+    veil.querySelector("#doneBtn").onclick = closeVeil;
+    satchel = []; haggled = null;
+    renderSatchel(); renderShelf();
+  }, 900);
+};
+
+// ── Shelf interactions ──
+document.getElementById("tabs").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-cat]"); if (!b) return;
+  cat = b.dataset.cat; renderTabs(); renderShelf();
+  say(cat === "sell" ? "Selling, are we? Let's see what you've dragged in." : pick(LINES.hover[cat]));
+});
+document.getElementById("shelf").addEventListener("mouseover", (e) => {
+  const b = e.target.closest(".item"); if (!b || b.dataset.said) return;
+  b.dataset.said = "1";
+  const it = ITEMS.find((i) => i.id === b.dataset.id);
+  if (!it) return;
+  if (it.stock === 0) say(pick(LINES.out));
+  else if (it.price > coin) say(pick(LINES.poor));
+  else if (Math.random() < 0.5) say(pick(LINES.hover[it.cat]));
+});
+document.getElementById("shelf").addEventListener("click", (e) => {
+  const b = e.target.closest(".item"); if (!b) return;
+  if (b.dataset.sell) {
+    const it = ITEMS.find((i) => i.id === b.dataset.sell);
+    say(`${Math.floor(it.price / 2)} silver for that ${it.name.toLowerCase()}. Final offer. Probably.`);
+    return;
+  }
+  const it = ITEMS.find((i) => i.id === b.dataset.id);
+  if (it && it.stock !== 0) openItem(it);
+});
+
+// ══ DM: catalog ══
+function renderDm() {
+  const q = document.getElementById("dmSearch").value.trim().toLowerCase();
+  const cf = document.getElementById("dmCat").value;
+  document.getElementById("dmRows").innerHTML = ITEMS.filter((it) => (!cf || it.cat === cf) && (!q || it.name.toLowerCase().includes(q))).map((it) => `
+    <tr class="${it.hidden ? "hidden" : ""}">
+      <td class="ico">${ico(it.icon)}</td>
+      <td><input class="in" value="${it.name}" /></td>
+      <td><select class="in">${CATS.map((c) => `<option ${c.id === it.cat ? "selected" : ""}>${c.name}</option>`).join("")}</select></td>
+      <td style="white-space:nowrap"><input class="in" style="width:70px" value="${it.price}" />s${it.per ? `/${it.per}` : ""}</td>
+      <td><input class="in" value="${it.stat || ""}" placeholder="—" /></td>
+      <td><input class="in" value="${(it.notes || "").replace(/"/g, "&quot;")}" placeholder="—" /></td>
+      <td><input class="in" style="width:60px" value="${it.stock ?? "∞"}" /></td>
+      <td><button class="eye" type="button" data-hide="${it.id}" title="Show or hide in the shop">${it.hidden ? "◌" : "◉"}</button></td>
+    </tr>`).join("");
+  document.querySelectorAll("[data-hide]").forEach((b) => b.onclick = () => { const it = ITEMS.find((i) => i.id === b.dataset.hide); it.hidden = !it.hidden; renderDm(); });
+}
+document.getElementById("dmCat").innerHTML += CATS.map((c) => `<option value="${c.id}">${c.name}</option>`).join("");
+document.getElementById("dmSearch").oninput = renderDm;
+document.getElementById("dmCat").onchange = renderDm;
+document.querySelectorAll("[data-sw]").forEach((s) => s.onclick = () => s.classList.toggle("on"));
+document.getElementById("exportBtn").onclick = () => {
+  const csv = ["id,name,category,price,per,effect,notes,stock,shown", ...ITEMS.map((i) => [i.id, i.name, i.cat, i.price, i.per || "", i.stat || "", i.notes || "", i.stock ?? "", i.hidden ? "no" : "yes"].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
+  a.download = "rusted-lantern-items.csv"; a.click();
+};
+document.getElementById("importBtn").onclick = () => {
+  veil.innerHTML = `<div class="dmmodal" role="dialog" aria-label="Import items">
+    <h3>Import items — check the changes</h3>
+    <p style="margin:0;color:var(--pal-muted)"><code>rusted-lantern-items (edited).csv</code> · 58 rows</p>
+    <ul>
+      <li><span class="pill new">New</span> Silvered Dagger — 25s · d6, +2 vs. undead</li>
+      <li><span class="pill new">New</span> Potion of Mending — 40s · heal 2d6</li>
+      <li><span class="pill new">New</span> Map of the Sewers — 15s</li>
+      <li><span class="pill chg">Changed</span> Lantern — 20s → 15s</li>
+      <li><span class="pill chg">Changed</span> Fire Oil (flask) — notes reworded</li>
+      <li><span class="pill gone">Not in file</span> Warhorse — <label style="display:inline-flex;gap:6px;align-items:center"><input type="checkbox" checked /> hide from the shop</label></li>
+    </ul>
+    <div class="safe">Matched by the <b>id</b> column. Nothing in anyone's pack changes: items already bought are each character's own copy, with the price they paid.</div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:14px">
+      <button class="tbtn" type="button" id="impCancel">Cancel</button>
+      <button class="tbtn primary" type="button" id="impOk">Import 3 new, update 2</button>
+    </div>
+  </div>`;
+  veil.classList.add("on");
+  veil.querySelector("#impCancel").onclick = closeVeil;
+  veil.querySelector("#impOk").onclick = closeVeil;
+};
+
+// ── Prototype switches ──
+function seg(id, fn) {
+  document.getElementById(id).addEventListener("click", (e) => {
+    const v = e.target.dataset.v; if (!v) return;
+    [...document.getElementById(id).children].forEach((c) => c.classList.toggle("on", c.dataset.v === v));
+    fn(v);
+  });
+}
+seg("viewSeg", (v) => { document.getElementById("v-shop").classList.toggle("on", v === "shop"); document.getElementById("v-dm").classList.toggle("on", v === "dm"); if (v === "dm") renderDm(); });
+seg("palSeg", (v) => { document.body.dataset.pal = v; });
+seg("stateSeg", (v) => { document.getElementById("shop").classList.toggle("closed", v === "combat"); if (v === "combat") { sheet.classList.remove("open"); } else say("Ah, the dust's settled. Where were we?"); });
+seg("whoSeg", (v) => {
+  who = SHOPPERS[v]; coin = who.coin; satchel = []; haggled = null;
+  document.getElementById("purse").textContent = coin;
+  document.getElementById("whoName").textContent = who.name;
+  document.getElementById("whoImg").src = who.img;
+  renderSatchel(); renderShelf(); say(pick(LINES.greet));
+});
+
+renderTabs(); renderShelf(); renderSatchel();
+say(pick(LINES.greet));
+</script>
+</body>
+</html>
