@@ -329,8 +329,8 @@ export default function CharactersListPage() {
                   <span className="home-count">{NUMBER_WORDS[orderedParty.length] || orderedParty.length} adventurer{orderedParty.length === 1 ? "" : "s"}</span>
                 </div>
                 <div className="home-party">
-                  {orderedParty.map((c) => (
-                    <PartyCard key={c.slug} character={c} status={statusBySlug.get(c.slug)} isMe={me?.slug === c.slug} />
+                  {orderedParty.map((c, i) => (
+                    <PartyCard key={c.slug} character={c} status={statusBySlug.get(c.slug)} isMe={me?.slug === c.slug} index={i} />
                   ))}
                 </div>
               </section>

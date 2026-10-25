@@ -169,7 +169,7 @@
   --top: calc(var(--cy) - var(--orb) / 2);
   --obottom: calc(var(--cy) + var(--orb) / 2);
   position: relative; height: calc(var(--obottom) + 66px);
-  animation: homeBob 3.6s ease-in-out infinite;
+  animation: homeBob var(--bob-dur, 3.6s) ease-in-out var(--bob-delay, 0s) infinite;
 }
 .home-slot--open .home-slot-float { animation-play-state: paused; }
 @keyframes homeBob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
@@ -276,7 +276,7 @@
 }
 .home-page[data-light] .home-slot--open .home-orb-frame { box-shadow: 0 10px 26px rgba(80, 60, 30, 0.25), inset 0 0 0 4px color-mix(in srgb, var(--c-accent) 16%, transparent); }
 /* A soft halo breathing round the orb at rest. */
-.home-orb-frame::after { content: ""; position: absolute; inset: -7px; border-radius: inherit; border: 1px solid color-mix(in srgb, var(--c-glow) 30%, transparent); animation: homeHalo 3.6s ease-in-out infinite; }
+.home-orb-frame::after { content: ""; position: absolute; inset: -7px; border-radius: inherit; border: 1px solid color-mix(in srgb, var(--c-glow) 30%, transparent); animation: homeHalo var(--bob-dur, 3.6s) ease-in-out var(--bob-delay, 0s) infinite; }
 .home-slot--open .home-orb-frame::after { animation: none; opacity: 0; }
 @keyframes homeHalo { 0%, 100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 0.2; transform: scale(1.05); } }
 /* You: a stronger rim and glow. */

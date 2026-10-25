@@ -23,7 +23,7 @@ const canHover = () => window.matchMedia?.("(hover: hover)").matches ?? true;
  * character's own palette. `other` (not in the party) shows the orb in
  * monochrome until it opens.
  */
-export default function PartyCard({ character, status, isMe = false, other = false }) {
+export default function PartyCard({ character, status, isMe = false, other = false, index = 0 }) {
   const [open, setOpen] = useState(false);
   const [portraitFailed, setPortraitFailed] = useState(false);
   const [imageAspect, setImageAspect] = useState(0); // naturalWidth / naturalHeight, once loaded
@@ -70,6 +70,9 @@ export default function PartyCard({ character, status, isMe = false, other = fal
         "--c-muted": `color-mix(in srgb, ${p.textMuted} 55%, ${p.textBody})`,
         // The orb's glow: on a light palette the "bright" accent is its darkest ink.
         "--c-glow": p.light ? "#c8a46a" : p.accentBright,
+        // Each orb floats on its own rhythm, so neighbours drift in and out of step.
+        "--bob-dur": `${(3.3 + (index % 3) * 0.45).toFixed(2)}s`,
+        "--bob-delay": `${(-index * 1.3).toFixed(2)}s`,
       }}
       tabIndex={0}
       aria-label={`${character.name}${kind ? `, ${kind}` : ""}`}
