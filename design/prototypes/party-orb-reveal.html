@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Party Orb Reveal</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root { --bg: #0d0f14; --muted: #7d93a0; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body { min-height: 100vh; background: radial-gradient(ellipse at 50% -10%, rgba(20,45,80,0.45) 0%, transparent 60%), var(--bg); color: #c8bfaf; font-family: 'Crimson Text', Georgia, serif; }
+  .bar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px dashed rgba(100,130,160,0.25); font-size: 13px; color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid rgba(100,130,160,0.25); border-radius: 4px; overflow: hidden; }
+  .seg button { background: transparent; border: none; padding: 6px 12px; color: var(--muted); cursor: pointer; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .seg button.on { background: #1e3a4e; color: #a0c0d0; }
+  main { max-width: 1180px; margin: 0 auto; padding: 30px 20px 80px; }
+  h2 { font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; font-size: 20px; margin: 0 0 6px; color: #e2d8c6; }
+  .lede { color: var(--muted); font-style: italic; margin: 0 0 34px; max-width: 72ch; }
+
+  .party { display: grid; grid-template-columns: repeat(auto-fill, minmax(196px, 1fr)); gap: 18px; }
+
+  /* Each slot reserves the full card's footprint, so nothing shifts when a card opens. */
+  .slot {
+    --W: 100%; --orb: 150px; --ease: cubic-bezier(.65,0,.25,1); --dur: 0.7s;
+    position: relative; height: 380px; cursor: pointer; outline: none;
+  }
+  /* At rest the slot floats: the orb (and its nameplate) bob gently. */
+  .float { position: absolute; inset: 0; animation: bob 3.6s ease-in-out infinite; transition: transform 0.4s ease; }
+  .slot.open .float { animation-play-state: paused; }
+  @keyframes bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+
+  /* ── The card, exactly as on the homepage today, under a mask ──
+     At rest the mask is a circle round the middle of the portrait (an inset()
+     with a radius of half its size); open, it's the card's own rounded rectangle.
+     Both are inset() shapes, so the browser morphs one into the other. */
+  .card { position: absolute; inset: 0; display: flex; flex-direction: column; border-radius: 12px; overflow: hidden;
+    background: var(--c-surface);
+    clip-path: inset(var(--top) var(--side) var(--bottom) var(--side) round calc(var(--orb) / 2));
+    transition: clip-path var(--dur) var(--ease); }
+  .slot.open .card { clip-path: inset(0 0 0 0 round 12px); }
+  .portrait { position: relative; aspect-ratio: 3 / 3.4; overflow: hidden; background: var(--c-surface); flex: none; }
+  /* A touch of lens at rest: the picture is magnified in the orb and settles flat as it opens. */
+  .portrait img { width: 100%; height: 100%; object-fit: cover; object-position: var(--pos, 50% 22%); display: block;
+    transform: scale(1.18); transform-origin: 50% var(--face-y, 36%); transition: transform var(--dur) var(--ease); }
+  .slot.open .portrait img { transform: scale(1); }
+  .portrait::after { content: ""; position: absolute; inset: 0 0 -1px; background: linear-gradient(180deg, transparent 55%, var(--c-surface) 100%); opacity: 0; transition: opacity var(--dur) var(--ease); }
+  .slot.open .portrait::after { opacity: 1; }
+  .body { flex: 1; padding: 0 14px 12px; margin-top: -26px; position: relative; z-index: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: 4px;
+    opacity: 0; transform: translateY(10px); transition: opacity 0.35s ease, transform 0.45s ease; }
+  .slot.open .body { opacity: 1; transform: none; transition-delay: 0.25s; }
+  .name { font-family: 'Cinzel', serif; font-size: 17px; letter-spacing: 0.05em; color: var(--c-text); line-height: 1.2; }
+  .epithet { font-style: italic; font-size: 14px; color: var(--c-bright); }
+  .kind { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--c-muted); }
+  .lvl { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c-accent) 60%, transparent); color: var(--c-bright); }
+  .hp { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+  .hp-bar { flex: 1; height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--c-muted) 35%, transparent); overflow: hidden; }
+  .hp-bar i { display: block; height: 100%; }
+  .hp-num { font-family: 'Cinzel', serif; font-size: 12px; color: var(--c-muted); }
+  .actions { display: grid; grid-template-columns: 1fr 1fr; border-top: 1px solid color-mix(in srgb, var(--c-accent) 35%, transparent);
+    opacity: 0; transition: opacity 0.35s ease; }
+  .slot.open .actions { opacity: 1; transition-delay: 0.3s; }
+  .actions a { display: flex; align-items: center; justify-content: center; min-height: 40px; color: var(--c-bright); text-decoration: none; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .actions a + a { border-left: 1px solid color-mix(in srgb, var(--c-accent) 35%, transparent); }
+  .actions a:hover { background: color-mix(in srgb, var(--c-accent) 18%, transparent); }
+
+  /* ── The glass: highlight, terminator shadow and a tint, over the orb only; fades as it flattens ── */
+  .glass { position: absolute; pointer-events: none; z-index: 2;
+    left: var(--side); right: var(--side); top: var(--top); height: var(--orb); border-radius: 50%;
+    background:
+      radial-gradient(circle at 34% 28%, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0.1) 18%, transparent 34%),
+      radial-gradient(circle at 50% 50%, transparent 50%, rgba(0,0,0,0.35) 72%, rgba(0,0,0,0.8) 100%),
+      radial-gradient(circle at 70% 78%, color-mix(in srgb, var(--c-bright) 35%, transparent) 0%, transparent 40%);
+    transition: opacity 0.35s ease; }
+  .slot.open .glass { opacity: 0; }
+
+  /* ── The frame: the orb's glowing rim grows into the card's border ── */
+  .frame { position: absolute; z-index: 3; pointer-events: none;
+    left: var(--side); right: var(--side); top: var(--top); bottom: var(--bottom);
+    border-radius: calc(var(--orb) / 2); border: 1px solid color-mix(in srgb, var(--c-bright) 70%, transparent);
+    box-shadow: 0 0 34px color-mix(in srgb, var(--c-bright) 40%, transparent), inset 0 0 0 4px color-mix(in srgb, var(--c-accent) 0%, transparent);
+    transition: left var(--dur) var(--ease), right var(--dur) var(--ease), top var(--dur) var(--ease), bottom var(--dur) var(--ease), border-radius var(--dur) var(--ease), box-shadow var(--dur) var(--ease); }
+  .slot.open .frame { left: 0; right: 0; top: 0; bottom: 0; border-radius: 12px;
+    box-shadow: 0 16px 36px rgba(0,0,0,0.45), inset 0 0 0 4px color-mix(in srgb, var(--c-accent) 22%, transparent); }
+  /* A soft halo ring breathing round the orb at rest. */
+  .frame::after { content: ""; position: absolute; inset: -7px; border-radius: inherit; border: 1px solid color-mix(in srgb, var(--c-bright) 30%, transparent); animation: halo 3.6s ease-in-out infinite; transition: opacity 0.3s; }
+  .slot.open .frame::after { animation: none; opacity: 0; }
+  @keyframes halo { 0%, 100% { opacity: 0.8; transform: scale(1); } 50% { opacity: 0.2; transform: scale(1.05); } }
+
+  /* ── At rest: a nameplate under the orb, which gives way to the card's own name ── */
+  .plate { position: absolute; left: 0; right: 0; top: calc(var(--top) + var(--orb) + 18px); text-align: center; transition: opacity 0.25s ease, transform 0.4s ease; }
+  .plate b { display: block; font-family: 'Cinzel', serif; font-weight: 400; font-size: 15px; letter-spacing: 0.06em; color: #e8dfcf; }
+  .plate em { display: block; font-size: 13px; color: var(--muted); }
+  .plate .mini-hp { width: 90px; height: 4px; margin: 7px auto 0; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
+  .plate .mini-hp i { display: block; height: 100%; }
+  .slot.open .plate { opacity: 0; transform: translateY(8px); }
+  /* The orb's shadow on the "floor" — shrinks as it rises, fades as the card opens. */
+  .floor { position: absolute; left: 50%; width: 110px; height: 14px; margin-left: -55px; bottom: 6px; border-radius: 50%; background: radial-gradient(ellipse, rgba(0,0,0,0.6), transparent 70%); animation: floor 3.6s ease-in-out infinite; transition: opacity 0.3s; }
+  .slot.open .floor { opacity: 0; }
+  @keyframes floor { 0%, 100% { transform: scale(1); opacity: 0.85; } 50% { transform: scale(0.75); opacity: 0.5; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .float, .frame::after, .floor { animation: none; }
+    .slot { --dur: 0.01s; }
+  }
+</style>
+</head>
+<body>
+<div class="bar">
+  <span>Prototype · orbs that open into cards</span>
+  <div class="seg" id="speed"><button data-v="0.7s" class="on">Normal</button><button data-v="2.4s">Slow-mo</button></div>
+  <span>Hover an orb (or tap it on a phone) to open it; tap again or elsewhere to close.</span>
+</div>
+<main>
+  <h2>The Party</h2>
+  <p class="lede">At rest each character floats as a glass orb with a nameplate and a sliver of HP. Hover (or tap) and the orb's rim widens into the card's border: the circular mask morphs into the rounded card, the glass shading fades, the picture settles flat, and the name, HP and links rise in.</p>
+  <div class="party" id="party"></div>
+</main>
+<script>
+const PAL = {
+  ash:       { accent: "#888888", bright: "#b8b8b8", surface: "#1c1c1c", text: "#d8d8d8", muted: "#8a8a8a" },
+  nightwood: { accent: "#2e8a58", bright: "#58c890", surface: "#081a0e", text: "#cfe0d2", muted: "#5a8a6a" },
+  ocean:     { accent: "#6a8fa8", bright: "#a0c0d0", surface: "#111e2c", text: "#c8bfaf", muted: "#6a8a9a" },
+  ember:     { accent: "#a06840", bright: "#c89060", surface: "#2a160a", text: "#d4c4b0", muted: "#8a6848" },
+  vellum:    { accent: "#7a5c30", bright: "#4a3418", surface: "#e8e0cc", text: "#2a2018", muted: "#8a7050" },
+};
+const S3 = "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/";
+const PARTY = [
+  { name: "Quietclaw", ep: "Crackle", kind: "Kenku · Rogue", pal: "ash", img: "the-sound-of-a-hearthfire-burning-quietclaw-1778262066730.png", hp: [3, 6] },
+  { name: "Aesop", ep: "Slow Justice", kind: "Tortle · Paladin", pal: "nightwood", img: "aesop.jpg", hp: [15, 18] },
+  { name: "Eòghan MacGille Fàth", ep: "Mistbourne", kind: "Firbolg · Warlock", pal: "ocean", img: "eoghan-1784698034076.png", hp: [18, 18], pos: "78% 22%" },
+  { name: "Liu Sha", ep: "Louie", kind: "Goliath · Monk", pal: "ember", img: "liu-sha.jpg", hp: [12, 12] },
+  { name: "Meanjeans", ep: "I didn't ask for this", kind: "Halfling · Rogue", pal: "vellum", img: "david-1784666229879.png", hp: [12, 12] },
+];
+const hpColor = (pct, bright) => (pct > 0.5 ? bright : pct >= 0.2 ? "#c8a840" : "#c06060");
+
+const host = document.getElementById("party");
+host.innerHTML = PARTY.map((c, i) => {
+  const p = PAL[c.pal], pct = c.hp[0] / c.hp[1], fill = hpColor(pct, c.pal === "vellum" ? "#a07840" : p.bright);
+  const vars = `--c-accent:${p.accent};--c-bright:${c.pal === "vellum" ? "#c8a46a" : p.bright};--c-surface:${p.surface};--c-text:${p.text};--c-muted:${p.muted};--pos:${c.pos || "50% 22%"}`;
+  return `<div class="slot" tabindex="0" style="${vars}">
+    <div class="float" style="animation-delay:${-i * 0.7}s">
+      <div class="card">
+        <div class="portrait"><img src="${S3}${c.img}" alt="" /></div>
+        <div class="body">
+          <div class="name">${c.name}</div>
+          <div class="epithet">“${c.ep}”</div>
+          <div class="kind">${c.kind}<span class="lvl">Lv 1</span></div>
+          <div class="hp"><div class="hp-bar"><i style="width:${Math.round(pct * 100)}%;background:${fill}"></i></div><span class="hp-num">${c.hp[0]}/${c.hp[1]}</span></div>
+        </div>
+        <div class="actions"><a href="#">⚔ Session</a><a href="#">❡ Profile</a></div>
+      </div>
+      <div class="glass"></div>
+      <div class="frame" style="animation-delay:${-i * 0.7}s"></div>
+      <div class="plate"><b>${c.name.split(" ")[0]}</b><em>${c.kind}</em><div class="mini-hp"><i style="width:${Math.round(pct * 100)}%;background:${fill}"></i></div></div>
+    </div>
+    <div class="floor" style="animation-delay:${-i * 0.7}s"></div>
+  </div>`;
+}).join("");
+
+// The orb sits centred on the portrait: work out the mask's insets from the slot's size.
+function layout() {
+  document.querySelectorAll(".slot").forEach((slot) => {
+    const W = slot.clientWidth, H = slot.clientHeight, orb = Math.min(150, W - 30);
+    // Centre the orb on the face, which sits in the upper part of these portraits.
+    const portraitH = W * 3.4 / 3, cy = portraitH * 0.36;
+    slot.style.setProperty("--orb", `${orb}px`);
+    slot.style.setProperty("--side", `${(W - orb) / 2}px`);
+    slot.style.setProperty("--top", `${cy - orb / 2}px`);
+    slot.style.setProperty("--bottom", `${H - (cy + orb / 2)}px`);
+  });
+}
+layout();
+addEventListener("resize", layout);
+
+// Hover opens on a mouse; on touch, a tap opens and a second tap (or a tap elsewhere) closes.
+const fine = matchMedia("(hover: hover)").matches;
+document.querySelectorAll(".slot").forEach((slot) => {
+  if (fine) {
+    slot.addEventListener("mouseenter", () => slot.classList.add("open"));
+    slot.addEventListener("mouseleave", () => slot.classList.remove("open"));
+  }
+  slot.addEventListener("click", (e) => {
+    if (e.target.closest("a") && slot.classList.contains("open")) return;
+    e.preventDefault();
+    if (!fine) { const was = slot.classList.contains("open"); document.querySelectorAll(".slot.open").forEach((s) => s.classList.remove("open")); slot.classList.toggle("open", !was); }
+  });
+  slot.addEventListener("focus", () => slot.classList.add("open"));
+  slot.addEventListener("blur", () => slot.classList.remove("open"));
+});
+document.addEventListener("click", (e) => { if (!fine && !e.target.closest(".slot")) document.querySelectorAll(".slot.open").forEach((s) => s.classList.remove("open")); });
+
+document.getElementById("speed").addEventListener("click", (e) => {
+  const v = e.target.dataset.v; if (!v) return;
+  document.querySelectorAll("#speed button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+  document.querySelectorAll(".slot").forEach((s) => s.style.setProperty("--dur", v));
+});
+</script>
+</body>
+</html>
