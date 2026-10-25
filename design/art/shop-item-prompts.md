@@ -44,7 +44,7 @@ Hirelings and animals are people and creatures, so swap the template's "no peopl
 | `great-weapon` | Great Weapon | `massive two-handed battle-axe with a broad crescent blade on a long iron-banded haft` |
 | `shortbow` | Shortbow | `small recurved shortbow of dark wood with a waxed string, a sling coiled beside it` |
 | `bow` | Bow | `crossbow of oak and blackened steel with a loaded bolt` |
-| `heavy-bow` | Heavy Bow / Gun | `heavy arbalest with a steel prod and a crank windlass, and an ornate flintlock musket` |
+| `heavy-bow` | Heavy Bow | `tall elegant longbow of dark polished yew, taller than a man, its limbs carved with flowing leaf motifs and wrapped in leather at the grip, strung with a waxed bowstring, standing upright beside a long leather back quiver of fletched arrows` |
 
 ## Armour (steel-blue backdrop)
 
@@ -164,9 +164,9 @@ a single small recurved shortbow of dark wood with a waxed string, a sling coile
 a single crossbow of oak and blackened steel with a loaded bolt, centered, shown whole with generous empty space around it, three-quarter view, resting slightly angled as if on display; smooth deep oxblood-crimson backdrop with a soft dark vignette; soft warm key light from upper left, gentle rim light, subtle shadow beneath; cinematic realistic fantasy, rich detailed materials and textures, high detail, no text, no hands, no people --ar 1:1 --v 7 --style raw
 ```
 
-**item-heavy-bow.png** — Heavy Bow / Gun
+**item-heavy-bow.png** — Heavy Bow
 ```
-a heavy arbalest with a steel prod and a crank windlass, and an ornate flintlock musket, centered, shown whole with generous empty space around it, three-quarter view, resting slightly angled as if on display; smooth deep oxblood-crimson backdrop with a soft dark vignette; soft warm key light from upper left, gentle rim light, subtle shadow beneath; cinematic realistic fantasy, rich detailed materials and textures, high detail, no text, no hands, no people --ar 1:1 --v 7 --style raw
+a tall elegant longbow of dark polished yew, taller than a man, its limbs carved with flowing leaf motifs and wrapped in leather at the grip, strung with a waxed bowstring, standing upright beside a long leather back quiver of fletched arrows, centered, shown whole with generous empty space around it, three-quarter view, resting slightly angled as if on display; smooth deep oxblood-crimson backdrop with a soft dark vignette; soft warm key light from upper left, gentle rim light, subtle shadow beneath; cinematic realistic fantasy, rich detailed materials and textures, high detail, no text, no hands, no people --ar 1:1 --v 7 --style raw
 ```
 
 ### Armour
