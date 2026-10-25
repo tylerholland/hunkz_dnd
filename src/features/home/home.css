@@ -150,6 +150,16 @@
   position: relative; container-type: inline-size; outline: none; cursor: pointer;
 }
 .home-slot--open { z-index: 5; }
+/* While a card is open the rest of the page dims and softens behind it, so
+   the card reads as lifted into focus rather than dropped over the row below.
+   A short delay keeps a quick sweep across the orbs from flickering it. */
+.home-dim {
+  position: fixed; inset: 0; z-index: 4; pointer-events: none; opacity: 0;
+  background: color-mix(in srgb, var(--pal-bg) 55%, transparent);
+  -webkit-backdrop-filter: blur(2px); backdrop-filter: blur(2px);
+  transition: opacity 0.3s ease;
+}
+.home-main:has(.home-slot--open) .home-dim { opacity: 1; transition-delay: 0.12s; }
 .home-slot-float {
   --orb: min(150px, calc(100cqw - 30px));
   --side: calc((100cqw - var(--orb)) / 2);
@@ -285,6 +295,11 @@
 }
 .home-slot--open .home-orb-plate { opacity: 0; transform: translateY(8px); }
 
+/* Other characters (and New character) are the quieter supporting cast:
+   they hold still — no float, no breathing halo — while the party lives. */
+.home-slot--other .home-slot-float, .home-slot-new .home-slot-float { animation: none; }
+.home-slot--other .home-orb-frame::after { animation: none; opacity: 0; }
+
 /* Other characters: the orb in monochrome until it opens. */
 .home-slot--other .home-card-portrait img { filter: grayscale(1) contrast(1.05) brightness(0.9); }
 .home-slot--other.home-slot--open .home-card-portrait img { filter: none; }
@@ -296,7 +311,6 @@
 
 /* New character: an empty orb with a plus. */
 .home-slot-new { display: block; position: relative; container-type: inline-size; text-decoration: none; color: var(--pal-accent-bright); }
-.home-slot-new .home-slot-float { animation-delay: -1.8s; }
 .home-new-orb {
   position: absolute; left: var(--side); top: var(--top); width: var(--orb); height: var(--orb); border-radius: 50%;
   display: flex; align-items: center; justify-content: center;

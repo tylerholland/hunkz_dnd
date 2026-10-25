@@ -192,6 +192,8 @@ export default function CharactersListPage() {
       />
 
       <main className="home-main">
+        {/* Dims the page behind an open character card. */}
+        <div className="home-dim" aria-hidden="true" />
 
         {/* DM password modal */}
         {dmPrompt && (
