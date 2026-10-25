@@ -85,6 +85,10 @@
   .float .eyebrow { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pal-accent); }
   .float .orb { width: 148px; height: 148px; margin: 8px auto 10px; animation: hover 4s ease-in-out infinite; }
   @keyframes hover { 50% { transform: translateY(-6px); } }
+  /* With art, the piece is shown large, its square backdrop fading into the card. */
+  .float .showcase { width: 210px; height: 210px; margin: 2px auto 6px; animation: hover 4s ease-in-out infinite;
+    -webkit-mask-image: radial-gradient(circle at 50% 48%, #000 52%, transparent 72%); mask-image: radial-gradient(circle at 50% 48%, #000 52%, transparent 72%); }
+  .float .showcase img { width: 100%; height: 100%; object-fit: cover; display: block; }
   .float h3 { margin: 0; text-align: center; font-family: 'Cinzel', serif; font-weight: 400; font-size: 21px; letter-spacing: 0.04em; }
   .float .stat { display: block; width: max-content; margin: 6px auto; padding: 1px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--cat) 70%, var(--pal-border)); font-family: 'Cinzel', serif; font-size: 12px; color: var(--pal-accent-bright); }
   .float p { margin: 6px 0 0; font-size: 15px; color: var(--pal-text-body); text-align: center; }
@@ -139,6 +143,9 @@
   .cat b { font-family: 'Cinzel', serif; font-weight: 400; font-size: 13px; letter-spacing: 0.08em; }
   .cat small { font-size: 12px; opacity: 0.75; }
   .cat.sell { --cat: #3a3a3a; }
+  .cat.has-art { background: linear-gradient(180deg, transparent 20%, color-mix(in srgb, var(--cat) 70%, #000) 88%), var(--art) center 30% / 135% auto no-repeat, var(--cat); }
+  .cat.has-art b, .cat.has-art small { text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+  .cat.has-art svg { opacity: 0; height: 26px; }
 
   /* ── Goods: round frames, like the homepage orbs ── */
   .goods { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px 14px; }
@@ -150,6 +157,11 @@
     box-shadow: 0 0 0 1px color-mix(in srgb, var(--cat) 60%, #e6bd62 40%), 0 0 22px color-mix(in srgb, var(--cat) 45%, transparent), 0 10px 18px rgba(0,0,0,0.35); }
   .orb svg { width: 56%; height: 56%; color: #f6dfa8; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5)); }
   .orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 34% 26%, rgba(255,255,255,0.32), transparent 32%), radial-gradient(circle, transparent 55%, rgba(0,0,0,0.45) 100%); }
+  /* Real item art fills the round frame; it leans in a little on hover. */
+  .orb.has-art { background: var(--cat); }
+  .orb.has-art img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.12); transition: transform 0.35s ease; }
+  .good:hover .orb.has-art img { transform: scale(1.2); }
+  .line .orb.has-art img { transform: none; }
   .good .nm { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.04em; line-height: 1.2; color: var(--pal-text); }
   .good .st { font-size: 13px; color: var(--pal-muted); min-height: 1.2em; }
   .tag { position: absolute; top: 8px; right: calc(50% - 66px); padding: 1px 8px; border-radius: 999px; background: var(--parchment); color: var(--ink); font-family: 'Cinzel', serif; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
@@ -256,6 +268,8 @@
   <div class="seg" id="viewSeg"><button class="on" data-v="shop">Player · Shop</button><button data-v="dm">DM · Item catalog</button></div>
   <span>Shopper</span>
   <div class="seg" id="whoSeg"><button class="on" data-v="eoghan">Eòghan · ocean · 64s</button><button data-v="liu">Liu Sha · ember · 18s</button><button data-v="david">Meanjeans · vellum · 40s</button></div>
+  <span>Art take</span>
+  <div class="seg" id="takeSeg"><button class="on" data-v="1">Take 1</button><button data-v="2">Take 2</button></div>
   <span>Table</span>
   <div class="seg" id="stateSeg"><button class="on" data-v="open">Exploring</button><button data-v="combat">Combat round</button></div>
 </div>
@@ -516,15 +530,30 @@ function say(text) {
   typing = setInterval(() => { el.textContent = full.slice(0, ++i); if (i >= full.length) clearInterval(typing); }, 18);
 }
 
-const orb = (it, extra = "") => `<span class="orb" style="--cat:${catColor(it.cat)}" ${extra}>${ico(it.icon)}</span>`;
+// Item art from Midjourney (design/art/items → assets/items). Items without
+// art yet fall back to their line icon. Two items have a second take to compare.
+const ART_IDS = ["light-weapon", "martial-weapon", "great-weapon", "shortbow", "bow", "heavy-bow", "light-armor", "full-armor", "shield"];
+const ALT_TAKES = { "full-armor": "full-armor-2", "shortbow": "shortbow-2" };
+let take = 1;
+function art(it) {
+  if (!ART_IDS.includes(it.id)) return null;
+  const file = take === 2 && ALT_TAKES[it.id] ? ALT_TAKES[it.id] : it.id;
+  return `assets/items/item-${file}.jpg`;
+}
+const orb = (it, extra = "") => {
+  const src = art(it);
+  return `<span class="orb${src ? " has-art" : ""}" style="--cat:${catColor(it.cat)}" ${extra}>${src ? `<img src="${src}" alt="" loading="lazy" />` : ico(it.icon)}</span>`;
+};
 const priceLabel = (it) => `${it.price.toLocaleString()}s${it.per ? `/${it.per}` : ""}`;
 
-// ── Categories ──
+// ── Categories ── (a category with art shows one of its pieces behind the tile)
+const CAT_ART = { arms: "martial-weapon", armor: "full-armor" };
 function renderCats() {
   const tiles = CATS.map((c) => {
     const list = ITEMS.filter((i) => i.cat === c.id);
     const lo = Math.min(...list.map((i) => i.price)), hi = Math.max(...list.map((i) => i.price));
-    return `<button class="cat${c.id === cat ? " on" : ""}" style="--cat:${catColor(c.id)}" data-cat="${c.id}">${ico(c.icon)}<b>${c.name}</b><small>${list.length} · ${lo === hi ? `${lo}s` : `${lo}–${hi.toLocaleString()}s`}</small></button>`;
+    const hero = CAT_ART[c.id];
+    return `<button class="cat${c.id === cat ? " on" : ""}${hero ? " has-art" : ""}" style="--cat:${catColor(c.id)};${hero ? `--art:url(assets/items/item-${hero}.jpg)` : ""}" data-cat="${c.id}">${ico(c.icon)}<b>${c.name}</b><small>${list.length} · ${lo === hi ? `${lo}s` : `${lo}–${hi.toLocaleString()}s`}</small></button>`;
   });
   tiles.push(`<button class="cat sell${cat === "sell" ? " on" : ""}" data-cat="sell">${ico("coin")}<b>Sell to Mags</b><small>half price</small></button>`);
   document.getElementById("cats").innerHTML = tiles.join("");
@@ -568,7 +597,7 @@ function renderFloat(pop) {
   f.innerHTML = `
     <button class="x" type="button" aria-label="Put it back" id="putBack">×</button>
     <div class="eyebrow">${recommended ? "Mags recommends" : CATS.find((c) => c.id === it.cat).name}</div>
-    <div class="orb" style="--cat:${catColor(it.cat)}">${ico(it.icon)}</div>
+    ${art(it) ? `<div class="showcase"><img src="${art(it)}" alt="${it.name}" /></div>` : `<div class="orb" style="--cat:${catColor(it.cat)}">${ico(it.icon)}</div>`}
     <h3>${it.name}</h3>
     ${it.stat ? `<span class="stat">${it.stat}</span>` : ""}
     <p>${it.notes || "Exactly what it says on the tag."}</p>
@@ -791,6 +820,7 @@ function shopAs(key) {
   say(pick(LINES.greet));
 }
 seg("whoSeg", shopAs);
+seg("takeSeg", (v) => { take = Number(v); renderCats(); renderGoods(); renderSatchel(); renderFloat(false); });
 shopAs("eoghan");
 </script>
 </body>
