@@ -26,6 +26,7 @@ Genuinely unfinished (verified against source, not just doc status):
 - **Story 41 — Campaign Settings Admin** (`design/stories/41-campaign-settings-admin.md`): Approved, ready to build — blocked on 39 and 40 landing first.
 - **Story 42 — Profile View Slim-Down** (`design/stories/42-profile-view-slimdown.md`): Approved, ready to build. Profile view still has all four tabs (Combat/Map not yet removed).
 - **Story 21 — Combat Efficiency** (`design/stories/21-combat-efficiency.md`): Awaiting design — AoE multi-target damage, condition tooltips, NPC concentration tracking.
+- **Story 71 — Friendly domain over HTTPS** (`design/stories/71-custom-domain-https.md`): Parked until Tyler has time for DNS records. Subdomain of his personal domain + CloudFront + free ACM certificate (us-east-1); Claude does the AWS/deploy side, Tyler adds two DNS records.
 - **Story 25 — World Guide**: Iceboxed (deliberately shelved — distinct from Story 26, the World Guide *browser*, which is implemented).
 
 ## Roadmap (agreed 2026-07-16) — status
