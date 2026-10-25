@@ -13,7 +13,8 @@ describe("cardName", () => {
     expect(plateName("\"The Sound of a Hearthfire Burning\" Quietclaw")).toBe("Quietclaw");
     expect(plateName("Eòghan MacGille Fàth")).toBe("Eòghan");
     expect(plateName("Mr. Meanjeans")).toBe("Meanjeans");
-    expect(plateName("Liu Sha")).toBe("Liu");
+    expect(plateName("Liu Sha")).toBe("Liu Sha");
+    expect(plateName("Bartholomew Fizzlewhistle")).toBe("Bartholomew");
     expect(plateName("Aesop")).toBe("Aesop");
   });
 });

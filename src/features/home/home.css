@@ -101,18 +101,6 @@
 .road-foe-ring { stroke: var(--pal-accent); stroke-width: 1.5; }
 .road-foe-initials { font-family: 'Cinzel', serif; font-size: 10px; fill: #f2e6d2; text-anchor: middle; }
 
-/* ── Continue as ── */
-.home-continue {
-  display: flex; align-items: center; gap: 14px; padding: 12px 16px; margin: -8px 0 26px;
-  border-radius: 10px; border: 1px solid var(--me-accent);
-  background: linear-gradient(90deg, color-mix(in srgb, var(--me-accent) 22%, var(--pal-bg)), color-mix(in srgb, var(--pal-bg) 60%, transparent) 70%);
-}
-.home-page[data-light] .home-continue { background: linear-gradient(90deg, color-mix(in srgb, var(--me-accent) 10%, var(--pal-bg)), color-mix(in srgb, var(--pal-bg) 60%, transparent) 70%); }
-.home-continue img { width: 46px; height: 46px; border-radius: 50%; object-fit: cover; border: 2px solid var(--me-accent); }
-.home-continue-who { flex: 1; min-width: 0; }
-.home-continue-who b { font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.06em; color: var(--pal-text); font-size: 18px; }
-.home-continue-who span { display: block; font-size: 14px; color: var(--home-muted); }
-
 /* ── The party ── */
 .home-section-head { display: flex; align-items: baseline; gap: 12px; margin: 0 0 14px; }
 .home-section-head h2 { font-family: 'Cinzel', serif; font-weight: 400; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pal-text); margin: 0; }
@@ -324,7 +312,6 @@
   .home-hero { padding: 24px 18px 20px; }
   .home-party { grid-template-columns: repeat(2, 1fr); gap: 12px; }
   .home-card-name { font-size: 15px; }
-  .home-continue { flex-wrap: wrap; }
 }
 
 @media (prefers-reduced-motion: reduce) {

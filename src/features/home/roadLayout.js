@@ -42,13 +42,15 @@ export function cardName(name) {
 
 /**
  * The short name under an orb: drop a leading quoted phrase ("The Sound of a
- * Hearthfire Burning" Quietclaw → Quietclaw) and a title ("Mr."), then the
- * first word.
+ * Hearthfire Burning" Quietclaw → Quietclaw) and a title ("Mr."); keep a short
+ * name whole (Liu Sha), otherwise the first name (Eòghan MacGille Fàth → Eòghan).
  */
 export function plateName(name) {
-  const words = String(name || "").replace(/^\s*["“][^"”]*["”]\s*/, "").trim().split(/\s+/).filter(Boolean);
-  const first = words.find((w) => !/^[A-Z][a-z]{0,3}\.$/.test(w)) || words[0] || "";
-  return first || String(name || "").trim();
+  const words = String(name || "").replace(/^\s*["“][^"”]*["”]\s*/, "").trim().split(/\s+/).filter(Boolean)
+    .filter((w, i, all) => !(i < all.length - 1 && /^[A-Z][a-z]{0,3}\.$/.test(w)));
+  if (!words.length) return String(name || "").trim();
+  const whole = words.join(" ");
+  return words.length <= 2 && whole.length <= 14 ? whole : words[0];
 }
 
 export function initials(name) {

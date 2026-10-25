@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import { listCharacters, verifyPassword, getPartyRoster, getChronicle, getSessionState, putChronicleNextSession } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import TopNav from "../components/TopNav";
-import PortraitImg from "../components/PortraitImg";
 import { useTextScale } from "../lib/useTextScale";
 import { readChronicleViewer, viewerCredentials } from "../features/chronicle/chronicleViewer";
 import Atmosphere from "../components/Atmosphere";
@@ -306,18 +305,6 @@ export default function CharactersListPage() {
             onSave={saveNextSession}
             onClose={() => { setScheduling(false); setScheduleState({ saving: false, error: null }); }}
           />
-        )}
-
-        {/* Continue as… (only when this tab is signed in) */}
-        {me && (
-          <div className="home-continue" style={{ "--me-accent": (PALETTES[me.palette] || pal).light ? "#a07840" : (PALETTES[me.palette] || pal).accentBright }}>
-            {me.portraitUrl && <PortraitImg src={me.portraitUrl} focus={me.portraitFocus} alt="" />}
-            <div className="home-continue-who">
-              <b>Continue as {me.name.replace(/^"[^"]*"\s*/, "").split(" ")[0]}</b>
-              <span>You're signed in on this device.</span>
-            </div>
-            <Link className="home-btn" to={`/characters/${me.slug}/session`}>⚔ To the session</Link>
-          </div>
         )}
 
         {loading ? (

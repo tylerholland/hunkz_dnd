@@ -82,7 +82,7 @@ describe("CharactersListPage", () => {
     renderPage();
 
     const party = await screen.findByRole("region", { name: "The Party" });
-    expect(within(party).getByText("Liu Sha")).toBeInTheDocument();
+    expect(within(party).getByLabelText(/^Liu Sha/)).toBeInTheDocument();
     expect(await within(party).findByText("7/12")).toBeInTheDocument();
     expect(within(party).getByText("Poisoned")).toBeInTheDocument();
     expect(within(party).queryByText("Aragorn")).not.toBeInTheDocument();
@@ -106,7 +106,7 @@ describe("CharactersListPage", () => {
     expect(screen.queryByRole("button", { name: "Change" })).not.toBeInTheDocument();
   });
 
-  it("greets a signed-in player and lets them schedule the next session", async () => {
+  it("marks the signed-in player and lets them schedule the next session", async () => {
     sessionStorage.setItem("dnd_char_liu-sha", "pw");
     apiMocks.listCharacters.mockResolvedValueOnce([ARAGORN, LIU]);
     apiMocks.getPartyRoster.mockResolvedValueOnce({ exists: true, members: ["aragorn", "liu-sha"] });
@@ -115,8 +115,8 @@ describe("CharactersListPage", () => {
 
     renderPage();
 
-    expect(await screen.findByText("Continue as Liu")).toBeInTheDocument();
-    expect(screen.getByLabelText(/^Liu Sha/)).toHaveClass("home-slot--me");
+    expect(await screen.findByLabelText(/^Liu Sha/)).toHaveClass("home-slot--me");
+    expect(screen.queryByText(/Continue as/)).not.toBeInTheDocument();
 
     fireEvent.click(await screen.findByRole("button", { name: "Schedule the next session" }));
     const dialog = screen.getByRole("dialog", { name: "Schedule the next session" });
