@@ -1,5 +1,6 @@
 import { useNavigate } from "react-router-dom";
-import { ROAD_GLYPHS, ROAD_H, ROAD_W, initials, layoutRoad, sessionTitle, shortDate, trailPath } from "./roadLayout";
+import { useMediaQuery } from "../../lib/useMediaQuery";
+import { ROAD_GLYPHS, ROAD_H, ROAD_W, ROAD_W_NARROW, initials, layoutRoad, sessionTitle, shortDate, trailPath } from "./roadLayout";
 
 // Initials tokens for creatures without a portrait: a few dark hues, picked by name.
 const TOKEN_FILLS = ["#5a2a2a", "#2a5a4a", "#2a3a5a", "#4a2a5a", "#4a3a2a", "#2a5a5a"];
@@ -30,11 +31,12 @@ function Foe({ foe, cx, cy, r, clipId }) {
  */
 export default function RoadSoFar({ sessions, next, now }) {
   const navigate = useNavigate();
-  const road = layoutRoad({ sessions, now, next });
+  const width = useMediaQuery("(max-width: 640px)") ? ROAD_W_NARROW : ROAD_W;
+  const road = layoutRoad({ sessions, now, next, width });
   const open = (id) => navigate(`/chronicle/${encodeURIComponent(id)}`);
 
   return (
-    <svg className="road-svg" viewBox={`0 0 ${ROAD_W} ${ROAD_H}`} role="group" aria-label="Sessions so far">
+    <svg className="road-svg" viewBox={`0 0 ${width} ${ROAD_H}`} role="group" aria-label="Sessions so far">
       {road.months.map((m) => (
         <g key={`${m.label}-${m.x}`}>
           <line className="road-tick" x1={m.x} y1="166" x2={m.x} y2="172" />
@@ -50,7 +52,8 @@ export default function RoadSoFar({ sessions, next, now }) {
         const date = shortDate(day);
         const tokenR = Math.round(orbitR * 0.38);
         const period = 26 + i * 3;
-        const anchor = x > 760 ? "end" : x < 240 ? "start" : "middle";
+        // Labels near either end are anchored inward so they stay on the road.
+        const anchor = x > width - 240 ? "end" : x < 240 ? "start" : "middle";
         const labelX = anchor === "end" ? x + 12 : anchor === "start" ? x - 12 : x;
         return (
           <g key={session.id}>

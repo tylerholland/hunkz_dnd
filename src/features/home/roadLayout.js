@@ -7,8 +7,10 @@ export const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "
 export const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 export const ROAD_GLYPHS = "ᚠᚢᚦᚨᚱᚲᚷᚹᚺᚾᛁᛃ";
 
-// The viewBox the road is laid out in.
+// The viewBox the road is laid out in. Narrow screens get a narrower box, so
+// the road (and its labels) render larger instead of shrinking to a sliver.
 export const ROAD_W = 1000;
+export const ROAD_W_NARROW = 520;
 export const ROAD_H = 190;
 
 /** Local midday of the day `value` falls on, so day maths ignores the hour. */
@@ -89,7 +91,7 @@ export function trailPath(xStart, xEnd) {
  * Positions for sessions ([{ id, title, startAt, foes }], oldest first), the
  * month ticks, today, and the next-session flag.
  */
-export function layoutRoad({ sessions, now = new Date(), next = null }) {
+export function layoutRoad({ sessions, now = new Date(), next = null, width = ROAD_W }) {
   const today = localDay(now);
   const days = sessions.map((s) => localDay(s.startAt));
   const nextDay = next ? localDay(next) : null;
@@ -97,7 +99,7 @@ export function layoutRoad({ sessions, now = new Date(), next = null }) {
   const t0 = new Date((days[0] || today).getTime() - 10 * DAY);
   const t1 = new Date(end.getTime() + 9 * DAY);
   const span = t1 - t0;
-  const X = (d) => 50 + ((d - t0) / span) * 900;
+  const X = (d) => 50 + ((d - t0) / span) * (width - 100);
 
   const months = [];
   for (let m = new Date(t0.getFullYear(), t0.getMonth() + 1, 1, 12); m < t1; m = new Date(m.getFullYear(), m.getMonth() + 1, 1, 12)) {
