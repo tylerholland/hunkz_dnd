@@ -3,31 +3,33 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>The Rusted Lantern</title>
+<title>Ironwhistle's Emporium</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English:ital@0;1&display=swap" rel="stylesheet" />
 <style>
-  /* Page chrome follows the viewer's palette (ocean / vellum here); the shop
-     interior has its own warm, lamplit look in each. */
+  /* The app's palettes (ocean / ember / vellum here); the shop takes the
+     viewer's, like every other page. */
   :root, [data-pal="ocean"] {
     --pal-bg: #0d0f14; --pal-surface: rgba(18,32,48,0.55); --pal-surface-solid: #111e2c; --pal-border: rgba(100,130,160,0.22);
-    --pal-accent: #6a8fa8; --pal-accent-bright: #a0c0d0; --pal-accent-dim: #1e3a4e; --pal-text: #c8bfaf; --pal-text-body: #b0a898; --pal-muted: #7d93a0;
-    /* shop interior: candlelit wood and brass */
-    --wood-1: #2a1a10; --wood-2: #3a2416; --wood-3: #4e321e; --wood-edge: #1a0f08; --plank-line: rgba(0,0,0,0.35);
-    --brass: #d2a85a; --brass-dim: #8a6a34; --parchment: #e9dcc0; --ink: #2a1d12; --lamp: rgba(255,186,96,0.35);
-    --shop-text: #ecdcc0; --shop-muted: #b49a78; --tag: #efe2c6; --tag-ink: #3a2a18; --danger: #d0675e; --good: #8fc27a;
+    --pal-accent: #6a8fa8; --pal-accent-bright: #a0c0d0; --pal-accent-dim: #1e3a4e; --pal-text: #c8bfaf; --pal-text-body: #b0a898; --pal-muted: #7d93a0; --glow: rgba(20,45,80,0.45);
+  }
+  [data-pal="ember"] {
+    --pal-bg: #120d0a; --pal-surface: rgba(50,28,14,0.55); --pal-surface-solid: #2a160a; --pal-border: rgba(160,100,55,0.24);
+    --pal-accent: #a06840; --pal-accent-bright: #c89060; --pal-accent-dim: #4a2e12; --pal-text: #d4c4b0; --pal-text-body: #b8a888; --pal-muted: #8a6848; --glow: rgba(100,45,10,0.35);
   }
   [data-pal="vellum"] {
     --pal-bg: #f5f0e8; --pal-surface: rgba(220,208,185,0.5); --pal-surface-solid: #e8e0cc; --pal-border: rgba(140,110,70,0.25);
-    --pal-accent: #7a5c30; --pal-accent-bright: #4a3418; --pal-accent-dim: rgba(140,110,70,0.15); --pal-text: #2a2018; --pal-text-body: #3c2e1c; --pal-muted: #8a7050;
-    /* shop interior by daylight: pale oak and sun through the window */
-    --wood-1: #c9ab84; --wood-2: #d8bd96; --wood-3: #e6cfaa; --wood-edge: #a4825a; --plank-line: rgba(90,60,30,0.18);
-    --brass: #8a6424; --brass-dim: #b08a4a; --parchment: #f6eedb; --ink: #2a1d12; --lamp: rgba(255,236,180,0.5);
-    --shop-text: #2c1e10; --shop-muted: #6e5434; --tag: #fbf4e2; --tag-ink: #3a2a18; --danger: #a8423a; --good: #4f8a3c;
+    --pal-accent: #7a5c30; --pal-accent-bright: #4a3418; --pal-accent-dim: rgba(140,110,70,0.15); --pal-text: #2a2018; --pal-text-body: #3c2e1c; --pal-muted: #8a7050; --glow: rgba(180,155,100,0.3);
+  }
+  /* Shared, not palette: parchment for things Mags hands you, and the
+     category colours (also the backdrops of the item art). */
+  :root {
+    --parchment: #ece0c4; --ink: #2a1d12; --silver: #c9ccd2; --gold: #e6bd62; --danger: #d0675e; --good: #8fc27a;
+    --c-arms: #7a2626; --c-armor: #34506a; --c-gear: #6a4626; --c-tools: #4e5a2c; --c-occult: #4e2c6a; --c-fancy: #1f5a5a; --c-travel: #7a5e22; --c-hire: #2a3656;
   }
   * { box-sizing: border-box; }
   html, body { margin: 0; }
-  body { min-height: 100vh; background: radial-gradient(ellipse at 50% -10%, color-mix(in srgb, var(--pal-accent) 18%, transparent) 0%, transparent 60%), var(--pal-bg); color: var(--pal-text-body); font-family: 'Crimson Text', Georgia, serif; font-size: 16px; line-height: 1.5; }
-  button { font-family: inherit; cursor: pointer; }
+  body { min-height: 100vh; background: radial-gradient(ellipse at 50% -10%, var(--glow) 0%, transparent 60%), var(--pal-bg); color: var(--pal-text-body); font-family: 'Crimson Text', Georgia, serif; font-size: 16px; line-height: 1.5; }
+  button { font-family: inherit; cursor: pointer; color: inherit; }
 
   /* ── Prototype controls ── */
   .proto { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 8px 16px; border-bottom: 1px dashed var(--pal-border); font-size: 13px; color: var(--pal-muted); }
@@ -35,8 +37,8 @@
   .seg button { background: transparent; border: none; padding: 5px 10px; color: var(--pal-muted); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
   .seg button.on { background: var(--pal-accent-dim); color: var(--pal-accent-bright); }
 
-  /* ── Top nav (as in the app) ── */
-  .nav { display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--pal-border); background: var(--pal-bg); }
+  /* ── Top nav, as in the app ── */
+  .nav { position: sticky; top: 0; z-index: 30; display: flex; align-items: center; gap: 14px; padding: 12px 20px; border-bottom: 1px solid var(--pal-border); background: var(--pal-bg); }
   .nav .back { color: var(--pal-muted); text-decoration: none; font-size: 18px; }
   .nav .t { font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 0.1em; color: var(--pal-text); flex: 1; }
   .nav .who { display: flex; align-items: center; gap: 8px; font-size: 14px; color: var(--pal-muted); }
@@ -44,167 +46,149 @@
 
   .view { display: none; }
   .view.on { display: block; }
-  main { max-width: 1180px; margin: 0 auto; padding: 22px 18px 120px; }
+  main { max-width: 1180px; margin: 0 auto; padding: 22px 18px 140px; }
 
-  /* ══════════════ THE SHOP ══════════════ */
-  .shop { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--wood-edge);
-    background:
-      radial-gradient(ellipse at 18% 0%, var(--lamp), transparent 55%),
-      radial-gradient(ellipse at 85% 10%, color-mix(in srgb, var(--lamp) 60%, transparent), transparent 45%),
-      repeating-linear-gradient(90deg, var(--wood-2) 0 118px, var(--plank-line) 118px 120px),
-      var(--wood-2);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.45), inset 0 0 120px rgba(0,0,0,0.35); color: var(--shop-text); }
-  [data-pal="vellum"] .shop { box-shadow: 0 18px 40px rgba(90,60,30,0.22), inset 0 0 90px rgba(120,80,30,0.12); }
+  /* ══════════ THE SHOP ══════════ */
+  .shop-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; margin-bottom: 14px; }
+  .kicker { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pal-accent); }
+  .shop-head h1 { margin: 2px 0 0; font-family: 'Cinzel', serif; font-weight: 400; font-size: clamp(28px, 4.4vw, 42px); letter-spacing: 0.06em; color: var(--pal-text); }
+  .shop-head .sub { font-style: italic; color: var(--pal-muted); }
+  .shop-head .spacer { flex: 1; }
 
-  /* Hanging sign */
-  .sign-row { display: flex; justify-content: center; padding-top: 6px; }
-  .sign-chains { position: relative; display: flex; flex-direction: column; align-items: center; transform-origin: 50% 0; animation: swing 6s ease-in-out infinite; }
-  .sign-chains::before { content: ""; width: 220px; height: 18px; border-left: 2px solid var(--brass-dim); border-right: 2px solid var(--brass-dim); }
-  @keyframes swing { 0%,100% { transform: rotate(-1.4deg); } 50% { transform: rotate(1.4deg); } }
-  .sign { padding: 12px 34px 10px; border-radius: 6px; text-align: center;
-    background: linear-gradient(180deg, var(--wood-3), var(--wood-1)); border: 2px solid var(--brass-dim);
-    box-shadow: 0 10px 22px rgba(0,0,0,0.45), inset 0 0 0 4px rgba(0,0,0,0.15); }
-  .sign h1 { margin: 0; font-family: 'IM Fell English', serif; font-weight: 400; font-size: 34px; letter-spacing: 0.04em; color: var(--brass); text-shadow: 0 1px 0 rgba(0,0,0,0.5); }
-  .sign small { display: block; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.32em; text-transform: uppercase; color: var(--shop-muted); }
+  /* The scene: Mags's shop, full width, fading into the page at the bottom. */
+  .scene { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--pal-border); height: clamp(320px, 50vw, 600px); background: #1a120c; box-shadow: 0 24px 60px rgba(0,0,0,0.45); }
+  [data-pal="vellum"] .scene { box-shadow: 0 18px 40px rgba(90,60,30,0.25); }
+  .scene > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; object-position: 30% 40%; }
+  /* A slow candle-flicker over the lanterns, and the fade into the page. */
+  .scene::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(ellipse at 62% 18%, rgba(255,190,110,0.16), transparent 45%); animation: flicker 4s ease-in-out infinite; }
+  @keyframes flicker { 0%, 100% { opacity: 0.6; } 40% { opacity: 1; } 55% { opacity: 0.75; } }
+  .scene::after { content: ""; position: absolute; inset: auto 0 0 0; height: 30%; z-index: 1; pointer-events: none; background: linear-gradient(180deg, transparent, color-mix(in srgb, var(--pal-bg) 92%, transparent)); }
 
-  /* Keeper + counter */
-  .counter { display: grid; grid-template-columns: 240px 1fr 260px; gap: 22px; align-items: end; padding: 18px 26px 0; }
-  .keeper { position: relative; height: 270px; border-radius: 120px 120px 10px 10px; overflow: hidden; border: 2px solid var(--brass-dim);
-    background: radial-gradient(circle at 50% 30%, #6a4a30, #2a1a10 70%); box-shadow: 0 0 40px var(--lamp); }
-  .keeper .art { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; text-align: center; padding: 18px; color: #e8d2a8; }
-  .keeper .art svg { width: 120px; height: 140px; opacity: 0.9; }
-  .keeper .art em { font-size: 11px; color: #b49a78; }
-  .keeper .blink { animation: blink 5s infinite; transform-origin: 50% 40%; }
-  @keyframes blink { 0%, 92%, 100% { transform: scaleY(1); } 95% { transform: scaleY(0.1); } }
-  .keeper-name { text-align: center; margin-top: 8px; font-family: 'Cinzel', serif; letter-spacing: 0.08em; color: var(--brass); }
-  .keeper-name small { display: block; font-family: 'Crimson Text', serif; font-style: italic; letter-spacing: 0; color: var(--shop-muted); font-size: 13px; }
-
-  .speech { position: relative; align-self: start; margin-top: 30px; padding: 14px 18px; border-radius: 12px; background: var(--parchment); color: var(--ink);
-    font-family: 'IM Fell English', serif; font-size: 19px; line-height: 1.35; box-shadow: 0 8px 22px rgba(0,0,0,0.35); min-height: 74px; }
-  .speech::before { content: ""; position: absolute; left: -12px; top: 26px; border: 8px solid transparent; border-right: 12px solid var(--parchment); border-left: 0; }
-  .speech .typed { white-space: pre-wrap; }
+  /* Mags speaks from beside her face. */
+  .speech { position: absolute; z-index: 3; left: 32%; top: 9%; max-width: min(340px, 30%); padding: 12px 16px; border-radius: 12px; background: var(--parchment); color: var(--ink);
+    font-family: 'IM Fell English', serif; font-size: clamp(15px, 1.6vw, 19px); line-height: 1.35; box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
+  .speech::before { content: ""; position: absolute; left: -11px; bottom: 18px; border: 8px solid transparent; border-right: 12px solid var(--parchment); border-left: 0; }
+  .speech .who { display: block; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8a6a3a; margin-bottom: 2px; }
   .speech .caret { display: inline-block; width: 2px; height: 1em; background: var(--ink); vertical-align: -2px; animation: caret 0.9s steps(1) infinite; }
   @keyframes caret { 50% { opacity: 0; } }
 
-  /* Purse and satchel, on the counter */
-  .purse { display: grid; gap: 10px; justify-items: end; }
-  .coins { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 10px; background: rgba(0,0,0,0.25); border: 1px solid var(--brass-dim); }
-  [data-pal="vellum"] .coins { background: rgba(255,255,255,0.4); }
-  .coin-stack { position: relative; width: 34px; height: 34px; }
-  .coin-stack i { position: absolute; left: 0; width: 34px; height: 12px; border-radius: 50%; background: radial-gradient(ellipse at 40% 30%, #f2f2f2, #a9adb3 60%, #7b8087); border: 1px solid #6c7077; }
-  .coins b { font-family: 'Cinzel', serif; font-size: 22px; font-weight: 400; color: var(--shop-text); }
-  .coins span { font-size: 13px; color: var(--shop-muted); }
-  .satchel-btn { display: flex; align-items: center; gap: 10px; padding: 10px 16px; border-radius: 10px; border: 1px solid var(--brass); background: linear-gradient(180deg, color-mix(in srgb, var(--brass) 30%, transparent), transparent); color: var(--shop-text); font-family: 'Cinzel', serif; letter-spacing: 0.08em; }
-  .satchel-btn .n { min-width: 22px; height: 22px; border-radius: 11px; background: var(--brass); color: #1a120a; font-size: 12px; display: grid; place-items: center; }
-  .satchel-btn.bump { animation: bump 0.4s ease; }
+  /* The item in hand: floats over the right of the shop. */
+  .float { position: absolute; z-index: 3; right: 2.5%; top: 6%; width: min(320px, 32%); padding: 16px; border-radius: 14px;
+    background: color-mix(in srgb, var(--pal-surface-solid) 86%, transparent); border: 1px solid color-mix(in srgb, var(--cat, var(--pal-accent)) 70%, var(--pal-border));
+    -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 40px color-mix(in srgb, var(--cat, transparent) 35%, transparent); color: var(--pal-text); }
+  .float.pop { animation: pop 0.45s cubic-bezier(.3,1.4,.5,1); }
+  @keyframes pop { from { transform: translateY(14px) scale(0.94); opacity: 0; } }
+  .float .x { position: absolute; top: 8px; right: 10px; background: none; border: none; font-size: 20px; color: var(--pal-muted); }
+  .float .eyebrow { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pal-accent); }
+  .float .orb { width: 148px; height: 148px; margin: 8px auto 10px; animation: hover 4s ease-in-out infinite; }
+  @keyframes hover { 50% { transform: translateY(-6px); } }
+  .float h3 { margin: 0; text-align: center; font-family: 'Cinzel', serif; font-weight: 400; font-size: 21px; letter-spacing: 0.04em; }
+  .float .stat { display: block; width: max-content; margin: 6px auto; padding: 1px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--cat) 70%, var(--pal-border)); font-family: 'Cinzel', serif; font-size: 12px; color: var(--pal-accent-bright); }
+  .float p { margin: 6px 0 0; font-size: 15px; color: var(--pal-text-body); text-align: center; }
+  .float .owned { font-style: italic; font-size: 13px; color: var(--pal-muted); }
+  .float .buy { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+  .qty { display: inline-flex; border: 1px solid var(--pal-border); border-radius: 6px; overflow: hidden; }
+  .qty button { width: 30px; height: 34px; border: none; background: var(--pal-accent-dim); color: var(--pal-accent-bright); font-size: 17px; }
+  .qty span { width: 32px; display: grid; place-items: center; font-family: 'Cinzel', serif; }
+  .float .price { font-family: 'Cinzel', serif; font-size: 18px; color: var(--pal-text); margin-right: auto; }
+  .float .price.short { color: var(--danger); }
+  .btn { padding: 9px 14px; border-radius: 6px; border: 1px solid var(--pal-accent); background: var(--pal-accent-dim); color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+  .btn:hover { border-color: var(--pal-accent-bright); }
+  .btn:disabled { opacity: 0.45; cursor: default; }
+  .btn.gold { border-color: #a07a30; background: linear-gradient(180deg, #e8c47c, #b98c3e); color: #24180a; box-shadow: 0 3px 0 #7a5420; }
+  .btn.gold:active { transform: translateY(2px); box-shadow: 0 1px 0 #7a5420; }
+  .btn.gold:disabled { box-shadow: none; }
+
+  /* The purse and the satchel, sitting on the counter at the bottom-left. */
+  .counter { position: absolute; z-index: 3; left: 2.5%; bottom: 5%; display: flex; gap: 10px; align-items: center; }
+  .chip { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--pal-border); background: color-mix(in srgb, var(--pal-surface-solid) 85%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: var(--pal-text); }
+  .coin-stack { position: relative; width: 28px; height: 28px; }
+  .coin-stack i { position: absolute; left: 0; width: 28px; height: 10px; border-radius: 50%; background: radial-gradient(ellipse at 40% 30%, #f6f6f6, #a9adb3 60%, #7b8087); border: 1px solid #6c7077; }
+  .chip b { font-family: 'Cinzel', serif; font-weight: 400; font-size: 20px; }
+  .chip small { color: var(--pal-muted); }
+  .chip.satchel { font-family: 'Cinzel', serif; letter-spacing: 0.08em; }
+  .chip.satchel .n { min-width: 22px; height: 22px; border-radius: 11px; background: var(--gold); color: #1a120a; font-size: 12px; display: grid; place-items: center; }
+  .chip.satchel.bump { animation: bump 0.4s ease; }
   @keyframes bump { 40% { transform: scale(1.08); } }
 
-  /* The counter edge */
-  .counter-top { height: 26px; margin: 0 -1px; background: linear-gradient(180deg, var(--wood-3), var(--wood-1)); border-top: 1px solid var(--brass-dim); box-shadow: 0 8px 18px rgba(0,0,0,0.35); }
-
-  /* Shelf tabs — little hanging signs */
-  .tabs { display: flex; flex-wrap: wrap; gap: 8px; padding: 18px 22px 6px; }
-  .tab { position: relative; padding: 7px 14px 6px; border-radius: 5px; border: 1px solid var(--brass-dim); background: linear-gradient(180deg, var(--wood-3), var(--wood-1)); color: var(--shop-muted);
-    font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; }
-  .tab.on { color: var(--brass); border-color: var(--brass); box-shadow: 0 0 16px color-mix(in srgb, var(--brass) 35%, transparent); }
-  .tab svg { width: 14px; height: 14px; vertical-align: -2px; margin-right: 5px; }
-  .tab.sell { margin-left: auto; }
-
-  /* Shelves */
-  .shelves { padding: 6px 22px 26px; }
-  /* One plank per row of goods: rows are a fixed height and the planks are a
-     repeating band in the background, so they line up with every row. */
-  .shelf { --row: 186px; position: relative; display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); grid-auto-rows: var(--row); column-gap: 16px; padding: 6px 16px 0;
-    background: repeating-linear-gradient(180deg, transparent 0 calc(var(--row) - 16px), var(--wood-edge) calc(var(--row) - 16px) calc(var(--row) - 14px), var(--wood-3) calc(var(--row) - 14px) calc(var(--row) - 6px), var(--wood-1) calc(var(--row) - 6px) var(--row));
-    background-position: 0 6px; }
-  .item { position: relative; z-index: 1; align-self: end; margin-bottom: 16px; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 12px 10px 8px; border-radius: 10px; border: 1px solid transparent; background: transparent; color: inherit; text-align: center; transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease; }
-  .item:hover, .item:focus-visible { transform: translateY(-4px); background: rgba(255,255,255,0.05); border-color: color-mix(in srgb, var(--brass) 40%, transparent); outline: none; }
-  [data-pal="vellum"] .item:hover { background: rgba(255,255,255,0.35); }
-  .item .art { width: 92px; height: 92px; border-radius: 50%; display: grid; place-items: center;
-    background: radial-gradient(circle at 40% 30%, color-mix(in srgb, var(--lamp) 80%, transparent), transparent 70%); filter: drop-shadow(0 8px 8px rgba(0,0,0,0.45)); }
-  .item .art svg { width: 58px; height: 58px; color: var(--brass); }
-  .item .nm { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.04em; line-height: 1.2; color: var(--shop-text); }
-  .item .st { font-size: 13px; color: var(--shop-muted); }
-  /* Price tag on a string */
-  .tagp { position: absolute; top: 8px; right: 6px; transform: rotate(8deg); padding: 2px 8px 2px 12px; background: var(--tag); color: var(--tag-ink); font-family: 'Cinzel', serif; font-size: 12px;
-    clip-path: polygon(8px 0, 100% 0, 100% 100%, 8px 100%, 0 50%); box-shadow: 0 2px 4px rgba(0,0,0,0.3); }
-  .tagp::before { content: ""; position: absolute; left: 4px; top: 50%; width: 4px; height: 4px; margin-top: -2px; border-radius: 50%; background: var(--wood-1); }
-  .item.poor .tagp { color: var(--danger); }
-  .item.poor .art { opacity: 0.55; }
-  .item .stock { position: absolute; top: 46px; left: 50%; transform: translateX(-50%) rotate(-12deg); padding: 2px 8px; border: 2px solid var(--danger); color: var(--danger); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; background: rgba(0,0,0,0.25); }
-  .item.out { pointer-events: none; }
-  .item.out .art { opacity: 0.3; filter: grayscale(1); }
-  .note { padding: 0 22px 20px; font-style: italic; color: var(--shop-muted); font-size: 14px; }
-
-  /* Closed (combat) shutters */
-  .shutters { position: absolute; inset: 0; z-index: 20; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; text-align: center;
+  /* Shutters during combat. */
+  .shutters { position: absolute; inset: 0; z-index: 6; display: none; align-items: center; justify-content: center; flex-direction: column; gap: 10px; text-align: center;
     background: repeating-linear-gradient(180deg, #3a2a1c 0 26px, #241810 26px 30px); color: #ecdcc0; }
-  .shop.closed .shutters { display: flex; animation: shut 0.7s cubic-bezier(.6,0,.3,1); }
+  .closed .shutters { display: flex; animation: shut 0.7s cubic-bezier(.6,0,.3,1); }
   @keyframes shut { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
   .shutters .plaque { padding: 18px 28px; border-radius: 8px; background: var(--parchment); color: var(--ink); box-shadow: 0 12px 30px rgba(0,0,0,0.5); transform: rotate(-2deg); }
   .shutters h2 { margin: 0; font-family: 'IM Fell English', serif; font-weight: 400; font-size: 30px; }
   .shutters p { margin: 4px 0 0; font-style: italic; }
+  .closed .cats, .closed .goods { opacity: 0.35; pointer-events: none; filter: grayscale(0.6); }
 
-  /* ── Item detail (a parchment card that unrolls) ── */
-  .veil { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); backdrop-filter: blur(2px); }
-  .veil.on { display: flex; }
-  .detail { width: min(560px, 94vw); display: grid; grid-template-columns: 170px 1fr; gap: 18px; padding: 22px; border-radius: 10px; background: var(--parchment); color: var(--ink);
-    box-shadow: 0 24px 60px rgba(0,0,0,0.5); animation: unroll 0.45s cubic-bezier(.3,1.2,.5,1); }
-  @keyframes unroll { from { transform: scaleY(0.2) translateY(-30px); opacity: 0; } }
-  .detail .big { width: 170px; height: 170px; border-radius: 12px; display: grid; place-items: center; background: radial-gradient(circle at 40% 30%, #fff8e6, #e2cfa4 70%); border: 1px solid #c2a676; }
-  .detail .big svg { width: 110px; height: 110px; color: #6a4a20; }
-  .detail .big small { display: block; font-size: 10px; color: #8a6a3a; text-align: center; }
-  .detail h3 { margin: 0; font-family: 'IM Fell English', serif; font-weight: 400; font-size: 28px; }
-  .detail .cat { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8a6a3a; }
-  .detail .stat { display: inline-block; margin: 8px 0; padding: 2px 10px; border: 1px solid #b08a4a; border-radius: 999px; font-family: 'Cinzel', serif; font-size: 13px; }
-  .detail p { margin: 6px 0; }
-  .detail .row { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
-  .qty { display: inline-flex; border: 1px solid #b08a4a; border-radius: 6px; overflow: hidden; }
-  .qty button { width: 32px; height: 34px; border: none; background: #ecdcb8; color: var(--ink); font-size: 18px; }
-  .qty span { width: 38px; display: grid; place-items: center; font-family: 'Cinzel', serif; }
-  .btn-brass { padding: 8px 16px; border-radius: 6px; border: 1px solid #8a6424; background: linear-gradient(180deg, #e5c27a, #b88a3c); color: #2a1a08; font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 0 3px 0 #7a5420; }
-  .btn-brass:active { transform: translateY(2px); box-shadow: 0 1px 0 #7a5420; }
-  .btn-brass:disabled { opacity: 0.5; cursor: default; }
-  .btn-plain { padding: 8px 14px; border-radius: 6px; border: 1px solid #b08a4a; background: transparent; color: var(--ink); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
-  .owned { font-size: 13px; color: #6a5030; font-style: italic; }
+  /* ── Categories: bold tiles in each category's colour ── */
+  .section-h { display: flex; align-items: baseline; gap: 12px; margin: 26px 0 12px; }
+  .section-h h2 { margin: 0; font-family: 'Cinzel', serif; font-weight: 400; font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-text); }
+  .section-h span { font-style: italic; color: var(--pal-muted); }
+  .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+  .cat { position: relative; overflow: hidden; display: grid; justify-items: center; gap: 4px; padding: 14px 8px 12px; border-radius: 12px; text-align: center;
+    border: 1px solid color-mix(in srgb, var(--cat) 70%, transparent); color: #f1e6d2;
+    background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--cat) 75%, #fff 8%), color-mix(in srgb, var(--cat) 80%, #000) 80%);
+    transition: transform 0.2s ease, box-shadow 0.2s ease; }
+  .cat:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(0,0,0,0.35); }
+  .cat.on { box-shadow: 0 0 0 2px var(--gold), 0 0 24px color-mix(in srgb, var(--cat) 70%, transparent); }
+  .cat svg { width: 40px; height: 40px; color: #f6dfa8; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+  .cat b { font-family: 'Cinzel', serif; font-weight: 400; font-size: 13px; letter-spacing: 0.08em; }
+  .cat small { font-size: 12px; opacity: 0.75; }
+  .cat.sell { --cat: #3a3a3a; }
 
-  /* ── The satchel (bottom sheet) ── */
-  .sheet { position: fixed; left: 50%; bottom: 0; z-index: 40; width: min(720px, 100vw); transform: translate(-50%, calc(100% - 58px)); transition: transform 0.45s cubic-bezier(.3,1,.4,1);
-    border-radius: 16px 16px 0 0; background: linear-gradient(180deg, #5a3a22, #3a2416); border: 1px solid #8a6a34; border-bottom: none; color: #ecdcc0; box-shadow: 0 -12px 40px rgba(0,0,0,0.5); }
+  /* ── Goods: round frames, like the homepage orbs ── */
+  .goods { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px 14px; }
+  .good { position: relative; display: grid; justify-items: center; gap: 6px; padding: 10px 6px 8px; border-radius: 12px; border: 1px solid transparent; background: transparent; text-align: center; transition: transform 0.2s ease, background 0.2s ease; }
+  .good:hover, .good:focus-visible { transform: translateY(-4px); background: var(--pal-surface); outline: none; }
+  .good.sel { background: var(--pal-surface); border-color: color-mix(in srgb, var(--cat) 70%, var(--pal-border)); }
+  .orb { position: relative; width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; overflow: hidden;
+    background: radial-gradient(circle at 42% 34%, color-mix(in srgb, var(--cat) 65%, #fff 12%), color-mix(in srgb, var(--cat) 85%, #000) 78%);
+    box-shadow: 0 0 0 1px color-mix(in srgb, var(--cat) 60%, #e6bd62 40%), 0 0 22px color-mix(in srgb, var(--cat) 45%, transparent), 0 10px 18px rgba(0,0,0,0.35); }
+  .orb svg { width: 56%; height: 56%; color: #f6dfa8; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5)); }
+  .orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 34% 26%, rgba(255,255,255,0.32), transparent 32%), radial-gradient(circle, transparent 55%, rgba(0,0,0,0.45) 100%); }
+  .good .nm { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.04em; line-height: 1.2; color: var(--pal-text); }
+  .good .st { font-size: 13px; color: var(--pal-muted); min-height: 1.2em; }
+  .tag { position: absolute; top: 8px; right: calc(50% - 66px); padding: 1px 8px; border-radius: 999px; background: var(--parchment); color: var(--ink); font-family: 'Cinzel', serif; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+  .good.poor .tag { color: var(--danger); }
+  .good.poor .orb { filter: saturate(0.5) brightness(0.75); }
+  .good.out { pointer-events: none; }
+  .good.out .orb { filter: grayscale(1) brightness(0.6); }
+  .soldout { position: absolute; top: 52px; left: 50%; transform: translateX(-50%) rotate(-12deg); padding: 2px 8px; border: 2px solid var(--danger); color: var(--danger); background: color-mix(in srgb, var(--pal-bg) 70%, transparent); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  .cat-line { margin: 16px 0 0; font-style: italic; color: var(--pal-muted); text-align: center; }
+
+  /* ── The satchel (bottom sheet, in the page's palette) ── */
+  .sheet { position: fixed; left: 50%; bottom: 0; z-index: 40; width: min(700px, 100vw); transform: translate(-50%, calc(100% - 56px)); transition: transform 0.45s cubic-bezier(.3,1,.4,1);
+    border-radius: 16px 16px 0 0; background: var(--pal-surface-solid); border: 1px solid var(--pal-accent); border-bottom: none; color: var(--pal-text); box-shadow: 0 -12px 40px rgba(0,0,0,0.45); }
   .sheet.open { transform: translate(-50%, 0); }
   .sheet-head { display: flex; align-items: center; gap: 12px; padding: 14px 20px; cursor: pointer; }
   .sheet-head b { font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.1em; font-size: 15px; flex: 1; }
-  .sheet-head .sum { font-family: 'Cinzel', serif; color: #e5c27a; }
+  .sheet-head .sum { font-family: 'Cinzel', serif; color: var(--pal-accent-bright); }
   .sheet-body { padding: 0 20px 18px; max-height: 60vh; overflow: auto; }
-  .line { display: grid; grid-template-columns: 34px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid rgba(255,255,255,0.08); }
-  .line svg { width: 26px; height: 26px; color: #e5c27a; }
-  .line .x { background: none; border: none; color: #b49a78; font-size: 18px; }
-  .totals { margin-top: 10px; padding-top: 10px; border-top: 1px dashed rgba(255,255,255,0.2); display: grid; gap: 4px; }
+  .line { display: grid; grid-template-columns: 40px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--pal-border); }
+  .line .orb { width: 34px; height: 34px; box-shadow: none; }
+  .line .x { background: none; border: none; color: var(--pal-muted); font-size: 18px; }
+  .totals { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--pal-border); display: grid; gap: 4px; }
   .totals div { display: flex; justify-content: space-between; }
   .totals .disc { color: var(--good); }
   .totals .bad { color: var(--danger); }
-  .totals .grand { font-family: 'Cinzel', serif; font-size: 18px; color: #e5c27a; }
+  .totals .grand { font-family: 'Cinzel', serif; font-size: 18px; color: var(--pal-accent-bright); }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 14px; }
-  .btn-ghost { padding: 8px 14px; border-radius: 6px; border: 1px solid #b49a78; background: transparent; color: #ecdcc0; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
-  .btn-ghost:disabled { opacity: 0.45; cursor: default; }
-
-  /* Haggle dice */
-  .haggle { display: none; align-items: center; gap: 14px; margin-top: 12px; padding: 12px; border-radius: 10px; background: rgba(0,0,0,0.25); }
+  .haggle { display: none; align-items: center; gap: 14px; margin-top: 12px; padding: 12px; border-radius: 10px; background: var(--pal-surface); border: 1px solid var(--pal-border); }
   .haggle.on { display: flex; }
-  .die { width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center; background: #f1e6cc; color: #2a1a08; font-family: 'Cinzel', serif; font-size: 20px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
+  .die { width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center; background: var(--parchment); color: var(--ink); font-family: 'Cinzel', serif; font-size: 20px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
   .die.rolling { animation: tumble 0.6s ease; }
   @keyframes tumble { 0% { transform: rotate(0) scale(0.6); } 60% { transform: rotate(320deg) scale(1.1); } 100% { transform: rotate(360deg) scale(1); } }
   .haggle .verdict { flex: 1; font-size: 15px; }
   .haggle .verdict b { font-family: 'Cinzel', serif; font-weight: 400; }
 
-  /* Coins flying to the till */
   .flycoin { position: fixed; z-index: 60; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b8bcc2 55%, #7b8087); border: 1px solid #6c7077; pointer-events: none; }
-
-  /* Receipt */
-  .receipt { width: min(380px, 92vw); padding: 22px 24px 26px; background: var(--parchment); color: var(--ink); box-shadow: 0 24px 60px rgba(0,0,0,0.5);
-    clip-path: polygon(0 0, 100% 0, 100% 96%, 95% 100%, 90% 96%, 85% 100%, 80% 96%, 75% 100%, 70% 96%, 65% 100%, 60% 96%, 55% 100%, 50% 96%, 45% 100%, 40% 96%, 35% 100%, 30% 96%, 25% 100%, 20% 96%, 15% 100%, 10% 96%, 5% 100%, 0 96%);
-    animation: unroll 0.5s cubic-bezier(.3,1.2,.5,1); text-align: center; }
-  .receipt h3 { margin: 0; font-family: 'IM Fell English', serif; font-weight: 400; font-size: 26px; }
+  .veil { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); backdrop-filter: blur(2px); }
+  .veil.on { display: flex; }
+  .receipt { width: min(380px, 92vw); padding: 22px 24px 26px; background: var(--parchment); color: var(--ink); box-shadow: 0 24px 60px rgba(0,0,0,0.5); text-align: center; animation: unroll 0.5s cubic-bezier(.3,1.2,.5,1);
+    clip-path: polygon(0 0, 100% 0, 100% 96%, 95% 100%, 90% 96%, 85% 100%, 80% 96%, 75% 100%, 70% 96%, 65% 100%, 60% 96%, 55% 100%, 50% 96%, 45% 100%, 40% 96%, 35% 100%, 30% 96%, 25% 100%, 20% 96%, 15% 100%, 10% 96%, 5% 100%, 0 96%); }
+  @keyframes unroll { from { transform: scaleY(0.2) translateY(-30px); opacity: 0; } }
+  .receipt h3 { margin: 0; font-family: 'IM Fell English', serif; font-weight: 400; font-size: 25px; }
   .receipt .r-lines { margin: 12px 0; text-align: left; font-size: 15px; }
   .receipt .r-lines div { display: flex; justify-content: space-between; border-bottom: 1px dotted #b08a4a; padding: 3px 0; }
   .receipt .stamp { display: inline-block; margin-top: 8px; padding: 4px 12px; border: 3px double #8a2a2a; color: #8a2a2a; font-family: 'Cinzel', serif; letter-spacing: 0.2em; transform: rotate(-6deg); }
@@ -227,13 +211,13 @@
   .toolbar .in { min-width: 220px; }
   .tbtn { padding: 7px 12px; border-radius: 5px; border: 1px solid var(--pal-border); background: var(--pal-surface-solid); color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
   .tbtn.primary { border-color: var(--pal-accent); background: var(--pal-accent-dim); }
-  table.cat { width: 100%; border-collapse: collapse; font-size: 15px; }
-  table.cat th { text-align: left; font-family: 'Cinzel', serif; font-weight: 400; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-muted); padding: 6px 8px; border-bottom: 1px solid var(--pal-border); }
-  table.cat td { padding: 4px 8px; border-bottom: 1px solid color-mix(in srgb, var(--pal-border) 60%, transparent); color: var(--pal-text); vertical-align: middle; }
-  table.cat td .in { width: 100%; padding: 4px 6px; background: transparent; border-color: transparent; }
-  table.cat td .in:hover, table.cat td .in:focus { border-color: var(--pal-border); background: var(--pal-surface-solid); outline: none; }
-  table.cat td.ico svg { width: 22px; height: 22px; color: var(--pal-accent); }
-  table.cat tr.hidden td { opacity: 0.45; }
+  table.catalog { width: 100%; border-collapse: collapse; font-size: 15px; }
+  table.catalog th { text-align: left; font-family: 'Cinzel', serif; font-weight: 400; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-muted); padding: 6px 8px; border-bottom: 1px solid var(--pal-border); }
+  table.catalog td { padding: 4px 8px; border-bottom: 1px solid color-mix(in srgb, var(--pal-border) 60%, transparent); color: var(--pal-text); vertical-align: middle; }
+  table.catalog td .in { width: 100%; padding: 4px 6px; background: transparent; border-color: transparent; }
+  table.catalog td .in:hover, table.catalog td .in:focus { border-color: var(--pal-border); background: var(--pal-surface-solid); outline: none; }
+  table.catalog td.ico svg { width: 22px; height: 22px; color: var(--pal-accent); }
+  table.catalog tr.hidden td { opacity: 0.45; }
   .eye { background: none; border: none; color: var(--pal-accent-bright); font-size: 16px; }
   .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.1em; border: 1px solid var(--pal-border); color: var(--pal-muted); }
   .pill.new { color: #7fc27a; border-color: rgba(127,194,122,0.5); }
@@ -246,14 +230,19 @@
   .dmmodal .safe { padding: 10px 12px; border-radius: 6px; background: color-mix(in srgb, var(--pal-accent) 12%, transparent); border: 1px solid var(--pal-border); font-size: 15px; }
   code { font-size: 13px; }
 
-  @media (max-width: 820px) {
-    .counter { grid-template-columns: 1fr; justify-items: center; }
-    .keeper { width: 200px; height: 220px; }
-    .speech { margin-top: 0; }
+
+  /* Phones: the scene stays a picture; the speech, the item in hand and the
+     counter stack below it. */
+  @media (max-width: 760px) {
+    .scene { height: auto; background: var(--pal-surface-solid); }
+    .scene > img { position: relative; display: block; height: auto; aspect-ratio: 5 / 3; }
+    .scene::before, .scene::after { display: none; }
+    .speech, .float, .counter { position: static; max-width: none; width: auto; margin: 10px; }
     .speech::before { display: none; }
-    .purse { justify-items: center; }
-    .detail { grid-template-columns: 1fr; }
-    .detail .big { margin: 0 auto; }
+    .counter { display: flex; }
+    .float .orb { width: 120px; height: 120px; }
+    .goods { grid-template-columns: repeat(2, 1fr); }
+    .tag { right: 8px; }
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
 </style>
@@ -263,60 +252,48 @@
   <span>Prototype</span>
   <div class="seg" id="viewSeg"><button class="on" data-v="shop">Player · Shop</button><button data-v="dm">DM · Item catalog</button></div>
   <span>Shopper</span>
-  <div class="seg" id="whoSeg"><button class="on" data-v="david">Meanjeans · 64s</button><button data-v="eoghan">Eòghan · 12s</button></div>
+  <div class="seg" id="whoSeg"><button class="on" data-v="eoghan">Eòghan · ocean · 64s</button><button data-v="liu">Liu Sha · ember · 18s</button><button data-v="david">Meanjeans · vellum · 40s</button></div>
   <span>Table</span>
   <div class="seg" id="stateSeg"><button class="on" data-v="open">Exploring</button><button data-v="combat">Combat round</button></div>
-  <span>Palette</span>
-  <div class="seg" id="palSeg"><button class="on" data-v="ocean">Ocean</button><button data-v="vellum">Vellum</button></div>
 </div>
 
 <!-- ═════════ PLAYER: SHOP ═════════ -->
 <section class="view on" id="v-shop">
   <nav class="nav">
     <a class="back" href="#">‹</a>
-    <span class="t">Session · The Rusted Lantern</span>
-    <span class="who"><img id="whoImg" src="https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/david-1784666229879.png" alt="" /><span id="whoName">Meanjeans</span></span>
+    <span class="t">Session · Ironwhistle's Emporium</span>
+    <span class="who"><img id="whoImg" src="" alt="" /><span id="whoName"></span></span>
   </nav>
-  <main>
-    <div class="shop" id="shop">
-      <div class="sign-row"><div class="sign-chains"><div class="sign"><small>Provisions · Arms · Curiosities</small><h1>The Rusted Lantern</h1><small>Est. before the last plague</small></div></div></div>
-
-      <div class="counter">
-        <div>
-          <div class="keeper" title="Midjourney art goes here">
-            <div class="art">
-              <!-- Placeholder keeper: a hooded figure with one lit lantern eye -->
-              <svg viewBox="0 0 120 140" fill="none" stroke="currentColor" stroke-width="1.6">
-                <path d="M20 138 C22 96 36 70 60 70 C84 70 98 96 100 138" />
-                <path d="M30 70 C28 30 44 12 60 12 C76 12 92 30 90 70 C80 58 70 54 60 54 C50 54 40 58 30 70Z" />
-                <g class="blink"><circle cx="50" cy="48" r="3" fill="currentColor" /><circle cx="72" cy="48" r="5" stroke="#ffcf7a" /><circle cx="72" cy="48" r="2" fill="#ffcf7a" /></g>
-                <path d="M48 62 Q60 68 72 62" />
-              </svg>
-              <em>Mags Ironwhistle — portrait from Midjourney</em>
-            </div>
-          </div>
-          <div class="keeper-name">Mags Ironwhistle<small>proprietor, appraiser, liar</small></div>
-        </div>
-        <div class="speech" aria-live="polite"><span class="typed" id="speech"></span><span class="caret"></span></div>
-        <div class="purse">
-          <div class="coins" title="Your purse"><div class="coin-stack"><i style="top:18px"></i><i style="top:11px"></i><i style="top:4px"></i></div><div><b id="purse">64</b> <span>silver</span></div></div>
-          <button class="satchel-btn" id="satchelBtn" type="button">Satchel <span class="n" id="satchelN">0</span></button>
-        </div>
+  <main id="shopMain">
+    <header class="shop-head">
+      <div>
+        <div class="kicker">Greyhawk · Low Market</div>
+        <h1>Ironwhistle's Emporium</h1>
+        <div class="sub">Arms, armour &amp; oddities — Mags Ironwhistle, proprietor, appraiser, liar</div>
       </div>
-      <div class="counter-top"></div>
+    </header>
 
-      <div class="tabs" id="tabs"></div>
-      <div class="shelves"><div class="shelf" id="shelf"></div></div>
-      <p class="note" id="shelfNote"></p>
-
+    <div class="scene" id="scene">
+      <img src="assets/shop-mags.jpg" alt="Mags Ironwhistle behind her counter, in a vast cluttered shop" />
+      <div class="speech" aria-live="polite"><span class="who">Mags</span><span id="speech"></span><span class="caret"></span></div>
+      <div class="float" id="float"></div>
+      <div class="counter">
+        <div class="chip" title="Your purse"><div class="coin-stack"><i style="top:16px"></i><i style="top:10px"></i><i style="top:4px"></i></div><div><b id="purse">0</b> <small>silver</small></div></div>
+        <button class="chip satchel" id="satchelBtn" type="button">Satchel <span class="n" id="satchelN">0</span></button>
+      </div>
       <div class="shutters" aria-live="polite">
         <div class="plaque"><h2>Closed for the Fighting</h2><p>“Steel's out in the street. Come back when it's sheathed.” — Mags</p></div>
-        <p style="font-style:italic;opacity:.8">The shop reopens when the round ends. Your satchel keeps.</p>
+        <p style="font-style:italic;opacity:.85">The shop reopens when the round ends. Your satchel keeps.</p>
       </div>
     </div>
+
+    <div class="section-h"><h2>Browse the shelves</h2><span id="catCount"></span></div>
+    <div class="cats" id="cats"></div>
+    <div class="section-h"><h2 id="goodsH">Arms</h2><span id="goodsSub"></span></div>
+    <div class="goods" id="goods"></div>
+    <p class="cat-line" id="catLine"></p>
   </main>
 
-  <!-- Satchel -->
   <div class="sheet" id="sheet">
     <div class="sheet-head" id="sheetHead"><b>Your satchel</b><span class="sum" id="sheetSum">empty</span><span>▴</span></div>
     <div class="sheet-body">
@@ -324,8 +301,8 @@
       <div class="totals" id="totals"></div>
       <div class="haggle" id="haggle"><div class="die" id="d1">?</div><div class="die" id="d2">?</div><div class="verdict" id="verdict"></div></div>
       <div class="actions">
-        <button class="btn-ghost" id="haggleBtn" type="button" title="Roll 2d6 + CHA">⚂ Haggle</button>
-        <button class="btn-brass" id="payBtn" type="button">Pay</button>
+        <button class="btn" id="haggleBtn" type="button" title="Roll 2d6 + CHA, once per visit">⚂ Haggle</button>
+        <button class="btn gold" id="payBtn" type="button">Pay</button>
       </div>
     </div>
   </div>
@@ -341,7 +318,7 @@
     <div class="card">
       <h3>The shop</h3>
       <div class="grid2">
-        <label class="f">Shop name <input class="in" value="The Rusted Lantern" /></label>
+        <label class="f">Shop name <input class="in" value="Ironwhistle's Emporium" /></label>
         <label class="f">Shopkeeper <input class="in" value="Mags Ironwhistle" /></label>
         <label class="f">Price markup <input class="in" value="0%" /></label>
         <label class="f">Currency <input class="in" value="Silver (s)" /></label>
@@ -365,7 +342,7 @@
         <button class="tbtn" type="button">Reset to World of Dungeons</button>
         <button class="tbtn primary" type="button">+ Add item</button>
       </div>
-      <table class="cat">
+      <table class="catalog">
         <thead><tr><th></th><th>Item</th><th>Category</th><th>Price</th><th>Effect</th><th>Notes</th><th>Stock</th><th title="Shown in the shop">Shown</th></tr></thead>
         <tbody id="dmRows"></tbody>
       </table>
@@ -373,7 +350,7 @@
   </main>
 </section>
 
-<!-- Overlays -->
+
 <div class="veil" id="veil"></div>
 
 <script>
@@ -407,17 +384,19 @@ const I = {
 };
 const ico = (k) => `<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${I[k] || I.pack}</svg>`;
 
-// ── The World of Dungeons list (prices in silver) ──
+
+// ── Categories, each with its colour (also the item-art backdrops) ──
 const CATS = [
   { id: "arms", name: "Arms", icon: "sword", line: "Steel for the hand and the string." },
   { id: "armor", name: "Armour", icon: "shield", line: "Stops what it can. Mostly." },
-  { id: "gear", name: "Adventuring gear", icon: "pack", line: "Two silver apiece. Don't go underground without it." },
+  { id: "gear", name: "Gear", icon: "pack", line: "Two silver apiece. Don't go underground without it." },
   { id: "tools", name: "Tools", icon: "pick", line: "Five silver apiece, and worth every one." },
   { id: "occult", name: "Occult", icon: "skull", line: "Ten silver, no questions — and no refunds." },
   { id: "fancy", name: "Fancy goods", icon: "lantern", line: "Twenty silver for the finer things." },
   { id: "travel", name: "Mounts & carts", icon: "horse", line: "Out back in the yard. Mind the mule." },
   { id: "hire", name: "Hirelings", icon: "person", line: "Priced by the day. Paid up front." },
 ];
+const catColor = (id) => `var(--c-${id})`;
 const ITEMS = [
   { id: "light-weapon", cat: "arms", name: "Light Weapon", price: 10, icon: "blade", stat: "d6", notes: "Daggers, short swords, hand axes. Wield as a second weapon to re-roll damage once per attack." },
   { id: "martial-weapon", cat: "arms", name: "Martial Weapon", price: 30, icon: "sword", stat: "d6+1", notes: "Long swords, hammers, axes, spears. Main hand only." },
@@ -479,7 +458,7 @@ const ITEMS = [
 
 // Mags's lines — the shop's voice. Most are picked at random from a bucket.
 const LINES = {
-  greet: ["Mind the step, the last one was a mimic.", "Ah, {name}. Coin first, questions never.", "Welcome to the Lantern. Everything's for sale except the cat."],
+  greet: ["Mind the step, the last one was a mimic.", "Ah, {name}. Coin first, questions never.", "Welcome to Ironwhistle's. Everything's for sale except the cat."],
   hover: {
     arms: ["That one's only been used the once. Honest.", "Sharp end goes in the other fellow.", "Bought it off a knight. He won't be needing it."],
     armor: ["Stops arrows. Mostly. Some arrows.", "Fits anyone, if you believe hard enough.", "The dent's a feature."],
@@ -502,104 +481,115 @@ const LINES = {
   pay: ["Pleasure doing business. Don't die with it unpaid.", "Coin's good. Mostly silver, even.", "Come back alive, and come back rich."],
   combat: ["Steel's out — I'm closing the shutters!"],
 };
+
 const pick = (a) => a[Math.floor(Math.random() * a.length)];
+// What Mags says about a particular item when it's in your hand.
+LINES.item = {
+  "fire-oil": "Fire oil. Handle it like it hates you — because it does.",
+  "lantern": "A lantern! For the adventurer tired of being eaten in the dark.",
+  "lockpicks": "Lockpicks? For your own locks, I'm sure.",
+  "quicksilver": "One dose. Two if you're brave. Three if you're stupid.",
+  "warhorse": "Out back, eating my profits. He bites.",
+  "full-armor": "You'll clank like a kitchen. But you'll clank alive.",
+  "holy-water": "Blessed by a very sincere man. Mostly sober.",
+  "caltrops": "Throw them behind you. Not in front. People forget.",
+};
 
 const SHOPPERS = {
-  david: { name: "Meanjeans", coin: 64, cha: 2, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/david-1784666229879.png", owned: ["light-weapon", "torches"] },
-  eoghan: { name: "Eòghan", coin: 12, cha: 1, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/eoghan-1784698034076.png", owned: ["light-armor", "rope", "waterskin", "light-weapon"] },
+  eoghan: { name: "Eòghan", pal: "ocean", coin: 64, cha: 1, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/eoghan-1784698034076.png", owned: ["light-armor", "rope", "waterskin", "light-weapon"] },
+  liu: { name: "Liu Sha", pal: "ember", coin: 18, cha: 0, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/liu-sha.jpg", owned: ["rations"] },
+  david: { name: "Meanjeans", pal: "vellum", coin: 40, cha: 2, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/david-1784666229879.png", owned: ["light-weapon", "torches", "lockpicks"] },
 };
-let who = SHOPPERS.david;
-let coin = who.coin;
-let cat = "arms";
-let satchel = []; // { item, qty }
-let haggled = null; // null | { mult, label, cls }
+let who, coin, cat = "arms", satchel = [], haggled = null, inHand = null;
 
-// ── Speech, typed out ──
+// ── Mags speaks (typed out) ──
 let typing;
 function say(text) {
   const el = document.getElementById("speech");
   clearInterval(typing);
-  const t = text.replace("{name}", who.name);
-  let i = 0;
-  el.textContent = "";
-  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = `“${t}”`; return; }
-  const full = `“${t}”`;
+  const full = `“${text.replace("{name}", who.name)}”`;
+  if (matchMedia("(prefers-reduced-motion: reduce)").matches) { el.textContent = full; return; }
+  let i = 0; el.textContent = "";
   typing = setInterval(() => { el.textContent = full.slice(0, ++i); if (i >= full.length) clearInterval(typing); }, 18);
 }
 
-// ── Shelves ──
-function renderTabs() {
-  document.getElementById("tabs").innerHTML = CATS.map((c) => `<button class="tab${c.id === cat ? " on" : ""}" data-cat="${c.id}">${ico(c.icon)}${c.name}</button>`).join("")
-    + `<button class="tab sell${cat === "sell" ? " on" : ""}" data-cat="sell">${ico("coin")}Sell</button>`;
+const orb = (it, extra = "") => `<span class="orb" style="--cat:${catColor(it.cat)}" ${extra}>${ico(it.icon)}</span>`;
+const priceLabel = (it) => `${it.price.toLocaleString()}s${it.per ? `/${it.per}` : ""}`;
+
+// ── Categories ──
+function renderCats() {
+  const tiles = CATS.map((c) => {
+    const list = ITEMS.filter((i) => i.cat === c.id);
+    const lo = Math.min(...list.map((i) => i.price)), hi = Math.max(...list.map((i) => i.price));
+    return `<button class="cat${c.id === cat ? " on" : ""}" style="--cat:${catColor(c.id)}" data-cat="${c.id}">${ico(c.icon)}<b>${c.name}</b><small>${list.length} · ${lo === hi ? `${lo}s` : `${lo}–${hi.toLocaleString()}s`}</small></button>`;
+  });
+  tiles.push(`<button class="cat sell${cat === "sell" ? " on" : ""}" data-cat="sell">${ico("coin")}<b>Sell to Mags</b><small>half price</small></button>`);
+  document.getElementById("cats").innerHTML = tiles.join("");
+  document.getElementById("catCount").textContent = `${ITEMS.length} wares on ${CATS.length} shelves`;
 }
-function priceLabel(it) { return `${it.price.toLocaleString()}s${it.per ? `/${it.per}` : ""}`; }
-function renderShelf() {
-  const shelf = document.getElementById("shelf");
-  const note = document.getElementById("shelfNote");
+
+// ── Goods ──
+function renderGoods() {
+  const g = document.getElementById("goods");
   if (cat === "sell") {
     const owned = who.owned.map((id) => ITEMS.find((i) => i.id === id)).filter(Boolean);
-    shelf.innerHTML = owned.map((it) => `<button class="item" data-sell="${it.id}"><span class="tagp">${Math.floor(it.price / 2)}s</span><span class="art">${ico(it.icon)}</span><span class="nm">${it.name}</span><span class="st">from your pack</span></button>`).join("");
-    note.textContent = "Mags buys back at half price. She'll find something wrong with it either way.";
+    document.getElementById("goodsH").textContent = "Sell to Mags";
+    document.getElementById("goodsSub").textContent = "from your pack";
+    g.innerHTML = owned.map((it) => `<button class="good" data-sell="${it.id}" style="--cat:${catColor(it.cat)}"><span class="tag">${Math.floor(it.price / 2)}s</span>${orb(it)}<span class="nm">${it.name}</span><span class="st">yours</span></button>`).join("");
+    document.getElementById("catLine").textContent = "Mags buys back at half price. She'll find something wrong with it either way.";
     return;
   }
   const c = CATS.find((x) => x.id === cat);
-  shelf.innerHTML = ITEMS.filter((i) => i.cat === cat).map((it) => {
-    const out = it.stock === 0;
-    const poor = !out && it.price > coin;
-    return `<button class="item${poor ? " poor" : ""}${out ? " out" : ""}" data-id="${it.id}" ${out ? 'aria-disabled="true"' : ""}>
-      <span class="tagp">${priceLabel(it)}</span>
-      <span class="art">${ico(it.icon)}</span>
-      ${out ? '<span class="stock">Sold out</span>' : ""}
-      <span class="nm">${it.name}</span>
-      <span class="st">${it.stat || (it.stock ? `only ${it.stock} left` : "&nbsp;")}</span>
-    </button>`;
+  const list = ITEMS.filter((i) => i.cat === cat);
+  document.getElementById("goodsH").textContent = c.name;
+  document.getElementById("goodsSub").textContent = `${list.length} on the shelf`;
+  g.innerHTML = list.map((it) => {
+    const out = it.stock === 0, poor = !out && it.price > coin;
+    return `<button class="good${poor ? " poor" : ""}${out ? " out" : ""}${inHand?.id === it.id ? " sel" : ""}" data-id="${it.id}" style="--cat:${catColor(it.cat)}">
+      <span class="tag">${priceLabel(it)}</span>${orb(it)}${out ? '<span class="soldout">Sold out</span>' : ""}
+      <span class="nm">${it.name}</span><span class="st">${it.stat || (it.stock ? `only ${it.stock} left` : "")}</span></button>`;
   }).join("");
-  note.textContent = c.line;
+  document.getElementById("catLine").textContent = c.line;
 }
 
-// ── Item detail ──
-const veil = document.getElementById("veil");
-function closeVeil() { veil.classList.remove("on"); veil.innerHTML = ""; }
-veil.addEventListener("click", (e) => { if (e.target === veil) closeVeil(); });
-function openItem(it) {
-  let qty = 1;
+// ── The item in hand, floating over the shop ──
+let qty = 1;
+function renderFloat(pop) {
+  const f = document.getElementById("float");
+  const it = inHand;
+  f.style.setProperty("--cat", catColor(it.cat));
   const owned = who.owned.includes(it.id);
-  veil.innerHTML = `<div class="detail" role="dialog" aria-label="${it.name}">
-    <div class="big">${ico(it.icon)}<small>Midjourney item art</small></div>
-    <div>
-      <div class="cat">${CATS.find((c) => c.id === it.cat).name}</div>
-      <h3>${it.name}</h3>
-      ${it.stat ? `<span class="stat">${it.stat}</span>` : ""}
-      <p>${it.notes || "Exactly what it says on the tag."}</p>
-      ${owned ? `<p class="owned">You already carry one.</p>` : ""}
-      <div class="row">
-        <div class="qty"><button type="button" data-q="-1">−</button><span id="q">1</span><button type="button" data-q="1">+</button></div>
-        <b style="font-family:Cinzel,serif" id="qprice">${priceLabel(it)}</b>
-      </div>
-      <div class="row">
-        <button class="btn-brass" id="addBtn" type="button">Into the satchel</button>
-        <button class="btn-plain" type="button" id="cancelBtn">Put it back</button>
-      </div>
+  // Can't put more in the satchel than the purse can cover.
+  const short = it.price * qty > coin - total();
+  const recommended = it === RECOMMENDED && !satchel.length && inHand === RECOMMENDED && f.dataset.rec !== "seen";
+  f.innerHTML = `
+    <button class="x" type="button" aria-label="Put it back" id="putBack">×</button>
+    <div class="eyebrow">${recommended ? "Mags recommends" : CATS.find((c) => c.id === it.cat).name}</div>
+    <div class="orb" style="--cat:${catColor(it.cat)}">${ico(it.icon)}</div>
+    <h3>${it.name}</h3>
+    ${it.stat ? `<span class="stat">${it.stat}</span>` : ""}
+    <p>${it.notes || "Exactly what it says on the tag."}</p>
+    ${owned ? `<p class="owned">You already carry one.</p>` : ""}
+    <div class="buy">
+      <span class="price${short ? " short" : ""}" id="fprice">${it.price * qty === it.price ? priceLabel(it) : `${(it.price * qty).toLocaleString()}s`}</span>
+      <div class="qty"><button type="button" data-q="-1" aria-label="Fewer">−</button><span id="fq">${qty}</span><button type="button" data-q="1" aria-label="More">+</button></div>
     </div>
-  </div>`;
-  veil.classList.add("on");
-  veil.querySelectorAll("[data-q]").forEach((b) => b.onclick = () => {
+    <div class="buy"><button class="btn gold" type="button" id="addBtn" style="flex:1" ${short ? "disabled" : ""}>${short ? `Short ${(it.price * qty - (coin - total())).toLocaleString()} silver` : "Into the satchel"}</button></div>`;
+  if (pop) { f.classList.remove("pop"); void f.offsetWidth; f.classList.add("pop"); }
+  f.querySelectorAll("[data-q]").forEach((b) => b.onclick = () => {
     qty = Math.max(1, Math.min(it.stock ?? 99, qty + Number(b.dataset.q)));
-    veil.querySelector("#q").textContent = qty;
-    veil.querySelector("#qprice").textContent = `${(it.price * qty).toLocaleString()}s${it.per ? ` (${qty} ${it.per}s)` : ""}`;
+    renderFloat(false);
   });
-  veil.querySelector("#cancelBtn").onclick = closeVeil;
-  veil.querySelector("#addBtn").onclick = () => { addToSatchel(it, qty); closeVeil(); };
+  f.querySelector("#addBtn").onclick = () => addToSatchel(it, qty);
+  f.querySelector("#putBack").onclick = () => { f.dataset.rec = "seen"; holdItem(RECOMMENDED, false); say("Suit yourself."); };
 }
-
-function addToSatchel(it, qty) {
-  const line = satchel.find((l) => l.item.id === it.id);
-  if (line) line.qty += qty; else satchel.push({ item: it, qty });
-  haggled = null;
-  say(pick(LINES.add));
-  const btn = document.getElementById("satchelBtn");
-  btn.classList.remove("bump"); void btn.offsetWidth; btn.classList.add("bump");
-  renderSatchel();
+function holdItem(it, speak = true) {
+  inHand = it; qty = 1;
+  renderFloat(true); renderGoods();
+  if (!speak) return;
+  if (LINES.item[it.id]) say(LINES.item[it.id]);
+  else if (it.price > coin) say(pick(LINES.poor));
+  else say(pick(LINES.hover[it.cat]));
 }
 
 // ── Satchel ──
@@ -608,11 +598,20 @@ document.getElementById("sheetHead").onclick = () => sheet.classList.toggle("ope
 document.getElementById("satchelBtn").onclick = () => sheet.classList.add("open");
 function subtotal() { return satchel.reduce((s, l) => s + l.item.price * l.qty, 0); }
 function total() { const s = subtotal(); return haggled ? Math.max(0, Math.round(s * haggled.mult)) : s; }
+function addToSatchel(it, n) {
+  const line = satchel.find((l) => l.item.id === it.id);
+  if (line) line.qty += n; else satchel.push({ item: it, qty: n });
+  haggled = null;
+  say(pick(LINES.add));
+  const b = document.getElementById("satchelBtn");
+  b.classList.remove("bump"); void b.offsetWidth; b.classList.add("bump");
+  renderSatchel(); renderFloat(false);
+}
 function renderSatchel() {
   const n = satchel.reduce((s, l) => s + l.qty, 0);
   document.getElementById("satchelN").textContent = n;
   document.getElementById("sheetSum").textContent = n ? `${n} item${n === 1 ? "" : "s"} · ${total().toLocaleString()}s` : "empty";
-  document.getElementById("lines").innerHTML = satchel.map((l, i) => `<div class="line">${ico(l.item.icon)}<span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>${(l.item.price * l.qty).toLocaleString()}s</span><button class="x" data-rm="${i}" aria-label="Remove">×</button></div>`).join("") || '<p style="opacity:.7;font-style:italic">Nothing yet. Browse the shelves.</p>';
+  document.getElementById("lines").innerHTML = satchel.map((l, i) => `<div class="line">${orb(l.item)}<span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>${(l.item.price * l.qty).toLocaleString()}s</span><button class="x" data-rm="${i}" aria-label="Remove">×</button></div>`).join("") || '<p style="opacity:.7;font-style:italic">Nothing yet. Pick something off the shelves.</p>';
   const s = subtotal(), t = total(), after = coin - t;
   document.getElementById("totals").innerHTML = satchel.length ? `
     <div><span>Subtotal</span><span>${s.toLocaleString()}s</span></div>
@@ -625,7 +624,7 @@ function renderSatchel() {
   document.getElementById("haggle").classList.toggle("on", !!haggled);
 }
 
-// ── Haggling: 2d6 + CHA, World of Dungeons style ──
+// ── Haggling: 2d6 + CHA ──
 document.getElementById("haggleBtn").onclick = () => {
   const a = 1 + Math.floor(Math.random() * 6), b = 1 + Math.floor(Math.random() * 6), sum = a + b + who.cha;
   const d1 = document.getElementById("d1"), d2 = document.getElementById("d2");
@@ -633,32 +632,38 @@ document.getElementById("haggleBtn").onclick = () => {
   [d1, d2].forEach((d) => { d.classList.remove("rolling"); void d.offsetWidth; d.classList.add("rolling"); d.textContent = "?"; });
   setTimeout(() => {
     d1.textContent = a; d2.textContent = b;
-    if (sum >= 12) haggled = { mult: 0.8, label: `Haggled (${a}+${b}+${who.cha} = ${sum}, critical)`, cls: "disc", line: pick(LINES.haggle.crit) };
-    else if (sum >= 10) haggled = { mult: 0.9, label: `Haggled (${a}+${b}+${who.cha} = ${sum})`, cls: "disc", line: pick(LINES.haggle.full) };
-    else if (sum >= 7) haggled = { mult: 0.95, label: `Haggled (${a}+${b}+${who.cha} = ${sum}, a favour owed)`, cls: "disc", line: pick(LINES.haggle.partial) };
-    else haggled = { mult: 1.1, label: `Haggled badly (${a}+${b}+${who.cha} = ${sum})`, cls: "bad", line: pick(LINES.haggle.miss) };
+    const roll = `${a}+${b}${who.cha ? `+${who.cha}` : ""} = ${sum}`;
+    if (sum >= 12) haggled = { mult: 0.8, label: `Haggled (${roll}, critical)`, cls: "disc", line: pick(LINES.haggle.crit) };
+    else if (sum >= 10) haggled = { mult: 0.9, label: `Haggled (${roll})`, cls: "disc", line: pick(LINES.haggle.full) };
+    else if (sum >= 7) haggled = { mult: 0.95, label: `Haggled (${roll}, a favour owed)`, cls: "disc", line: pick(LINES.haggle.partial) };
+    else haggled = { mult: 1.1, label: `Haggled badly (${roll})`, cls: "bad", line: pick(LINES.haggle.miss) };
     document.getElementById("verdict").innerHTML = `<b>${sum >= 10 ? "Success" : sum >= 7 ? "Partial" : "Miss"}</b> — ${haggled.line.replace("{name}", who.name)}`;
     say(haggled.line);
     renderSatchel();
   }, 600);
 };
 
-// ── Paying: coins fly from the purse to the till, then a receipt ──
+// ── Paying ──
+const veil = document.getElementById("veil");
+function closeVeil() { veil.classList.remove("on"); veil.innerHTML = ""; }
+veil.addEventListener("click", (e) => { if (e.target === veil) closeVeil(); });
 document.getElementById("payBtn").onclick = () => {
-  const t = total();
+  const t = total(), sub = subtotal(), h = haggled;
   const from = document.getElementById("payBtn").getBoundingClientRect();
-  const to = document.querySelector(".keeper").getBoundingClientRect();
-  const n = Math.min(14, Math.max(4, Math.round(t / 8)));
+  const to = document.querySelector(".scene").getBoundingClientRect();
+  const tx = to.left + to.width * 0.45, ty = to.top + to.height * 0.72; // the coins land on her counter
+  const n = Math.min(14, Math.max(4, Math.round(t / 6)));
   for (let i = 0; i < n; i++) {
     const c = document.createElement("div");
     c.className = "flycoin";
     c.style.left = `${from.left + from.width / 2}px`; c.style.top = `${from.top}px`;
     document.body.appendChild(c);
+    const dx = tx - from.left - from.width / 2, dy = ty - from.top;
     c.animate([
-      { transform: "translate(0,0) scale(1)", opacity: 1 },
-      { transform: `translate(${(to.left + to.width / 2 - from.left - from.width / 2) / 2 + (Math.random() - 0.5) * 80}px, ${(to.top - from.top) / 2 - 120}px) scale(1.2)`, opacity: 1, offset: 0.5 },
-      { transform: `translate(${to.left + to.width / 2 - from.left - from.width / 2}px, ${to.top + to.height * 0.7 - from.top}px) scale(0.6)`, opacity: 0.2 },
-    ], { duration: 700 + i * 45, easing: "cubic-bezier(.4,0,.6,1)" }).onfinish = () => c.remove();
+      { transform: "translate(0,0)", opacity: 1 },
+      { transform: `translate(${dx / 2 + (Math.random() - 0.5) * 90}px, ${dy / 2 - 140}px) scale(1.2)`, opacity: 1, offset: 0.5 },
+      { transform: `translate(${dx + (Math.random() - 0.5) * 60}px, ${dy}px) scale(0.6)`, opacity: 0.2 },
+    ], { duration: 750 + i * 45, easing: "cubic-bezier(.4,0,.6,1)" }).onfinish = () => c.remove();
   }
   const bought = satchel.slice();
   setTimeout(() => {
@@ -668,45 +673,47 @@ document.getElementById("payBtn").onclick = () => {
     sheet.classList.remove("open");
     say(pick(LINES.pay));
     veil.innerHTML = `<div class="receipt" role="dialog" aria-label="Receipt">
-      <h3>The Rusted Lantern</h3><small style="margin:0">Sold to ${who.name}</small>
+      <h3>Ironwhistle's Emporium</h3><small style="margin:0">Sold to ${who.name}</small>
       <div class="r-lines">${bought.map((l) => `<div><span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>${(l.item.price * l.qty).toLocaleString()}s</span></div>`).join("")}
-      ${haggled ? `<div><span>${haggled.mult < 1 ? "Haggled" : "Haggled badly"}</span><span>${(t - subtotal()).toLocaleString()}s</span></div>` : ""}
+      ${h ? `<div><span>${h.mult < 1 ? "Haggled" : "Haggled badly"}</span><span>${(t - sub).toLocaleString()}s</span></div>` : ""}
       <div style="font-weight:600"><span>Paid</span><span>${t.toLocaleString()}s</span></div></div>
       <span class="stamp">Paid in full</span>
       <small>Added to ${who.name}'s pack. The purchase appears in the session log.</small>
-      <div style="margin-top:14px"><button class="btn-brass" type="button" id="doneBtn">Back to the shelves</button></div>
+      <div style="margin-top:14px"><button class="btn gold" type="button" id="doneBtn">Back to the shelves</button></div>
     </div>`;
     veil.classList.add("on");
     veil.querySelector("#doneBtn").onclick = closeVeil;
     satchel = []; haggled = null;
-    renderSatchel(); renderShelf();
-  }, 900);
+    renderSatchel(); renderGoods(); renderFloat(false);
+  }, 950);
 };
 
-// ── Shelf interactions ──
-document.getElementById("tabs").addEventListener("click", (e) => {
+// ── Browsing ──
+const RECOMMENDED = ITEMS.find((i) => i.id === "fire-oil");
+document.getElementById("cats").addEventListener("click", (e) => {
   const b = e.target.closest("[data-cat]"); if (!b) return;
-  cat = b.dataset.cat; renderTabs(); renderShelf();
+  cat = b.dataset.cat; renderCats(); renderGoods();
   say(cat === "sell" ? "Selling, are we? Let's see what you've dragged in." : pick(LINES.hover[cat]));
 });
-document.getElementById("shelf").addEventListener("mouseover", (e) => {
-  const b = e.target.closest(".item"); if (!b || b.dataset.said) return;
-  b.dataset.said = "1";
-  const it = ITEMS.find((i) => i.id === b.dataset.id);
-  if (!it) return;
-  if (it.stock === 0) say(pick(LINES.out));
-  else if (it.price > coin) say(pick(LINES.poor));
-  else if (Math.random() < 0.5) say(pick(LINES.hover[it.cat]));
-});
-document.getElementById("shelf").addEventListener("click", (e) => {
-  const b = e.target.closest(".item"); if (!b) return;
+document.getElementById("goods").addEventListener("click", (e) => {
+  const b = e.target.closest(".good"); if (!b) return;
   if (b.dataset.sell) {
     const it = ITEMS.find((i) => i.id === b.dataset.sell);
     say(`${Math.floor(it.price / 2)} silver for that ${it.name.toLowerCase()}. Final offer. Probably.`);
     return;
   }
   const it = ITEMS.find((i) => i.id === b.dataset.id);
-  if (it && it.stock !== 0) openItem(it);
+  if (!it || it.stock === 0) return;
+  holdItem(it);
+  // Bring the shop back into view so the item can be seen floating over it.
+  const r = document.getElementById("scene").getBoundingClientRect();
+  if (r.bottom < 120 || r.top > innerHeight) document.getElementById("scene").scrollIntoView({ behavior: "smooth", block: "start" });
+});
+document.getElementById("goods").addEventListener("mouseover", (e) => {
+  const b = e.target.closest(".good"); if (!b || b.dataset.said) return;
+  b.dataset.said = "1";
+  const it = ITEMS.find((i) => i.id === b.dataset.id);
+  if (it?.stock === 0) say(pick(LINES.out));
 });
 
 // ══ DM: catalog ══
@@ -734,12 +741,12 @@ document.getElementById("exportBtn").onclick = () => {
   const csv = ["id,name,category,price,per,effect,notes,stock,shown", ...ITEMS.map((i) => [i.id, i.name, i.cat, i.price, i.per || "", i.stat || "", i.notes || "", i.stock ?? "", i.hidden ? "no" : "yes"].map((v) => `"${String(v).replace(/"/g, '""')}"`).join(","))].join("\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], { type: "text/csv" }));
-  a.download = "rusted-lantern-items.csv"; a.click();
+  a.download = "ironwhistle-items.csv"; a.click();
 };
 document.getElementById("importBtn").onclick = () => {
   veil.innerHTML = `<div class="dmmodal" role="dialog" aria-label="Import items">
     <h3>Import items — check the changes</h3>
-    <p style="margin:0;color:var(--pal-muted)"><code>rusted-lantern-items (edited).csv</code> · 58 rows</p>
+    <p style="margin:0;color:var(--pal-muted)"><code>ironwhistle-items (edited).csv</code> · 58 rows</p>
     <ul>
       <li><span class="pill new">New</span> Silvered Dagger — 25s · d6, +2 vs. undead</li>
       <li><span class="pill new">New</span> Potion of Mending — 40s · heal 2d6</li>
@@ -759,6 +766,7 @@ document.getElementById("importBtn").onclick = () => {
   veil.querySelector("#impOk").onclick = closeVeil;
 };
 
+
 // ── Prototype switches ──
 function seg(id, fn) {
   document.getElementById(id).addEventListener("click", (e) => {
@@ -768,18 +776,19 @@ function seg(id, fn) {
   });
 }
 seg("viewSeg", (v) => { document.getElementById("v-shop").classList.toggle("on", v === "shop"); document.getElementById("v-dm").classList.toggle("on", v === "dm"); if (v === "dm") renderDm(); });
-seg("palSeg", (v) => { document.body.dataset.pal = v; });
-seg("stateSeg", (v) => { document.getElementById("shop").classList.toggle("closed", v === "combat"); if (v === "combat") { sheet.classList.remove("open"); } else say("Ah, the dust's settled. Where were we?"); });
-seg("whoSeg", (v) => {
-  who = SHOPPERS[v]; coin = who.coin; satchel = []; haggled = null;
+seg("stateSeg", (v) => { document.getElementById("shopMain").classList.toggle("closed", v === "combat"); document.getElementById("scene").classList.toggle("closed", v === "combat"); if (v === "combat") sheet.classList.remove("open"); else say("Ah, the dust's settled. Where were we?"); });
+function shopAs(key) {
+  who = SHOPPERS[key]; coin = who.coin; satchel = []; haggled = null;
+  document.body.dataset.pal = who.pal;
   document.getElementById("purse").textContent = coin;
   document.getElementById("whoName").textContent = who.name;
   document.getElementById("whoImg").src = who.img;
-  renderSatchel(); renderShelf(); say(pick(LINES.greet));
-});
-
-renderTabs(); renderShelf(); renderSatchel();
-say(pick(LINES.greet));
+  inHand = RECOMMENDED; qty = 1; document.getElementById("float").dataset.rec = "";
+  renderCats(); renderGoods(); renderSatchel(); renderFloat(true);
+  say(pick(LINES.greet));
+}
+seg("whoSeg", shopAs);
+shopAs("eoghan");
 </script>
 </body>
 </html>
