@@ -95,7 +95,7 @@
   .plate .mini-hp { width: 90px; height: 4px; margin: 7px auto 0; border-radius: 2px; background: rgba(255,255,255,0.12); overflow: hidden; }
   .plate .mini-hp i { display: block; height: 100%; }
   [data-plate="kind"] .plate .mini-hp, [data-plate="name"] .plate .mini-hp { display: none; }
-  [data-plate="name"] .plate em { display: none; }
+  [data-plate="name"] .plate em, [data-plate="namehp"] .plate em { display: none; }
   [data-plate="none"] .plate { display: none; }
   .slot.open .plate { opacity: 0; transform: translateY(8px); }
   /* The orb's shadow on the "floor" — shrinks as it rises, fades as the card opens. */
@@ -109,11 +109,11 @@
   }
 </style>
 </head>
-<body data-plate="kind">
+<body data-plate="namehp">
 <div class="bar">
   <span>Prototype · orbs that open into cards</span>
   <span>Under the orb</span>
-  <div class="seg" id="plateSeg"><button data-v="all">Name · class · HP</button><button data-v="kind" class="on">Name · class</button><button data-v="name">Name</button><button data-v="none">Nothing</button></div>
+  <div class="seg" id="plateSeg"><button data-v="all">Name · class · HP</button><button data-v="namehp" class="on">Name · HP</button><button data-v="kind">Name · class</button><button data-v="name">Name</button><button data-v="none">Nothing</button></div>
   <div class="seg" id="speed"><button data-v="0.7s" class="on">Normal</button><button data-v="2.4s">Slow-mo</button></div>
   <span>Hover an orb (or tap it on a phone) to open it; tap again or elsewhere to close.</span>
 </div>
