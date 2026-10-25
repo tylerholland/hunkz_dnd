@@ -134,7 +134,10 @@
   .section-h { display: flex; align-items: baseline; gap: 12px; margin: 26px 0 12px; }
   .section-h h2 { margin: 0; font-family: 'Cinzel', serif; font-weight: 400; font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-text); }
   .section-h span { font-style: italic; color: var(--pal-muted); }
-  .cats { display: grid; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); gap: 10px; }
+  /* All eight shelves in one row on a wide screen; they wrap below that. */
+  .cats { display: grid; grid-template-columns: repeat(8, minmax(0, 1fr)); gap: 8px; }
+  .cat b { overflow-wrap: anywhere; }
+  @media (max-width: 1100px) { .cats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
   .cat { position: relative; overflow: hidden; display: grid; justify-items: center; gap: 4px; padding: 14px 8px 12px; border-radius: 12px; text-align: center;
     border: 1px solid color-mix(in srgb, var(--cat) 70%, transparent); color: #f1e6d2;
     background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--cat) 75%, #fff 8%), color-mix(in srgb, var(--cat) 80%, #000) 80%);
@@ -150,7 +153,7 @@
   .cat.has-art svg { opacity: 0; height: 26px; }
 
   /* ── Goods: round frames, like the homepage orbs ── */
-  .goods { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 20px 14px; }
+  .goods { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px 14px; }
   .good { position: relative; display: grid; justify-items: center; gap: 6px; padding: 10px 6px 8px; border-radius: 12px; border: 1px solid transparent; background: transparent; text-align: center; transition: transform 0.2s ease, background 0.2s ease; }
   .good:hover, .good:focus-visible { transform: translateY(-4px); background: var(--pal-surface); outline: none; }
   .good.sel { background: var(--pal-surface); border-color: color-mix(in srgb, var(--cat) 70%, var(--pal-border)); }
@@ -172,6 +175,35 @@
   .good.out { pointer-events: none; }
   .good.out .orb { filter: grayscale(1) brightness(0.6); }
   .soldout { position: absolute; top: 52px; left: 50%; transform: translateX(-50%) rotate(-12deg); padding: 2px 8px; border: 2px solid var(--danger); color: var(--danger); background: color-mix(in srgb, var(--pal-bg) 70%, transparent); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; }
+  /* ── Your pack: what you already carry, beside the shelves ── */
+  .browse { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 24px; align-items: start; }
+  .pack { position: sticky; top: 64px; margin-top: 26px; padding: 14px 14px 12px; border-radius: 12px; border: 1px solid var(--pal-border); background: var(--pal-surface); max-height: calc(100vh - 140px); overflow: auto; }
+  .pack-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; width: 100%; background: none; border: none; padding: 0; text-align: left; cursor: default; }
+  .pack-head img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--pal-accent); }
+  .pack-head b { display: block; font-family: 'Cinzel', serif; font-weight: 400; font-size: 15px; letter-spacing: 0.08em; color: var(--pal-text); }
+  .pack-head small { color: var(--pal-muted); font-size: 13px; }
+  .pack-head .chev { display: none; margin-left: auto; color: var(--pal-muted); }
+  .pack-group { margin-top: 10px; }
+  .pack-group h4 { margin: 0 0 4px; font-family: 'Cinzel', serif; font-weight: 400; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pal-accent); }
+  .pack-row { display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; padding: 3px 0; font-size: 15px; color: var(--pal-text); }
+  .pack-row .orb { width: 30px; height: 30px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--cat) 60%, transparent); }
+  .pack-row .orb svg { width: 60%; height: 60%; }
+  .pack-row .orb.has-art img { transform: scale(1.15); }
+  .pack-row .nm small { display: block; font-size: 12px; font-style: italic; color: var(--pal-muted); line-height: 1.2; }
+  .pack-row .q { font-family: 'Cinzel', serif; font-size: 12px; color: var(--pal-muted); white-space: nowrap; }
+  .pack-row .worn { padding: 0 6px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--pal-accent) 60%, transparent); font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pal-accent-bright); }
+  .pack-row.coming { opacity: 0.85; }
+  .pack-row.coming .orb { box-shadow: 0 0 0 1px dashed; outline: 1px dashed var(--gold); outline-offset: 2px; }
+  .pack-row.fresh { animation: fresh 1.6s ease; }
+  @keyframes fresh { 0% { background: color-mix(in srgb, var(--gold) 35%, transparent); } 100% { background: transparent; } }
+  .pack-sell { width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+  .pack-sell svg { width: 16px; height: 16px; }
+  .pack-sell.on { border-color: var(--gold); color: var(--pal-text); }
+  .pack-empty { margin: 6px 0 0; font-style: italic; color: var(--pal-muted); font-size: 14px; }
+  .pack-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--pal-border); display: flex; justify-content: space-between; font-size: 14px; color: var(--pal-muted); }
+  .pack-foot b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); }
+  /* On the shelf: a note when you already carry the thing. */
+  .have { position: absolute; top: 96px; left: calc(50% - 60px); padding: 0 7px; border-radius: 999px; background: var(--pal-surface-solid); border: 1px solid var(--pal-accent); color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.08em; }
   .cat-line { margin: 16px 0 0; font-style: italic; color: var(--pal-muted); text-align: center; }
 
   /* ── The satchel (bottom sheet, in the page's palette) ── */
@@ -250,6 +282,7 @@
 
   /* Phones: the scene stays a picture; the speech, the item in hand and the
      counter stack below it. */
+  @media (max-width: 980px) { .browse { grid-template-columns: minmax(0, 1fr) 230px; } }
   @media (max-width: 760px) {
     .scene { height: auto; background: var(--pal-surface-solid); }
     .scene > img { position: relative; display: block; height: auto; aspect-ratio: 5 / 3; }
@@ -259,6 +292,11 @@
     .counter { display: flex; }
     .float .orb { width: 120px; height: 120px; }
     .goods { grid-template-columns: repeat(2, 1fr); }
+    .browse { grid-template-columns: 1fr; }
+    .pack { position: static; order: -1; max-height: none; margin-top: 18px; }
+    .pack-head { cursor: pointer; }
+    .pack-head .chev { display: block; }
+    .pack:not(.open) .pack-group, .pack:not(.open) .pack-foot, .pack:not(.open) .pack-empty, .pack:not(.open) .pack-sell { display: none; }
     .tag { right: 8px; }
   }
   @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation: none !important; transition: none !important; } }
@@ -306,11 +344,16 @@
       </div>
     </div>
 
-    <div class="section-h"><h2>Browse the shelves</h2><span id="catCount"></span></div>
-    <div class="cats" id="cats"></div>
-    <div class="section-h"><h2 id="goodsH">Arms</h2><span id="goodsSub"></span></div>
-    <div class="goods" id="goods"></div>
-    <p class="cat-line" id="catLine"></p>
+    <div class="browse">
+      <div class="browse-main">
+        <div class="section-h"><h2>Browse the shelves</h2><span id="catCount"></span></div>
+        <div class="cats" id="cats"></div>
+        <div class="section-h"><h2 id="goodsH">Arms</h2><span id="goodsSub"></span></div>
+        <div class="goods" id="goods"></div>
+        <p class="cat-line" id="catLine"></p>
+      </div>
+      <aside class="pack" id="pack" aria-label="Your pack"></aside>
+    </div>
   </main>
 
   <div class="sheet" id="sheet">
@@ -514,10 +557,17 @@ LINES.item = {
   "caltrops": "Throw them behind you. Not in front. People forget.",
 };
 
+// What each shopper already carries: catalog items by id (repeat an id for
+// more than one), anything from their sheet that isn't in the catalog as
+// `extras`, and what they're wearing or wielding.
 const SHOPPERS = {
-  eoghan: { name: "Eòghan", pal: "ocean", coin: 64, cha: 1, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/eoghan-1784698034076.png", owned: ["light-armor", "rope", "waterskin", "light-weapon"] },
-  liu: { name: "Liu Sha", pal: "ember", coin: 18, cha: 0, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/liu-sha.jpg", owned: ["rations"] },
-  david: { name: "Meanjeans", pal: "vellum", coin: 40, cha: 2, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/david-1784666229879.png", owned: ["light-weapon", "torches", "lockpicks"] },
+  eoghan: { name: "Eòghan", pal: "ocean", coin: 64, cha: 1, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/eoghan-1784698034076.png",
+    owned: ["light-armor", "rope", "waterskin"], worn: ["light-armor"],
+    extras: [{ name: "Short Sword", cat: "arms", icon: "blade", note: "off a fallen goblin", worn: true }, { name: "Dagger", cat: "arms", icon: "blade", note: "a small symbol on the hilt" }] },
+  liu: { name: "Liu Sha", pal: "ember", coin: 18, cha: 0, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/liu-sha.jpg",
+    owned: ["rations", "rations", "waterskin"], worn: [], extras: [{ name: "Prayer Beads", cat: "fancy", icon: "coin", note: "worn smooth" }] },
+  david: { name: "Meanjeans", pal: "vellum", coin: 40, cha: 2, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/david-1784666229879.png",
+    owned: ["light-weapon", "torches", "lockpicks", "light-armor"], worn: ["light-armor", "light-weapon"], extras: [] },
 };
 let who, coin, cat = "arms", satchel = [], haggled = null, inHand = null;
 
@@ -557,9 +607,50 @@ function renderCats() {
     const hero = CAT_ART[c.id];
     return `<button class="cat${c.id === cat ? " on" : ""}${hero ? " has-art" : ""}" style="--cat:${catColor(c.id)};${hero ? `--art:url(assets/items/item-${hero}.jpg)` : ""}" data-cat="${c.id}">${ico(c.icon)}<b>${c.name}</b><small>${list.length} · ${lo === hi ? `${lo}s` : `${lo}–${hi.toLocaleString()}s`}</small></button>`;
   });
-  tiles.push(`<button class="cat sell${cat === "sell" ? " on" : ""}" data-cat="sell">${ico("coin")}<b>Sell to Mags</b><small>half price</small></button>`);
   document.getElementById("cats").innerHTML = tiles.join("");
   document.getElementById("catCount").textContent = `${ITEMS.length} wares on ${CATS.length} shelves`;
+}
+
+// ── Your pack ──
+let freshIds = new Set();
+const PACK_GROUPS = [
+  { name: "Weapons", cats: ["arms"] },
+  { name: "Armour", cats: ["armor"] },
+  { name: "Gear & tools", cats: ["gear", "tools", "fancy", "occult"] },
+  { name: "Mounts & hirelings", cats: ["travel", "hire"] },
+];
+const countOf = (id) => who.owned.filter((x) => x === id).length;
+function renderPack() {
+  const pack = document.getElementById("pack");
+  const rows = [];
+  const ids = [...new Set(who.owned)];
+  const total = who.owned.length + who.extras.length;
+  const row = (it, opts = {}) => `<div class="pack-row${opts.coming ? " coming" : ""}${opts.fresh ? " fresh" : ""}">${orb(it)}<span class="nm">${it.name}${opts.note ? `<small>${opts.note}</small>` : ""}</span>${opts.worn ? '<span class="worn">worn</span>' : `<span class="q">${opts.q > 1 ? `×${opts.q}` : ""}</span>`}</div>`;
+  let html = `<button class="pack-head" type="button" id="packHead"><img src="${who.img}" alt="" /><span><b>Your pack</b><small>${who.name} · ${total} thing${total === 1 ? "" : "s"}</small></span><span class="chev">▾</span></button>`;
+  if (satchel.length) {
+    html += `<div class="pack-group"><h4>In your satchel</h4>${satchel.map((l) => row(l.item, { coming: true, q: l.qty })).join("")}</div>`;
+  }
+  PACK_GROUPS.forEach((g) => {
+    const mine = ids.map((id) => ITEMS.find((i) => i.id === id)).filter((it) => it && g.cats.includes(it.cat));
+    const extras = who.extras.filter((x) => g.cats.includes(x.cat));
+    if (!mine.length && !extras.length) return;
+    html += `<div class="pack-group"><h4>${g.name}</h4>`
+      + extras.map((x) => row({ ...x, id: x.name }, { note: x.note, worn: x.worn })).join("")
+      + mine.map((it) => row(it, { q: countOf(it.id), worn: who.worn.includes(it.id), fresh: freshIds.has(it.id) })).join("")
+      + "</div>";
+  });
+  if (!total) html += '<p class="pack-empty">Nothing yet but lint and hope.</p>';
+  html += `<div class="pack-foot"><span>Purse <b>${coin}s</b></span><span>Satchel <b>${satchel.reduce((n, l) => n + l.qty, 0)}</b></span></div>`;
+  // Selling is about what you carry, so it lives here rather than among the shelves.
+  html += `<button class="btn pack-sell${cat === "sell" ? " on" : ""}" type="button" id="sellBtn">${ico("coin")} Sell to Mags · half price</button>`;
+  pack.innerHTML = html;
+  document.getElementById("packHead").onclick = () => pack.classList.toggle("open");
+  document.getElementById("sellBtn").onclick = () => {
+    cat = "sell"; renderCats(); renderGoods(); renderPack();
+    say("Selling, are we? Let's see what you've dragged in.");
+    document.getElementById("goodsH").scrollIntoView({ behavior: "smooth", block: "center" });
+  };
+  freshIds = new Set();
 }
 
 // ── Goods ──
@@ -580,7 +671,7 @@ function renderGoods() {
   g.innerHTML = list.map((it) => {
     const out = it.stock === 0, poor = !out && it.price > coin;
     return `<button class="good${poor ? " poor" : ""}${out ? " out" : ""}${inHand?.id === it.id ? " sel" : ""}" data-id="${it.id}" style="--cat:${catColor(it.cat)}">
-      <span class="tag">${priceLabel(it)}</span>${orb(it)}${out ? '<span class="soldout">Sold out</span>' : ""}
+      <span class="tag">${priceLabel(it)}</span>${orb(it)}${out ? '<span class="soldout">Sold out</span>' : ""}${countOf(it.id) ? `<span class="have">have ${countOf(it.id)}</span>` : ""}
       <span class="nm">${it.name}</span><span class="st">${it.stat || (it.stock ? `only ${it.stock} left` : "")}</span></button>`;
   }).join("");
   document.getElementById("catLine").textContent = c.line;
@@ -603,7 +694,7 @@ function renderFloat(pop) {
     <h3>${it.name}</h3>
     ${it.stat ? `<span class="stat">${it.stat}</span>` : ""}
     <p>${it.notes || "Exactly what it says on the tag."}</p>
-    ${owned ? `<p class="owned">You already carry one.</p>` : ""}
+    ${owned ? `<p class="owned">You already carry ${countOf(it.id) > 1 ? countOf(it.id) : "one"}${who.worn.includes(it.id) ? ", and you're wearing it" : ""}.</p>` : ""}
     <div class="buy">
       <span class="price${short ? " short" : ""}" id="fprice">${it.price * qty === it.price ? priceLabel(it) : `${(it.price * qty).toLocaleString()}s`}</span>
       <div class="qty"><button type="button" data-q="-1" aria-label="Fewer">−</button><span id="fq">${qty}</span><button type="button" data-q="1" aria-label="More">+</button></div>
@@ -642,6 +733,7 @@ function addToSatchel(it, n) {
   renderSatchel(); renderFloat(false);
 }
 function renderSatchel() {
+  renderPack();
   const n = satchel.reduce((s, l) => s + l.qty, 0);
   document.getElementById("satchelN").textContent = n;
   document.getElementById("sheetSum").textContent = n ? `${n} item${n === 1 ? "" : "s"} · ${total().toLocaleString()}s` : "empty";
@@ -702,7 +794,8 @@ document.getElementById("payBtn").onclick = () => {
   const bought = satchel.slice();
   setTimeout(() => {
     coin -= t;
-    who.owned.push(...bought.map((l) => l.item.id));
+    bought.forEach((l) => { for (let k = 0; k < l.qty; k++) who.owned.push(l.item.id); });
+    freshIds = new Set(bought.map((l) => l.item.id));
     document.getElementById("purse").textContent = coin;
     sheet.classList.remove("open");
     say(pick(LINES.pay));
@@ -726,7 +819,7 @@ document.getElementById("payBtn").onclick = () => {
 const RECOMMENDED = ITEMS.find((i) => i.id === "fire-oil");
 document.getElementById("cats").addEventListener("click", (e) => {
   const b = e.target.closest("[data-cat]"); if (!b) return;
-  cat = b.dataset.cat; renderCats(); renderGoods();
+  cat = b.dataset.cat; renderCats(); renderGoods(); renderPack();
   say(cat === "sell" ? "Selling, are we? Let's see what you've dragged in." : pick(LINES.hover[cat]));
 });
 document.getElementById("goods").addEventListener("click", (e) => {
