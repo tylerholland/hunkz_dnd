@@ -426,6 +426,7 @@
   <div class="seg" id="takeSeg"><button class="on" data-v="1">Take 1</button><button data-v="2">Take 2</button></div>
   <span>Scene</span>
   <div class="seg" id="sceneSeg"><button class="on" data-v="mags">Mags</button><button data-v="fancy-1">Fancy 1</button><button data-v="fancy-2">Fancy 2</button><button data-v="humble-1">Humble 1</button><button data-v="humble-2">Humble 2</button><button data-v="shady-1">Shady 1</button><button data-v="shady-2">Shady 2</button></div>
+  <button class="seg" type="button" id="nameBtn" style="padding:5px 10px;background:transparent;color:var(--pal-muted);font-family:'Cinzel',serif;font-size:10px;letter-spacing:.14em;text-transform:uppercase">⟳ Another name</button>
   <span>Shop</span>
   <div class="seg" id="stateSeg"><button data-v="closed">Closed</button><button data-v="scheduled">Scheduled</button><button class="on" data-v="open">Open</button><button data-v="lockup">Locking up</button><button data-v="combat">Combat round</button></div>
 </div>
@@ -440,7 +441,7 @@
   <main id="shopMain">
     <header class="shop-head">
       <div>
-        <div class="kicker">Greyhawk · Low Market</div>
+        <div class="kicker" id="shopWhere">Greyhawk · Low Market</div>
         <h1 id="shopName">Ironwhistle's Emporium</h1>
         <div class="sub" id="shopSub">Arms, armour &amp; oddities — Magpie “Mags” Ironwhistle, proprietor, appraiser, liar</div>
       </div>
@@ -1125,7 +1126,7 @@ document.getElementById("payBtn").onclick = () => {
     freshIds = new Set(bought.map((l) => l.item.id));
     document.getElementById("purse").textContent = coin;
     sheet.classList.remove("open");
-    say(pick(LINES.pay));
+    say(pick(voice("pay")));
     veil.innerHTML = `<div class="receipt" role="dialog" aria-label="Receipt">
       <h3>${scene.name}</h3><small style="margin:0">Sold to ${who.name}</small>
       <div class="r-lines">${bought.map((l) => `<div><span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}${l.deal ? ` <i>(${l.deal.short})</i>` : ""}</span><span>${l.paid.toLocaleString()}s</span></div>`).join("")}
@@ -1356,7 +1357,7 @@ function setStatus(v) {
   if (isThrownOut()) { renderStatus(); renderNext(); return; }
   if (v === "lockup") startLockup();
   else if (v === "open" && prev === "combat") say("Ah, the dust's settled. Where were we?");
-  else if (v === "open" && prev !== "open") say(pick(LINES.greet));
+  else if (v === "open" && prev !== "open") say(pick(voice("greet")));
   renderStatus(); renderNext();
   placeSpeech();
 }
@@ -1553,7 +1554,87 @@ const SCENES = {
   "shady-1": { l: 0.23, src: "assets/shops/shop-shady-1.jpg", name: "The Drowned Lantern", keeper: "Vesk", sub: "Goods of uncertain history — Vesk, no questions asked", r: 0.42, y: 0.48, cx: 0.31, chin: 0.56, pos: "30% 45%" },
   "shady-2": { l: 0.205, src: "assets/shops/shop-shady-2.jpg", name: "The Drowned Lantern", keeper: "Old Nackle", sub: "Goods of uncertain history — Old Nackle, no questions asked", r: 0.49, y: 0.42, cx: 0.39, chin: 0.54, pos: "30% 40%" },
 };
-let scene = SCENES.mags;
+
+// Who keeps each shop, and what the shop might be called. Each picture has a
+// few names, so the same keeper can turn up in a different town under a
+// different sign; the DM would pick one (or write their own) when setting up
+// an opening. Keepers also get their own greetings and goodbyes.
+const KEEPERS = {
+  "mags": {
+    keeper: "Mags",
+    names: [
+      ["Ironwhistle's Emporium", "Greyhawk · Low Market", "Arms, armour &amp; oddities — Magpie “Mags” Ironwhistle, proprietor, appraiser, liar"],
+      ["The Brass Monocle", "Dyvers · Under the Clocktower", "Everything appraised, most things for sale — Mags Ironwhistle, who saw you coming"],
+      ["Ironwhistle's Curios &amp; Cutlery", "Hommlet · Behind the Inn", "Sharp things, shiny things, and things best left in the box — Mags, proprietor"],
+    ],
+    greet: ["Mind the step, the last one was a mimic.", "Ah, {name}. Coin first, questions never.", "Welcome to Ironwhistle's. Everything's for sale except the cat."],
+    pay: ["Pleasure doing business. Don't die with it unpaid.", "Coin's good. Mostly silver, even.", "Come back alive, and come back rich."],
+  },
+  "fancy-1": {
+    keeper: "Aurelian",
+    names: [
+      ["Aurelian &amp; Daughters", "Silverspire · The Gilded Arcade", "Purveyors to the discerning — Aurelian Vey, outfitter by appointment"],
+      ["The Gilded Gryphon", "Greyhawk · High Market", "Fine arms and finer manners — Aurelian Vey, by royal warrant (expired)"],
+      ["Vey's of Silverspire", "Silverspire · Temple Row", "Four hundred years in trade — Aurelian Vey, who remembers every one"],
+    ],
+    greet: ["Welcome. Do try not to touch the glass.", "Ah. An adventurer. How… bracing. Do come in, {name}.", "Everything here has a provenance. Some of it is even true."],
+    pay: ["A pleasure. Do wipe your boots on the way out.", "Splendid. My daughters will wrap it. Eventually.", "Wear it well, {name}. People will ask where you got it."],
+  },
+  "fancy-2": {
+    keeper: "Master Quibb",
+    names: [
+      ["Quibb's Cabinet of Wonders", "Greyhawk · The Jewelled Mile", "Rare, remarkable &amp; reasonably priced — Master Pellinore Quibb, collector"],
+      ["The Hall of Fine Things", "Rel Astra · Old Cathedral Quarter", "Curated, catalogued and cursed only slightly — Master Quibb, keeper of the Hall"],
+      ["Quibb &amp; Quibb", "Mitrik · Lantern Street", "Est. before your grandmother — the younger Master Quibb, now ninety-one"],
+    ],
+    greet: ["Hm? Oh! A customer. Do mind the suit of armour, it bites.", "Welcome, welcome. Everything is catalogued. Somewhere.", "You have the look of someone about to buy something marvellous, {name}."],
+    pay: ["Marvellous. I'll note it in the ledger. Somewhere.", "Do bring it back if it starts whispering.", "A fine choice. I shall miss it terribly."],
+  },
+  "humble-1": {
+    keeper: "Tobias",
+    names: [
+      ["Underbough's Sundries", "Millbrook · By the Mill Pond", "Bread, rope &amp; honest tools — old Tobias Underbough, since forever"],
+      ["The Muddy Boot", "Hobb's End · The Crossroads", "Provisions for the road and a cup of tea — Tobias Underbough, mind your feet"],
+      ["Last Stop Provisions", "The Long Road · Final Waystation", "Last bread for forty miles — Tobias, who's seen them all set off"],
+    ],
+    greet: ["Come in, come in! Kettle's just boiled.", "Well now, {name}! You look like you need a good pair of socks.", "Wipe your feet, love. Then tell me what you're after."],
+    pay: ["There you are. Mind how you go!", "And a sweet for the road, on the house.", "Come back and tell me all about it, won't you?"],
+  },
+  "humble-2": {
+    keeper: "Pipwick",
+    names: [
+      ["Pipwick's Pantry &amp; Provision", "Bramblecross · Under the Old Oak", "Jam, rope &amp; pocket knives — Wendel Pipwick, purveyor of most things"],
+      ["The Crooked Kettle", "Bramblecross · Down the Lane", "A bit of everything and a pot of tea — Wendel Pipwick, at your service"],
+      ["Odds, Ends &amp; Pipwick", "Fernhollow · Market Green", "If I haven't got it, you don't need it — Wendel Pipwick"],
+    ],
+    greet: ["Ooh, a visitor! Sit, sit — no, not on that.", "Ah, {name}. I was hoping someone would come by today.", "Everything's priced, near enough. Ask if you can't read my writing."],
+    pay: ["Lovely. Don't spend it all on adventures.", "Off you go, then — and do come back in one piece.", "Pleasure's mine. Here, have a biscuit."],
+  },
+  "shady-1": {
+    keeper: "Vesk",
+    names: [
+      ["The Drowned Lantern", "Greyhawk · Under the River Gate", "Goods of uncertain history — Vesk, no questions asked"],
+      ["Velvet &amp; Venom", "Dyvers · The Smugglers' Steps", "Fine things, dark things, both on tick — Vesk, by invitation"],
+      ["The Second-Hand Saint", "Port Toli · Wreckers' Row", "Salvage, relics &amp; slightly used miracles — Vesk, who asks nothing"],
+    ],
+    greet: ["Shut the door, {name}. The draught gets curious.", "Well. You found me. That's half the price already.", "Look all you like. Touching costs extra."],
+    pay: ["Pleasure. You were never here.", "If anyone asks, you bought it from a nice old lady.", "Come back soon, {name}. I'll have new old things."],
+  },
+  "shady-2": {
+    keeper: "Old Nackle",
+    names: [
+      ["Nackle's Nook", "Greyhawk · Beneath the Fishmarket", "Goods found, goods sold — Old Nackle, broker of what fell off carts"],
+      ["The Rat &amp; Ledger", "Dyvers · Bilge Street Cellar", "Everything written down, nothing remembered — Old Nackle, keeper of accounts"],
+      ["Goods Found, Goods Sold", "Hardby · Under the Old Bridge", "Ask no questions, hear no lies — Old Nackle, ninety years in the trade"],
+    ],
+    greet: ["Hehh. A customer. Wipe your feet, or don't. Nackle's not fussy.", "Nackle sees you, {name}. Nackle sees your purse too.", "Everything's for sale. Some of it's even Nackle's."],
+    pay: ["Hehh. Pleasure. Nackle writes it down. Nackle forgets it.", "Off you go. Didn't buy it here, mind.", "Come back when your pockets are heavy, {name}."],
+  },
+};
+let nameIdx = 0;
+// A keeper's own line if they have one, otherwise the shop's shared ones.
+const voice = (k) => (KEEPERS[sceneKey]?.[k] || LINES[k]);
+let sceneKey = "mags", scene = SCENES.mags;
 const sceneImg = document.getElementById("sceneImg");
 function placeSpeech() {
   const box = document.getElementById("speechBox");
@@ -1597,8 +1678,12 @@ function placeSpeech() {
     box.style.setProperty("--tail-x", `${Math.max(20, Math.min(w - 20, cx - l))}px`);
   }
 }
-function setScene(key) {
-  scene = SCENES[key];
+function setScene(key, idx = 0) {
+  const changed = key !== sceneKey;
+  sceneKey = key; nameIdx = idx;
+  const k = KEEPERS[key], [name, where, sub] = k.names[idx];
+  scene = { ...SCENES[key], keeper: k.keeper, name: name.replace(/&amp;/g, "&"), sub, where };
+  document.getElementById("shopWhere").textContent = where;
   sceneImg.src = scene.src;
   sceneImg.style.objectPosition = scene.pos;
   sceneImg.alt = `${scene.keeper} behind the counter`;
@@ -1608,6 +1693,7 @@ function setScene(key) {
   document.title = scene.name;
   document.getElementById("navName").textContent = `Session · ${scene.name}`;
   renderFloat(false);
+  if (changed && status === "open") say(pick(voice("greet")));
 }
 sceneImg.addEventListener("load", placeSpeech);
 addEventListener("resize", placeSpeech);
@@ -1628,7 +1714,8 @@ seg("viewSeg", (v) => {
   if (v === "shop") placeSpeech();
 });
 seg("stateSeg", (v) => setStatus(v));
-seg("sceneSeg", setScene);
+seg("sceneSeg", (k) => setScene(k));
+document.getElementById("nameBtn").onclick = () => setScene(sceneKey, (nameIdx + 1) % KEEPERS[sceneKey].names.length);
 function shopAs(key) {
   who = SHOPPERS[key]; whoKey = key; coin = who.coin; satchel = [];
   deals = {}; refused = new Set(); patience = HAGGLE[shop.haggle].patience; snaps = 0; pushes = 0; thrownOut = thrown.has(key); read = null; renderRead();
@@ -1641,7 +1728,7 @@ function shopAs(key) {
   RECOMMENDED = [ITEMS.find((i) => i.id === "fire-oil"), ...ITEMS].find((i) => shop.carries.has(i.cat) && !isOut(i));
   inHand = RECOMMENDED; qty = 1; document.getElementById("float").dataset.rec = "";
   renderCats(); renderGoods(); renderSatchel(); renderFloat(true);
-  say(pick(LINES.greet));
+  say(pick(voice("greet")));
 }
 seg("whoSeg", (k) => { shopAs(k); setStatus(status); });
 seg("takeSeg", (v) => { take = Number(v); renderCats(); renderGoods(); renderSatchel(); renderFloat(false); });
