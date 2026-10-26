@@ -714,7 +714,10 @@ const LINES = {
   out: ["Sold the last one to a fellow with too many teeth.", "Sold my last one to a dwarf, Tuesday.", "Next caravan's due in a fortnight. Maybe."],
   add: ["Good choice.", "A fine pick.", "Into the satchel it goes.", "Ha! Knew you'd want that."],
   haggle: {
+    crit2: ["This is robbery. Broad daylight robbery. Take it before I weep.", "Did a bard teach you that? Take it. Take it and never tell my mother."],
     crit: ["Fine! Fine! Take it and get out before I come to my senses.", "You'd talk a dragon out of its hoard. A fifth off — now go."],
+    holds: ["That's my price, and it's already a kindness.", "No lower. I've got a cat to feed."],
+    soldOut: ["Oh, would you look at that. Just sold the last of those.", "Sorry, love. That one's spoken for. Just now. By someone else."],
     full: ["Hmph. You drive a hard bargain. A tenth off, and not a copper more."],
     partial: ["A few silver off... but you'll owe me a favour, {name}.", "Alright, a little off — and you'll tell your friends, yes?"],
     miss: ["Haggle with me? The price just went up.", "Out of pity, I'll pretend I didn't hear that. Prices stand. Plus one."],
@@ -752,7 +755,7 @@ const SHOPPERS = {
 let who, whoKey, coin, cat = "arms", satchel = [], inHand = null;
 // Haggling, per shopper per opening: deals struck, items she won't sell you,
 // her patience with you, pushes after she's done, and your read of her mood.
-let deals = {}, refused = new Set(), patience = 4, pushes = 0, thrownOut = false, read = null;
+let deals = {}, refused = new Set(), patience = 5, snaps = 0, pushes = 0, thrownOut = false, read = null;
 const thrown = new Set(); // who's been thrown out this opening (by shopper key)
 const hlog = [];
 
@@ -863,7 +866,7 @@ function renderGoods() {
   const outN = list.filter(isOut).length;
   document.getElementById("goodsSub").textContent = outN ? `${list.length - outN} on the shelf · ${outN} sold out` : `${list.length} on the shelf`;
   g.innerHTML = list.map((it) => {
-    const out = isOut(it), no = refused.has(it.id), poor = !out && !no && myCost(it) > coin, d = deals[it.id];
+    const out = isOut(it), no = refused.has(it.id), poor = !out && !no && myCost(it) > coin, d = dealOf(it.id);
     return `<button class="good${poor ? " poor" : ""}${out ? " out" : ""}${no ? " refused" : ""}${inHand?.id === it.id ? " sel" : ""}" data-id="${it.id}" style="--cat:${catColor(it.cat)}">
       <span class="tag${d ? (d.mult < 1 ? " deal" : " worse") : ""}">${d ? `${myCost(it)}s` : priceLabel(it)}</span>${orb(it)}${out ? '<span class="soldout">Sold out</span>' : no ? '<span class="soldout">Not to you</span>' : ""}${countOf(it.id) ? `<span class="have">have ${countOf(it.id)}</span>` : ""}
       <span class="nm">${it.name}</span><span class="st">${it.stat || ""}</span></button>`;
@@ -878,7 +881,7 @@ function renderFloat(pop) {
   const it = inHand;
   f.style.setProperty("--cat", catColor(it.cat));
   const owned = who.owned.includes(it.id);
-  const deal = deals[it.id], refusedHere = refused.has(it.id);
+  const deal = dealOf(it.id), tried = deals[it.id], refusedHere = refused.has(it.id);
   // Can't put more in the satchel than the purse can cover.
   const inSatchel = satchel.find((l) => l.item.id === it.id)?.qty || 0;
   const short = myCost(it) * qty > coin - total() + (inSatchel ? 0 : 0);
@@ -903,7 +906,7 @@ function renderFloat(pop) {
     ${deal ? `<p class="deal-note">${deal.note}</p>` : ""}
     <div class="buy">
       <button class="btn gold" type="button" id="addBtn" style="flex:1" ${short || blocked ? "disabled" : ""}>${addLabel}</button>
-      <button class="btn" type="button" id="haggleBtn" ${deal || blocked || haggling ? "disabled" : ""} title="${deal ? "You've haggled over this one" : "Try for a better price: 2d6 + your Charisma"}">⚂ Haggle</button>
+      <button class="btn" type="button" id="haggleBtn" ${(tried?.tries || 0) >= MAX_TRIES || blocked || haggling ? "disabled" : ""} title="${(tried?.tries || 0) >= MAX_TRIES ? "She won't budge on this one again" : "Try for a better price: 2d6 + your Charisma"}">⚂ ${tried?.tries ? (tried.tries >= MAX_TRIES ? "Haggled out" : "Haggle again") : "Haggle"}</button>
     </div>`;
   if (pop) { f.classList.remove("pop"); void f.offsetWidth; f.classList.add("pop"); }
   f.querySelectorAll("[data-q]").forEach((b) => b.onclick = () => {
@@ -944,7 +947,7 @@ function renderSatchel() {
   document.getElementById("satchelN").textContent = n;
   document.getElementById("sheetSum").textContent = n ? `${n} item${n === 1 ? "" : "s"} · ${total().toLocaleString()}s` : "empty";
   document.getElementById("lines").innerHTML = satchel.map((l, i) => {
-    const d = deals[l.item.id];
+    const d = dealOf(l.item.id);
     return `<div class="line">${orb(l.item)}<span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}${d ? `<small class="${d.mult < 1 ? "disc" : "bad"}">${d.short}</small>` : ""}</span><span>${d ? `<s class="was">${(cost(l.item) * l.qty).toLocaleString()}s</s> ` : ""}${(myCost(l.item) * l.qty).toLocaleString()}s</span><button class="x" data-rm="${i}" aria-label="Remove">×</button></div>`;
   }).join("") || '<p style="opacity:.7;font-style:italic">Nothing yet. Pick something off the shelves.</p>';
   const s = subtotal(), t = total(), after = coin - t;
@@ -957,14 +960,16 @@ function renderSatchel() {
 }
 
 // ── Haggling, one item at a time ──
-// Mags has a hidden store of patience for each shopper, set by the DM's
-// temperament for this opening. A success or a partial costs 1, a miss 2.
-// The haggle that empties it takes that item off sale for you and cancels
-// the discounts on everything unpaid in your satchel. After that she refuses
-// to haggle at all; push her three more times and you're thrown out.
+// Up to three tries on each item. Mags has a hidden store of patience for
+// each shopper, set by the DM's temperament for this opening: a success or a
+// partial costs 1, a miss 2. When it runs out she won't sell you that item
+// ("just sold the last of those") and you're on thin ice; run it out again
+// and she's done haggling with you. Losing your unpaid discounts is rare (see
+// haggle()). After she's done, three more tries and you're thrown out.
 const MOODS = ["Easy", "Wary", "Testy", "Done with you"];
 function moodNow() {
-  if (patience <= 0) return 3;
+  if (snaps >= 2) return 3;
+  if (snaps === 1) return 2;
   const p = patience / HAGGLE[shop.haggle].patience;
   return p > 0.66 ? 0 : p > 0.33 ? 1 : 2;
 }
@@ -993,12 +998,24 @@ const d6 = () => 1 + Math.floor(Math.random() * 6);
 let haggling = false;
 function logHaggle(item, result) { hlog.unshift({ who: who.name, key: whoKey, item, result }); renderLog(); }
 
+// Discounts by the roll (2d6 + CHA + her hidden temper − 1 per earlier try on
+// the item). A great roll can take a thing below its list price.
+const TIERS = [
+  { min: 14, mult: 0.7, short: "nearly a third off", say: "crit2" },
+  { min: 12, mult: 0.8, short: "a fifth off", say: "crit" },
+  { min: 10, mult: 0.9, short: "a tenth off", say: "full" },
+  { min: 7, mult: 0.95, short: "a little off", say: "partial" },
+];
+const MAX_TRIES = 3;
+// A deal worth showing: one that moved the price.
+const dealOf = (id) => (deals[id] && deals[id].mult !== 1 ? deals[id] : null);
 function haggle(it) {
   haggling = true; renderFloat(false);
   setTimeout(() => {
     haggling = false;
-    // She's done haggling: every further try is a push towards the door.
-    if (patience <= 0) {
+    // She's refused you twice: she's done haggling, and every further try is
+    // a push towards the door.
+    if (snaps >= 2) {
       pushes += 1;
       if (pushes >= 3) { logHaggle(it.name, "thrown out"); throwOut(); return; }
       say(pushes === 1 ? "I said no more haggling. Price is the price." : `Last warning, ${who.name}. Once more and you're out on your ear.`);
@@ -1007,29 +1024,57 @@ function haggle(it) {
       return;
     }
     const temper = HAGGLE[shop.haggle];
-    const a = d6(), b = d6(), sum = a + b + who.cha + (temper.mod || 0);
-    const rolled = `You rolled ${a} and ${b}${who.cha ? `, ${who.cha > 0 ? "+" : "−"}${Math.abs(who.cha)} Charisma` : ""}`;
-    let line;
+    const prev = deals[it.id] || { mult: 1, tries: 0 };
+    const tries = prev.tries + 1;
+    const a = d6(), b = d6(), sum = a + b + who.cha + (temper.mod || 0) - prev.tries;
+    const nth = ["", "", "Second try: y", "Last try: y"][tries] || "Y";
+    const rolled = `${nth}ou rolled ${a} and ${b}${who.cha ? `, ${who.cha > 0 ? "+" : "−"}${Math.abs(who.cha)} Charisma` : ""}`;
+    let line, result;
     if (temper.refuses) {
       // A shop that won't haggle just says no; it still wears on her.
       patience -= 1;
+      deals[it.id] = { ...prev, tries };
       line = pick(LINES.haggle.refuse);
-      logHaggle(it.name, "refused (won't haggle)");
-    } else if (sum >= 12) { deals[it.id] = { mult: 0.8, short: "a fifth off", note: `${rolled}. A fifth off.` }; patience -= 1; line = pick(LINES.haggle.crit); }
-    else if (sum >= 10) { deals[it.id] = { mult: 0.9, short: "a tenth off", note: `${rolled}. A tenth off.` }; patience -= 1; line = pick(LINES.haggle.full); }
-    else if (sum >= 7) { deals[it.id] = { mult: 0.95, short: "a little off", note: `${rolled}. A little off, grudgingly.` }; patience -= 1; line = pick(LINES.haggle.partial); }
-    else { deals[it.id] = { mult: 1.1, short: "haggled badly", note: `${rolled}. The price went up.` }; patience -= 2; line = pick(LINES.haggle.miss); }
-    if (deals[it.id] && !temper.refuses) logHaggle(it.name, deals[it.id].short);
+      result = "refused (won't haggle)";
+    } else {
+      const tier = TIERS.find((t) => sum >= t.min);
+      if (tier) {
+        // Keep the best price you've got her to; a worse roll doesn't undo it.
+        const mult = Math.min(prev.mult, tier.mult);
+        const better = mult < prev.mult;
+        deals[it.id] = { mult, tries, short: TIERS.find((t) => t.mult === mult)?.short || tier.short, note: `${rolled}. ${better ? `${tier.short[0].toUpperCase()}${tier.short.slice(1)}.` : "She won't go lower than before."}` };
+        patience -= 1;
+        line = better ? pick(LINES.haggle[tier.say]) : pick(LINES.haggle.holds);
+        result = better ? tier.short : "no better";
+      } else {
+        // A miss nudges the price up a little, never past +15%.
+        const mult = Math.min(1.15, Math.round(prev.mult * 1.05 * 100) / 100);
+        deals[it.id] = { mult, tries, short: mult > 1 ? "haggled badly" : mult < 1 ? "a little off, still" : "back to the marked price", note: `${rolled}. The price went up.` };
+        patience -= 2;
+        line = pick(LINES.haggle.miss);
+        result = "haggled badly";
+      }
+    }
+    logHaggle(it.name, result);
     if (patience <= 0) {
-      // She snaps: not this item, not to you, and the deals are off.
+      // Her patience is gone: not this item, not to you. How badly she takes
+      // it is a hidden 2d6. The first time, only a 2–3 (1 in 12) costs you
+      // the discounts you haven't paid for yet; the second time, a 2–4 (1 in
+      // 6). After the second, she's done haggling with you.
+      snaps += 1;
       delete deals[it.id];
       refused.add(it.id);
-      // Every discount you haven't paid for yet goes with it.
-      const lost = Object.keys(deals).filter((id) => deals[id].mult < 1);
-      lost.forEach((id) => delete deals[id]);
       satchel = satchel.filter((l) => l.item.id !== it.id);
-      line = `That's it. Not that, not to you.${lost.length ? " And those discounts? Gone." : ""}`;
-      logHaggle(it.name, `snapped: off sale${lost.length ? `, lost ${lost.length} discount${lost.length === 1 ? "" : "s"}` : ""}`);
+      const temperRoll = d6() + d6();
+      const losesDeals = temperRoll <= (snaps === 1 ? 3 : 4);
+      const lost = losesDeals ? Object.keys(deals).filter((id) => deals[id].mult < 1) : [];
+      // Back to the marked price, but the tries you've used stay used.
+      lost.forEach((id) => { deals[id] = { tries: deals[id].tries, mult: 1 }; });
+      line = snaps === 1 ? pick(LINES.haggle.soldOut) : "Not that either. And that's the last haggling you'll do in here today.";
+      if (lost.length) line += " And those discounts? Gone.";
+      // A little patience back after the first refusal: you're on thin ice.
+      if (snaps === 1) patience = 2;
+      logHaggle(it.name, `${snaps === 1 ? "refused to sell" : "refused again, done haggling"}${lost.length ? `; lost ${lost.length} discount${lost.length === 1 ? "" : "s"}` : ""}`);
     }
     say(line);
     readMood();
@@ -1067,7 +1112,7 @@ document.getElementById("payBtn").onclick = () => {
       { transform: `translate(${dx + (Math.random() - 0.5) * 60}px, ${dy}px) scale(0.6)`, opacity: 0.2 },
     ], { duration: 750 + i * 45, easing: "cubic-bezier(.4,0,.6,1)" }).onfinish = () => c.remove();
   }
-  const bought = satchel.map((l) => ({ ...l, paid: myCost(l.item) * l.qty, deal: deals[l.item.id] }));
+  const bought = satchel.map((l) => ({ ...l, paid: myCost(l.item) * l.qty, deal: dealOf(l.item.id) }));
   setTimeout(() => {
     coin -= t;
     bought.forEach((l) => { for (let k = 0; k < l.qty; k++) who.owned.push(l.item.id); });
@@ -1203,9 +1248,9 @@ const sameMarkups = (a, b) => CATS.every((c) => (a[c.id] || 0) === (b[c.id] || 0
 // patience she has with each shopper. Players never see either.
 const HAGGLE = {
   no: { name: "Won't haggle", refuses: true, patience: 3, hint: "She turns every haggle down. Three tries and she's had enough." },
-  tough: { name: "Stubborn", mod: -2, patience: 2, hint: "Haggles at −2, patience 2. One bad try and she snaps." },
-  fair: { name: "Fair", mod: 0, patience: 4, hint: "Haggles at +0, patience 4: two or three haggles before she's had enough." },
-  soft: { name: "Soft touch", mod: 2, patience: 6, hint: "Haggles at +2, patience 6. A good word goes a long way here." },
+  tough: { name: "Stubborn", mod: -2, patience: 3, hint: "Haggles at −2, patience 3. A couple of bad tries and she stops selling." },
+  fair: { name: "Fair", mod: 0, patience: 5, hint: "Haggles at +0, patience 5: three to five tries before she won't sell you something." },
+  soft: { name: "Soft touch", mod: 2, patience: 8, hint: "Haggles at +2, patience 8. A good word goes a long way here." },
 };
 const tomorrow9 = new Date(NOW); tomorrow9.setDate(tomorrow9.getDate() + 1); tomorrow9.setHours(9, 0, 0, 0);
 const shop = {
@@ -1454,7 +1499,7 @@ function renderLog() {
     thrown.delete(k);
     hlog.unshift({ who: SHOPPERS[k].name, item: "—", result: "let back in" });
     // Back in, on thin ice: no patience left to spend.
-    if (k === whoKey) { thrownOut = false; patience = 0; pushes = 0; read = null; renderRead(); setStatus(status); }
+    if (k === whoKey) { thrownOut = false; patience = 0; snaps = 2; pushes = 0; read = null; renderRead(); setStatus(status); }
     renderLog();
   });
 }
@@ -1504,7 +1549,7 @@ seg("viewSeg", (v) => {
 seg("stateSeg", (v) => setStatus(v));
 function shopAs(key) {
   who = SHOPPERS[key]; whoKey = key; coin = who.coin; satchel = [];
-  deals = {}; refused = new Set(); patience = HAGGLE[shop.haggle].patience; pushes = 0; thrownOut = thrown.has(key); read = null; renderRead();
+  deals = {}; refused = new Set(); patience = HAGGLE[shop.haggle].patience; snaps = 0; pushes = 0; thrownOut = thrown.has(key); read = null; renderRead();
   document.body.dataset.pal = who.pal;
   document.getElementById("purse").textContent = coin;
   document.getElementById("whoName").textContent = who.name;
