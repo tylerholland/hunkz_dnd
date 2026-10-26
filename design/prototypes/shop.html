@@ -73,6 +73,10 @@
   .speech { position: absolute; z-index: 3; left: 39%; top: calc(41% + 60px); transform: translateY(-50%); max-width: min(360px, calc(58.5% - min(320px, 32%) - 24px)); padding: 12px 16px; border-radius: 12px; background: var(--parchment); color: var(--ink);
     font-family: 'IM Fell English', serif; font-size: clamp(15px, 1.6vw, 19px); line-height: 1.35; box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
   .speech::before { content: ""; position: absolute; left: -11px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-right: 12px solid var(--parchment); border-left: 0; }
+  /* When there's no room beside the face, the bubble hangs below the chin with the tail pointing up. */
+  .speech.below { transform: none; }
+  .speech.left::before { left: auto; right: -11px; border: 8px solid transparent; border-left: 12px solid var(--parchment); border-right: 0; }
+  .speech.below::before { left: var(--tail-x, 40px); top: -11px; margin: 0 0 0 -8px; border: 8px solid transparent; border-bottom: 12px solid var(--parchment); border-top: 0; }
   .speech .who { display: block; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8a6a3a; margin-bottom: 2px; }
   .speech .caret { display: inline-block; width: 2px; height: 1em; background: var(--ink); vertical-align: -2px; animation: caret 0.9s steps(1) infinite; }
   @keyframes caret { 50% { opacity: 0; } }
@@ -420,6 +424,8 @@
   <div class="seg" id="whoSeg"><button class="on" data-v="eoghan">Eòghan · ocean · 64s</button><button data-v="liu">Liu Sha · ember · 18s</button><button data-v="david">Meanjeans · vellum · 40s</button></div>
   <span>Art take</span>
   <div class="seg" id="takeSeg"><button class="on" data-v="1">Take 1</button><button data-v="2">Take 2</button></div>
+  <span>Scene</span>
+  <div class="seg" id="sceneSeg"><button class="on" data-v="mags">Mags</button><button data-v="fancy-1">Fancy 1</button><button data-v="fancy-2">Fancy 2</button><button data-v="humble-1">Humble 1</button><button data-v="humble-2">Humble 2</button><button data-v="humble-3">Humble 3</button><button data-v="shady-1">Shady 1</button><button data-v="shady-2">Shady 2</button></div>
   <span>Shop</span>
   <div class="seg" id="stateSeg"><button data-v="closed">Closed</button><button data-v="scheduled">Scheduled</button><button class="on" data-v="open">Open</button><button data-v="lockup">Locking up</button><button data-v="combat">Combat round</button></div>
 </div>
@@ -428,23 +434,23 @@
 <section class="view on" id="v-shop">
   <nav class="nav">
     <a class="back" href="#">‹</a>
-    <span class="t">Session · Ironwhistle's Emporium</span>
+    <span class="t" id="navName">Session · Ironwhistle's Emporium</span>
     <span class="who"><img id="whoImg" src="" alt="" /><span id="whoName"></span></span>
   </nav>
   <main id="shopMain">
     <header class="shop-head">
       <div>
         <div class="kicker">Greyhawk · Low Market</div>
-        <h1>Ironwhistle's Emporium</h1>
-        <div class="sub">Arms, armour &amp; oddities — Magpie “Mags” Ironwhistle, proprietor, appraiser, liar</div>
+        <h1 id="shopName">Ironwhistle's Emporium</h1>
+        <div class="sub" id="shopSub">Arms, armour &amp; oddities — Magpie “Mags” Ironwhistle, proprietor, appraiser, liar</div>
       </div>
       <span class="spacer"></span>
       <span class="hours" id="hours"></span>
     </header>
 
     <div class="scene" id="scene">
-      <img src="assets/shop-mags.jpg" alt="Magpie Ironwhistle behind her counter, in a vast cluttered shop" />
-      <div class="speech" aria-live="polite"><span class="who">Mags</span><span id="speech"></span><span class="caret"></span><span class="read" id="read" hidden></span></div>
+      <img id="sceneImg" src="assets/shop-mags.jpg" alt="Magpie Ironwhistle behind her counter, in a vast cluttered shop" />
+      <div class="speech" id="speechBox" aria-live="polite"><span class="who" id="keeperName">Mags</span><span id="speech"></span><span class="caret"></span><span class="read" id="read" hidden></span></div>
       <div class="float" id="float"></div>
       <div class="counter">
         <div class="chip" title="Your purse"><div class="coin-stack"><i style="top:16px"></i><i style="top:10px"></i><i style="top:4px"></i></div><div><b id="purse">0</b> <small>silver</small></div></div>
@@ -893,7 +899,7 @@ function renderFloat(pop) {
     : qty === 1 ? priceLabel(it) : `${(cost(it) * qty).toLocaleString()}s`;
   f.innerHTML = `
     <button class="x" type="button" aria-label="Put it back" id="putBack">×</button>
-    <div class="eyebrow">${recommended ? "Mags recommends" : CATS.find((c) => c.id === it.cat).name}</div>
+    <div class="eyebrow">${recommended ? `${scene.keeper} recommends` : CATS.find((c) => c.id === it.cat).name}</div>
     ${art(it) ? `<div class="showcase"><img src="${art(it)}" alt="${it.name}" /></div>` : `<div class="orb" style="--cat:${catColor(it.cat)}">${ico(it.icon)}</div>`}
     <h3>${it.name}</h3>
     ${it.stat ? `<span class="stat">${it.stat}</span>` : ""}
@@ -1121,7 +1127,7 @@ document.getElementById("payBtn").onclick = () => {
     sheet.classList.remove("open");
     say(pick(LINES.pay));
     veil.innerHTML = `<div class="receipt" role="dialog" aria-label="Receipt">
-      <h3>Ironwhistle's Emporium</h3><small style="margin:0">Sold to ${who.name}</small>
+      <h3>${scene.name}</h3><small style="margin:0">Sold to ${who.name}</small>
       <div class="r-lines">${bought.map((l) => `<div><span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}${l.deal ? ` <i>(${l.deal.short})</i>` : ""}</span><span>${l.paid.toLocaleString()}s</span></div>`).join("")}
       <div style="font-weight:600"><span>Paid</span><span>${t.toLocaleString()}s</span></div></div>
       <span class="stamp">Paid in full</span>
@@ -1352,6 +1358,7 @@ function setStatus(v) {
   else if (v === "open" && prev === "combat") say("Ah, the dust's settled. Where were we?");
   else if (v === "open" && prev !== "open") say(pick(LINES.greet));
   renderStatus(); renderNext();
+  placeSpeech();
 }
 
 // ── DM: Open the shop ──
@@ -1532,6 +1539,80 @@ function renderNext() {
   document.querySelectorAll("#v-next [data-visit]").forEach((b) => b.onclick = () => document.querySelector('#viewSeg [data-v="shop"]').click());
 }
 
+// ── Scenes: one picture per shop. Each knows where its keeper's face is
+// (as fractions of the image), so the speech bubble can sit beside it at
+// mouth height (y): right of the face (r) first; if that leaves too little
+// room before the item card, left of the face (l); failing both, under the
+// chin (chin), centred on the face (cx).
+const SCENES = {
+  "mags": { l: 0.26, src: "assets/shop-mags.jpg", name: "Ironwhistle's Emporium", keeper: "Mags", sub: "Arms, armour &amp; oddities — Magpie “Mags” Ironwhistle, proprietor, appraiser, liar", r: 0.375, y: 0.49, cx: 0.32, chin: 0.56, pos: "30% 40%" },
+  "fancy-1": { l: 0.2, src: "assets/shops/shop-fancy-1.jpg", name: "Aurelian & Daughters", keeper: "Aurelian", sub: "Purveyors to the discerning — Aurelian Vey, outfitter by appointment", r: 0.4, y: 0.27, cx: 0.29, chin: 0.33, pos: "30% 20%" },
+  "fancy-2": { l: 0.25, src: "assets/shops/shop-fancy-2.jpg", name: "Aurelian & Daughters", keeper: "Aurelian", sub: "Purveyors to the discerning — Aurelian Vey, outfitter by appointment", r: 0.49, y: 0.44, cx: 0.38, chin: 0.56, pos: "30% 40%" },
+  "humble-1": { l: 0.22, src: "assets/shops/shop-humble-1.jpg", name: "Underbough's Sundries", keeper: "Tobias", sub: "Bread, rope &amp; honest tools — old Tobias Underbough, since forever", r: 0.44, y: 0.37, cx: 0.33, chin: 0.46, pos: "30% 35%" },
+  "humble-2": { l: 0.255, src: "assets/shops/shop-humble-2.jpg", name: "Underbough's Sundries", keeper: "Tobias", sub: "Bread, rope &amp; honest tools — old Tobias Underbough, since forever", r: 0.51, y: 0.37, cx: 0.4, chin: 0.5, pos: "30% 35%" },
+  "humble-3": { l: 0.22, src: "assets/shops/shop-humble-3.jpg", name: "Underbough's Sundries", keeper: "Tobias", sub: "Bread, rope &amp; honest tools — old Tobias Underbough, since forever", r: 0.44, y: 0.37, cx: 0.33, chin: 0.46, pos: "30% 35%" },
+  "shady-1": { l: 0.23, src: "assets/shops/shop-shady-1.jpg", name: "The Drowned Lantern", keeper: "Vesk", sub: "Goods of uncertain history — Vesk, no questions asked", r: 0.42, y: 0.48, cx: 0.31, chin: 0.56, pos: "30% 45%" },
+  "shady-2": { l: 0.205, src: "assets/shops/shop-shady-2.jpg", name: "The Drowned Lantern", keeper: "Old Nackle", sub: "Goods of uncertain history — Old Nackle, no questions asked", r: 0.49, y: 0.42, cx: 0.39, chin: 0.54, pos: "30% 40%" },
+};
+let scene = SCENES.mags;
+const sceneImg = document.getElementById("sceneImg");
+function placeSpeech() {
+  const box = document.getElementById("speechBox");
+  box.classList.remove("below", "left");
+  ["left", "top", "maxWidth", "width"].forEach((k) => { box.style[k] = ""; });
+  box.style.removeProperty("--tail-x");
+  if (matchMedia("(max-width: 760px)").matches || !sceneImg.naturalWidth) return;
+  // Where the image actually lands inside the scene (object-fit: cover).
+  const el = document.getElementById("scene"), W = el.clientWidth, H = el.clientHeight;
+  const iw = sceneImg.naturalWidth, ih = sceneImg.naturalHeight, k = Math.max(W / iw, H / ih);
+  const rw = iw * k, rh = ih * k;
+  const [px, py] = scene.pos.split(" ").map((v) => parseFloat(v) / 100);
+  const ox = (W - rw) * px, oy = (H - rh) * py;
+  const at = (fx, fy) => [ox + fx * rw, oy + fy * rh];
+  const floatW = Math.min(320, W * 0.32), floatLeft = W * 0.975 - floatW;
+  const [left, top] = at(scene.r, scene.y);
+  const room = floatLeft - 24 - (left + 14);
+  if (room >= 230) {
+    box.style.left = `${left + 14}px`;
+    box.style.top = `${top}px`;
+    box.style.maxWidth = `${Math.min(360, room)}px`;
+  } else if (at(scene.l, scene.y)[0] - 14 - 16 >= 190) {
+    // The other side of the face.
+    const [l] = at(scene.l, scene.y);
+    const w = Math.min(340, l - 14 - 16);
+    box.classList.add("left");
+    box.style.left = `${l - 14 - w}px`;
+    box.style.top = `${top}px`;
+    box.style.width = `${w}px`;
+    box.style.maxWidth = "none";
+  } else {
+    // Not enough room beside the face: hang it under the chin.
+    const [cx, chin] = at(scene.cx, scene.chin);
+    const w = Math.min(340, floatLeft - 24 - Math.max(16, cx - 60));
+    const l = Math.max(16, Math.min(cx - 60, floatLeft - 24 - w));
+    box.classList.add("below");
+    box.style.left = `${l}px`;
+    box.style.top = `${chin + 14}px`;
+    box.style.width = `${w}px`;
+    box.style.maxWidth = "none";
+    box.style.setProperty("--tail-x", `${Math.max(20, Math.min(w - 20, cx - l))}px`);
+  }
+}
+function setScene(key) {
+  scene = SCENES[key];
+  sceneImg.src = scene.src;
+  sceneImg.style.objectPosition = scene.pos;
+  sceneImg.alt = `${scene.keeper} behind the counter`;
+  document.getElementById("shopName").textContent = scene.name;
+  document.getElementById("shopSub").innerHTML = scene.sub;
+  document.getElementById("keeperName").textContent = scene.keeper;
+  document.title = scene.name;
+  document.getElementById("navName").textContent = `Session · ${scene.name}`;
+  renderFloat(false);
+}
+sceneImg.addEventListener("load", placeSpeech);
+addEventListener("resize", placeSpeech);
+
 // ── Prototype switches ──
 function seg(id, fn) {
   document.getElementById(id).addEventListener("click", (e) => {
@@ -1545,8 +1626,10 @@ seg("viewSeg", (v) => {
   if (v === "dm") renderDm();
   if (v === "open") { renderOpen(); renderLog(); }
   if (v === "next") renderNext();
+  if (v === "shop") placeSpeech();
 });
 seg("stateSeg", (v) => setStatus(v));
+seg("sceneSeg", setScene);
 function shopAs(key) {
   who = SHOPPERS[key]; whoKey = key; coin = who.coin; satchel = [];
   deals = {}; refused = new Set(); patience = HAGGLE[shop.haggle].patience; snaps = 0; pushes = 0; thrownOut = thrown.has(key); read = null; renderRead();
