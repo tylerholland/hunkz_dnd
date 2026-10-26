@@ -377,6 +377,39 @@
   .hl.out .tbtn { margin-left: auto; }
   .hl-ok { color: var(--good); }
   .hl-bad { color: var(--danger); }
+  /* ── DM: which shop ── */
+  .keepers { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+  .kc { position: relative; display: grid; align-content: end; aspect-ratio: 1; padding: 0; border-radius: 10px; overflow: hidden; border: 1px solid var(--pal-border); background-color: #1a120c; background-repeat: no-repeat; text-align: left; transition: transform 0.15s ease; }
+  .kc:hover { transform: translateY(-2px); }
+  .kc::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, transparent 45%, rgba(10,6,3,0.85)); }
+  .kc span { position: relative; z-index: 1; padding: 6px 8px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.04em; line-height: 1.2; color: #f1e6d2; }
+  .kc span small { display: block; font-family: 'Crimson Text', serif; font-size: 11px; font-style: italic; letter-spacing: 0; color: #cdbb9a; }
+  .kc.on { box-shadow: 0 0 0 2px var(--gold), 0 6px 18px rgba(0,0,0,0.4); border-color: var(--gold); }
+  .kc.mine::before { content: "Yours"; position: absolute; z-index: 1; top: 6px; left: 6px; padding: 0 6px; border-radius: 999px; background: var(--gold); color: #1a120a; font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .shop-prev { position: relative; margin-top: 14px; aspect-ratio: 5 / 2.2; border-radius: 12px; overflow: hidden; border: 1px solid var(--pal-border); background-size: cover; background-color: #1a120c; }
+  .shop-prev::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 35%, rgba(10,6,3,0.82) 75%); }
+  .shop-prev .txt { position: absolute; z-index: 1; right: 18px; top: 50%; transform: translateY(-50%); width: min(46%, 380px); color: #f1e6d2; }
+  .shop-prev .txt .where { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: #d8b878; }
+  .shop-prev .txt h4 { margin: 2px 0 4px; font-family: 'Cinzel', serif; font-weight: 400; font-size: clamp(18px, 2.4vw, 26px); letter-spacing: 0.04em; }
+  .shop-prev .txt p { margin: 0; font-style: italic; font-size: 14px; color: #d6c6a6; }
+  .shop-prev .txt q { display: block; margin-top: 10px; padding: 8px 12px; border-radius: 10px; background: var(--parchment); color: var(--ink); font-family: 'IM Fell English', serif; font-size: 15px; quotes: "“" "”"; }
+  .names { display: flex; flex-wrap: wrap; gap: 6px; }
+  .names button { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--pal-border); background: var(--pal-surface-solid); color: var(--pal-text-body); font-size: 14px; }
+  .names button.on { border-color: var(--gold); color: var(--pal-text); box-shadow: inset 0 0 0 1px var(--gold); }
+  .row.own { display: none; }
+  .row.own.on { display: flex; }
+  /* While the shop is open, setup is locked; stock stays live. */
+  .lockbar { display: none; align-items: center; gap: 12px; margin-bottom: 18px; padding: 12px 16px; border-radius: 10px; border: 1px dashed var(--pal-accent); background: var(--pal-surface); color: var(--pal-text-body); font-size: 15px; }
+  .lockbar span { flex: 1; }
+  .is-live .lockbar { display: flex; }
+  .is-live.locked .setup { opacity: 0.5; pointer-events: none; filter: saturate(0.6); }
+  .livepill { display: none; margin-left: 8px; padding: 1px 8px; border-radius: 999px; background: var(--good); color: #10200a; font-size: 10px; letter-spacing: 0.14em; vertical-align: 2px; }
+  .is-live .livepill { display: inline-block; }
+  .is-live #stockCard .step { display: none; }
+  .stk.nc { border-style: dotted; opacity: 0.7; }
+  /* On the shelf: just restocked. */
+  .justin { position: absolute; top: 4px; left: calc(50% - 64px); padding: 1px 7px; border-radius: 999px; background: var(--good); color: #10200a; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 0 2px 6px rgba(0,0,0,0.35); animation: bump 0.6s ease 2; }
+
   /* ══════════ NEXT-SESSION CARD ══════════ */
   .nx { max-width: 760px; }
   .nx h2 { font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.1em; color: var(--pal-text); margin: 0 0 4px; }
@@ -517,21 +550,29 @@
       <div id="hlog"></div>
     </div>
 
-    <div class="card">
-      <h3><span class="step">1</span>When</h3>
+    <div class="lockbar" id="lockbar">
+      <span><b>The shop is open.</b> Setup is locked so shelves and prices don't shift while people shop. Stock, below, stays live.</span>
+      <button class="tbtn" type="button" id="unlock">Unlock setup</button>
+    </div>
+
+    <div class="card setup">
+      <h3><span class="step">1</span>Which shop</h3>
+      <div class="keepers" id="keeperCards"></div>
+      <div class="shop-prev" id="shopPrev"></div>
+      <div class="row"><span class="lbl">Sign</span><div class="names" id="nameChips"></div></div>
+      <div class="row own" id="ownName"><span class="lbl"></span><input class="in" id="ownSign" placeholder="Shop name" /><input class="in" id="ownWhere" placeholder="Town · street" /></div>
+      <div class="row"><span class="lbl"></span><span class="hint" id="usualNote" style="margin:0"></span><span style="flex:1"></span><button class="tbtn" type="button" id="resetUsual">Reset to usual</button><button class="tbtn" type="button" id="saveMine">Save as my shop</button></div>
+    </div>
+
+    <div class="card setup">
+      <h3><span class="step">2</span>When</h3>
       <div class="seg big" id="whenSeg"><button class="on" data-v="next">Before the next session</button><button data-v="now">Open now</button><button data-v="pick">Pick the times</button></div>
       <div id="whenBody"></div>
     </div>
 
-    <div class="card">
-      <h3><span class="step">2</span>This shop</h3>
-      <div class="row">
-        <span class="lbl">Preset</span>
-        <select class="in" id="presetSel"></select>
-        <button class="tbtn" type="button" id="presetSave">Save as preset…</button>
-        <span class="presave" id="presave"><input class="in" id="presetName" placeholder="e.g. Millbrook general store" /><button class="tbtn primary" type="button" id="presetOk">Save</button></span>
-      </div>
-      <div class="chips" id="carryChips"></div>
+    <div class="card setup">
+      <h3><span class="step">3</span>Shelves, prices &amp; temper</h3>
+      <div class="chips" id="carryChips" style="margin-top:0"></div>
       <p class="hint">Tap a shelf to carry it or not. Shelves the shop doesn't carry are hidden from players.</p>
       <div class="row"><span class="lbl">Prices</span><div class="seg" id="markupSeg"></div><button class="tbtn" type="button" id="markupReroll">⟳ Reroll</button></div>
       <div class="markups" id="markups"></div>
@@ -540,14 +581,15 @@
       <p class="hint" id="haggleHint"></p>
     </div>
 
-    <div class="card">
-      <h3><span class="step">3</span>Stock</h3>
+    <div class="card" id="stockCard">
+      <h3><span class="step">4</span>Stock <span class="livepill" id="livePill">Live</span></h3>
+      <div class="row" style="margin-top:0"><input class="in" id="stockFind" placeholder="Find an item… (e.g. rope)" style="min-width:240px" /><span class="hint" id="liveHint" style="margin:0"></span></div>
       <div class="row">
         <div class="seg big" id="fillSeg"><button data-v="all">Everything</button><button class="on" data-v="full">Mostly full</button><button data-v="half">Half-empty</button><button data-v="empty">Mostly empty</button></div>
         <button class="tbtn" type="button" id="reroll">⟳ Reroll</button>
         <span class="count" id="stockCount"></span>
       </div>
-      <p class="hint">The roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first. Tap any item to flip it. Rolled once when you save, so everyone sees the same shelves.</p>
+      <p class="hint" id="rollHint">The roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first. Tap any item to flip it. Rolled once when you save, so everyone sees the same shelves.</p>
       <div class="stock" id="stockList"></div>
     </div>
 
@@ -845,7 +887,7 @@ function renderPack() {
   if (!total) html += '<p class="pack-empty">Nothing yet but lint and hope.</p>';
   html += `<div class="pack-foot"><span>Purse <b>${coin}s</b></span><span>Satchel <b>${satchel.reduce((n, l) => n + l.qty, 0)}</b></span></div>`;
   // Selling is about what you carry, so it lives here rather than among the shelves.
-  html += `<button class="btn pack-sell${cat === "sell" ? " on" : ""}" type="button" id="sellBtn">${ico("coin")} Sell to Mags · half price</button>`;
+  html += `<button class="btn pack-sell${cat === "sell" ? " on" : ""}" type="button" id="sellBtn">${ico("coin")} Sell to ${scene.keeper} · half price</button>`;
   pack.innerHTML = html;
   document.getElementById("packHead").onclick = () => pack.classList.toggle("open");
   document.getElementById("sellBtn").onclick = () => {
@@ -861,10 +903,10 @@ function renderGoods() {
   const g = document.getElementById("goods");
   if (cat === "sell") {
     const owned = who.owned.map((id) => ITEMS.find((i) => i.id === id)).filter(Boolean);
-    document.getElementById("goodsH").textContent = "Sell to Mags";
+    document.getElementById("goodsH").textContent = `Sell to ${scene.keeper}`;
     document.getElementById("goodsSub").textContent = "from your pack";
     g.innerHTML = owned.map((it) => `<button class="good" data-sell="${it.id}" style="--cat:${catColor(it.cat)}"><span class="tag">${Math.floor(it.price / 2)}s</span>${orb(it)}<span class="nm">${it.name}</span><span class="st">yours</span></button>`).join("");
-    document.getElementById("catLine").textContent = "Mags buys back at half price. She'll find something wrong with it either way.";
+    document.getElementById("catLine").textContent = `${scene.keeper} buys back at half price, and will find something wrong with it either way.`;
     return;
   }
   const c = CATS.find((x) => x.id === cat);
@@ -875,7 +917,7 @@ function renderGoods() {
   g.innerHTML = list.map((it) => {
     const out = isOut(it), no = refused.has(it.id), poor = !out && !no && myCost(it) > coin, d = dealOf(it.id);
     return `<button class="good${poor ? " poor" : ""}${out ? " out" : ""}${no ? " refused" : ""}${inHand?.id === it.id ? " sel" : ""}" data-id="${it.id}" style="--cat:${catColor(it.cat)}">
-      <span class="tag${d ? (d.mult < 1 ? " deal" : " worse") : ""}">${d ? `${myCost(it)}s` : priceLabel(it)}</span>${orb(it)}${out ? '<span class="soldout">Sold out</span>' : no ? '<span class="soldout">Not to you</span>' : ""}${countOf(it.id) ? `<span class="have">have ${countOf(it.id)}</span>` : ""}
+      ${justIn.has(it.id) && !out ? '<span class="justin">Just in</span>' : ""}<span class="tag${d ? (d.mult < 1 ? " deal" : " worse") : ""}">${d ? `${myCost(it)}s` : priceLabel(it)}</span>${orb(it)}${out ? '<span class="soldout">Sold out</span>' : no ? '<span class="soldout">Not to you</span>' : ""}${countOf(it.id) ? `<span class="have">have ${countOf(it.id)}</span>` : ""}
       <span class="nm">${it.name}</span><span class="st">${it.stat || ""}</span></button>`;
   }).join("");
   document.getElementById("catLine").textContent = c.line;
@@ -1236,12 +1278,22 @@ function fromNow(d) {
 }
 const toInput = (d) => new Date(d - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 
-// A preset is a whole shop's character: what it carries, how dear it is, and
-// how far it bends on price.
-const PRESETS = [
-  { id: "all", name: "Ironwhistle's — everything", cats: CATS.map((c) => c.id), level: "low", markups: { arms: 10, armor: 5, gear: 0, tools: 5, occult: 15, fancy: 10, travel: 0, hire: 5 }, haggle: "fair" },
-  { id: "village", name: "A village shop", cats: ["arms", "gear", "tools", "travel", "hire"], level: "cheap", markups: { arms: -5, armor: 0, gear: -15, tools: -10, occult: 0, fancy: 0, travel: -20, hire: -10 }, haggle: "soft" },
-  { id: "millbrook", name: "Millbrook general store", cats: ["gear", "tools", "fancy", "travel"], level: "high", markups: { arms: 0, armor: 0, gear: 15, tools: 20, occult: 0, fancy: 45, travel: 30, hire: 0 }, haggle: "tough" },
+// Each keeper's usual shop: what they carry, how dear they are on each shelf,
+// and their temper. Picking a keeper starts from this; the DM can change any
+// of it, or save the result as one of their own shops.
+const ALL = CATS.map((c) => c.id);
+const USUAL = {
+  "mags": { cats: ALL, level: "low", markups: { arms: 10, armor: 5, gear: 0, tools: 5, occult: 15, fancy: 10, travel: 0, hire: 5 }, haggle: "fair" },
+  "fancy-1": { cats: ["arms", "armor", "fancy", "occult", "travel"], level: "high", markups: { arms: 30, armor: 35, gear: 0, tools: 0, occult: 25, fancy: 50, travel: 40, hire: 0 }, haggle: "tough" },
+  "fancy-2": { cats: ["fancy", "occult", "tools", "arms"], level: "high", markups: { arms: 20, armor: 0, gear: 0, tools: 15, occult: 40, fancy: 30, travel: 0, hire: 0 }, haggle: "fair" },
+  "humble-1": { cats: ["arms", "gear", "tools", "travel", "hire"], level: "cheap", markups: { arms: -5, armor: 0, gear: -15, tools: -10, occult: 0, fancy: 0, travel: -20, hire: -10 }, haggle: "soft" },
+  "humble-2": { cats: ["gear", "tools", "fancy", "travel"], level: "cheap", markups: { arms: 0, armor: 0, gear: -10, tools: -5, occult: 0, fancy: -5, travel: -15, hire: 0 }, haggle: "soft" },
+  "shady-1": { cats: ["arms", "occult", "fancy", "tools", "gear"], level: "high", markups: { arms: -10, armor: 0, gear: 10, tools: 20, occult: 45, fancy: 25, travel: 0, hire: 0 }, haggle: "fair" },
+  "shady-2": { cats: ["arms", "armor", "occult", "tools", "gear"], level: "high", markups: { arms: -15, armor: -10, gear: 15, tools: 25, occult: 50, fancy: 0, travel: 0, hire: 0 }, haggle: "tough" },
+};
+// The DM's own shops: a keeper, a sign, and the settings to go with them.
+const MY_SHOPS = [
+  { id: "my1", keeper: "humble-1", name: "The Millbrook Larder", where: "Millbrook · Mill Lane", cats: ["gear", "tools", "fancy", "travel"], level: "low", markups: { arms: 0, armor: 0, gear: 5, tools: 10, occult: 0, fancy: 15, travel: 10, hire: 0 }, haggle: "soft" },
 ];
 // Price levels roll a markup for each shelf within a range, in steps of 5%.
 const LEVELS = { cheap: { name: "Cheap", lo: -20, hi: 0 }, low: { name: "Low markup", lo: 0, hi: 15 }, high: { name: "High markup", lo: 15, hi: 50 } };
@@ -1262,7 +1314,7 @@ const HAGGLE = {
 const tomorrow9 = new Date(NOW); tomorrow9.setDate(tomorrow9.getDate() + 1); tomorrow9.setHours(9, 0, 0, 0);
 const shop = {
   when: "next", lead: 45, closeOn: "start", nowClose: "manual", opens: toInput(tomorrow9), closes: toInput(NEXT_SESSION),
-  preset: "all", carries: new Set(PRESETS[0].cats), level: "low", markups: { ...PRESETS[0].markups }, haggle: "fair", fill: "full", out: new Set(),
+  pick: "mags", carries: new Set(USUAL.mags.cats), level: "low", markups: { ...USUAL.mags.markups }, haggle: "fair", fill: "full", out: new Set(),
 };
 let status = "open";
 const isOut = (it) => shop.out.has(it.id);
@@ -1345,6 +1397,7 @@ document.getElementById("lockPay").onclick = () => sheet.classList.add("open");
 const isThrownOut = () => thrownOut && (status === "open" || status === "lockup");
 function setStatus(v) {
   const prev = status;
+  if (v !== "open" && v !== "lockup") { unlocked = false; justIn.clear(); }
   status = v; clearInterval(lockTimer);
   const shutDown = v === "closed" || v === "scheduled" || isThrownOut();
   document.getElementById("v-shop").classList.toggle("shut", shutDown);
@@ -1358,7 +1411,7 @@ function setStatus(v) {
   if (v === "lockup") startLockup();
   else if (v === "open" && prev === "combat") say("Ah, the dust's settled. Where were we?");
   else if (v === "open" && prev !== "open") say(pick(voice("greet")));
-  renderStatus(); renderNext();
+  renderStatus(); renderNext(); renderOpen();
   placeSpeech();
 }
 
@@ -1414,11 +1467,8 @@ function bindSeg(id, fn) {
 function renderOpen() {
   [...document.getElementById("whenSeg").children].forEach((c) => c.classList.toggle("on", c.dataset.v === shop.when));
   renderWhen();
+  renderWhich();
   // Shelves
-  const match = PRESETS.find((p) => p.cats.length === shop.carries.size && p.cats.every((c) => shop.carries.has(c)) && sameMarkups(p.markups, shop.markups) && p.haggle === shop.haggle);
-  shop.preset = match ? match.id : "custom";
-  document.getElementById("presetSel").innerHTML = PRESETS.map((p) => `<option value="${p.id}" ${p.id === shop.preset ? "selected" : ""}>${p.name}</option>`).join("")
-    + (match ? "" : '<option value="custom" selected>Custom (not saved)</option>');
   document.getElementById("carryChips").innerHTML = CATS.map((c) => `<button type="button" class="cchip${shop.carries.has(c.id) ? "" : " off"}" style="--cat:${catColor(c.id)}" data-carry="${c.id}">${ico(c.icon)}${c.name}</button>`).join("");
   document.querySelectorAll("[data-carry]").forEach((b) => b.onclick = () => {
     const id = b.dataset.carry;
@@ -1440,19 +1490,48 @@ function renderOpen() {
   document.getElementById("haggleSeg").innerHTML = Object.entries(HAGGLE).map(([k, h]) => `<button type="button" data-v="${k}" class="${k === shop.haggle ? "on" : ""}">${h.name}</button>`).join("");
   document.getElementById("haggleHint").textContent = HAGGLE[shop.haggle].hint;
   // Stock
-  [...document.getElementById("fillSeg").children].forEach((c) => c.classList.toggle("on", c.dataset.v === shop.fill));
-  document.getElementById("reroll").disabled = shop.fill === "all";
+  const isLive = status === "open" || status === "lockup";
+  const view = document.getElementById("v-open").querySelector("main");
+  view.classList.toggle("is-live", isLive);
+  view.classList.toggle("locked", isLive && !unlocked);
+  // While the shop is open, stock is what the DM reaches for: it moves to the top.
+  const stockCard = document.getElementById("stockCard");
+  const anchor = isLive ? document.getElementById("lockbar") : [...view.querySelectorAll(".setup")].pop();
+  if (anchor.nextElementSibling !== stockCard) anchor.after(stockCard);
+  [...document.getElementById("fillSeg").children].forEach((c) => { c.classList.toggle("on", c.dataset.v === shop.fill); c.disabled = isLive; });
+  // Rerolling would reshuffle the shelves under people's feet.
+  document.getElementById("reroll").disabled = shop.fill === "all" || isLive;
+  document.getElementById("liveHint").textContent = isLive ? "The shop is open: anything you flip shows on the shelves straight away." : "";
+  document.getElementById("rollHint").textContent = isLive
+    ? "No rerolling while the shop is open. Flip items one at a time instead; restocked items show as “Just in”."
+    : "The roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first. Tap any item to flip it. Rolled once when you save, so everyone sees the same shelves.";
   const { n, of } = stockCounts();
   document.getElementById("stockCount").innerHTML = `${n} of ${of} <small>in stock</small>`;
   const notCarried = CATS.filter((c) => !shop.carries.has(c.id));
-  document.getElementById("stockList").innerHTML = CATS.filter((c) => shop.carries.has(c.id)).map((c) => {
-    const list = ITEMS.filter((i) => i.cat === c.id);
+  const q = document.getElementById("stockFind").value.trim().toLowerCase();
+  const hits = (it) => !q || it.name.toLowerCase().includes(q);
+  // A search also finds things on shelves this shop doesn't carry; tapping
+  // one starts carrying that shelf, with just that item in stock.
+  const elsewhere = q ? ITEMS.filter((it) => !shop.carries.has(it.cat) && hits(it)) : [];
+  document.getElementById("stockList").innerHTML = CATS.filter((c) => shop.carries.has(c.id) && ITEMS.some((i) => i.cat === c.id && hits(i))).map((c) => {
+    const list = ITEMS.filter((i) => i.cat === c.id && hits(i));
     return `<div class="stock-cat" style="--cat:${catColor(c.id)}"><h4><i></i>${c.name} <small>${list.filter((i) => !isOut(i)).length} of ${list.length}</small></h4>
       <div class="stock-items">${list.map((it) => `<button type="button" class="stk${isOut(it) ? " out" : ""}" data-stk="${it.id}" style="--cat:${catColor(it.cat)}" title="${isOut(it) ? "Out of stock: tap to stock it" : "In stock: tap to mark sold out"}">${orb(it)}${it.name}</button>`).join("")}</div></div>`;
-  }).join("") + (notCarried.length ? `<p class="hint" style="margin:0">Not carried here: ${notCarried.map((c) => c.name).join(", ")}.</p>` : "");
+  }).join("")
+    + (elsewhere.length ? `<div class="stock-cat"><h4>Not carried here <small>tap to carry the shelf, with just this in stock</small></h4><div class="stock-items">${elsewhere.map((it) => `<button type="button" class="stk nc" data-carryitem="${it.id}" style="--cat:${catColor(it.cat)}">${orb(it)}${it.name}</button>`).join("")}</div></div>` : "")
+    + (q && !elsewhere.length && !ITEMS.some((i) => shop.carries.has(i.cat) && hits(i)) ? `<p class="hint" style="margin:0">Nothing called “${q}” in the catalog. Add it in the Item catalog.</p>` : "")
+    + (!q && notCarried.length ? `<p class="hint" style="margin:0">Not carried here: ${notCarried.map((c) => c.name).join(", ")}.</p>` : "");
+  document.querySelectorAll("[data-carryitem]").forEach((b) => b.onclick = () => {
+    const it = ITEMS.find((i) => i.id === b.dataset.carryitem);
+    shop.carries.add(it.cat);
+    ITEMS.filter((i) => i.cat === it.cat && i.id !== it.id).forEach((i) => shop.out.add(i.id));
+    shop.out.delete(it.id);
+    restocked(it);
+    renderOpen(); refreshShelves();
+  });
   document.querySelectorAll("[data-stk]").forEach((b) => b.onclick = () => {
     const id = b.dataset.stk;
-    if (shop.out.has(id)) shop.out.delete(id); else shop.out.add(id);
+    if (shop.out.has(id)) { shop.out.delete(id); restocked(ITEMS.find((i) => i.id === id)); } else { shop.out.add(id); justIn.delete(id); }
     renderOpen(); refreshShelves();
     document.querySelector(`[data-stk="${id}"]`).classList.add("flip");
   });
@@ -1461,11 +1540,80 @@ function renderOpen() {
   const when = shop.when === "now"
     ? `Opens <b>now</b> and ${closesText(w).replace("open until", "stays open until")}.`
     : `Opens <b>${fmtDay(w.opens)} at ${fmtTime(w.opens)}</b>${shop.when === "next" ? `, ${shop.lead} minutes before the session` : ""}, and ${closesText(w)}.`;
-  const preset = PRESETS.find((p) => p.id === shop.preset);
   const terms = `${LEVELS[shop.level].name.toLowerCase()}, ${shop.haggle === "no" ? "won't haggle" : `${HAGGLE[shop.haggle].name.toLowerCase()} on haggling`}`;
-  document.getElementById("saveSummary").innerHTML = `${when} ${preset ? preset.name : "A custom shop"}, ${FILL_NAME[shop.fill]}: ${n} of ${of} wares; ${terms}.`;
-  document.getElementById("saveOpen").textContent = shop.when === "now" ? "Open the shop" : "Schedule it";
+  document.getElementById("saveSummary").innerHTML = isLive
+    ? `<b>${scene.name}</b> is open, with ${n} of ${of} wares in stock. Stock changes show in the shop as you make them${unlocked ? ", and so do changes to the setup" : ""}.`
+    : `${when} <b>${scene.name}</b> (${scene.keeper}), ${FILL_NAME[shop.fill]}: ${n} of ${of} wares; ${terms}.`;
+  document.getElementById("saveOpen").hidden = isLive;
+  document.getElementById("saveOpen").textContent = status === "scheduled" ? "Update the schedule" : shop.when === "now" ? "Open the shop" : "Schedule it";
 }
+// ── Which shop ──
+let unlocked = false;
+const justIn = new Set();
+// Restocked while the shop is open: flagged on the shelf, and the keeper says so.
+function restocked(it) {
+  if (status !== "open" && status !== "lockup") return;
+  justIn.add(it.id);
+  say(`${it.name}? Hang on… found one out back!`);
+}
+// Frame a keeper's face in a square thumbnail.
+function faceBg(key) {
+  const sc = SCENES[key], S = 3.3, Sy = S * 0.6;
+  const px = Math.max(0, Math.min(1, (S * sc.cx - 0.5) / (S - 1))), py = Math.max(0, Math.min(1, (Sy * (sc.y - 0.04) - 0.5) / (Sy - 1)));
+  return `background-image:url(${sc.src});background-size:${S * 100}% auto;background-position:${(px * 100).toFixed(1)}% ${(py * 100).toFixed(1)}%`;
+}
+function applySettings(src) {
+  shop.carries = new Set(src.cats); shop.level = src.level; shop.markups = { ...src.markups }; shop.haggle = src.haggle;
+  patience = HAGGLE[src.haggle].patience;
+}
+function pickShop(id) {
+  shop.pick = id;
+  const mine = MY_SHOPS.find((m) => m.id === id);
+  if (mine) { applySettings(mine); setScene(mine.keeper, 0, { name: mine.name, where: mine.where }); }
+  else { applySettings(USUAL[id]); setScene(id, 0); }
+  renderOpen(); refreshShelves();
+}
+const usualOf = () => MY_SHOPS.find((m) => m.id === shop.pick) || USUAL[sceneKey];
+const isUsual = () => { const u = usualOf(); return u.cats.length === shop.carries.size && u.cats.every((c) => shop.carries.has(c)) && sameMarkups(u.markups, shop.markups) && u.haggle === shop.haggle; };
+function renderWhich() {
+  const k = KEEPERS[sceneKey];
+  const card = (id, key, title, sub, mine) => `<button type="button" class="kc${shop.pick === id ? " on" : ""}${mine ? " mine" : ""}" style="${faceBg(key)}" data-pick="${id}"><span>${title}<small>${sub}</small></span></button>`;
+  document.getElementById("keeperCards").innerHTML = Object.keys(KEEPERS).map((key) => card(key, key, KEEPERS[key].keeper, KEEPERS[key].names[0][0], false)).join("")
+    + MY_SHOPS.map((m) => card(m.id, m.keeper, m.name, KEEPERS[m.keeper].keeper, true)).join("");
+  document.querySelectorAll("[data-pick]").forEach((b) => b.onclick = () => pickShop(b.dataset.pick));
+  const prev = document.getElementById("shopPrev");
+  prev.style.backgroundImage = `url(${scene.src})`;
+  prev.style.backgroundPosition = scene.pos;
+  prev.innerHTML = `<div class="txt"><div class="where">${scene.where}</div><h4>${scene.name}</h4><p>${scene.sub}</p><q>${pick(voice("greet")).replace("{name}", "friend")}</q></div>`;
+  const own = !!customSign;
+  document.getElementById("nameChips").innerHTML = k.names.map(([n], i) => `<button type="button" class="${!own && i === nameIdx ? "on" : ""}" data-name="${i}">${n}</button>`).join("")
+    + `<button type="button" class="${own ? "on" : ""}" data-name="own">Your own…</button>`;
+  document.getElementById("ownName").classList.toggle("on", own);
+  document.querySelectorAll("[data-name]").forEach((b) => b.onclick = () => {
+    if (b.dataset.name === "own") { setScene(sceneKey, nameIdx, { name: scene.name, where: scene.where }); renderOpen(); document.getElementById("ownSign").focus(); return; }
+    setScene(sceneKey, Number(b.dataset.name)); renderOpen();
+  });
+  if (own) { document.getElementById("ownSign").value = customSign.name; document.getElementById("ownWhere").value = customSign.where; }
+  const u = usualOf(), usual = isUsual();
+  document.getElementById("usualNote").textContent = usual
+    ? `${MY_SHOPS.some((m) => m.id === shop.pick) ? "Your saved settings" : `${k.keeper}'s usual`}: ${u.cats.length} shelves, ${LEVELS[u.level].name.toLowerCase()}, ${HAGGLE[u.haggle].name.toLowerCase()}.`
+    : `Changed from ${MY_SHOPS.some((m) => m.id === shop.pick) ? "this shop's" : `${k.keeper}'s`} usual.`;
+  document.getElementById("resetUsual").disabled = usual;
+}
+const ownInput = () => { setScene(sceneKey, nameIdx, { name: document.getElementById("ownSign").value || scene.name, where: document.getElementById("ownWhere").value }); renderWhich(); };
+document.getElementById("ownSign").oninput = ownInput;
+document.getElementById("ownWhere").oninput = ownInput;
+document.getElementById("resetUsual").onclick = () => { applySettings(usualOf()); renderOpen(); refreshShelves(); };
+document.getElementById("saveMine").onclick = () => {
+  const m = { id: `my${MY_SHOPS.length + 1}`, keeper: sceneKey, name: scene.name, where: scene.where, cats: [...shop.carries], level: shop.level, markups: { ...shop.markups }, haggle: shop.haggle };
+  MY_SHOPS.push(m); shop.pick = m.id;
+  setScene(sceneKey, nameIdx, { name: m.name, where: m.where });
+  renderOpen();
+  const b = document.getElementById("saveMine"); b.textContent = "Saved ✓"; setTimeout(() => { b.textContent = "Save as my shop"; }, 1400);
+};
+document.getElementById("unlock").onclick = () => { unlocked = !unlocked; document.getElementById("unlock").textContent = unlocked ? "Lock setup" : "Unlock setup"; renderOpen(); };
+document.getElementById("stockFind").oninput = () => renderOpen();
+
 function refreshShelves() {
   if (!shop.carries.has(cat)) cat = CATS.find((c) => shop.carries.has(c.id)).id;
   renderCats(); renderGoods(); renderFloat(false); renderSatchel(); renderStatus();
@@ -1476,18 +1624,6 @@ document.getElementById("markupReroll").onclick = () => { rollMarkups(); renderO
 bindSeg("haggleSeg", (v) => { shop.haggle = v; patience = HAGGLE[v].patience; renderOpen(); refreshShelves(); });
 bindSeg("fillSeg", (v) => { shop.fill = v; rollStock(); renderOpen(); refreshShelves(); });
 document.getElementById("reroll").onclick = () => { rollStock(); renderOpen(); refreshShelves(); };
-document.getElementById("presetSel").onchange = (e) => {
-  const p = PRESETS.find((x) => x.id === e.target.value); if (!p) return;
-  shop.carries = new Set(p.cats); shop.level = p.level; shop.markups = { ...p.markups }; shop.haggle = p.haggle; patience = HAGGLE[p.haggle].patience; renderOpen(); refreshShelves();
-};
-document.getElementById("presetSave").onclick = () => { document.getElementById("presave").classList.add("on"); document.getElementById("presetName").focus(); };
-document.getElementById("presetOk").onclick = () => {
-  const name = document.getElementById("presetName").value.trim() || "My shop";
-  PRESETS.push({ id: `p${PRESETS.length}`, name, cats: [...shop.carries], level: shop.level, markups: { ...shop.markups }, haggle: shop.haggle });
-  document.getElementById("presave").classList.remove("on");
-  document.getElementById("presetName").value = "";
-  renderOpen();
-};
 document.getElementById("saveOpen").onclick = () => {
   live = windowOf();
   setStatus(shop.when === "now" || live.opens <= NOW ? "open" : "scheduled");
@@ -1678,12 +1814,16 @@ function placeSpeech() {
     box.style.setProperty("--tail-x", `${Math.max(20, Math.min(w - 20, cx - l))}px`);
   }
 }
-function setScene(key, idx = 0) {
+let customSign = null;
+function setScene(key, idx = 0, own = null) {
   const changed = key !== sceneKey;
-  sceneKey = key; nameIdx = idx;
+  sceneKey = key; nameIdx = idx; customSign = own;
   const k = KEEPERS[key], [name, where, sub] = k.names[idx];
-  scene = { ...SCENES[key], keeper: k.keeper, name: name.replace(/&amp;/g, "&"), sub, where };
-  document.getElementById("shopWhere").textContent = where;
+  scene = own
+    ? { ...SCENES[key], keeper: k.keeper, name: own.name, where: own.where, sub: `${sub.split(" — ")[0]} — ${k.keeper}, proprietor` }
+    : { ...SCENES[key], keeper: k.keeper, name: name.replace(/&amp;/g, "&"), sub, where };
+  [...document.getElementById("sceneSeg").children].forEach((c) => c.classList.toggle("on", c.dataset.v === key));
+  document.getElementById("shopWhere").textContent = scene.where;
   sceneImg.src = scene.src;
   sceneImg.style.objectPosition = scene.pos;
   sceneImg.alt = `${scene.keeper} behind the counter`;
@@ -1692,6 +1832,7 @@ function setScene(key, idx = 0) {
   document.getElementById("keeperName").textContent = scene.keeper;
   document.title = scene.name;
   document.getElementById("navName").textContent = `Session · ${scene.name}`;
+  document.querySelector("#v-open .nav .t").textContent = `DM · ${scene.name}`;
   renderFloat(false);
   if (changed && status === "open") say(pick(voice("greet")));
 }
@@ -1714,8 +1855,8 @@ seg("viewSeg", (v) => {
   if (v === "shop") placeSpeech();
 });
 seg("stateSeg", (v) => setStatus(v));
-seg("sceneSeg", (k) => setScene(k));
-document.getElementById("nameBtn").onclick = () => setScene(sceneKey, (nameIdx + 1) % KEEPERS[sceneKey].names.length);
+seg("sceneSeg", (k) => pickShop(k));
+document.getElementById("nameBtn").onclick = () => { setScene(sceneKey, (nameIdx + 1) % KEEPERS[sceneKey].names.length); renderOpen(); };
 function shopAs(key) {
   who = SHOPPERS[key]; whoKey = key; coin = who.coin; satchel = [];
   deals = {}; refused = new Set(); patience = HAGGLE[shop.haggle].patience; snaps = 0; pushes = 0; thrownOut = thrown.has(key); read = null; renderRead();
