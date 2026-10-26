@@ -223,13 +223,6 @@
   .totals .bad { color: var(--danger); }
   .totals .grand { font-family: 'Cinzel', serif; font-size: 18px; color: var(--pal-accent-bright); }
   .actions { display: flex; flex-wrap: wrap; gap: 10px; justify-content: flex-end; margin-top: 14px; }
-  .haggle { display: none; align-items: center; gap: 14px; margin-top: 12px; padding: 12px; border-radius: 10px; background: var(--pal-surface); border: 1px solid var(--pal-border); }
-  .haggle.on { display: flex; }
-  .die { width: 40px; height: 40px; border-radius: 8px; display: grid; place-items: center; background: var(--parchment); color: var(--ink); font-family: 'Cinzel', serif; font-size: 20px; box-shadow: inset 0 -3px 0 rgba(0,0,0,0.2); }
-  .die.rolling { animation: tumble 0.6s ease; }
-  @keyframes tumble { 0% { transform: rotate(0) scale(0.6); } 60% { transform: rotate(320deg) scale(1.1); } 100% { transform: rotate(360deg) scale(1); } }
-  .haggle .verdict { flex: 1; font-size: 15px; }
-  .haggle .verdict b { font-family: 'Cinzel', serif; font-weight: 400; }
 
   .flycoin { position: fixed; z-index: 60; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b8bcc2 55%, #7b8087); border: 1px solid #6c7077; pointer-events: none; }
   .veil { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); backdrop-filter: blur(2px); }
@@ -341,6 +334,45 @@
   .presave { display: none; gap: 8px; align-items: center; }
   .presave.on { display: inline-flex; }
 
+
+  /* ══════════ HAGGLING ══════════ */
+  /* Your read of her mood: under her words, never a roll you see. */
+  .speech .read { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(42,29,18,0.25); font-family: 'Crimson Text', serif; font-size: 14px; color: #5a4028; }
+  .speech .read[hidden] { display: none; }
+  .speech .read i { width: 10px; height: 10px; border-radius: 50%; background: #6a9a4a; }
+  .speech .read.m1 i { background: #b99a3a; }
+  .speech .read.m2 i { background: #c46a2a; }
+  .speech .read.m3 i { background: #a02a2a; }
+  .speech .read b { font-weight: 600; }
+  .speech .read.unsure { font-style: italic; opacity: 0.75; }
+  .speech .read.unsure i { background: transparent; border: 1.5px dashed currentColor; }
+  .float .price .was, .line .was { font-size: 0.75em; color: var(--pal-muted); }
+  .float .price.deal { color: var(--good); }
+  .float .price.worse { color: var(--danger); }
+  .float .deal-note { margin: 4px 0 0; font-size: 13px; font-style: italic; color: var(--pal-muted); text-align: left; }
+  .tag.deal { background: #cfe6bf; }
+  .tag.worse { color: var(--danger); }
+  .good.refused .orb { filter: grayscale(1) brightness(0.55); }
+  .line small { display: block; font-size: 12px; font-style: italic; }
+  .line small.disc { color: var(--good); }
+  .line small.bad { color: var(--danger); }
+  /* DM: markup for each shelf. */
+  .markups { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 6px 18px; margin-top: 12px; }
+  .mk { display: grid; grid-template-columns: 10px 1fr 26px 52px 26px; grid-template-rows: auto auto; column-gap: 8px; align-items: center; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--pal-border); background: var(--pal-surface-solid); }
+  .mk i { width: 10px; height: 10px; border-radius: 50%; background: var(--cat); }
+  .mk .nm { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; color: var(--pal-text); }
+  .mk button { width: 26px; height: 26px; border-radius: 5px; border: 1px solid var(--pal-border); background: var(--pal-accent-dim); color: var(--pal-accent-bright); font-size: 15px; line-height: 1; }
+  .mk b { text-align: center; font-family: 'Cinzel', serif; font-weight: 400; font-size: 14px; color: var(--pal-text); }
+  .mk b.up { color: #d8a45a; }
+  .mk b.down { color: var(--good); }
+  .mk small { grid-column: 2 / -1; font-size: 13px; font-style: italic; color: var(--pal-muted); }
+  /* DM: the haggle log. */
+  .hl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 5px 0; border-bottom: 1px solid color-mix(in srgb, var(--pal-border) 60%, transparent); font-size: 15px; color: var(--pal-text-body); }
+  .hl b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); }
+  .hl.out { padding: 8px 10px; margin-bottom: 6px; border: 1px solid color-mix(in srgb, var(--danger) 60%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--danger) 10%, transparent); }
+  .hl.out .tbtn { margin-left: auto; }
+  .hl-ok { color: var(--good); }
+  .hl-bad { color: var(--danger); }
   /* ══════════ NEXT-SESSION CARD ══════════ */
   .nx { max-width: 760px; }
   .nx h2 { font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.1em; color: var(--pal-text); margin: 0 0 4px; }
@@ -412,7 +444,7 @@
 
     <div class="scene" id="scene">
       <img src="assets/shop-mags.jpg" alt="Magpie Ironwhistle behind her counter, in a vast cluttered shop" />
-      <div class="speech" aria-live="polite"><span class="who">Mags</span><span id="speech"></span><span class="caret"></span></div>
+      <div class="speech" aria-live="polite"><span class="who">Mags</span><span id="speech"></span><span class="caret"></span><span class="read" id="read" hidden></span></div>
       <div class="float" id="float"></div>
       <div class="counter">
         <div class="chip" title="Your purse"><div class="coin-stack"><i style="top:16px"></i><i style="top:10px"></i><i style="top:4px"></i></div><div><b id="purse">0</b> <small>silver</small></div></div>
@@ -444,9 +476,7 @@
     <div class="sheet-body">
       <div id="lines"></div>
       <div class="totals" id="totals"></div>
-      <div class="haggle" id="haggle"><div class="die" id="d1">?</div><div class="die" id="d2">?</div><div class="verdict" id="verdict"></div></div>
       <div class="actions">
-        <button class="btn" id="haggleBtn" type="button" title="Roll 2d6 + CHA, once per visit">⚂ Haggle</button>
         <button class="btn gold" id="payBtn" type="button">Pay</button>
       </div>
     </div>
@@ -475,6 +505,11 @@
   <main class="dm open-shop">
     <div class="status" id="dmStatus"></div>
 
+    <div class="card" id="logCard">
+      <h3>Haggling this opening</h3>
+      <div id="hlog"></div>
+    </div>
+
     <div class="card">
       <h3><span class="step">1</span>When</h3>
       <div class="seg big" id="whenSeg"><button class="on" data-v="next">Before the next session</button><button data-v="now">Open now</button><button data-v="pick">Pick the times</button></div>
@@ -491,8 +526,10 @@
       </div>
       <div class="chips" id="carryChips"></div>
       <p class="hint">Tap a shelf to carry it or not. Shelves the shop doesn't carry are hidden from players.</p>
-      <div class="row"><span class="lbl">Prices</span><div class="seg" id="markupSeg"></div><span id="markupEg" style="color:var(--pal-muted);font-style:italic"></span></div>
-      <div class="row"><span class="lbl">Haggling</span><div class="seg" id="haggleSeg"></div></div>
+      <div class="row"><span class="lbl">Prices</span><div class="seg" id="markupSeg"></div><button class="tbtn" type="button" id="markupReroll">⟳ Reroll</button></div>
+      <div class="markups" id="markups"></div>
+      <p class="hint">Each shelf gets its own markup, rolled from the price level. Nudge any of them with − and +. Players only ever see the prices.</p>
+      <div class="row"><span class="lbl">Temper</span><div class="seg" id="haggleSeg"></div></div>
       <p class="hint" id="haggleHint"></p>
     </div>
 
@@ -681,6 +718,7 @@ const LINES = {
     full: ["Hmph. You drive a hard bargain. A tenth off, and not a copper more."],
     partial: ["A few silver off... but you'll owe me a favour, {name}.", "Alright, a little off — and you'll tell your friends, yes?"],
     miss: ["Haggle with me? The price just went up.", "Out of pity, I'll pretend I didn't hear that. Prices stand. Plus one."],
+    refuse: ["The price is the price, love.", "I don't haggle. I've never haggled. My mother didn't haggle."],
   },
   pay: ["Pleasure doing business. Don't die with it unpaid.", "Coin's good. Mostly silver, even.", "Come back alive, and come back rich."],
   combat: ["Steel's out — I'm closing the shutters!"],
@@ -703,15 +741,20 @@ LINES.item = {
 // more than one), anything from their sheet that isn't in the catalog as
 // `extras`, and what they're wearing or wielding.
 const SHOPPERS = {
-  eoghan: { name: "Eòghan", pal: "ocean", coin: 64, cha: 1, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/eoghan-1784698034076.png",
+  eoghan: { name: "Eòghan", pal: "ocean", coin: 64, cha: 1, wis: 0, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/eoghan-1784698034076.png",
     owned: ["light-armor", "rope", "waterskin"], worn: ["light-armor"],
     extras: [{ name: "Short Sword", cat: "arms", icon: "blade", note: "off a fallen goblin", worn: true }, { name: "Dagger", cat: "arms", icon: "blade", note: "a small symbol on the hilt" }] },
-  liu: { name: "Liu Sha", pal: "ember", coin: 18, cha: 0, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/liu-sha.jpg",
+  liu: { name: "Liu Sha", pal: "ember", coin: 18, cha: 0, wis: 2, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/liu-sha.jpg",
     owned: ["rations", "rations", "waterskin"], worn: [], extras: [{ name: "Prayer Beads", cat: "fancy", icon: "coin", note: "worn smooth" }] },
-  david: { name: "Meanjeans", pal: "vellum", coin: 40, cha: 2, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/david-1784666229879.png",
+  david: { name: "Meanjeans", pal: "vellum", coin: 40, cha: 2, wis: -1, img: "https://hunkz-dnd-portraits.s3.us-west-1.amazonaws.com/portraits/david-1784666229879.png",
     owned: ["light-weapon", "torches", "lockpicks", "light-armor"], worn: ["light-armor", "light-weapon"], extras: [] },
 };
-let who, coin, cat = "arms", satchel = [], haggled = null, inHand = null;
+let who, whoKey, coin, cat = "arms", satchel = [], inHand = null;
+// Haggling, per shopper per opening: deals struck, items she won't sell you,
+// her patience with you, pushes after she's done, and your read of her mood.
+let deals = {}, refused = new Set(), patience = 4, pushes = 0, thrownOut = false, read = null;
+const thrown = new Set(); // who's been thrown out this opening (by shopper key)
+const hlog = [];
 
 // ── Mags speaks (typed out) ──
 let typing;
@@ -738,7 +781,10 @@ const orb = (it, extra = "") => {
   const src = art(it);
   return `<span class="orb${src ? " has-art" : ""}" style="--cat:${catColor(it.cat)}" ${extra}>${src ? `<img src="${src}" alt="" loading="lazy" />` : ico(it.icon)}</span>`;
 };
-const cost = (it) => Math.max(1, Math.round(it.price * (1 + shop.markup / 100)));
+// The marked price: the list price with this shop's markup for the shelf.
+const cost = (it) => Math.max(1, Math.round(it.price * (1 + (shop.markups[it.cat] || 0) / 100)));
+// What it costs *you*, after any haggling.
+const myCost = (it) => Math.max(1, Math.round(cost(it) * (deals[it.id]?.mult ?? 1)));
 const priceLabel = (it) => `${cost(it).toLocaleString()}s${it.per ? `/${it.per}` : ""}`;
 
 // ── Categories ── (a category with art shows one of its pieces behind the tile)
@@ -755,8 +801,7 @@ function renderCats() {
   document.getElementById("cats").innerHTML = tiles.join("");
   const wares = ITEMS.filter((i) => shop.carries.has(i.cat));
   const inStock = wares.filter((i) => !isOut(i)).length;
-  const terms = [shop.markup ? `prices ${markupName(shop.markup)}` : "", shop.haggle === "no" ? "no haggling" : shop.haggle === "tough" ? "stubborn hagglers" : shop.haggle === "soft" ? "open to haggling" : ""].filter(Boolean);
-  document.getElementById("catCount").textContent = `${inStock} of ${wares.length} wares in stock, on ${shelves.length} shelves${terms.length ? ` · ${terms.join(" · ")}` : ""}`;
+  document.getElementById("catCount").textContent = `${inStock} of ${wares.length} wares in stock, on ${shelves.length} shelves`;
 }
 
 // ── Your pack ──
@@ -818,9 +863,9 @@ function renderGoods() {
   const outN = list.filter(isOut).length;
   document.getElementById("goodsSub").textContent = outN ? `${list.length - outN} on the shelf · ${outN} sold out` : `${list.length} on the shelf`;
   g.innerHTML = list.map((it) => {
-    const out = isOut(it), poor = !out && cost(it) > coin;
-    return `<button class="good${poor ? " poor" : ""}${out ? " out" : ""}${inHand?.id === it.id ? " sel" : ""}" data-id="${it.id}" style="--cat:${catColor(it.cat)}">
-      <span class="tag">${priceLabel(it)}</span>${orb(it)}${out ? '<span class="soldout">Sold out</span>' : ""}${countOf(it.id) ? `<span class="have">have ${countOf(it.id)}</span>` : ""}
+    const out = isOut(it), no = refused.has(it.id), poor = !out && !no && myCost(it) > coin, d = deals[it.id];
+    return `<button class="good${poor ? " poor" : ""}${out ? " out" : ""}${no ? " refused" : ""}${inHand?.id === it.id ? " sel" : ""}" data-id="${it.id}" style="--cat:${catColor(it.cat)}">
+      <span class="tag${d ? (d.mult < 1 ? " deal" : " worse") : ""}">${d ? `${myCost(it)}s` : priceLabel(it)}</span>${orb(it)}${out ? '<span class="soldout">Sold out</span>' : no ? '<span class="soldout">Not to you</span>' : ""}${countOf(it.id) ? `<span class="have">have ${countOf(it.id)}</span>` : ""}
       <span class="nm">${it.name}</span><span class="st">${it.stat || ""}</span></button>`;
   }).join("");
   document.getElementById("catLine").textContent = c.line;
@@ -833,9 +878,16 @@ function renderFloat(pop) {
   const it = inHand;
   f.style.setProperty("--cat", catColor(it.cat));
   const owned = who.owned.includes(it.id);
+  const deal = deals[it.id], refusedHere = refused.has(it.id);
   // Can't put more in the satchel than the purse can cover.
-  const short = cost(it) * qty > coin - total();
+  const inSatchel = satchel.find((l) => l.item.id === it.id)?.qty || 0;
+  const short = myCost(it) * qty > coin - total() + (inSatchel ? 0 : 0);
   const recommended = it === RECOMMENDED && !satchel.length && inHand === RECOMMENDED && f.dataset.rec !== "seen";
+  const blocked = status === "lockup" || isOut(it) || refusedHere;
+  const addLabel = status === "lockup" ? "Locking up" : isOut(it) ? "Sold out" : refusedHere ? "Not for sale to you" : short ? `Short ${(myCost(it) * qty - (coin - total())).toLocaleString()} silver` : "Into the satchel";
+  const priceHtml = deal
+    ? `<s class="was">${(cost(it) * qty).toLocaleString()}s</s> ${(myCost(it) * qty).toLocaleString()}s`
+    : qty === 1 ? priceLabel(it) : `${(cost(it) * qty).toLocaleString()}s`;
   f.innerHTML = `
     <button class="x" type="button" aria-label="Put it back" id="putBack">×</button>
     <div class="eyebrow">${recommended ? "Mags recommends" : CATS.find((c) => c.id === it.cat).name}</div>
@@ -845,24 +897,30 @@ function renderFloat(pop) {
     <p>${it.notes || "Exactly what it says on the tag."}</p>
     ${owned ? `<p class="owned">You already carry ${countOf(it.id) > 1 ? countOf(it.id) : "one"}${who.worn.includes(it.id) ? ", and you're wearing it" : ""}.</p>` : ""}
     <div class="buy">
-      <span class="price${short ? " short" : ""}" id="fprice">${qty === 1 ? priceLabel(it) : `${(cost(it) * qty).toLocaleString()}s`}</span>
+      <span class="price${short && !blocked ? " short" : ""}${deal ? ` ${deal.mult < 1 ? "deal" : "worse"}` : ""}" id="fprice">${priceHtml}</span>
       <div class="qty"><button type="button" data-q="-1" aria-label="Fewer">−</button><span id="fq">${qty}</span><button type="button" data-q="1" aria-label="More">+</button></div>
     </div>
-    <div class="buy"><button class="btn gold" type="button" id="addBtn" style="flex:1" ${short || status === "lockup" || isOut(it) ? "disabled" : ""}>${status === "lockup" ? "Locking up" : isOut(it) ? "Sold out" : short ? `Short ${(cost(it) * qty - (coin - total())).toLocaleString()} silver` : "Into the satchel"}</button></div>`;
+    ${deal ? `<p class="deal-note">${deal.note}</p>` : ""}
+    <div class="buy">
+      <button class="btn gold" type="button" id="addBtn" style="flex:1" ${short || blocked ? "disabled" : ""}>${addLabel}</button>
+      <button class="btn" type="button" id="haggleBtn" ${deal || blocked || haggling ? "disabled" : ""} title="${deal ? "You've haggled over this one" : "Try for a better price: 2d6 + your Charisma"}">⚂ Haggle</button>
+    </div>`;
   if (pop) { f.classList.remove("pop"); void f.offsetWidth; f.classList.add("pop"); }
   f.querySelectorAll("[data-q]").forEach((b) => b.onclick = () => {
     qty = Math.max(1, Math.min(99, qty + Number(b.dataset.q)));
     renderFloat(false);
   });
   f.querySelector("#addBtn").onclick = () => addToSatchel(it, qty);
+  f.querySelector("#haggleBtn").onclick = () => haggle(it);
   f.querySelector("#putBack").onclick = () => { f.dataset.rec = "seen"; holdItem(RECOMMENDED, false); say("Suit yourself."); };
 }
 function holdItem(it, speak = true) {
   inHand = it; qty = 1;
   renderFloat(true); renderGoods();
   if (!speak) return;
-  if (LINES.item[it.id]) say(LINES.item[it.id]);
-  else if (cost(it) > coin) say(pick(LINES.poor));
+  if (refused.has(it.id)) say("I said not to you. Put it down.");
+  else if (LINES.item[it.id]) say(LINES.item[it.id]);
+  else if (myCost(it) > coin) say(pick(LINES.poor));
   else say(pick(LINES.hover[it.cat]));
 }
 
@@ -871,11 +929,10 @@ const sheet = document.getElementById("sheet");
 document.getElementById("sheetHead").onclick = () => sheet.classList.toggle("open");
 document.getElementById("satchelBtn").onclick = () => sheet.classList.add("open");
 function subtotal() { return satchel.reduce((s, l) => s + cost(l.item) * l.qty, 0); }
-function total() { const s = subtotal(); return haggled ? Math.max(0, Math.round(s * haggled.mult)) : s; }
+function total() { return satchel.reduce((s, l) => s + myCost(l.item) * l.qty, 0); }
 function addToSatchel(it, n) {
   const line = satchel.find((l) => l.item.id === it.id);
   if (line) line.qty += n; else satchel.push({ item: it, qty: n });
-  haggled = null;
   say(pick(LINES.add));
   const b = document.getElementById("satchelBtn");
   b.classList.remove("bump"); void b.offsetWidth; b.classList.add("bump");
@@ -886,48 +943,114 @@ function renderSatchel() {
   const n = satchel.reduce((s, l) => s + l.qty, 0);
   document.getElementById("satchelN").textContent = n;
   document.getElementById("sheetSum").textContent = n ? `${n} item${n === 1 ? "" : "s"} · ${total().toLocaleString()}s` : "empty";
-  document.getElementById("lines").innerHTML = satchel.map((l, i) => `<div class="line">${orb(l.item)}<span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>${(cost(l.item) * l.qty).toLocaleString()}s</span><button class="x" data-rm="${i}" aria-label="Remove">×</button></div>`).join("") || '<p style="opacity:.7;font-style:italic">Nothing yet. Pick something off the shelves.</p>';
+  document.getElementById("lines").innerHTML = satchel.map((l, i) => {
+    const d = deals[l.item.id];
+    return `<div class="line">${orb(l.item)}<span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}${d ? `<small class="${d.mult < 1 ? "disc" : "bad"}">${d.short}</small>` : ""}</span><span>${d ? `<s class="was">${(cost(l.item) * l.qty).toLocaleString()}s</s> ` : ""}${(myCost(l.item) * l.qty).toLocaleString()}s</span><button class="x" data-rm="${i}" aria-label="Remove">×</button></div>`;
+  }).join("") || '<p style="opacity:.7;font-style:italic">Nothing yet. Pick something off the shelves.</p>';
   const s = subtotal(), t = total(), after = coin - t;
   document.getElementById("totals").innerHTML = satchel.length ? `
-    <div><span>Subtotal</span><span>${s.toLocaleString()}s</span></div>
-    ${haggled ? `<div class="${haggled.cls}"><span>${haggled.label}</span><span>${t - s > 0 ? "+" : ""}${(t - s).toLocaleString()}s</span></div>` : ""}
+    ${t !== s ? `<div><span>At the marked price</span><span>${s.toLocaleString()}s</span></div><div class="${t < s ? "disc" : "bad"}"><span>Haggled</span><span>${t - s > 0 ? "+" : ""}${(t - s).toLocaleString()}s</span></div>` : ""}
     <div class="grand"><span>Total</span><span>${t.toLocaleString()}s</span></div>
     <div><span>Your purse after</span><span class="${after < 0 ? "bad" : ""}">${after.toLocaleString()}s</span></div>` : "";
-  document.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => { satchel.splice(Number(b.dataset.rm), 1); haggled = null; renderSatchel(); });
+  document.querySelectorAll("[data-rm]").forEach((b) => b.onclick = () => { satchel.splice(Number(b.dataset.rm), 1); renderSatchel(); renderFloat(false); });
   document.getElementById("payBtn").disabled = !satchel.length || after < 0;
-  const hb = document.getElementById("haggleBtn");
-  hb.disabled = !satchel.length || !!haggled || shop.haggle === "no";
-  hb.textContent = shop.haggle === "no" ? "No haggling here" : "⚂ Haggle";
-  hb.title = shop.haggle === "no" ? "This shop doesn't haggle" : `Roll 2d6 + CHA${HAGGLE[shop.haggle].mod ? ` ${HAGGLE[shop.haggle].mod > 0 ? "+" : "−"}${Math.abs(HAGGLE[shop.haggle].mod)} (${HAGGLE[shop.haggle].name.toLowerCase()})` : ""}, once per visit`;
-  document.getElementById("haggle").classList.toggle("on", !!haggled);
 }
 
-// ── Haggling: 2d6 + CHA ──
-document.getElementById("haggleBtn").onclick = () => {
-  const mod = HAGGLE[shop.haggle].mod || 0;
-  const a = 1 + Math.floor(Math.random() * 6), b = 1 + Math.floor(Math.random() * 6), sum = a + b + who.cha + mod;
-  const d1 = document.getElementById("d1"), d2 = document.getElementById("d2");
-  document.getElementById("haggle").classList.add("on");
-  [d1, d2].forEach((d) => { d.classList.remove("rolling"); void d.offsetWidth; d.classList.add("rolling"); d.textContent = "?"; });
+// ── Haggling, one item at a time ──
+// Mags has a hidden store of patience for each shopper, set by the DM's
+// temperament for this opening. A success or a partial costs 1, a miss 2.
+// The haggle that empties it takes that item off sale for you and cancels
+// the discounts on everything unpaid in your satchel. After that she refuses
+// to haggle at all; push her three more times and you're thrown out.
+const MOODS = ["Easy", "Wary", "Testy", "Done with you"];
+function moodNow() {
+  if (patience <= 0) return 3;
+  const p = patience / HAGGLE[shop.haggle].patience;
+  return p > 0.66 ? 0 : p > 0.33 ? 1 : 2;
+}
+// What the shopper *thinks* her mood is: a hidden 2d6 + WIS each time she
+// reacts. 10+ reads her right; 7–9 reads her right but unsure; 6 or less
+// reads her a step off, and half the time is sure of it anyway.
+function readMood() {
+  const truth = moodNow();
+  const r = d6() + d6() + who.wis;
+  if (r >= 10) read = { mood: truth, sure: true };
+  else if (r >= 7) read = { mood: truth, sure: false };
+  else {
+    const off = truth === 0 ? 1 : truth === 3 ? 2 : truth + (Math.random() < 0.5 ? -1 : 1);
+    read = { mood: off, sure: Math.random() < 0.5 };
+  }
+  renderRead();
+}
+function renderRead() {
+  const el = document.getElementById("read");
+  if (!read) { el.hidden = true; return; }
+  el.hidden = false;
+  el.className = `read m${read.mood}${read.sure ? "" : " unsure"}`;
+  el.innerHTML = `<i></i>${read.sure ? `She seems <b>${MOODS[read.mood].toLowerCase()}</b>` : `<b>${MOODS[read.mood].toLowerCase()}</b>… you think?`}`;
+}
+const d6 = () => 1 + Math.floor(Math.random() * 6);
+let haggling = false;
+function logHaggle(item, result) { hlog.unshift({ who: who.name, key: whoKey, item, result }); renderLog(); }
+
+function haggle(it) {
+  haggling = true; renderFloat(false);
   setTimeout(() => {
-    d1.textContent = a; d2.textContent = b;
-    const roll = `${a}+${b}${who.cha ? `+${who.cha}` : ""}${mod ? `${mod > 0 ? "+" : "−"}${Math.abs(mod)}` : ""} = ${sum}`;
-    if (sum >= 12) haggled = { mult: 0.8, label: `Haggled (${roll}, critical)`, cls: "disc", line: pick(LINES.haggle.crit) };
-    else if (sum >= 10) haggled = { mult: 0.9, label: `Haggled (${roll})`, cls: "disc", line: pick(LINES.haggle.full) };
-    else if (sum >= 7) haggled = { mult: 0.95, label: `Haggled (${roll}, a favour owed)`, cls: "disc", line: pick(LINES.haggle.partial) };
-    else haggled = { mult: 1.1, label: `Haggled badly (${roll})`, cls: "bad", line: pick(LINES.haggle.miss) };
-    document.getElementById("verdict").innerHTML = `<b>${sum >= 10 ? "Success" : sum >= 7 ? "Partial" : "Miss"}</b> — ${haggled.line.replace("{name}", who.name)}`;
-    say(haggled.line);
-    renderSatchel();
-  }, 600);
-};
+    haggling = false;
+    // She's done haggling: every further try is a push towards the door.
+    if (patience <= 0) {
+      pushes += 1;
+      if (pushes >= 3) { logHaggle(it.name, "thrown out"); throwOut(); return; }
+      say(pushes === 1 ? "I said no more haggling. Price is the price." : `Last warning, ${who.name}. Once more and you're out on your ear.`);
+      logHaggle(it.name, pushes === 1 ? "refused" : "last warning");
+      readMood(); renderFloat(false);
+      return;
+    }
+    const temper = HAGGLE[shop.haggle];
+    const a = d6(), b = d6(), sum = a + b + who.cha + (temper.mod || 0);
+    const rolled = `You rolled ${a} and ${b}${who.cha ? `, ${who.cha > 0 ? "+" : "−"}${Math.abs(who.cha)} Charisma` : ""}`;
+    let line;
+    if (temper.refuses) {
+      // A shop that won't haggle just says no; it still wears on her.
+      patience -= 1;
+      line = pick(LINES.haggle.refuse);
+      logHaggle(it.name, "refused (won't haggle)");
+    } else if (sum >= 12) { deals[it.id] = { mult: 0.8, short: "a fifth off", note: `${rolled}. A fifth off.` }; patience -= 1; line = pick(LINES.haggle.crit); }
+    else if (sum >= 10) { deals[it.id] = { mult: 0.9, short: "a tenth off", note: `${rolled}. A tenth off.` }; patience -= 1; line = pick(LINES.haggle.full); }
+    else if (sum >= 7) { deals[it.id] = { mult: 0.95, short: "a little off", note: `${rolled}. A little off, grudgingly.` }; patience -= 1; line = pick(LINES.haggle.partial); }
+    else { deals[it.id] = { mult: 1.1, short: "haggled badly", note: `${rolled}. The price went up.` }; patience -= 2; line = pick(LINES.haggle.miss); }
+    if (deals[it.id] && !temper.refuses) logHaggle(it.name, deals[it.id].short);
+    if (patience <= 0) {
+      // She snaps: not this item, not to you, and the deals are off.
+      delete deals[it.id];
+      refused.add(it.id);
+      // Every discount you haven't paid for yet goes with it.
+      const lost = Object.keys(deals).filter((id) => deals[id].mult < 1);
+      lost.forEach((id) => delete deals[id]);
+      satchel = satchel.filter((l) => l.item.id !== it.id);
+      line = `That's it. Not that, not to you.${lost.length ? " And those discounts? Gone." : ""}`;
+      logHaggle(it.name, `snapped: off sale${lost.length ? `, lost ${lost.length} discount${lost.length === 1 ? "" : "s"}` : ""}`);
+    }
+    say(line);
+    readMood();
+    renderSatchel(); renderGoods(); renderFloat(false);
+  }, 650);
+}
+
+function throwOut() {
+  thrownOut = true; thrown.add(whoKey);
+  satchel = []; deals = {};
+  read = { mood: 3, sure: true }; renderRead();
+  renderSatchel();
+  setStatus(status);
+}
 
 // ── Paying ──
 const veil = document.getElementById("veil");
 function closeVeil() { veil.classList.remove("on"); veil.innerHTML = ""; }
 veil.addEventListener("click", (e) => { if (e.target === veil) closeVeil(); });
 document.getElementById("payBtn").onclick = () => {
-  const t = total(), sub = subtotal(), h = haggled;
+  const t = total();
   const from = document.getElementById("payBtn").getBoundingClientRect();
   const to = document.querySelector(".scene").getBoundingClientRect();
   const tx = to.left + to.width * 0.45, ty = to.top + to.height * 0.72; // the coins land on her counter
@@ -944,7 +1067,7 @@ document.getElementById("payBtn").onclick = () => {
       { transform: `translate(${dx + (Math.random() - 0.5) * 60}px, ${dy}px) scale(0.6)`, opacity: 0.2 },
     ], { duration: 750 + i * 45, easing: "cubic-bezier(.4,0,.6,1)" }).onfinish = () => c.remove();
   }
-  const bought = satchel.slice();
+  const bought = satchel.map((l) => ({ ...l, paid: myCost(l.item) * l.qty, deal: deals[l.item.id] }));
   setTimeout(() => {
     coin -= t;
     bought.forEach((l) => { for (let k = 0; k < l.qty; k++) who.owned.push(l.item.id); });
@@ -954,8 +1077,7 @@ document.getElementById("payBtn").onclick = () => {
     say(pick(LINES.pay));
     veil.innerHTML = `<div class="receipt" role="dialog" aria-label="Receipt">
       <h3>Ironwhistle's Emporium</h3><small style="margin:0">Sold to ${who.name}</small>
-      <div class="r-lines">${bought.map((l) => `<div><span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>${(cost(l.item) * l.qty).toLocaleString()}s</span></div>`).join("")}
-      ${h ? `<div><span>${h.mult < 1 ? "Haggled" : "Haggled badly"}</span><span>${(t - sub).toLocaleString()}s</span></div>` : ""}
+      <div class="r-lines">${bought.map((l) => `<div><span>${l.item.name}${l.qty > 1 ? ` × ${l.qty}` : ""}${l.deal ? ` <i>(${l.deal.short})</i>` : ""}</span><span>${l.paid.toLocaleString()}s</span></div>`).join("")}
       <div style="font-weight:600"><span>Paid</span><span>${t.toLocaleString()}s</span></div></div>
       <span class="stamp">Paid in full</span>
       <small>Added to ${who.name}'s pack. The purchase appears in the session log.</small>
@@ -963,7 +1085,7 @@ document.getElementById("payBtn").onclick = () => {
     </div>`;
     veil.classList.add("on");
     veil.querySelector("#doneBtn").onclick = closeVeil;
-    satchel = []; haggled = null;
+    satchel = [];
     renderSatchel(); renderGoods(); renderFloat(false);
   }, 950);
 };
@@ -1065,22 +1187,30 @@ const toInput = (d) => new Date(d - d.getTimezoneOffset() * 60000).toISOString()
 // A preset is a whole shop's character: what it carries, how dear it is, and
 // how far it bends on price.
 const PRESETS = [
-  { id: "all", name: "Ironwhistle's — everything", cats: CATS.map((c) => c.id), markup: 0, haggle: "fair" },
-  { id: "village", name: "A village shop", cats: ["arms", "gear", "tools", "travel", "hire"], markup: -10, haggle: "soft" },
-  { id: "millbrook", name: "Millbrook general store", cats: ["gear", "tools", "fancy", "travel"], markup: 25, haggle: "tough" },
+  { id: "all", name: "Ironwhistle's — everything", cats: CATS.map((c) => c.id), level: "low", markups: { arms: 10, armor: 5, gear: 0, tools: 5, occult: 15, fancy: 10, travel: 0, hire: 5 }, haggle: "fair" },
+  { id: "village", name: "A village shop", cats: ["arms", "gear", "tools", "travel", "hire"], level: "cheap", markups: { arms: -5, armor: 0, gear: -15, tools: -10, occult: 0, fancy: 0, travel: -20, hire: -10 }, haggle: "soft" },
+  { id: "millbrook", name: "Millbrook general store", cats: ["gear", "tools", "fancy", "travel"], level: "high", markups: { arms: 0, armor: 0, gear: 15, tools: 20, occult: 0, fancy: 45, travel: 30, hire: 0 }, haggle: "tough" },
 ];
-const MARKUPS = [-10, 0, 10, 25, 50];
-const markupName = (m) => m === 0 ? "List price" : `${m > 0 ? "+" : "−"}${Math.abs(m)}%`;
+// Price levels roll a markup for each shelf within a range, in steps of 5%.
+const LEVELS = { cheap: { name: "Cheap", lo: -20, hi: 0 }, low: { name: "Low markup", lo: 0, hi: 15 }, high: { name: "High markup", lo: 15, hi: 50 } };
+const markupName = (m) => m === 0 ? "list" : `${m > 0 ? "+" : "−"}${Math.abs(m)}%`;
+function rollMarkups() {
+  const { lo, hi } = LEVELS[shop.level];
+  shop.markups = Object.fromEntries(CATS.map((c) => [c.id, lo + 5 * Math.floor(Math.random() * ((hi - lo) / 5 + 1))]));
+}
+const sameMarkups = (a, b) => CATS.every((c) => (a[c.id] || 0) === (b[c.id] || 0));
+// Her temperament: a hidden modifier on the haggle roll, and how much
+// patience she has with each shopper. Players never see either.
 const HAGGLE = {
-  no: { name: "Won't haggle", hint: "Prices are prices. Players see the Haggle button switched off." },
-  tough: { name: "Stubborn", mod: -2, hint: "Players haggle at −2: 2d6 + CHA − 2. Most rolls miss, and a miss puts the price up." },
-  fair: { name: "Fair", mod: 0, hint: "Players haggle at 2d6 + CHA, once per visit." },
-  soft: { name: "Soft touch", mod: 2, hint: "Players haggle at +2: 2d6 + CHA + 2. A good word goes a long way here." },
+  no: { name: "Won't haggle", refuses: true, patience: 3, hint: "She turns every haggle down. Three tries and she's had enough." },
+  tough: { name: "Stubborn", mod: -2, patience: 2, hint: "Haggles at −2, patience 2. One bad try and she snaps." },
+  fair: { name: "Fair", mod: 0, patience: 4, hint: "Haggles at +0, patience 4: two or three haggles before she's had enough." },
+  soft: { name: "Soft touch", mod: 2, patience: 6, hint: "Haggles at +2, patience 6. A good word goes a long way here." },
 };
 const tomorrow9 = new Date(NOW); tomorrow9.setDate(tomorrow9.getDate() + 1); tomorrow9.setHours(9, 0, 0, 0);
 const shop = {
   when: "next", lead: 45, closeOn: "start", nowClose: "manual", opens: toInput(tomorrow9), closes: toInput(NEXT_SESSION),
-  preset: "all", carries: new Set(PRESETS[0].cats), markup: 0, haggle: "fair", fill: "full", out: new Set(),
+  preset: "all", carries: new Set(PRESETS[0].cats), level: "low", markups: { ...PRESETS[0].markups }, haggle: "fair", fill: "full", out: new Set(),
 };
 let status = "open";
 const isOut = (it) => shop.out.has(it.id);
@@ -1125,7 +1255,12 @@ function renderHours() {
     closed: "Closed",
   }[status]}`;
   const sh = document.getElementById("shutters");
-  if (status === "combat") {
+  if (isThrownOut()) {
+    h.className = "hours off";
+    h.innerHTML = "<i></i>Thrown out";
+    sh.innerHTML = `<div class="plaque"><h2>And Stay Out!</h2><p>“Haggle with someone else's patience, ${who.name}.” — Mags</p></div>
+      <div class="when">You've been thrown out for this opening<small>A friend can still buy for you. The DM can let you back in.</small></div>`;
+  } else if (status === "combat") {
     sh.innerHTML = `<div class="plaque"><h2>Closed for the Fighting</h2><p>“Steel's out in the street. Come back when it's sheathed.” — Mags</p></div>
       <p style="font-style:italic;opacity:.85">The shop reopens when the round ends. Your satchel keeps.</p>`;
   } else if (status === "scheduled") {
@@ -1149,16 +1284,17 @@ function startLockup() {
     left -= 1; tick();
     if (left > 0) return;
     // Time's up: anything still unpaid goes back on the shelves.
-    satchel = []; haggled = null; renderSatchel();
+    satchel = []; renderSatchel();
     setStatus("closed");
   }, 1000);
 }
 document.getElementById("lockPay").onclick = () => sheet.classList.add("open");
 
+const isThrownOut = () => thrownOut && (status === "open" || status === "lockup");
 function setStatus(v) {
   const prev = status;
   status = v; clearInterval(lockTimer);
-  const shutDown = v === "closed" || v === "scheduled";
+  const shutDown = v === "closed" || v === "scheduled" || isThrownOut();
   document.getElementById("v-shop").classList.toggle("shut", shutDown);
   document.getElementById("shopMain").classList.toggle("closed", v === "combat");
   document.getElementById("shopMain").classList.toggle("locking", v === "lockup");
@@ -1166,6 +1302,7 @@ function setStatus(v) {
   if (v === "combat" || shutDown) sheet.classList.remove("open");
   [...document.getElementById("stateSeg").children].forEach((c) => c.classList.toggle("on", c.dataset.v === v));
   renderHours(); renderCats(); renderGoods(); renderFloat(false);
+  if (isThrownOut()) { renderStatus(); renderNext(); return; }
   if (v === "lockup") startLockup();
   else if (v === "open" && prev === "combat") say("Ah, the dust's settled. Where were we?");
   else if (v === "open" && prev !== "open") say(pick(LINES.greet));
@@ -1225,7 +1362,7 @@ function renderOpen() {
   [...document.getElementById("whenSeg").children].forEach((c) => c.classList.toggle("on", c.dataset.v === shop.when));
   renderWhen();
   // Shelves
-  const match = PRESETS.find((p) => p.cats.length === shop.carries.size && p.cats.every((c) => shop.carries.has(c)) && p.markup === shop.markup && p.haggle === shop.haggle);
+  const match = PRESETS.find((p) => p.cats.length === shop.carries.size && p.cats.every((c) => shop.carries.has(c)) && sameMarkups(p.markups, shop.markups) && p.haggle === shop.haggle);
   shop.preset = match ? match.id : "custom";
   document.getElementById("presetSel").innerHTML = PRESETS.map((p) => `<option value="${p.id}" ${p.id === shop.preset ? "selected" : ""}>${p.name}</option>`).join("")
     + (match ? "" : '<option value="custom" selected>Custom (not saved)</option>');
@@ -1235,9 +1372,18 @@ function renderOpen() {
     if (shop.carries.has(id)) { if (shop.carries.size > 1) shop.carries.delete(id); } else shop.carries.add(id);
     renderOpen(); refreshShelves();
   });
-  document.getElementById("markupSeg").innerHTML = MARKUPS.map((m) => `<button type="button" data-v="${m}" class="${m === shop.markup ? "on" : ""}">${markupName(m)}</button>`).join("");
-  const eg = ITEMS.find((i) => i.id === "lantern");
-  document.getElementById("markupEg").textContent = `a lantern: ${cost(eg)}s${shop.markup ? ` (list ${eg.price}s)` : ""}`;
+  document.getElementById("markupSeg").innerHTML = Object.entries(LEVELS).map(([k, l]) => `<button type="button" data-v="${k}" class="${k === shop.level ? "on" : ""}">${l.name}</button>`).join("");
+  document.getElementById("markups").innerHTML = CATS.filter((c) => shop.carries.has(c.id)).map((c) => {
+    const m = shop.markups[c.id] || 0, eg = ITEMS.find((i) => i.cat === c.id);
+    return `<div class="mk" style="--cat:${catColor(c.id)}"><i></i><span class="nm">${c.name}</span>
+      <button type="button" data-mk="${c.id}" data-d="-5" aria-label="Less">−</button><b class="${m > 0 ? "up" : m < 0 ? "down" : ""}">${markupName(m)}</b><button type="button" data-mk="${c.id}" data-d="5" aria-label="More">+</button>
+      <small>${eg.name.toLowerCase()} ${cost(eg)}s${m ? ` <s>${eg.price}s</s>` : ""}</small></div>`;
+  }).join("");
+  document.querySelectorAll("[data-mk]").forEach((b) => b.onclick = () => {
+    const id = b.dataset.mk;
+    shop.markups[id] = Math.max(-50, Math.min(200, (shop.markups[id] || 0) + Number(b.dataset.d)));
+    renderOpen(); refreshShelves();
+  });
   document.getElementById("haggleSeg").innerHTML = Object.entries(HAGGLE).map(([k, h]) => `<button type="button" data-v="${k}" class="${k === shop.haggle ? "on" : ""}">${h.name}</button>`).join("");
   document.getElementById("haggleHint").textContent = HAGGLE[shop.haggle].hint;
   // Stock
@@ -1263,7 +1409,7 @@ function renderOpen() {
     ? `Opens <b>now</b> and ${closesText(w).replace("open until", "stays open until")}.`
     : `Opens <b>${fmtDay(w.opens)} at ${fmtTime(w.opens)}</b>${shop.when === "next" ? `, ${shop.lead} minutes before the session` : ""}, and ${closesText(w)}.`;
   const preset = PRESETS.find((p) => p.id === shop.preset);
-  const terms = `${shop.markup ? `prices ${markupName(shop.markup)}` : "list prices"}, ${shop.haggle === "no" ? "no haggling" : `${HAGGLE[shop.haggle].name.toLowerCase()} on haggling`}`;
+  const terms = `${LEVELS[shop.level].name.toLowerCase()}, ${shop.haggle === "no" ? "won't haggle" : `${HAGGLE[shop.haggle].name.toLowerCase()} on haggling`}`;
   document.getElementById("saveSummary").innerHTML = `${when} ${preset ? preset.name : "A custom shop"}, ${FILL_NAME[shop.fill]}: ${n} of ${of} wares; ${terms}.`;
   document.getElementById("saveOpen").textContent = shop.when === "now" ? "Open the shop" : "Schedule it";
 }
@@ -1272,18 +1418,19 @@ function refreshShelves() {
   renderCats(); renderGoods(); renderFloat(false); renderSatchel(); renderStatus();
 }
 bindSeg("whenSeg", (v) => { shop.when = v; renderOpen(); });
-bindSeg("markupSeg", (v) => { shop.markup = Number(v); renderOpen(); refreshShelves(); });
-bindSeg("haggleSeg", (v) => { shop.haggle = v; haggled = null; renderOpen(); refreshShelves(); });
+bindSeg("markupSeg", (v) => { shop.level = v; rollMarkups(); renderOpen(); refreshShelves(); });
+document.getElementById("markupReroll").onclick = () => { rollMarkups(); renderOpen(); refreshShelves(); };
+bindSeg("haggleSeg", (v) => { shop.haggle = v; patience = HAGGLE[v].patience; renderOpen(); refreshShelves(); });
 bindSeg("fillSeg", (v) => { shop.fill = v; rollStock(); renderOpen(); refreshShelves(); });
 document.getElementById("reroll").onclick = () => { rollStock(); renderOpen(); refreshShelves(); };
 document.getElementById("presetSel").onchange = (e) => {
   const p = PRESETS.find((x) => x.id === e.target.value); if (!p) return;
-  shop.carries = new Set(p.cats); shop.markup = p.markup; shop.haggle = p.haggle; renderOpen(); refreshShelves();
+  shop.carries = new Set(p.cats); shop.level = p.level; shop.markups = { ...p.markups }; shop.haggle = p.haggle; patience = HAGGLE[p.haggle].patience; renderOpen(); refreshShelves();
 };
 document.getElementById("presetSave").onclick = () => { document.getElementById("presave").classList.add("on"); document.getElementById("presetName").focus(); };
 document.getElementById("presetOk").onclick = () => {
   const name = document.getElementById("presetName").value.trim() || "My shop";
-  PRESETS.push({ id: `p${PRESETS.length}`, name, cats: [...shop.carries], markup: shop.markup, haggle: shop.haggle });
+  PRESETS.push({ id: `p${PRESETS.length}`, name, cats: [...shop.carries], level: shop.level, markups: { ...shop.markups }, haggle: shop.haggle });
   document.getElementById("presave").classList.remove("on");
   document.getElementById("presetName").value = "";
   renderOpen();
@@ -1295,6 +1442,22 @@ document.getElementById("saveOpen").onclick = () => {
   b.textContent = "Saved ✓";
   setTimeout(() => renderOpen(), 1400);
 };
+
+function renderLog() {
+  const el = document.getElementById("hlog");
+  const out = [...thrown].map((k) => SHOPPERS[k]);
+  el.innerHTML = (out.length ? out.map((w) => `<div class="hl out"><b>${w.name}</b> was thrown out.<button class="tbtn primary" type="button" data-letin="${Object.keys(SHOPPERS).find((k) => SHOPPERS[k] === w)}">Let back in</button></div>`).join("") : "")
+    + (hlog.length ? hlog.slice(0, 12).map((h) => `<div class="hl"><b>${h.who}</b> · ${h.item} · <span class="${/badly|refused|warning|snapped|thrown/.test(h.result) ? "hl-bad" : /off/.test(h.result) ? "hl-ok" : ""}">${h.result}</span></div>`).join("")
+      : '<p class="hint" style="margin:0">No haggling yet. Who haggled for what, and how it went, shows here.</p>');
+  el.querySelectorAll("[data-letin]").forEach((b) => b.onclick = () => {
+    const k = b.dataset.letin;
+    thrown.delete(k);
+    hlog.unshift({ who: SHOPPERS[k].name, item: "—", result: "let back in" });
+    // Back in, on thin ice: no patience left to spend.
+    if (k === whoKey) { thrownOut = false; patience = 0; pushes = 0; read = null; renderRead(); setStatus(status); }
+    renderLog();
+  });
+}
 
 // ── Player: the shop on the next-session line ──
 function renderNext() {
@@ -1335,12 +1498,13 @@ function seg(id, fn) {
 seg("viewSeg", (v) => {
   ["shop", "next", "open", "dm"].forEach((k) => document.getElementById(`v-${k}`).classList.toggle("on", k === v));
   if (v === "dm") renderDm();
-  if (v === "open") renderOpen();
+  if (v === "open") { renderOpen(); renderLog(); }
   if (v === "next") renderNext();
 });
 seg("stateSeg", (v) => setStatus(v));
 function shopAs(key) {
-  who = SHOPPERS[key]; coin = who.coin; satchel = []; haggled = null;
+  who = SHOPPERS[key]; whoKey = key; coin = who.coin; satchel = [];
+  deals = {}; refused = new Set(); patience = HAGGLE[shop.haggle].patience; pushes = 0; thrownOut = thrown.has(key); read = null; renderRead();
   document.body.dataset.pal = who.pal;
   document.getElementById("purse").textContent = coin;
   document.getElementById("whoName").textContent = who.name;
@@ -1352,7 +1516,7 @@ function shopAs(key) {
   renderCats(); renderGoods(); renderSatchel(); renderFloat(true);
   say(pick(LINES.greet));
 }
-seg("whoSeg", (k) => { shopAs(k); renderHours(); });
+seg("whoSeg", (k) => { shopAs(k); setStatus(status); });
 seg("takeSeg", (v) => { take = Number(v); renderCats(); renderGoods(); renderSatchel(); renderFloat(false); });
 shopAs("eoghan");
 setStatus("open");
