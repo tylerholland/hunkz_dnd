@@ -46,6 +46,16 @@ A tiefling fence's dockside den: occult goods, no questions. Suggested temper: *
 a sly young tiefling woman fence in the left foreground, waist-up, lounging behind a scarred driftwood counter, deep plum skin, curling black horns hung with tiny silver chains, long dark hair in a loose braid, gold-capped canine tooth, kohl-lined amber eyes, a dark leather coat with the collar turned up over a wine-red silk scarf, many mismatched rings, a coin walking across her knuckles, knowing crooked grin, looking at the viewer; on the counter a lockpick roll, a skull-shaped candle and a scatter of foreign coins; behind her a low cellar beneath a dockside warehouse stretching back on the right: dripping stone arches and wet wooden piles, fishing nets and ropes, crates stamped with foreign marks, a rack of mismatched second-hand swords and crossbows, shelves of murky occult jars, bone charms, dried bats and vials of strange glowing green liquid, an iron cage with a single raven, green-glass lanterns casting sickly light, river water glinting through a grate, mist low on the floor, the far right of the frame darker and in deep shadow, no other people; cinematic fantasy concept art, hyper-detailed, realistic materials and textures, moody chiaroscuro lighting, cold green and warm candle contrast, depth and atmosphere, Unreal Engine render quality --ar 5:3 --v 7 --style raw
 ```
 
+### Second keeper for The Drowned Lantern
+
+Same cellar, different fence: an ancient goblin broker perched up on crates so he's level with you. Suggested temper: **Stubborn** (he's heard every story), but a big roll charms him.
+
+```
+a wizened ancient goblin fence in the left foreground, waist-up, perched on a stack of crates behind a scarred driftwood counter so his face is level with the viewer, grey-green wrinkled skin, enormous ragged ears pierced with brass and bone rings, one milky blind eye and one sharp yellow eye behind a cracked jeweller's loupe, long crooked nose, a few wisps of white hair, a moth-eaten fur-collared coat far too big for him over a stained silk waistcoat, a chain of mismatched keys around his neck, long knobbly fingers steepled over a ledger, sly gap-toothed grin, looking at the viewer; on the counter an open ledger, a quill, a candle stub and a little hoard of foreign coins; behind him a low cellar beneath a dockside warehouse stretching back on the right: dripping stone arches and wet wooden piles, fishing nets and ropes, crates stamped with foreign marks, a rack of mismatched second-hand swords and crossbows, shelves of murky occult jars, bone charms, dried bats and vials of strange glowing green liquid, an iron cage with a single raven, green-glass lanterns casting sickly light, river water glinting through a grate, mist low on the floor, the far right of the frame darker and in deep shadow, no other people; cinematic fantasy concept art, hyper-detailed, realistic materials and textures, moody chiaroscuro lighting, cold green and warm candle contrast, depth and atmosphere, Unreal Engine render quality --ar 5:3 --v 7 --style raw
+```
+
+If he comes out cartoonish, add "realistic goblin, grotesque but dignified, aged leathery skin", or `--no cartoon, cute`.
+
 ---
 
 ## If something drifts
