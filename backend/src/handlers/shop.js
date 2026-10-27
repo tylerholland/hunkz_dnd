@@ -130,7 +130,7 @@ async function logShopEvent(character, action, items, total, shopName) {
   }
 }
 
-const SETUP_FIELDS = ["buysBack", "keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
+const SETUP_FIELDS = ["place", "buysBack", "keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
 const live = (status) => status === "open" || status === "lockup";
 
 function dmView(state) {

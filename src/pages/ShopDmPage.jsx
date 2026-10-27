@@ -18,7 +18,7 @@ import "../features/shop/shopDm.css";
 // catalog. Setup changes save as you make them; while the shop is open, stock
 // stays live and the rest is locked until the DM unlocks it.
 
-const SETUP_KEYS = ["buysBack", "keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
+const SETUP_KEYS = ["place", "buysBack", "keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
 const statusOf = (d) => ({ status: d.status, opensAt: d.opensAt, closesAt: d.closesAt, lockupUntil: d.lockupUntil, openingId: d.openingId, opening: d.shop?.opening || null });
 const setupOf = (shop) => Object.fromEntries(SETUP_KEYS.map((k) => [k, shop[k]]));
 // This opening's haggling: the log, and who's been thrown out (names from the log).
@@ -34,14 +34,14 @@ function haggleOf(shop) {
 // The sign players see follows the keeper and sign; each template remembers
 // how the DM last set it up, and a saved shop keeps its own changes.
 function withDerived(s) {
-  const display = signFor(s.keeper, s.sign);
+  const display = signFor(s.keeper, s.sign, s.place);
   const settings = { cats: s.carries, level: s.level, markups: s.markups, temper: s.temper };
   const isSaved = s.saved.some((m) => m.id === s.pick);
   return {
     ...s,
     display,
-    saved: isSaved ? s.saved.map((m) => (m.id === s.pick ? { ...m, ...settings, name: display.name, where: display.where } : m)) : s.saved,
-    memo: isSaved ? s.memo : { ...s.memo, [s.pick]: { ...settings, sign: s.sign } },
+    saved: isSaved ? s.saved.map((m) => (m.id === s.pick ? { ...m, ...settings, name: display.name, where: display.where, place: s.place } : m)) : s.saved,
+    memo: isSaved ? s.memo : { ...s.memo, [s.pick]: { ...settings, sign: s.sign, place: s.place } },
   };
 }
 
@@ -128,19 +128,20 @@ export default function ShopDmPage() {
   function pickShop(id) {
     const saved = setup.saved.find((m) => m.id === id);
     if (saved) {
-      update({ pick: id, keeper: saved.keeper, carries: saved.cats, level: saved.level, markups: saved.markups, temper: saved.temper, sign: { nameIdx: 0, custom: { name: saved.name, where: saved.where } } });
+      const [town = "", street = ""] = String(saved.where || "").split(" · ");
+      update({ pick: id, keeper: saved.keeper, carries: saved.cats, level: saved.level, markups: saved.markups, temper: saved.temper, sign: { nameIdx: 0, custom: { name: saved.name } }, place: saved.place || { town, street } });
       return;
     }
     const m = setup.memo[id] || USUAL[id];
-    update({ pick: id, keeper: id, carries: m.cats, level: m.level, markups: m.markups, temper: m.temper, sign: setup.memo[id]?.sign || { nameIdx: 0 } });
+    update({ pick: id, keeper: id, carries: m.cats, level: m.level, markups: m.markups, temper: m.temper, sign: setup.memo[id]?.sign || { nameIdx: 0 }, place: setup.memo[id]?.place || { town: "", street: "" } });
   }
   function saveThisShop() {
     const id = `saved-${Date.now().toString(36)}`;
     const d = setup.display;
     update({
       pick: id,
-      sign: { nameIdx: setup.sign?.nameIdx || 0, custom: { name: d.name, where: d.where } },
-      saved: [...setup.saved, { id, keeper: setup.keeper, name: d.name, where: d.where, cats: setup.carries, level: setup.level, markups: setup.markups, temper: setup.temper }],
+      sign: { nameIdx: setup.sign?.nameIdx || 0, custom: { name: d.name } },
+      saved: [...setup.saved, { id, keeper: setup.keeper, name: d.name, where: d.where, place: setup.place, cats: setup.carries, level: setup.level, markups: setup.markups, temper: setup.temper }],
     });
   }
   function carryItem(it) {
@@ -203,7 +204,7 @@ export default function ShopDmPage() {
   const shown = (catalog || []).filter((it) => !it.hidden && setup?.carries.includes(it.cat));
   const inStock = `${shown.filter((it) => !setup.out.includes(it.id)).length} of ${shown.length} wares`;
   const picker = setup && (
-    <ShopPicker setup={setup} display={setup.display} onPick={pickShop} onSign={(sign) => update({ sign })} onTemper={(temper) => update({ temper })} onBuysBack={(buysBack) => update({ buysBack })}
+    <ShopPicker setup={setup} display={setup.display} onPick={pickShop} onSign={(sign) => update({ sign })} onPlace={(place) => update({ place })} onTemper={(temper) => update({ temper })} onBuysBack={(buysBack) => update({ buysBack })}
       onReset={() => { const u = USUAL[setup.keeper]; update({ carries: u.cats, level: u.level, markups: u.markups, temper: u.temper }); }} onSave={saveThisShop} />
   );
   const shelves = setup && catalog && (

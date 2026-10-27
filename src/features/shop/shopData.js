@@ -187,16 +187,25 @@ export const TEMPERS = {
   soft: { name: "Soft touch", hint: "Haggles at +2, patience 8. A good word goes a long way here." },
 };
 
-/** What players see over the door: keeper name, shop name, place, subtitle. */
-export function signFor(keeperKey, sign = {}) {
+/**
+ * What players see over the door: keeper name, shop name, place, subtitle.
+ * `place` is the DM's own { town, street }; blank parts fall back to the
+ * sign's suggested place.
+ */
+export function signFor(keeperKey, sign = {}, place = {}) {
   const k = KEEPERS[keeperKey] || KEEPERS.mags;
   const idx = Math.max(0, Math.min(k.names.length - 1, sign.nameIdx || 0));
-  const [name, where, sub] = k.names[idx];
-  if (sign.custom?.name) {
-    return { keeperName: k.keeper, name: sign.custom.name, where: sign.custom.where || where, sub: `${sub.split(" — ")[0]} — ${k.keeper}, proprietor` };
-  }
-  return { keeperName: k.keeper, name, where, sub };
+  const [presetName, presetWhere, sub] = k.names[idx];
+  const [presetTown, presetStreet = ""] = (sign.custom?.where || presetWhere).split(" · ");
+  const town = String(place?.town || "").trim() || presetTown;
+  const street = String(place?.street || "").trim() || presetStreet;
+  const where = street ? `${town} · ${street}` : town;
+  if (sign.custom?.name) return { keeperName: k.keeper, name: sign.custom.name, where, sub: `${sub.split(" — ")[0]} — ${k.keeper}, proprietor` };
+  return { keeperName: k.keeper, name: presetName, where, sub };
 }
+
+/** The town part of a place line ("Millbrook · By the Mill Pond" → "Millbrook"). */
+export const townOf = (where) => String(where || "").split(" · ")[0] || "town";
 
 export const pick = (list) => list[Math.floor(Math.random() * list.length)];
 

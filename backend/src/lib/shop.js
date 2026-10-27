@@ -151,6 +151,8 @@ function normalizeShop(record) {
     keeper: clip(r.keeper, 40) || "mags",
     pick: clip(r.pick, 60) || clip(r.keeper, 40) || "mags",
     sign: r.sign && typeof r.sign === "object" ? r.sign : { nameIdx: 0 },
+    // The DM's own town and street for the sign (blank: the sign's suggestion).
+    place: { town: clip(r.place?.town, 60), street: clip(r.place?.street, 60) },
     display: {
       keeperName: clip(display.keeperName, 60) || "Mags",
       name: clip(display.name, 80) || "Ironwhistle's Emporium",

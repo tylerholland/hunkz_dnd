@@ -29,5 +29,9 @@ describe("shop data", () => {
     expect(signFor("humble-1", { nameIdx: 1 }).name).toBe("The Muddy Boot");
     const own = signFor("shady-1", { custom: { name: "The Gilt Rat", where: "Hommlet · Back Alley" } });
     expect(own).toMatchObject({ keeperName: "Vesk", name: "The Gilt Rat", where: "Hommlet · Back Alley" });
+    // The DM's own town replaces the sign's; a blank street keeps the sign's.
+    expect(signFor("humble-1", { nameIdx: 0 }, { town: "Hobbiton", street: "" }).where).toBe("Hobbiton · By the Mill Pond");
+    expect(signFor("humble-1", { nameIdx: 0 }, { town: "Hobbiton", street: "Bagshot Row" }).where).toBe("Hobbiton · Bagshot Row");
+    expect(signFor("humble-1", { nameIdx: 0 }, {}).where).toBe("Millbrook · By the Mill Pond");
   });
 });

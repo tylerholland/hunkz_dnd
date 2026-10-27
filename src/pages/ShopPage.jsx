@@ -8,7 +8,7 @@ import { useAdaptivePolling, ACTIVE_POLL_MS, CONNECTED_POLL_MS } from "../lib/li
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
 import {
-  KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime,
+  KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime, townOf,
 } from "../features/shop/shopData";
 import { byMood, linesFor } from "../features/shop/keeperLines";
 import { haveCount, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
@@ -158,7 +158,7 @@ export default function ShopPage({ preview = false }) {
     const text = Array.isArray(chosen) ? pick(chosen) : chosen;
     const race = simpleWord(character?.race, "traveller"), cls = simpleWord(character?.charClass, "adventurer");
     const an = (w) => (/^[aeiou]/.test(w) ? `an ${w}` : `a ${w}`);
-    const who = { name: character?.name || "friend", race, class: cls, a_race: an(race), A_race: `A${an(race).slice(1)}`, a_class: an(cls), A_class: `A${an(cls).slice(1)}` };
+    const who = { town: townOf(display.where), name: character?.name || "friend", race, class: cls, a_race: an(race), A_race: `A${an(race).slice(1)}`, a_class: an(cls), A_class: `A${an(cls).slice(1)}` };
     return String(text || "").replace(/\{(\w+)\}/g, (m, k) => ({ ...who, ...vars })[k] ?? m);
   };
   const scene = SCENES[keeperKey];

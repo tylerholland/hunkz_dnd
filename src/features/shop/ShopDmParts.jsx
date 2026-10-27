@@ -117,8 +117,14 @@ export function StatusBar({ info, opening, nextSessionAt, inStock, busy, onActio
   );
 }
 
+// The place the chosen sign suggests, as [town, street].
+const signPlace = (setup) => {
+  const k = KEEPERS[setup.keeper] || KEEPERS.mags;
+  return k.names[Math.max(0, Math.min(k.names.length - 1, setup.sign?.nameIdx || 0))][1].split(" · ");
+};
+
 // ── The shop: a template (a keeper and their usual setup) or a saved shop.
-export function ShopPicker({ setup, display, onPick, onSign, onTemper, onBuysBack, onReset, onSave }) {
+export function ShopPicker({ setup, display, onPick, onSign, onPlace, onTemper, onBuysBack, onReset, onSave }) {
   const isSaved = setup.saved.some((m) => m.id === setup.pick);
   const [tab, setTab] = useState(isSaved ? "saved" : "templates");
   const k = KEEPERS[setup.keeper];
@@ -149,15 +155,19 @@ export function ShopPicker({ setup, display, onPick, onSign, onTemper, onBuysBac
       <div className="sd-row"><span className="lbl">Sign</span>
         <div className="sd-names">
           {k.names.map(([n], i) => <button key={n} type="button" className={!own && (setup.sign?.nameIdx || 0) === i ? "on" : ""} onClick={() => onSign({ nameIdx: i })}>{n}</button>)}
-          <button type="button" className={own ? "on" : ""} onClick={() => onSign({ nameIdx: setup.sign?.nameIdx || 0, custom: { name: display.name, where: display.where } })}>Your own…</button>
+          <button type="button" className={own ? "on" : ""} onClick={() => onSign({ nameIdx: setup.sign?.nameIdx || 0, custom: { name: display.name } })}>Your own name…</button>
         </div>
       </div>
       {own && (
         <div className="sd-row"><span className="lbl" />
           <input className="sd-in" value={setup.sign.custom.name} onChange={(e) => onSign({ ...setup.sign, custom: { ...setup.sign.custom, name: e.target.value } })} aria-label="Shop name" placeholder="Shop name" />
-          <input className="sd-in" value={setup.sign.custom.where} onChange={(e) => onSign({ ...setup.sign, custom: { ...setup.sign.custom, where: e.target.value } })} aria-label="Town and street" placeholder="Town · street" />
         </div>
       )}
+      <div className="sd-row"><span className="lbl">Town</span>
+        <input className="sd-in" value={setup.place?.town || ""} onChange={(e) => onPlace({ ...setup.place, town: e.target.value })} aria-label="Town" placeholder={signPlace(setup)[0]} style={{ width: 170 }} />
+        <input className="sd-in" value={setup.place?.street || ""} onChange={(e) => onPlace({ ...setup.place, street: e.target.value })} aria-label="Street or district (optional)" placeholder={signPlace(setup)[1] || "Street (optional)"} style={{ width: 210 }} />
+        <span className="sd-hint" style={{ margin: 0 }}>Where the shop is, in your world. Leave blank for the sign's suggestion.</span>
+      </div>
       <div className="sd-row"><span className="lbl">Temper</span>
         <Seg label="Temper" value={setup.temper} onChange={onTemper} options={Object.entries(TEMPERS).map(([key, t]) => [key, t.name])} />
       </div>

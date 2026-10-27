@@ -1,7 +1,7 @@
 // Story 72 phase 3 — every keeper's own voice, for every moment in the shop.
 // {name} is the shopper, {race} and {class} theirs in a word ("half-elf",
 // "rogue"; {a_race}/{A_race} and {a_class}/{A_class} add "a"/"an"), {item} the item, {price} a price in silver, {time} an opening
-// time. Lists are picked from at random, so the more the better.
+// time, {town} the shop's town (the DM sets it). Lists are picked from at random, so the more the better.
 //
 // Most everyday moments are { warm, cool }: warm while the shopper reads the
 // keeper as easy or wary, cool once they read them as testy or done — so the
@@ -359,7 +359,7 @@ export const KEEPER_LINES = {
     recommend: "rations",
     greet: {
       warm: [
-        "Well I never, {a_race}! Don't get many o' your sort in Millbrook. Come in!",
+        "Well I never, {a_race}! Don't get many o' your sort in {town}. Come in!",
         "{A_class}, are you? Then you'll want rope. Everyone does.",
         "Come in, come in! Kettle's just boiled.",
         "Well now, {name}! You look like you need a good pair o' socks.",
@@ -408,7 +408,7 @@ export const KEEPER_LINES = {
       arms: ["Only the one old sword, but it's honest.", "Mostly for wolves, these. Mostly.", "Me grandad's bow, that one. Still true.", "Sharp enough for a turnip. Or a goblin."],
       armor: ["Bit dusty, but it'll keep the rain off. And the arrows.", "Was me brother's. He don't need it now.", "Leather's soft as butter. Well, old butter.", "Keeps you warm in winter, too."],
       gear: ["Good rope, proper bread. All you need, really.", "Two silver. Can't say fairer than that.", "Everything for a long walk.", "Me own tallow candles. Burn lovely."],
-      tools: ["Honest tools for honest work.", "That shovel's dug half the gardens in Millbrook.", "Hatchet's sharp. Mind your thumbs.", "Fishing pole! Best trout in the county, off that."],
+      tools: ["Honest tools for honest work.", "That shovel's dug half the gardens in {town}.", "Hatchet's sharp. Mind your thumbs.", "Fishing pole! Best trout in the county, off that."],
       occult: ["Don't hold with that sort o' thing, but folk ask.", "Bit spooky, them jars. Keep 'em at the back.", "Holy water from our own chapel. Vicar's very good.", "Bone dust? Some wizard left it. Never came back."],
       fancy: ["Bit fancy for these parts, but there you go.", "Me late wife's favourites, those.", "That mirror's seen four generations o' Underboughs.", "Lantern'll see you home safe."],
       travel: ["Old Bess the mule. She's stubborn but she's kind.", "Cart's sound. Wheel squeaks a bit. Adds character.", "Boat's dry. Mostly dry.", "Horse is gentle as a lamb. Big lamb."],
@@ -443,7 +443,7 @@ export const KEEPER_LINES = {
     sell: {
       offer: ["I'll give you {price} silver for that {item}. Fair?", "{item}? {price} silver, and I'll throw in a cuppa.", "{price} silver. That's fair, me dear."],
       sold: ["There you are, me dear. Pleasure.", "Lovely. That'll sell to someone.", "Done! Mind how you go."],
-      wontBuy: ["Oh, I couldn't sell that round here, love.", "No call for that in Millbrook, me dear."],
+      wontBuy: ["Oh, I couldn't sell that round here, love.", "No call for that in {town}, me dear."],
       notBuying: ["Not buying today, me dear. Shelves are full.", "Nothing more for me today, love."],
     },
   },
