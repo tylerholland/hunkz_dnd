@@ -13,6 +13,9 @@
 //                         take it home (the character's owner, or the DM)
 //   POST /shop/haggle     { asSlug, itemId } — the server rolls (owner or DM)
 //   POST /shop/let-in     { slug } — back in after being thrown out (DM)
+//   POST /shop/sell       { asSlug, entryId } — sell one pack item back for
+//                         half its list price (owner or DM)
+// Purchases and sales are logged to the roll history (type "shop").
 // GET /shop?asSlug=… with that character's password also returns their own
 // haggling: deals struck, items refused, their read of the keeper's mood.
 const crypto = require("crypto");
@@ -20,7 +23,7 @@ const { BatchGetCommand, GetCommand, PutCommand } = require("@aws-sdk/lib-dynamo
 const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok, notFound, forbidden, badRequest, conflict } = require("../lib/response");
-const { putSpecialRecord } = require("../lib/specialRecords");
+const { putSpecialRecord, appendRollHistoryEvent } = require("../lib/specialRecords");
 const { buildPartyCard } = require("../lib/partyCard");
 const { normalizeVisit, haggle, dealMult, publicVisit } = require("../lib/shopHaggle");
 const { notifySessionChanged } = require("../lib/broadcast");
@@ -29,7 +32,7 @@ const {
 } = require("../lib/versioning");
 const { SHOP_SLUG, SHOP_CATALOG_SLUG, CHRONICLE_SLUG, MAP_LIBRARY_SLUG, isReservedCharacterSlug } = require("../lib/specialItems");
 const {
-  CATS, MAX_QTY, CATALOG_SEED_VERSION, normalizeCatalog, normalizeCatalogItem, normalizeShop, shopStatus, markedPrice, playerShop, payFromPurse, addPurchase,
+  CATS, MAX_QTY, CATALOG_SEED_VERSION, sellOffers, sellOne, normalizeCatalog, normalizeCatalogItem, normalizeShop, shopStatus, markedPrice, playerShop, payFromPurse, addPurchase,
 } = require("../lib/shop");
 
 async function isDm(event) {
@@ -108,7 +111,26 @@ function logText(o) {
   return o.better ? o.short : "no better";
 }
 
-const SETUP_FIELDS = ["keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
+// A line in the session log. Best effort: a sale stands even if the log write fails.
+async function logShopEvent(character, action, items, total, shopName) {
+  try {
+    await appendRollHistoryEvent({
+      id: `shop-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      type: "shop",
+      action,
+      characterSlug: character.slug,
+      characterName: character.name || character.slug,
+      shop: shopName,
+      items,
+      total,
+      createdAt: new Date().toISOString(),
+    });
+  } catch {
+    // the purchase or sale itself already happened
+  }
+}
+
+const SETUP_FIELDS = ["buysBack", "keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
 const live = (status) => status === "open" || status === "lockup";
 
 function dmView(state) {
@@ -128,7 +150,12 @@ exports.handler = async (event) => {
     const state = await readAll();
     const body = { ...playerShop(state.shop, state.catalog, state.statusInfo), version: state.shopVersion };
     const asSlug = event.queryStringParameters?.asSlug;
-    if (asSlug && await shopper(event, asSlug)) body.visit = publicVisit(visitOf(state.shop, asSlug.trim()));
+    const who = asSlug ? await shopper(event, asSlug) : null;
+    if (who) {
+      body.visit = publicVisit(visitOf(state.shop, who.slug));
+      // What they could sell back, while the shop is buying.
+      if (state.shop.buysBack && state.statusInfo.status === "open") body.sellOffers = sellOffers(who, state.catalog);
+    }
     return ok(body);
   }
 
@@ -287,6 +314,7 @@ exports.handler = async (event) => {
     if (result.status === "notFound") return notFound();
     if (result.status === "forbidden") return forbidden();
     if (result.status === "poor") return conflict("Not enough coin");
+    await logShopEvent(result.character, "bought", wanted.map((w) => ({ name: w.item.name, qty: w.qty, each: w.each })), total, shop.display.name);
     await notifySessionChanged();
     const { coin, weapons, equipment } = result.character;
     return ok(withVersions({
@@ -318,6 +346,50 @@ exports.handler = async (event) => {
     });
     if (saved.error) return saved.error;
     return ok({ outcome, visit: publicVisit(visitOf(saved.shop, slug)), version: saved.version });
+  }
+
+  // POST /shop/sell
+  if (parts[1] === "sell" && parts.length === 2 && method === "POST") {
+    const slug = typeof body.asSlug === "string" ? body.asSlug.trim() : "";
+    if (!slug || isReservedCharacterSlug(slug)) return badRequest("asSlug is required");
+    const { shop, catalog, statusInfo } = await readAll();
+    if (statusInfo.status !== "open") return conflict(statusInfo.status === "lockup" ? "Locking up: no more selling" : "The shop isn't open");
+    if (!shop.buysBack) return conflict("This shop isn't buying");
+    if (visitOf(shop, slug).thrownOut) return conflict("You've been thrown out of this shop");
+    let result;
+    try {
+      result = await withVersionRetry(async () => {
+        const got = await db.send(new GetCommand({ TableName: TABLE, Key: { slug } }));
+        if (!got.Item) return { status: "notFound" };
+        const auth = await verifyPassword(event.headers?.["x-character-password"] ?? "", got.Item);
+        if (!auth.valid) return { status: "forbidden" };
+        const sold = sellOne(got.Item, body.entryId, catalog);
+        if (!sold) return { status: "wontBuy" };
+        const expected = currentVersion(got.Item);
+        try {
+          await db.send(new PutCommand(conditionalPutParams(TABLE, { ...sold.character, slug, updatedAt: new Date().toISOString() }, expected)));
+        } catch (err) {
+          if (isConditionalFailure(err)) throw new VersionConflictError(characterVersionKey(slug));
+          throw err;
+        }
+        return { status: "ok", version: expected + 1, ...sold };
+      });
+    } catch (err) {
+      if (err instanceof VersionConflictError) return conflict("Busy — please try again");
+      throw err;
+    }
+    if (result.status === "notFound") return notFound();
+    if (result.status === "forbidden") return forbidden();
+    if (result.status === "wontBuy") return conflict("The keeper won't buy that");
+    await logShopEvent(result.character, "sold", [{ name: result.name, qty: 1, each: result.price }], result.price, shop.display.name);
+    await updateShop(({ shop: current }) => withVisit(current, slug, visitOf(current, slug), { at: new Date().toISOString(), slug, who: result.character.name || slug, item: result.name, result: `sold for ${result.price}s` }));
+    const { coin, weapons, equipment } = result.character;
+    return ok(withVersions({
+      price: result.price,
+      name: result.name,
+      character: { coin, weapons, equipment, version: result.version },
+      sellOffers: sellOffers(result.character, catalog),
+    }, { [characterVersionKey(slug)]: result.version }));
   }
 
   // POST /shop/let-in

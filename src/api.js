@@ -418,6 +418,10 @@ export const getShop = (shopper) => (shopper?.slug
 export const postShopHaggle = (slug, password, itemId) =>
   request("/shop/haggle", { method: "POST", headers: shopHeaders(password, true), body: JSON.stringify({ asSlug: slug, itemId }) });
 
+/** Sell one pack item back to the keeper for half its list price. */
+export const postShopSell = (slug, password, entryId) =>
+  request("/shop/sell", { method: "POST", headers: shopHeaders(password, true), body: JSON.stringify({ asSlug: slug, entryId }) });
+
 /** Let a thrown-out shopper back in (DM). */
 export const postShopLetIn = (dmPassword, slug) =>
   request("/shop/let-in", { method: "POST", headers: shopHeaders(dmPassword, true), body: JSON.stringify({ slug }) });

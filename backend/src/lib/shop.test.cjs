@@ -86,6 +86,19 @@ test("paying spends small coins first and gives change in silver and copper", ()
   assert.equal(purseValueCp(after), purseValueCp({ cp: 3, sp: 1, ep: 1, gp: 2, pp: 1 }) - 470);
 });
 
+test("selling back: half the list price, one at a time, never hirelings", () => {
+  const { sellOffers, sellOne } = require("./shop");
+  const catalog = normalizeCatalog(null);
+  const char = { coin: { sp: 1 }, weapons: [{ id: "w", name: "Bow", bought: { itemId: "bow" } }], equipment: [{ id: "r", name: "20ft Rope", qty: 2 }, { id: "h", name: "Torch Bearer (hired)", bought: { itemId: "torchbearer" } }, { id: "x", name: "Lucky pebble" }] };
+  assert.deepEqual(sellOffers(char, catalog).map((o) => [o.entryId, o.price, o.qty]), [["w", 15, 1], ["r", 1, 2]]);
+  const sold = sellOne(char, "r", catalog);
+  assert.equal(sold.character.equipment.find((e) => e.id === "r").qty, 1);
+  assert.equal(sold.character.coin.sp, 2);
+  assert.equal(sellOne(char, "h", catalog), null);
+  assert.equal(sellOne(char, "x", catalog), null);
+  assert.equal(sellOne(char, "w", catalog).character.weapons.length, 0);
+});
+
 test("purchases land in the pack, stowed", () => {
   const items = Object.fromEntries(SEED_ITEMS.map((i) => [i.id, i]));
   let char = { weapons: [], equipment: [{ id: "e1", name: "Travel Rations", qty: 1 }] };

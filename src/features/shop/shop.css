@@ -185,6 +185,9 @@
 .sp-pack-row.coming .sp-orb { outline: 1px dashed var(--gold); outline-offset: 2px; }
 .sp-pack-row.fresh { animation: sp-fresh 1.6s ease; }
 @keyframes sp-fresh { 0% { background: color-mix(in srgb, var(--gold) 35%, transparent); } 100% { background: transparent; } }
+.sp-pack-sell { width: 100%; margin-top: 10px; display: flex; align-items: center; justify-content: center; gap: 6px; }
+.sp-pack-sell svg { width: 16px; height: 16px; }
+.sp-pack-sell.on { border-color: var(--gold); color: var(--pal-text); }
 .sp-pack-empty { margin: 6px 0 0; font-style: italic; color: var(--sp-muted); font-size: 14px; }
 .sp-pack-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--pal-border); display: flex; justify-content: space-between; font-size: 14px; color: var(--sp-muted); }
 .sp-pack-foot b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); }

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { getSessionState, getShop, getShopPreview, listCharacters, postShopHaggle, postShopPurchase, verifyPassword } from "../api";
+import { getSessionState, getShop, getShopPreview, listCharacters, postShopHaggle, postShopPurchase, postShopSell, verifyPassword } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import TopNav from "../components/TopNav";
 import { useTextScale } from "../lib/useTextScale";
@@ -8,9 +8,9 @@ import { useAdaptivePolling, ACTIVE_POLL_MS, CONNECTED_POLL_MS } from "../lib/li
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
 import {
-  KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, SHELF_LINES, ITEM_LINES, POOR_LINES, OUT_LINES, ADD_LINES,
-  HAGGLE_LINES, pick, say, closesText,
+  KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime,
 } from "../features/shop/shopData";
+import { linesFor } from "../features/shop/keeperLines";
 import { haveCount, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
 import { ShopIcon, ItemOrb, ShopShutters, PackPanel, SatchelSheet, Receipt } from "../features/shop/ShopParts";
 import "../features/shop/shop.css";
@@ -149,6 +149,12 @@ export default function ShopPage({ preview = false }) {
   // Until the shop itself loads, the session-state summary says whose shop it is.
   const keeperKey = [shop?.keeper, summary?.keeper].find((k) => KEEPERS[k]) || "mags";
   const keeper = KEEPERS[keeperKey];
+  // This keeper's voice: {name}, {item}, {price} and {time} filled in.
+  const voice = linesFor(keeperKey);
+  const speak = (list, vars = {}) => {
+    const text = Array.isArray(list) ? pick(list) : list;
+    return String(text || "").replace(/\{(\w+)\}/g, (m, k) => ({ name: character?.name || "friend", ...vars })[k] ?? m);
+  };
   const scene = SCENES[keeperKey];
   const display = shop?.display || {
     keeperName: summary?.keeperName || keeper.keeper,
@@ -186,7 +192,9 @@ export default function ShopPage({ preview = false }) {
 
   // Which shelf, and what's in hand.
   const currentCat = shelves.some((s) => s.id === cat) ? cat : shelves[0]?.id || null;
-  const recommended = byId.get("fire-oil") && !byId.get("fire-oil").out ? byId.get("fire-oil") : items.find((it) => !it.out) || null;
+  // Each keeper has a favourite to push; otherwise the first thing in stock.
+  const favourite = byId.get(voice.recommend);
+  const recommended = favourite && !favourite.out ? favourite : items.find((it) => !it.out) || null;
   const inHand = byId.get(inHandId) || recommended;
 
   // Greet once per opening; warn when locking up.
@@ -194,7 +202,16 @@ export default function ShopPage({ preview = false }) {
   const greetKey = `${openingId}|${keeperKey}|${status === "lockup" ? "lock" : "open"}`;
   if (browsing && character && greeted !== greetKey) {
     setGreeted(greetKey);
-    setLine(status === "lockup" ? "Quick now, I'm locking up. Pay for what's in your satchel." : say(pick(keeper.greet), character.name));
+    setLine(status === "lockup" ? speak(voice.lockup) : speak(voice.greet));
+  }
+  // Something restocked while you're here: the keeper says so.
+  const justInKey = items.filter((it) => it.justIn && !it.out).map((it) => it.id).sort().join(",");
+  const [seenJustIn, setSeenJustIn] = useState(null);
+  if (browsing && justInKey !== seenJustIn) {
+    const before = new Set((seenJustIn || "").split(",").filter(Boolean));
+    const fresh = justInKey.split(",").filter((id) => id && !before.has(id));
+    setSeenJustIn(justInKey);
+    if (seenJustIn !== null && fresh.length) setLine(speak(voice.restock, { item: byId.get(fresh[0])?.name }));
   }
   const typed = useTyped(line ? `“${line}”` : "");
 
@@ -214,15 +231,44 @@ export default function ShopPage({ preview = false }) {
     if (!item) return;
     setInHandId(item.id); setQty(1); setPopKey((k) => k + 1);
     setDealNote(null);
-    if (item.out) setLine(pick(OUT_LINES));
-    else if (refused.has(item.id)) setLine("I said not to you. Put it down.");
-    else if (ITEM_LINES[item.id]) setLine(ITEM_LINES[item.id]);
-    else if (myPrice(item) > worth - total) setLine(pick(POOR_LINES));
-    else setLine(pick(SHELF_LINES[item.cat] || ADD_LINES));
+    setSelling(null);
+    if (item.out) setLine(speak(voice.out));
+    else if (refused.has(item.id)) setLine(speak(voice.notToYou));
+    else if (voice.items?.[item.id]) setLine(speak(voice.items[item.id]));
+    else if (myPrice(item) > worth - total) setLine(speak(voice.poor));
+    else setLine(speak(voice.shelf?.[item.cat] || voice.add));
     const r = sceneRef.current?.getBoundingClientRect();
     if (r && (r.bottom < 120 || r.top > innerHeight)) sceneRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }
   // Haggling: the server rolls; we show the dice, the new price and the keeper's answer.
+  // Selling back: the pack's sellable things, the one being offered, and the view.
+  const [sellView, setSellView] = useState(false);
+  const [selling, setSelling] = useState(null);
+  const [sellBusy, setSellBusy] = useState(false);
+  const offers = shop?.sellOffers || [];
+  const canSell = !preview && status === "open" && shop?.buysBack !== false;
+  function offer(o) {
+    setSelling(o);
+    setLine(speak(voice.sell.offer, { item: o.name, price: o.price }));
+    const r = sceneRef.current?.getBoundingClientRect();
+    if (r && (r.bottom < 120 || r.top > innerHeight)) sceneRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  async function sellNow() {
+    if (!selling || sellBusy) return;
+    setSellBusy(true);
+    try {
+      const res = await postShopSell(slug, password, selling.entryId);
+      setCharacter((prev) => ({ ...prev, ...res.character }));
+      setShop((prev) => (prev ? { ...prev, sellOffers: res.sellOffers } : prev));
+      setLine(speak(voice.sell.sold, { item: res.name, price: res.price }));
+      setSelling(res.sellOffers.find((o) => o.entryId === selling.entryId) || null);
+    } catch (err) {
+      setLine(err?.status === 409 && /won't buy/.test(err?.data?.error || "") ? speak(voice.sell.wontBuy) : err?.data?.error || speak(voice.sell.notBuying));
+    } finally {
+      setSellBusy(false);
+    }
+  }
+
   const [haggling, setHaggling] = useState(false);
   const [dealNote, setDealNote] = useState(null);
   async function haggleNow() {
@@ -232,7 +278,7 @@ export default function ShopPage({ preview = false }) {
       const res = await postShopHaggle(slug, password, inHand.id);
       const o = res.outcome;
       setShop((prev) => (prev ? { ...prev, visit: res.visit } : prev));
-      setLine(say(pick(HAGGLE_LINES[o.say] || HAGGLE_LINES.holds), character?.name));
+      setLine(speak(voice.haggle[o.say] || voice.haggle.holds));
       if (o.dice) {
         const ord = ["", "", "Second try: y", "Last try: y"][o.tries] || "Y";
         const cha = o.cha ? `, ${o.cha > 0 ? "+" : "−"}${Math.abs(o.cha)} Charisma` : "";
@@ -252,7 +298,7 @@ export default function ShopPage({ preview = false }) {
       const found = prev.find((l) => l.itemId === inHand.id);
       return found ? prev.map((l) => (l.itemId === inHand.id ? { ...l, qty: Math.min(99, l.qty + qty) } : l)) : [...prev, { itemId: inHand.id, qty }];
     });
-    setLine(pick(ADD_LINES)); setBump((b) => b + 1); setPayError(null);
+    setLine(speak(voice.add)); setBump((b) => b + 1); setPayError(null);
   }
 
   async function pay() {
@@ -268,7 +314,9 @@ export default function ShopPage({ preview = false }) {
       setFresh(new Set(after.filter((e) => !before.has(e.id) || satchelLines.some((l) => e.bought?.itemId === l.item.id)).map((e) => e.id || e.name)));
       setSatchel([]); setSheetOpen(false);
       setReceipt({ lines: res.lines, total: res.total });
-      setLine(say(pick(keeper.pay), character?.name));
+      setLine(speak(voice.pay));
+      // What's in the pack changed, so do the sell offers.
+      getShop({ slug, password }).then(setShop).catch(() => {});
     } catch (err) {
       setPayError(err?.data?.error || err?.message || "Couldn't pay. Try again.");
       refresh();
@@ -359,9 +407,24 @@ export default function ShopPage({ preview = false }) {
                   )}
                 </div>
               )}
-              {inHand && (
+              {selling && (
+                <div key={`sell-${selling.entryId}`} className="sp-float pop" style={{ "--cat": shelfColor(selling.cat) }}>
+                  <button className="x" type="button" aria-label="Keep it" onClick={() => { setSelling(null); setLine(speak(voice.putBack)); }}>×</button>
+                  <div className="sp-eyebrow">Sell to {display.keeperName}</div>
+                  {itemArt(selling.itemId)
+                    ? <div className="sp-showcase"><img src={itemArt(selling.itemId)} alt={selling.name} /></div>
+                    : <ItemOrb item={{ id: selling.itemId, cat: selling.cat, icon: selling.icon }} />}
+                  <h3>{selling.name}</h3>
+                  <p>You have {selling.qty}{selling.worn ? ", and you're wearing it" : ""}. {display.keeperName} buys back at half the list price, one at a time.</p>
+                  <div className="sp-buy"><span className="sp-price deal">+{selling.price}s</span></div>
+                  <div className="sp-buy">
+                    <button className="sp-btn gold" type="button" style={{ flex: 1 }} onClick={sellNow} disabled={sellBusy || !canSell}>{sellBusy ? "…" : `Sell one for ${selling.price}s`}</button>
+                  </div>
+                </div>
+              )}
+              {inHand && !selling && (
                 <div key={popKey} className={`sp-float${popKey ? " pop" : ""}`} style={{ "--cat": shelfColor(inHand.cat) }}>
-                  {inHandId && <button className="x" type="button" aria-label="Put it back" onClick={() => { setInHandId(null); setLine("Suit yourself."); }}>×</button>}
+                  {inHandId && <button className="x" type="button" aria-label="Put it back" onClick={() => { setInHandId(null); setLine(speak(voice.putBack)); }}>×</button>}
                   <div className="sp-eyebrow">{!inHandId && inHand === recommended ? `${display.keeperName} recommends` : SHELVES.find((s) => s.id === inHand.cat)?.name}</div>
                   {itemArt(inHand.id)
                     ? <div className="sp-showcase"><img src={itemArt(inHand.id)} alt={inHand.name} /></div>
@@ -399,7 +462,10 @@ export default function ShopPage({ preview = false }) {
               </div>
             </>
           )}
-          {!browsing && status && <ShopShutters status={thrownOut ? "thrown" : status} shopperName={character?.name} opensAt={shop?.opensAt} closesText={closesText(shop || {}, null)} keeperName={display.keeperName} />}
+          {!browsing && status && <ShopShutters status={thrownOut ? "thrown" : status} plaques={{
+            closed: speak(voice.plaques.closed), fight: speak(voice.plaques.fight), thrown: speak(voice.plaques.thrown),
+            backSoon: shop?.opensAt ? speak(voice.plaques.backSoon, { time: fmtTime(Date.parse(shop.opensAt)) }) : "",
+          }} opensAt={shop?.opensAt} closesText={closesText(shop || {}, null)} keeperName={display.keeperName} />}
         </div>
 
         {status === "lockup" && (
@@ -423,7 +489,7 @@ export default function ShopPage({ preview = false }) {
                   const art = SHELF_ART[s.id] && itemArt(SHELF_ART[s.id]);
                   return (
                     <button key={s.id} type="button" className={`sp-cat${s.id === currentCat ? " on" : ""}${art ? " art" : ""}`} style={{ "--cat": shelfColor(s.id), ...(art ? { "--art": `url(${art})` } : {}) }}
-                      onClick={() => { setCat(s.id); setLine(pick(SHELF_LINES[s.id] || ADD_LINES)); }} aria-pressed={s.id === currentCat}>
+                      onClick={() => { setCat(s.id); setSelling(null); setLine(speak(voice.shelf?.[s.id] || voice.add)); }} aria-pressed={s.id === currentCat}>
                       {!art && <ShopIcon name={s.icon} />}
                       <b>{s.name}</b>
                       <small>{lo === hi ? `${lo}s` : `${lo}–${hi.toLocaleString()}s`}{outN ? <> · <span className="o">{outN} out</span></> : null}</small>
@@ -431,7 +497,24 @@ export default function ShopPage({ preview = false }) {
                   );
                 })}
               </div>
-              {shelf && (
+              {sellView && (
+                <>
+                  <div className="sp-section-h"><h2>Sell to {display.keeperName}</h2><span>from your pack · half the list price</span></div>
+                  <div className="sp-goods">
+                    {offers.map((o) => (
+                      <button key={o.entryId} type="button" className={`sp-good${selling?.entryId === o.entryId ? " sel" : ""}`} style={{ "--cat": shelfColor(o.cat) }} onClick={() => offer(o)} aria-label={`Sell ${o.name} for ${o.price} silver`}>
+                        <span className="sp-tag deal">+{o.price}s</span>
+                        <ItemOrb item={{ id: o.itemId, cat: o.cat, icon: o.icon }} />
+                        {o.qty > 1 && <span className="sp-have">×{o.qty}</span>}
+                        <span className="nm">{o.name}</span><span className="st">{o.worn ? "worn" : ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                  {!offers.length && <p className="sp-cat-line">Nothing in your pack {display.keeperName} would buy.</p>}
+                  <p className="sp-cat-line"><button type="button" className="sp-btn" onClick={() => { setSellView(false); setSelling(null); }}>Back to the shelves</button></p>
+                </>
+              )}
+              {shelf && !sellView && (
                 <>
                   <div className="sp-section-h"><h2>{shelf.name}</h2><span>{shelfItems.filter((it) => !it.out).length} on the shelf{shelfItems.some((it) => it.out) ? ` · ${shelfItems.filter((it) => it.out).length} sold out` : ""}</span></div>
                   <div className="sp-goods">
@@ -457,7 +540,8 @@ export default function ShopPage({ preview = false }) {
                 </>
               )}
             </div>
-            <PackPanel character={character} groups={groups} satchelRows={satchelRows} fresh={fresh} open={packOpen} onToggle={() => setPackOpen((o) => !o)} purseLabel={purseLabel} />
+            <PackPanel character={character} groups={groups} satchelRows={satchelRows} fresh={fresh} open={packOpen} onToggle={() => setPackOpen((o) => !o)} purseLabel={purseLabel}
+              sell={canSell ? { label: `Sell to ${display.keeperName} · half price`, active: sellView, onClick: () => { setSellView(true); setLine(speak(offers.length ? voice.sell.offer : voice.sell.wontBuy, { item: offers[0]?.name, price: offers[0]?.price })); } } : null} />
           </div>
         )}
         {!browsing && (

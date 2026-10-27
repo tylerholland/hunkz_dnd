@@ -19,11 +19,11 @@ export function ItemOrb({ item, art = itemArt(item.id), className = "" }) {
 }
 
 /** Shutters over the scene: closed, back soon, or shut for the fighting. */
-export function ShopShutters({ status, opensAt, closesText, keeperName, shopperName }) {
+export function ShopShutters({ status, opensAt, closesText, keeperName, plaques = {} }) {
   if (status === "thrown") {
     return (
       <div className="sp-shutters" role="status">
-        <div className="sp-plaque"><h2>And Stay Out!</h2><p>“Haggle with someone else's patience, {shopperName || "friend"}.” — {keeperName}</p></div>
+        <div className="sp-plaque"><h2>And Stay Out!</h2><p>“{plaques.thrown}” — {keeperName}</p></div>
         <div className="sp-when">You've been thrown out for this opening<small>A friend can still buy for you. The DM can let you back in.</small></div>
       </div>
     );
@@ -31,7 +31,7 @@ export function ShopShutters({ status, opensAt, closesText, keeperName, shopperN
   if (status === "combat") {
     return (
       <div className="sp-shutters fight" role="status">
-        <div className="sp-plaque"><h2>Closed for the Fighting</h2><p>“Steel's out in the street. Come back when it's sheathed.” — {keeperName}</p></div>
+        <div className="sp-plaque"><h2>Closed for the Fighting</h2><p>“{plaques.fight}” — {keeperName}</p></div>
         <p style={{ fontStyle: "italic", opacity: 0.85, margin: 0 }}>The shop reopens when the fighting ends. Your satchel keeps.</p>
       </div>
     );
@@ -40,21 +40,21 @@ export function ShopShutters({ status, opensAt, closesText, keeperName, shopperN
     const t = Date.parse(opensAt);
     return (
       <div className="sp-shutters" role="status">
-        <div className="sp-plaque"><h2>Back Soon</h2><p>“Shutters up at {fmtTime(t)}. Bring coin, not questions.” — {keeperName}</p></div>
+        <div className="sp-plaque"><h2>Back Soon</h2><p>“{plaques.backSoon}” — {keeperName}</p></div>
         <div className="sp-when">Opens {fmtDay(t)} at {fmtTime(t)}<small>{fromNow(t)} · {closesText}</small></div>
       </div>
     );
   }
   return (
     <div className="sp-shutters" role="status">
-      <div className="sp-plaque"><h2>Closed</h2><p>“Gone looting. Or fishing. One of those.” — {keeperName}</p></div>
+      <div className="sp-plaque"><h2>Closed</h2><p>“{plaques.closed}” — {keeperName}</p></div>
       <div className="sp-when">Not open right now<small>The DM opens the shop when the story brings you here.</small></div>
     </div>
   );
 }
 
 /** Your pack: what you already carry, plus what's in the satchel on its way. */
-export function PackPanel({ character, groups, satchelRows, fresh, open, onToggle, purseLabel }) {
+export function PackPanel({ character, groups, satchelRows, fresh, open, onToggle, purseLabel, sell = null }) {
   const total = groups.reduce((n, g) => n + g.rows.length, 0);
   const initial = (character?.name || "?").trim().charAt(0).toUpperCase();
   const row = (r, extra = "") => (
@@ -77,6 +77,7 @@ export function PackPanel({ character, groups, satchelRows, fresh, open, onToggl
       {groups.map((g) => <div className="sp-pack-group" key={g.name}><h4>{g.name}</h4>{g.rows.map((r) => row(r))}</div>)}
       {!total && <p className="sp-pack-empty">Nothing yet but lint and hope.</p>}
       <div className="sp-pack-foot"><span>Purse <b>{purseLabel}</b></span><span>Satchel <b>{satchelRows.reduce((n, r) => n + r.qty, 0)}</b></span></div>
+      {sell && <button className={`sp-btn sp-pack-sell${sell.active ? " on" : ""}`} type="button" onClick={sell.onClick}><ShopIcon name="coin" /> {sell.label}</button>}
     </aside>
   );
 }

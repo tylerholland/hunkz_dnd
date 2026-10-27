@@ -269,6 +269,21 @@ export function EffectHistoryRow({ pal, entry, opacity = 1, showDivider = false,
   );
 }
 
+// Story 72 — a purchase or sale at the shop.
+export function ShopHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  const things = (entry.items || []).map((i) => `${i.name}${i.qty > 1 ? ` ×${i.qty}` : ""}`).join(", ");
+  return (
+    <div className="rh-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: showDivider ? `1px solid ${pal.border}` : "none", opacity, transition: "opacity 0.4s" }}>
+      <span style={{ color: pal.accent, fontSize: 13, flexShrink: 0 }} aria-hidden="true">🛍</span>
+      <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.accentBright, flexShrink: 0 }}>{entry.characterName}</span>
+      <span style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 14, color: pal.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+        {entry.action === "sold" ? "sold" : "bought"} {things}{entry.shop ? ` at ${entry.shop}` : ""}
+      </span>
+      <span style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textBody, marginLeft: "auto", flexShrink: 0 }}>{entry.action === "sold" ? "+" : "−"}{entry.total}s</span>
+    </div>
+  );
+}
+
 export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null, below = null, onSaveTag }) {
   // Branch on type: "wheel" entries render differently from dice rows
   const rowProps = { pal, entry, opacity, showDivider, onSaveTag };
@@ -277,6 +292,7 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
   if (entry.type === "condition") return <ConditionHistoryRow {...rowProps} />;
   if (entry.type === "turn") return <TurnHistoryRow {...rowProps} />;
   if (entry.type === "effect") return <EffectHistoryRow {...rowProps} below={below}>{children}</EffectHistoryRow>;
+  if (entry.type === "shop") return <ShopHistoryRow {...rowProps} />;
   // A spell's cast roll reads "casts Hex" rather than "Hex CAST".
   const isCast = entry.attack?.kind === "spell" && /\bCAST\b/.test(String(entry.label || ""));
   const actionLabel = isCast ? null : normalizeRollActionLabel(entry.label);

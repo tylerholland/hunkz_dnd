@@ -1,6 +1,6 @@
 # Feature Story 72: The Item Shop
 
-**Status**: Phases 1 and 2 built (2026-10-26/27): `/characters/:slug/shop`, `/dm/shop` (+ `/dm/shop/preview`), `backend/src/handlers/shop.js`, `backend/src/lib/shop.js`, `backend/src/lib/shopHaggle.js`, `src/features/shop/`. Phase 3 (polish) to come. Coin and hirelings decided as recommended below; very high rolls (14+) win back 1 patience, capped at the temper's starting patience.
+**Status**: Built (2026-10-26/27), all three phases: `/characters/:slug/shop`, `/dm/shop` (+ `/dm/shop/preview`), `backend/src/handlers/shop.js`, `backend/src/lib/shop.js`, `backend/src/lib/shopHaggle.js`, `src/features/shop/` (each keeper's lines in `keeperLines.js`). Coin and hirelings decided as recommended below; very high rolls (14+) win back 1 patience; selling back is per shop ("Buys back", on by default) at half the list price, never hirelings; purchases and sales are logged to the roll history as `type: "shop"`. Still open: Mags's expression variants (no art yet) and renaming keepers for saved shops.
 **Prototype**: `design/prototypes/shop.html`. It is the reference for layout, copy and interactions. Its top bar switches view, shopper, scene and shop state.
 **Art**:
 - Shop scenes: `design/prototypes/assets/shop-mags.jpg` and `design/prototypes/assets/shops/*.jpg` (web copies; Tyler's PNG originals sit beside them and are not committed).

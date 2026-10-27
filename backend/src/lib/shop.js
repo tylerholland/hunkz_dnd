@@ -162,6 +162,7 @@ function normalizeShop(record) {
     markups: markupsOf(r.markups),
     temper: ["no", "tough", "fair", "soft"].includes(r.temper) ? r.temper : "fair",
     fill: ["all", "full", "half", "empty"].includes(r.fill) ? r.fill : "full",
+    buysBack: r.buysBack !== false,
     out: Array.isArray(r.out) ? r.out.filter((id) => typeof id === "string").slice(0, MAX_ITEMS) : [],
     justIn: r.justIn && typeof r.justIn === "object" ? r.justIn : {},
     memo: r.memo && typeof r.memo === "object" ? r.memo : {},
@@ -250,6 +251,7 @@ function playerShop(shop, catalog, statusInfo) {
     ...statusInfo,
     keeper: shop.keeper,
     display: shop.display,
+    buysBack: shop.buysBack,
     carries: browsing ? shop.carries.slice() : [],
     items,
   };
@@ -346,7 +348,52 @@ function addPurchase(character, item, qty, { shopName } = {}) {
   return char;
 }
 
+// ── Selling back ────────────────────────────────────────────────────────────
+// Anything in the pack that matches a catalog item (by where it was bought, or
+// by name) can be sold back for half its list price. Hirelings can't.
+function catalogMatch(entry, catalog) {
+  if (!entry) return null;
+  const byId = entry.bought?.itemId && catalog.items.find((it) => it.id === entry.bought.itemId);
+  if (byId) return byId;
+  const name = String(entry.name || "").trim().toLowerCase().replace(/ \(hired\)$/, "");
+  return catalog.items.find((it) => it.name.toLowerCase() === name) || null;
+}
+const sellPrice = (item) => Math.max(1, Math.floor(item.price / 2));
+
+/** What the shopper could sell from their pack, one at a time. */
+function sellOffers(character, catalog) {
+  const offers = [];
+  for (const [list, kind] of [[character?.weapons, "weapon"], [character?.equipment, "gear"]]) {
+    for (const entry of list || []) {
+      const item = catalogMatch(entry, catalog);
+      if (!item || item.cat === "hire" || !entry.id) continue;
+      offers.push({ entryId: entry.id, kind, name: entry.name, itemId: item.id, cat: item.cat, icon: item.icon, qty: kind === "weapon" ? 1 : Math.max(1, toInt(entry.qty ?? 1)), price: sellPrice(item), worn: entry.equipped !== false && (kind === "weapon" || ["armor", "shield"].includes(String(entry.type || "").toLowerCase())) });
+    }
+  }
+  return offers;
+}
+
+/** The character after selling one of a pack entry: { character, item, price } or null. */
+function sellOne(character, entryId, catalog) {
+  for (const key of ["weapons", "equipment"]) {
+    const list = character[key] || [];
+    const idx = list.findIndex((e) => e?.id === entryId);
+    if (idx < 0) continue;
+    const entry = list[idx];
+    const item = catalogMatch(entry, catalog);
+    if (!item || item.cat === "hire") return null;
+    const price = sellPrice(item);
+    const qty = key === "weapons" ? 1 : Math.max(1, toInt(entry.qty ?? 1));
+    const next = qty > 1 ? list.map((e, i) => (i === idx ? { ...e, qty: qty - 1 } : e)) : list.filter((_, i) => i !== idx);
+    const coin = { ...(character.coin || {}) };
+    coin.sp = Math.max(0, toInt(coin.sp)) + price;
+    return { character: { ...character, [key]: next, coin }, item, name: entry.name, price };
+  }
+  return null;
+}
+
 module.exports = {
+  catalogMatch, sellPrice, sellOffers, sellOne,
   CATS, SEED_ITEMS, CATALOG_SEED_VERSION, LOCKUP_MS, MAX_ITEMS, MAX_QTY,
   normalizeCatalog, normalizeCatalogItem, normalizeShop, normalizeOpening,
   openingWindow, shopStatus, markedPrice, playerShop, shopSummary,

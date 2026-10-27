@@ -62,48 +62,8 @@ export const itemArt = (id) => (ART_IDS.has(id) ? `/art/shop/items/${id}.jpg` : 
 // A shelf tile shows one of its pieces behind it.
 export const SHELF_ART = { arms: "martial-weapon", armor: "full-armor", gear: "rope", tools: "lockpicks", occult: "quicksilver", fancy: "lantern", travel: "horse" };
 
-// The shopkeeper's voice for browsing (shared by every keeper for now).
-export const SHELF_LINES = {
-  arms: ["That one's only been used the once. Honest.", "Sharp end goes in the other fellow.", "Bought it off a knight. He won't be needing it."],
-  armor: ["Stops arrows. Mostly. Some arrows.", "Fits anyone, if you believe hard enough.", "The dent's a feature."],
-  gear: ["Rope. You'll want rope. Everyone wants rope, eventually.", "Two silver. Cheapest thing between you and a hole.", "Torches: because the dark is full of teeth."],
-  tools: ["Lockpicks? For your own locks, I'm sure.", "A good crowbar opens more doors than charm.", "Shovels dig graves and treasure alike."],
-  occult: ["Don't drink it on an empty stomach. Or a full one.", "Bone dust. Whose? Don't ask whose.", "Holy water. Blessed by a very sincere man."],
-  fancy: ["A lantern! For the adventurer who's tired of being eaten.", "Spyglass — see trouble before trouble sees you.", "Fire oil. Handle like it hates you, because it does."],
-  travel: ["The mule bites. That's extra.", "A warhorse! Out back, eating my profits.", "Boats are cheaper than swimming. Usually."],
-  hire: ["They work by the day and run by the hour.", "Torch bearers: cheap, cheerful, flammable.", "The Champion charges more because he lives longer."],
-};
-export const ITEM_LINES = {
-  "fire-oil": "Fire oil. Handle it like it hates you — because it does.",
-  "lantern": "A lantern! For the adventurer tired of being eaten in the dark.",
-  "lockpicks": "Lockpicks? For your own locks, I'm sure.",
-  "quicksilver": "One dose. Two if you're brave. Three if you're stupid.",
-  "warhorse": "Out back, eating my profits. He bites.",
-  "full-armor": "You'll clank like a kitchen. But you'll clank alive.",
-  "holy-water": "Blessed by a very sincere man. Mostly sober.",
-  "caltrops": "Throw them behind you. Not in front. People forget.",
-};
-export const POOR_LINES = ["That's more silver than you've got jingling, friend.", "Come back richer. Or braver. Richer's better."];
-export const OUT_LINES = ["Sold the last one to a fellow with too many teeth.", "Sold my last one to a dwarf, Tuesday.", "Next caravan's due in a fortnight. Maybe."];
-export const ADD_LINES = ["Good choice.", "A fine pick.", "Into the satchel it goes.", "Ha! Knew you'd want that."];
-// What the keeper says when you haggle, by outcome (the server says which).
-export const HAGGLE_LINES = {
-  crit2: ["This is robbery. Broad daylight robbery. Take it before I weep.", "Did a bard teach you that? Take it. Take it and never tell my mother."],
-  crit: ["Fine! Fine! Take it and get out before I come to my senses.", "You'd talk a dragon out of its hoard. A fifth off — now go."],
-  full: ["Hmph. You drive a hard bargain. A tenth off, and not a copper more."],
-  partial: ["A few silver off... but you'll owe me a favour, {name}.", "Alright, a little off — and you'll tell your friends, yes?"],
-  miss: ["Haggle with me? The price just went up.", "Out of pity, I'll pretend I didn't hear that. Prices stand. Plus a little."],
-  holds: ["That's my price, and it's already a kindness.", "No lower. I've got a cat to feed."],
-  refuse: ["The price is the price, love.", "I don't haggle. I've never haggled. My mother didn't haggle."],
-  soldOut: ["Oh, would you look at that. Just sold the last of those.", "Sorry, love. That one's spoken for. Just now. By someone else."],
-  doneHaggling: ["Not that either. And that's the last haggling you'll do in here today."],
-  push1: ["I said no more haggling. Price is the price."],
-  push2: ["Last warning, {name}. Once more and you're out on your ear."],
-  thrownOut: ["Out! And stay out!"],
-};
-
-// Who keeps each shop: the name, three suggested signs [name, place, subtitle],
-// greetings and goodbyes. Keys match the scene pictures.
+// Who keeps each shop: the name and three suggested signs [name, place,
+// subtitle]. Keys match the scene pictures; their lines are in keeperLines.js.
 export const KEEPERS = {
   "mags": {
     keeper: "Mags",
@@ -112,8 +72,6 @@ export const KEEPERS = {
       ["The Brass Monocle", "Dyvers · Under the Clocktower", "Everything appraised, most things for sale — Mags Ironwhistle, who saw you coming"],
       ["Ironwhistle's Curios & Cutlery", "Hommlet · Behind the Inn", "Sharp things, shiny things, and things best left in the box — Mags, proprietor"],
     ],
-    greet: ["Mind the step, the last one was a mimic.", "Ah, {name}. Coin first, questions never.", "Welcome to Ironwhistle's. Everything's for sale except the cat."],
-    pay: ["Pleasure doing business. Don't die with it unpaid.", "Coin's good. Mostly silver, even.", "Come back alive, and come back rich."],
   },
   "fancy-1": {
     keeper: "Aurelian",
@@ -122,8 +80,6 @@ export const KEEPERS = {
       ["The Gilded Gryphon", "Greyhawk · High Market", "Fine arms and finer manners — Aurelian Vey, by royal warrant (expired)"],
       ["Vey's of Silverspire", "Silverspire · Temple Row", "Four hundred years in trade — Aurelian Vey, who remembers every one"],
     ],
-    greet: ["Welcome. Do try not to touch the glass.", "Ah. An adventurer. How… bracing. Do come in, {name}.", "Everything here has a provenance. Some of it is even true."],
-    pay: ["A pleasure. Do wipe your boots on the way out.", "Splendid. My daughters will wrap it. Eventually.", "Wear it well, {name}. People will ask where you got it."],
   },
   "fancy-2": {
     keeper: "Master Quibb",
@@ -132,8 +88,6 @@ export const KEEPERS = {
       ["The Hall of Fine Things", "Rel Astra · Old Cathedral Quarter", "Curated, catalogued and cursed only slightly — Master Quibb, keeper of the Hall"],
       ["Quibb & Quibb", "Mitrik · Lantern Street", "Est. before your grandmother — the younger Master Quibb, now ninety-one"],
     ],
-    greet: ["Hm? Oh! A customer. Do mind the suit of armour, it bites.", "Welcome, welcome. Everything is catalogued. Somewhere.", "You have the look of someone about to buy something marvellous, {name}."],
-    pay: ["Marvellous. I'll note it in the ledger. Somewhere.", "Do bring it back if it starts whispering.", "A fine choice. I shall miss it terribly."],
   },
   "humble-1": {
     keeper: "Tobias",
@@ -142,8 +96,6 @@ export const KEEPERS = {
       ["The Muddy Boot", "Hobb's End · The Crossroads", "Provisions for the road and a cup of tea — Tobias Underbough, mind your feet"],
       ["Last Stop Provisions", "The Long Road · Final Waystation", "Last bread for forty miles — Tobias, who's seen them all set off"],
     ],
-    greet: ["Come in, come in! Kettle's just boiled.", "Well now, {name}! You look like you need a good pair of socks.", "Wipe your feet, love. Then tell me what you're after."],
-    pay: ["There you are. Mind how you go!", "And a sweet for the road, on the house.", "Come back and tell me all about it, won't you?"],
   },
   "humble-2": {
     keeper: "Pipwick",
@@ -152,8 +104,6 @@ export const KEEPERS = {
       ["The Crooked Kettle", "Bramblecross · Down the Lane", "A bit of everything and a pot of tea — Wendel Pipwick, at your service"],
       ["Odds, Ends & Pipwick", "Fernhollow · Market Green", "If I haven't got it, you don't need it — Wendel Pipwick"],
     ],
-    greet: ["Ooh, a visitor! Sit, sit — no, not on that.", "Ah, {name}. I was hoping someone would come by today.", "Everything's priced, near enough. Ask if you can't read my writing."],
-    pay: ["Lovely. Don't spend it all on adventures.", "Off you go, then — and do come back in one piece.", "Pleasure's mine. Here, have a biscuit."],
   },
   "shady-1": {
     keeper: "Vesk",
@@ -162,8 +112,6 @@ export const KEEPERS = {
       ["Velvet & Venom", "Dyvers · The Smugglers' Steps", "Fine things, dark things, both on tick — Vesk, by invitation"],
       ["The Second-Hand Saint", "Port Toli · Wreckers' Row", "Salvage, relics & slightly used miracles — Vesk, who asks nothing"],
     ],
-    greet: ["Shut the door, {name}. The draught gets curious.", "Well. You found me. That's half the price already.", "Look all you like. Touching costs extra."],
-    pay: ["Pleasure. You were never here.", "If anyone asks, you bought it from a nice old lady.", "Come back soon, {name}. I'll have new old things."],
   },
   "shady-2": {
     keeper: "Old Nackle",
@@ -172,8 +120,6 @@ export const KEEPERS = {
       ["The Rat & Ledger", "Dyvers · Bilge Street Cellar", "Everything written down, nothing remembered — Old Nackle, keeper of accounts"],
       ["Goods Found, Goods Sold", "Hardby · Under the Old Bridge", "Ask no questions, hear no lies — Old Nackle, ninety years in the trade"],
     ],
-    greet: ["Hehh. A customer. Wipe your feet, or don't. Nackle's not fussy.", "Nackle sees you, {name}. Nackle sees your purse too.", "Everything's for sale. Some of it's even Nackle's."],
-    pay: ["Hehh. Pleasure. Nackle writes it down. Nackle forgets it.", "Off you go. Didn't buy it here, mind.", "Come back when your pockets are heavy, {name}."],
   },
 };
 
@@ -253,7 +199,6 @@ export function signFor(keeperKey, sign = {}) {
 }
 
 export const pick = (list) => list[Math.floor(Math.random() * list.length)];
-export const say = (line, name) => line.replace("{name}", name || "friend");
 
 // ── Times ───────────────────────────────────────────────────────────────────
 export const fmtDay = (ms) => new Date(ms).toLocaleDateString(undefined, { weekday: "long", day: "numeric", month: "short" });

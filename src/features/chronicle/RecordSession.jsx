@@ -8,6 +8,12 @@ import {
 
 const DAY = 86400000;
 
+// Story 72 — a purchase or sale at the shop.
+function shopEventText(e) {
+  const things = (e.items || []).map((i) => `${i.name}${i.qty > 1 ? ` ×${i.qty}` : ""}`).join(", ");
+  return `${e.action === "sold" ? "sold" : "bought"} ${things} for ${e.total}s${e.shop ? ` at ${e.shop}` : ""}`;
+}
+
 function eventText(e) {
   const { who, what } = eventTextParts(e);
   return { who, what: e.tag ? `${what} · ${e.tag}` : what };
@@ -22,6 +28,7 @@ function eventTextParts(e) {
   }
   if (e.type === "condition") return { who: e.subject?.name || "?", what: [...(e.added || []).map((c) => `+ ${c}`), ...(e.removed || []).map((c) => `− ${c}`)].join(" ") || "Exhaustion" };
   if (e.type === "turn") return { who: `Round ${e.round}`, what: `${e.subject?.name || "?"}'s turn` };
+  if (e.type === "shop") return { who: e.characterName || "?", what: `${shopEventText(e)}` };
   return { who: e.characterName || "DM", what: `${e.label || "Roll"} ${e.exprLabel || ""}${e.target?.name ? ` ◎ ${e.target.name}` : ""}` };
 }
 

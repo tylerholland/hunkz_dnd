@@ -18,7 +18,7 @@ import "../features/shop/shopDm.css";
 // catalog. Setup changes save as you make them; while the shop is open, stock
 // stays live and the rest is locked until the DM unlocks it.
 
-const SETUP_KEYS = ["keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
+const SETUP_KEYS = ["buysBack", "keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
 const statusOf = (d) => ({ status: d.status, opensAt: d.opensAt, closesAt: d.closesAt, lockupUntil: d.lockupUntil, openingId: d.openingId, opening: d.shop?.opening || null });
 const setupOf = (shop) => Object.fromEntries(SETUP_KEYS.map((k) => [k, shop[k]]));
 // This opening's haggling: the log, and who's been thrown out (names from the log).
@@ -203,7 +203,7 @@ export default function ShopDmPage() {
   const shown = (catalog || []).filter((it) => !it.hidden && setup?.carries.includes(it.cat));
   const inStock = `${shown.filter((it) => !setup.out.includes(it.id)).length} of ${shown.length} wares`;
   const picker = setup && (
-    <ShopPicker setup={setup} display={setup.display} onPick={pickShop} onSign={(sign) => update({ sign })} onTemper={(temper) => update({ temper })}
+    <ShopPicker setup={setup} display={setup.display} onPick={pickShop} onSign={(sign) => update({ sign })} onTemper={(temper) => update({ temper })} onBuysBack={(buysBack) => update({ buysBack })}
       onReset={() => { const u = USUAL[setup.keeper]; update({ carries: u.cats, level: u.level, markups: u.markups, temper: u.temper }); }} onSave={saveThisShop} />
   );
   const shelves = setup && catalog && (

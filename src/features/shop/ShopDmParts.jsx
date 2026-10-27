@@ -4,6 +4,7 @@ import {
   KEEPERS, SCENES, USUAL, SHELVES, LEVELS, FILL_NAMES, TEMPERS, shelfColor, markupName, markedPrice, sameMarkups,
   fmtDay, fmtTime, fromNow, closesText, keeperFaceStyle,
 } from "./shopData";
+import { linesFor } from "./keeperLines";
 import { catalogToCsv, csvToItems, diffCatalog } from "./shopCsv";
 import { ItemOrb } from "./ShopParts";
 
@@ -117,7 +118,7 @@ export function StatusBar({ info, opening, nextSessionAt, inStock, busy, onActio
 }
 
 // ── The shop: a template (a keeper and their usual setup) or a saved shop.
-export function ShopPicker({ setup, display, onPick, onSign, onTemper, onReset, onSave }) {
+export function ShopPicker({ setup, display, onPick, onSign, onTemper, onBuysBack, onReset, onSave }) {
   const isSaved = setup.saved.some((m) => m.id === setup.pick);
   const [tab, setTab] = useState(isSaved ? "saved" : "templates");
   const k = KEEPERS[setup.keeper];
@@ -125,7 +126,7 @@ export function ShopPicker({ setup, display, onPick, onSign, onTemper, onReset, 
   const u = USUAL[setup.keeper];
   const usual = u.cats.length === setup.carries.length && u.cats.every((c) => setup.carries.includes(c)) && sameMarkups(u.markups, setup.markups) && u.temper === setup.temper;
   const own = !!setup.sign?.custom;
-  const greet = useMemo(() => k.greet[0].replace("{name}", "friend"), [k]);
+  const greet = useMemo(() => linesFor(setup.keeper).greet[0].replace("{name}", "friend"), [setup.keeper]);
   const card = (id, key, title, sub) => (
     <button key={id} type="button" className={`sd-kc${setup.pick === id ? " on" : ""}`} style={keeperFaceStyle(key)} onClick={() => onPick(id)} aria-pressed={setup.pick === id}>
       <span>{title}<small>{sub}</small></span>
@@ -161,6 +162,10 @@ export function ShopPicker({ setup, display, onPick, onSign, onTemper, onReset, 
         <Seg label="Temper" value={setup.temper} onChange={onTemper} options={Object.entries(TEMPERS).map(([key, t]) => [key, t.name])} />
       </div>
       <p className="sd-hint">{TEMPERS[setup.temper].hint}</p>
+      <div className="sd-row"><span className="lbl">Buys back</span>
+        <button type="button" className={`sd-sw${setup.buysBack !== false ? " on" : ""}`} role="switch" aria-checked={setup.buysBack !== false} aria-label="Buys back from players" onClick={() => onBuysBack(setup.buysBack === false)}><i /></button>
+        <span>{setup.buysBack !== false ? `${k.keeper} buys things back at half the list price` : `${k.keeper} only sells`}</span>
+      </div>
       <div className="sd-row sd-foot">
         <span className="sd-hint" style={{ margin: 0 }}>
           {isSaved ? "A saved shop: changes you make are kept with it."
@@ -370,7 +375,7 @@ export function HaggleLog({ log, thrown, onLetIn, busy }) {
   const bad = /badly|refused|warning|thrown|lost/;
   return (
     <section className="sd-card" aria-labelledby="sd-log-h">
-      <h3 id="sd-log-h">Haggling this opening</h3>
+      <h3 id="sd-log-h">Haggling &amp; sales this opening</h3>
       {thrown.map((t) => (
         <div className="sd-hl out" key={t.slug}>
           <b>{t.name}</b> was thrown out.
@@ -381,7 +386,7 @@ export function HaggleLog({ log, thrown, onLetIn, busy }) {
         <div className="sd-hl" key={`${h.at}-${i}`}>
           <b>{h.who}</b> · {h.item} · <span className={bad.test(h.result) ? "bad" : /off/.test(h.result) ? "ok" : ""}>{h.result}</span>
         </div>
-      )) : <p className="sd-hint" style={{ margin: 0 }}>No haggling yet. Who haggled for what, and how it went, shows here.</p>}
+      )) : <p className="sd-hint" style={{ margin: 0 }}>Nothing yet. Who haggled for what, how it went, and what was sold back, shows here.</p>}
       <p className="sd-hint">Let back in: they can shop again, but the keeper won't haggle with them any more this opening.</p>
     </section>
   );
