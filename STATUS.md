@@ -26,7 +26,7 @@ Genuinely unfinished (verified against source, not just doc status):
 - **Story 41 — Campaign Settings Admin** (`design/stories/41-campaign-settings-admin.md`): Approved, ready to build — blocked on 39 and 40 landing first.
 - **Story 42 — Profile View Slim-Down** (`design/stories/42-profile-view-slimdown.md`): Approved, ready to build. Profile view still has all four tabs (Combat/Map not yet removed).
 - **Story 21 — Combat Efficiency** (`design/stories/21-combat-efficiency.md`): Awaiting design — AoE multi-target damage, condition tooltips, NPC concentration tracking.
-- **Story 72 — The Item Shop** (`design/stories/72-item-shop.md`): Design approved 2026-10-26; prototype `design/prototypes/shop.html`. Build in three phases: basics (DM opening/stock, player shop, purchase), haggling, polish. Coin model and hirelings still to decide.
+- **Story 72 — The Item Shop** (`design/stories/72-item-shop.md`): Built (2026-10-26/27), all three phases: DM page `/dm/shop` (schedule, keepers, shelves/prices/live stock, catalog with CSV, preview, haggling & sales log), player shop `/characters/:slug/shop` (buying, haggling, selling back, each keeper's own lines). Still open: keeper expression art; renaming keepers for saved shops. Needs `./deploy.sh` with "y".
 - **Story 71 — Friendly domain over HTTPS** (`design/stories/71-custom-domain-https.md`): Parked until Tyler has time for DNS records. Subdomain of his personal domain + CloudFront + free ACM certificate (us-east-1); Claude does the AWS/deploy side, Tyler adds two DNS records.
 - **Story 25 — World Guide**: Iceboxed (deliberately shelved — distinct from Story 26, the World Guide *browser*, which is implemented).
 

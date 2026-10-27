@@ -221,16 +221,20 @@ Follow AGENTS.md: put calls in `src/api.js`, extend `getSessionState` rather tha
 2. **Haggling:** server-side rolls, tries per item, patience and escalation, the rare discount loss, the hidden Wisdom read, thrown out and Let back in, the haggling log, and the +1 patience on very high rolls.
 3. **Polish:** saved shops, Preview, selling to the keeper at half price (behind the existing catalog switch), per-keeper haggle and shelf lines (only greetings and goodbyes differ today), and Mags' expression variants once the art exists.
 
-## Decisions still open
+## Decisions (settled while building)
 
-- **Coin.**
-  - The shop prices in silver, but sheets hold cp, sp, ep, gp and pp.
-  - **Recommendation:** pay from the purse's total value in sp (cp 0.1, sp 1, ep 5, gp 10, pp 100), spending the smallest coins first and giving change in sp and cp.
-  - The alternative is to charge `coin.sp` only.
-- **Hirelings:** an inventory item (e.g. "Torch Bearer — hired, 2s/day"), or a separate party-member note? Recommendation for v1: an equipment item with a note.
-- **Selling:** in or out of v1? The prototype shows it; recommendation is phase 3.
-- **Shopkeeper renaming for saved shops:** Tyler is open to it. Revisit after the shop has been used in a session.
-- **Do purchases appear in the session log and Chronicle?** Recommendation: yes, as one line per purchase.
+- **Coin:** pay from the purse's total value (cp 0.1, sp 1, ep 5, gp 10, pp 100), smallest coins first, change in sp and cp.
+- **Hirelings:** an equipment item, e.g. "Torch Bearer (hired)" with "Hired, 2s per day" in its description. They can't be sold back.
+- **Selling:** built in phase 3, per shop ("Buys back", on by default), at half the list price, one at a time.
+- **Purchases and sales in the session log:** yes, as `type: "shop"` rows in the activity log and the Chronicle.
+- **Item text:** the catalog says what World of Dungeons says, and nothing invented. Two deliberate differences, following Tyler: no guns (Bow omits pistols; Heavy Bow/Gun is Heavy Bow, without muskets). Four clothing items (boots, cloak, gloves, hat) were added for their art, with no rules attached.
+- **The town** is the DM's to set for any sign; keeper lines use `{town}`.
+- **The session sheet's way in** is a gold bar under the top nav while the shop is open or locking up, not a button inside the nav.
+
+## Still open
+
+- **Mags's (and other keepers') expression variants:** waiting on the art.
+- **Renaming the shopkeeper for saved shops:** revisit after the shop has been used in a session.
 
 ## Not doing
 
