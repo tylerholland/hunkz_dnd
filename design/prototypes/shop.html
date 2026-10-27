@@ -402,11 +402,15 @@
   .sb-main .btn { min-width: 140px; }
   .sb-sched { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--pal-border) 80%, transparent); font-size: 15px; color: var(--pal-text-body); }
   .sb-sched .lbl, .sb-edit .lbl { min-width: 70px; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-muted); }
-  .sb-sched .lnk { background: none; border: 0; padding: 0; color: var(--pal-accent-bright); font-size: 14px; }
-  .sb-sched .lnk:hover { text-decoration: underline; }
+  .sb-sched { align-items: center; }
+  .sb-schedbtn { margin-left: auto; }
   .sb-edit { margin-top: 4px; }
   .sb-edit .row { margin-top: 10px; }
   .sb-acts { padding-top: 10px; border-top: 1px dashed var(--pal-border); }
+  .pv-banner { position: sticky; top: 0; z-index: 40; display: flex; align-items: center; gap: 14px; padding: 10px 20px; background: repeating-linear-gradient(135deg, #3a2a10 0 14px, #44321a 14px 28px); color: #f1dca8; font-size: 15px; border-bottom: 1px solid var(--gold); }
+  .pv-banner[hidden] { display: none; }
+  .pv-banner span { flex: 1; }
+  .previewing .nav { top: 49px; }
   /* ── DM: shelves & stock, one row per shelf ── */
   .shelves { display: grid; gap: 6px; margin-top: 12px; }
   .shelf { padding: 7px 10px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--cat) 45%, var(--pal-border)); background: var(--pal-surface-solid); }
@@ -415,7 +419,7 @@
   .sh-row .dotc { width: 10px; height: 10px; border-radius: 50%; background: var(--cat); flex: none; }
   .sh-row .nm { width: 130px; font-family: 'Cinzel', serif; font-weight: 400; font-size: 13px; letter-spacing: 0.06em; color: var(--pal-text); }
   .sh-row .eg { flex: 1; min-width: 120px; font-size: 13px; font-style: italic; color: var(--pal-muted); }
-  .sh-row .cnt { min-width: 64px; text-align: right; font-family: 'Cinzel', serif; font-size: 13px; color: var(--pal-text); }
+  .sh-row .cnt { min-width: 120px; text-align: right; font-size: 15px; color: var(--pal-text); }
   .sh-row .chev { width: 28px; height: 28px; border: 0; background: none; color: var(--pal-muted); font-size: 14px; }
   .mkc { display: inline-flex; align-items: center; gap: 4px; }
   .mkc button { width: 24px; height: 24px; border-radius: 5px; border: 1px solid var(--pal-border); background: var(--pal-accent-dim); color: var(--pal-accent-bright); font-size: 14px; line-height: 1; }
@@ -511,6 +515,7 @@
 
 <!-- ═════════ PLAYER: SHOP ═════════ -->
 <section class="view on" id="v-shop">
+  <div class="pv-banner" id="pvBanner" hidden><span><b>DM preview.</b> The shop as players will see it, with your current settings. Nothing here is real.</span><button class="btn gold" type="button" id="pvBack">Back to setup</button></div>
   <nav class="nav">
     <a class="back" href="#">‹</a>
     <span class="t" id="navName">Session · Ironwhistle's Emporium</span>
@@ -621,7 +626,7 @@
         <span class="count" id="stockCount"></span>
       </div>
       <p class="hint" id="rollHint"></p>
-      <div class="row"><input class="in" id="stockFind" placeholder="Find an item… (e.g. rope)" style="min-width:260px" /><span class="hint" id="liveHint" style="margin:0"></span></div>
+      <div class="row"><input class="in" id="stockFind" placeholder="Find an item… (e.g. rope)" style="min-width:260px" /><span class="hint" id="liveHint" style="margin:0"></span><span style="flex:1"></span><button class="tbtn" type="button" id="expandAll">Expand all</button></div>
       <div class="shelves" id="shelfList"></div>
     </div>
 
@@ -1461,7 +1466,7 @@ function schedText() {
 function renderStatus() {
   const w = live, { n, of } = stockCounts();
   const s = {
-    open: { t: "Open", sub: `${n} of ${of} wares in stock`, main: ["lockup", "Close now"] },
+    open: { t: "Open", sub: `In stock: ${n} of ${of} wares`, main: ["lockup", "Close now"] },
     lockup: { t: "Locking up", sub: "Anyone with something in their satchel has two minutes to pay", main: ["closed", "Close at once"] },
     combat: { t: "Shut for the fighting", sub: "Combat closed it; it reopens when the round ends" },
     scheduled: { t: "Scheduled", sub: `Opens ${fmtDay(w.opens)} at ${fmtTime(w.opens)} · ${fromNow(w.opens)}, no need to be online`, main: ["open", "Open now"], alt: ["closed", "Cancel opening"] },
@@ -1469,16 +1474,18 @@ function renderStatus() {
   }[status];
   document.getElementById("dmStatus").className = `sbar is-${status}`;
   document.getElementById("sbMain").innerHTML = `<span class="dot"></span><div class="what"><b>${s.t}</b><span>${s.sub}</span></div>
+    <button class="tbtn" type="button" id="previewBtn" title="See the shop as players will, with these settings">👁 Preview</button>
     ${s.alt ? `<button class="tbtn" type="button" data-act="${s.alt[0]}">${s.alt[1]}</button>` : ""}
     ${s.main ? `<button class="btn gold" type="button" data-act="${s.main[0]}">${s.main[1]}</button>` : ""}`;
   document.querySelectorAll("#sbMain [data-act]").forEach((b) => b.onclick = () => {
     if (b.dataset.act === "open" && status !== "lockup") { shop.when = "now"; live = windowOf(); }
     closeEdit(); setStatus(b.dataset.act);
   });
+  document.getElementById("previewBtn").onclick = startPreview;
   const none = status === "closed" || status === "combat";
   document.getElementById("sbSched").innerHTML = `<span class="lbl">${isLiveNow() ? "Closes" : "Schedule"}</span><span class="txt">${schedText()}</span>
-    <button class="lnk" type="button" id="schedEditBtn">${editing ? "" : none ? "＋ Schedule an opening" : "✎ Change"}</button>`;
-  document.getElementById("schedEditBtn").onclick = openEdit;
+    ${editing ? "" : `<button class="tbtn${none ? " primary" : ""} sb-schedbtn" type="button" id="schedEditBtn">${none ? "＋ Schedule an opening" : "✎ Change"}</button>`}`;
+  document.getElementById("schedEditBtn")?.addEventListener("click", openEdit);
 }
 
 // The schedule editor works on a draft, saved or cancelled as a whole.
@@ -1563,7 +1570,7 @@ function renderShelves() {
     ? "No rerolling while the shop is open. Flip items one at a time instead."
     : "Each shelf's markup and stock are rolled from these; nudge any of them below. The stock roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first.";
   const { n, of } = stockCounts();
-  document.getElementById("stockCount").innerHTML = `${n} of ${of} <small>in stock</small>`;
+  document.getElementById("stockCount").innerHTML = `<small>In stock:</small> ${n} of ${of}`;
   const q = document.getElementById("stockFind").value.trim().toLowerCase();
   const hits = (it) => !q || it.name.toLowerCase().includes(q);
   const chip = (it, carried) => carried
@@ -1579,7 +1586,7 @@ function renderShelves() {
         <span class="dotc"></span><b class="nm">${c.name}</b>
         ${on ? `<span class="mkc lockable"><button type="button" data-mk="${c.id}" data-d="-5" aria-label="Cheaper">−</button><b class="${m > 0 ? "up" : m < 0 ? "down" : ""}">${markupName(m)}</b><button type="button" data-mk="${c.id}" data-d="5" aria-label="Dearer">+</button></span>
           <small class="eg">${eg.name.toLowerCase()} ${cost(eg)}s${m ? ` <s>${eg.price}s</s>` : ""}</small>
-          <span class="cnt">${list.filter((i) => !isOut(i)).length} of ${list.length}</span>`
+          <span class="cnt">In stock: ${list.filter((i) => !isOut(i)).length} of ${list.length}</span>`
         : `<small class="eg">not carried here</small><span class="cnt"></span>`}
         <button type="button" class="chev" data-exp="${c.id}" aria-label="Show items">${open ? "▾" : "▸"}</button>
       </div>
@@ -1588,6 +1595,9 @@ function renderShelves() {
   });
   document.getElementById("shelfList").innerHTML = rows.join("") || `<p class="hint" style="margin:0">Nothing called “${q}” in the catalog. Add it in the Item catalog.</p>`;
   const list = document.getElementById("shelfList");
+  const all = CATS.every((c) => expanded.has(c.id));
+  document.getElementById("expandAll").textContent = all ? "Collapse all" : "Expand all";
+  document.getElementById("expandAll").onclick = () => { if (all) expanded.clear(); else CATS.forEach((c) => expanded.add(c.id)); renderShelves(); };
   list.querySelectorAll("[data-exp]").forEach((b) => b.onclick = () => { const id = b.dataset.exp; if (expanded.has(id)) expanded.delete(id); else expanded.add(id); renderShelves(); });
   list.querySelectorAll("[data-carry]").forEach((b) => b.onclick = () => {
     const id = b.dataset.carry;
@@ -1937,6 +1947,25 @@ seg("viewSeg", (v) => {
   if (v === "shop") placeSpeech();
 });
 seg("stateSeg", (v) => setStatus(v));
+// DM preview: the player view, open, whatever the real state; back restores it.
+let preview = null;
+function startPreview() {
+  preview = { status };
+  closeEdit();
+  document.querySelector('#viewSeg [data-v="shop"]').click();
+  setStatus("open");
+  document.getElementById("pvBanner").hidden = false;
+  document.getElementById("v-shop").classList.add("previewing");
+  scrollTo(0, 0);
+}
+document.getElementById("pvBack").onclick = () => {
+  const back = preview?.status || status;
+  preview = null;
+  document.getElementById("pvBanner").hidden = true;
+  document.getElementById("v-shop").classList.remove("previewing");
+  setStatus(back);
+  document.querySelector('#viewSeg [data-v="open"]').click();
+};
 seg("sceneSeg", (k) => pickShop(k));
 document.getElementById("nameBtn").onclick = () => { setScene(sceneKey, (nameIdx + 1) % KEEPERS[sceneKey].names.length); renderOpen(); };
 function shopAs(key) {
