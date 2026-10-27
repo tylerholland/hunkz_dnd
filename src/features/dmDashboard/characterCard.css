@@ -881,6 +881,7 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--pal-text-muted);
+  width: 40px;
   flex-shrink: 0;
 }
 
@@ -941,7 +942,7 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--pal-text-muted);
-  width: 20px;
+  width: 40px;
   flex-shrink: 0;
 }
 
