@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DM Navigation</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  DM navigation — prototype (no live API).
+
+  Behaviour
+  - Signed in as DM, every DM page's top bar carries the DM pages in its left
+    slot: Campaign · Shop · Maps · Chronicle · Settings (current one underlined).
+    They are places: plain text links. Adventure | Combat stays the only pill
+    toggle, in the centre, and only on Campaign (it's a mode, with effects).
+  - Under ~900px the links fold into the title: "Campaign ▾" opens the list.
+    Campaign's Adventure | Combat keeps its existing phone second row.
+  - While combat is on, "Campaign" carries a small ⚔ so it's visible from the
+    Shop or Settings that a fight is running.
+  - ⌂ (far left) goes home to the party page. Sub-pages (Talent Codex, Shop
+    preview) keep a ‹ back arrow to their parent instead of the link row.
+  - ⋯ holds only actions and preferences for that page, with "Sign out" last,
+    worded the same on every page. No page links in ⋯ any more.
+  - Signed out: the homepage bar shows a "DM" button (replaces "DM Login" in ⋯).
+    It goes to /dm's existing sign-in prompt, then straight into Campaign. The
+    homepage's own DM modal is removed — one sign-in screen, palette-aware.
+  - Signed in, on the homepage or a player's sheet: the same DM links show, so
+    the DM is always one tap from any DM page. Players never see any of this.
+  - One name per place: "Campaign" for /dm (was also DM Session / DM Campaign),
+    "Maps" in the links (page title stays Map Library). No emoji in navigation.
+  Implementation: a shared <DmNav> inside TopNav replaces DmSessionLink and the
+  per-page menu link lists; pages pass only their actions to menuItems.
+  Open: whether the homepage should send a signed-in DM straight to Campaign.
+-->
+<style>
+  :root {
+    --bg: #0d0f14; --surface: rgba(18,32,48,0.55); --solid: #111e2c; --border: rgba(100,130,160,0.18);
+    --accent: #6a8fa8; --bright: #a0c0d0; --dim: #1e3a4e; --text: #c8bfaf; --body: #b0a898; --muted: #6f8a98;
+    --combat: #c06060; --page: #080a0e;
+  }
+  body[data-pal="vellum"] {
+    --bg: #f5f0e8; --surface: rgba(220,208,185,0.5); --solid: #e8e0cc; --border: rgba(140,110,70,0.22);
+    --accent: #7a5c30; --bright: #4a3418; --dim: rgba(140,110,70,0.15); --text: #2a2018; --body: #3c2e1c; --muted: #8a7050;
+    --combat: #9a2a20; --page: #e9e1d2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--body); font-family: 'Crimson Text', Georgia, serif; font-size: 16px; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  a { color: inherit; }
+  main { max-width: 1240px; margin: 0 auto; padding: 28px 16px 80px; display: grid; gap: 34px; }
+  h1 { font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.08em; color: var(--text); margin: 0; font-size: 22px; }
+  .note { font-style: italic; color: var(--muted); margin: 6px 0 0; font-size: 15px; max-width: 760px; }
+  .where { font-family: 'IM Fell English', serif; font-size: 12px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .ctl { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .ctl button { border: 0; background: transparent; padding: 8px 14px; min-height: 36px; color: var(--muted); font-family: 'IM Fell English', serif; font-size: 13px; letter-spacing: 0.06em; }
+  .ctl button.on { background: var(--dim); color: var(--text); }
+
+  /* ── Frame (a mock browser window) ── */
+  .frame { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); }
+  .phone { width: 390px; max-width: 100%; }
+  .frames { display: grid; gap: 18px; align-items: start; }
+
+  /* ── The top bar ── */
+  /* Links take what they need; the mode toggle centres in the space left over,
+     so they can never overlap. */
+  .bar { position: relative; height: 52px; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 8px; padding: 0 12px; border-bottom: 1px solid var(--border); background: var(--bg); }
+  .left { display: flex; align-items: center; gap: 2px; min-width: 0; }
+  .center { display: flex; justify-content: center; min-width: 0; }
+  .right { grid-column: 3; display: flex; align-items: center; justify-content: flex-end; gap: 4px; }
+  .icon { width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; border-radius: 4px; color: var(--muted); font-size: 19px; text-decoration: none; }
+  .icon:hover { color: var(--bright); }
+  .icon.back { font-family: 'Cinzel', serif; font-size: 22px; }
+  .title { font-family: 'Cinzel', serif; font-size: 15px; font-variant: small-caps; letter-spacing: 0.06em; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+  /* DM links: places. Plain text, current one underlined — never pills. */
+  .dmlinks { display: flex; align-items: stretch; height: 52px; margin-left: 2px; }
+  .dmlinks a { position: relative; display: inline-flex; align-items: center; gap: 5px; padding: 0 10px; font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.06em; color: var(--body); text-decoration: none; white-space: nowrap; }
+  .dmlinks a:hover { color: var(--bright); }
+  .dmlinks a[aria-current="page"] { color: var(--text); }
+  .dmlinks a[aria-current="page"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; background: var(--accent); border-radius: 2px 2px 0 0; }
+  .fight { color: var(--combat); font-size: 15px; line-height: 1; }
+
+  /* Phone: the links fold into the title. */
+  .switcher { display: none; position: relative; }
+  .switcher > button { display: inline-flex; align-items: center; gap: 6px; height: 44px; padding: 0 8px; border: 0; background: transparent; font-family: 'Cinzel', serif; font-size: 15px; font-variant: small-caps; letter-spacing: 0.06em; color: var(--text); }
+  .switcher > button .caret { font-size: 11px; color: var(--muted); }
+  .pop { position: absolute; top: 46px; left: 0; z-index: 5; min-width: 210px; padding: 6px; border: 1px solid var(--border); border-radius: 8px; background: var(--solid); box-shadow: 0 10px 30px rgba(0,0,0,0.35); display: none; }
+  .pop.open { display: block; }
+  .pop a, .pop button.item { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 12px; border: 0; border-radius: 5px; background: transparent; text-align: left; text-decoration: none; font-family: 'Cinzel', serif; font-size: 14px; letter-spacing: 0.05em; color: var(--body); }
+  .pop a:hover, .pop button.item:hover { background: var(--dim); color: var(--text); }
+  .pop a[aria-current="page"] { color: var(--text); box-shadow: inset 2px 0 0 var(--accent); }
+  .pop hr { border: 0; border-top: 1px solid var(--border); margin: 6px 4px; }
+  .pop .sel { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 12px; font-family: 'IM Fell English', serif; font-size: 14px; color: var(--muted); }
+  .pop .danger { color: var(--combat); }
+
+  .narrow .dmlinks { display: none; }
+  .narrow .switcher { display: block; }
+  .narrow .page-title { display: none; }
+
+  /* Mode toggle: the only pill. */
+  .seg { display: inline-flex; height: 32px; border: 1px solid var(--border); border-radius: 999px; }
+  .seg button { border: 0; background: transparent; padding: 0 15px; font-family: 'IM Fell English', serif; font-size: 13px; letter-spacing: 0.06em; color: var(--muted); }
+  .seg button:first-child { border-radius: 999px 0 0 999px; }
+  .seg button:last-child { border-radius: 0 999px 999px 0; border-left: 1px solid var(--border); }
+  .seg button.on { background: var(--dim); color: var(--text); }
+  .seg button.on.fightmode { color: var(--combat); }
+  .narrow .bar .seg { display: none; }
+  .mrow { display: none; justify-content: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .narrow .mrow.show { display: flex; }
+
+  .live { display: inline-flex; align-items: center; gap: 6px; font-family: 'IM Fell English', serif; font-size: 13px; color: var(--muted); padding: 0 6px; }
+  .live i { width: 7px; height: 7px; border-radius: 50%; background: #5fb878; }
+  .narrow .live span { display: none; }
+
+  .dmbtn { display: inline-flex; align-items: center; height: 34px; padding: 0 14px; border: 1px solid var(--accent); border-radius: 999px; background: transparent; font-family: 'IM Fell English', serif; font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--bright); text-decoration: none; }
+  .dmbtn:hover { background: var(--dim); }
+
+  .menuwrap { position: relative; }
+  .menuwrap .pop { left: auto; right: 0; }
+
+  /* Page body mock */
+  .body { min-height: 230px; padding: 22px; display: grid; gap: 12px; align-content: start; }
+  .body h2 { margin: 0; font-family: 'Cinzel', serif; font-weight: 400; font-size: 20px; color: var(--text); letter-spacing: 0.06em; }
+  .ghost { height: 14px; border-radius: 4px; background: var(--dim); opacity: 0.7; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .card { height: 90px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .combat-banner { display: none; padding: 8px 12px; border: 1px solid var(--combat); border-radius: 6px; color: var(--combat); font-family: 'IM Fell English', serif; font-size: 14px; }
+  .is-combat .combat-banner { display: block; }
+
+  /* Sign-in prompt mock (the existing /dm prompt) */
+  .prompt { max-width: 320px; margin: 20px auto; padding: 22px; border: 1px solid var(--border); border-radius: 8px; background: var(--solid); text-align: center; }
+  .prompt b { display: block; font-family: 'Cinzel', serif; font-weight: 400; font-size: 20px; letter-spacing: 0.1em; color: var(--bright); margin-bottom: 14px; }
+  .prompt input { width: 100%; min-height: 44px; padding: 8px 12px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); font: inherit; margin-bottom: 10px; }
+  .prompt button { width: 100%; min-height: 44px; border: 1px solid var(--accent); border-radius: 4px; background: var(--dim); color: var(--bright); font-family: 'Cinzel', serif; letter-spacing: 0.1em; }
+
+  .was { font-size: 14px; color: var(--muted); margin: 8px 0 0; }
+  .was b { font-weight: 600; color: var(--body); }
+  :focus-visible { outline: 2px solid var(--bright); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>DM navigation</h1>
+    <p class="note">Prototype. The DM pages live in the top bar (places, on the left); Adventure | Combat stays the one pill toggle (a mode, in the centre). On phones the links fold into the title. Click around: the links, the mode toggle, “Campaign ▾”, ⋯ and the DM button all work.</p>
+  </header>
+
+  <div class="controls">
+    <span class="ctl" role="group" aria-label="Palette"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span>
+    <span class="ctl" role="group" aria-label="Signed in"><button data-auth="in" class="on">Signed in as DM</button><button data-auth="out">Signed out</button></span>
+  </div>
+
+  <section>
+    <p class="where">The same page, desktop and phone · pick a page from the bar</p>
+    <div class="frames">
+      <div class="frame" id="wide"></div>
+      <div class="frame phone narrow" id="narrow"></div>
+    </div>
+    <p class="was"><b>Was:</b> each DM page's ⋯ listed a different subset of pages (Shop and Settings mostly only from Campaign), “DM Session” pill on the right, “Campaign” called four different things.</p>
+  </section>
+
+  <section>
+    <p class="where">A sub-page · Talent Codex (from Settings)</p>
+    <div class="frames">
+      <div class="frame" id="codexWide"></div>
+      <div class="frame phone narrow" id="codexNarrow"></div>
+    </div>
+    <p class="was">Sub-pages keep a ‹ back arrow to their parent and the link row still shows Settings as the current place.</p>
+  </section>
+
+  <section>
+    <p class="where">A player's sheet, as the player sees it · unchanged</p>
+    <div class="frame" id="player"></div>
+    <p class="was">Players never see the DM links or the DM button's sign-in flow; their bar is exactly as today.</p>
+  </section>
+</main>
+
+<script>
+  const PAGES = [
+    { key: "campaign", label: "Campaign", title: "Campaign" },
+    { key: "shop", label: "Shop", title: "Shop · Ironwhistle's Emporium" },
+    { key: "maps", label: "Maps", title: "Map Library" },
+    { key: "chronicle", label: "Chronicle", title: "Chronicle" },
+    { key: "settings", label: "Settings", title: "DM Settings" },
+  ];
+  // ⋯ holds only this page's actions and preferences; Sign out last everywhere.
+  const ACTIONS = {
+    campaign: (s) => [s.combat ? "End Combat" : "Start Combat", "Manage Party", "Enemies Gallery"],
+    shop: () => ["Preview as a player"],
+    maps: () => ["Upload a map"],
+    chronicle: () => ["Record this session"],
+    settings: () => [],
+    home: () => [],
+    codex: () => [],
+  };
+  const state = { page: "campaign", combat: false, auth: "in", signingIn: false, home: false };
+  let openPop = null;
+
+  const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const fightMark = () => (state.combat ? ' <span class="fight" title="In combat" aria-label="in combat">⚔</span>' : "");
+
+  function links(current) {
+    return `<nav class="dmlinks" aria-label="DM pages">${PAGES.map((p) =>
+      `<a href="#" data-go="${p.key}"${p.key === current ? ' aria-current="page"' : ""}>${p.label}${p.key === "campaign" ? fightMark() : ""}</a>`).join("")}</nav>`;
+  }
+  function switcher(id, current, label) {
+    return `<div class="switcher"><button type="button" data-pop="${id}" aria-haspopup="true" aria-expanded="${openPop === id}">${esc(label)}${current === "campaign" ? fightMark() : ""} <span class="caret">▾</span></button>
+      <div class="pop${openPop === id ? " open" : ""}" role="menu">${PAGES.map((p) =>
+        `<a href="#" role="menuitem" data-go="${p.key}"${p.key === current ? ' aria-current="page"' : ""}>${p.label}${p.key === "campaign" ? fightMark() : ""}</a>`).join("")}
+        <hr /><a href="#" role="menuitem" data-go="home">⌂ Party (home)</a></div></div>`;
+  }
+  function menu(id, page) {
+    const acts = (ACTIONS[page] || (() => []))(state);
+    return `<div class="menuwrap"><button type="button" class="icon" data-pop="${id}" aria-label="More actions" aria-expanded="${openPop === id}">⋯</button>
+      <div class="pop${openPop === id ? " open" : ""}" role="menu">
+        ${acts.map((a) => `<button type="button" class="item" role="menuitem" data-act="${a}">${a}</button>`).join("")}
+        ${acts.length ? "<hr />" : ""}
+        <div class="sel">Text size <span>100%</span></div>
+        ${page === "campaign" ? '<div class="sel">Theme <span>Ocean ▾</span></div>' : ""}
+        ${state.auth === "in" ? '<hr /><button type="button" class="item danger" role="menuitem" data-act="signout">Sign out</button>' : ""}
+      </div></div>`;
+  }
+  function modeToggle() {
+    return `<div class="seg" role="group" aria-label="Mode"><button type="button" data-mode="adventure" class="${state.combat ? "" : "on"}" aria-pressed="${!state.combat}">Adventure</button><button type="button" data-mode="combat" class="${state.combat ? "on fightmode" : ""}" aria-pressed="${state.combat}">Combat</button></div>`;
+  }
+
+  function dmPage(id, page) {
+    const p = PAGES.find((x) => x.key === page);
+    const isCampaign = page === "campaign";
+    const bar = `<div class="bar">
+        <div class="left">
+          <a href="#" class="icon" data-go="home" aria-label="Home — the party" title="Home — the party">⌂</a>
+          ${links(page)}
+          ${switcher(id + "-sw", page, p.label)}
+        </div>
+        <div class="center">${isCampaign ? modeToggle() : ""}</div>
+        <div class="right">${isCampaign ? '<span class="live"><i></i><span>Live</span></span><button class="icon" aria-label="World Guide" type="button">❧</button>' : ""}${menu(id + "-m", page)}</div>
+      </div>
+      <div class="mrow${isCampaign ? " show" : ""}">${isCampaign ? modeToggle() : ""}</div>`;
+    return bar + `<div class="body${state.combat ? " is-combat" : ""}">${isCampaign ? '<div class="combat-banner">⚔ Combat — round 2 · Eòghan’s turn</div>' : ""}<h2>${esc(p.title)}</h2><div class="ghost" style="width:60%"></div><div class="cards"><div class="card"></div><div class="card"></div><div class="card"></div></div></div>`;
+  }
+
+  function homePage(id) {
+    if (state.signingIn) {
+      return `<div class="bar"><div class="left"><a href="#" class="icon back" data-go="home" aria-label="Back home">‹</a><span class="title">Campaign</span></div><div></div><div class="right">${menu(id + "-m", "home")}</div></div>
+        <div class="body"><form class="prompt" data-signin><b>DM Campaign</b><input type="password" placeholder="DM password…" aria-label="DM password" /><button type="submit">Enter Campaign</button></form>
+        <p class="was" style="text-align:center">The existing /dm prompt — the only sign-in screen now. Enter anything.</p></div>`;
+    }
+    const signedIn = state.auth === "in";
+    return `<div class="bar">
+        <div class="left">${signedIn ? `<a href="#" class="icon" data-go="home" aria-label="Home — the party">⌂</a>${links(null)}${switcher(id + "-sw", null, "DM pages")}` : '<span class="title" style="padding-left:6px">Hunkz Adventures</span>'}</div>
+        <div class="center"></div>
+        <div class="right">${signedIn ? "" : '<a href="#" class="dmbtn" data-signin-start>DM</a>'}${menu(id + "-m", "home")}</div>
+      </div>
+      <div class="body"><h2 class="page-title">${signedIn ? "The party" : "Hunkz Adventures"}</h2><p style="margin:0">${signedIn ? "Homepage while signed in: the DM links stay in the bar, nothing is current." : "Signed out: a visible “DM” button — no more hunting for “DM Login” in ⋯."}</p><div class="cards"><div class="card"></div><div class="card"></div><div class="card"></div></div></div>`;
+  }
+
+  function codex(id) {
+    return `<div class="bar"><div class="left"><a href="#" class="icon back" aria-label="Back to Settings">‹</a>${links("settings")}${switcher(id + "-sw", "settings", "Settings")}</div><div></div><div class="right">${menu(id + "-m", "codex")}</div></div>
+      <div class="body"><h2>Talent Codex</h2><div class="ghost" style="width:70%"></div><div class="ghost" style="width:45%"></div></div>`;
+  }
+
+  function player() {
+    return `<div class="bar"><div class="left"><a href="#" class="icon back" aria-label="Back">‹</a><span class="title">Eòghan MacGille Fàth</span></div>
+      <div class="center"><div class="seg"><button class="on" type="button">Session</button><button type="button">Profile</button></div></div>
+      <div class="right"><span class="live"><i></i><span>Live</span></span><button class="icon" aria-label="World Guide" type="button">❧</button><button class="icon" aria-label="More actions" type="button">⋯</button></div></div>
+      <div class="body"><h2>Eòghan’s sheet</h2><div class="ghost" style="width:50%"></div></div>`;
+  }
+
+  function render() {
+    const showHome = state.home || state.auth === "out" || state.signingIn;
+    for (const id of ["wide", "narrow"]) {
+      document.getElementById(id).innerHTML = showHome ? homePage(id) : dmPage(id, state.page);
+    }
+    const signedIn = state.auth === "in";
+    document.getElementById("codexWide").innerHTML = signedIn ? codex("cw") : '<div class="body"><p class="was">Sign in to see DM pages.</p></div>';
+    document.getElementById("codexNarrow").innerHTML = signedIn ? codex("cn") : '<div class="body"><p class="was">Sign in to see DM pages.</p></div>';
+    document.getElementById("player").innerHTML = player();
+  }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-go],[data-pop],[data-mode],[data-act],[data-signin-start],[data-pal],[data-auth]");
+    if (!t) { if (openPop) { openPop = null; render(); } return; }
+    if (t.tagName === "A") e.preventDefault();
+    if (t.dataset.pal) {
+      document.body.dataset.pal = t.dataset.pal;
+      document.querySelectorAll("[data-pal]").forEach((b) => b.classList.toggle("on", b === t));
+      return;
+    }
+    if (t.dataset.auth) {
+      state.auth = t.dataset.auth; state.signingIn = false; state.home = false; openPop = null;
+      document.querySelectorAll("[data-auth]").forEach((b) => b.classList.toggle("on", b === t));
+      return render();
+    }
+    if (t.dataset.pop) { openPop = openPop === t.dataset.pop ? null : t.dataset.pop; return render(); }
+    openPop = null;
+    if (t.dataset.go) {
+      if (t.dataset.go === "home") { state.home = true; state.signingIn = false; }
+      else { state.home = false; state.page = t.dataset.go; }
+    }
+    if (t.dataset.mode) state.combat = t.dataset.mode === "combat";
+    if (t.dataset.act === "Start Combat") state.combat = true;
+    if (t.dataset.act === "End Combat") state.combat = false;
+    if (t.dataset.act === "signout") { state.auth = "out"; state.home = true; document.querySelectorAll("[data-auth]").forEach((b) => b.classList.toggle("on", b.dataset.auth === "out")); }
+    if (t.dataset.signinStart !== undefined) state.signingIn = true;
+    render();
+  });
+  document.addEventListener("submit", (e) => {
+    if (!e.target.matches("[data-signin]")) return;
+    e.preventDefault();
+    Object.assign(state, { auth: "in", signingIn: false, home: false, page: "campaign" });
+    document.querySelectorAll("[data-auth]").forEach((b) => b.classList.toggle("on", b.dataset.auth === "in"));
+    render();
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && openPop) { openPop = null; render(); } });
+  render();
+</script>
+</body>
+</html>
