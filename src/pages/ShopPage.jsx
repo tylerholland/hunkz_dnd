@@ -149,7 +149,9 @@ export default function ShopPage({ preview = false }) {
   // Unknown (null) until loaded; a preview is never "closed" — it's either loaded or still loading.
   const status = shop?.status || (preview ? null : summary?.status || null);
   // Until the shop itself loads, the session-state summary says whose shop it is.
-  const keeperKey = [shop?.keeper, summary?.keeper].find((k) => KEEPERS[k]) || "mags";
+  // Whose shop it is, once we know; until then nothing shop-specific shows.
+  const knownKeeper = [shop?.keeper, summary?.keeper].find((k) => KEEPERS[k]) || null;
+  const keeperKey = knownKeeper || "mags";
   const keeper = KEEPERS[keeperKey];
   // This keeper's voice: {name}, {item}, {price} and {time} filled in.
   const voice = linesFor(keeperKey);
@@ -222,8 +224,12 @@ export default function ShopPage({ preview = false }) {
   const typed = useTyped(line ? `“${line}”` : "");
 
   // The bubble sits by the keeper's face; recomputed as the scene resizes.
+  // The scene stays a quiet placeholder until the right keeper's picture has loaded.
+  const [readySrc, setReadySrc] = useState(null);
+  const sceneReady = !!knownKeeper && readySrc === scene.src;
   const place = useCallback(() => {
     const el = sceneRef.current, img = imgRef.current;
+    if (img?.complete && img.naturalWidth && img.getAttribute("src") === scene.src) setReadySrc(scene.src);
     if (!el || !img || matchMedia("(max-width: 760px)").matches) { setBubble(null); return; }
     setBubble(placeBubble(scene, { width: el.clientWidth, height: el.clientHeight, naturalWidth: img.naturalWidth, naturalHeight: img.naturalHeight }));
   }, [scene]);
@@ -231,7 +237,7 @@ export default function ShopPage({ preview = false }) {
     const frame = requestAnimationFrame(place);
     addEventListener("resize", place);
     return () => { cancelAnimationFrame(frame); removeEventListener("resize", place); };
-  }, [place, browsing]);
+  }, [place, browsing, knownKeeper]);
 
   function hold(item) {
     if (!item) return;
@@ -341,7 +347,7 @@ export default function ShopPage({ preview = false }) {
   };
   const pageStyle = { ...palVars, zoom: textScale, background: `radial-gradient(ellipse at 50% -10%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` };
   const nav = (
-    <TopNav backTo={preview ? "/dm/shop" : `/characters/${slug}/session`} title={preview ? `Preview · ${display.name}` : display.name} menuItems={[{ label: "Your sheet", href: `/characters/${slug}/session` }, { label: "All Characters", href: "/" }, { divider: true }, textScaleMenuItem]} />
+    <TopNav backTo={preview ? "/dm/shop" : `/characters/${slug}/session`} title={!knownKeeper ? (preview ? "Preview" : "Shop") : preview ? `Preview · ${display.name}` : display.name} menuItems={[{ label: "Your sheet", href: `/characters/${slug}/session` }, { label: "All Characters", href: "/" }, { divider: true }, textScaleMenuItem]} />
   );
 
   const previewBanner = preview && (
@@ -390,18 +396,19 @@ export default function ShopPage({ preview = false }) {
       <main className="sp-main">
         <header className="sp-head">
           <div>
-            <div className="sp-kicker">{display.where}</div>
-            <h1>{display.name}</h1>
-            <div className="sp-sub">{display.sub}</div>
+            <div className="sp-kicker">{knownKeeper ? display.where : "\u00a0"}</div>
+            <h1>{knownKeeper ? display.name : "\u00a0"}</h1>
+            <div className="sp-sub">{knownKeeper ? display.sub : "\u00a0"}</div>
           </div>
           <span className="sp-spacer" />
           <span className={`sp-hours${status === "lockup" ? " lock" : status === "open" ? "" : " off"}`}><i />{hoursText}</span>
         </header>
         {loadError && <p className="sp-error" role="alert">{loadError}</p>}
 
-        <div className="sp-scene" ref={sceneRef}>
-          <img ref={imgRef} src={scene.src} alt={`${display.keeperName} behind the counter`} style={{ objectPosition: scene.pos }} onLoad={place} />
-          {browsing && (
+        <div className={`sp-scene${sceneReady ? "" : " loading"}`} ref={sceneRef} aria-busy={!sceneReady}>
+          {knownKeeper && <img ref={imgRef} className={sceneReady ? "ready" : ""} src={scene.src} alt={`${display.keeperName} behind the counter`} style={{ objectPosition: scene.pos }} onLoad={() => { setReadySrc(scene.src); place(); }} />}
+          {!sceneReady && <div className="sp-loading"><span>Navigating the streets &amp; alleyways…</span></div>}
+          {browsing && sceneReady && (
             <>
               {typed && (
                 <div className={`sp-speech${bubble?.mode === "left" ? " left" : bubble?.mode === "below" ? " below" : ""}`} style={bubble?.style} aria-live="polite">
@@ -468,7 +475,7 @@ export default function ShopPage({ preview = false }) {
               </div>
             </>
           )}
-          {!browsing && status && <ShopShutters status={thrownOut ? "thrown" : status} plaques={{
+          {!browsing && status && sceneReady && <ShopShutters status={thrownOut ? "thrown" : status} plaques={{
             closed: speak(voice.plaques.closed), fight: speak(voice.plaques.fight), thrown: speak(voice.plaques.thrown),
             backSoon: shop?.opensAt ? speak(voice.plaques.backSoon, { time: fmtTime(Date.parse(shop.opensAt)) }) : "",
           }} opensAt={shop?.opensAt} closesText={closesText(shop || {}, null)} keeperName={display.keeperName} />}
@@ -549,7 +556,7 @@ export default function ShopPage({ preview = false }) {
               sell={canSell ? { label: `Sell to ${display.keeperName} · half price`, active: sellView, onClick: () => { setSellView(true); setLine(speak(offers.length ? voice.sell.offer : voice.sell.wontBuy, { item: offers[0]?.name, price: offers[0]?.price })); } } : null} />
           </div>
         )}
-        {!browsing && (
+        {!browsing && status && sceneReady && (
           <p className="sp-cat-line"><Link to={`/characters/${slug}/session`} style={{ color: "var(--pal-accent-bright)" }}>Back to your sheet</Link></p>
         )}
       </main>

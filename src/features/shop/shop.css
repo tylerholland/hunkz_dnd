@@ -27,6 +27,12 @@
 .sp-scene { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--pal-border); height: clamp(320px, 50vw, 600px); background: #1a120c; box-shadow: 0 24px 60px rgba(0,0,0,0.45); }
 .sp-page[data-light] .sp-scene { box-shadow: 0 18px 40px rgba(90,60,30,0.25); }
 .sp-scene > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+/* While the shop is being found: a quiet placeholder, then the picture fades in. */
+.sp-scene > img { opacity: 0; transition: opacity 0.5s ease; }
+.sp-scene > img.ready { opacity: 1; }
+.sp-loading { position: absolute; inset: 0; z-index: 2; display: grid; place-items: center; padding: 16px; background: radial-gradient(ellipse at 50% 60%, #2a1d12, #120c07 75%); }
+.sp-loading span { font-family: 'IM Fell English', Georgia, serif; font-style: italic; font-size: clamp(16px, 2vw, 21px); color: #cdb894; animation: sp-wander 2.4s ease-in-out infinite; }
+@keyframes sp-wander { 50% { opacity: 0.45; } }
 .sp-scene::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(ellipse at 62% 18%, rgba(255,190,110,0.16), transparent 45%); animation: sp-flicker 4s ease-in-out infinite; }
 @keyframes sp-flicker { 0%, 100% { opacity: 0.6; } 40% { opacity: 1; } 55% { opacity: 0.75; } }
 /* The shop is lamplit whatever the page palette: the fade stays dark. */
@@ -249,6 +255,7 @@
   .sp-pack:not(.open) .sp-pack-group, .sp-pack:not(.open) .sp-pack-foot, .sp-pack:not(.open) .sp-pack-empty { display: none; }
   .sp-tag { right: 8px; }
   .sp-shut .sp-scene { height: auto; }
+  .sp-scene.loading { min-height: 220px; }
   .sp-shutters { position: absolute; }
 }
 @media (prefers-reduced-motion: reduce) {
