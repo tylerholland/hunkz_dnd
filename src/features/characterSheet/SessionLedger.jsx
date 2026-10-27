@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { normalizeCoin, xpProgress } from "./sessionLoadout";
+import { COIN_NAMES, MAIN_COIN, mixedPurse, shownCoins, useTableMoney, worthText } from "../../lib/money";
 import "./sessionLoadout.css";
 
-const MINOR_DENOMS = ["cp", "sp", "ep", "pp"];
 const COIN_CHIPS = [1, 5, 10, 25, 50, 100];
 const XP_CHIPS = [10, 25, 50, 100, 250, 500];
 const OPS = [
@@ -80,10 +80,11 @@ function DeltaPad({ unit, current, openedAt, chips, onApply, onClose }) {
 }
 
 export default function SessionLedger({ char, onCommitCoin, onCommitXp }) {
-  const [pad, setPad] = useState(null); // { target: "gp"|"cp"|…|"xp", openedAt }
+  const [pad, setPad] = useState(null); // { target: "sp"|"gp"|…|"xp", openedAt }
   const [flash, setFlash] = useState(null);
-  const coinMode = char?.coinMode || "gp";
+  const money = useTableMoney();
   const coin = normalizeCoin(char?.coin);
+  const [, ...others] = shownCoins(coin, money);
   const showXp = char?.levelingMode === "xp";
   const progress = showXp ? xpProgress(char?.xpCurrent, char?.level) : null;
 
@@ -115,28 +116,27 @@ export default function SessionLedger({ char, onCommitCoin, onCommitXp }) {
 
   return (
     <div className="cs-sm-ledger">
-      <div className="cs-sm-purse" data-mode={coinMode}>
+      <div className="cs-sm-purse">
         <div className="cs-sm-ledger-label">Coin</div>
         <div className="cs-sm-purse-row">
           <button
             type="button"
-            className={`cs-sm-purse-gp${flash === "gp" ? " flash" : ""}${pad?.target === "gp" ? " active" : ""}`}
-            onClick={() => togglePad("gp")}
-            aria-label={`Gold: ${coin.gp}. Adjust`}
+            className={`cs-sm-purse-main${flash === MAIN_COIN ? " flash" : ""}${pad?.target === MAIN_COIN ? " active" : ""}`}
+            onClick={() => togglePad(MAIN_COIN)}
+            aria-label={`${COIN_NAMES[MAIN_COIN]}: ${coin[MAIN_COIN]}. Adjust`}
           >
-            <span className="cs-sm-purse-glyph" aria-hidden="true">⧫</span>
-            <span className="cs-sm-purse-total">{coin.gp.toLocaleString()}</span>
-            <span className="cs-sm-purse-unit">gp</span>
+            <span className="cs-sm-purse-total">{coin[MAIN_COIN].toLocaleString()}</span>
+            <span className="cs-sm-purse-unit">{MAIN_COIN}</span>
           </button>
-          {coinMode === "full" && (
+          {others.length > 0 && (
             <div className="cs-sm-purse-denoms">
-              {MINOR_DENOMS.map((denom) => (
+              {others.map((denom) => (
                 <button
                   key={denom}
                   type="button"
                   className={`cs-sm-purse-denom${coin[denom] === 0 ? " zero" : ""}${flash === denom ? " flash" : ""}${pad?.target === denom ? " active" : ""}`}
                   onClick={() => togglePad(denom)}
-                  aria-label={`${denom}: ${coin[denom]}. Adjust`}
+                  aria-label={`${COIN_NAMES[denom]}: ${coin[denom]}. Adjust`}
                 >
                   <span className="cs-sm-purse-denom-val">{coin[denom].toLocaleString()}</span>
                   <span className="cs-sm-purse-unit">{denom}</span>
@@ -144,6 +144,7 @@ export default function SessionLedger({ char, onCommitCoin, onCommitXp }) {
               ))}
             </div>
           )}
+          {mixedPurse(coin) && <span className="cs-sm-purse-worth">{worthText(coin, money)}</span>}
         </div>
         {coinPadOpen && padFor(pad.target)}
       </div>

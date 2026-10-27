@@ -43,6 +43,18 @@ describe("SessionLedger", () => {
     await waitFor(() => expect(onCommitCoin).toHaveBeenCalledWith("gp", "gain", 125));
     expect(screen.queryByText("Experience")).not.toBeInTheDocument();
   });
+
+  it("shows silver first, the coins in use, and a worth line only for a mixed purse", () => {
+    const { rerender } = render(<SessionLedger char={{ coin: { sp: 49 } }} onCommitCoin={vi.fn()} onCommitXp={vi.fn()} />);
+    expect(screen.getByLabelText("Silver: 49. Adjust")).toBeInTheDocument();
+    expect(screen.getByLabelText("Gold: 0. Adjust")).toBeInTheDocument();
+    expect(screen.queryByLabelText(/Copper/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/worth/)).not.toBeInTheDocument();
+    // Copper is switched off but held, so it still shows and counts.
+    rerender(<SessionLedger char={{ coin: { sp: 9, gp: 4, cp: 5 } }} onCommitCoin={vi.fn()} onCommitXp={vi.fn()} />);
+    expect(screen.getByLabelText("Copper: 5. Adjust")).toBeInTheDocument();
+    expect(screen.getByText("worth 49.5 silver")).toBeInTheDocument();
+  });
 });
 
 describe("SessionLoadoutRow + ItemEditorModal delete", () => {

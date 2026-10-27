@@ -333,39 +333,8 @@ function shopSummary(shop, statusInfo, version) {
   };
 }
 
-// ── Coin ────────────────────────────────────────────────────────────────────
-// Prices are in silver; sheets hold cp/sp/ep/gp/pp. Pay from the whole purse:
-// smallest coins first, breaking a bigger coin when needed and taking the
-// change back in silver and copper.
-const DENOMS = [["cp", 1], ["sp", 10], ["ep", 50], ["gp", 100], ["pp", 1000]];
-
-function purseValueCp(coin) {
-  return DENOMS.reduce((sum, [k, v]) => sum + Math.max(0, toInt(coin?.[k])) * v, 0);
-}
-
-/** New purse after paying `costSp` silver, or null if it can't be covered. */
-function payFromPurse(coin, costSp) {
-  const cost = Math.round(costSp * 10);
-  const purse = Object.fromEntries(DENOMS.map(([k]) => [k, Math.max(0, toInt(coin?.[k]))]));
-  if (purseValueCp(purse) < cost) return null;
-  let remaining = cost;
-  for (const [k, v] of DENOMS) {
-    const use = Math.min(purse[k], Math.floor(remaining / v));
-    purse[k] -= use;
-    remaining -= use * v;
-  }
-  if (remaining > 0) {
-    // Break the smallest coin that covers what's left. One always does: any
-    // coin the pass above left behind is worth more than what's still owed.
-    const [k, v] = DENOMS.find(([d, value]) => purse[d] > 0 && value >= remaining);
-    purse[k] -= 1;
-    remaining -= v;
-    const change = -remaining;
-    purse.sp += Math.floor(change / 10);
-    purse.cp += change % 10;
-  }
-  return { ...(coin || {}), ...purse };
-}
+// ── Coin ── paying and purse value live in lib/money.js (the table's rates).
+const { purseWorth, payFromPurse } = require("./money");
 
 // ── Into the pack ───────────────────────────────────────────────────────────
 const CONSUMABLE = new Set(["rations", "torches", "bandages", "quicksilver", "holy-water", "blood", "bone-dust", "incense", "fire-oil", "chalk", "parchment", "spike", "caltrops"]);
@@ -459,5 +428,5 @@ module.exports = {
   CATS, SEED_ITEMS, CATALOG_SEED_VERSION, LOCKUP_MS, MAX_ITEMS, MAX_QTY,
   normalizeCatalog, normalizeCatalogItem, normalizeShop, normalizeOpening,
   openingWindow, shopStatus, markedPrice, playerShop, shopSummary,
-  purseValueCp, payFromPurse, addPurchase,
+  purseWorth, payFromPurse, addPurchase,
 };

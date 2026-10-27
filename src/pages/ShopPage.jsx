@@ -13,17 +13,15 @@ import {
 import { byMood, linesFor } from "../features/shop/keeperLines";
 import { haveCount, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
 import { ShopIcon, ItemOrb, ShopShutters, PackPanel, SatchelSheet, Receipt } from "../features/shop/ShopParts";
+import { purseWorth, useTableMoney } from "../lib/money";
 import "../features/shop/shop.css";
 
 // Story 72 — the shop, as a player sees it: the keeper's scene with their
 // speech bubble, the item in hand, the shelves, what you already carry, and a
 // satchel you pay for. Opening hours, stock and prices come from the DM page.
 
-const DENOMS = [["cp", 0.1], ["sp", 1], ["ep", 5], ["gp", 10], ["pp", 100]];
-const purseWorth = (coin) => Math.round(DENOMS.reduce((s, [k, v]) => s + (parseInt(coin?.[k], 10) || 0) * v, 0) * 10) / 10;
 // "Rogue (Thief)" → "rogue"; "Half-Elf" → "half-elf"; blank → the fallback.
 const simpleWord = (v, fallback) => String(v || "").replace(/\(.*?\)/g, "").trim().split(/[\s/,]+/)[0]?.toLowerCase() || fallback;
-const onlySilver = (coin) => DENOMS.every(([k]) => k === "sp" || !(parseInt(coin?.[k], 10) > 0));
 
 function readPassword(slug) {
   try {
@@ -87,6 +85,7 @@ export default function ShopPage({ preview = false }) {
   const slug = preview ? (searchParams.get("as") || roster[0]?.slug || null) : params.slug;
   const [password, setPassword] = useState(() => (preview ? (() => { try { return sessionStorage.getItem("dnd_dm_password"); } catch { return null; } })() : readPassword(params.slug)));
   const [character, setCharacter] = useState(null);
+  const money = useTableMoney();
   const [summary, setSummary] = useState(null);
   const [shop, setShop] = useState(null);
   const [loadError, setLoadError] = useState(null);
@@ -195,7 +194,7 @@ export default function ShopPage({ preview = false }) {
   const satchelLines = satchel.map((l) => ({ item: byId.get(l.itemId), qty: l.qty })).filter((l) => l.item)
     .map((l) => ({ ...l, each: myPrice(l.item), deal: deals[l.item.id]?.mult !== 1 ? deals[l.item.id] : null }));
   const total = satchelLines.reduce((s, l) => s + l.each * l.qty, 0);
-  const worth = purseWorth(character?.coin);
+  const worth = purseWorth(character?.coin, money);
   const purseLabel = `${worth}s`;
 
   // Which shelf, and what's in hand.
@@ -470,7 +469,7 @@ export default function ShopPage({ preview = false }) {
                 </div>
               )}
               <div className="sp-counter">
-                <div className="sp-chip" title="Your purse"><div className="sp-coins"><i /><i /><i /></div><div><b>{worth}</b> <small>{onlySilver(character?.coin) ? "silver" : "silver's worth"}</small></div></div>
+                <div className="sp-chip" title="Your purse"><div className="sp-coins"><i /><i /><i /></div><div><b>{worth}</b> <small>{worth === (parseInt(character?.coin?.sp, 10) || 0) ? "silver" : "silver's worth"}</small></div></div>
                 <button key={bump} className={`sp-chip satchel${bump ? " bump" : ""}`} type="button" onClick={() => setSheetOpen(true)}>Satchel <span className="n">{satchelLines.reduce((n, l) => n + l.qty, 0)}</span></button>
               </div>
             </>

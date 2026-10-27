@@ -7,7 +7,9 @@
 // from ability checks, defaulting to the usual attack d20.
 // playersEndTurn — players may end their own turn in initiative (Story 49).
 // customEffects — the DM's own effects ([{ name, kind }]), Story 70.
-const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [] };
+// money — which coins are in use and their worth in silver (lib/money.js).
+const { normalizeMoney, DEFAULT_MONEY } = require("./money");
+const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY };
 const EFFECT_KINDS = new Set(["curse", "helpful", "neutral"]);
 
 function normalizeCustomEffects(list) {
@@ -44,6 +46,7 @@ function normalizeHouseRulesRecord(item) {
     spellCastDice: normalizeDice(item?.spellCastDice, DEFAULT_HOUSE_RULES.spellCastDice),
     playersEndTurn: item?.playersEndTurn !== false,
     customEffects: normalizeCustomEffects(item?.customEffects),
+    money: normalizeMoney(item?.money),
     version: Number.isFinite(item?.version) ? item.version : 0,
   };
 }

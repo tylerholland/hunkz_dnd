@@ -881,7 +881,6 @@
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--pal-text-muted);
-  width: 20px;
   flex-shrink: 0;
 }
 
@@ -931,8 +930,9 @@
 
 .cc-coin-header {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: 8px;
+  gap: 6px 8px;
 }
 
 .cc-coin-label {
@@ -945,38 +945,8 @@
   flex-shrink: 0;
 }
 
-.cc-coin-pill {
-  display: inline-flex;
-  align-items: baseline;
-  gap: 3px;
-  background: rgba(200, 160, 64, 0.08);
-  border: 1px solid rgba(200, 160, 64, 0.22);
-  border-radius: 8px;
-  padding: 2px 8px;
-}
-
-.cc-coin-expand-btn {
-  width: 20px;
-  height: 20px;
-  border-radius: 3px;
-  border: 1px solid rgba(200, 160, 64, 0.2);
-  background: transparent;
-  color: rgba(200, 160, 64, 0.5);
-  font-size: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  flex-shrink: 0;
-  transition: border-color 0.12s, color 0.12s;
-  margin-left: auto;
-}
-.cc-coin-expand-btn:hover {
-  border-color: rgba(200, 160, 64, 0.5);
-  color: #c8a040;
-}
-
 .cc-coin-give-btn {
+  margin-left: auto;
   background: transparent;
   border: 1px solid var(--pal-border);
   border-radius: 4px;
@@ -993,20 +963,20 @@
   color: var(--pal-accent-bright);
 }
 
-.cc-coin-breakdown {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  padding-left: 28px;
-  flex-wrap: wrap;
-}
-
 .cc-coin-denom {
   display: inline-flex;
   align-items: baseline;
   gap: 3px;
   border-radius: 8px;
   padding: 2px 8px;
+}
+
+.cc-coin-unit {
+  font-family: var(--font-ui);
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  filter: brightness(0.8);
 }
 
 /* ─── Actions column (right side: kebab menu + AC badge + popover) ───────── */

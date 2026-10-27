@@ -9,6 +9,7 @@ import { useTextScale } from "../lib/useTextScale";
 import { abilityCheckExpr, DEFAULT_HOUSE_RULES, isValidCheckDice, normalizeHouseRules, parseCheckDice } from "../lib/houseRules";
 import DmPasswordReset from "./DmPasswordReset";
 import DmSpellDiceCard from "./DmSpellDiceCard";
+import DmMoneyCard from "./DmMoneyCard";
 import "./dmSettings.css";
 
 const CHECK_PRESETS = ["2d6", "1d20", "3d6", "1d12"];
@@ -235,6 +236,8 @@ export default function DmSettingsPage() {
               </div>
             </div>
           </section>
+
+          <DmMoneyCard key={saved ? "loaded-money" : "loading-money"} dmPassword={dmPassword} saved={saved} onSaved={setSaved} />
 
           <section className="dm-settings-card" aria-labelledby="hr-shop">
             <div className="dm-settings-row">

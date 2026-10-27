@@ -262,3 +262,70 @@
   align-items: center;
   text-decoration: none;
 }
+
+/* Money — one row per coin: switch, name, worth in silver */
+.dm-money-coins {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.dm-money-coin {
+  display: grid;
+  grid-template-columns: auto 92px 1fr;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border: 1px solid var(--pal-border);
+  border-radius: 8px;
+}
+
+.dm-money-coin.off {
+  border-style: dashed;
+}
+
+.dm-money-coin.off .dm-money-name,
+.dm-money-coin.off .dm-money-rate {
+  opacity: 0.6;
+}
+
+.dm-money-name {
+  font-family: 'Cinzel', serif;
+  font-weight: 400;
+  letter-spacing: 0.06em;
+  color: var(--pal-accent-bright);
+}
+
+.dm-money-main {
+  justify-self: start;
+  padding: 1px 10px;
+  border: 1px solid var(--pal-accent);
+  border-radius: 999px;
+  font-family: 'Cinzel', serif;
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--pal-accent-bright);
+}
+
+.dm-money-rate {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.dm-money-rate .dm-settings-input {
+  width: 80px;
+  min-height: 36px;
+  padding: 4px 8px;
+}
+
+@media (max-width: 520px) {
+  .dm-money-coin {
+    grid-template-columns: auto 1fr;
+  }
+  .dm-money-rate {
+    grid-column: 1 / -1;
+  }
+}

@@ -3,12 +3,14 @@ import { patchSession } from "../../../api";
 import { COIN_COLORS } from "../../characterSheet/constants";
 import { PalCtx } from "../dashboardShared";
 import { createPortal } from "react-dom";
+import { MAIN_COIN, shownCoins, useTableMoney } from "../../../lib/money";
 import "../characterCard.css";
 
 function DistributeCoinModal({ char, dmPassword, onClose, onUpdate, onOptimisticUpdate, forParty = false, party = [] }) {
   const pal = useContext(PalCtx);
   const [action, setAction] = useState("give"); // "give" | "deduct"
-  const [denom, setDenom] = useState("gp");
+  const money = useTableMoney();
+  const [denom, setDenom] = useState(MAIN_COIN);
   const [amount, setAmount] = useState("");
   const [targets, setTargets] = useState(() => forParty ? party.map((c) => c.slug) : [char?.slug].filter(Boolean));
   const [error, setError] = useState("");
@@ -113,7 +115,8 @@ function DistributeCoinModal({ char, dmPassword, onClose, onUpdate, onOptimistic
 
         {/* Denomination selector */}
         <div className="cc-coin-modal-denoms">
-          {["cp", "sp", "ep", "gp", "pp"].map((d) => {
+          {/* Only the coins the table uses (DM Settings → Money). */}
+          {shownCoins({}, money).map((d) => {
             const c = COIN_COLORS[d];
             const active = denom === d;
             return (

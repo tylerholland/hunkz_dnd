@@ -30,7 +30,8 @@ const { notifySessionChanged } = require("../lib/broadcast");
 const {
   VersionConflictError, isConditionalFailure, currentVersion, conditionalPutParams, withVersionRetry, characterVersionKey, withVersions,
 } = require("../lib/versioning");
-const { SHOP_SLUG, SHOP_CATALOG_SLUG, CHRONICLE_SLUG, MAP_LIBRARY_SLUG, isReservedCharacterSlug } = require("../lib/specialItems");
+const { SHOP_SLUG, SHOP_CATALOG_SLUG, CHRONICLE_SLUG, MAP_LIBRARY_SLUG, HOUSE_RULES_SLUG, isReservedCharacterSlug } = require("../lib/specialItems");
+const { normalizeMoney } = require("../lib/money");
 const {
   CATS, MAX_QTY, CATALOG_SEED_VERSION, sellOffers, sellOne, normalizeCatalog, normalizeCatalogItem, normalizeShop, shopStatus, markedPrice, playerShop, payFromPurse, addPurchase,
 } = require("../lib/shop");
@@ -45,7 +46,7 @@ async function isDm(event) {
 // Everything the shop's state depends on, in one round trip.
 async function readAll() {
   const result = await db.send(new BatchGetCommand({
-    RequestItems: { [TABLE]: { Keys: [SHOP_SLUG, SHOP_CATALOG_SLUG, CHRONICLE_SLUG, MAP_LIBRARY_SLUG].map((slug) => ({ slug })) } },
+    RequestItems: { [TABLE]: { Keys: [SHOP_SLUG, SHOP_CATALOG_SLUG, CHRONICLE_SLUG, MAP_LIBRARY_SLUG, HOUSE_RULES_SLUG].map((slug) => ({ slug })) } },
   }));
   const bySlug = new Map((result.Responses?.[TABLE] || []).map((item) => [item.slug, item]));
   const shopItem = bySlug.get(SHOP_SLUG);
@@ -56,6 +57,8 @@ async function readAll() {
     shopVersion: currentVersion(shopItem),
     catalog: normalizeCatalog(catalogItem),
     catalogVersion: currentVersion(catalogItem),
+    // The table's coins and their worth in silver (DM Settings → Money).
+    money: normalizeMoney(bySlug.get(HOUSE_RULES_SLUG)?.money),
     statusInfo: shopStatus(shop, {
       nextSessionAt: bySlug.get(CHRONICLE_SLUG)?.nextSession?.at || null,
       combatMode: bySlug.get(MAP_LIBRARY_SLUG)?.combatMode === true,
@@ -264,7 +267,7 @@ exports.handler = async (event) => {
     const lines = Array.isArray(body.lines) ? body.lines : [];
     if (!lines.length || lines.length > 50) return badRequest("lines must hold 1–50 items");
 
-    const { shop, catalog, statusInfo } = await readAll();
+    const { shop, catalog, statusInfo, money } = await readAll();
     if (statusInfo.status === "combat") return conflict("The shutters are down for the fighting");
     if (!live(statusInfo.status)) return conflict("The shop is closed");
     const visit = visitOf(shop, slug);
@@ -294,7 +297,7 @@ exports.handler = async (event) => {
         const password = event.headers?.["x-character-password"] ?? "";
         const auth = await verifyPassword(password, character);
         if (!auth.valid) return { status: "forbidden" };
-        const coin = payFromPurse(character.coin || {}, total);
+        const coin = payFromPurse(character.coin || {}, total, money);
         if (!coin) return { status: "poor" };
         let next = { ...character, coin };
         for (const w of wanted) next = addPurchase(next, w.item, w.qty, { shopName: shop.display.name });

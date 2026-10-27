@@ -1,5 +1,6 @@
 import { noteVersions } from "./lib/versionFloors";
 import { setCustomEffects } from "./lib/spellEffects";
+import { setTableMoney } from "./lib/money";
 import { needsTalentCodex, setTalentCodex, talentCodexFetchFailed } from "./features/characterSheet/talentCodexStore";
 
 const BASE = import.meta.env.VITE_API_URL;
@@ -321,6 +322,8 @@ export const getSessionState = ({ dmPassword, slug } = {}) => {
     // Story 70 — the DM's custom effects ride house rules; register them so
     // every picker, pill and ring on this page knows their kind.
     setCustomEffects(data?.houseRules?.customEffects);
+    // The table's coins and rates (DM Settings → Money).
+    setTableMoney(data?.houseRules?.money);
     // Story 39 — fetch the Talent Codex only when its version changes.
     if (needsTalentCodex(data?.talentCodexVersion)) {
       getTalentCodex()

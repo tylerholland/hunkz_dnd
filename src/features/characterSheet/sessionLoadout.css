@@ -118,7 +118,7 @@
   margin-top: 6px;
 }
 
-.cs-sm-purse-gp,
+.cs-sm-purse-main,
 .cs-sm-purse-denom {
   display: inline-flex;
   align-items: baseline;
@@ -133,9 +133,9 @@
   transition: border-color 0.12s ease, color 0.12s ease;
 }
 
-.cs-sm-purse-gp:hover,
-.cs-sm-purse-gp:focus-visible,
-.cs-sm-purse-gp.active,
+.cs-sm-purse-main:hover,
+.cs-sm-purse-main:focus-visible,
+.cs-sm-purse-main.active,
 .cs-sm-purse-denom:hover,
 .cs-sm-purse-denom:focus-visible,
 .cs-sm-purse-denom.active {
@@ -143,14 +143,9 @@
   outline: none;
 }
 
-.cs-sm-purse-gp {
+.cs-sm-purse-main {
   align-items: center;
   margin-left: -10px;
-}
-
-.cs-sm-purse-glyph {
-  color: #c8a040;
-  font-size: 16px;
 }
 
 .cs-sm-purse-total {
@@ -169,9 +164,15 @@
 }
 
 .cs-sm-purse-denoms {
-  display: grid;
-  grid-template-columns: repeat(4, auto);
+  display: flex;
+  flex-wrap: wrap;
   gap: 4px;
+}
+
+.cs-sm-purse-worth {
+  font-style: italic;
+  font-size: 14px;
+  color: var(--pal-text-muted);
 }
 
 .cs-sm-purse-denom {

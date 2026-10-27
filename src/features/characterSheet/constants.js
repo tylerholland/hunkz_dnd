@@ -184,7 +184,6 @@ export const BLANK_CHARACTER = {
   levelingMode: "milestone",
   xpCurrent: 0,
   coin: { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 },
-  coinMode: "gp",
   collections: [
     {
       id: uid(),

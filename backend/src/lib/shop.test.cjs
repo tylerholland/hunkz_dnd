@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   SEED_ITEMS, LOCKUP_MS, normalizeCatalog, normalizeShop, shopStatus, markedPrice, playerShop,
-  purseValueCp, payFromPurse, addPurchase,
+  purseWorth, payFromPurse, addPurchase,
 } = require("./shop");
 const { isReservedCharacterSlug, SHOP_SLUG, SHOP_CATALOG_SLUG } = require("./specialItems");
 
@@ -77,13 +77,11 @@ test("players see marked prices, never markups, and nothing while it's shut", ()
   assert.equal(markedPrice({ cat: "gear", price: 2 }, { gear: -50 }), 1);
 });
 
-test("paying spends small coins first and gives change in silver and copper", () => {
-  assert.equal(purseValueCp({ cp: 5, sp: 2, gp: 1 }), 125);
-  assert.deepEqual(payFromPurse({ cp: 0, sp: 64, ep: 0, gp: 0, pp: 0 }, 20), { cp: 0, sp: 44, ep: 0, gp: 0, pp: 0 });
-  assert.deepEqual(payFromPurse({ cp: 5, sp: 0, ep: 0, gp: 1, pp: 0 }, 3), { cp: 5, sp: 7, ep: 0, gp: 0, pp: 0 });
+test("the shop pays from the purse at the table's rates", () => {
+  assert.deepEqual(payFromPurse({ sp: 64 }, 20), { sp: 44, cp: 0, ep: 0, gp: 0, pp: 0 });
+  assert.deepEqual(payFromPurse({ sp: 5, gp: 1 }, 7), { sp: 8, gp: 0, cp: 0, ep: 0, pp: 0 });
   assert.equal(payFromPurse({ sp: 1 }, 2), null);
-  const after = payFromPurse({ cp: 3, sp: 1, ep: 1, gp: 2, pp: 1 }, 47);
-  assert.equal(purseValueCp(after), purseValueCp({ cp: 3, sp: 1, ep: 1, gp: 2, pp: 1 }) - 470);
+  assert.equal(purseWorth({ sp: 9, gp: 2 }), 29);
 });
 
 test("selling back: half the list price, one at a time, never hirelings", () => {

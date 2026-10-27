@@ -67,7 +67,6 @@ export default function CharacterCard({
   const [modalMode, setModalMode] = useState(null);
   const [showAwardXp, setShowAwardXp] = useState(false);
   const [showDistributeCoin, setShowDistributeCoin] = useState(false);
-  const [coinExpanded, setCoinExpanded] = useState(false);
   // Loadout drawer — the dashboard owns this so only one card is open at a time.
   const [localExpanded, setLocalExpanded] = useState(false);
   const expanded = expandedProp ?? localExpanded;
@@ -137,10 +136,6 @@ export default function CharacterCard({
   useEffect(() => {
     if (!coinPendingRef.current) setOptimisticCoin(char.coin || { cp: 0, sp: 0, ep: 0, gp: 0, pp: 0 });
   }, [char.coin]);
-
-  useEffect(() => {
-    setCoinExpanded(false);
-  }, [char.slug, char.coinMode]);
 
   // When HP rises above 0 (healed), the death-save-specific state (prompt/shortcuts/fallen/stable)
   // resets inside DeathSavesStrip itself; this only resets the HP-domain "was at zero" tracker.
@@ -597,8 +592,6 @@ export default function CharacterCard({
             cardPal={cardPal}
             optimisticXp={optimisticXp}
             optimisticCoin={optimisticCoin}
-            coinExpanded={coinExpanded}
-            setCoinExpanded={setCoinExpanded}
             setShowAwardXp={setShowAwardXp}
             setShowDistributeCoin={setShowDistributeCoin}
             showTier2={showTier2}

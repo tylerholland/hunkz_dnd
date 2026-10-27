@@ -11,6 +11,7 @@ const api = vi.hoisted(() => ({
 vi.mock("../api", () => api);
 
 import DmSettingsPage from "./DmSettingsPage";
+import { DEFAULT_MONEY } from "../lib/money";
 
 describe("DmSettingsPage", () => {
   beforeEach(() => {
@@ -36,7 +37,7 @@ describe("DmSettingsPage", () => {
     fireEvent.change(input, { target: { value: "1D20" } });
     expect(screen.getByText("1d20+2")).toBeInTheDocument();
     fireEvent.click(screen.getAllByText("Save")[0]);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [] }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY }));
     expect(await screen.findByText(/Saved/)).toBeInTheDocument();
   });
 
@@ -45,7 +46,7 @@ describe("DmSettingsPage", () => {
     const toggle = await screen.findByRole("switch", { name: "Features & Traits" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
     fireEvent.click(toggle);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [] }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY }));
     expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
@@ -83,13 +84,28 @@ describe("DmSettingsPage", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("DM password rejected");
   });
 
+  it("switches copper on and re-rates gold in the Money card", async () => {
+    renderPage();
+    // The card remounts once the rules load, so query after that.
+    await waitFor(() => expect(screen.getByRole("switch", { name: "Copper" })).toBeEnabled());
+    const copper = screen.getByRole("switch", { name: "Copper" });
+    expect(screen.getByRole("switch", { name: "Silver" })).toBeDisabled();
+    fireEvent.click(copper);
+    fireEvent.change(screen.getByLabelText("Gold worth in silver"), { target: { value: "50" } });
+    fireEvent.click(screen.getAllByText("Save")[2]);
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalled());
+    const { money } = api.putHouseRules.mock.calls[0][1];
+    expect(money.coins.cp).toEqual({ on: true, rate: 0.1 });
+    expect(money.coins.gp).toEqual({ on: true, rate: 50 });
+  });
+
   it("saves the spell casting dice separately from ability checks", async () => {
     renderPage();
     // The card remounts once the rules load, so query after that.
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Spell casting dice" })).toHaveValue("1d20"));
     fireEvent.click(screen.getByRole("button", { name: "2d6" }));
     fireEvent.click(screen.getAllByText("Save")[1]);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "2d6", playersEndTurn: true, customEffects: [] }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "2d6", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY }));
   });
 
   it("turns player turn-ending off", async () => {
