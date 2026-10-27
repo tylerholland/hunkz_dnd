@@ -138,8 +138,9 @@
 .sp-good:hover .sp-orb.art img { transform: scale(1.2); }
 .sp-good .nm { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.04em; line-height: 1.2; color: var(--pal-text); }
 .sp-good .st { font-size: 13px; color: var(--sp-muted); min-height: 1.2em; }
-.sp-tag { position: absolute; top: 8px; right: calc(50% - 66px); padding: 1px 8px; border-radius: 999px; background: var(--parchment); color: var(--ink); font-family: 'Cinzel', serif; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
-.sp-good.poor .sp-tag { color: var(--danger); }
+.sp-tag { position: absolute; top: 8px; right: calc(50% - 66px); padding: 1px 8px; border-radius: 999px; background: var(--parchment); color: var(--ink); font-family: 'Cinzel', serif; font-size: 12px; font-weight: 600; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+/* On the parchment badge, warnings use a deep red the badge can carry. */
+.sp-good.poor .sp-tag, .sp-tag.worse { color: #8e2219; }
 .sp-good.poor .sp-orb { filter: saturate(0.5) brightness(0.75); }
 .sp-good.out { cursor: default; }
 .sp-good.out:hover { transform: none; background: transparent; }
@@ -162,7 +163,6 @@
 .sp-price.worse { color: var(--danger); }
 .sp-deal-note { margin: 6px 0 0 !important; font-size: 13px !important; font-style: italic; color: var(--sp-muted) !important; text-align: left !important; }
 .sp-tag.deal { background: #cfe6bf; }
-.sp-tag.worse { color: var(--danger); }
 .sp-line small { display: block; font-size: 12px; font-style: italic; }
 .sp-line small.disc { color: var(--good); }
 .sp-line small.bad { color: var(--danger); }
