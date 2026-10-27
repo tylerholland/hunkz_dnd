@@ -419,7 +419,8 @@
   .sh-row .dotc { width: 10px; height: 10px; border-radius: 50%; background: var(--cat); flex: none; }
   .sh-row .nm { width: 130px; font-family: 'Cinzel', serif; font-weight: 400; font-size: 13px; letter-spacing: 0.06em; color: var(--pal-text); }
   .sh-row .eg { flex: 1; min-width: 120px; font-size: 13px; font-style: italic; color: var(--pal-muted); }
-  .sh-row .cnt { min-width: 120px; text-align: right; font-size: 15px; color: var(--pal-text); }
+  .sh-row .cnt { min-width: 110px; text-align: right; font-family: 'Cinzel', serif; font-size: 14px; color: var(--pal-text); }
+  .sh-row .cnt small, .count small { font-family: 'Crimson Text', serif; font-size: 13px; color: var(--pal-muted); margin-right: 3px; }
   .sh-row .chev { width: 28px; height: 28px; border: 0; background: none; color: var(--pal-muted); font-size: 14px; }
   .mkc { display: inline-flex; align-items: center; gap: 4px; }
   .mkc button { width: 24px; height: 24px; border-radius: 5px; border: 1px solid var(--pal-border); background: var(--pal-accent-dim); color: var(--pal-accent-bright); font-size: 14px; line-height: 1; }
@@ -1570,7 +1571,7 @@ function renderShelves() {
     ? "No rerolling while the shop is open. Flip items one at a time instead."
     : "Each shelf's markup and stock are rolled from these; nudge any of them below. The stock roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first.";
   const { n, of } = stockCounts();
-  document.getElementById("stockCount").innerHTML = `<small>In stock:</small> ${n} of ${of}`;
+  document.getElementById("stockCount").innerHTML = `<small>In stock</small> ${n} of ${of}`;
   const q = document.getElementById("stockFind").value.trim().toLowerCase();
   const hits = (it) => !q || it.name.toLowerCase().includes(q);
   const chip = (it, carried) => carried
@@ -1586,7 +1587,7 @@ function renderShelves() {
         <span class="dotc"></span><b class="nm">${c.name}</b>
         ${on ? `<span class="mkc lockable"><button type="button" data-mk="${c.id}" data-d="-5" aria-label="Cheaper">−</button><b class="${m > 0 ? "up" : m < 0 ? "down" : ""}">${markupName(m)}</b><button type="button" data-mk="${c.id}" data-d="5" aria-label="Dearer">+</button></span>
           <small class="eg">${eg.name.toLowerCase()} ${cost(eg)}s${m ? ` <s>${eg.price}s</s>` : ""}</small>
-          <span class="cnt">In stock: ${list.filter((i) => !isOut(i)).length} of ${list.length}</span>`
+          <span class="cnt"><small>In stock</small> ${list.filter((i) => !isOut(i)).length} of ${list.length}</span>`
         : `<small class="eg">not carried here</small><span class="cnt"></span>`}
         <button type="button" class="chev" data-exp="${c.id}" aria-label="Show items">${open ? "▾" : "▸"}</button>
       </div>
