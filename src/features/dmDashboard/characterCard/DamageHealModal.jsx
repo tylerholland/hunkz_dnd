@@ -1,6 +1,7 @@
 import { useContext, useEffect, useState } from "react";
 import { patchSession } from "../../../api";
 import { DAMAGE_PRESETS, PalCtx, useHoldToRepeat } from "../dashboardShared";
+import { createPortal } from "react-dom";
 import "../characterCard.css";
 
 function DamageHealModal({ char, mode, dmPassword, onClose, onOptimisticUpdate, onSync }) {
@@ -75,7 +76,9 @@ function DamageHealModal({ char, mode, dmPassword, onClose, onOptimisticUpdate, 
     touchAction: "none",
   };
 
-  return (
+  // Drawn at the top of the page, not inside the card: the card's hover
+  // transform and dim filter would otherwise trap a fixed overlay inside it.
+  return createPortal(
     <div
       className="cc-modal-overlay"
       style={{ ...palVars, padding: 24 }}
@@ -178,7 +181,8 @@ function DamageHealModal({ char, mode, dmPassword, onClose, onOptimisticUpdate, 
           }}>{isHeal ? "Heal" : "Apply Damage"}</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

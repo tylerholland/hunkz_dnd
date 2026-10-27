@@ -2,6 +2,7 @@ import { useContext, useState } from "react";
 import { patchSession } from "../../../api";
 import { COIN_COLORS } from "../../characterSheet/constants";
 import { PalCtx } from "../dashboardShared";
+import { createPortal } from "react-dom";
 import "../characterCard.css";
 
 function DistributeCoinModal({ char, dmPassword, onClose, onUpdate, onOptimisticUpdate, forParty = false, party = [] }) {
@@ -90,7 +91,9 @@ function DistributeCoinModal({ char, dmPassword, onClose, onUpdate, onOptimistic
     >{children}</button>
   );
 
-  return (
+  // Drawn at the top of the page, not inside the card: the card's hover
+  // transform and dim filter would otherwise trap a fixed overlay inside it.
+  return createPortal(
     <div
       className="cc-modal-overlay"
       style={palVars}
@@ -211,7 +214,8 @@ function DistributeCoinModal({ char, dmPassword, onClose, onUpdate, onOptimistic
           >Confirm</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

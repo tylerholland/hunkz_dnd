@@ -1,6 +1,7 @@
 import { useContext, useState } from "react";
 import { patchSession } from "../../../api";
 import { PalCtx } from "../dashboardShared";
+import { createPortal } from "react-dom";
 import "../characterCard.css";
 
 function AwardXpModal({ char, dmPassword, onClose, onUpdate, onOptimisticUpdate, forParty = false, party = [] }) {
@@ -45,7 +46,9 @@ function AwardXpModal({ char, dmPassword, onClose, onUpdate, onOptimisticUpdate,
     "--font-ui": pal.fontUI,
   };
 
-  return (
+  // Drawn at the top of the page, not inside the card: the card's hover
+  // transform and dim filter would otherwise trap a fixed overlay inside it.
+  return createPortal(
     <div className="cc-modal-overlay" style={palVars} onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
       <div className="cc-modal-panel">
         <div className="cc-modal-title">Award XP</div>
@@ -101,7 +104,8 @@ function AwardXpModal({ char, dmPassword, onClose, onUpdate, onOptimisticUpdate,
           <button onClick={handleAward} className="cc-modal-confirm-btn">Award XP</button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
