@@ -10,7 +10,7 @@ import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
 import {
   KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime,
 } from "../features/shop/shopData";
-import { linesFor } from "../features/shop/keeperLines";
+import { byMood, linesFor } from "../features/shop/keeperLines";
 import { haveCount, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
 import { ShopIcon, ItemOrb, ShopShutters, PackPanel, SatchelSheet, Receipt } from "../features/shop/ShopParts";
 import "../features/shop/shop.css";
@@ -152,7 +152,8 @@ export default function ShopPage({ preview = false }) {
   // This keeper's voice: {name}, {item}, {price} and {time} filled in.
   const voice = linesFor(keeperKey);
   const speak = (list, vars = {}) => {
-    const text = Array.isArray(list) ? pick(list) : list;
+    const chosen = byMood(list, shop?.visit?.read?.mood);
+    const text = Array.isArray(chosen) ? pick(chosen) : chosen;
     return String(text || "").replace(/\{(\w+)\}/g, (m, k) => ({ name: character?.name || "friend", ...vars })[k] ?? m);
   };
   const scene = SCENES[keeperKey];

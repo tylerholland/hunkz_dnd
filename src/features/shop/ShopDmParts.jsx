@@ -4,7 +4,7 @@ import {
   KEEPERS, SCENES, USUAL, SHELVES, LEVELS, FILL_NAMES, TEMPERS, shelfColor, markupName, markedPrice, sameMarkups,
   fmtDay, fmtTime, fromNow, closesText, keeperFaceStyle,
 } from "./shopData";
-import { linesFor } from "./keeperLines";
+import { byMood, linesFor } from "./keeperLines";
 import { catalogToCsv, csvToItems, diffCatalog } from "./shopCsv";
 import { ItemOrb } from "./ShopParts";
 
@@ -126,7 +126,7 @@ export function ShopPicker({ setup, display, onPick, onSign, onTemper, onBuysBac
   const u = USUAL[setup.keeper];
   const usual = u.cats.length === setup.carries.length && u.cats.every((c) => setup.carries.includes(c)) && sameMarkups(u.markups, setup.markups) && u.temper === setup.temper;
   const own = !!setup.sign?.custom;
-  const greet = useMemo(() => linesFor(setup.keeper).greet[0].replace("{name}", "friend"), [setup.keeper]);
+  const greet = useMemo(() => [byMood(linesFor(setup.keeper).greet, "easy")].flat()[0].replace("{name}", "friend"), [setup.keeper]);
   const card = (id, key, title, sub) => (
     <button key={id} type="button" className={`sd-kc${setup.pick === id ? " on" : ""}`} style={keeperFaceStyle(key)} onClick={() => onPick(id)} aria-pressed={setup.pick === id}>
       <span>{title}<small>{sub}</small></span>
