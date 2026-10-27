@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Link, useParams, useSearchParams } from "react-router-dom";
-import { getSessionState, getShop, getShopPreview, listCharacters, postShopPurchase, verifyPassword } from "../api";
+import { getSessionState, getShop, getShopPreview, listCharacters, postShopHaggle, postShopPurchase, verifyPassword } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import TopNav from "../components/TopNav";
 import { useTextScale } from "../lib/useTextScale";
@@ -9,7 +9,7 @@ import { useSessionSocket } from "../lib/useSessionSocket";
 import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
 import {
   KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, SHELF_LINES, ITEM_LINES, POOR_LINES, OUT_LINES, ADD_LINES,
-  pick, say, closesText,
+  HAGGLE_LINES, pick, say, closesText,
 } from "../features/shop/shopData";
 import { haveCount, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
 import { ShopIcon, ItemOrb, ShopShutters, PackPanel, SatchelSheet, Receipt } from "../features/shop/ShopParts";
@@ -128,7 +128,7 @@ export default function ShopPage({ preview = false }) {
       // retried on the next poll instead of leaving a stale (closed) shop.
       const key = `${d.shop?.version}|${d.shop?.status}`;
       if (key !== shopKeyRef.current) {
-        const next = await (preview ? getShopPreview(password) : getShop());
+        const next = await (preview ? getShopPreview(password) : getShop({ slug, password }));
         shopKeyRef.current = key;
         setShop(next);
       }
@@ -159,7 +159,13 @@ export default function ShopPage({ preview = false }) {
   const items = useMemo(() => shop?.items || [], [shop]);
   const byId = useMemo(() => new Map(items.map((it) => [it.id, it])), [items]);
   const shelves = useMemo(() => SHELVES.filter((s) => items.some((it) => it.cat === s.id)), [items]);
-  const browsing = status === "open" || status === "lockup";
+  // This shopper's own haggling: deals struck, items refused to them, thrown out.
+  const visit = shop?.visit || null;
+  const deals = useMemo(() => visit?.deals || {}, [visit]);
+  const refused = useMemo(() => new Set(visit?.refused || []), [visit]);
+  const thrownOut = !preview && visit?.thrownOut === true;
+  const myPrice = (it) => Math.max(1, Math.round(it.price * (deals[it.id]?.mult || 1)));
+  const browsing = (status === "open" || status === "lockup") && !thrownOut;
   const shut = status === "closed" || status === "scheduled";
   // A preview keeps its satchel in memory only.
   const openingId = preview ? null : shop?.openingId || null;
@@ -168,11 +174,13 @@ export default function ShopPage({ preview = false }) {
   // shut for good, an unpaid satchel goes back on the shelves.
   const [satchelFor, setSatchelFor] = useState(null);
   if (openingId && satchelFor !== openingId) { setSatchelFor(openingId); setSatchel(loadSatchel(slug, openingId)); }
-  if (shut && satchel.length) setSatchel([]);
+  if ((shut || thrownOut) && satchel.length) setSatchel([]);
+  if (satchel.some((l) => refused.has(l.itemId))) setSatchel(satchel.filter((l) => !refused.has(l.itemId)));
   useEffect(() => { if (openingId) saveSatchel(slug, openingId, satchel); }, [slug, openingId, satchel]);
 
-  const satchelLines = satchel.map((l) => ({ item: byId.get(l.itemId), qty: l.qty })).filter((l) => l.item);
-  const total = satchelLines.reduce((s, l) => s + l.item.price * l.qty, 0);
+  const satchelLines = satchel.map((l) => ({ item: byId.get(l.itemId), qty: l.qty })).filter((l) => l.item)
+    .map((l) => ({ ...l, each: myPrice(l.item), deal: deals[l.item.id]?.mult !== 1 ? deals[l.item.id] : null }));
+  const total = satchelLines.reduce((s, l) => s + l.each * l.qty, 0);
   const worth = purseWorth(character?.coin);
   const purseLabel = `${worth}s`;
 
@@ -205,15 +213,41 @@ export default function ShopPage({ preview = false }) {
   function hold(item) {
     if (!item) return;
     setInHandId(item.id); setQty(1); setPopKey((k) => k + 1);
+    setDealNote(null);
     if (item.out) setLine(pick(OUT_LINES));
+    else if (refused.has(item.id)) setLine("I said not to you. Put it down.");
     else if (ITEM_LINES[item.id]) setLine(ITEM_LINES[item.id]);
-    else if (item.price > worth - total) setLine(pick(POOR_LINES));
+    else if (myPrice(item) > worth - total) setLine(pick(POOR_LINES));
     else setLine(pick(SHELF_LINES[item.cat] || ADD_LINES));
     const r = sceneRef.current?.getBoundingClientRect();
     if (r && (r.bottom < 120 || r.top > innerHeight)) sceneRef.current.scrollIntoView({ behavior: "smooth", block: "start" });
   }
+  // Haggling: the server rolls; we show the dice, the new price and the keeper's answer.
+  const [haggling, setHaggling] = useState(false);
+  const [dealNote, setDealNote] = useState(null);
+  async function haggleNow() {
+    if (!inHand || haggling || preview) return;
+    setHaggling(true); setPayError(null);
+    try {
+      const res = await postShopHaggle(slug, password, inHand.id);
+      const o = res.outcome;
+      setShop((prev) => (prev ? { ...prev, visit: res.visit } : prev));
+      setLine(say(pick(HAGGLE_LINES[o.say] || HAGGLE_LINES.holds), character?.name));
+      if (o.dice) {
+        const ord = ["", "", "Second try: y", "Last try: y"][o.tries] || "Y";
+        const cha = o.cha ? `, ${o.cha > 0 ? "+" : "−"}${Math.abs(o.cha)} Charisma` : "";
+        const what = o.kind === "refuse-item" ? "" : o.kind === "refuse" ? " No luck." : o.say === "miss" ? " The price went up." : o.better ? ` ${o.short[0].toUpperCase()}${o.short.slice(1)}.` : " No lower than before.";
+        setDealNote({ itemId: inHand.id, text: `${ord}ou rolled ${o.dice[0]} and ${o.dice[1]}${cha}.${what}` });
+      } else setDealNote(null);
+    } catch (err) {
+      setLine(err?.data?.error || "Hmm? Speak up.");
+    } finally {
+      setHaggling(false);
+    }
+  }
+
   function addToSatchel() {
-    if (!inHand || inHand.out || status !== "open") return;
+    if (!inHand || inHand.out || refused.has(inHand.id) || status !== "open") return;
     setSatchel((prev) => {
       const found = prev.find((l) => l.itemId === inHand.id);
       return found ? prev.map((l) => (l.itemId === inHand.id ? { ...l, qty: Math.min(99, l.qty + qty) } : l)) : [...prev, { itemId: inHand.id, qty }];
@@ -276,7 +310,7 @@ export default function ShopPage({ preview = false }) {
 
   const lockLeft = shop?.lockupUntil ? Math.max(0, Math.ceil((Date.parse(shop.lockupUntil) - now) / 1000)) : 0;
   const realLabel = { open: "open", lockup: "locking up", combat: "shut for the fighting", scheduled: "scheduled", closed: "closed" }[shop?.realStatus] || "closed";
-  const hoursText = !status ? "Opening the doors…" : preview ? `Preview · really ${realLabel}` : {
+  const hoursText = !status ? "Opening the doors…" : preview ? `Preview · really ${realLabel}` : thrownOut ? "Thrown out" : {
     open: `Open · ${closesText(shop || {}, null)}`,
     lockup: "Locking up",
     combat: "Shut for the fighting",
@@ -284,7 +318,11 @@ export default function ShopPage({ preview = false }) {
     closed: "Closed",
   }[status];
   const inSatchel = satchelLines.find((l) => l.item.id === inHand?.id)?.qty || 0;
-  const short = inHand ? inHand.price * qty > worth - total : false;
+  const each = inHand ? myPrice(inHand) : 0;
+  const deal = inHand && deals[inHand.id]?.mult !== 1 ? deals[inHand.id] : null;
+  const tries = inHand ? deals[inHand.id]?.tries || 0 : 0;
+  const refusedHere = inHand ? refused.has(inHand.id) : false;
+  const short = inHand ? each * qty > worth - total : false;
   const have = inHand ? haveCount(character, inHand) : 0;
   const shelf = SHELVES.find((s) => s.id === currentCat);
   const shelfItems = items.filter((it) => it.cat === currentCat);
@@ -314,6 +352,11 @@ export default function ShopPage({ preview = false }) {
               {typed && (
                 <div className={`sp-speech${bubble?.mode === "left" ? " left" : bubble?.mode === "below" ? " below" : ""}`} style={bubble?.style} aria-live="polite">
                   <span className="who">{display.keeperName}</span>{typed}
+                  {visit?.read && (
+                    <span className={`sp-read m-${visit.read.mood}${visit.read.sure ? "" : " unsure"}`}>
+                      <i aria-hidden="true" />{visit.read.sure ? <>{display.keeperName} seems <b>{{ easy: "easy", wary: "wary", testy: "testy", done: "done with you" }[visit.read.mood]}</b></> : <><b>{{ easy: "easy", wary: "wary", testy: "testy", done: "done with you" }[visit.read.mood]}</b>… you think?</>}
+                    </span>
+                  )}
                 </div>
               )}
               {inHand && (
@@ -328,16 +371,24 @@ export default function ShopPage({ preview = false }) {
                   <p>{inHand.notes || "Exactly what it says on the tag."}</p>
                   {have > 0 && <p className="owned">You already carry {have > 1 ? have : "one"}.</p>}
                   <div className="sp-buy">
-                    <span className={`sp-price${short ? " short" : ""}`}>{(inHand.price * qty).toLocaleString()}s{inHand.per && qty === 1 ? `/${inHand.per}` : ""}</span>
+                    <span className={`sp-price${short ? " short" : ""}${deal ? (deal.mult < 1 ? " deal" : " worse") : ""}`}>
+                      {deal && <s className="was">{(inHand.price * qty).toLocaleString()}s</s>}{deal ? " " : ""}{(each * qty).toLocaleString()}s{inHand.per && qty === 1 ? `/${inHand.per}` : ""}
+                    </span>
                     <div className="sp-qty">
                       <button type="button" aria-label="Fewer" onClick={() => setQty((q) => Math.max(1, q - 1))}>−</button>
                       <span aria-live="polite">{qty}</span>
                       <button type="button" aria-label="More" onClick={() => setQty((q) => Math.min(99, q + 1))}>+</button>
                     </div>
                   </div>
+                  {dealNote?.itemId === inHand.id && <p className="sp-deal-note">{dealNote.text}</p>}
                   <div className="sp-buy">
-                    <button className="sp-btn gold" type="button" style={{ flex: 1 }} onClick={addToSatchel} disabled={short || inHand.out || status !== "open"}>
-                      {status === "lockup" ? "Locking up" : inHand.out ? "Sold out" : short ? `Short ${Math.ceil(inHand.price * qty - (worth - total))} silver` : inSatchel ? "Add more" : "Into the satchel"}
+                    <button className="sp-btn gold" type="button" style={{ flex: 1 }} onClick={addToSatchel} disabled={short || inHand.out || refusedHere || status !== "open"}>
+                      {status === "lockup" ? "Locking up" : inHand.out ? "Sold out" : refusedHere ? "Not for sale to you" : short ? `Short ${Math.ceil(each * qty - (worth - total))} silver` : inSatchel ? "Add more" : "Into the satchel"}
+                    </button>
+                    <button className="sp-btn" type="button" onClick={haggleNow}
+                      disabled={preview || haggling || status !== "open" || inHand.out || refusedHere || tries >= (visit?.maxTries || 3)}
+                      title={preview ? "Haggling isn't part of the preview" : "Try for a better price: 2d6 + your Charisma"}>
+                      ⚂ {haggling ? "…" : tries >= (visit?.maxTries || 3) ? "Haggled out" : tries ? "Haggle again" : "Haggle"}
                     </button>
                   </div>
                 </div>
@@ -348,7 +399,7 @@ export default function ShopPage({ preview = false }) {
               </div>
             </>
           )}
-          {!browsing && status && <ShopShutters status={status} opensAt={shop?.opensAt} closesText={closesText(shop || {}, null)} keeperName={display.keeperName} />}
+          {!browsing && status && <ShopShutters status={thrownOut ? "thrown" : status} shopperName={character?.name} opensAt={shop?.opensAt} closesText={closesText(shop || {}, null)} keeperName={display.keeperName} />}
         </div>
 
         {status === "lockup" && (
@@ -386,14 +437,16 @@ export default function ShopPage({ preview = false }) {
                   <div className="sp-goods">
                     {shelfItems.map((it) => {
                       const n = haveCount(character, it);
-                      const poor = !it.out && it.price > worth - total;
+                      const poor = !it.out && myPrice(it) > worth - total;
+                      const d = deals[it.id]?.mult !== 1 ? deals[it.id] : null;
+                      const no = refused.has(it.id);
                       return (
-                        <button key={it.id} type="button" className={`sp-good${poor ? " poor" : ""}${it.out ? " out" : ""}${inHand?.id === it.id && inHandId ? " sel" : ""}`} style={{ "--cat": shelfColor(it.cat) }}
+                        <button key={it.id} type="button" className={`sp-good${poor ? " poor" : ""}${it.out || no ? " out" : ""}${inHand?.id === it.id && inHandId ? " sel" : ""}`} style={{ "--cat": shelfColor(it.cat) }}
                           onClick={() => hold(it)} aria-label={`${it.name}, ${it.price} silver${it.out ? ", sold out" : ""}`}>
                           {it.justIn && !it.out && <span className="sp-justin">Just in</span>}
-                          <span className="sp-tag">{it.price.toLocaleString()}s{it.per ? `/${it.per}` : ""}</span>
+                          <span className={`sp-tag${d ? (d.mult < 1 ? " deal" : " worse") : ""}`}>{myPrice(it).toLocaleString()}s{it.per ? `/${it.per}` : ""}</span>
                           <ItemOrb item={it} />
-                          {it.out && <span className="sp-soldout">Sold out</span>}
+                          {it.out ? <span className="sp-soldout">Sold out</span> : no ? <span className="sp-soldout">Not to you</span> : null}
                           {n > 0 && <span className="sp-have">have {n}</span>}
                           <span className="nm">{it.name}</span><span className="st">{it.stat || ""}</span>
                         </button>

@@ -149,6 +149,24 @@
 .sp-justin { position: absolute; top: 4px; left: calc(50% - 64px); padding: 1px 7px; border-radius: 999px; background: var(--good); color: #10200a; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
 .sp-cat-line { margin: 16px 0 0; font-style: italic; color: var(--sp-muted); text-align: center; }
 
+/* ── Haggling ── */
+.sp-speech .sp-read { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding-top: 6px; border-top: 1px dashed rgba(42,29,18,0.25); font-family: 'Crimson Text', serif; font-size: 14px; color: #5a4028; }
+.sp-read i { width: 10px; height: 10px; border-radius: 50%; background: #6a9a4a; flex: none; }
+.sp-read.m-wary i { background: #b99a3a; }
+.sp-read.m-testy i { background: #c46a2a; }
+.sp-read.m-done i { background: #a02a2a; }
+.sp-read.unsure { font-style: italic; opacity: 0.8; }
+.sp-read.unsure i { background: transparent; border: 1.5px dashed currentColor; }
+.sp-price .was, .sp-line .was { font-size: 0.75em; color: var(--sp-muted); }
+.sp-price.deal { color: var(--good); }
+.sp-price.worse { color: var(--danger); }
+.sp-deal-note { margin: 6px 0 0 !important; font-size: 13px !important; font-style: italic; color: var(--sp-muted) !important; text-align: left !important; }
+.sp-tag.deal { background: #cfe6bf; }
+.sp-tag.worse { color: var(--danger); }
+.sp-line small { display: block; font-size: 12px; font-style: italic; }
+.sp-line small.disc { color: var(--good); }
+.sp-line small.bad { color: var(--danger); }
+
 /* ── Your pack ── */
 .sp-pack { position: sticky; top: 64px; margin-top: 26px; padding: 14px 14px 12px; border-radius: 12px; border: 1px solid var(--pal-border); background: var(--pal-surface); max-height: calc(100vh - 140px); overflow: auto; }
 .sp-pack-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; width: 100%; background: none; border: none; padding: 0; text-align: left; cursor: default; }

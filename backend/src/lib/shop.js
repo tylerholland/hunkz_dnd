@@ -167,6 +167,10 @@ function normalizeShop(record) {
     memo: r.memo && typeof r.memo === "object" ? r.memo : {},
     saved: Array.isArray(r.saved) ? r.saved.slice(0, 50) : [],
     opening: normalizeOpening(r.opening),
+    // Haggling, per shopper, for the opening named by visitsFor (phase 2).
+    visits: r.visits && typeof r.visits === "object" ? r.visits : {},
+    visitsFor: typeof r.visitsFor === "string" ? r.visitsFor : null,
+    haggleLog: Array.isArray(r.haggleLog) ? r.haggleLog.slice(0, 80) : [],
   };
 }
 

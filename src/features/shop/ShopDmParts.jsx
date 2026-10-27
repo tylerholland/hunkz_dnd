@@ -160,7 +160,7 @@ export function ShopPicker({ setup, display, onPick, onSign, onTemper, onReset, 
       <div className="sd-row"><span className="lbl">Temper</span>
         <Seg label="Temper" value={setup.temper} onChange={onTemper} options={Object.entries(TEMPERS).map(([key, t]) => [key, t.name])} />
       </div>
-      <p className="sd-hint">{TEMPERS[setup.temper].hint} Haggling arrives in the next update.</p>
+      <p className="sd-hint">{TEMPERS[setup.temper].hint}</p>
       <div className="sd-row sd-foot">
         <span className="sd-hint" style={{ margin: 0 }}>
           {isSaved ? "A saved shop: changes you make are kept with it."
@@ -361,6 +361,28 @@ export function CatalogEditor({ items, onSave, busy }) {
           </div>
         </div>
       )}
+    </section>
+  );
+}
+
+// ── Who haggled for what this opening, and who was thrown out.
+export function HaggleLog({ log, thrown, onLetIn, busy }) {
+  const bad = /badly|refused|warning|thrown|lost/;
+  return (
+    <section className="sd-card" aria-labelledby="sd-log-h">
+      <h3 id="sd-log-h">Haggling this opening</h3>
+      {thrown.map((t) => (
+        <div className="sd-hl out" key={t.slug}>
+          <b>{t.name}</b> was thrown out.
+          <button className="sd-tbtn primary" type="button" disabled={busy} onClick={() => onLetIn(t.slug)}>Let back in</button>
+        </div>
+      ))}
+      {log.length ? log.slice(0, 20).map((h, i) => (
+        <div className="sd-hl" key={`${h.at}-${i}`}>
+          <b>{h.who}</b> · {h.item} · <span className={bad.test(h.result) ? "bad" : /off/.test(h.result) ? "ok" : ""}>{h.result}</span>
+        </div>
+      )) : <p className="sd-hint" style={{ margin: 0 }}>No haggling yet. Who haggled for what, and how it went, shows here.</p>}
+      <p className="sd-hint">Let back in: they can shop again, but the keeper won't haggle with them any more this opening.</p>
     </section>
   );
 }

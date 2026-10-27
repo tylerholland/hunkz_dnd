@@ -19,7 +19,15 @@ export function ItemOrb({ item, art = itemArt(item.id), className = "" }) {
 }
 
 /** Shutters over the scene: closed, back soon, or shut for the fighting. */
-export function ShopShutters({ status, opensAt, closesText, keeperName }) {
+export function ShopShutters({ status, opensAt, closesText, keeperName, shopperName }) {
+  if (status === "thrown") {
+    return (
+      <div className="sp-shutters" role="status">
+        <div className="sp-plaque"><h2>And Stay Out!</h2><p>“Haggle with someone else's patience, {shopperName || "friend"}.” — {keeperName}</p></div>
+        <div className="sp-when">You've been thrown out for this opening<small>A friend can still buy for you. The DM can let you back in.</small></div>
+      </div>
+    );
+  }
   if (status === "combat") {
     return (
       <div className="sp-shutters fight" role="status">
@@ -86,8 +94,8 @@ export function SatchelSheet({ open, onToggle, lines, total, purse, onRemove, on
         {lines.length ? lines.map((l, i) => (
           <div className="sp-line" key={l.item.id}>
             <ItemOrb item={l.item} />
-            <span>{l.item.name}{l.qty > 1 ? ` × ${l.qty}` : ""}</span>
-            <span>{(l.item.price * l.qty).toLocaleString()}s</span>
+            <span>{l.item.name}{l.qty > 1 ? ` × ${l.qty}` : ""}{l.deal?.short && <small className={l.deal.mult < 1 ? "disc" : "bad"}>{l.deal.short}</small>}</span>
+            <span>{l.deal && <s className="was">{(l.item.price * l.qty).toLocaleString()}s</s>}{l.deal ? " " : ""}{(l.each * l.qty).toLocaleString()}s</span>
             <button className="x" type="button" aria-label={`Put back ${l.item.name}`} onClick={() => onRemove(i)}>×</button>
           </div>
         )) : <p style={{ opacity: 0.7, fontStyle: "italic" }}>Nothing yet. Pick something off the shelves.</p>}
@@ -113,7 +121,7 @@ export function Receipt({ shopName, buyer, lines, total, onDone }) {
       <div className="sp-receipt" role="dialog" aria-label="Receipt">
         <h3>{shopName}</h3><small style={{ margin: 0 }}>Sold to {buyer}</small>
         <div className="r-lines">
-          {lines.map((l) => <div key={l.itemId}><span>{l.name}{l.qty > 1 ? ` × ${l.qty}` : ""}</span><span>{(l.each * l.qty).toLocaleString()}s</span></div>)}
+          {lines.map((l) => <div key={l.itemId}><span>{l.name}{l.qty > 1 ? ` × ${l.qty}` : ""}{l.short ? <i> ({l.short})</i> : null}</span><span>{(l.each * l.qty).toLocaleString()}s</span></div>)}
           <div style={{ fontWeight: 600 }}><span>Paid</span><span>{total.toLocaleString()}s</span></div>
         </div>
         <span className="stamp">Paid in full</span>

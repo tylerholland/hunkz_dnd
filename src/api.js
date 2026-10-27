@@ -409,7 +409,18 @@ const shopHeaders = (password, json = false) => ({
   ...(password !== undefined && password !== null ? { "x-character-password": password } : {}),
 });
 
-export const getShop = () => request("/shop");
+/** The shop as players see it; with a shopper's slug and password, also their own haggling. */
+export const getShop = (shopper) => (shopper?.slug
+  ? request(`/shop?asSlug=${encodeURIComponent(shopper.slug)}`, { headers: shopHeaders(shopper.password) })
+  : request("/shop"));
+
+/** Haggle over one item: the server rolls. */
+export const postShopHaggle = (slug, password, itemId) =>
+  request("/shop/haggle", { method: "POST", headers: shopHeaders(password, true), body: JSON.stringify({ asSlug: slug, itemId }) });
+
+/** Let a thrown-out shopper back in (DM). */
+export const postShopLetIn = (dmPassword, slug) =>
+  request("/shop/let-in", { method: "POST", headers: shopHeaders(dmPassword, true), body: JSON.stringify({ slug }) });
 
 export const getShopDm = (dmPassword) => request("/shop/dm", { headers: shopHeaders(dmPassword) });
 

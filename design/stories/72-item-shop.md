@@ -1,6 +1,6 @@
 # Feature Story 72: The Item Shop
 
-**Status**: Phase 1 built (2026-10-26): `/characters/:slug/shop`, `/dm/shop`, `backend/src/handlers/shop.js`, `backend/src/lib/shop.js`, `src/features/shop/`. Phases 2 (haggling) and 3 (polish) to come. Coin and hirelings decided as recommended below.
+**Status**: Phases 1 and 2 built (2026-10-26/27): `/characters/:slug/shop`, `/dm/shop` (+ `/dm/shop/preview`), `backend/src/handlers/shop.js`, `backend/src/lib/shop.js`, `backend/src/lib/shopHaggle.js`, `src/features/shop/`. Phase 3 (polish) to come. Coin and hirelings decided as recommended below; very high rolls (14+) win back 1 patience, capped at the temper's starting patience.
 **Prototype**: `design/prototypes/shop.html`. It is the reference for layout, copy and interactions. Its top bar switches view, shopper, scene and shop state.
 **Art**:
 - Shop scenes: `design/prototypes/assets/shop-mags.jpg` and `design/prototypes/assets/shops/*.jpg` (web copies; Tyler's PNG originals sit beside them and are not committed).

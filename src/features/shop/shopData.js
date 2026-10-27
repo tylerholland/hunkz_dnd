@@ -86,6 +86,21 @@ export const ITEM_LINES = {
 export const POOR_LINES = ["That's more silver than you've got jingling, friend.", "Come back richer. Or braver. Richer's better."];
 export const OUT_LINES = ["Sold the last one to a fellow with too many teeth.", "Sold my last one to a dwarf, Tuesday.", "Next caravan's due in a fortnight. Maybe."];
 export const ADD_LINES = ["Good choice.", "A fine pick.", "Into the satchel it goes.", "Ha! Knew you'd want that."];
+// What the keeper says when you haggle, by outcome (the server says which).
+export const HAGGLE_LINES = {
+  crit2: ["This is robbery. Broad daylight robbery. Take it before I weep.", "Did a bard teach you that? Take it. Take it and never tell my mother."],
+  crit: ["Fine! Fine! Take it and get out before I come to my senses.", "You'd talk a dragon out of its hoard. A fifth off — now go."],
+  full: ["Hmph. You drive a hard bargain. A tenth off, and not a copper more."],
+  partial: ["A few silver off... but you'll owe me a favour, {name}.", "Alright, a little off — and you'll tell your friends, yes?"],
+  miss: ["Haggle with me? The price just went up.", "Out of pity, I'll pretend I didn't hear that. Prices stand. Plus a little."],
+  holds: ["That's my price, and it's already a kindness.", "No lower. I've got a cat to feed."],
+  refuse: ["The price is the price, love.", "I don't haggle. I've never haggled. My mother didn't haggle."],
+  soldOut: ["Oh, would you look at that. Just sold the last of those.", "Sorry, love. That one's spoken for. Just now. By someone else."],
+  doneHaggling: ["Not that either. And that's the last haggling you'll do in here today."],
+  push1: ["I said no more haggling. Price is the price."],
+  push2: ["Last warning, {name}. Once more and you're out on your ear."],
+  thrownOut: ["Out! And stay out!"],
+};
 
 // Who keeps each shop: the name, three suggested signs [name, place, subtitle],
 // greetings and goodbyes. Keys match the scene pictures.
@@ -220,7 +235,7 @@ export function rollStock(items, fill, random = Math.random) {
 // The keeper's temper: a hidden modifier on haggling, and how much patience
 // they have with each shopper (haggling arrives in phase 2).
 export const TEMPERS = {
-  no: { name: "Won't haggle", hint: "Turns every haggle down." },
+  no: { name: "Won't haggle", hint: "Turns every haggle down; three tries and they've had enough." },
   tough: { name: "Stubborn", hint: "Haggles at −2, patience 3. A couple of bad tries and they stop selling to you." },
   fair: { name: "Fair", hint: "Haggles at +0, patience 5: three to five tries before they won't sell you something." },
   soft: { name: "Soft touch", hint: "Haggles at +2, patience 8. A good word goes a long way here." },

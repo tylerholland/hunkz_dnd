@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { getChronicle, getShopDm, putShopCatalog, putShopSetup, putShopStatus } from "../api";
+import { getChronicle, getShopDm, postShopLetIn, putShopCatalog, putShopSetup, putShopStatus } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import { PalCtx } from "../features/dmDashboard/dashboardShared";
 import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
@@ -9,7 +9,7 @@ import { useTextScale } from "../lib/useTextScale";
 import { useAdaptivePolling } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { USUAL, rollMarkups, rollStock, signFor } from "../features/shop/shopData";
-import { StatusBar, ShopPicker, ShelvesStock, CatalogEditor } from "../features/shop/ShopDmParts";
+import { StatusBar, ShopPicker, ShelvesStock, CatalogEditor, HaggleLog } from "../features/shop/ShopDmParts";
 import "../features/shop/shop.css";
 import "../features/shop/shopDm.css";
 
@@ -21,6 +21,15 @@ import "../features/shop/shopDm.css";
 const SETUP_KEYS = ["keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
 const statusOf = (d) => ({ status: d.status, opensAt: d.opensAt, closesAt: d.closesAt, lockupUntil: d.lockupUntil, openingId: d.openingId, opening: d.shop?.opening || null });
 const setupOf = (shop) => Object.fromEntries(SETUP_KEYS.map((k) => [k, shop[k]]));
+// This opening's haggling: the log, and who's been thrown out (names from the log).
+function haggleOf(shop) {
+  const current = shop?.opening?.id || null;
+  if (!shop || shop.visitsFor !== current) return { log: [], thrown: [] };
+  const log = shop.haggleLog || [];
+  const thrown = Object.entries(shop.visits || {}).filter(([, v]) => v?.thrownOut)
+    .map(([slug]) => ({ slug, name: log.find((h) => h.slug === slug)?.who || slug }));
+  return { log, thrown };
+}
 
 // The sign players see follows the keeper and sign; each template remembers
 // how the DM last set it up, and a saved shop keeps its own changes.
@@ -41,6 +50,7 @@ export default function ShopDmPage() {
   const [authed, setAuthed] = useState(() => !!sessionStorage.getItem("dnd_dm_password"));
   const [tab, setTab] = useState("open");
   const [info, setInfo] = useState(null);
+  const [haggleInfo, setHaggleInfo] = useState({ log: [], thrown: [] });
   const [setup, setSetup] = useState(null);
   const [catalog, setCatalog] = useState(null);
   const [nextSessionAt, setNextSessionAt] = useState(null);
@@ -60,6 +70,7 @@ export default function ShopDmPage() {
     try {
       const d = await getShopDm(dmPassword);
       setInfo(statusOf(d));
+      setHaggleInfo(haggleOf(d.shop));
       setCatalog(d.catalog.items);
       // Don't overwrite edits that are still on their way to the server.
       if (!pendingRef.current && !savingRef.current) setSetup(setupOf(d.shop));
@@ -142,9 +153,21 @@ export default function ShopDmPage() {
     try {
       const d = await putShopStatus(dmPassword, action, fields);
       setInfo(statusOf(d));
+      setHaggleInfo(haggleOf(d.shop));
       setError(null);
     } catch (err) {
       setError(err?.data?.error || "Couldn't change the shop's status. Try again.");
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function letIn(slug) {
+    setBusy(true);
+    try {
+      const d = await postShopLetIn(dmPassword, slug);
+      setHaggleInfo(haggleOf(d.shop));
+    } catch {
+      setError("Couldn't let them back in. Try again.");
     } finally {
       setBusy(false);
     }
@@ -213,10 +236,11 @@ export default function ShopDmPage() {
               <button className="sd-tbtn" type="button" onClick={() => setUnlocked((u) => !u)}>{unlocked ? "Lock again" : "Unlock"}</button>
             </div>
             {shelves}
+            <HaggleLog log={haggleInfo.log} thrown={haggleInfo.thrown} onLetIn={letIn} busy={busy} />
             <div className={locked ? "sd-locked" : ""} aria-disabled={locked || undefined}>{picker}</div>
           </>
         ) : (
-          <>{picker}{shelves}</>
+          <>{picker}{shelves}{(haggleInfo.log.length > 0 || haggleInfo.thrown.length > 0) && <HaggleLog log={haggleInfo.log} thrown={haggleInfo.thrown} onLetIn={letIn} busy={busy} />}</>
         )}
       </main>
     </div>

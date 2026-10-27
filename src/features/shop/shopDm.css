@@ -105,6 +105,14 @@
 .sd-stk.out .sp-orb { filter: grayscale(1) brightness(0.6); }
 .sd-stk.nc { border-style: dotted; opacity: 0.75; }
 
+/* ── Haggling log ── */
+.sd-hl { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; padding: 5px 0; border-bottom: 1px solid color-mix(in srgb, var(--pal-border) 60%, transparent); font-size: 15px; }
+.sd-hl b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); }
+.sd-hl .ok { color: var(--good); }
+.sd-hl .bad { color: var(--danger); }
+.sd-hl.out { padding: 8px 10px; margin-bottom: 6px; border: 1px solid color-mix(in srgb, var(--danger) 60%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--danger) 10%, transparent); }
+.sd-hl.out .sd-tbtn { margin-left: auto; }
+
 /* ── Item catalog ── */
 .sd-table-wrap { overflow-x: auto; margin-top: 12px; }
 .sd-catalog { width: 100%; border-collapse: collapse; font-size: 15px; }
