@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Table Money</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet" />
+<style>
+  /* Ocean palette, as the app. */
+  :root {
+    --bg: #0d0f14; --surface: rgba(18,32,48,0.55); --solid: #111e2c; --border: rgba(100,130,160,0.22);
+    --accent: #6a8fa8; --bright: #a0c0d0; --dim: #1e3a4e; --text: #c8bfaf; --body: #b0a898; --muted: #7d93a0;
+    --sp: #9aabb8; --gp: #c8a040; --cp: #a07050; --ep: #8f8b80; --pp: #c8d0e0;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: radial-gradient(ellipse at 50% -10%, rgba(20,45,80,0.45), transparent 60%), var(--bg); color: var(--body); font-family: 'Crimson Text', Georgia, serif; font-size: 16px; }
+  main { max-width: 980px; margin: 0 auto; padding: 24px 16px 80px; display: grid; gap: 26px; }
+  h1 { font-family: 'Cinzel', serif; font-weight: 400; color: var(--text); letter-spacing: 0.08em; margin: 0; }
+  .where { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px; }
+  .note { font-style: italic; color: var(--muted); margin: 6px 0 0; font-size: 14px; }
+  .card { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 18px; }
+  button { font: inherit; cursor: pointer; color: inherit; }
+
+  /* ── DM Settings: Money ── */
+  .set h2 { margin: 0 0 4px; font-family: 'Cinzel', serif; font-weight: 400; font-size: 16px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text); }
+  .set p { margin: 0 0 14px; color: var(--muted); font-size: 15px; }
+  .coins { display: grid; gap: 8px; }
+  .coin { display: grid; grid-template-columns: 38px 120px 1fr; align-items: center; gap: 12px; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--solid); }
+  .coin.off { background: transparent; border-style: dashed; opacity: 0.6; }
+  .coin b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--c); letter-spacing: 0.06em; }
+  .sw { position: relative; width: 36px; height: 20px; border-radius: 10px; border: 1px solid var(--border); background: var(--dim); padding: 0; }
+  .sw i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: left .2s; }
+  .sw.on { background: color-mix(in srgb, var(--accent) 55%, transparent); }
+  .sw.on i { left: 18px; background: var(--bright); }
+  .sw.fixed { opacity: 0.5; cursor: default; }
+  .rate { display: flex; align-items: center; gap: 8px; font-size: 15px; }
+  .rate input { width: 64px; padding: 4px 8px; border-radius: 4px; border: 1px solid var(--border); background: var(--bg); color: var(--text); font: inherit; }
+  .main-tag { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--sp); color: var(--sp); width: max-content; }
+  .save { margin-top: 14px; display: flex; justify-content: flex-end; }
+  .btn { padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent); background: var(--dim); color: var(--bright); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+
+  /* ── Session sheet purse ── */
+  .ledger-label { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); margin-bottom: 6px; }
+  .purse { display: flex; flex-wrap: wrap; gap: 8px; align-items: stretch; }
+  .pc { display: flex; align-items: baseline; gap: 6px; padding: 8px 14px; border-radius: 8px; border: 1px solid color-mix(in srgb, var(--c) 45%, var(--border)); background: color-mix(in srgb, var(--c) 8%, var(--solid)); }
+  .pc .n { font-family: 'Cinzel', serif; font-size: 22px; color: var(--text); }
+  .pc .u { font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.1em; color: var(--c); }
+  .pc.main .n { font-size: 26px; }
+  .pc.zero .n { color: var(--muted); }
+  .total { align-self: center; margin-left: 6px; font-style: italic; color: var(--muted); font-size: 14px; }
+  .pad { margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--solid); }
+  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; padding: 5px 10px; color: var(--muted); font-family: 'Cinzel', serif; font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .seg button.on { background: var(--dim); color: var(--bright); }
+  .chip { padding: 4px 9px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--body); font-size: 13px; }
+
+  /* ── DM character card coin row ── */
+  .cc { display: flex; align-items: center; gap: 10px; padding: 8px 0 0; border-top: 1px dashed var(--border); }
+  .cc .lbl { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); width: 40px; }
+  .mini { display: inline-flex; align-items: baseline; gap: 4px; padding: 1px 9px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--c) 55%, transparent); background: color-mix(in srgb, var(--c) 10%, transparent); font-family: 'Cinzel', serif; font-size: 13px; color: var(--c); }
+  .give { margin-left: auto; padding: 3px 10px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--bright); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; }
+
+  /* ── Distribute coin ── */
+  .modal { max-width: 420px; padding: 22px 24px; border-radius: 8px; border: 1px solid var(--border); background: var(--solid); }
+  .modal h3 { margin: 0; font-family: 'Cinzel', serif; font-weight: 400; letter-spacing: 0.08em; color: var(--text); }
+  .modal .sub { font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--muted); margin-bottom: 14px; }
+  .row { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+  .pill { padding: 6px 14px; border-radius: 5px; border: 1px solid var(--border); background: transparent; color: var(--muted); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.08em; }
+  .pill.on { border-color: var(--c, var(--accent)); color: var(--c, var(--bright)); background: color-mix(in srgb, var(--c, var(--accent)) 14%, transparent); }
+  .amount { width: 100%; padding: 12px; border-radius: 5px; border: 1px solid var(--sp); background: var(--bg); color: var(--text); font: inherit; font-size: 18px; }
+  .flabel { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--muted); margin-top: 12px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 26px; align-items: start; }
+</style>
+</head>
+<body>
+<main>
+  <div>
+    <h1>Table money</h1>
+    <p class="note">Prototype. One money setting for the whole table: silver is the main coin, gold is worth 10 silver. The per-character “GP only / Full denominations” switch goes away.</p>
+  </div>
+
+  <section class="card set">
+    <p class="where">DM Settings · new card</p>
+    <h2>Money</h2>
+    <p>The coins your table uses. Prices, purses and the shop count in the main coin; the others convert at these rates.</p>
+    <div class="coins" id="coins"></div>
+    <p class="note">A coin that's switched off disappears from sheets and cards — unless someone actually holds some, in which case it still shows (so no money ever goes missing) and the shop still counts it.</p>
+    <div class="save"><button class="btn" type="button">Save</button></div>
+  </section>
+
+  <div class="grid">
+    <section class="card">
+      <p class="where">Character sheet · session view</p>
+      <div class="ledger-label">Coin</div>
+      <div class="purse" id="purse"></div>
+      <div class="pad">
+        <div class="seg"><button>− Spend</button><button class="on">+ Gain</button><button>= Set</button></div>
+        <span class="chip">1</span><span class="chip">5</span><span class="chip">10</span><span class="chip">25</span><span class="chip">50</span>
+        <span style="margin-left:auto;font-style:italic;color:var(--muted);font-size:14px">tap a coin to adjust it</span>
+      </div>
+      <p class="note">Was: a big “⧫ 0 gp” in GP-only mode, with Eòghan's 49 silver hidden.</p>
+    </section>
+
+    <section class="card">
+      <p class="where">DM dashboard · character card</p>
+      <div style="font-family:'Cinzel',serif;color:var(--text);letter-spacing:.06em;margin-bottom:6px">Eòghan MacGille Fàth</div>
+      <div class="cc"><span class="lbl">Coin</span><span id="ccRow" style="display:flex;gap:6px"></span><button class="give" type="button">Give</button></div>
+      <p class="note">Was: “0 gp” (silver hidden) or, in full mode, “≈ 4.9 gp”.</p>
+    </section>
+  </div>
+
+  <section>
+    <p class="where">DM dashboard · Distribute Coin (also fixed: it now covers the whole window)</p>
+    <div class="modal">
+      <h3>Distribute Coin</h3>
+      <div class="sub">Eòghan MacGille Fàth</div>
+      <div class="row"><button class="pill on">Give</button><button class="pill">Deduct</button></div>
+      <div class="row" id="denoms"></div>
+      <div class="flabel">Amount</div>
+      <input class="amount" value="25" aria-label="Amount" />
+      <div class="row"><span class="chip">10</span><span class="chip">25</span><span class="chip">50</span><span class="chip">100</span></div>
+      <p class="note">Only the coins in use; silver selected by default.</p>
+    </div>
+  </section>
+</main>
+<script>
+  const COINS = [
+    { id: "sp", name: "Silver", main: true, on: true, rate: 1 },
+    { id: "gp", name: "Gold", on: true, rate: 10 },
+    { id: "cp", name: "Copper", on: false, rate: 0.1 },
+    { id: "ep", name: "Electrum", on: false, rate: 5 },
+    { id: "pp", name: "Platinum", on: false, rate: 100 },
+  ];
+  const purse = { sp: 49, gp: 0 };
+  function render() {
+    document.getElementById("coins").innerHTML = COINS.map((c, i) => `
+      <div class="coin${c.on ? "" : " off"}" style="--c:var(--${c.id})">
+        <button class="sw${c.on ? " on" : ""}${c.main ? " fixed" : ""}" data-i="${i}" aria-label="${c.name} in use"><i></i></button>
+        <b>${c.name}</b>
+        ${c.main ? '<span class="main-tag">Main coin</span>' : c.on || c.id === "gp" ? `<span class="rate">1 ${c.name.toLowerCase()} = ${c.rate < 1 ? `<span>${1 / c.rate} to 1 silver</span>` : `<input value="${c.rate}" data-r="${i}" /> silver`}</span>` : `<span class="rate" style="color:var(--muted)">${c.rate < 1 ? `10 ${c.name.toLowerCase()} = 1 silver` : `1 ${c.name.toLowerCase()} = ${c.rate} silver`}</span>`}
+      </div>`).join("");
+    document.querySelectorAll("[data-i]").forEach((b) => b.onclick = () => { const c = COINS[b.dataset.i]; if (!c.main) { c.on = !c.on; render(); } });
+    document.querySelectorAll("[data-r]").forEach((inp) => inp.oninput = () => { COINS[inp.dataset.r].rate = Number(inp.value) || 1; renderPurse(); });
+    renderPurse();
+  }
+  function renderPurse() {
+    const used = COINS.filter((c) => c.on);
+    const total = used.reduce((s, c) => s + (purse[c.id] || 0) * c.rate, 0);
+    document.getElementById("purse").innerHTML = used.map((c) => `<button class="pc${c.main ? " main" : ""}${(purse[c.id] || 0) ? "" : " zero"}" style="--c:var(--${c.id})"><span class="n">${purse[c.id] || 0}</span><span class="u">${c.id}</span></button>`).join("")
+      + (used.length > 1 ? `<span class="total">worth ${total} silver</span>` : "");
+    document.getElementById("ccRow").innerHTML = used.map((c) => `<span class="mini" style="--c:var(--${c.id})">${purse[c.id] || 0} <small>${c.id}</small></span>`).join("");
+    document.getElementById("denoms").innerHTML = used.map((c) => `<button class="pill${c.main ? " on" : ""}" style="--c:var(--${c.id})">${c.name}</button>`).join("");
+  }
+  render();
+</script>
+</body>
+</html>
