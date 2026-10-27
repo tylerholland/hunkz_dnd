@@ -128,6 +128,18 @@ function haggle(visitIn, { itemId, temperKey, cha = 0, wis = 0, roll = d6, rando
   return { visit, outcome };
 }
 
+/**
+ * A haggled price: the marked price times the deal, but always at least a
+ * whole silver better (or worse) than the marked price, so a deal on a 2s
+ * ration still counts. Never below 1s.
+ */
+function dealPrice(marked, mult) {
+  if (!mult || mult === 1) return marked;
+  const raw = Math.round(marked * mult);
+  if (mult < 1) return Math.max(1, Math.min(raw, marked - 1));
+  return Math.max(raw, marked + 1);
+}
+
 /** The price multiplier a shopper has struck for an item (1 = marked price). */
 const dealMult = (visit, itemId) => Number(visit?.deals?.[itemId]?.mult) || 1;
 
@@ -138,4 +150,4 @@ function publicVisit(visit) {
   return { deals, refused: visit.refused, thrownOut: visit.thrownOut, read: visit.read, done: visit.snaps >= 2, maxTries: MAX_TRIES };
 }
 
-module.exports = { TEMPERS, MAX_TRIES, TIERS, MOODS, freshVisit, normalizeVisit, trueMood, readMood, haggle, dealMult, publicVisit };
+module.exports = { TEMPERS, MAX_TRIES, TIERS, MOODS, freshVisit, normalizeVisit, trueMood, readMood, haggle, dealMult, dealPrice, publicVisit };

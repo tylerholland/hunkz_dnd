@@ -8,7 +8,7 @@ import { useAdaptivePolling, ACTIVE_POLL_MS, CONNECTED_POLL_MS } from "../lib/li
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
 import {
-  KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime, townOf,
+  KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime, townOf, dealPrice,
 } from "../features/shop/shopData";
 import { byMood, linesFor } from "../features/shop/keeperLines";
 import { haveCount, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
@@ -178,7 +178,7 @@ export default function ShopPage({ preview = false }) {
   const deals = useMemo(() => visit?.deals || {}, [visit]);
   const refused = useMemo(() => new Set(visit?.refused || []), [visit]);
   const thrownOut = !preview && visit?.thrownOut === true;
-  const myPrice = (it) => Math.max(1, Math.round(it.price * (deals[it.id]?.mult || 1)));
+  const myPrice = (it) => dealPrice(it.price, deals[it.id]?.mult || 1);
   const browsing = (status === "open" || status === "lockup") && !thrownOut;
   const shut = status === "closed" || status === "scheduled";
   // A preview keeps its satchel in memory only.

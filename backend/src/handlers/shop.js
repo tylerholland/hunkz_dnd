@@ -25,7 +25,7 @@ const { verifyPassword } = require("../lib/auth");
 const { ok, notFound, forbidden, badRequest, conflict } = require("../lib/response");
 const { putSpecialRecord, appendRollHistoryEvent } = require("../lib/specialRecords");
 const { buildPartyCard } = require("../lib/partyCard");
-const { normalizeVisit, haggle, dealMult, publicVisit } = require("../lib/shopHaggle");
+const { normalizeVisit, haggle, dealMult, dealPrice, publicVisit } = require("../lib/shopHaggle");
 const { notifySessionChanged } = require("../lib/broadcast");
 const {
   VersionConflictError, isConditionalFailure, currentVersion, conditionalPutParams, withVersionRetry, characterVersionKey, withVersions,
@@ -281,7 +281,7 @@ exports.handler = async (event) => {
       if (!Number.isFinite(qty) || qty < 1 || qty > MAX_QTY) return badRequest("qty must be 1–99");
       // Your haggled price, if you struck one.
       const mult = dealMult(visit, item.id);
-      wanted.push({ item, qty, each: Math.max(1, Math.round(markedPrice(item, shop.markups) * mult)), short: mult !== 1 ? visit.deals[item.id]?.short || null : null });
+      wanted.push({ item, qty, each: dealPrice(markedPrice(item, shop.markups), mult), short: mult !== 1 ? visit.deals[item.id]?.short || null : null });
     }
     const total = wanted.reduce((sum, w) => sum + w.each * w.qty, 0);
 
@@ -340,7 +340,7 @@ exports.handler = async (event) => {
       if (visit.thrownOut) return { error: conflict("You've been thrown out of this shop") };
       if (visit.refused.includes(item.id)) return { error: conflict(`${item.name} isn't for sale to you`) };
       const r = haggle(visit, { itemId: item.id, temperKey: shop.temper, cha: abilityMods.Charisma || 0, wis: abilityMods.Wisdom || 0 });
-      outcome = { ...r.outcome, price: Math.max(1, Math.round(markedPrice(item, shop.markups) * dealMult(r.visit, item.id))) };
+      outcome = { ...r.outcome, price: dealPrice(markedPrice(item, shop.markups), dealMult(r.visit, item.id)) };
       const entry = { at: new Date().toISOString(), slug, who: character.name || slug, item: item.name, result: logText(r.outcome) };
       return withVisit(shop, slug, r.visit, outcome.kind === "out-of-tries" ? null : entry);
     });

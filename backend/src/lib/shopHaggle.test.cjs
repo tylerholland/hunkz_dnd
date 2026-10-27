@@ -61,6 +61,16 @@ test("after the second refusal, three pushes and you're out", () => {
   assert.equal(v.thrownOut, true);
 });
 
+test("a deal is always worth at least a whole silver, never below 1s", () => {
+  const { dealPrice } = require("./shopHaggle");
+  assert.equal(dealPrice(2, 0.9), 1);   // 1.8 rounds to 2: still a silver off
+  assert.equal(dealPrice(1, 0.7), 1);   // can't go below 1s
+  assert.equal(dealPrice(20, 0.8), 16);
+  assert.equal(dealPrice(2, 1.05), 3);  // a bad haggle costs at least a silver
+  assert.equal(dealPrice(40, 1.05), 42);
+  assert.equal(dealPrice(5, 1), 5);
+});
+
 test("players see their deals and their read of the mood, never patience", () => {
   const v = haggle(freshVisit("fair"), { itemId: "x", temperKey: "fair", wis: 2, roll: dice(5, 5, 6, 6), random: sure }).visit;
   const pub = publicVisit(v);

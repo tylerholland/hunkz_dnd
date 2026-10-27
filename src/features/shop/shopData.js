@@ -164,6 +164,12 @@ export function rollMarkups(level, random = Math.random) {
   return Object.fromEntries(SHELF_IDS.map((id) => [id, lo + 5 * Math.floor(random() * ((hi - lo) / 5 + 1))]));
 }
 export const sameMarkups = (a = {}, b = {}) => SHELF_IDS.every((id) => (a[id] || 0) === (b[id] || 0));
+/** A haggled price: at least a whole silver better (or worse) than marked; never below 1s. Mirrors the server. */
+export function dealPrice(marked, mult) {
+  if (!mult || mult === 1) return marked;
+  const raw = Math.round(marked * mult);
+  return mult < 1 ? Math.max(1, Math.min(raw, marked - 1)) : Math.max(raw, marked + 1);
+}
 /** The price players see: list price with the shelf's markup. */
 export const markedPrice = (item, markups) => Math.max(1, Math.round(item.price * (1 + (markups?.[item.cat] || 0) / 100)));
 
