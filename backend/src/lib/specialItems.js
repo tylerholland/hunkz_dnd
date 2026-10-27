@@ -22,7 +22,10 @@ const CHRONICLE_SLUG = "chronicle";
 // rulings) for skills and special abilities, overriding the built-in text.
 const TALENT_CODEX_SLUG = "talent-codex";
 const CHRONICLE_SESSION_PREFIX = "chronicle-session:";
-const RESERVED_CHARACTER_SLUGS = new Set([INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, APP_META_SLUG, HOUSE_RULES_SLUG, CHRONICLE_SLUG, TALENT_CODEX_SLUG]);
+// Story 72 — the item shop: its setup and current opening, and the catalog.
+const SHOP_SLUG = "shop";
+const SHOP_CATALOG_SLUG = "shop-catalog";
+const RESERVED_CHARACTER_SLUGS = new Set([INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, APP_META_SLUG, HOUSE_RULES_SLUG, CHRONICLE_SLUG, TALENT_CODEX_SLUG, SHOP_SLUG, SHOP_CATALOG_SLUG]);
 
 function isReservedCharacterSlug(slug) {
   return RESERVED_CHARACTER_SLUGS.has(slug)
@@ -47,6 +50,8 @@ module.exports = {
   ROLL_HISTORY_ARCHIVE_PREFIX,
   CHRONICLE_SLUG,
   CHRONICLE_SESSION_PREFIX,
+  SHOP_SLUG,
+  SHOP_CATALOG_SLUG,
   RESERVED_CHARACTER_SLUGS,
   isReservedCharacterSlug,
   filterPublicCharacterItems,

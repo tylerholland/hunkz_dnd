@@ -36,8 +36,11 @@ const {
   APP_META_SLUG,
   HOUSE_RULES_SLUG,
   TALENT_CODEX_SLUG,
+  SHOP_SLUG,
+  CHRONICLE_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
+const { normalizeShop, shopStatus, shopSummary } = require("../lib/shop");
 const { currentVersion } = require("../lib/versioning");
 const {
   normalizeInitiativeRecord,
@@ -91,6 +94,8 @@ const SENTINEL_SLUGS = [
   APP_META_SLUG,
   HOUSE_RULES_SLUG,
   TALENT_CODEX_SLUG,
+  SHOP_SLUG,
+  CHRONICLE_SLUG,
 ];
 
 exports.handler = async (event) => {
@@ -125,6 +130,14 @@ exports.handler = async (event) => {
   // (GET /talent-codex) only when this changes.
   const talentCodexVersion = currentVersion(sentinelBySlug.get(TALENT_CODEX_SLUG));
   const serverTime = new Date().toISOString();
+  // Story 72 — whether the shop is open, and its version: screens fetch the
+  // shop itself (GET /shop) only when this changes.
+  const shopItem = sentinelBySlug.get(SHOP_SLUG);
+  const shopRecord = normalizeShop(shopItem);
+  const shop = shopSummary(shopRecord, shopStatus(shopRecord, {
+    nextSessionAt: sentinelBySlug.get(CHRONICLE_SLUG)?.nextSession?.at || null,
+    combatMode: mapLibrary.combatMode === true,
+  }), currentVersion(shopItem));
 
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.
   // Keyed off the roster only — if no roster item exists yet, party/partyStatus
@@ -171,6 +184,7 @@ exports.handler = async (event) => {
       counterWheels,
       houseRules,
       talentCodexVersion,
+      shop,
       serverTime,
       buildVersion: appMeta.buildVersion,
     };
@@ -300,6 +314,7 @@ exports.handler = async (event) => {
     rollHistory: publicRollHistory,
     houseRules,
     talentCodexVersion,
+    shop,
     serverTime,
     buildVersion: appMeta.buildVersion,
   };
