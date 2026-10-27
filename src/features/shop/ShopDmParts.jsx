@@ -18,7 +18,7 @@ const toLocalInput = (ms) => new Date(ms - new Date(ms).getTimezoneOffset() * 60
 
 // ── The sticky status bar: the state and its one main action first; the
 // schedule under it, opening into an editor that saves as a whole.
-export function StatusBar({ info, opening, nextSessionAt, inStock, busy, onAction, onSchedule, now }) {
+export function StatusBar({ info, opening, nextSessionAt, inStock, busy, onAction, onSchedule, onPreview, now }) {
   const [draft, setDraft] = useState(null);
   const { status } = info;
   const isLive = status === "open" || status === "lockup";
@@ -61,6 +61,7 @@ export function StatusBar({ info, opening, nextSessionAt, inStock, busy, onActio
         <div className="sd-sb-main">
           <span className="dot" aria-hidden="true" />
           <div className="what"><b>{s.t}</b><span>{s.sub}</span></div>
+          <button className="sd-tbtn" type="button" onClick={onPreview} title="Walk the shop as players will see it, with these settings. Nothing changes.">👁 Preview</button>
           {s.alt && <button className="sd-tbtn" type="button" disabled={busy} onClick={() => onAction(s.alt[0])}>{s.alt[1]}</button>}
           {s.main && <button className="sd-gold" type="button" disabled={busy} onClick={() => onAction(s.main[0])}>{s.main[1]}</button>}
         </div>

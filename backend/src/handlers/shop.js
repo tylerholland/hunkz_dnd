@@ -3,6 +3,8 @@
 //                         sign, and — only while open — the carried shelves
 //                         with marked prices and stock
 //   GET  /shop/dm         everything, for the DM page (DM)
+//   GET  /shop/preview    the shop as players would see it if it were open
+//                         now, with the current setup — for the DM's preview (DM)
 //   PUT  /shop            { setup } — keeper, sign, shelves, prices, stock,
 //                         temper, remembered templates, saved shops (DM)
 //   PUT  /shop/status     { action, ... } — open, close, cancel, schedule (DM)
@@ -93,6 +95,14 @@ exports.handler = async (event) => {
   if (parts[1] === "dm" && parts.length === 2 && method === "GET") {
     if (!(await isDm(event))) return forbidden("DM password required");
     return ok(dmView(await readAll()));
+  }
+
+  // GET /shop/preview — opened for the DM's eyes only; nothing is changed.
+  if (parts[1] === "preview" && parts.length === 2 && method === "GET") {
+    if (!(await isDm(event))) return forbidden("DM password required");
+    const state = await readAll();
+    const view = playerShop(state.shop, state.catalog, { ...state.statusInfo, status: "open", lockupUntil: null });
+    return ok({ ...view, realStatus: state.statusInfo.status, version: state.shopVersion });
   }
 
   // PUT /shop — the setup. Stock flipped back in while the shop is open is

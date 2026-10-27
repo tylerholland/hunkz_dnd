@@ -23,6 +23,7 @@ export default function App() {
         <Route path="/dm/settings"               element={<DmSettingsPage />} />
         <Route path="/dm/settings/codex"         element={<DmTalentCodexPage />} />
         <Route path="/dm/shop"                   element={<ShopDmPage />} />
+        <Route path="/dm/shop/preview"           element={<ShopPage preview />} />
         <Route path="/chronicle"                 element={<ChroniclePage />} />
         <Route path="/chronicle/record"          element={<ChroniclePage />} />
         <Route path="/chronicle/:sessionId"      element={<ChroniclePage />} />

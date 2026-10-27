@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { getChronicle, getShopDm, putShopCatalog, putShopSetup, putShopStatus } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import { PalCtx } from "../features/dmDashboard/dashboardShared";
@@ -47,6 +48,7 @@ export default function ShopDmPage() {
   const [error, setError] = useState(null);
   const [unlocked, setUnlocked] = useState(false);
   const [now, setNow] = useState(() => Date.now());
+  const navigate = useNavigate();
   const pendingRef = useRef(null);
   const savingRef = useRef(false);
   const { textScale, textScaleMenuItem } = useTextScale();
@@ -100,6 +102,16 @@ export default function ShopDmPage() {
         savingRef.current = false;
       }
     }, 350);
+  }
+
+  // Preview what's set now: save anything still on its way first.
+  async function preview() {
+    if (pendingRef.current) {
+      clearTimeout(pendingRef.current);
+      pendingRef.current = null;
+      try { await putShopSetup(dmPassword, setup); } catch { /* the preview shows the last saved setup */ }
+    }
+    navigate("/dm/shop/preview");
   }
 
   function pickShop(id) {
@@ -184,7 +196,7 @@ export default function ShopDmPage() {
         { label: "Campaign", href: "/dm" }, { label: "📜 Chronicle", href: "/chronicle" }, { label: "⚙ DM Settings", href: "/dm/settings" }, { divider: true }, textScaleMenuItem,
       ]} />
       {info && tab === "open" && (
-        <StatusBar info={info} opening={info.opening} nextSessionAt={nextSessionAt} inStock={inStock} busy={busy} now={now} onAction={act} onSchedule={(fields) => act("schedule", fields)} />
+        <StatusBar info={info} opening={info.opening} nextSessionAt={nextSessionAt} inStock={inStock} busy={busy} now={now} onAction={act} onSchedule={(fields) => act("schedule", fields)} onPreview={preview} />
       )}
       <main className="sd-main">
         <div className="sd-tabs" role="tablist">

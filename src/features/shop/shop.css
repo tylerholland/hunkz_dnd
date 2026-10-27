@@ -201,6 +201,12 @@
 .sp-receipt .stamp { display: inline-block; margin-top: 8px; padding: 4px 12px; border: 3px double #8a2a2a; color: #8a2a2a; font-family: 'Cinzel', serif; letter-spacing: 0.2em; transform: rotate(-6deg); }
 .sp-receipt small { display: block; margin-top: 10px; color: #6a5030; font-style: italic; }
 
+/* DM preview: a striped banner over the player view. */
+.sp-preview { position: sticky; top: 0; z-index: 45; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 20px; background: repeating-linear-gradient(135deg, #3a2a10 0 14px, #44321a 14px 28px); color: #f1dca8; font-size: 15px; border-bottom: 1px solid var(--gold); }
+.sp-preview span { flex: 1; min-width: 240px; }
+.sp-preview select { margin-left: 6px; padding: 4px 8px; border-radius: 5px; border: 1px solid rgba(230,189,98,0.5); background: #2a1e0e; color: #f1dca8; font: inherit; }
+.sp-preview .sp-btn { text-decoration: none; }
+
 /* Sign-in and messages */
 .sp-card { max-width: 460px; margin: 40px auto; padding: 22px; border-radius: 12px; border: 1px solid var(--pal-border); background: var(--pal-surface); }
 .sp-card h2 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 400; color: var(--pal-text); }

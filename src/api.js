@@ -413,6 +413,9 @@ export const getShop = () => request("/shop");
 
 export const getShopDm = (dmPassword) => request("/shop/dm", { headers: shopHeaders(dmPassword) });
 
+/** The shop as players would see it if it were open now (DM preview; changes nothing). */
+export const getShopPreview = (dmPassword) => request("/shop/preview", { headers: shopHeaders(dmPassword) });
+
 export const putShopSetup = (dmPassword, setup) =>
   request("/shop", { method: "PUT", headers: shopHeaders(dmPassword, true), body: JSON.stringify({ setup }) });
 

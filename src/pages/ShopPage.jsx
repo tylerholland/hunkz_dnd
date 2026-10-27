@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Link, useParams } from "react-router-dom";
-import { getSessionState, getShop, postShopPurchase, verifyPassword } from "../api";
+import { Link, useParams, useSearchParams } from "react-router-dom";
+import { getSessionState, getShop, getShopPreview, listCharacters, postShopPurchase, verifyPassword } from "../api";
 import { PALETTES } from "../components/CharacterSheet";
 import TopNav from "../components/TopNav";
 import { useTextScale } from "../lib/useTextScale";
@@ -76,9 +76,14 @@ function useTyped(text) {
   return typing.text.slice(0, typing.n);
 }
 
-export default function ShopPage() {
-  const { slug } = useParams();
-  const [password, setPassword] = useState(() => readPassword(slug));
+// `preview`: the DM walks the shop as any character, as if it were open now,
+// whatever its real state. Nothing is bought; nothing changes.
+export default function ShopPage({ preview = false }) {
+  const params = useParams();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [roster, setRoster] = useState([]);
+  const slug = preview ? (searchParams.get("as") || roster[0]?.slug || null) : params.slug;
+  const [password, setPassword] = useState(() => (preview ? (() => { try { return sessionStorage.getItem("dnd_dm_password"); } catch { return null; } })() : readPassword(params.slug)));
   const [character, setCharacter] = useState(null);
   const [summary, setSummary] = useState(null);
   const [shop, setShop] = useState(null);
@@ -104,10 +109,17 @@ export default function ShopPage() {
   const payRef = useRef(null);
   const { textScale, textScaleMenuItem } = useTextScale();
 
+  useEffect(() => {
+    if (!preview) return undefined;
+    let cancelled = false;
+    listCharacters().then((list) => { if (!cancelled) setRoster((list || []).filter((c) => c?.slug).sort((a, b) => String(a.name || a.slug).localeCompare(String(b.name || b.slug)))); }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [preview]);
+
   // ── Data: session state carries the character and a shop summary; the
   // shop itself is fetched only when that summary changes.
   const refresh = useCallback(async () => {
-    if (password === null) return;
+    if (password === null || !slug) return;
     try {
       const d = await getSessionState({ slug, dmPassword: password });
       if (d.character && acceptVersion(characterVersionKey(slug), d.character.version)) setCharacter(d.character);
@@ -115,13 +127,13 @@ export default function ShopPage() {
       const key = `${d.shop?.version}|${d.shop?.status}`;
       if (key !== shopKeyRef.current) {
         shopKeyRef.current = key;
-        setShop(await getShop());
+        setShop(await (preview ? getShopPreview(password) : getShop()));
       }
       setLoadError(null);
     } catch {
       setLoadError("Couldn't reach the shop. Check your connection.");
     }
-  }, [slug, password]);
+  }, [slug, password, preview]);
   useEffect(() => { const t = setTimeout(refresh, 0); return () => clearTimeout(t); }, [refresh]);
   const { connected: wsConnected } = useSessionSocket(useCallback(() => { refresh(); }, [refresh]));
   useAdaptivePolling({ enabled: password !== null, poll: refresh, activeMs: wsConnected ? CONNECTED_POLL_MS : ACTIVE_POLL_MS });
@@ -137,7 +149,8 @@ export default function ShopPage() {
   const shelves = useMemo(() => SHELVES.filter((s) => items.some((it) => it.cat === s.id)), [items]);
   const browsing = status === "open" || status === "lockup";
   const shut = status === "closed" || status === "scheduled";
-  const openingId = shop?.openingId || null;
+  // A preview keeps its satchel in memory only.
+  const openingId = preview ? null : shop?.openingId || null;
 
   // The satchel survives a reload, for this opening only. Once the doors are
   // shut for good, an unpaid satchel goes back on the shelves.
@@ -198,6 +211,7 @@ export default function ShopPage() {
 
   async function pay() {
     if (!satchelLines.length || paying) return;
+    if (preview) { setPayError("This is a preview: nothing is bought, and no coin leaves the purse."); return; }
     setPaying(true); setPayError(null);
     if (!reducedMotion()) flyCoins(payRef.current?.querySelector(".sp-btn.gold"), sceneRef.current, total);
     try {
@@ -227,15 +241,30 @@ export default function ShopPage() {
   };
   const pageStyle = { ...palVars, zoom: textScale, background: `radial-gradient(ellipse at 50% -10%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` };
   const nav = (
-    <TopNav backTo={`/characters/${slug}/session`} title={display.name} menuItems={[{ label: "Your sheet", href: `/characters/${slug}/session` }, { label: "All Characters", href: "/" }, { divider: true }, textScaleMenuItem]} />
+    <TopNav backTo={preview ? "/dm/shop" : `/characters/${slug}/session`} title={preview ? `Preview · ${display.name}` : display.name} menuItems={[{ label: "Your sheet", href: `/characters/${slug}/session` }, { label: "All Characters", href: "/" }, { divider: true }, textScaleMenuItem]} />
   );
 
+  const previewBanner = preview && (
+    <div className="sp-preview">
+      <span><b>DM preview.</b> The shop as players will see it with your current settings, open whatever its real state. Nothing here is bought.</span>
+      <label>Preview as{" "}
+        <select value={slug || ""} onChange={(e) => setSearchParams({ as: e.target.value }, { replace: true })}>
+          {roster.map((c) => <option key={c.slug} value={c.slug}>{c.name || c.slug}</option>)}
+        </select>
+      </label>
+      <Link className="sp-btn gold" to="/dm/shop">Back to setup</Link>
+    </div>
+  );
+  if (preview && password === null) {
+    return <div className="sp-page" style={pageStyle}>{nav}<main className="sp-main"><div className="sp-card"><h2>DM only</h2><p>Sign in as the DM to preview the shop.</p><Link className="sp-btn gold" to="/dm/shop">Go to the shop page</Link></div></main></div>;
+  }
   if (password === null) {
     return <div className="sp-page" style={pageStyle} data-light={pal.light ? "true" : undefined}>{nav}<main className="sp-main"><SignIn slug={slug} onSignedIn={setPassword} /></main></div>;
   }
 
   const lockLeft = shop?.lockupUntil ? Math.max(0, Math.ceil((Date.parse(shop.lockupUntil) - now) / 1000)) : 0;
-  const hoursText = {
+  const realLabel = { open: "open", lockup: "locking up", combat: "shut for the fighting", scheduled: "scheduled", closed: "closed" }[shop?.realStatus] || "closed";
+  const hoursText = preview ? `Preview · really ${realLabel}` : {
     open: `Open · ${closesText(shop || {}, null)}`,
     lockup: "Locking up",
     combat: "Shut for the fighting",
@@ -252,6 +281,7 @@ export default function ShopPage() {
 
   return (
     <div className={`sp-page${shut || status === "combat" ? " sp-shut" : ""}${status === "lockup" ? " sp-locking" : ""}`} style={pageStyle} data-light={pal.light ? "true" : undefined}>
+      {previewBanner}
       {nav}
       <main className="sp-main">
         <header className="sp-head">
