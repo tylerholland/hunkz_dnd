@@ -150,4 +150,24 @@ function publicVisit(visit) {
   return { deals, refused: visit.refused, thrownOut: visit.thrownOut, read: visit.read, done: visit.snaps >= 2, maxTries: MAX_TRIES };
 }
 
-module.exports = { TEMPERS, MAX_TRIES, TIERS, MOODS, freshVisit, normalizeVisit, trueMood, readMood, haggle, dealMult, dealPrice, publicVisit };
+/**
+ * The DM's log line for a haggle, with the price it left the item at, e.g.
+ * "haggled: a tenth off — now 9s (marked 10s)".
+ */
+function haggleLogText(o, price, marked) {
+  if (o.kind === "thrownOut") return "thrown out";
+  if (o.kind === "push") return o.say === "push1" ? "refused" : "last warning";
+  if (o.kind === "refuse") return "refused (won't haggle)";
+  if (o.kind === "refuse-item") return `${o.done ? "refused again, done haggling" : "refused to sell"}${o.lostDiscounts ? `; lost ${o.lostDiscounts} discount${o.lostDiscounts === 1 ? "" : "s"}` : ""}`;
+  const now = price === marked ? `still ${marked}s` : `now ${price}s (marked ${marked}s)`;
+  if (o.say === "miss") return `haggled badly — ${now}`;
+  return o.better ? `haggled: ${o.short} — ${now}` : `haggled, no better — ${now}`;
+}
+
+/** The DM's log line for a purchase: { item: "Rope ×2, Torch", result: "bought for 5s" }. */
+function purchaseLogText(lines, total) {
+  const item = lines.map((l) => (l.qty > 1 ? `${l.name} ×${l.qty}` : l.name)).join(", ");
+  return { item, result: `bought for ${total}s${lines.some((l) => l.haggled) ? " (haggled)" : ""}` };
+}
+
+module.exports = { haggleLogText, purchaseLogText, TEMPERS, MAX_TRIES, TIERS, MOODS, freshVisit, normalizeVisit, trueMood, readMood, haggle, dealMult, dealPrice, publicVisit };

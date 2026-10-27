@@ -79,3 +79,13 @@ test("players see their deals and their read of the mood, never patience", () =>
   assert.deepEqual(readMood(1, 0, dice(5, 5)), { mood: "wary", sure: true });
   assert.deepEqual(readMood(1, 0, dice(4, 3)), { mood: "wary", sure: false });
 });
+
+test("the DM's log says what a haggle did to the price, and lists purchases", () => {
+  const { haggleLogText, purchaseLogText } = require("./shopHaggle");
+  assert.equal(haggleLogText({ kind: "roll", better: true, short: "a tenth off" }, 9, 10), "haggled: a tenth off — now 9s (marked 10s)");
+  assert.equal(haggleLogText({ kind: "roll", say: "miss" }, 11, 10), "haggled badly — now 11s (marked 10s)");
+  assert.equal(haggleLogText({ kind: "roll", say: "holds", better: false }, 10, 10), "haggled, no better — still 10s");
+  assert.equal(haggleLogText({ kind: "refuse-item", done: false, lostDiscounts: 1 }), "refused to sell; lost 1 discount");
+  assert.deepEqual(purchaseLogText([{ name: "Rope", qty: 2 }, { name: "Torch", qty: 1, haggled: true }], 5), { item: "Rope ×2, Torch", result: "bought for 5s (haggled)" });
+  assert.deepEqual(purchaseLogText([{ name: "Ration", qty: 1 }], 2), { item: "Ration", result: "bought for 2s" });
+});

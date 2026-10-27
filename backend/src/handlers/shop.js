@@ -25,7 +25,7 @@ const { verifyPassword } = require("../lib/auth");
 const { ok, notFound, forbidden, badRequest, conflict } = require("../lib/response");
 const { putSpecialRecord, appendRollHistoryEvent } = require("../lib/specialRecords");
 const { buildPartyCard } = require("../lib/partyCard");
-const { normalizeVisit, haggle, dealMult, dealPrice, publicVisit } = require("../lib/shopHaggle");
+const { normalizeVisit, haggle, dealMult, dealPrice, publicVisit, haggleLogText, purchaseLogText } = require("../lib/shopHaggle");
 const { notifySessionChanged } = require("../lib/broadcast");
 const {
   VersionConflictError, isConditionalFailure, currentVersion, conditionalPutParams, withVersionRetry, characterVersionKey, withVersions,
@@ -103,15 +103,6 @@ async function shopper(event, slug) {
   if (!got.Item) return null;
   const auth = await verifyPassword(event.headers?.["x-character-password"] ?? "", got.Item);
   return auth.valid ? got.Item : null;
-}
-
-function logText(o) {
-  if (o.kind === "thrownOut") return "thrown out";
-  if (o.kind === "push") return o.say === "push1" ? "refused" : "last warning";
-  if (o.kind === "refuse") return "refused (won't haggle)";
-  if (o.kind === "refuse-item") return `${o.done ? "refused again, done haggling" : "refused to sell"}${o.lostDiscounts ? `; lost ${o.lostDiscounts} discount${o.lostDiscounts === 1 ? "" : "s"}` : ""}`;
-  if (o.say === "miss") return "haggled badly";
-  return o.better ? o.short : "no better";
 }
 
 // A line in the session log. Best effort: a sale stands even if the log write fails.
@@ -318,6 +309,13 @@ exports.handler = async (event) => {
     if (result.status === "forbidden") return forbidden();
     if (result.status === "poor") return conflict("Not enough coin");
     await logShopEvent(result.character, "bought", wanted.map((w) => ({ name: w.item.name, qty: w.qty, each: w.each })), total, shop.display.name);
+    // The DM's "Haggling & sales" list shows purchases too. Best effort: the sale stands.
+    try {
+      const { item, result: text } = purchaseLogText(wanted.map((w) => ({ name: w.item.name, qty: w.qty, haggled: !!w.short })), total);
+      await updateShop(({ shop: current }) => withVisit(current, slug, visitOf(current, slug), { at: new Date().toISOString(), slug, who: result.character.name || slug, item, result: text }));
+    } catch (err) {
+      console.warn("shop purchase log failed", err);
+    }
     await notifySessionChanged();
     const { coin, weapons, equipment } = result.character;
     return ok(withVersions({
@@ -343,8 +341,9 @@ exports.handler = async (event) => {
       if (visit.thrownOut) return { error: conflict("You've been thrown out of this shop") };
       if (visit.refused.includes(item.id)) return { error: conflict(`${item.name} isn't for sale to you`) };
       const r = haggle(visit, { itemId: item.id, temperKey: shop.temper, cha: abilityMods.Charisma || 0, wis: abilityMods.Wisdom || 0 });
-      outcome = { ...r.outcome, price: dealPrice(markedPrice(item, shop.markups), dealMult(r.visit, item.id)) };
-      const entry = { at: new Date().toISOString(), slug, who: character.name || slug, item: item.name, result: logText(r.outcome) };
+      const marked = markedPrice(item, shop.markups);
+      outcome = { ...r.outcome, price: dealPrice(marked, dealMult(r.visit, item.id)) };
+      const entry = { at: new Date().toISOString(), slug, who: character.name || slug, item: item.name, result: haggleLogText(r.outcome, outcome.price, marked) };
       return withVisit(shop, slug, r.visit, outcome.kind === "out-of-tries" ? null : entry);
     });
     if (saved.error) return saved.error;
