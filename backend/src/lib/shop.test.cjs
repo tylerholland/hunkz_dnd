@@ -99,6 +99,22 @@ test("selling back: half the list price, one at a time, never hirelings", () => 
   assert.equal(sellOne(char, "w", catalog).character.weapons.length, 0);
 });
 
+test("the catalog says what World of Dungeons says, and fixes untouched saved text", () => {
+  const seed = Object.fromEntries(normalizeCatalog(null).items.map((i) => [i.id, i]));
+  assert.equal(seed.quicksilver.stat, undefined);
+  assert.match(seed.quicksilver.notes, /summon a spirit/);
+  assert.match(seed.quicksilver.notes, /CON roll/);
+  assert.equal(seed["light-armor"].notes, undefined);
+  const saved = { seedVersion: 2, items: [
+    { id: "quicksilver", name: "Quicksilver (dose)", cat: "occult", price: 10, stat: "summons a spirit", notes: "A mild poison and addictive drug. More doses in a day than your level: resist with CON." },
+    { id: "dice", name: "Dice", cat: "gear", price: 2, notes: "My own note" },
+  ] };
+  const fixed = Object.fromEntries(normalizeCatalog(saved).items.map((i) => [i.id, i]));
+  assert.equal(fixed.quicksilver.stat, undefined);
+  assert.equal(fixed.quicksilver.notes, seed.quicksilver.notes);
+  assert.equal(fixed.dice.notes, "My own note");
+});
+
 test("purchases land in the pack, stowed", () => {
   const items = Object.fromEntries(SEED_ITEMS.map((i) => [i.id, i]));
   let char = { weapons: [], equipment: [{ id: "e1", name: "Travel Rations", qty: 1 }] };

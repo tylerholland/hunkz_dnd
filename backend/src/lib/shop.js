@@ -16,9 +16,9 @@ const SEED_ITEMS = [
   { id: "great-weapon", cat: "arms", name: "Great Weapon", price: 40, icon: "great", stat: "d6+2", notes: "Two-handed swords, battle-axes, pole arms. Uses both hands." },
   { id: "shortbow", cat: "arms", name: "Shortbow", price: 10, icon: "bow", stat: "d6", notes: "Also slings." },
   { id: "bow", cat: "arms", name: "Bow", price: 30, icon: "bow", stat: "d6+1", notes: "Also crossbows." },
-  { id: "heavy-bow", cat: "arms", name: "Heavy Bow", price: 50, icon: "bow", stat: "d6+2", notes: "A tall archer's longbow, carried across the back. Full power when you loose from a standing position." },
-  { id: "light-armor", cat: "armor", name: "Light Armour", price: 30, icon: "armor", stat: "Armour 1", notes: "Leathers and padded coats." },
-  { id: "full-armor", cat: "armor", name: "Full Armour", price: 60, icon: "heavy", stat: "Armour 2", notes: "Always has a helm. Very hard to run, sneak, swim or leap in." },
+  { id: "heavy-bow", cat: "arms", name: "Heavy Bow", price: 50, icon: "bow", stat: "d6+2", notes: "d6+2 damage if firing from a stationary position. Includes arbalests." },
+  { id: "light-armor", cat: "armor", name: "Light Armour", price: 30, icon: "armor", stat: "Armour 1" },
+  { id: "full-armor", cat: "armor", name: "Full Armour", price: 60, icon: "heavy", stat: "Armour 2", notes: "Always has a helm. Makes it very hard to run, move quietly, swim, leap etc." },
   { id: "shield", cat: "armor", name: "Shield", price: 10, icon: "shield", stat: "+1 Armour" },
   { id: "rope", cat: "gear", name: "20ft Rope", price: 2, icon: "rope" },
   { id: "spike", cat: "gear", name: "Iron Spike", price: 2, icon: "pick" },
@@ -27,25 +27,25 @@ const SEED_ITEMS = [
   { id: "flint", cat: "gear", name: "Flint & Steel", price: 2, icon: "fire" },
   { id: "torches", cat: "gear", name: "Torches (4)", price: 2, icon: "torch" },
   { id: "tent", cat: "gear", name: "Tent", price: 2, icon: "house" },
-  { id: "dice", cat: "gear", name: "Dice", price: 2, icon: "pack", notes: "Bone, slightly loaded. Allegedly." },
+  { id: "dice", cat: "gear", name: "Dice", price: 2, icon: "pack" },
   { id: "caltrops", cat: "gear", name: "Caltrops", price: 2, icon: "pack", stat: "slows pursuers" },
   { id: "bandages", cat: "gear", name: "Bandages", price: 2, icon: "pack" },
   { id: "rations", cat: "gear", name: "Travel Rations", price: 2, icon: "pack", notes: "Consume one when you rest to re-roll your HP." },
-  { id: "waterskin", cat: "gear", name: "Waterskin", price: 2, icon: "flask" },
-  { id: "wineskin", cat: "gear", name: "Wineskin", price: 2, icon: "flask" },
+  { id: "waterskin", cat: "gear", name: "Waterskin", price: 2, icon: "flask", notes: "Consume one when you rest to re-roll your HP." },
+  { id: "wineskin", cat: "gear", name: "Wineskin", price: 2, icon: "flask", notes: "Consume one when you rest to re-roll your HP." },
   { id: "crowbar", cat: "tools", name: "Crowbar", price: 5, icon: "pick" },
   { id: "hatchet", cat: "tools", name: "Hatchet", price: 5, icon: "blade" },
   { id: "trap", cat: "tools", name: "Animal Trap", price: 5, icon: "pack" },
-  { id: "lockpicks", cat: "tools", name: "Lockpicks", price: 5, icon: "key", notes: "Tinker, in the right hands." },
+  { id: "lockpicks", cat: "tools", name: "Lockpicks", price: 5, icon: "key" },
   { id: "ink", cat: "tools", name: "Pen & Pot of Ink", price: 5, icon: "flask" },
   { id: "fishing", cat: "tools", name: "Fishing Pole", price: 5, icon: "pick" },
   { id: "shovel", cat: "tools", name: "Shovel", price: 5, icon: "pick" },
   { id: "grapple", cat: "tools", name: "Grappling Hook", price: 5, icon: "key" },
   { id: "pickaxe", cat: "tools", name: "Pickaxe", price: 5, icon: "pick" },
   { id: "pole", cat: "tools", name: "Collapsible Pole", price: 5, icon: "pick" },
-  { id: "quicksilver", cat: "occult", name: "Quicksilver (dose)", price: 10, icon: "flask", stat: "summons a spirit", notes: "A mild poison and addictive drug. More doses in a day than your level: resist with CON." },
+  { id: "quicksilver", cat: "occult", name: "Quicksilver (dose)", price: 10, icon: "flask", notes: "A Wizard can use a dose to summon a spirit they know. A mild poison and addictive drug: if you drink more doses in a day than your Level, resist its negative effects with a CON roll." },
   { id: "bone-dust", cat: "occult", name: "Pouch of Bone Dust", price: 10, icon: "skull" },
-  { id: "holy-water", cat: "occult", name: "Vial of Holy Water", price: 10, icon: "flask", stat: "one use", notes: "Clerics may Bless or seek a Vision with it." },
+  { id: "holy-water", cat: "occult", name: "Vial of Holy Water", price: 10, icon: "flask", stat: "one use", notes: "A Cleric with Bless can anoint items with it (holy and magical, +3 damage vs. evil, for a short time); with Vision, drink it to commune with their deity." },
   { id: "blood", cat: "occult", name: "Vial of Blood", price: 10, icon: "flask" },
   { id: "incense", cat: "occult", name: "Ritual Incense & Oils", price: 10, icon: "fire" },
   { id: "mirror", cat: "fancy", name: "Mirror", price: 20, icon: "mirror" },
@@ -53,11 +53,11 @@ const SEED_ITEMS = [
   { id: "spyglass", cat: "fancy", name: "Spyglass", price: 20, icon: "pick" },
   { id: "timer", cat: "fancy", name: "Sand Timer", price: 20, icon: "mirror" },
   { id: "boardgame", cat: "fancy", name: "Board Game", price: 20, icon: "pack" },
-  { id: "clothes", cat: "fancy", name: "Elaborate Clothes", price: 20, icon: "armor", notes: "Fine robes fit for a noble's table." },
-  { id: "clothes-boots", cat: "fancy", name: "Riding Boots", price: 20, icon: "armor", notes: "Tall, polished, and very good for kicking doors." },
-  { id: "clothes-cloak", cat: "fancy", name: "Hooded Trail Cloak", price: 20, icon: "armor", notes: "Heavy wool, fur collar. Keeps the rain off and the stares away." },
+  { id: "clothes", cat: "fancy", name: "Elaborate Clothes", price: 20, icon: "armor" },
+  { id: "clothes-boots", cat: "fancy", name: "Riding Boots", price: 20, icon: "armor" },
+  { id: "clothes-cloak", cat: "fancy", name: "Hooded Trail Cloak", price: 20, icon: "armor" },
   { id: "clothes-gloves", cat: "fancy", name: "Fine Gloves", price: 20, icon: "armor" },
-  { id: "clothes-hat", cat: "fancy", name: "Feathered Hat", price: 20, icon: "armor", notes: "Makes an entrance before you do." },
+  { id: "clothes-hat", cat: "fancy", name: "Feathered Hat", price: 20, icon: "armor" },
   { id: "holy-symbol", cat: "fancy", name: "Holy Symbol", price: 20, icon: "coin", notes: "And other charms." },
   { id: "fire-oil", cat: "fancy", name: "Fire Oil (flask)", price: 20, icon: "fire", stat: "d6+1 / round, 3 rounds", notes: "Sets an area alight unless put out. Fills a lantern ten times." },
   { id: "mule", cat: "travel", name: "Mule", price: 30, icon: "horse" },
@@ -79,6 +79,52 @@ const SEED_ITEMS = [
 // removed before then stays removed.
 const CATALOG_SEED_VERSION = 2;
 const SEED_ADDITIONS = { 2: ["clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat"] };
+
+// Text the seed used to carry that wasn't in World of Dungeons (or split one
+// rule in two). A saved catalog still holding that exact text gets the
+// corrected seed text; anything the DM wrote themselves is left alone.
+const SEED_CORRECTIONS = {
+  "heavy-bow": {
+    "notes": "A tall archer's longbow, carried across the back. Full power when you loose from a standing position."
+  },
+  "light-armor": {
+    "notes": "Leathers and padded coats."
+  },
+  "full-armor": {
+    "notes": "Always has a helm. Very hard to run, sneak, swim or leap in."
+  },
+  "dice": {
+    "notes": "Bone, slightly loaded. Allegedly."
+  },
+  "waterskin": {
+    "notes": null
+  },
+  "wineskin": {
+    "notes": null
+  },
+  "lockpicks": {
+    "notes": "Tinker, in the right hands."
+  },
+  "quicksilver": {
+    "stat": "summons a spirit",
+    "notes": "A mild poison and addictive drug. More doses in a day than your level: resist with CON."
+  },
+  "holy-water": {
+    "notes": "Clerics may Bless or seek a Vision with it."
+  },
+  "clothes": {
+    "notes": "Fine robes fit for a noble's table."
+  },
+  "clothes-boots": {
+    "notes": "Tall, polished, and very good for kicking doors."
+  },
+  "clothes-cloak": {
+    "notes": "Heavy wool, fur collar. Keeps the rain off and the stares away."
+  },
+  "clothes-hat": {
+    "notes": "Makes an entrance before you do."
+  }
+};
 
 const clip = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const toInt = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0; };
@@ -112,6 +158,20 @@ function normalizeCatalog(record) {
       for (const id of SEED_ADDITIONS[v] || []) if (!have.has(id)) added.push(SEED_ITEMS.find((it) => it.id === id));
     }
     if (added.length) source = [...source, ...added.filter(Boolean)];
+  }
+  if (Array.isArray(record?.items)) {
+    source = source.map((raw) => {
+      const fix = raw && SEED_CORRECTIONS[raw.id];
+      if (!fix) return raw;
+      const seed = SEED_ITEMS.find((it) => it.id === raw.id);
+      const next = { ...raw };
+      for (const [field, oldText] of Object.entries(fix)) {
+        if (oldText && raw[field] === oldText) {
+          if (seed[field]) next[field] = seed[field]; else delete next[field];
+        }
+      }
+      return next;
+    });
   }
   const seen = new Set();
   const items = [];
