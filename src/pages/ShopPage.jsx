@@ -21,6 +21,8 @@ import "../features/shop/shop.css";
 
 const DENOMS = [["cp", 0.1], ["sp", 1], ["ep", 5], ["gp", 10], ["pp", 100]];
 const purseWorth = (coin) => Math.round(DENOMS.reduce((s, [k, v]) => s + (parseInt(coin?.[k], 10) || 0) * v, 0) * 10) / 10;
+// "Rogue (Thief)" → "rogue"; "Half-Elf" → "half-elf"; blank → the fallback.
+const simpleWord = (v, fallback) => String(v || "").replace(/\(.*?\)/g, "").trim().split(/[\s/,]+/)[0]?.toLowerCase() || fallback;
 const onlySilver = (coin) => DENOMS.every(([k]) => k === "sp" || !(parseInt(coin?.[k], 10) > 0));
 
 function readPassword(slug) {
@@ -154,7 +156,10 @@ export default function ShopPage({ preview = false }) {
   const speak = (list, vars = {}) => {
     const chosen = byMood(list, shop?.visit?.read?.mood);
     const text = Array.isArray(chosen) ? pick(chosen) : chosen;
-    return String(text || "").replace(/\{(\w+)\}/g, (m, k) => ({ name: character?.name || "friend", ...vars })[k] ?? m);
+    const race = simpleWord(character?.race, "traveller"), cls = simpleWord(character?.charClass, "adventurer");
+    const an = (w) => (/^[aeiou]/.test(w) ? `an ${w}` : `a ${w}`);
+    const who = { name: character?.name || "friend", race, class: cls, a_race: an(race), A_race: `A${an(race).slice(1)}`, a_class: an(cls), A_class: `A${an(cls).slice(1)}` };
+    return String(text || "").replace(/\{(\w+)\}/g, (m, k) => ({ ...who, ...vars })[k] ?? m);
   };
   const scene = SCENES[keeperKey];
   const display = shop?.display || {

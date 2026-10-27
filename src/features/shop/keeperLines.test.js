@@ -23,7 +23,7 @@ describe("keeper lines", () => {
   it("only uses placeholders the shop fills in", () => {
     const all = JSON.stringify(KEEPER_LINES);
     const used = new Set([...all.matchAll(/\{(\w+)\}/g)].map((m) => m[1]));
-    expect([...used].every((p) => ["name", "item", "price", "time"].includes(p))).toBe(true);
+    expect([...used].every((p) => ["name", "race", "class", "a_race", "A_race", "a_class", "A_class", "item", "price", "time"].includes(p))).toBe(true);
   });
 
   it("warm or cool lines follow the shopper's read of the mood", () => {

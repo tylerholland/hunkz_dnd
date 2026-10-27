@@ -1,6 +1,7 @@
 // Story 72 phase 3 — every keeper's own voice, for every moment in the shop.
-// {name} is the shopper, {item} the item, {price} a price in silver, {time}
-// an opening time. Lists are picked from at random, so the more the better.
+// {name} is the shopper, {race} and {class} theirs in a word ("half-elf",
+// "rogue"; {a_race}/{A_race} and {a_class}/{A_class} add "a"/"an"), {item} the item, {price} a price in silver, {time} an opening
+// time. Lists are picked from at random, so the more the better.
 //
 // Most everyday moments are { warm, cool }: warm while the shopper reads the
 // keeper as easy or wary, cool once they read them as testy or done — so the
@@ -18,13 +19,15 @@ export const KEEPER_LINES = {
     recommend: "fire-oil",
     greet: {
       warm: [
+        "{A_race}! Come in — I've stock that'll fit ye.",
+        "Ah, {a_class}. I've just the thing for yer line o' work.",
         "Mind the step, the last one was a mimic.",
         "Ah, {name}. Coin first, questions never, aye?",
         "Welcome to the shop. Everything's for sale but the cat.",
         "There ye are, {name}! Come in, come in, out o' the weather.",
         "Back again? Good. My purse missed ye.",
       ],
-      cool: ["Oh. It's you.", "{name}. Hands where I can see 'em.", "Aye, aye. Look, buy, leave."],
+      cool: ["Oh, it's the {class} again.", "Oh. It's you.", "{name}. Hands where I can see 'em.", "Aye, aye. Look, buy, leave."],
     },
     pay: {
       warm: [
@@ -36,12 +39,12 @@ export const KEEPER_LINES = {
       cool: ["Paid. Good. Door's behind ye.", "There. We're square. For now.", "Off ye go, then."],
     },
     add: {
-      warm: ["Good choice.", "Aye, a fine pick.", "Into the satchel it goes.", "Ha! Knew ye'd want that.", "Now that's a proper bit o' kit."],
+      warm: ["Aye, every {class} needs one o' those.", "Good choice.", "Aye, a fine pick.", "Into the satchel it goes.", "Ha! Knew ye'd want that.", "Now that's a proper bit o' kit."],
       cool: ["Fine.", "If ye must.", "Into the bag. Don't drop it."],
     },
     poor: {
       warm: ["That's more silver than ye've got jinglin', friend.", "Come back richer. Or braver. Richer's better.", "Ach, short a few coins. Happens to the best o' us."],
-      cool: ["Can ye afford it? No. Then put it down.", "Ye're wastin' my lamp oil."],
+      cool: ["{A_class} wi' empty pockets. Nothin' new under the mountain.", "Can ye afford it? No. Then put it down.", "Ye're wastin' my lamp oil."],
     },
     out: {
       warm: ["Sold the last one to a fella wi' too many teeth.", "Next caravan's due in a fortnight. Maybe.", "Gone, I'm afraid. Popular wee thing."],
@@ -89,11 +92,11 @@ export const KEEPER_LINES = {
       "lockpicks": "Lockpicks? For yer own locks, I'm sure.",
     },
     haggle: {
-      crit2: ["Robbery! Broad daylight robbery! Take it before I weep.", "Did a bard teach ye that? Take it, and never tell my mother.", "Ye silver-tongued devil. Take it, and get out before I come to my senses."],
+      crit2: ["Never met {a_race} wi' a tongue like that. Take it!", "Robbery! Broad daylight robbery! Take it before I weep.", "Did a bard teach ye that? Take it, and never tell my mother.", "Ye silver-tongued devil. Take it, and get out before I come to my senses."],
       crit: ["Fine! Fine! Take it and go before I come to my senses.", "Ye'd talk a dragon out o' its hoard. A fifth off — now go.", "Och, ye've a tongue on ye. A fifth off."],
       full: ["Hmph. Ye drive a hard bargain. A tenth off, and no' a copper more.", "A tenth. And I'm only doin' it 'cause I like yer face."],
       partial: ["A wee bit off… but ye'll owe me a favour, {name}.", "Alright, a little off — and ye'll tell yer friends, aye?", "A crumb off. Dinnae spend it all at once."],
-      miss: ["Haggle wi' me? The price just went up.", "Out o' pity I'll pretend I didnae hear that. Plus a wee bit.", "That was bad, and ye know it. Dearer now."],
+      miss: ["Typical {class}. All bluster. Dearer now.", "Haggle wi' me? The price just went up.", "Out o' pity I'll pretend I didnae hear that. Plus a wee bit.", "That was bad, and ye know it. Dearer now."],
       holds: ["That's my price, and it's already a kindness.", "No lower. I've a cat to feed.", "That's as low as Mags goes."],
       refuse: ["The price is the price, pet.", "I dinnae haggle today. Ask me tomorrow. Or never."],
       soldOut: ["Och, would ye look at that. Just sold the last o' those.", "That one's spoken for. Just now. By someone else."],
@@ -114,13 +117,15 @@ export const KEEPER_LINES = {
     recommend: "clothes",
     greet: {
       warm: [
+        "Ah — {a_race} of evident refinement. Do come in.",
+        "Welcome, my dear {class}. We cater to every calling, however… energetic.",
         "Welcome, welcome — do come in. You honour a humble house, {name}.",
         "Ah, {name}! What a pleasure. Please, take your time; beautiful things deserve a patient eye.",
         "Enter, my dear, and be at ease. Every piece here has a story, and I should be delighted to tell you any of them.",
         "{name}, how lovely. The light in here is always kinder when you visit.",
         "Do come in. My daughters have just polished the silver — you have impeccable timing.",
       ],
-      cool: ["{name}. Again. How… persistent of you.", "Ah. You've returned. One had wondered.", "Do come in. Mind the glass. Mind everything, really."],
+      cool: ["The {class}. Again. How… invigorating.", "{name}. Again. How… persistent of you.", "Ah. You've returned. One had wondered.", "Do come in. Mind the glass. Mind everything, really."],
     },
     pay: {
       warm: [
@@ -132,12 +137,12 @@ export const KEEPER_LINES = {
       cool: ["Paid. Splendid. The door, as ever, is behind you.", "Our thanks. Do wipe your boots on the way out.", "Settled. How very… efficient."],
     },
     add: {
-      warm: ["An exquisite eye. I'm quite moved.", "Oh, well chosen. That piece has been waiting for someone like you.", "Set aside for you, with real pleasure.", "Ah, you have taste. I knew it the moment you walked in."],
+      warm: ["Exactly what a discerning {class} ought to carry.", "An exquisite eye. I'm quite moved.", "Oh, well chosen. That piece has been waiting for someone like you.", "Set aside for you, with real pleasure.", "Ah, you have taste. I knew it the moment you walked in."],
       cool: ["As you wish.", "Noted. With some reluctance.", "If you insist."],
     },
     poor: {
       warm: ["Ah — a touch beyond the purse today, I fear. Shall I hold it in your name a little while?", "Perhaps a smaller treasure for now, my dear. The fine ones will wait for you.", "A splendid ambition. Perhaps after your next adventure?"],
-      cool: ["Perhaps something from the lower shelf. It is a perfectly respectable shelf. For its height.", "One so admires ambition. One admires solvency rather more."],
+      cool: ["One forgets how modestly the {class}'s trade is paid.", "Perhaps something from the lower shelf. It is a perfectly respectable shelf. For its height.", "One so admires ambition. One admires solvency rather more."],
     },
     out: {
       warm: ["Alas, that piece has already found a home. A duchess's, as it happens.", "Spoken for, I'm afraid. Should another come my way, you shall hear of it first.", "Ah, a pity — the last one left only this morning."],
@@ -185,11 +190,11 @@ export const KEEPER_LINES = {
       "holy-water": "Blessed at the high temple. The priest wept, I'm told. With joy.",
     },
     haggle: {
-      crit2: ["Oh, wonderfully argued! I'm utterly charmed. Take it, my dear, with my compliments — and do come back.", "Magnificent. One hasn't been so delightfully persuaded in a century. It's yours, and gladly.", "Bravo! I'd applaud, but it would be unseemly. Take it, with my sincere admiration."],
+      crit2: ["I've never been so charmed by {a_race}. Take it, with my blessing.", "Oh, wonderfully argued! I'm utterly charmed. Take it, my dear, with my compliments — and do come back.", "Magnificent. One hasn't been so delightfully persuaded in a century. It's yours, and gladly.", "Bravo! I'd applaud, but it would be unseemly. Take it, with my sincere admiration."],
       crit: ["Beautifully put. A fifth off, and my admiration besides.", "What a gift for words you have. A fifth off — it's been a pleasure.", "Persuasion as an art form. A fifth off, gladly."],
       full: ["Persuasive, and so graciously done. A tenth off, with pleasure.", "A tenth off. I so enjoy a civil negotiation."],
       partial: ["A small courtesy between friends. A little off.", "Very well, a sliver off — for the pleasure of the conversation.", "A token, my dear, but a sincere one."],
-      miss: ["How utterly quaint. The price, I'm afraid, has risen to meet your manners.", "I shall pretend that was a jest. It now costs a little more, as jests so often do.", "Oh dear. That rather backfired, didn't it? A touch dearer now."],
+      miss: ["Is that how one haggles where a {race} is raised? How quaint. It's dearer now.", "How utterly quaint. The price, I'm afraid, has risen to meet your manners.", "I shall pretend that was a jest. It now costs a little more, as jests so often do.", "Oh dear. That rather backfired, didn't it? A touch dearer now."],
       holds: ["The price reflects the piece, my dear. It does not bend, and neither, today, do I.", "No lower. Some things are simply beneath us both.", "I'm afraid that's my final word. Graciously given."],
       refuse: ["Oh, we don't haggle at Aurelian's. We merely sell — and you, delightfully, buy.", "Haggling? In this house? How refreshingly rustic."],
       soldOut: ["Ah. That piece has this very moment been reserved. For someone with manners.", "How dreadfully unfortunate. It is no longer for sale. To you."],
@@ -210,24 +215,26 @@ export const KEEPER_LINES = {
     recommend: "spyglass",
     greet: {
       warm: [
+        "{A_class}. Good. I've a few things made for your trade.",
+        "Come in. Had {a_race} in yesterday. Bought well. Let's see you do the same.",
         "Welcome, {name}. Look around. Ask if something catches your eye.",
         "Come in, come in. Everything here is worth its price. Most things more.",
         "Good to see you. Take your time — not too much of it, mind.",
         "Ah, {name}. I've something you'll like. Have a look.",
         "In you come. Every piece has a story. I'll tell you the short version.",
       ],
-      cool: ["{name}. Browse. Quickly.", "Back again. Let's be brief this time.", "Yes, yes. What is it you want?"],
+      cool: ["The {class} again. Let's be quick.", "{name}. Browse. Quickly.", "Back again. Let's be brief this time.", "Yes, yes. What is it you want?"],
     },
     pay: {
       warm: ["Good. Look after it; it's been looked after.", "Sold, and well bought. Off you go now.", "Thank you. It'll serve you well.", "A fine purchase. You chose well."],
       cool: ["Paid. Thank you. Good day.", "Done. Mind the door.", "There. Now, if you don't mind."],
     },
     add: {
-      warm: ["A fine choice.", "That one's earned its place. Good.", "Mm. You have an eye.", "Good. That'll do you proud."],
+      warm: ["A sound choice for {a_class}.", "A fine choice.", "That one's earned its place. Good.", "Mm. You have an eye.", "Good. That'll do you proud."],
       cool: ["Fine.", "Very well.", "If you like."],
     },
     poor: {
-      warm: ["A little beyond you today. It'll keep.", "Save a while. It's worth the wait.", "Not today, perhaps. Soon."],
+      warm: ["{A_class}'s purse is never quite deep enough. It'll keep.", "A little beyond you today. It'll keep.", "Save a while. It's worth the wait.", "Not today, perhaps. Soon."],
       cool: ["Can't afford it. Next.", "Not with that purse."],
     },
     out: {
@@ -328,10 +335,10 @@ export const KEEPER_LINES = {
     },
     haggle: {
       crit2: ["Ha! Well argued. Take it, with my compliments.", "That was a pleasure. It's yours, and well earned.", "Well! You know your wares. Take it, gladly."],
-      crit: ["Good argument. A fifth off.", "You know your wares. A fifth off.", "Fair and well put. A fifth."],
+      crit: ["Sharp, for {a_class}. A fifth off.", "Good argument. A fifth off.", "You know your wares. A fifth off.", "Fair and well put. A fifth."],
       full: ["Fair point. A tenth off.", "Reasonable. A tenth."],
       partial: ["A little off. That's my best.", "A small courtesy. There.", "A bit off. Only a bit."],
-      miss: ["No. That's put it up, I'm afraid.", "Not a good argument. Bit more now.", "That's cost you. Dearer now."],
+      miss: ["No. That's put it up, {class}.", "No. That's put it up, I'm afraid.", "Not a good argument. Bit more now.", "That's cost you. Dearer now."],
       holds: ["That's the price. It's a fair one.", "No lower. It's worth every coin.", "My prices are honest. That's the price."],
       refuse: ["I don't haggle. My prices are fair.", "No haggling. Fair price, fair trade."],
       soldOut: ["Not that one, I'm afraid. It's promised.", "That one's withdrawn. Pick something else."],
@@ -352,24 +359,26 @@ export const KEEPER_LINES = {
     recommend: "rations",
     greet: {
       warm: [
+        "Well I never, {a_race}! Don't get many o' your sort in Millbrook. Come in!",
+        "{A_class}, are you? Then you'll want rope. Everyone does.",
         "Come in, come in! Kettle's just boiled.",
         "Well now, {name}! You look like you need a good pair o' socks.",
         "Wipe your feet, me dear. Then tell me what you're after.",
         "Bless me, it's {name}! Sit yourself down a minute.",
         "Afternoon! There's cake, if you've time. There's always time for cake.",
       ],
-      cool: ["Oh. Afternoon, {name}.", "Back again, are you. Well, wipe your feet.", "Mm. What'll it be, then?"],
+      cool: ["Oh. The {class}. Wipe your feet.", "Oh. Afternoon, {name}.", "Back again, are you. Well, wipe your feet.", "Mm. What'll it be, then?"],
     },
     pay: {
       warm: ["There you are. Mind how you go!", "And a sweet for the road, on the house.", "Come back and tell me all about it, won't you?", "Bless you, me dear. Stay safe out there."],
       cool: ["There. Off you go.", "Right. Mind the step.", "Paid up. Good."],
     },
     add: {
-      warm: ["Lovely choice, that.", "Proper useful, that is.", "Into the bag. I'll not charge for the bag.", "Ooh, you'll be glad of that."],
+      warm: ["Just the thing for {a_class}, that is.", "Lovely choice, that.", "Proper useful, that is.", "Into the bag. I'll not charge for the bag.", "Ooh, you'll be glad of that."],
       cool: ["Right.", "If you say so.", "In it goes."],
     },
     poor: {
-      warm: ["Bless you, that's a bit dear for your purse today.", "Ain't got the coin? Never mind, me dear, there's always next time.", "Tell you what, come back after your next job."],
+      warm: ["Bit dear for {a_class}'s wages, eh? Never mind, me dear.", "Bless you, that's a bit dear for your purse today.", "Ain't got the coin? Never mind, me dear, there's always next time.", "Tell you what, come back after your next job."],
       cool: ["Can't pay, can't have it.", "That's beyond you, I'm afraid."],
     },
     out: {
@@ -418,11 +427,11 @@ export const KEEPER_LINES = {
       "shovel": "Dug me own well with that. And half me neighbours'.",
     },
     haggle: {
-      crit2: ["Oh, go on then! Take it, me dear, and welcome.", "Ha! You've a silver tongue. Have it for a song.", "Bless you, you've talked me round completely! Take it!"],
+      crit2: ["You and your {race} sweet talk! Go on, take it!", "Oh, go on then! Take it, me dear, and welcome.", "Ha! You've a silver tongue. Have it for a song.", "Bless you, you've talked me round completely! Take it!"],
       crit: ["Well, I can't say no to that face. A fifth off.", "You've talked me round. A fifth off, and a biscuit.", "Go on, a fifth off. You've earned it."],
       full: ["Go on, a tenth off. Don't tell the missus — oh, she's gone. Well, don't tell anyone.", "A tenth off, for a good neighbour."],
       partial: ["A little off, for you, me dear.", "Knock a bit off, call it neighbourly.", "Bit off. Don't tell the miller."],
-      miss: ["Now now, that ain't how haggling works. Bit more now.", "Cheeky! That's gone up a touch.", "Oh dear. That's put it up, love."],
+      miss: ["That's no way for {a_class} to haggle, love. Bit more now.", "Now now, that ain't how haggling works. Bit more now.", "Cheeky! That's gone up a touch.", "Oh dear. That's put it up, love."],
       holds: ["That's me price, love. Can't go lower and keep the fire lit.", "Fair's fair. That's the price.", "Can't do better, me dear. Honest."],
       refuse: ["I don't haggle, me dear. Prices are fair as they are.", "No haggling in this shop, love. Never has been."],
       soldOut: ["Oh — sorry, love, that one's promised to the vicar. Just remembered.", "That one's spoken for, I'm afraid. Mind the step."],
@@ -443,24 +452,26 @@ export const KEEPER_LINES = {
     recommend: "lantern",
     greet: {
       warm: [
+        "Ooh, a real {class}! Sit, sit — tell me everything!",
+        "{A_race}! How exciting. Mind the cats.",
         "Ooh, a visitor! Sit, sit — no, not on that.",
         "Ah, {name}. I was hoping someone would come by today.",
         "Everything's priced, near enough. Ask if you can't read my writing.",
         "Hello, hello! Mind the cat. And the other cat.",
         "Oh, how lovely! I've just put the kettle on. Again.",
       ],
-      cool: ["Oh. {name}. Hello.", "Back again. Right. Well.", "Yes? What is it, dearie?"],
+      cool: ["Oh. The {class}. Hello again.", "Oh. {name}. Hello.", "Back again. Right. Well.", "Yes? What is it, dearie?"],
     },
     pay: {
       warm: ["Lovely. Don't spend it all on adventures.", "Off you go, then — and do come back in one piece.", "Pleasure's mine. Here, have a biscuit.", "Ooh, thank you! You've made my day."],
       cool: ["There. Thank you.", "Paid. Good.", "Off you go now."],
     },
     add: {
-      warm: ["Ooh, good one!", "I'd have picked that myself, dearie.", "Pop it in the satchel. There we are.", "Lovely. You've a good eye."],
+      warm: ["Ooh, every {class} should have one of those.", "Ooh, good one!", "I'd have picked that myself, dearie.", "Pop it in the satchel. There we are.", "Lovely. You've a good eye."],
       cool: ["Mm. Fine.", "If you must.", "There."],
     },
     poor: {
-      warm: ["Oh dear, oh dear. A bit beyond us today, is it?", "Never mind. Save your pennies, dearie.", "Next time, perhaps. I'll keep it dusted."],
+      warm: ["Oh, the {class} trade doesn't pay what it ought, does it?", "Oh dear, oh dear. A bit beyond us today, is it?", "Never mind. Save your pennies, dearie.", "Next time, perhaps. I'll keep it dusted."],
       cool: ["Can't afford it, dearie. Put it back.", "Not with those pennies."],
     },
     out: {
@@ -509,11 +520,11 @@ export const KEEPER_LINES = {
       "clothes-cloak": "Snug as a hug, that cloak.",
     },
     haggle: {
-      crit2: ["Oh my! Go on, take it — you've quite charmed me!", "Well I never! Have it for a song, dearie.", "Oh, you! You could charm the birds from the trees. Take it!"],
+      crit2: ["What a charming {race}! Take it, dearie!", "Oh my! Go on, take it — you've quite charmed me!", "Well I never! Have it for a song, dearie.", "Oh, you! You could charm the birds from the trees. Take it!"],
       crit: ["Oh, alright, a fifth off. You've a lovely way with words.", "Go on then, a fifth. And a biscuit.", "Such a sweet talker! A fifth off."],
       full: ["A tenth off. Just this once. Don't tell my sister.", "Ooh, a tenth off, then. You're good at this."],
       partial: ["Ooh, a teensy bit off then.", "A little off, for a little smile.", "A pinch off. Like salt."],
-      miss: ["Oh dear, that's put it up a bit, hasn't it?", "Tsk. Cheeky. Bit more now.", "Oh no, dearie, that made it dearer."],
+      miss: ["Tsk. Is that how a {race} haggles? Bit more now.", "Oh dear, that's put it up a bit, hasn't it?", "Tsk. Cheeky. Bit more now.", "Oh no, dearie, that made it dearer."],
       holds: ["Sorry, dearie, that's my lowest.", "Can't go lower, I've the cat to think of.", "That's as low as it goes, I'm afraid."],
       refuse: ["Oh, I don't haggle. It makes me flustered.", "No haggling, dearie. My nerves can't take it."],
       soldOut: ["Oh! Silly me — that one's already sold. Just now. Honestly.", "That one's promised to Mrs. Bramble. So sorry."],
@@ -534,25 +545,27 @@ export const KEEPER_LINES = {
     recommend: "quicksilver",
     greet: {
       warm: [
+        "{A_class}. Good. I sell to your sort all the time.",
+        "Well, well — {a_race}. Come in, close the door.",
         "Shut the door, {name}. The draught gets curious.",
         "Well. You found me. That's half the price already.",
         "Look all you like. Touching costs extra.",
         "Ah, {name}. I was hoping you'd drift by.",
         "Come in, darling. Mind the puddle — it's not water.",
       ],
-      cool: ["{name}. Make it quick.", "You again. Don't touch anything.", "Mm. What do you want?"],
+      cool: ["The {class}. Again. Don't touch.", "{name}. Make it quick.", "You again. Don't touch anything.", "Mm. What do you want?"],
     },
     pay: {
       warm: ["Pleasure. You were never here.", "If anyone asks, you bought it from a nice old lady.", "Come back soon, {name}. I'll have new old things.", "Lovely doing business. Leave by the back."],
       cool: ["Paid. Now go.", "Done. Forget my face.", "Out the back. Quietly."],
     },
     add: {
-      warm: ["Good eye, sweetheart.", "Discreet choice.", "I'll wrap it in something boring.", "Ooh. Naughty. I like it."],
+      warm: ["Just what {a_class} needs. Trust me, darling.", "Good eye, sweetheart.", "Discreet choice.", "I'll wrap it in something boring.", "Ooh. Naughty. I like it."],
       cool: ["Fine.", "Mm.", "Take it, then."],
     },
     poor: {
       warm: ["Your eyes are bigger than your purse, darling.", "Come back when you've done something lucrative.", "Short, are we? Happens to the best thieves."],
-      cool: ["Can't pay? Then don't waste my time.", "Not with that purse, sweetheart."],
+      cool: ["{A_class} without coin. Tragic. Leave.", "Can't pay? Then don't waste my time.", "Not with that purse, sweetheart."],
     },
     out: {
       warm: ["Gone. Someone needed it more. Or paid more.", "Sold to a gentleman who didn't leave a name.", "That one walked out yesterday. On someone else's legs."],
@@ -600,11 +613,11 @@ export const KEEPER_LINES = {
       "crowbar": "Opens doors, crates, and negotiations.",
     },
     haggle: {
-      crit2: ["Oh, you're good. Take it, and keep that tongue sharp.", "Darling, I'd hire you. Take it for nearly nothing.", "Mm. Wicked. Take it — and come work for me."],
+      crit2: ["Darling, you're wasted as {a_class}. Take it.", "Oh, you're good. Take it, and keep that tongue sharp.", "Darling, I'd hire you. Take it for nearly nothing.", "Mm. Wicked. Take it — and come work for me."],
       crit: ["Mm. A fifth off — you've earned it.", "You flatter me. A fifth off, then.", "Clever thing. A fifth off."],
       full: ["A tenth, sweetheart. Don't get used to it.", "A tenth off. Our little secret."],
       partial: ["A little off. Consider it a favour. I collect those.", "Fine, a sliver off — and you owe me one.", "A crumb off. Don't tell anyone."],
-      miss: ["Cute. The price just went up.", "Try that again and it'll go up more.", "Oh, darling, no. That cost you."],
+      miss: ["Cute, for {a_race}. The price just went up.", "Cute. The price just went up.", "Try that again and it'll go up more.", "Oh, darling, no. That cost you."],
       holds: ["That's my price, darling. Take it or don't.", "No lower. I have expenses. Bribes, mostly.", "That's the price. It's already a steal. Literally."],
       refuse: ["I don't haggle, darling. I name prices.", "No haggling. It's bad for business. Mine."],
       soldOut: ["Oh dear, that one's gone. Just now. Funny, that.", "That piece found another buyer. One with manners."],
@@ -625,25 +638,27 @@ export const KEEPER_LINES = {
     recommend: "lockpicks",
     greet: {
       warm: [
+        "{A_race}! Nackle sells to anyone. Even {a_race}.",
+        "Ooh, {a_class}! Nackle has things for that. Lots.",
         "Hehh. A customer. Wipe your feet, or don't. Nackle's not fussy.",
         "Nackle sees you, {name}. Nackle sees your purse too.",
         "Everything's for sale. Some of it's even Nackle's.",
         "Come in, come in! Nackle has shinies today.",
         "Ooh, {name}! Nackle remembers you. Nackle remembers everything. Hehh.",
       ],
-      cool: ["You again. Nackle is watching.", "Hmph. {name}. Don't touch.", "What you want? Quick-quick."],
+      cool: ["The {class} again. Nackle is watching.", "You again. Nackle is watching.", "Hmph. {name}. Don't touch.", "What you want? Quick-quick."],
     },
     pay: {
       warm: ["Hehh. Pleasure. Nackle writes it down. Nackle forgets it.", "Off you go. Didn't buy it here, mind.", "Come back when your pockets are heavy, {name}.", "Good trade! Nackle is happy. Nackle is rich."],
       cool: ["Paid. Go.", "Done. Out.", "Nackle has your coin. You can go."],
     },
     add: {
-      warm: ["Hehh. Good shiny.", "Nackle approves.", "Into the sack. Quick-quick.", "Good! Nackle likes you."],
+      warm: ["Good for {a_class}. Nackle knows.", "Hehh. Good shiny.", "Nackle approves.", "Into the sack. Quick-quick.", "Good! Nackle likes you."],
       cool: ["Fine.", "Take it.", "Hmph."],
     },
     poor: {
       warm: ["Purse too light. Nackle can tell. Nackle can always tell.", "No coin, no shiny. Rules is rules.", "Come back with more coin. Nackle waits."],
-      cool: ["No coin? Go away.", "Poor. Nackle doesn't like poor."],
+      cool: ["Poor {class}. Nackle doesn't sell to poor.", "No coin? Go away.", "Poor. Nackle doesn't like poor."],
     },
     out: {
       warm: ["Gone. Nackle sold it. Nackle doesn't remember who.", "All gone. Nackle will find more. Nackle always finds more.", "Sold to a tall one. Very tall. Nackle didn't ask."],
@@ -691,11 +706,11 @@ export const KEEPER_LINES = {
       "spyglass": "Look far! See guards before guards see you.",
     },
     haggle: {
-      crit2: ["Hehh! Clever one! Take it, take it, Nackle loses again!", "Nackle is robbed! Nackle likes you anyway.", "Ooh, sneaky-clever! Nackle gives it nearly free!"],
+      crit2: ["Clever {race}! Nackle is robbed again! Hehh!", "Hehh! Clever one! Take it, take it, Nackle loses again!", "Nackle is robbed! Nackle likes you anyway.", "Ooh, sneaky-clever! Nackle gives it nearly free!"],
       crit: ["Grr. Fine. A fifth off. Nackle remembers this.", "Too clever. Nackle gives a fifth.", "A fifth! Only because Nackle likes you."],
       full: ["A tenth. Nackle is generous today. Today only.", "Tenth off. Shh. Don't tell cousins."],
       partial: ["Tiny bit off. Tiny. Like a mouse.", "Bit off. Nackle wants a favour later. Hehh.", "A crumb off. Nackle is kind."],
-      miss: ["Hehh. Now it costs more. Nackle wins.", "Bad haggle. Price goes up. Hehh.", "Silly! Dearer now!"],
+      miss: ["Silly {class}. Price goes up. Hehh.", "Hehh. Now it costs more. Nackle wins.", "Bad haggle. Price goes up. Hehh.", "Silly! Dearer now!"],
       holds: ["That's the price. Nackle says.", "No lower. Nackle's got mouths to feed. Mostly Nackle's.", "Price is price. Nackle is firm."],
       refuse: ["Nackle doesn't haggle. Nackle names the price.", "No haggle! Nackle's rules."],
       soldOut: ["Hehh — that one's gone. Just now. Magic.", "Nackle sold it. Not to you."],
