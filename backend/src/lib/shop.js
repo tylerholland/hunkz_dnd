@@ -53,7 +53,11 @@ const SEED_ITEMS = [
   { id: "spyglass", cat: "fancy", name: "Spyglass", price: 20, icon: "pick" },
   { id: "timer", cat: "fancy", name: "Sand Timer", price: 20, icon: "mirror" },
   { id: "boardgame", cat: "fancy", name: "Board Game", price: 20, icon: "pack" },
-  { id: "clothes", cat: "fancy", name: "Elaborate Clothes", price: 20, icon: "armor" },
+  { id: "clothes", cat: "fancy", name: "Elaborate Clothes", price: 20, icon: "armor", notes: "Fine robes fit for a noble's table." },
+  { id: "clothes-boots", cat: "fancy", name: "Riding Boots", price: 20, icon: "armor", notes: "Tall, polished, and very good for kicking doors." },
+  { id: "clothes-cloak", cat: "fancy", name: "Hooded Trail Cloak", price: 20, icon: "armor", notes: "Heavy wool, fur collar. Keeps the rain off and the stares away." },
+  { id: "clothes-gloves", cat: "fancy", name: "Fine Gloves", price: 20, icon: "armor" },
+  { id: "clothes-hat", cat: "fancy", name: "Feathered Hat", price: 20, icon: "armor", notes: "Makes an entrance before you do." },
   { id: "holy-symbol", cat: "fancy", name: "Holy Symbol", price: 20, icon: "coin", notes: "And other charms." },
   { id: "fire-oil", cat: "fancy", name: "Fire Oil (flask)", price: 20, icon: "fire", stat: "d6+1 / round, 3 rounds", notes: "Sets an area alight unless put out. Fills a lantern ten times." },
   { id: "mule", cat: "travel", name: "Mule", price: 30, icon: "horse" },
@@ -68,6 +72,13 @@ const SEED_ITEMS = [
   { id: "expert", cat: "hire", name: "Expert", price: 20, per: "day", icon: "person", stat: "6 HP · skill 4 · dagger, bow" },
   { id: "champion", cat: "hire", name: "Champion", price: 60, per: "day", icon: "great", stat: "18 HP · full armour, halberd, sword, shield, dagger" },
 ];
+
+// Items added to the built-in list after a catalog may already have been
+// saved, by seed version. A saved catalog older than a version gets that
+// version's items appended once (unless it already has them); anything the DM
+// removed before then stays removed.
+const CATALOG_SEED_VERSION = 2;
+const SEED_ADDITIONS = { 2: ["clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat"] };
 
 const clip = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const toInt = (v) => { const n = parseInt(v, 10); return Number.isFinite(n) ? n : 0; };
@@ -92,7 +103,16 @@ function normalizeCatalogItem(raw) {
 
 /** The catalog record: seeded from World of Dungeons until the DM saves one. */
 function normalizeCatalog(record) {
-  const source = Array.isArray(record?.items) ? record.items : SEED_ITEMS;
+  let source = Array.isArray(record?.items) ? record.items : SEED_ITEMS;
+  if (Array.isArray(record?.items)) {
+    const savedAt = Number(record.seedVersion) || 1;
+    const have = new Set(source.map((it) => it?.id));
+    const added = [];
+    for (let v = savedAt + 1; v <= CATALOG_SEED_VERSION; v += 1) {
+      for (const id of SEED_ADDITIONS[v] || []) if (!have.has(id)) added.push(SEED_ITEMS.find((it) => it.id === id));
+    }
+    if (added.length) source = [...source, ...added.filter(Boolean)];
+  }
   const seen = new Set();
   const items = [];
   for (const raw of source.slice(0, MAX_ITEMS)) {
@@ -323,7 +343,7 @@ function addPurchase(character, item, qty, { shopName } = {}) {
 }
 
 module.exports = {
-  CATS, SEED_ITEMS, LOCKUP_MS, MAX_ITEMS, MAX_QTY,
+  CATS, SEED_ITEMS, CATALOG_SEED_VERSION, LOCKUP_MS, MAX_ITEMS, MAX_QTY,
   normalizeCatalog, normalizeCatalogItem, normalizeShop, normalizeOpening,
   openingWindow, shopStatus, markedPrice, playerShop, shopSummary,
   purseValueCp, payFromPurse, addPurchase,

@@ -124,14 +124,19 @@ export default function ShopPage({ preview = false }) {
       const d = await getSessionState({ slug, dmPassword: password });
       if (d.character && acceptVersion(characterVersionKey(slug), d.character.version)) setCharacter(d.character);
       setSummary(d.shop || null);
+      // Only count the shop as loaded once it has been: a failed fetch is
+      // retried on the next poll instead of leaving a stale (closed) shop.
       const key = `${d.shop?.version}|${d.shop?.status}`;
       if (key !== shopKeyRef.current) {
+        const next = await (preview ? getShopPreview(password) : getShop());
         shopKeyRef.current = key;
-        setShop(await (preview ? getShopPreview(password) : getShop()));
+        setShop(next);
       }
       setLoadError(null);
-    } catch {
-      setLoadError("Couldn't reach the shop. Check your connection.");
+    } catch (err) {
+      setLoadError(preview && err?.status === 403
+        ? "The preview needs the DM password. Sign in on the DM page and try again."
+        : "Couldn't reach the shop. Retrying…");
     }
   }, [slug, password, preview]);
   useEffect(() => { const t = setTimeout(refresh, 0); return () => clearTimeout(t); }, [refresh]);
@@ -139,11 +144,18 @@ export default function ShopPage({ preview = false }) {
   useAdaptivePolling({ enabled: password !== null, poll: refresh, activeMs: wsConnected ? CONNECTED_POLL_MS : ACTIVE_POLL_MS });
   useEffect(() => { const id = setInterval(() => setNow(Date.now()), 1000); return () => clearInterval(id); }, []);
 
-  const status = shop?.status || summary?.status || "closed";
-  const keeperKey = KEEPERS[shop?.keeper] ? shop.keeper : "mags";
+  // Unknown (null) until loaded; a preview is never "closed" — it's either loaded or still loading.
+  const status = shop?.status || (preview ? null : summary?.status || null);
+  // Until the shop itself loads, the session-state summary says whose shop it is.
+  const keeperKey = [shop?.keeper, summary?.keeper].find((k) => KEEPERS[k]) || "mags";
   const keeper = KEEPERS[keeperKey];
   const scene = SCENES[keeperKey];
-  const display = shop?.display || { keeperName: keeper.keeper, name: keeper.names[0][0], where: keeper.names[0][1], sub: keeper.names[0][2] };
+  const display = shop?.display || {
+    keeperName: summary?.keeperName || keeper.keeper,
+    name: summary?.name || keeper.names[0][0],
+    where: summary?.name ? "" : keeper.names[0][1],
+    sub: summary?.name ? "" : keeper.names[0][2],
+  };
   const items = useMemo(() => shop?.items || [], [shop]);
   const byId = useMemo(() => new Map(items.map((it) => [it.id, it])), [items]);
   const shelves = useMemo(() => SHELVES.filter((s) => items.some((it) => it.cat === s.id)), [items]);
@@ -264,7 +276,7 @@ export default function ShopPage({ preview = false }) {
 
   const lockLeft = shop?.lockupUntil ? Math.max(0, Math.ceil((Date.parse(shop.lockupUntil) - now) / 1000)) : 0;
   const realLabel = { open: "open", lockup: "locking up", combat: "shut for the fighting", scheduled: "scheduled", closed: "closed" }[shop?.realStatus] || "closed";
-  const hoursText = preview ? `Preview · really ${realLabel}` : {
+  const hoursText = !status ? "Opening the doors…" : preview ? `Preview · really ${realLabel}` : {
     open: `Open · ${closesText(shop || {}, null)}`,
     lockup: "Locking up",
     combat: "Shut for the fighting",
@@ -336,7 +348,7 @@ export default function ShopPage({ preview = false }) {
               </div>
             </>
           )}
-          {!browsing && <ShopShutters status={status} opensAt={shop?.opensAt} closesText={closesText(shop || {}, null)} keeperName={display.keeperName} />}
+          {!browsing && status && <ShopShutters status={status} opensAt={shop?.opensAt} closesText={closesText(shop || {}, null)} keeperName={display.keeperName} />}
         </div>
 
         {status === "lockup" && (

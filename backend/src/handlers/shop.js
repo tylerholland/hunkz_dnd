@@ -23,7 +23,7 @@ const {
 } = require("../lib/versioning");
 const { SHOP_SLUG, SHOP_CATALOG_SLUG, CHRONICLE_SLUG, MAP_LIBRARY_SLUG, isReservedCharacterSlug } = require("../lib/specialItems");
 const {
-  CATS, MAX_QTY, normalizeCatalog, normalizeCatalogItem, normalizeShop, shopStatus, markedPrice, playerShop, payFromPurse, addPurchase,
+  CATS, MAX_QTY, CATALOG_SEED_VERSION, normalizeCatalog, normalizeCatalogItem, normalizeShop, shopStatus, markedPrice, playerShop, payFromPurse, addPurchase,
 } = require("../lib/shop");
 
 async function isDm(event) {
@@ -183,8 +183,8 @@ exports.handler = async (event) => {
     if (!Array.isArray(body.items)) return badRequest("items must be an array");
     const items = body.items.map(normalizeCatalogItem).filter(Boolean);
     if (!items.length) return badRequest("The catalog needs at least one item");
-    const catalog = normalizeCatalog({ items });
-    const version = await putSpecialRecord(SHOP_CATALOG_SLUG, catalog);
+    const catalog = normalizeCatalog({ items, seedVersion: CATALOG_SEED_VERSION });
+    const version = await putSpecialRecord(SHOP_CATALOG_SLUG, { ...catalog, seedVersion: CATALOG_SEED_VERSION });
     await notifySessionChanged();
     return ok({ ...catalog, version });
   }

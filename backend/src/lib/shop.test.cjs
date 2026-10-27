@@ -21,8 +21,15 @@ test("the catalog is seeded from World of Dungeons and cleaned on save", () => {
     { id: "silver-dagger", name: "Duplicate", cat: "arms", price: 1 },
     { id: "x", name: "Bad shelf", cat: "nope", price: 1 },
     { id: "y", name: "Bad price", cat: "gear", price: -1 },
-  ] });
+  ], seedVersion: 2 });
   assert.deepEqual(items, [{ id: "silver-dagger", cat: "arms", name: "Silvered Dagger", price: 25, stat: "d6" }]);
+});
+
+test("a catalog saved before new built-in items gets them once", () => {
+  const old = { items: [{ id: "rope", name: "20ft Rope", cat: "gear", price: 2 }] };
+  assert.deepEqual(normalizeCatalog(old).items.map((i) => i.id), ["rope", "clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat"]);
+  const current = { items: old.items, seedVersion: 2 };
+  assert.deepEqual(normalizeCatalog(current).items.map((i) => i.id), ["rope"]);
 });
 
 test("before the next session: scheduled, open, two minutes to pay, closed", () => {

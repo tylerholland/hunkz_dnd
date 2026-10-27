@@ -54,10 +54,13 @@ export const ART_IDS = new Set([
   "light-armor", "full-armor", "shield",
   "rope", "spike", "chalk", "parchment", "flint", "torches", "tent", "dice", "caltrops", "bandages", "rations", "waterskin", "wineskin",
   "crowbar", "hatchet", "lockpicks", "ink", "fishing", "shovel", "pickaxe",
+  "quicksilver", "bone-dust", "holy-water", "blood", "incense",
+  "mirror", "lantern", "spyglass", "timer", "boardgame", "clothes", "clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat", "holy-symbol", "fire-oil",
+  "mule", "horse",
 ]);
 export const itemArt = (id) => (ART_IDS.has(id) ? `/art/shop/items/${id}.jpg` : null);
 // A shelf tile shows one of its pieces behind it.
-export const SHELF_ART = { arms: "martial-weapon", armor: "full-armor", gear: "rope", tools: "lockpicks" };
+export const SHELF_ART = { arms: "martial-weapon", armor: "full-armor", gear: "rope", tools: "lockpicks", occult: "quicksilver", fancy: "lantern", travel: "horse" };
 
 // The shopkeeper's voice for browsing (shared by every keeper for now).
 export const SHELF_LINES = {
