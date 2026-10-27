@@ -68,7 +68,7 @@ export const KEEPERS = {
   "mags": {
     keeper: "Mags",
     names: [
-      ["Ironwhistle's Emporium", "Greyhawk · Low Market", "Arms, armour & oddities — Magpie “Mags” Ironwhistle, proprietor, appraiser, shrewd old bird"],
+      ["Ironwhistle's Emporium", "Greyhawk · Low Market", "Arms, armour & oddities — Magpie “Mags” Ironwhistle, proprietor, appraiser, sharp eye"],
       ["The Brass Monocle", "Dyvers · Under the Clocktower", "Everything appraised, most things for sale — Mags Ironwhistle, who saw you coming"],
       ["Ironwhistle's Curios & Cutlery", "Hommlet · Behind the Inn", "Sharp things, shiny things, and things best left in the box — Mags, proprietor"],
     ],
