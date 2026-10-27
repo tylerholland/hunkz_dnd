@@ -385,8 +385,53 @@
   .kc span { position: relative; z-index: 1; padding: 6px 8px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.04em; line-height: 1.2; color: #f1e6d2; }
   .kc span small { display: block; font-family: 'Crimson Text', serif; font-size: 11px; font-style: italic; letter-spacing: 0; color: #cdbb9a; }
   .kc.on { box-shadow: 0 0 0 2px var(--gold), 0 6px 18px rgba(0,0,0,0.4); border-color: var(--gold); }
-  .kc.mine::before { content: "Yours"; position: absolute; z-index: 1; top: 6px; left: 6px; padding: 0 6px; border-radius: 999px; background: var(--gold); color: #1a120a; font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; }
-  .shop-prev { position: relative; margin-top: 14px; aspect-ratio: 5 / 2.2; border-radius: 12px; overflow: hidden; border: 1px solid var(--pal-border); background-size: cover; background-color: #1a120c; }
+  .seg.tabs { margin-bottom: 12px; }
+  .row.foot { margin-top: 14px; padding-top: 12px; border-top: 1px solid var(--pal-border); }
+  /* ── DM: the sticky status bar ── */
+  .sbar-wrap { position: sticky; top: 49px; z-index: 25; padding: 12px 18px; background: color-mix(in srgb, var(--pal-bg) 94%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); border-bottom: 1px solid var(--pal-border); }
+  .sbar { max-width: 920px; margin: 0 auto; padding: 12px 16px; border-radius: 12px; border: 1px solid var(--pal-accent); background: color-mix(in srgb, var(--pal-accent) 12%, var(--pal-surface-solid)); }
+  .sb-main { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; }
+  .sb-main .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--pal-muted); flex: none; }
+  .is-open .sb-main .dot { background: var(--good); box-shadow: 0 0 12px var(--good); }
+  .is-scheduled .sb-main .dot { background: var(--gold); }
+  .is-lockup .sb-main .dot { background: var(--gold); animation: caret 1s steps(1) infinite; }
+  .is-combat .sb-main .dot { background: var(--danger); }
+  .sb-main .what { flex: 1; min-width: 200px; }
+  .sb-main .what b { display: block; font-family: 'Cinzel', serif; font-weight: 400; font-size: 21px; letter-spacing: 0.08em; color: var(--pal-text); line-height: 1.2; }
+  .sb-main .what span { color: var(--pal-muted); font-size: 15px; }
+  .sb-main .btn { min-width: 140px; }
+  .sb-sched { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-top: 8px; padding-top: 8px; border-top: 1px solid color-mix(in srgb, var(--pal-border) 80%, transparent); font-size: 15px; color: var(--pal-text-body); }
+  .sb-sched .lbl, .sb-edit .lbl { min-width: 70px; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--pal-muted); }
+  .sb-sched .lnk { background: none; border: 0; padding: 0; color: var(--pal-accent-bright); font-size: 14px; }
+  .sb-sched .lnk:hover { text-decoration: underline; }
+  .sb-edit { margin-top: 4px; }
+  .sb-edit .row { margin-top: 10px; }
+  .sb-acts { padding-top: 10px; border-top: 1px dashed var(--pal-border); }
+  /* ── DM: shelves & stock, one row per shelf ── */
+  .shelves { display: grid; gap: 6px; margin-top: 12px; }
+  .shelf { padding: 7px 10px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--cat) 45%, var(--pal-border)); background: var(--pal-surface-solid); }
+  .shelf.off { padding: 4px 10px; border-style: dashed; border-color: var(--pal-border); background: transparent; opacity: 0.7; }
+  .sh-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; }
+  .sh-row .dotc { width: 10px; height: 10px; border-radius: 50%; background: var(--cat); flex: none; }
+  .sh-row .nm { width: 130px; font-family: 'Cinzel', serif; font-weight: 400; font-size: 13px; letter-spacing: 0.06em; color: var(--pal-text); }
+  .sh-row .eg { flex: 1; min-width: 120px; font-size: 13px; font-style: italic; color: var(--pal-muted); }
+  .sh-row .cnt { min-width: 64px; text-align: right; font-family: 'Cinzel', serif; font-size: 13px; color: var(--pal-text); }
+  .sh-row .chev { width: 28px; height: 28px; border: 0; background: none; color: var(--pal-muted); font-size: 14px; }
+  .mkc { display: inline-flex; align-items: center; gap: 4px; }
+  .mkc button { width: 24px; height: 24px; border-radius: 5px; border: 1px solid var(--pal-border); background: var(--pal-accent-dim); color: var(--pal-accent-bright); font-size: 14px; line-height: 1; }
+  .mkc b { width: 48px; text-align: center; font-family: 'Cinzel', serif; font-weight: 400; font-size: 13px; color: var(--pal-text); }
+  .mkc b.up { color: #d8a45a; }
+  .mkc b.down { color: var(--good); }
+  .sw { position: relative; width: 36px; height: 20px; padding: 0; border-radius: 10px; border: 1px solid var(--pal-border); background: var(--pal-accent-dim); flex: none; }
+  .sw i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--pal-muted); transition: left 0.2s; }
+  .sw.on { background: color-mix(in srgb, var(--pal-accent) 55%, transparent); }
+  .sw.on i { left: 18px; background: var(--pal-accent-bright); }
+  .shelf .stock-items { margin: 8px 0 2px 46px; }
+  .stk i { font-style: normal; font-size: 12px; color: var(--pal-muted); }
+  .locked .lockable { pointer-events: none; opacity: 0.4; }
+  .tbtn:disabled, .seg button:disabled { opacity: 0.4; cursor: default; }
+  @media (max-width: 760px) { .sh-row .nm { width: auto; flex: 1; } .shelf .stock-items { margin-left: 0; } .sbar-wrap { padding: 8px 10px; } }
+  .shop-prev { position: relative; margin-top: 14px; aspect-ratio: 5 / 1.9; border-radius: 12px; overflow: hidden; border: 1px solid var(--pal-border); background-size: cover; background-color: #1a120c; }
   .shop-prev::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent 35%, rgba(10,6,3,0.82) 75%); }
   .shop-prev .txt { position: absolute; z-index: 1; right: 18px; top: 50%; transform: translateY(-50%); width: min(46%, 380px); color: #f1e6d2; }
   .shop-prev .txt .where { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.24em; text-transform: uppercase; color: #d8b878; }
@@ -542,60 +587,47 @@
 <!-- ═════════ DM: OPEN THE SHOP ═════════ -->
 <section class="view" id="v-open">
   <nav class="nav"><a class="back" href="#">‹</a><span class="t">DM · Ironwhistle's Emporium</span></nav>
+  <!-- Status and schedule: always in view while the DM scrolls. -->
+  <div class="sbar-wrap"><div class="sbar" id="dmStatus">
+    <div class="sb-main" id="sbMain"></div>
+    <div class="sb-sched" id="sbSched"></div>
+    <div class="sb-edit" id="sbEdit" hidden></div>
+  </div></div>
   <main class="dm open-shop">
-    <div class="status" id="dmStatus"></div>
-
-    <div class="card" id="logCard">
-      <h3>Haggling this opening</h3>
-      <div id="hlog"></div>
-    </div>
-
     <div class="lockbar" id="lockbar">
-      <span><b>The shop is open.</b> Setup is locked so shelves and prices don't shift while people shop. Stock, below, stays live.</span>
-      <button class="tbtn" type="button" id="unlock">Unlock setup</button>
+      <span><b>The shop is open.</b> Stock changes show in the shop straight away. The shop, its shelves and prices are locked so nothing shifts while people shop.</span>
+      <button class="tbtn" type="button" id="unlock">Unlock</button>
     </div>
 
-    <div class="card setup">
-      <h3><span class="step">1</span>Which shop</h3>
+    <div class="card setup" id="shopCard">
+      <h3>The shop</h3>
+      <div class="seg tabs" id="shopTabs"></div>
       <div class="keepers" id="keeperCards"></div>
       <div class="shop-prev" id="shopPrev"></div>
       <div class="row"><span class="lbl">Sign</span><div class="names" id="nameChips"></div></div>
       <div class="row own" id="ownName"><span class="lbl"></span><input class="in" id="ownSign" placeholder="Shop name" /><input class="in" id="ownWhere" placeholder="Town · street" /></div>
-      <div class="row"><span class="lbl"></span><span class="hint" id="usualNote" style="margin:0"></span><span style="flex:1"></span><button class="tbtn" type="button" id="resetUsual">Reset to usual</button><button class="tbtn" type="button" id="saveMine">Save as my shop</button></div>
-    </div>
-
-    <div class="card setup">
-      <h3><span class="step">2</span>When</h3>
-      <div class="seg big" id="whenSeg"><button class="on" data-v="next">Before the next session</button><button data-v="now">Open now</button><button data-v="pick">Pick the times</button></div>
-      <div id="whenBody"></div>
-    </div>
-
-    <div class="card setup">
-      <h3><span class="step">3</span>Shelves, prices &amp; temper</h3>
-      <div class="chips" id="carryChips" style="margin-top:0"></div>
-      <p class="hint">Tap a shelf to carry it or not. Shelves the shop doesn't carry are hidden from players.</p>
-      <div class="row"><span class="lbl">Prices</span><div class="seg" id="markupSeg"></div><button class="tbtn" type="button" id="markupReroll">⟳ Reroll</button></div>
-      <div class="markups" id="markups"></div>
-      <p class="hint">Each shelf gets its own markup, rolled from the price level. Nudge any of them with − and +. Players only ever see the prices.</p>
       <div class="row"><span class="lbl">Temper</span><div class="seg" id="haggleSeg"></div></div>
       <p class="hint" id="haggleHint"></p>
+      <div class="row foot"><span class="hint" id="usualNote" style="margin:0"></span><span style="flex:1"></span><button class="tbtn" type="button" id="resetUsual">Reset to usual</button><button class="tbtn primary" type="button" id="saveMine">Save this shop</button></div>
     </div>
 
     <div class="card" id="stockCard">
-      <h3><span class="step">4</span>Stock <span class="livepill" id="livePill">Live</span></h3>
-      <div class="row" style="margin-top:0"><input class="in" id="stockFind" placeholder="Find an item… (e.g. rope)" style="min-width:240px" /><span class="hint" id="liveHint" style="margin:0"></span></div>
-      <div class="row">
-        <div class="seg big" id="fillSeg"><button data-v="all">Everything</button><button class="on" data-v="full">Mostly full</button><button data-v="half">Half-empty</button><button data-v="empty">Mostly empty</button></div>
-        <button class="tbtn" type="button" id="reroll">⟳ Reroll</button>
+      <h3>Shelves &amp; stock <span class="livepill">Live</span></h3>
+      <div class="row ctl" style="margin-top:0">
+        <span class="lbl">Prices</span><div class="seg lockable" id="priceSeg"></div><button class="tbtn lockable" type="button" id="priceReroll">⟳ Reroll prices</button>
+      </div>
+      <div class="row ctl">
+        <span class="lbl">Stock</span><div class="seg" id="fillSeg"><button data-v="all">Everything</button><button class="on" data-v="full">Mostly full</button><button data-v="half">Half-empty</button><button data-v="empty">Mostly empty</button></div><button class="tbtn" type="button" id="reroll">⟳ Reroll stock</button>
         <span class="count" id="stockCount"></span>
       </div>
-      <p class="hint" id="rollHint">The roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first. Tap any item to flip it. Rolled once when you save, so everyone sees the same shelves.</p>
-      <div class="stock" id="stockList"></div>
+      <p class="hint" id="rollHint"></p>
+      <div class="row"><input class="in" id="stockFind" placeholder="Find an item… (e.g. rope)" style="min-width:260px" /><span class="hint" id="liveHint" style="margin:0"></span></div>
+      <div class="shelves" id="shelfList"></div>
     </div>
 
-    <div class="savebar">
-      <p id="saveSummary"></p>
-      <button class="btn gold" type="button" id="saveOpen">Save</button>
+    <div class="card" id="logCard">
+      <h3>Haggling this opening</h3>
+      <div id="hlog"></div>
     </div>
   </main>
 </section>
@@ -1416,45 +1448,83 @@ function setStatus(v) {
 }
 
 // ── DM: Open the shop ──
+// ── DM: the status bar. What the shop is doing now, and the one thing to do
+// about it, stay primary; the schedule sits under it and opens to edit.
+const isLiveNow = () => status === "open" || status === "lockup";
+function schedText() {
+  const w = live;
+  if (status === "open" || status === "lockup") return closesText(w)[0].toUpperCase() + closesText(w).slice(1);
+  if (status !== "scheduled") return "No opening scheduled";
+  if (shop.when === "next") return `${shop.lead} min before ${fmtDay(NEXT_SESSION)}'s session (${fmtTime(w.opens)}), ${shop.closeOn === "start" ? "closes as it starts" : "open until you close it"}`;
+  return `${fmtDay(w.opens)}, ${fmtTime(w.opens)} until ${fmtDay(w.closes)}, ${fmtTime(w.closes)}`;
+}
 function renderStatus() {
   const w = live, { n, of } = stockCounts();
-  const el = document.getElementById("dmStatus");
   const s = {
-    open: { t: "Open", sub: `${closesText(w)[0].toUpperCase()}${closesText(w).slice(1)} · ${n} of ${of} wares in stock`, acts: [["lockup", "Close now"]] },
-    lockup: { t: "Locking up", sub: "Anyone with something in their satchel has two minutes to pay.", acts: [["closed", "Close at once"]] },
-    combat: { t: "Shut for the fighting", sub: "Combat closed it. It reopens when the round ends.", acts: [] },
-    scheduled: { t: `Opens ${fmtDay(w.opens)} at ${fmtTime(w.opens)}`, sub: `${fromNow(w.opens)}, no need to be online · ${closesText(w)}`, acts: [["open", "Open now instead"], ["closed", "Cancel"]] },
-    closed: { t: "Closed", sub: "Players see the shutters. Set up an opening below.", acts: [["open", "Open now"]] },
+    open: { t: "Open", sub: `${n} of ${of} wares in stock`, main: ["lockup", "Close now"] },
+    lockup: { t: "Locking up", sub: "Anyone with something in their satchel has two minutes to pay", main: ["closed", "Close at once"] },
+    combat: { t: "Shut for the fighting", sub: "Combat closed it; it reopens when the round ends" },
+    scheduled: { t: "Scheduled", sub: `Opens ${fmtDay(w.opens)} at ${fmtTime(w.opens)} · ${fromNow(w.opens)}, no need to be online`, main: ["open", "Open now"], alt: ["closed", "Cancel opening"] },
+    closed: { t: "Closed", sub: "Players see the shutters", main: ["open", "Open now"] },
   }[status];
-  el.className = `status is-${status}`;
-  el.innerHTML = `<span class="dot"></span><span class="what"><b>${s.t}</b><span>${s.sub}</span></span>${s.acts.map(([v, l]) => `<button class="tbtn${v === "open" ? " primary" : ""}" type="button" data-act="${v}">${l}</button>`).join("")}`;
-  el.querySelectorAll("[data-act]").forEach((b) => b.onclick = () => { if (b.dataset.act === "open" && status !== "lockup") { shop.when = "now"; live = windowOf(); renderOpen(); } setStatus(b.dataset.act); });
+  document.getElementById("dmStatus").className = `sbar is-${status}`;
+  document.getElementById("sbMain").innerHTML = `<span class="dot"></span><div class="what"><b>${s.t}</b><span>${s.sub}</span></div>
+    ${s.alt ? `<button class="tbtn" type="button" data-act="${s.alt[0]}">${s.alt[1]}</button>` : ""}
+    ${s.main ? `<button class="btn gold" type="button" data-act="${s.main[0]}">${s.main[1]}</button>` : ""}`;
+  document.querySelectorAll("#sbMain [data-act]").forEach((b) => b.onclick = () => {
+    if (b.dataset.act === "open" && status !== "lockup") { shop.when = "now"; live = windowOf(); }
+    closeEdit(); setStatus(b.dataset.act);
+  });
+  const none = status === "closed" || status === "combat";
+  document.getElementById("sbSched").innerHTML = `<span class="lbl">${isLiveNow() ? "Closes" : "Schedule"}</span><span class="txt">${schedText()}</span>
+    <button class="lnk" type="button" id="schedEditBtn">${editing ? "" : none ? "＋ Schedule an opening" : "✎ Change"}</button>`;
+  document.getElementById("schedEditBtn").onclick = openEdit;
 }
 
-function renderWhen() {
-  const body = document.getElementById("whenBody"), w = windowOf();
+// The schedule editor works on a draft, saved or cancelled as a whole.
+let editing = false, draft = null;
+function openEdit() {
+  editing = true;
+  draft = { when: isLiveNow() ? "now" : shop.when === "now" ? "next" : shop.when, lead: shop.lead, closeOn: shop.closeOn, nowClose: shop.nowClose, opens: shop.opens, closes: shop.closes };
+  renderStatus(); renderSchedEdit();
+}
+function closeEdit() { editing = false; draft = null; document.getElementById("sbEdit").hidden = true; }
+function draftWindow() { const keep = { ...shop }; Object.assign(shop, draft); const w = windowOf(); Object.assign(shop, keep); return w; }
+function renderSchedEdit() {
+  const el = document.getElementById("sbEdit");
+  el.hidden = !editing;
+  if (!editing) return;
   const segHtml = (id, opts, val) => `<div class="seg" id="${id}">${opts.map(([v, l]) => `<button type="button" data-v="${v}" class="${v === val ? "on" : ""}">${l}</button>`).join("")}</div>`;
-  if (shop.when === "next") {
-    body.innerHTML = `
-      <div class="row"><span class="lbl">Session</span><span class="from">Next session: <b>${fmtDay(NEXT_SESSION)}</b> · ${fmtTime(NEXT_SESSION)} <small style="color:var(--pal-muted)">(from the Chronicle)</small></span></div>
-      <div class="row"><span class="lbl">Opens</span><select class="in" id="leadSel">${[15, 30, 45, 60, 90, 120].map((m) => `<option value="${m}" ${m === shop.lead ? "selected" : ""}>${m < 60 ? `${m} minutes` : `${m / 60} hour${m === 60 ? "" : "s"}`} before</option>`).join("")}</select><span>at <b>${fmtTime(w.opens)}</b></span></div>
-      <div class="row"><span class="lbl">Closes</span>${segHtml("closeSeg", [["start", "When the session starts"], ["manual", "When I close it"]], shop.closeOn)}</div>
-      <p class="hint">You don't need to be online: the shop opens and closes itself. Move the session in the Chronicle and the shop moves with it.</p>`;
-    body.querySelector("#leadSel").onchange = (e) => { shop.lead = Number(e.target.value); renderOpen(); };
-    bindSeg("closeSeg", (v) => { shop.closeOn = v; renderOpen(); });
-  } else if (shop.when === "now") {
-    body.innerHTML = `
-      <div class="row"><span class="lbl">Closes</span>${segHtml("nowSeg", [["manual", "When I close it"], ["hour", "In an hour"], ["start", "When the session starts"]], shop.nowClose)}</div>
-      <p class="hint">For when the party walks in mid-story. Combat still pulls the shutters.</p>`;
-    bindSeg("nowSeg", (v) => { shop.nowClose = v; renderOpen(); });
+  const w = draftWindow();
+  let body;
+  if (isLiveNow()) {
+    // Already open: only when it closes is left to decide.
+    body = `<div class="row"><span class="lbl">Closes</span>${segHtml("nowSeg", [["manual", "When I close it"], ["hour", "In an hour"], ["start", "When the session starts"]], draft.nowClose)}</div>`;
   } else {
-    body.innerHTML = `
-      <div class="row"><span class="lbl">Opens</span><input class="in" type="datetime-local" id="opIn" value="${shop.opens}" /></div>
-      <div class="row"><span class="lbl">Closes</span><input class="in" type="datetime-local" id="clIn" value="${shop.closes}" /></div>
-      <p class="hint">Good for downtime between sessions: leave the shop open for a few days.</p>`;
-    body.querySelector("#opIn").onchange = (e) => { shop.opens = e.target.value; renderOpen(); };
-    body.querySelector("#clIn").onchange = (e) => { shop.closes = e.target.value; renderOpen(); };
+    body = `<div class="row"><span class="lbl">Opens</span>${segHtml("whenSeg", [["next", "Before the next session"], ["pick", "Pick the times"]], draft.when)}</div>`
+      + (draft.when === "next"
+        ? `<div class="row"><span class="lbl"></span><select class="in" id="leadSel">${[15, 30, 45, 60, 90, 120].map((m) => `<option value="${m}" ${m === draft.lead ? "selected" : ""}>${m < 60 ? `${m} minutes` : `${m / 60} hour${m === 60 ? "" : "s"}`} before</option>`).join("")}</select>
+            <span class="from">${fmtDay(NEXT_SESSION)} · ${fmtTime(NEXT_SESSION)} <small style="color:var(--pal-muted)">(from the Chronicle)</small></span><span>→ opens at <b>${fmtTime(w.opens)}</b></span></div>
+           <div class="row"><span class="lbl">Closes</span>${segHtml("closeSeg", [["start", "When the session starts"], ["manual", "When I close it"]], draft.closeOn)}</div>`
+        : `<div class="row"><span class="lbl"></span><input class="in" type="datetime-local" id="opIn" value="${draft.opens}" /></div>
+           <div class="row"><span class="lbl">Closes</span><input class="in" type="datetime-local" id="clIn" value="${draft.closes}" /><span class="hint" style="margin:0">Leave it open for days for downtime between sessions.</span></div>`);
   }
+  el.innerHTML = body + `<div class="row sb-acts"><span class="hint" style="margin:0">${isLiveNow() ? "" : "You don't need to be online: the shop opens and closes itself."}</span><span style="flex:1"></span>
+    <button class="tbtn" type="button" id="schedCancel">Cancel</button><button class="tbtn primary" type="button" id="schedSave">Save schedule</button></div>`;
+  const rer = () => renderSchedEdit();
+  if (el.querySelector("#nowSeg")) bindSeg("nowSeg", (v) => { draft.nowClose = v; rer(); });
+  if (el.querySelector("#whenSeg")) bindSeg("whenSeg", (v) => { draft.when = v; rer(); });
+  if (el.querySelector("#closeSeg")) bindSeg("closeSeg", (v) => { draft.closeOn = v; rer(); });
+  el.querySelector("#leadSel")?.addEventListener("change", (e) => { draft.lead = Number(e.target.value); rer(); });
+  el.querySelector("#opIn")?.addEventListener("change", (e) => { draft.opens = e.target.value; rer(); });
+  el.querySelector("#clIn")?.addEventListener("change", (e) => { draft.closes = e.target.value; rer(); });
+  el.querySelector("#schedCancel").onclick = () => { closeEdit(); renderStatus(); };
+  el.querySelector("#schedSave").onclick = () => {
+    Object.assign(shop, draft);
+    live = windowOf();
+    closeEdit();
+    setStatus(isLiveNow() ? status : live.opens <= NOW ? "open" : "scheduled");
+  };
 }
 function bindSeg(id, fn) {
   document.getElementById(id).onclick = (e) => {
@@ -1464,95 +1534,94 @@ function bindSeg(id, fn) {
   };
 }
 
+// ── DM: the page under the bar ──
 function renderOpen() {
-  [...document.getElementById("whenSeg").children].forEach((c) => c.classList.toggle("on", c.dataset.v === shop.when));
-  renderWhen();
+  const isLive = isLiveNow();
+  const view = document.getElementById("v-open").querySelector("main");
+  view.classList.toggle("is-live", isLive);
+  view.classList.toggle("locked", isLive && !unlocked);
+  // While the shop is open, stock is what the DM reaches for: it comes first.
+  const order = isLive ? ["lockbar", "stockCard", "logCard", "shopCard"] : ["shopCard", "stockCard", "logCard"];
+  order.forEach((id) => view.appendChild(document.getElementById(id)));
+  document.getElementById("logCard").hidden = !isLive && !hlog.length && !thrown.size;
   renderWhich();
-  // Shelves
-  document.getElementById("carryChips").innerHTML = CATS.map((c) => `<button type="button" class="cchip${shop.carries.has(c.id) ? "" : " off"}" style="--cat:${catColor(c.id)}" data-carry="${c.id}">${ico(c.icon)}${c.name}</button>`).join("");
-  document.querySelectorAll("[data-carry]").forEach((b) => b.onclick = () => {
+  renderShelves();
+  remember();
+}
+
+// Shelves & stock: one row per shelf, with whether it's carried, its markup,
+// and its stock; each row opens to its items.
+const expanded = new Set();
+function renderShelves() {
+  const isLive = isLiveNow();
+  document.getElementById("priceSeg").innerHTML = Object.entries(LEVELS).map(([k, l]) => `<button type="button" data-v="${k}" class="${k === shop.level ? "on" : ""}">${l.name}</button>`).join("");
+  [...document.getElementById("fillSeg").children].forEach((c) => { c.classList.toggle("on", c.dataset.v === shop.fill); c.disabled = isLive; });
+  // Rerolling would reshuffle the shelves under people's feet.
+  document.getElementById("reroll").disabled = shop.fill === "all" || isLive;
+  document.getElementById("liveHint").textContent = isLive ? "Anything you flip shows on the shelves straight away; restocked items show as “Just in”." : "";
+  document.getElementById("rollHint").textContent = isLive
+    ? "No rerolling while the shop is open. Flip items one at a time instead."
+    : "Each shelf's markup and stock are rolled from these; nudge any of them below. The stock roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first.";
+  const { n, of } = stockCounts();
+  document.getElementById("stockCount").innerHTML = `${n} of ${of} <small>in stock</small>`;
+  const q = document.getElementById("stockFind").value.trim().toLowerCase();
+  const hits = (it) => !q || it.name.toLowerCase().includes(q);
+  const chip = (it, carried) => carried
+    ? `<button type="button" class="stk${isOut(it) ? " out" : ""}" data-stk="${it.id}" style="--cat:${catColor(it.cat)}" title="${isOut(it) ? "Out of stock: tap to stock it" : "In stock: tap to mark sold out"}">${orb(it)}${it.name} <i>${cost(it)}s</i></button>`
+    : `<button type="button" class="stk nc" data-carryitem="${it.id}" style="--cat:${catColor(it.cat)}" title="Carry this shelf, with just this in stock">${orb(it)}${it.name}</button>`;
+  const rows = CATS.filter((c) => !q || ITEMS.some((i) => i.cat === c.id && hits(i))).map((c) => {
+    const on = shop.carries.has(c.id), list = ITEMS.filter((i) => i.cat === c.id), m = shop.markups[c.id] || 0, eg = list[0];
+    const open = q || expanded.has(c.id);
+    const shown = list.filter(hits);
+    return `<div class="shelf${on ? "" : " off"}${open ? " open" : ""}" style="--cat:${catColor(c.id)}">
+      <div class="sh-row">
+        <button type="button" class="sw lockable${on ? " on" : ""}" data-carry="${c.id}" aria-label="${on ? "Stop carrying" : "Carry"} ${c.name}"><i></i></button>
+        <span class="dotc"></span><b class="nm">${c.name}</b>
+        ${on ? `<span class="mkc lockable"><button type="button" data-mk="${c.id}" data-d="-5" aria-label="Cheaper">−</button><b class="${m > 0 ? "up" : m < 0 ? "down" : ""}">${markupName(m)}</b><button type="button" data-mk="${c.id}" data-d="5" aria-label="Dearer">+</button></span>
+          <small class="eg">${eg.name.toLowerCase()} ${cost(eg)}s${m ? ` <s>${eg.price}s</s>` : ""}</small>
+          <span class="cnt">${list.filter((i) => !isOut(i)).length} of ${list.length}</span>`
+        : `<small class="eg">not carried here</small><span class="cnt"></span>`}
+        <button type="button" class="chev" data-exp="${c.id}" aria-label="Show items">${open ? "▾" : "▸"}</button>
+      </div>
+      ${open ? `<div class="stock-items">${shown.map((it) => chip(it, on)).join("")}</div>${on ? "" : '<p class="hint" style="margin:6px 0 0">Tap an item to carry this shelf with just that in stock.</p>'}` : ""}
+    </div>`;
+  });
+  document.getElementById("shelfList").innerHTML = rows.join("") || `<p class="hint" style="margin:0">Nothing called “${q}” in the catalog. Add it in the Item catalog.</p>`;
+  const list = document.getElementById("shelfList");
+  list.querySelectorAll("[data-exp]").forEach((b) => b.onclick = () => { const id = b.dataset.exp; if (expanded.has(id)) expanded.delete(id); else expanded.add(id); renderShelves(); });
+  list.querySelectorAll("[data-carry]").forEach((b) => b.onclick = () => {
     const id = b.dataset.carry;
     if (shop.carries.has(id)) { if (shop.carries.size > 1) shop.carries.delete(id); } else shop.carries.add(id);
     renderOpen(); refreshShelves();
   });
-  document.getElementById("markupSeg").innerHTML = Object.entries(LEVELS).map(([k, l]) => `<button type="button" data-v="${k}" class="${k === shop.level ? "on" : ""}">${l.name}</button>`).join("");
-  document.getElementById("markups").innerHTML = CATS.filter((c) => shop.carries.has(c.id)).map((c) => {
-    const m = shop.markups[c.id] || 0, eg = ITEMS.find((i) => i.cat === c.id);
-    return `<div class="mk" style="--cat:${catColor(c.id)}"><i></i><span class="nm">${c.name}</span>
-      <button type="button" data-mk="${c.id}" data-d="-5" aria-label="Less">−</button><b class="${m > 0 ? "up" : m < 0 ? "down" : ""}">${markupName(m)}</b><button type="button" data-mk="${c.id}" data-d="5" aria-label="More">+</button>
-      <small>${eg.name.toLowerCase()} ${cost(eg)}s${m ? ` <s>${eg.price}s</s>` : ""}</small></div>`;
-  }).join("");
-  document.querySelectorAll("[data-mk]").forEach((b) => b.onclick = () => {
+  list.querySelectorAll("[data-mk]").forEach((b) => b.onclick = () => {
     const id = b.dataset.mk;
     shop.markups[id] = Math.max(-50, Math.min(200, (shop.markups[id] || 0) + Number(b.dataset.d)));
     renderOpen(); refreshShelves();
   });
-  document.getElementById("haggleSeg").innerHTML = Object.entries(HAGGLE).map(([k, h]) => `<button type="button" data-v="${k}" class="${k === shop.haggle ? "on" : ""}">${h.name}</button>`).join("");
-  document.getElementById("haggleHint").textContent = HAGGLE[shop.haggle].hint;
-  // Stock
-  const isLive = status === "open" || status === "lockup";
-  const view = document.getElementById("v-open").querySelector("main");
-  view.classList.toggle("is-live", isLive);
-  view.classList.toggle("locked", isLive && !unlocked);
-  // While the shop is open, stock is what the DM reaches for: it moves to the top.
-  const stockCard = document.getElementById("stockCard");
-  const anchor = isLive ? document.getElementById("lockbar") : [...view.querySelectorAll(".setup")].pop();
-  if (anchor.nextElementSibling !== stockCard) anchor.after(stockCard);
-  [...document.getElementById("fillSeg").children].forEach((c) => { c.classList.toggle("on", c.dataset.v === shop.fill); c.disabled = isLive; });
-  // Rerolling would reshuffle the shelves under people's feet.
-  document.getElementById("reroll").disabled = shop.fill === "all" || isLive;
-  document.getElementById("liveHint").textContent = isLive ? "The shop is open: anything you flip shows on the shelves straight away." : "";
-  document.getElementById("rollHint").textContent = isLive
-    ? "No rerolling while the shop is open. Flip items one at a time instead; restocked items show as “Just in”."
-    : "The roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first. Tap any item to flip it. Rolled once when you save, so everyone sees the same shelves.";
-  const { n, of } = stockCounts();
-  document.getElementById("stockCount").innerHTML = `${n} of ${of} <small>in stock</small>`;
-  const notCarried = CATS.filter((c) => !shop.carries.has(c.id));
-  const q = document.getElementById("stockFind").value.trim().toLowerCase();
-  const hits = (it) => !q || it.name.toLowerCase().includes(q);
-  // A search also finds things on shelves this shop doesn't carry; tapping
-  // one starts carrying that shelf, with just that item in stock.
-  const elsewhere = q ? ITEMS.filter((it) => !shop.carries.has(it.cat) && hits(it)) : [];
-  document.getElementById("stockList").innerHTML = CATS.filter((c) => shop.carries.has(c.id) && ITEMS.some((i) => i.cat === c.id && hits(i))).map((c) => {
-    const list = ITEMS.filter((i) => i.cat === c.id && hits(i));
-    return `<div class="stock-cat" style="--cat:${catColor(c.id)}"><h4><i></i>${c.name} <small>${list.filter((i) => !isOut(i)).length} of ${list.length}</small></h4>
-      <div class="stock-items">${list.map((it) => `<button type="button" class="stk${isOut(it) ? " out" : ""}" data-stk="${it.id}" style="--cat:${catColor(it.cat)}" title="${isOut(it) ? "Out of stock: tap to stock it" : "In stock: tap to mark sold out"}">${orb(it)}${it.name}</button>`).join("")}</div></div>`;
-  }).join("")
-    + (elsewhere.length ? `<div class="stock-cat"><h4>Not carried here <small>tap to carry the shelf, with just this in stock</small></h4><div class="stock-items">${elsewhere.map((it) => `<button type="button" class="stk nc" data-carryitem="${it.id}" style="--cat:${catColor(it.cat)}">${orb(it)}${it.name}</button>`).join("")}</div></div>` : "")
-    + (q && !elsewhere.length && !ITEMS.some((i) => shop.carries.has(i.cat) && hits(i)) ? `<p class="hint" style="margin:0">Nothing called “${q}” in the catalog. Add it in the Item catalog.</p>` : "")
-    + (!q && notCarried.length ? `<p class="hint" style="margin:0">Not carried here: ${notCarried.map((c) => c.name).join(", ")}.</p>` : "");
-  document.querySelectorAll("[data-carryitem]").forEach((b) => b.onclick = () => {
+  list.querySelectorAll("[data-carryitem]").forEach((b) => b.onclick = () => {
     const it = ITEMS.find((i) => i.id === b.dataset.carryitem);
     shop.carries.add(it.cat);
     ITEMS.filter((i) => i.cat === it.cat && i.id !== it.id).forEach((i) => shop.out.add(i.id));
     shop.out.delete(it.id);
+    expanded.add(it.cat);
     restocked(it);
     renderOpen(); refreshShelves();
   });
-  document.querySelectorAll("[data-stk]").forEach((b) => b.onclick = () => {
+  list.querySelectorAll("[data-stk]").forEach((b) => b.onclick = () => {
     const id = b.dataset.stk;
     if (shop.out.has(id)) { shop.out.delete(id); restocked(ITEMS.find((i) => i.id === id)); } else { shop.out.add(id); justIn.delete(id); }
     renderOpen(); refreshShelves();
-    document.querySelector(`[data-stk="${id}"]`).classList.add("flip");
+    document.querySelector(`[data-stk="${id}"]`)?.classList.add("flip");
   });
-  // Summary
-  const w = windowOf();
-  const when = shop.when === "now"
-    ? `Opens <b>now</b> and ${closesText(w).replace("open until", "stays open until")}.`
-    : `Opens <b>${fmtDay(w.opens)} at ${fmtTime(w.opens)}</b>${shop.when === "next" ? `, ${shop.lead} minutes before the session` : ""}, and ${closesText(w)}.`;
-  const terms = `${LEVELS[shop.level].name.toLowerCase()}, ${shop.haggle === "no" ? "won't haggle" : `${HAGGLE[shop.haggle].name.toLowerCase()} on haggling`}`;
-  document.getElementById("saveSummary").innerHTML = isLive
-    ? `<b>${scene.name}</b> is open, with ${n} of ${of} wares in stock. Stock changes show in the shop as you make them${unlocked ? ", and so do changes to the setup" : ""}.`
-    : `${when} <b>${scene.name}</b> (${scene.keeper}), ${FILL_NAME[shop.fill]}: ${n} of ${of} wares; ${terms}.`;
-  document.getElementById("saveOpen").hidden = isLive;
-  document.getElementById("saveOpen").textContent = status === "scheduled" ? "Update the schedule" : shop.when === "now" ? "Open the shop" : "Schedule it";
 }
-// ── Which shop ──
-let unlocked = false;
+
+// ── The shop: a template (a keeper and their usual setup) or a saved shop ──
+let unlocked = false, shopTab = "templates";
 const justIn = new Set();
 // Restocked while the shop is open: flagged on the shelf, and the keeper says so.
 function restocked(it) {
-  if (status !== "open" && status !== "lockup") return;
+  if (!isLiveNow()) return;
   justIn.add(it.id);
   say(`${it.name}? Hang on… found one out back!`);
 }
@@ -1562,24 +1631,41 @@ function faceBg(key) {
   const px = Math.max(0, Math.min(1, (S * sc.cx - 0.5) / (S - 1))), py = Math.max(0, Math.min(1, (Sy * (sc.y - 0.04) - 0.5) / (Sy - 1)));
   return `background-image:url(${sc.src});background-size:${S * 100}% auto;background-position:${(px * 100).toFixed(1)}% ${(py * 100).toFixed(1)}%`;
 }
+const snapshot = () => ({ cats: [...shop.carries], level: shop.level, markups: { ...shop.markups }, haggle: shop.haggle });
 function applySettings(src) {
   shop.carries = new Set(src.cats); shop.level = src.level; shop.markups = { ...src.markups }; shop.haggle = src.haggle;
   patience = HAGGLE[src.haggle].patience;
 }
+// Each template remembers how the DM last set it up, sign included, so
+// picking Tobias again brings back your Tobias. A saved shop just keeps
+// whatever you change.
+const memo = {};
+function remember() {
+  const saved = MY_SHOPS.find((m) => m.id === shop.pick);
+  if (saved) Object.assign(saved, snapshot(), customSign ? { name: customSign.name, where: customSign.where } : {});
+  else memo[shop.pick] = { ...snapshot(), nameIdx, customSign };
+}
 function pickShop(id) {
   shop.pick = id;
-  const mine = MY_SHOPS.find((m) => m.id === id);
-  if (mine) { applySettings(mine); setScene(mine.keeper, 0, { name: mine.name, where: mine.where }); }
-  else { applySettings(USUAL[id]); setScene(id, 0); }
+  const saved = MY_SHOPS.find((m) => m.id === id);
+  if (saved) { applySettings(saved); setScene(saved.keeper, 0, { name: saved.name, where: saved.where }); shopTab = "saved"; }
+  else {
+    const m = memo[id];
+    applySettings(m || USUAL[id]);
+    setScene(id, m?.nameIdx || 0, m?.customSign || null);
+    shopTab = "templates";
+  }
   renderOpen(); refreshShelves();
 }
-const usualOf = () => MY_SHOPS.find((m) => m.id === shop.pick) || USUAL[sceneKey];
-const isUsual = () => { const u = usualOf(); return u.cats.length === shop.carries.size && u.cats.every((c) => shop.carries.has(c)) && sameMarkups(u.markups, shop.markups) && u.haggle === shop.haggle; };
+const isUsual = () => { const u = USUAL[sceneKey]; return u.cats.length === shop.carries.size && u.cats.every((c) => shop.carries.has(c)) && sameMarkups(u.markups, shop.markups) && u.haggle === shop.haggle; };
 function renderWhich() {
-  const k = KEEPERS[sceneKey];
-  const card = (id, key, title, sub, mine) => `<button type="button" class="kc${shop.pick === id ? " on" : ""}${mine ? " mine" : ""}" style="${faceBg(key)}" data-pick="${id}"><span>${title}<small>${sub}</small></span></button>`;
-  document.getElementById("keeperCards").innerHTML = Object.keys(KEEPERS).map((key) => card(key, key, KEEPERS[key].keeper, KEEPERS[key].names[0][0], false)).join("")
-    + MY_SHOPS.map((m) => card(m.id, m.keeper, m.name, KEEPERS[m.keeper].keeper, true)).join("");
+  const k = KEEPERS[sceneKey], saved = MY_SHOPS.find((m) => m.id === shop.pick);
+  document.getElementById("shopTabs").innerHTML = `<button type="button" data-v="templates" class="${shopTab === "templates" ? "on" : ""}">Shop templates · ${Object.keys(KEEPERS).length}</button><button type="button" data-v="saved" class="${shopTab === "saved" ? "on" : ""}">Saved shops · ${MY_SHOPS.length}</button>`;
+  bindSeg("shopTabs", (v) => { shopTab = v; renderWhich(); });
+  const card = (id, key, title, sub) => `<button type="button" class="kc${shop.pick === id ? " on" : ""}" style="${faceBg(key)}" data-pick="${id}"><span>${title}<small>${sub}</small></span></button>`;
+  document.getElementById("keeperCards").innerHTML = shopTab === "templates"
+    ? Object.keys(KEEPERS).map((key) => card(key, key, KEEPERS[key].keeper, KEEPERS[key].names[0][0])).join("")
+    : MY_SHOPS.map((m) => card(m.id, m.keeper, m.name, `${KEEPERS[m.keeper].keeper} · ${m.where.split(" · ")[0]}`)).join("") || '<p class="hint" style="margin:0">No saved shops yet. Set one up from a template and press Save this shop.</p>';
   document.querySelectorAll("[data-pick]").forEach((b) => b.onclick = () => pickShop(b.dataset.pick));
   const prev = document.getElementById("shopPrev");
   prev.style.backgroundImage = `url(${scene.src})`;
@@ -1594,43 +1680,39 @@ function renderWhich() {
     setScene(sceneKey, Number(b.dataset.name)); renderOpen();
   });
   if (own) { document.getElementById("ownSign").value = customSign.name; document.getElementById("ownWhere").value = customSign.where; }
-  const u = usualOf(), usual = isUsual();
-  document.getElementById("usualNote").textContent = usual
-    ? `${MY_SHOPS.some((m) => m.id === shop.pick) ? "Your saved settings" : `${k.keeper}'s usual`}: ${u.cats.length} shelves, ${LEVELS[u.level].name.toLowerCase()}, ${HAGGLE[u.haggle].name.toLowerCase()}.`
-    : `Changed from ${MY_SHOPS.some((m) => m.id === shop.pick) ? "this shop's" : `${k.keeper}'s`} usual.`;
+  document.getElementById("haggleSeg").innerHTML = Object.entries(HAGGLE).map(([key, h]) => `<button type="button" data-v="${key}" class="${key === shop.haggle ? "on" : ""}">${h.name}</button>`).join("");
+  document.getElementById("haggleHint").textContent = HAGGLE[shop.haggle].hint;
+  const u = USUAL[sceneKey], usual = isUsual();
+  document.getElementById("usualNote").textContent = saved
+    ? `A saved shop: changes you make are kept with it.`
+    : usual ? `${k.keeper}'s usual: ${u.cats.length} shelves, ${LEVELS[u.level].name.toLowerCase()}, ${HAGGLE[u.haggle].name.toLowerCase()}.`
+    : `Changed from ${k.keeper}'s usual. Your changes are remembered for next time.`;
+  document.getElementById("resetUsual").hidden = !!saved;
   document.getElementById("resetUsual").disabled = usual;
+  document.getElementById("saveMine").hidden = !!saved;
 }
-const ownInput = () => { setScene(sceneKey, nameIdx, { name: document.getElementById("ownSign").value || scene.name, where: document.getElementById("ownWhere").value }); renderWhich(); };
+const ownInput = () => { setScene(sceneKey, nameIdx, { name: document.getElementById("ownSign").value || scene.name, where: document.getElementById("ownWhere").value }); renderWhich(); remember(); };
 document.getElementById("ownSign").oninput = ownInput;
 document.getElementById("ownWhere").oninput = ownInput;
-document.getElementById("resetUsual").onclick = () => { applySettings(usualOf()); renderOpen(); refreshShelves(); };
+document.getElementById("resetUsual").onclick = () => { applySettings(USUAL[sceneKey]); renderOpen(); refreshShelves(); };
 document.getElementById("saveMine").onclick = () => {
-  const m = { id: `my${MY_SHOPS.length + 1}`, keeper: sceneKey, name: scene.name, where: scene.where, cats: [...shop.carries], level: shop.level, markups: { ...shop.markups }, haggle: shop.haggle };
-  MY_SHOPS.push(m); shop.pick = m.id;
+  const m = { id: `my${MY_SHOPS.length + 1}`, keeper: sceneKey, name: scene.name, where: scene.where, ...snapshot() };
+  MY_SHOPS.push(m); shop.pick = m.id; shopTab = "saved";
   setScene(sceneKey, nameIdx, { name: m.name, where: m.where });
   renderOpen();
-  const b = document.getElementById("saveMine"); b.textContent = "Saved ✓"; setTimeout(() => { b.textContent = "Save as my shop"; }, 1400);
 };
-document.getElementById("unlock").onclick = () => { unlocked = !unlocked; document.getElementById("unlock").textContent = unlocked ? "Lock setup" : "Unlock setup"; renderOpen(); };
-document.getElementById("stockFind").oninput = () => renderOpen();
+document.getElementById("unlock").onclick = () => { unlocked = !unlocked; document.getElementById("unlock").textContent = unlocked ? "Lock again" : "Unlock"; renderOpen(); };
+document.getElementById("stockFind").oninput = () => renderShelves();
 
 function refreshShelves() {
   if (!shop.carries.has(cat)) cat = CATS.find((c) => shop.carries.has(c.id)).id;
   renderCats(); renderGoods(); renderFloat(false); renderSatchel(); renderStatus();
 }
-bindSeg("whenSeg", (v) => { shop.when = v; renderOpen(); });
-bindSeg("markupSeg", (v) => { shop.level = v; rollMarkups(); renderOpen(); refreshShelves(); });
-document.getElementById("markupReroll").onclick = () => { rollMarkups(); renderOpen(); refreshShelves(); };
+bindSeg("priceSeg", (v) => { shop.level = v; rollMarkups(); renderOpen(); refreshShelves(); });
+document.getElementById("priceReroll").onclick = () => { rollMarkups(); renderOpen(); refreshShelves(); };
 bindSeg("haggleSeg", (v) => { shop.haggle = v; patience = HAGGLE[v].patience; renderOpen(); refreshShelves(); });
 bindSeg("fillSeg", (v) => { shop.fill = v; rollStock(); renderOpen(); refreshShelves(); });
 document.getElementById("reroll").onclick = () => { rollStock(); renderOpen(); refreshShelves(); };
-document.getElementById("saveOpen").onclick = () => {
-  live = windowOf();
-  setStatus(shop.when === "now" || live.opens <= NOW ? "open" : "scheduled");
-  const b = document.getElementById("saveOpen");
-  b.textContent = "Saved ✓";
-  setTimeout(() => renderOpen(), 1400);
-};
 
 function renderLog() {
   const el = document.getElementById("hlog");
@@ -1874,6 +1956,7 @@ function shopAs(key) {
 seg("whoSeg", (k) => { shopAs(k); setStatus(status); });
 seg("takeSeg", (v) => { take = Number(v); renderCats(); renderGoods(); renderSatchel(); renderFloat(false); });
 shopAs("eoghan");
+setScene("mags");
 setStatus("open");
 </script>
 </body>
