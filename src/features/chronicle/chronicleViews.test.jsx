@@ -20,6 +20,8 @@ vi.mock("../../api", () => ({
   updateChronicleRecollection: vi.fn(),
   putRollTag: vi.fn(),
   putChronicleNextSession: vi.fn(),
+  // Story 72 — the shop line under the next session (closed here, so it says nothing).
+  getShop: vi.fn(() => Promise.resolve({ status: "closed" })),
 }));
 
 const at = (min) => new Date(Date.UTC(2026, 6, 23, 2, min)).toISOString();

@@ -1,0 +1,229 @@
+/* Story 72 — the player's shop page (design/prototypes/shop.html). Palette
+   comes from the shopper's character (--pal-*); the shelf colours and the
+   parchment Mags hands you are the same on every palette. */
+.sp-page, .sd-page {
+  --shop-arms: #7a2626; --shop-armor: #34506a; --shop-gear: #6a4626; --shop-tools: #4e5a2c;
+  --shop-occult: #4e2c6a; --shop-fancy: #1f5a5a; --shop-travel: #7a5e22; --shop-hire: #2a3656;
+  --parchment: #ece0c4; --ink: #2a1d12; --gold: #e6bd62; --danger: #d0675e; --good: #8fc27a;
+  --sp-muted: color-mix(in srgb, var(--pal-accent) 72%, var(--pal-text-body));
+}
+.sp-page { min-height: 100vh; color: var(--pal-text-body); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 16px; line-height: 1.5; }
+:where(.sp-page, .sd-page) button { font-family: inherit; cursor: pointer; color: inherit; }
+.sp-main { max-width: 1180px; margin: 0 auto; padding: 22px 18px 140px; }
+
+/* ── Header ── */
+.sp-head { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 20px; margin-bottom: 14px; }
+.sp-kicker { font-family: var(--font-display); font-size: 11px; letter-spacing: 0.3em; text-transform: uppercase; color: var(--pal-accent); }
+.sp-head h1 { margin: 2px 0 0; font-family: var(--font-display); font-weight: 400; font-size: clamp(26px, 4.4vw, 42px); letter-spacing: 0.06em; color: var(--pal-text); }
+.sp-sub { font-style: italic; color: var(--sp-muted); }
+.sp-spacer { flex: 1; }
+.sp-hours { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px; border-radius: 999px; border: 1px solid var(--pal-border); background: var(--pal-surface); font-size: 14px; color: var(--pal-text-body); }
+.sp-hours i { width: 8px; height: 8px; border-radius: 50%; background: var(--good); box-shadow: 0 0 8px var(--good); }
+.sp-hours.lock i { background: var(--gold); box-shadow: 0 0 8px var(--gold); animation: sp-blink 1s steps(1) infinite; }
+.sp-hours.off i { background: var(--sp-muted); box-shadow: none; }
+@keyframes sp-blink { 50% { opacity: 0; } }
+
+/* ── The scene: the keeper's shop, fading into the page ── */
+.sp-scene { position: relative; border-radius: 14px; overflow: hidden; border: 1px solid var(--pal-border); height: clamp(320px, 50vw, 600px); background: #1a120c; box-shadow: 0 24px 60px rgba(0,0,0,0.45); }
+.sp-page[data-light] .sp-scene { box-shadow: 0 18px 40px rgba(90,60,30,0.25); }
+.sp-scene > img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.sp-scene::before { content: ""; position: absolute; inset: 0; z-index: 1; pointer-events: none; background: radial-gradient(ellipse at 62% 18%, rgba(255,190,110,0.16), transparent 45%); animation: sp-flicker 4s ease-in-out infinite; }
+@keyframes sp-flicker { 0%, 100% { opacity: 0.6; } 40% { opacity: 1; } 55% { opacity: 0.75; } }
+/* The shop is lamplit whatever the page palette: the fade stays dark. */
+.sp-scene::after { content: ""; position: absolute; inset: auto 0 0 0; height: 30%; z-index: 1; pointer-events: none; background: linear-gradient(180deg, transparent, rgba(16, 11, 7, 0.85)); }
+
+.sp-speech { position: absolute; z-index: 3; left: 39%; top: 50%; transform: translateY(-50%); max-width: 340px; padding: 12px 16px; border-radius: 12px; background: var(--parchment); color: var(--ink);
+  font-family: 'IM Fell English', Georgia, serif; font-size: clamp(15px, 1.6vw, 19px); line-height: 1.35; box-shadow: 0 10px 26px rgba(0,0,0,0.45); }
+.sp-speech::before { content: ""; position: absolute; left: -11px; top: 50%; margin-top: -8px; border: 8px solid transparent; border-right: 12px solid var(--parchment); border-left: 0; }
+.sp-speech.left::before { left: auto; right: -11px; border: 8px solid transparent; border-left: 12px solid var(--parchment); border-right: 0; }
+.sp-speech.below { transform: none; }
+.sp-speech.below::before { left: var(--tail-x, 40px); top: -11px; margin: 0 0 0 -8px; border: 8px solid transparent; border-bottom: 12px solid var(--parchment); border-top: 0; }
+.sp-speech .who { display: block; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: #8a6a3a; margin-bottom: 2px; }
+
+/* The item in hand floats over the right of the shop. */
+.sp-float { position: absolute; z-index: 3; right: 2.5%; top: 6%; width: min(320px, 32%); padding: 16px; border-radius: 14px; color: var(--pal-text);
+  background: color-mix(in srgb, var(--pal-surface-solid) 86%, transparent); border: 1px solid color-mix(in srgb, var(--cat, var(--pal-accent)) 70%, var(--pal-border));
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); box-shadow: 0 20px 50px rgba(0,0,0,0.5), 0 0 40px color-mix(in srgb, var(--cat, transparent) 35%, transparent); }
+.sp-float.pop { animation: sp-pop 0.45s cubic-bezier(.3,1.4,.5,1); }
+@keyframes sp-pop { from { transform: translateY(14px) scale(0.94); opacity: 0; } }
+.sp-float .x { position: absolute; top: 8px; right: 10px; background: none; border: none; font-size: 20px; color: var(--sp-muted); }
+.sp-eyebrow { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pal-accent); }
+.sp-float .sp-orb { width: 140px; height: 140px; margin: 8px auto 10px; animation: sp-hover 4s ease-in-out infinite; }
+.sp-showcase { width: 200px; height: 200px; margin: 2px auto 6px; animation: sp-hover 4s ease-in-out infinite;
+  -webkit-mask-image: radial-gradient(circle at 50% 48%, #000 52%, transparent 72%); mask-image: radial-gradient(circle at 50% 48%, #000 52%, transparent 72%); }
+.sp-showcase img { width: 100%; height: 100%; object-fit: cover; display: block; }
+@keyframes sp-hover { 50% { transform: translateY(-6px); } }
+.sp-float h3 { margin: 0; text-align: center; font-family: var(--font-display); font-weight: 400; font-size: 21px; letter-spacing: 0.04em; }
+.sp-stat { display: block; width: max-content; max-width: 100%; margin: 6px auto; padding: 1px 10px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--cat) 70%, var(--pal-border)); font-family: 'Cinzel', serif; font-size: 12px; color: var(--pal-accent-bright); text-align: center; }
+.sp-float p { margin: 6px 0 0; font-size: 15px; color: var(--pal-text-body); text-align: center; }
+.sp-float .owned { font-style: italic; font-size: 13px; color: var(--sp-muted); }
+.sp-buy { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.sp-qty { display: inline-flex; border: 1px solid var(--pal-border); border-radius: 6px; overflow: hidden; }
+.sp-qty button { width: 30px; height: 34px; border: none; background: var(--pal-accent-dim); color: var(--pal-accent-bright); font-size: 17px; }
+.sp-qty span { width: 32px; display: grid; place-items: center; font-family: 'Cinzel', serif; }
+.sp-price { font-family: 'Cinzel', serif; font-size: 18px; color: var(--pal-text); margin-right: auto; }
+.sp-price.short { color: var(--danger); }
+
+.sp-btn { padding: 9px 14px; border-radius: 6px; border: 1px solid var(--pal-accent); background: var(--pal-accent-dim); color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+.sp-btn:hover:not(:disabled) { border-color: var(--pal-accent-bright); }
+.sp-btn:disabled { opacity: 0.45; cursor: default; }
+.sp-btn.gold { border-color: #a07a30; background: linear-gradient(180deg, #e8c47c, #b98c3e); color: #24180a; box-shadow: 0 3px 0 #7a5420; }
+.sp-btn.gold:active:not(:disabled) { transform: translateY(2px); box-shadow: 0 1px 0 #7a5420; }
+.sp-btn.gold:disabled { box-shadow: none; }
+.sp-btn:focus-visible, .sp-cat:focus-visible, .sp-good:focus-visible, .sp-chip:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+
+/* The purse and the satchel, on the counter. */
+.sp-counter { position: absolute; z-index: 3; left: 2.5%; bottom: 5%; display: flex; gap: 10px; align-items: center; }
+.sp-chip { display: flex; align-items: center; gap: 10px; padding: 8px 14px; border-radius: 10px; border: 1px solid var(--pal-border); background: color-mix(in srgb, var(--pal-surface-solid) 85%, transparent); -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px); color: var(--pal-text); }
+.sp-coins { position: relative; width: 28px; height: 28px; }
+.sp-coins i { position: absolute; left: 0; width: 28px; height: 10px; border-radius: 50%; background: radial-gradient(ellipse at 40% 30%, #f6f6f6, #a9adb3 60%, #7b8087); border: 1px solid #6c7077; }
+.sp-coins i:nth-child(1) { top: 16px; } .sp-coins i:nth-child(2) { top: 10px; } .sp-coins i:nth-child(3) { top: 4px; }
+.sp-chip b { font-family: 'Cinzel', serif; font-weight: 400; font-size: 20px; }
+.sp-chip small { color: var(--sp-muted); }
+.sp-chip.satchel { font-family: 'Cinzel', serif; letter-spacing: 0.08em; }
+.sp-chip.satchel .n { min-width: 22px; height: 22px; border-radius: 11px; background: var(--gold); color: #1a120a; font-size: 12px; display: grid; place-items: center; }
+.sp-chip.bump { animation: sp-bump 0.4s ease; }
+@keyframes sp-bump { 40% { transform: scale(1.08); } }
+
+/* Shutters: closed, back soon, or the fighting. */
+.sp-shutters { position: absolute; inset: 0; z-index: 6; display: flex; align-items: center; justify-content: center; flex-direction: column; gap: 10px; padding: 16px; text-align: center;
+  background: repeating-linear-gradient(180deg, rgba(58,42,28,0.94) 0 26px, rgba(20,12,6,0.55) 26px 30px); color: #ecdcc0; animation: sp-shut 0.7s cubic-bezier(.6,0,.3,1); }
+.sp-shutters.fight { background: repeating-linear-gradient(180deg, #3a2a1c 0 26px, #241810 26px 30px); }
+@keyframes sp-shut { from { clip-path: inset(0 0 100% 0); } to { clip-path: inset(0 0 0 0); } }
+.sp-plaque { padding: 18px 28px; border-radius: 8px; background: var(--parchment); color: var(--ink); box-shadow: 0 12px 30px rgba(0,0,0,0.5); transform: rotate(-2deg); }
+.sp-plaque h2 { margin: 0; font-family: 'IM Fell English', Georgia, serif; font-weight: 400; font-size: 30px; }
+.sp-plaque p { margin: 4px 0 0; font-style: italic; }
+.sp-when { margin: 6px 0 0; padding: 8px 18px; border-radius: 999px; background: rgba(20,12,6,0.7); border: 1px solid rgba(230,189,98,0.45); font-family: 'Cinzel', serif; font-size: 15px; letter-spacing: 0.06em; color: #f1dca8; }
+.sp-when small { display: block; font-family: 'Crimson Text', serif; font-style: italic; letter-spacing: 0; font-size: 14px; color: #d8c8a8; }
+.sp-shut .sp-scene { height: clamp(320px, 42vw, 520px); }
+
+/* Locking up: pay for what's in the satchel, but nothing more off the shelves. */
+.sp-lockup { display: flex; align-items: center; gap: 14px; margin-top: 16px; padding: 12px 16px; border-radius: 10px; background: var(--parchment); color: var(--ink); box-shadow: 0 8px 22px rgba(0,0,0,0.3); }
+.sp-lockup .t { flex: 1; font-family: 'IM Fell English', Georgia, serif; font-size: 18px; }
+.sp-lockup .t small { display: block; font-family: 'Crimson Text', serif; font-style: italic; font-size: 14px; color: #6a5030; }
+.sp-lockup .clock { font-family: 'Cinzel', serif; font-size: 24px; color: #8a2a2a; min-width: 64px; text-align: center; }
+.sp-locking .sp-cats, .sp-locking .sp-goods { opacity: 0.45; pointer-events: none; filter: grayscale(0.5); }
+
+/* ── Shelves ── */
+.sp-browse { display: grid; grid-template-columns: minmax(0, 1fr) 270px; gap: 24px; align-items: start; }
+.sp-section-h { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin: 26px 0 12px; }
+.sp-section-h h2 { margin: 0; font-family: var(--font-display); font-weight: 400; font-size: 18px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-text); }
+.sp-section-h span { font-style: italic; color: var(--sp-muted); }
+.sp-cats { display: grid; grid-template-columns: repeat(var(--shelves, 8), minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 1100px) { .sp-cats { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+.sp-cat { position: relative; overflow: hidden; display: grid; justify-items: center; align-content: end; gap: 4px; min-height: 112px; padding: 14px 8px 12px; border-radius: 12px; text-align: center;
+  border: 1px solid color-mix(in srgb, var(--cat) 70%, transparent); color: #f1e6d2;
+  background: radial-gradient(circle at 50% 30%, color-mix(in srgb, var(--cat) 75%, #fff 8%), color-mix(in srgb, var(--cat) 80%, #000) 80%);
+  transition: transform 0.2s ease, box-shadow 0.2s ease; }
+.sp-cat:hover { transform: translateY(-3px); box-shadow: 0 10px 22px rgba(0,0,0,0.35); }
+.sp-cat.on { box-shadow: 0 0 0 2px var(--gold), 0 0 24px color-mix(in srgb, var(--cat) 70%, transparent); }
+.sp-cat svg { width: 40px; height: 40px; color: #f6dfa8; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+.sp-cat b { font-family: 'Cinzel', serif; font-weight: 400; font-size: 13px; letter-spacing: 0.08em; overflow-wrap: anywhere; }
+.sp-cat small { font-size: 12px; opacity: 0.8; }
+.sp-cat small .o { color: #ffc9a8; }
+.sp-cat.art { background: linear-gradient(180deg, transparent 20%, color-mix(in srgb, var(--cat) 70%, #000) 88%), var(--art) center 30% / 135% auto no-repeat, var(--cat); }
+.sp-cat.art b, .sp-cat.art small { text-shadow: 0 1px 4px rgba(0,0,0,0.8); }
+
+.sp-goods { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 20px 14px; }
+.sp-good { position: relative; display: grid; justify-items: center; align-content: start; gap: 6px; padding: 10px 6px 8px; border-radius: 12px; border: 1px solid transparent; background: transparent; text-align: center; transition: transform 0.2s ease, background 0.2s ease; }
+.sp-good:hover { transform: translateY(-4px); background: var(--pal-surface); }
+.sp-good.sel { background: var(--pal-surface); border-color: color-mix(in srgb, var(--cat) 70%, var(--pal-border)); }
+.sp-orb { position: relative; width: 112px; height: 112px; border-radius: 50%; display: grid; place-items: center; overflow: hidden; flex: none;
+  background: radial-gradient(circle at 42% 34%, color-mix(in srgb, var(--cat) 65%, #fff 12%), color-mix(in srgb, var(--cat) 85%, #000) 78%);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--cat) 60%, #e6bd62 40%), 0 0 22px color-mix(in srgb, var(--cat) 45%, transparent), 0 10px 18px rgba(0,0,0,0.35); }
+.sp-orb svg { width: 56%; height: 56%; color: #f6dfa8; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.5)); }
+.sp-orb::after { content: ""; position: absolute; inset: 0; border-radius: 50%; background: radial-gradient(circle at 34% 26%, rgba(255,255,255,0.32), transparent 32%), radial-gradient(circle, transparent 55%, rgba(0,0,0,0.45) 100%); }
+.sp-orb.art { background: var(--cat); }
+.sp-orb.art img { width: 100%; height: 100%; object-fit: cover; transform: scale(1.12); transition: transform 0.35s ease; }
+.sp-good:hover .sp-orb.art img { transform: scale(1.2); }
+.sp-good .nm { font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.04em; line-height: 1.2; color: var(--pal-text); }
+.sp-good .st { font-size: 13px; color: var(--sp-muted); min-height: 1.2em; }
+.sp-tag { position: absolute; top: 8px; right: calc(50% - 66px); padding: 1px 8px; border-radius: 999px; background: var(--parchment); color: var(--ink); font-family: 'Cinzel', serif; font-size: 12px; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+.sp-good.poor .sp-tag { color: var(--danger); }
+.sp-good.poor .sp-orb { filter: saturate(0.5) brightness(0.75); }
+.sp-good.out { cursor: default; }
+.sp-good.out:hover { transform: none; background: transparent; }
+.sp-good.out .sp-orb { filter: grayscale(1) brightness(0.6); }
+.sp-soldout { position: absolute; top: 52px; left: 50%; transform: translateX(-50%) rotate(-12deg); padding: 2px 8px; border: 2px solid var(--danger); color: var(--danger); background: color-mix(in srgb, var(--pal-bg) 70%, transparent); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; white-space: nowrap; }
+.sp-have { position: absolute; top: 96px; left: calc(50% - 60px); padding: 0 7px; border-radius: 999px; background: var(--pal-surface-solid); border: 1px solid var(--pal-accent); color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.08em; }
+.sp-justin { position: absolute; top: 4px; left: calc(50% - 64px); padding: 1px 7px; border-radius: 999px; background: var(--good); color: #10200a; font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; box-shadow: 0 2px 6px rgba(0,0,0,0.35); }
+.sp-cat-line { margin: 16px 0 0; font-style: italic; color: var(--sp-muted); text-align: center; }
+
+/* ── Your pack ── */
+.sp-pack { position: sticky; top: 64px; margin-top: 26px; padding: 14px 14px 12px; border-radius: 12px; border: 1px solid var(--pal-border); background: var(--pal-surface); max-height: calc(100vh - 140px); overflow: auto; }
+.sp-pack-head { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; width: 100%; background: none; border: none; padding: 0; text-align: left; cursor: default; }
+.sp-pack-head img, .sp-pack-head .ini { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; border: 1px solid var(--pal-accent); display: grid; place-items: center; font-family: 'Cinzel', serif; }
+.sp-pack-head b { display: block; font-family: var(--font-display); font-weight: 400; font-size: 15px; letter-spacing: 0.08em; color: var(--pal-text); }
+.sp-pack-head small { color: var(--sp-muted); font-size: 13px; }
+.sp-pack-head .chev { display: none; margin-left: auto; color: var(--sp-muted); }
+.sp-pack-group { margin-top: 10px; }
+.sp-pack-group h4 { margin: 0 0 4px; font-family: 'Cinzel', serif; font-weight: 400; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pal-accent); }
+.sp-pack-row { display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; padding: 3px 0; font-size: 15px; color: var(--pal-text); }
+.sp-pack-row .sp-orb { width: 30px; height: 30px; box-shadow: 0 0 0 1px color-mix(in srgb, var(--cat) 60%, transparent); }
+.sp-pack-row .sp-orb svg { width: 60%; height: 60%; }
+.sp-pack-row .sp-orb.art img { transform: scale(1.15); }
+.sp-pack-row .q { font-family: 'Cinzel', serif; font-size: 12px; color: var(--sp-muted); white-space: nowrap; }
+.sp-pack-row .worn { padding: 0 6px; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--pal-accent) 60%, transparent); font-family: 'Cinzel', serif; font-size: 9px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pal-accent-bright); }
+.sp-pack-row.coming .sp-orb { outline: 1px dashed var(--gold); outline-offset: 2px; }
+.sp-pack-row.fresh { animation: sp-fresh 1.6s ease; }
+@keyframes sp-fresh { 0% { background: color-mix(in srgb, var(--gold) 35%, transparent); } 100% { background: transparent; } }
+.sp-pack-empty { margin: 6px 0 0; font-style: italic; color: var(--sp-muted); font-size: 14px; }
+.sp-pack-foot { margin-top: 12px; padding-top: 10px; border-top: 1px solid var(--pal-border); display: flex; justify-content: space-between; font-size: 14px; color: var(--sp-muted); }
+.sp-pack-foot b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-text); }
+
+/* ── The satchel (bottom sheet) ── */
+.sp-sheet { position: fixed; left: 50%; bottom: 0; z-index: 40; width: min(700px, 100vw); transform: translate(-50%, calc(100% - 56px)); transition: transform 0.45s cubic-bezier(.3,1,.4,1);
+  border-radius: 16px 16px 0 0; background: var(--pal-surface-solid); border: 1px solid var(--pal-accent); border-bottom: none; color: var(--pal-text); box-shadow: 0 -12px 40px rgba(0,0,0,0.45); }
+.sp-sheet.open { transform: translate(-50%, 0); }
+.sp-sheet-head { display: flex; align-items: center; gap: 12px; width: 100%; padding: 14px 20px; border: none; background: none; text-align: left; }
+.sp-sheet-head b { font-family: var(--font-display); font-weight: 400; letter-spacing: 0.1em; font-size: 15px; flex: 1; }
+.sp-sheet-head .sum { font-family: 'Cinzel', serif; color: var(--pal-accent-bright); }
+.sp-sheet-body { padding: 0 20px 18px; max-height: 60vh; overflow: auto; }
+.sp-line { display: grid; grid-template-columns: 40px 1fr auto auto; gap: 10px; align-items: center; padding: 8px 0; border-top: 1px solid var(--pal-border); }
+.sp-line .sp-orb { width: 34px; height: 34px; box-shadow: none; }
+.sp-line .sp-orb.art img { transform: none; }
+.sp-line .x { background: none; border: none; color: var(--sp-muted); font-size: 18px; }
+.sp-totals { margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--pal-border); display: grid; gap: 4px; }
+.sp-totals div { display: flex; justify-content: space-between; }
+.sp-totals .bad { color: var(--danger); }
+.sp-totals .grand { font-family: 'Cinzel', serif; font-size: 18px; color: var(--pal-accent-bright); }
+.sp-actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: flex-end; margin-top: 14px; }
+.sp-error { margin: 0 auto 0 0; color: var(--danger); font-size: 15px; }
+
+.sp-flycoin { position: fixed; z-index: 60; width: 18px; height: 18px; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff, #b8bcc2 55%, #7b8087); border: 1px solid #6c7077; pointer-events: none; }
+.sp-veil { position: fixed; inset: 0; z-index: 50; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.45); backdrop-filter: blur(2px); }
+.sp-receipt { width: min(380px, 92vw); padding: 22px 24px 26px; background: var(--parchment); color: var(--ink); box-shadow: 0 24px 60px rgba(0,0,0,0.5); text-align: center; animation: sp-unroll 0.5s cubic-bezier(.3,1.2,.5,1);
+  clip-path: polygon(0 0, 100% 0, 100% 96%, 95% 100%, 90% 96%, 85% 100%, 80% 96%, 75% 100%, 70% 96%, 65% 100%, 60% 96%, 55% 100%, 50% 96%, 45% 100%, 40% 96%, 35% 100%, 30% 96%, 25% 100%, 20% 96%, 15% 100%, 10% 96%, 5% 100%, 0 96%); }
+@keyframes sp-unroll { from { transform: scaleY(0.2) translateY(-30px); opacity: 0; } }
+.sp-receipt h3 { margin: 0; font-family: 'IM Fell English', Georgia, serif; font-weight: 400; font-size: 25px; }
+.sp-receipt .r-lines { margin: 12px 0; text-align: left; font-size: 15px; }
+.sp-receipt .r-lines div { display: flex; justify-content: space-between; gap: 10px; border-bottom: 1px dotted #b08a4a; padding: 3px 0; }
+.sp-receipt .stamp { display: inline-block; margin-top: 8px; padding: 4px 12px; border: 3px double #8a2a2a; color: #8a2a2a; font-family: 'Cinzel', serif; letter-spacing: 0.2em; transform: rotate(-6deg); }
+.sp-receipt small { display: block; margin-top: 10px; color: #6a5030; font-style: italic; }
+
+/* Sign-in and messages */
+.sp-card { max-width: 460px; margin: 40px auto; padding: 22px; border-radius: 12px; border: 1px solid var(--pal-border); background: var(--pal-surface); }
+.sp-card h2 { margin: 0 0 8px; font-family: var(--font-display); font-weight: 400; color: var(--pal-text); }
+.sp-card input { width: 100%; margin: 10px 0; padding: 9px 11px; border-radius: 6px; border: 1px solid var(--pal-border); background: var(--pal-surface-solid); color: var(--pal-text); font: inherit; }
+
+/* Phones: the scene stays a picture; speech, item and counter stack below it. */
+@media (max-width: 980px) { .sp-browse { grid-template-columns: minmax(0, 1fr) 230px; } }
+@media (max-width: 760px) {
+  .sp-scene { height: auto; background: var(--pal-surface-solid); }
+  .sp-scene > img { position: relative; display: block; height: auto; aspect-ratio: 5 / 3; }
+  .sp-scene::before, .sp-scene::after { display: none; }
+  .sp-speech, .sp-float, .sp-counter { position: static; max-width: none; width: auto; margin: 10px; transform: none; }
+  .sp-speech::before { display: none; }
+  .sp-goods { grid-template-columns: repeat(2, 1fr); }
+  .sp-browse { grid-template-columns: 1fr; }
+  .sp-pack { position: static; order: -1; max-height: none; margin-top: 18px; }
+  .sp-pack-head { cursor: pointer; }
+  .sp-pack-head .chev { display: block; }
+  .sp-pack:not(.open) .sp-pack-group, .sp-pack:not(.open) .sp-pack-foot, .sp-pack:not(.open) .sp-pack-empty { display: none; }
+  .sp-tag { right: 8px; }
+  .sp-shut .sp-scene { height: auto; }
+  .sp-shutters { position: absolute; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .sp-page *, .sp-page *::before, .sp-page *::after { animation: none !important; transition: none !important; }
+}

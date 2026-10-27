@@ -9,6 +9,8 @@ import MapViewerPage from "./pages/MapViewerPage";
 import DmSettingsPage from "./pages/DmSettingsPage";
 import DmTalentCodexPage from "./pages/DmTalentCodexPage";
 import ChroniclePage from "./pages/ChroniclePage";
+import ShopPage from "./pages/ShopPage";
+import ShopDmPage from "./pages/ShopDmPage";
 import ErrorBoundary from "./components/ErrorBoundary";
 
 export default function App() {
@@ -20,6 +22,7 @@ export default function App() {
         <Route path="/dm"                        element={<DmDashboardPage />} />
         <Route path="/dm/settings"               element={<DmSettingsPage />} />
         <Route path="/dm/settings/codex"         element={<DmTalentCodexPage />} />
+        <Route path="/dm/shop"                   element={<ShopDmPage />} />
         <Route path="/chronicle"                 element={<ChroniclePage />} />
         <Route path="/chronicle/record"          element={<ChroniclePage />} />
         <Route path="/chronicle/:sessionId"      element={<ChroniclePage />} />
@@ -29,6 +32,7 @@ export default function App() {
         <Route path="/characters/:slug"          element={<CharacterPage />} />
         <Route path="/characters/:slug/profile"  element={<CharacterModePage />} />
         <Route path="/characters/:slug/session"  element={<CharacterModePage />} />
+        <Route path="/characters/:slug/shop"     element={<ShopPage />} />
         <Route path="*"                          element={<Navigate to="/" replace />} />
       </Routes>
       </ErrorBoundary>

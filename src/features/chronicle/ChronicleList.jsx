@@ -4,6 +4,7 @@ import { getChronicle, putChronicleChapters, putChronicleNextSession } from "../
 import ScheduleDialog from "../../components/ScheduleDialog";
 import { upcomingSession } from "../home/roadLayout";
 import { fmtDay, fmtTime, dayKey, playerColor } from "./chronicleData";
+import ShopLine from "../shop/ShopLine";
 
 function SessionCard({ session }) {
   const start = Date.parse(session.startAt);
@@ -98,6 +99,7 @@ function NextSession({ nextSession, creds, light, onSaved }) {
           {upcoming ? "Change" : "Schedule the next session"}
         </button>
       )}
+      <ShopLine slug={creds?.asSlug} nextSessionAt={upcoming?.at || null} className="in-card" />
       {open && (
         <ScheduleDialog
           current={upcoming?.at || null}

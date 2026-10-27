@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { listCharacters, verifyPassword, getPartyRoster, getChronicle, getSessionState, putChronicleNextSession } from "../api";
+import ShopLine from "../features/shop/ShopLine";
 import { PALETTES } from "../components/CharacterSheet";
 import TopNav from "../components/TopNav";
 import { useTextScale } from "../lib/useTextScale";
@@ -44,6 +45,7 @@ export default function CharactersListPage() {
   const [partyMemberSlugs, setPartyMemberSlugs] = useState(() => new Set());
   const [chronicle, setChronicle] = useState(null); // { chapters, sessions, nextSession }
   const [statusBySlug, setStatusBySlug] = useState(() => new Map());
+  const [shopSummary, setShopSummary] = useState(null);
   const [scheduling, setScheduling] = useState(false);
   const [scheduleState, setScheduleState] = useState({ saving: false, error: null });
   const [viewer, setViewer] = useState(readChronicleViewer);
@@ -76,6 +78,7 @@ export default function CharactersListPage() {
       .then((state) => {
         const members = state?.partyStatus?.visible ? state.partyStatus.members || [] : [];
         setStatusBySlug(new Map(members.map((m) => [m.slug, m])));
+        setShopSummary(state?.shop || null);
       })
       .catch(() => {});
   }, []);
@@ -291,6 +294,7 @@ export default function CharactersListPage() {
                   </>
                 )}
               </div>
+              <ShopLine summary={shopSummary} slug={me?.slug} nextSessionAt={upcoming?.at || null} className="on-home" />
               {sessions.length > 0 && <RoadSoFar sessions={sessions} next={upcoming?.at || null} />}
             </div>
           )}

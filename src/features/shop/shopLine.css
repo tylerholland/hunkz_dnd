@@ -1,0 +1,14 @@
+/* Story 72 — the shop on the next-session line and the session sheet. */
+.shopline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; font-size: 15px; color: var(--pal-text-body, #b0a898); }
+.shopline b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-accent-bright); letter-spacing: 0.04em; }
+.shopline-face { flex: none; width: 32px; height: 32px; border-radius: 50%; border: 1px solid #e6bd62; background-color: #1a120c; background-repeat: no-repeat; }
+.shopline-state { color: #8fc27a; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; }
+.shopline-state.lock { color: #e6bd62; }
+.shopline-btn { margin-left: auto; padding: 6px 12px; border-radius: 6px; border: 1px solid #a07a30; background: linear-gradient(180deg, #e8c47c, #b98c3e); color: #24180a; box-shadow: 0 2px 0 #7a5420; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; text-decoration: none; white-space: nowrap; }
+.shopline-btn:focus-visible { outline: 2px solid #e6bd62; outline-offset: 2px; }
+.shopline-hint { font-style: italic; font-size: 14px; opacity: 0.8; }
+/* On the session sheet: a slim bar under the top nav. */
+.shopline.on-sheet { margin: 8px 16px 0; padding: 8px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, #e6bd62 55%, transparent); background: color-mix(in srgb, #e6bd62 10%, var(--pal-surface, transparent)); }
+/* Inside the Chronicle's next-session card, and under the homepage's line. */
+.shopline.in-card { flex-basis: 100%; margin-top: 4px; padding-top: 8px; border-top: 1px dashed var(--pal-border); }
+.shopline.on-home { margin-top: 8px; }

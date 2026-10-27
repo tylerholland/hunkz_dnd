@@ -68,6 +68,7 @@ import { readOpenPartyDetails, writeOpenPartyDetails } from "./partyDetailsPrefs
 import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
 import PortraitImg from "../../components/PortraitImg";
+import ShopLine from "../shop/ShopLine";
 
 // Player map band height (drag bar): 240px up to the window height minus the
 // top bar, so the map can never push itself entirely off screen.
@@ -403,6 +404,7 @@ export default function CharacterSheetSessionMode({
   serverTime,
   // DM Settings house rules (GET /session-state) — e.g. ability-check dice.
   houseRules,
+  shopSummary = null,
   // Shared roll feed — lets the map's combat FX match a hit to its declared attack.
   rollHistory,
 }) {
@@ -1247,6 +1249,7 @@ export default function CharacterSheetSessionMode({
           turnAlertsMenuItem,
         ]}
       />
+      <ShopLine summary={shopSummary} slug={slug} only={["open", "lockup"]} className="on-sheet" />
 
       {/* ── Two-column shell ── */}
       <div className="cs-session-shell">

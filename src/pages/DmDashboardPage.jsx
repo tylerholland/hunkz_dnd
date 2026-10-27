@@ -1284,6 +1284,7 @@ export default function DmDashboardPage() {
             { label: "Manage Party", onClick: () => setShowManageParty(true) },
             { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
             { label: "📜 Chronicle", href: "/chronicle" },
+            { label: "🛍 Shop", href: "/dm/shop" },
             { label: "⚙ DM Settings", href: "/dm/settings" },
             { divider: true },
             textScaleMenuItem,

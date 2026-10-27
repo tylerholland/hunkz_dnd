@@ -1,6 +1,6 @@
 # Feature Story 72: The Item Shop
 
-**Status**: Design approved (2026-10-26). Ready to build, in three phases (below).
+**Status**: Phase 1 built (2026-10-26): `/characters/:slug/shop`, `/dm/shop`, `backend/src/handlers/shop.js`, `backend/src/lib/shop.js`, `src/features/shop/`. Phases 2 (haggling) and 3 (polish) to come. Coin and hirelings decided as recommended below.
 **Prototype**: `design/prototypes/shop.html`. It is the reference for layout, copy and interactions. Its top bar switches view, shopper, scene and shop state.
 **Art**:
 - Shop scenes: `design/prototypes/assets/shop-mags.jpg` and `design/prototypes/assets/shops/*.jpg` (web copies; Tyler's PNG originals sit beside them and are not committed).

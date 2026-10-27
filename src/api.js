@@ -400,3 +400,29 @@ export const updateChronicleRecollection = (viewer, id, recollectionId, changes)
     headers: chronicleHeaders(viewer, true),
     body: JSON.stringify({ ...changes, asSlug: viewer?.asSlug }),
   });
+
+// ── Story 72 — the item shop ────────────────────────────────────────────────
+// Players read GET /shop (only fetched when getSessionState().shop.version
+// changes on live pages); the DM page reads /shop/dm and writes the rest.
+const shopHeaders = (password, json = false) => ({
+  ...(json ? { "Content-Type": "application/json" } : {}),
+  ...(password !== undefined && password !== null ? { "x-character-password": password } : {}),
+});
+
+export const getShop = () => request("/shop");
+
+export const getShopDm = (dmPassword) => request("/shop/dm", { headers: shopHeaders(dmPassword) });
+
+export const putShopSetup = (dmPassword, setup) =>
+  request("/shop", { method: "PUT", headers: shopHeaders(dmPassword, true), body: JSON.stringify({ setup }) });
+
+/** action: open · close · closeNow · cancel · closes · schedule (+ its fields). */
+export const putShopStatus = (dmPassword, action, fields = {}) =>
+  request("/shop/status", { method: "PUT", headers: shopHeaders(dmPassword, true), body: JSON.stringify({ action, ...fields }) });
+
+export const putShopCatalog = (dmPassword, items) =>
+  request("/shop/catalog", { method: "PUT", headers: shopHeaders(dmPassword, true), body: JSON.stringify({ items }) });
+
+/** Pay for the satchel: lines [{ itemId, qty }]. Password is the character's (or the DM's). */
+export const postShopPurchase = (slug, password, lines) =>
+  request("/shop/purchase", { method: "POST", headers: shopHeaders(password, true), body: JSON.stringify({ asSlug: slug, lines }) });

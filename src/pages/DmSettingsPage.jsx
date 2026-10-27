@@ -236,6 +236,20 @@ export default function DmSettingsPage() {
             </div>
           </section>
 
+          <section className="dm-settings-card" aria-labelledby="hr-shop">
+            <div className="dm-settings-row">
+              <div className="dm-settings-label-col">
+                <h2 id="hr-shop" className="dm-settings-label">Shop</h2>
+                <p className="dm-settings-help">
+                  Open or schedule the shop, choose the shopkeeper, and set shelves, prices and stock. The item catalog lives there too.
+                </p>
+              </div>
+              <div className="dm-settings-control-col">
+                <Link to="/dm/shop" className="dm-settings-save dm-settings-link">Open the shop page →</Link>
+              </div>
+            </div>
+          </section>
+
           <section className="dm-settings-card" aria-labelledby="hr-codex">
             <div className="dm-settings-row">
               <div className="dm-settings-label-col">
