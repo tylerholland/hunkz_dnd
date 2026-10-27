@@ -8,29 +8,33 @@
 <!--
   DM navigation — prototype (no live API).
 
-  Behaviour
-  - Signed in as DM, every DM page's top bar carries the DM pages in its left
-    slot: Campaign · Shop · Maps · Chronicle · Settings (current one underlined).
-    They are places: plain text links. Adventure | Combat stays the only pill
-    toggle, in the centre, and only on Campaign (it's a mode, with effects).
+  Behaviour (round 2)
+  - Signed in as DM, every page's top bar carries the DM places in its left
+    slot: Campaign · Shop · Maps · Chronicle (current one underlined). Plain
+    text links — places, not toggles.
+  - Adventure | Combat hangs off the bar's lower edge on Campaign only: a
+    small centred notch (rounded lower corners) that is part of the sticky bar,
+    not a full-width row. Choosing Combat starts combat; Adventure ends it, so
+    "Start/End Combat" leaves ⋯. Same notch on phones.
   - Under ~900px the links fold into the title: "Campaign ▾" opens the list.
-    Campaign's Adventure | Combat keeps its existing phone second row.
-  - While combat is on, "Campaign" carries a small ⚔ so it's visible from the
-    Shop or Settings that a fight is running.
+  - While combat is on, "Campaign" carries a small red dot on every page.
   - ⌂ (far left) goes home to the party page. Sub-pages (Talent Codex, Shop
-    preview) keep a ‹ back arrow to their parent instead of the link row.
-  - ⋯ holds only actions and preferences for that page, with "Sign out" last,
-    worded the same on every page. No page links in ⋯ any more.
-  - Signed out: the homepage bar shows a "DM" button (replaces "DM Login" in ⋯).
-    It goes to /dm's existing sign-in prompt, then straight into Campaign. The
+    preview) keep a ‹ back arrow to their parent.
+  - ⋯ on every page, for everyone: that page's actions, then (DM) Settings,
+    then Text size and Theme, then Sign out for whoever is signed in. Theme
+    is the viewer's: the DM's device theme, or a player's character palette
+    (the same setting as edit mode, so others see it on their card too).
+    A player's Sign out forgets that character's password on this device.
+    Signed-out visitors get no Sign out (nothing to sign out of).
+  - Signed out: the homepage bar shows a "DM" button (replaces "DM Login" in
+    ⋯). It goes to /dm's existing sign-in prompt, then into Campaign. The
     homepage's own DM modal is removed — one sign-in screen, palette-aware.
-  - Signed in, on the homepage or a player's sheet: the same DM links show, so
-    the DM is always one tap from any DM page. Players never see any of this.
-  - One name per place: "Campaign" for /dm (was also DM Session / DM Campaign),
-    "Maps" in the links (page title stays Map Library). No emoji in navigation.
+  - One name per place: "Campaign" for /dm. No emoji in navigation.
   Implementation: a shared <DmNav> inside TopNav replaces DmSessionLink and the
-  per-page menu link lists; pages pass only their actions to menuItems.
-  Open: whether the homepage should send a signed-in DM straight to Campaign.
+  per-page link lists; TopNav renders the mode notch from its `center` prop
+  and appends Settings / Text size / Theme / Sign out to every ⋯ itself, so
+  pages pass only their own actions.
+  Open: should a signed-in DM opening the homepage go straight to Campaign?
 -->
 <style>
   :root {
@@ -57,7 +61,8 @@
   .ctl button.on { background: var(--dim); color: var(--text); }
 
   /* ── Frame (a mock browser window) ── */
-  .frame { border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--bg); }
+  .frame { border: 1px solid var(--border); border-radius: 10px; background: var(--bg); }
+  .frame > .bar { border-radius: 10px 10px 0 0; }
   .phone { width: 390px; max-width: 100%; }
   .frames { display: grid; gap: 18px; align-items: start; }
 
@@ -79,7 +84,8 @@
   .dmlinks a:hover { color: var(--bright); }
   .dmlinks a[aria-current="page"] { color: var(--text); }
   .dmlinks a[aria-current="page"]::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; background: var(--accent); border-radius: 2px 2px 0 0; }
-  .fight { color: var(--combat); font-size: 15px; line-height: 1; }
+  /* In combat: a small red dot beside "Campaign" (⚔ falls back to an ×-like glyph in Cinzel). */
+  .fight { display: inline-block; width: 7px; height: 7px; border-radius: 50%; background: var(--combat); box-shadow: 0 0 0 3px color-mix(in srgb, var(--combat) 22%, transparent); }
 
   /* Phone: the links fold into the title. */
   .switcher { display: none; position: relative; }
@@ -105,9 +111,11 @@
   .seg button:last-child { border-radius: 0 999px 999px 0; border-left: 1px solid var(--border); }
   .seg button.on { background: var(--dim); color: var(--text); }
   .seg button.on.fightmode { color: var(--combat); }
-  .narrow .bar .seg { display: none; }
-  .mrow { display: none; justify-content: center; padding: 8px 0; border-bottom: 1px solid var(--border); }
-  .narrow .mrow.show { display: flex; }
+  /* Adventure | Combat hangs off the bottom of the bar, like a notch: a small
+     tab with rounded lower corners, centred, part of the sticky bar. */
+  .hang { position: absolute; left: 50%; top: 100%; transform: translate(-50%, -1px); z-index: 4; padding: 0 8px 7px; background: var(--bg); border: 1px solid var(--border); border-top: 0; border-radius: 0 0 16px 16px; }
+  .hang .seg { height: 30px; }
+  .body.under-hang { padding-top: 52px; }
 
   .live { display: inline-flex; align-items: center; gap: 6px; font-family: 'IM Fell English', serif; font-size: 13px; color: var(--muted); padding: 0 6px; }
   .live i { width: 7px; height: 7px; border-radius: 50%; background: #5fb878; }
@@ -143,7 +151,7 @@
 <main>
   <header>
     <h1>DM navigation</h1>
-    <p class="note">Prototype. The DM pages live in the top bar (places, on the left); Adventure | Combat stays the one pill toggle (a mode, in the centre). On phones the links fold into the title. Click around: the links, the mode toggle, “Campaign ▾”, ⋯ and the DM button all work.</p>
+    <p class="note">Prototype, round 2. The DM pages live in the top bar (places, on the left). Adventure | Combat hangs off the bar's lower edge on Campaign — a small notch, not a row — and switching to Combat starts it. Settings, Theme and Sign out are in ⋯ on every page. On phones the links fold into the title. Everything is clickable.</p>
   </header>
 
   <div class="controls">
@@ -166,13 +174,13 @@
       <div class="frame" id="codexWide"></div>
       <div class="frame phone narrow" id="codexNarrow"></div>
     </div>
-    <p class="was">Sub-pages keep a ‹ back arrow to their parent and the link row still shows Settings as the current place.</p>
+    <p class="was">Sub-pages keep a ‹ back arrow to their parent (here Settings, which is in ⋯). No link is underlined, since Settings isn't in the row.</p>
   </section>
 
   <section>
-    <p class="where">A player's sheet, as the player sees it · unchanged</p>
+    <p class="where">A player's sheet, as the player sees it · only ⋯ changes</p>
     <div class="frame" id="player"></div>
-    <p class="was">Players never see the DM links or the DM button's sign-in flow; their bar is exactly as today.</p>
+    <p class="was">Players never see the DM links. Their ⋯ gains Theme (their character's palette) and Sign out (forgets the character's password on this device).</p>
   </section>
 </main>
 
@@ -182,23 +190,26 @@
     { key: "shop", label: "Shop", title: "Shop · Ironwhistle's Emporium" },
     { key: "maps", label: "Maps", title: "Map Library" },
     { key: "chronicle", label: "Chronicle", title: "Chronicle" },
-    { key: "settings", label: "Settings", title: "DM Settings" },
   ];
+  // Settings isn't a link any more: it lives in ⋯ on every DM page.
+  const SETTINGS = { key: "settings", label: "Settings", title: "DM Settings" };
+  const pageOf = (key) => PAGES.find((x) => x.key === key) || SETTINGS;
   // ⋯ holds only this page's actions and preferences; Sign out last everywhere.
   const ACTIONS = {
-    campaign: (s) => [s.combat ? "End Combat" : "Start Combat", "Manage Party", "Enemies Gallery"],
+    campaign: () => ["Manage Party", "Enemies Gallery"],
     shop: () => ["Preview as a player"],
     maps: () => ["Upload a map"],
     chronicle: () => ["Record this session"],
     settings: () => [],
     home: () => [],
     codex: () => [],
+    player: () => ["Export JSON", "Roll overlay", "Turn alerts"],
   };
   const state = { page: "campaign", combat: false, auth: "in", signingIn: false, home: false };
   let openPop = null;
 
   const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
-  const fightMark = () => (state.combat ? ' <span class="fight" title="In combat" aria-label="in combat">⚔</span>' : "");
+  const fightMark = () => (state.combat ? ' <span class="fight" title="In combat" role="img" aria-label="in combat"></span>' : "");
 
   function links(current) {
     return `<nav class="dmlinks" aria-label="DM pages">${PAGES.map((p) =>
@@ -212,13 +223,16 @@
   }
   function menu(id, page) {
     const acts = (ACTIONS[page] || (() => []))(state);
+    const dm = state.auth === "in";
+    const signedIn = page === "player" || dm;
     return `<div class="menuwrap"><button type="button" class="icon" data-pop="${id}" aria-label="More actions" aria-expanded="${openPop === id}">⋯</button>
       <div class="pop${openPop === id ? " open" : ""}" role="menu">
         ${acts.map((a) => `<button type="button" class="item" role="menuitem" data-act="${a}">${a}</button>`).join("")}
         ${acts.length ? "<hr />" : ""}
+        ${dm && page !== "player" ? `<a href="#" role="menuitem" data-go="settings"${page === "settings" ? ' aria-current="page"' : ""}>Settings</a><hr />` : ""}
         <div class="sel">Text size <span>100%</span></div>
-        ${page === "campaign" ? '<div class="sel">Theme <span>Ocean ▾</span></div>' : ""}
-        ${state.auth === "in" ? '<hr /><button type="button" class="item danger" role="menuitem" data-act="signout">Sign out</button>' : ""}
+        <div class="sel">Theme <span>${page === "player" ? "Ember" : document.body.dataset.pal === "vellum" ? "Vellum" : "Ocean"} ▾</span></div>
+        ${signedIn ? '<hr /><button type="button" class="item danger" role="menuitem" data-act="signout">Sign out</button>' : ""}
       </div></div>`;
   }
   function modeToggle() {
@@ -226,7 +240,7 @@
   }
 
   function dmPage(id, page) {
-    const p = PAGES.find((x) => x.key === page);
+    const p = pageOf(page);
     const isCampaign = page === "campaign";
     const bar = `<div class="bar">
         <div class="left">
@@ -234,11 +248,12 @@
           ${links(page)}
           ${switcher(id + "-sw", page, p.label)}
         </div>
-        <div class="center">${isCampaign ? modeToggle() : ""}</div>
+        <div class="center"></div>
+        ${isCampaign ? `<div class="hang">${modeToggle()}</div>` : ""}
         <div class="right">${isCampaign ? '<span class="live"><i></i><span>Live</span></span><button class="icon" aria-label="World Guide" type="button">❧</button>' : ""}${menu(id + "-m", page)}</div>
       </div>
-      <div class="mrow${isCampaign ? " show" : ""}">${isCampaign ? modeToggle() : ""}</div>`;
-    return bar + `<div class="body${state.combat ? " is-combat" : ""}">${isCampaign ? '<div class="combat-banner">⚔ Combat — round 2 · Eòghan’s turn</div>' : ""}<h2>${esc(p.title)}</h2><div class="ghost" style="width:60%"></div><div class="cards"><div class="card"></div><div class="card"></div><div class="card"></div></div></div>`;
+`;
+    return bar + `<div class="body${isCampaign ? " under-hang" : ""}${state.combat ? " is-combat" : ""}">${isCampaign ? '<div class="combat-banner">Combat — round 2 · Eòghan’s turn</div>' : ""}<h2>${esc(p.title)}</h2><div class="ghost" style="width:60%"></div><div class="cards"><div class="card"></div><div class="card"></div><div class="card"></div></div></div>`;
   }
 
   function homePage(id) {
@@ -264,7 +279,7 @@
   function player() {
     return `<div class="bar"><div class="left"><a href="#" class="icon back" aria-label="Back">‹</a><span class="title">Eòghan MacGille Fàth</span></div>
       <div class="center"><div class="seg"><button class="on" type="button">Session</button><button type="button">Profile</button></div></div>
-      <div class="right"><span class="live"><i></i><span>Live</span></span><button class="icon" aria-label="World Guide" type="button">❧</button><button class="icon" aria-label="More actions" type="button">⋯</button></div></div>
+      <div class="right"><span class="live"><i></i><span>Live</span></span><button class="icon" aria-label="World Guide" type="button">❧</button>${menu("pl-m", "player")}</div></div>
       <div class="body"><h2>Eòghan’s sheet</h2><div class="ghost" style="width:50%"></div></div>`;
   }
 
