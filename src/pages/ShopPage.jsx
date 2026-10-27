@@ -542,7 +542,6 @@ export default function ShopPage({ preview = false }) {
                       );
                     })}
                   </div>
-                  <p className="sp-cat-line">{shelf.line}</p>
                 </>
               )}
             </div>

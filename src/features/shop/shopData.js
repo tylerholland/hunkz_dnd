@@ -34,14 +34,14 @@ export const I = {
 
 // The eight shelves, each with its colour (also the backdrop of its item art).
 export const SHELVES = [
-  { id: "arms", name: "Arms", icon: "sword", line: "Steel for the hand and the string." },
-  { id: "armor", name: "Armour", icon: "shield", line: "Stops what it can. Mostly." },
-  { id: "gear", name: "Gear", icon: "pack", line: "Two silver apiece. Don't go underground without it." },
-  { id: "tools", name: "Tools", icon: "pick", line: "Five silver apiece, and worth every one." },
-  { id: "occult", name: "Occult", icon: "skull", line: "Ten silver, no questions — and no refunds." },
-  { id: "fancy", name: "Fancy goods", icon: "lantern", line: "Twenty silver for the finer things." },
-  { id: "travel", name: "Mounts & carts", icon: "horse", line: "Out back in the yard. Mind the mule." },
-  { id: "hire", name: "Hirelings", icon: "person", line: "Priced by the day. Paid up front." },
+  { id: "arms", name: "Arms", icon: "sword" },
+  { id: "armor", name: "Armour", icon: "shield" },
+  { id: "gear", name: "Gear", icon: "pack" },
+  { id: "tools", name: "Tools", icon: "pick" },
+  { id: "occult", name: "Occult", icon: "skull" },
+  { id: "fancy", name: "Fancy goods", icon: "lantern" },
+  { id: "travel", name: "Mounts & carts", icon: "horse" },
+  { id: "hire", name: "Hirelings", icon: "person" },
 ];
 export const SHELF_IDS = SHELVES.map((c) => c.id);
 export const shelfOf = (id) => SHELVES.find((c) => c.id === id);
