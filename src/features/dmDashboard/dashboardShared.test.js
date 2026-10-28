@@ -20,3 +20,15 @@ describe("normalizeInitiativeUpdate", () => {
     expect(normalizeInitiativeUpdate({}, undefined)).toEqual({ entries: [], activeTurnIndex: 0, round: 1 });
   });
 });
+
+describe("getPartyCardPalette — a vellum character on a dark dashboard", () => {
+  it("gives the portrait a dark ring, not the pale parchment surface", async () => {
+    const { getPartyCardPalette } = await import("./dashboardShared");
+    const { PALETTES } = await import("../characterSheet/theme");
+    const card = getPartyCardPalette(PALETTES.vellum, PALETTES.ocean);
+    const [r, g, b] = card.portraitRing.match(/[0-9a-f]{2}/gi).map((h) => parseInt(h, 16));
+    expect((r + g + b) / 3).toBeLessThan(80);
+    // Dark palettes keep their usual ring (no override).
+    expect(getPartyCardPalette(PALETTES.ember, PALETTES.ocean).portraitRing).toBeUndefined();
+  });
+});

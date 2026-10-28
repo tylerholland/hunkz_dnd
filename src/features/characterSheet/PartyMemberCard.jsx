@@ -64,6 +64,7 @@ export default function PartyMemberCard({ member, pal, isYou = false, isActiveTu
     "--font-body": cardPal.fontBody,
     "--font-ui": cardPal.fontUI,
     "--pal-portrait-glow": withAlpha(cardPal.accent, 0.25),
+    "--pal-portrait-ring": cardPal.portraitRing || cardPal.surfaceSolid,
   };
 
   const classes = [

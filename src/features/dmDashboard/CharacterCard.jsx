@@ -339,6 +339,7 @@ export default function CharacterCard({
     } : {}),
     // Portrait outer glow ring — accent at low alpha, palette-aware
     "--pal-portrait-glow": withAlpha(cardPal.accent, 0.25),
+    "--pal-portrait-ring": cardPal.portraitRing || cardPal.surfaceSolid,
   };
 
   // Story 33 — hovering this character's token (map or tray) lights the

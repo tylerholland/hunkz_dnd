@@ -90,6 +90,10 @@ export function getPartyCardPalette(basePal, dashboardPal) {
       gem: mixHex(basePal.gem || basePal.accentBright, liftedInk, 0.58),
       gemLow: withAlpha(mixHex(basePal.gemLow || basePal.accent, darkBase, 0.18), 0.56),
       uiBorder: withAlpha(warmBorder, 0.46),
+      // The ring between the portrait and its halo is a gap onto the card, so
+      // it must be dark like the card — not the half-clear parchment surface,
+      // which shows as a pale halo on a dark dashboard.
+      portraitRing: mixHex(darkBase, basePal.surfaceSolid, 0.14),
     };
   }
 

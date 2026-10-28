@@ -103,7 +103,7 @@
      Layer 3: outer accent glow halo */
   box-shadow:
     0 3px 10px rgba(0, 0, 0, 0.5),
-    0 0 0 6px var(--pal-surface-solid),
+    0 0 0 6px var(--pal-portrait-ring, var(--pal-surface-solid)),
     0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25));
   transition: box-shadow 0.22s ease, border-color 0.22s ease;
 }
@@ -299,14 +299,14 @@
   0%, 100% {
     box-shadow:
       0 3px 10px rgba(0, 0, 0, 0.5),
-      0 0 0 6px var(--pal-surface-solid),
+      0 0 0 6px var(--pal-portrait-ring, var(--pal-surface-solid)),
       0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25)),
       0 0 12px 3px rgba(192, 80, 80, 0.3);
   }
   50% {
     box-shadow:
       0 3px 10px rgba(0, 0, 0, 0.5),
-      0 0 0 6px var(--pal-surface-solid),
+      0 0 0 6px var(--pal-portrait-ring, var(--pal-surface-solid)),
       0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25)),
       0 0 28px 8px rgba(192, 80, 80, 0.6);
   }
@@ -316,14 +316,14 @@
   0%, 100% {
     box-shadow:
       0 3px 10px rgba(0, 0, 0, 0.5),
-      0 0 0 6px var(--pal-surface-solid),
+      0 0 0 6px var(--pal-portrait-ring, var(--pal-surface-solid)),
       0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25)),
       0 0 10px 2px rgba(138, 180, 200, 0.18);
   }
   50% {
     box-shadow:
       0 3px 10px rgba(0, 0, 0, 0.5),
-      0 0 0 6px var(--pal-surface-solid),
+      0 0 0 6px var(--pal-portrait-ring, var(--pal-surface-solid)),
       0 0 0 8px var(--pal-portrait-glow, rgba(106, 143, 168, 0.25)),
       0 0 22px 6px rgba(138, 180, 200, 0.42);
   }
