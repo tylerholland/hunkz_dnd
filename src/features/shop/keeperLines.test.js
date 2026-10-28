@@ -45,3 +45,23 @@ describe("keeper lines", () => {
     expect(linesFor("nobody")).toBe(KEEPER_LINES.mags);
   });
 });
+
+describe("fillLine", () => {
+  it("fills every placeholder in every keeper's lines, with or without a shopper", async () => {
+    const { fillLine } = await import("./keeperLines");
+    const all = (v) => (typeof v === "string" ? [v] : Array.isArray(v) ? v.flatMap(all) : v && typeof v === "object" ? Object.values(v).flatMap(all) : []);
+    const vars = { item: "rope", price: "2s", time: "9pm" };
+    const shoppers = [null, { name: "Eòghan", race: "Firbolg", charClass: "Warlock (Fuath)" }, { name: "Aesop", race: "Elf", charClass: "Ranger" }];
+    for (const lines of Object.values(KEEPER_LINES)) {
+      for (const text of all(lines)) {
+        for (const character of shoppers) expect(fillLine(text, { character, town: "Greyhawk", vars })).not.toMatch(/\{\w+\}/);
+      }
+    }
+  });
+
+  it("reads naturally with no shopper (the DM's page) and with one", async () => {
+    const { fillLine } = await import("./keeperLines");
+    expect(fillLine("{A_race}! Come in — I've stock that'll fit ye.")).toBe("A traveller! Come in — I've stock that'll fit ye.");
+    expect(fillLine("{A_race}! Come in.", { character: { race: "Elf" } })).toBe("An elf! Come in.");
+  });
+});

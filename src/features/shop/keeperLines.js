@@ -738,3 +738,23 @@ export function byMood(list, mood) {
 export function linesFor(keeperKey) {
   return KEEPER_LINES[keeperKey] || KEEPER_LINES.mags;
 }
+
+// "Rogue (Thief)" → "rogue"; "Half-Elf" → "half-elf"; blank → the fallback.
+const simpleWord = (v, fallback) => String(v || "").replace(/\(.*?\)/g, "").trim().split(/[\s/,]+/)[0]?.toLowerCase() || fallback;
+const an = (w) => (/^[aeiou]/.test(w) ? `an ${w}` : `a ${w}`);
+
+/**
+ * A keeper's line with its placeholders filled for this shopper: {name},
+ * {race}/{class}, {a_race}/{A_race}/{a_class}/{A_class}, {town}, plus any
+ * `vars` ({item}, {price}, {time}). With no shopper (the DM's page) they read
+ * as "friend", "traveller" and "adventurer". Unknown placeholders are left.
+ */
+export function fillLine(text, { character = null, town = "town", vars = {} } = {}) {
+  const race = simpleWord(character?.race, "traveller");
+  const cls = simpleWord(character?.charClass, "adventurer");
+  const who = {
+    town, name: character?.name || "friend", race, class: cls,
+    a_race: an(race), A_race: `A${an(race).slice(1)}`, a_class: an(cls), A_class: `A${an(cls).slice(1)}`,
+  };
+  return String(text || "").replace(/\{(\w+)\}/g, (m, k) => ({ ...who, ...vars })[k] ?? m);
+}

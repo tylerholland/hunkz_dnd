@@ -10,7 +10,7 @@ import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
 import {
   KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime, townOf, dealPrice,
 } from "../features/shop/shopData";
-import { byMood, linesFor } from "../features/shop/keeperLines";
+import { byMood, fillLine, linesFor } from "../features/shop/keeperLines";
 import { haveCount, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
 import { ShopIcon, ItemOrb, ShopShutters, PackPanel, SatchelSheet, Receipt } from "../features/shop/ShopParts";
 import { purseWorth, useTableMoney } from "../lib/money";
@@ -20,8 +20,6 @@ import "../features/shop/shop.css";
 // speech bubble, the item in hand, the shelves, what you already carry, and a
 // satchel you pay for. Opening hours, stock and prices come from the DM page.
 
-// "Rogue (Thief)" → "rogue"; "Half-Elf" → "half-elf"; blank → the fallback.
-const simpleWord = (v, fallback) => String(v || "").replace(/\(.*?\)/g, "").trim().split(/[\s/,]+/)[0]?.toLowerCase() || fallback;
 
 function readPassword(slug) {
   try {
@@ -157,10 +155,7 @@ export default function ShopPage({ preview = false }) {
   const speak = (list, vars = {}) => {
     const chosen = byMood(list, shop?.visit?.read?.mood);
     const text = Array.isArray(chosen) ? pick(chosen) : chosen;
-    const race = simpleWord(character?.race, "traveller"), cls = simpleWord(character?.charClass, "adventurer");
-    const an = (w) => (/^[aeiou]/.test(w) ? `an ${w}` : `a ${w}`);
-    const who = { town: townOf(display.where), name: character?.name || "friend", race, class: cls, a_race: an(race), A_race: `A${an(race).slice(1)}`, a_class: an(cls), A_class: `A${an(cls).slice(1)}` };
-    return String(text || "").replace(/\{(\w+)\}/g, (m, k) => ({ ...who, ...vars })[k] ?? m);
+    return fillLine(text, { character, town: townOf(display.where), vars });
   };
   const scene = SCENES[keeperKey];
   const display = shop?.display || {
