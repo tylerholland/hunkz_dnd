@@ -10,6 +10,8 @@ import { useAdaptivePolling } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { USUAL, rollMarkups, rollStock, signFor } from "../features/shop/shopData";
 import { StatusBar, ShopPicker, ShelvesStock, CatalogEditor, HaggleLog } from "../features/shop/ShopDmParts";
+import { ShopTour, TourBanner } from "../features/shop/ShopHelp";
+import { tourSeen } from "../features/shop/shopHelpText";
 import "../features/shop/shop.css";
 import "../features/shop/shopDm.css";
 
@@ -49,6 +51,8 @@ export default function ShopDmPage() {
   const [dmPassword, setDmPassword] = useState(() => sessionStorage.getItem("dnd_dm_password") || "");
   const [authed, setAuthed] = useState(() => !!sessionStorage.getItem("dnd_dm_password"));
   const [tab, setTab] = useState("open");
+  const [touring, setTouring] = useState(false);
+  const [offerTour, setOfferTour] = useState(() => !tourSeen());
   const [info, setInfo] = useState(null);
   const [haggleInfo, setHaggleInfo] = useState({ log: [], thrown: [] });
   const [setup, setSetup] = useState(null);
@@ -223,9 +227,13 @@ export default function ShopDmPage() {
         <StatusBar info={info} opening={info.opening} nextSessionAt={nextSessionAt} inStock={inStock} busy={busy} now={now} onAction={act} onSchedule={(fields) => act("schedule", fields)} onPreview={preview} />
       )}
       <main className="sd-main">
-        <div className="sd-tabs" role="tablist">
-          <button type="button" role="tab" aria-selected={tab === "open"} className={tab === "open" ? "on" : ""} onClick={() => setTab("open")}>Open the shop</button>
-          <button type="button" role="tab" aria-selected={tab === "catalog"} className={tab === "catalog" ? "on" : ""} onClick={() => setTab("catalog")}>Item catalog</button>
+        {offerTour && !touring && setup && catalog && <TourBanner onStart={() => { setOfferTour(false); setTouring(true); }} onDismiss={() => setOfferTour(false)} />}
+        <div className="sd-tabsrow">
+          <div className="sd-tabs" role="tablist">
+            <button type="button" role="tab" aria-selected={tab === "open"} className={tab === "open" ? "on" : ""} onClick={() => setTab("open")}>Open the shop</button>
+            <button type="button" role="tab" aria-selected={tab === "catalog"} className={tab === "catalog" ? "on" : ""} onClick={() => setTab("catalog")}>Item catalog</button>
+          </div>
+          <button type="button" className="sd-quickstart" disabled={!setup || !catalog} onClick={() => { setOfferTour(false); setTouring(true); }}>✦ Quick start</button>
         </div>
         {error && <p className="sd-error" role="alert">{error}</p>}
         {!setup || !catalog ? <p className="sd-hint">Loading the shop…</p> : tab === "catalog" ? (
@@ -244,6 +252,7 @@ export default function ShopDmPage() {
           <>{picker}{shelves}{(haggleInfo.log.length > 0 || haggleInfo.thrown.length > 0) && <HaggleLog log={haggleInfo.log} thrown={haggleInfo.thrown} onLetIn={letIn} busy={busy} />}</>
         )}
       </main>
+      {touring && <ShopTour onTab={setTab} onClose={() => setTouring(false)} />}
     </div>
   );
 }

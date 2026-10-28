@@ -7,6 +7,7 @@ import {
 import { byMood, linesFor } from "./keeperLines";
 import { catalogToCsv, csvToItems, diffCatalog } from "./shopCsv";
 import { ItemOrb } from "./ShopParts";
+import { InfoTip } from "./ShopHelp";
 
 const Seg = ({ value, options, onChange, disabled, label }) => (
   <div className="sd-seg" role="group" aria-label={label}>
@@ -58,17 +59,18 @@ export function StatusBar({ info, opening, nextSessionAt, inStock, busy, onActio
 
   return (
     <div className="sd-sbar-wrap">
-      <div className={`sd-sbar is-${status}`}>
+      <div className={`sd-sbar is-${status}`} data-tour="status">
         <div className="sd-sb-main">
           <span className="dot" aria-hidden="true" />
-          <div className="what"><b>{s.t}</b><span>{s.sub}</span></div>
-          <button className="sd-tbtn" type="button" onClick={onPreview} title="Walk the shop as players will see it, with these settings. Nothing changes.">👁 Preview</button>
+          <div className="what"><b>{s.t} <InfoTip id="status" /></b><span>{s.sub}</span></div>
+          <button className="sd-tbtn" type="button" data-tour="preview" onClick={onPreview} title="Walk the shop as players will see it, with these settings. Nothing changes.">👁 Preview</button>
           {s.alt && <button className="sd-tbtn" type="button" disabled={busy} onClick={() => onAction(s.alt[0])}>{s.alt[1]}</button>}
-          {s.main && <button className="sd-gold" type="button" disabled={busy} onClick={() => onAction(s.main[0])}>{s.main[1]}</button>}
+          {s.main && <button className="sd-gold" type="button" data-tour="main" disabled={busy} onClick={() => onAction(s.main[0])}>{s.main[1]}</button>}
         </div>
         <div className="sd-sb-sched">
           <span className="lbl">{isLive ? "Closes" : "Schedule"}</span>
           <span className="txt">{schedText}</span>
+          <InfoTip id="schedule" />
           {!draft && <button className={`sd-tbtn${none ? " primary" : ""} push`} type="button" onClick={openEditor}>{none ? "＋ Schedule an opening" : "✎ Change"}</button>}
         </div>
         {draft && (
@@ -139,8 +141,8 @@ export function ShopPicker({ setup, display, onPick, onSign, onPlace, onTemper, 
     </button>
   );
   return (
-    <section className="sd-card setup" aria-labelledby="sd-shop-h">
-      <h3 id="sd-shop-h">The shop</h3>
+    <section className="sd-card setup" aria-labelledby="sd-shop-h" data-tour="shop">
+      <h3 id="sd-shop-h">The shop <InfoTip id="shop" /></h3>
       <Seg label="Shop list" value={tab} onChange={setTab} options={[["templates", `Shop templates · ${Object.keys(KEEPERS).length}`], ["saved", `Saved shops · ${setup.saved.length}`]]} />
       <div className="sd-keepers">
         {tab === "templates"
@@ -166,15 +168,17 @@ export function ShopPicker({ setup, display, onPick, onSign, onPlace, onTemper, 
       <div className="sd-row"><span className="lbl">Town</span>
         <input className="sd-in" value={setup.place?.town || ""} onChange={(e) => onPlace({ ...setup.place, town: e.target.value })} aria-label="Town" placeholder={signPlace(setup)[0]} style={{ width: 170 }} />
         <input className="sd-in" value={setup.place?.street || ""} onChange={(e) => onPlace({ ...setup.place, street: e.target.value })} aria-label="Street or district (optional)" placeholder={signPlace(setup)[1] || "Street (optional)"} style={{ width: 210 }} />
-        <span className="sd-hint" style={{ margin: 0 }}>Where the shop is, in your world. Leave blank for the sign's suggestion.</span>
+        <InfoTip id="town" />
       </div>
-      <div className="sd-row"><span className="lbl">Temper</span>
+      <div className="sd-row" data-tour="temper"><span className="lbl">Temper</span>
         <Seg label="Temper" value={setup.temper} onChange={onTemper} options={Object.entries(TEMPERS).map(([key, t]) => [key, t.name])} />
+        <InfoTip id="temper" />
       </div>
       <p className="sd-hint">{TEMPERS[setup.temper].hint}</p>
       <div className="sd-row"><span className="lbl">Buys back</span>
         <button type="button" className={`sd-sw${setup.buysBack !== false ? " on" : ""}`} role="switch" aria-checked={setup.buysBack !== false} aria-label="Buys back from players" onClick={() => onBuysBack(setup.buysBack === false)}><i /></button>
         <span>{setup.buysBack !== false ? `${k.keeper} buys things back at half the list price` : `${k.keeper} only sells`}</span>
+        <InfoTip id="buysBack" />
       </div>
       <div className="sd-row sd-foot">
         <span className="sd-hint" style={{ margin: 0 }}>
@@ -203,20 +207,22 @@ export function ShelvesStock({ setup, items, isLive, locked, onUpdate, onRollPri
   const toggleOut = (id) => onUpdate({ out: out.has(id) ? setup.out.filter((x) => x !== id) : [...setup.out, id] });
   const lockCls = locked ? " locked" : "";
   return (
-    <section className={`sd-card${isLive ? " live" : ""}`} aria-labelledby="sd-stock-h">
-      <h3 id="sd-stock-h">Shelves &amp; stock {isLive && <span className="sd-livepill">Live</span>}</h3>
+    <section className={`sd-card${isLive ? " live" : ""}`} aria-labelledby="sd-stock-h" data-tour="stock">
+      <h3 id="sd-stock-h">Shelves &amp; stock <InfoTip id="stock" /> {isLive && <span className="sd-livepill">Live</span>}</h3>
       <div className={`sd-row${lockCls}`} style={{ marginTop: 0 }}><span className="lbl">Prices</span>
         <Seg label="Price level" value={setup.level} disabled={locked} onChange={(v) => onRollPrices(v)} options={Object.entries(LEVELS).map(([key, l]) => [key, l.name])} />
         <button className="sd-tbtn" type="button" disabled={locked} onClick={() => onRollPrices(setup.level)}>⟳ Reroll prices</button>
+        <InfoTip id="prices" />
       </div>
       <div className="sd-row"><span className="lbl">Stock</span>
         <Seg label="Stock level" value={setup.fill} disabled={isLive} onChange={(v) => onRollStock(v)} options={Object.entries(FILL_NAMES)} />
         <button className="sd-tbtn" type="button" disabled={isLive || setup.fill === "all"} onClick={() => onRollStock(setup.fill)}>⟳ Reroll stock</button>
+        <InfoTip id="stockLevel" />
         <span className="sd-count"><small>In stock</small> {carriedItems.filter((it) => !out.has(it.id)).length} of {carriedItems.length}</span>
       </div>
       <p className="sd-hint">{isLive
         ? "No rerolling while the shop is open. Flip items one at a time instead; restocked items show as “Just in”."
-        : "Each shelf's markup and stock are rolled from these; nudge any of them below. The stock roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first."}</p>
+        : "Each shelf's markup and stock are rolled from these; nudge any of them below. The stock roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first."} <InfoTip id="markup" label="About a shelf's markup" /></p>
       <div className="sd-row">
         <input className="sd-in" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Find an item… (e.g. rope)" aria-label="Find an item" style={{ minWidth: 240 }} />
         {isLive && <span className="sd-hint">Anything you flip shows on the shelves straight away.</span>}
@@ -315,8 +321,8 @@ export function CatalogEditor({ items, onSave, busy }) {
   }
 
   return (
-    <section className="sd-card" aria-labelledby="sd-cat-h">
-      <h3 id="sd-cat-h">Item catalog</h3>
+    <section className="sd-card" aria-labelledby="sd-cat-h" data-tour="catalog">
+      <h3 id="sd-cat-h">Item catalog <InfoTip id="catalog" /></h3>
       <p className="sd-hint" style={{ marginTop: 0 }}>The list prices, seeded from World of Dungeons. Each opening marks them up or down per shelf. Items already in someone's pack are their own copies, so changes here never change what anyone owns.</p>
       <div className="sd-row">
         <input className="sd-in" placeholder="Search items…" value={filter} onChange={(e) => setFilter(e.target.value)} aria-label="Search items" />
@@ -327,6 +333,7 @@ export function CatalogEditor({ items, onSave, busy }) {
         <span style={{ flex: 1 }} />
         <button className="sd-tbtn" type="button" onClick={exportCsv}>⇩ Export CSV</button>
         <button className="sd-tbtn" type="button" onClick={() => fileRef.current?.click()}>⇧ Import CSV</button>
+        <InfoTip id="csv" />
         <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(f); e.target.value = ""; }} />
         <button className="sd-tbtn" type="button" onClick={addItem}>＋ Add item</button>
       </div>
@@ -385,7 +392,7 @@ export function HaggleLog({ log, thrown, onLetIn, busy }) {
   const bad = /badly|refused|warning|thrown|lost/;
   return (
     <section className="sd-card" aria-labelledby="sd-log-h">
-      <h3 id="sd-log-h">Haggling &amp; sales this opening</h3>
+      <h3 id="sd-log-h">Haggling &amp; sales this opening <InfoTip id="log" /></h3>
       {thrown.map((t) => (
         <div className="sd-hl out" key={t.slug}>
           <b>{t.name}</b> was thrown out.
