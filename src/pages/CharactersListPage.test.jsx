@@ -100,7 +100,12 @@ describe("CharactersListPage", () => {
     expect(screen.getByRole("heading", { level: 1, name: "We Must All Hang Together" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { level: 1, name: "Hunkz Adventures" })).not.toBeInTheDocument();
     expect(screen.getByText(/days since the party last gathered/)).toBeInTheDocument();
-    expect(screen.getByText(/in 7 days/)).toBeInTheDocument();
+    // The Next session panel: its own region, with a countdown.
+    const next = screen.getByRole("complementary", { name: "Next session" });
+    expect(within(next).getByText("days to go")).toBeInTheDocument();
+    expect(within(next).getByText("7")).toBeInTheDocument();
+    // The road so far is its own section.
+    expect(screen.getByRole("heading", { level: 2, name: "The Road So Far" })).toBeInTheDocument();
     expect(screen.getByRole("link", { name: /Read the Chronicle/ })).toHaveAttribute("href", "/chronicle/s2");
     expect(screen.getByRole("link", { name: /Through the Lair/ })).toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Change" })).not.toBeInTheDocument();
@@ -127,7 +132,8 @@ describe("CharactersListPage", () => {
     const [credentials, at] = apiMocks.putChronicleNextSession.mock.calls[0];
     expect(credentials).toEqual({ password: "pw", asSlug: "liu-sha" });
     expect(new Date(at).getFullYear()).toBe(2099);
-    expect(await screen.findByText(/Next session:/)).toBeInTheDocument();
+    // Once saved, the panel shows the day instead of "Not set yet".
+    await waitFor(() => expect(within(screen.getByRole("complementary", { name: "Next session" })).queryByText("Not set yet")).not.toBeInTheDocument());
   });
 
   it("opens a character's orb into their card on hover, making its links reachable", async () => {
