@@ -269,23 +269,13 @@ export function EffectHistoryRow({ pal, entry, opacity = 1, showDivider = false,
   );
 }
 
-// Money in the log (shop purchases and sales): a plain coin in the row's
-// accent, single-colour like the other glyphs (⚔ ✚ ○ ✦).
-function CoinGlyph({ color }) {
-  return (
-    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.5" aria-hidden="true" style={{ flexShrink: 0 }}>
-      <circle cx="8" cy="8" r="6.5" />
-      <circle cx="8" cy="8" r="3.5" />
-    </svg>
-  );
-}
-
 // Story 72 — a purchase or sale at the shop.
 export function ShopHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
   const things = (entry.items || []).map((i) => `${i.name}${i.qty > 1 ? ` ×${i.qty}` : ""}`).join(", ");
   return (
     <div className="rh-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: showDivider ? `1px solid ${pal.border}` : "none", opacity, transition: "opacity 0.4s" }}>
-      <CoinGlyph color={pal.accent} />
+      {/* Money in the log: a plain $, single-colour like the other glyphs (⚔ ✚ ○ ✦). */}
+      <span style={{ color: pal.accent, fontFamily: pal.fontUI, fontSize: 14, lineHeight: 1, flexShrink: 0, width: 13, textAlign: "center" }} aria-hidden="true">$</span>
       <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.accentBright, flexShrink: 0 }}>{entry.characterName}</span>
       <span style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 14, color: pal.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {entry.action === "sold" ? "sold" : "bought"} {things}{entry.shop ? ` at ${entry.shop}` : ""}

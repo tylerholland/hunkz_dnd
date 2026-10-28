@@ -79,12 +79,12 @@ describe("effect riders in the log", () => {
 });
 
 describe("money and labels in the log", () => {
-  it("shows a shop purchase with a plain coin, not an emoji", () => {
+  it("shows a shop purchase with a plain $, not an emoji", () => {
     const { container } = render(
       <RollHistoryRow pal={PALETTES.ocean} entry={{ id: "s1", type: "shop", action: "bought", characterName: "Eòghan", items: [{ name: "Rope", qty: 2 }], total: 2, shop: "Ironwhistle's Emporium" }} />
     );
     expect(container.textContent).not.toMatch(/🛍/);
-    expect(container.querySelector("svg circle")).not.toBeNull();
+    expect(container.textContent.startsWith("$")).toBe(true);
     expect(screen.getByText(/bought Rope ×2 at Ironwhistle's Emporium/)).toBeInTheDocument();
   });
 
