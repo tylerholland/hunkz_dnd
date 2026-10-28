@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Road and Next Session</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  Homepage: "The road so far" and "Next session" — prototype, no live API.
+
+  Problem: both are small lines squeezed between "Read the Chronicle" and the
+  road drawing, so neither stands on its own.
+
+  Option A (recommended) — past and future side by side, the road its own section
+  - The hero pairs LAST TIME (left, as now) with NEXT TIME (right): its own
+    panel with the day large ("Tue · Nov 17"), the time, a big countdown
+    ("20 days to go"), Change, and the shop line (the shop opens before the
+    session, so it belongs here). On phones the panel follows Last time.
+  - The road leaves the hero and gets a section heading like "The Party":
+    "THE ROAD SO FAR — two sessions · 29 days since the party last gathered",
+    then the drawing at full width. Page rhythm: Chronicle → Road → Party.
+  Option B — keep everything in the hero, as a row of three tiles
+  - Above the drawing: [29 days since the party last gathered] [2 sessions]
+    [Next session · Tue, Nov 17, 6:30 PM · in 20 days · Change]. Big
+    numerals, each tile its own box. Less restructuring, but busier.
+  States: next session set / not set (a clear "Schedule the next session"
+  button for the DM and signed-in players; "Not set yet" for others); the
+  day of the session ("Tonight · 6:30 PM").
+  Data unchanged: chronicle.sessions, chronicle.nextSession, shop summary.
+  Open: A or B; whether the countdown shows hours on the day itself.
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --solid:#111e2c; --border:rgba(100,130,160,.22); --accent:#6a8fa8; --bright:#a0c0d0; --dim:#1e3a4e;
+    --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#0a0d12; --gold:#e6bd62;
+    --hero:linear-gradient(180deg, rgba(17,30,44,.92), rgba(13,15,20,.95));
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --solid:#ece4d2; --border:rgba(140,110,70,.28); --accent:#7a5c30; --bright:#4a3418; --dim:rgba(140,110,70,.15);
+    --text:#2a2018; --body:#3c2e1c; --muted:#7d6448; --page:#efe7d8; --gold:#8a6418;
+    --hero:linear-gradient(180deg, #f3ecdf, #ebe2cf);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.5; }
+  button, a { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+  .proto { max-width:1180px; margin:0 auto; padding:20px 16px 0; display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .proto p { margin:0; flex:1 1 360px; font-style:italic; color:var(--muted); font-size:14px; }
+  .ctl { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .ctl button { border:0; background:transparent; padding:7px 13px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; cursor:pointer; }
+  .ctl button.on { background:var(--dim); color:var(--text); }
+  main { max-width:1180px; margin:0 auto; padding:20px 16px 80px; }
+
+  .hero { border:1px solid var(--border); border-radius:12px; padding:34px 32px 28px; background:var(--hero); margin-bottom:26px; }
+  .kicker, .label { font-family:'Cinzel',serif; font-size:11px; letter-spacing:.24em; text-transform:uppercase; color:var(--accent); }
+  .hero h1 { font-family:'Cinzel',serif; font-weight:400; font-size:clamp(30px,5vw,46px); letter-spacing:.08em; color:var(--text); margin:6px 0 2px; }
+  .rule { width:120px; height:1px; margin:18px 0; background:linear-gradient(90deg,var(--accent),transparent); }
+  .last-title { font-family:'Cinzel',serif; font-size:20px; letter-spacing:.04em; color:var(--text); margin:4px 0 6px; }
+  .last-title span { font-family:'Crimson Text',serif; font-size:15px; color:var(--muted); letter-spacing:0; }
+  .excerpt { margin:0; font-size:17px; line-height:1.6; font-style:italic; max-width:680px; }
+  .actions { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; margin-top:16px; }
+  .btn { display:inline-flex; align-items:center; min-height:40px; padding:0 16px; border-radius:4px; border:1px solid var(--accent); background:var(--dim); color:var(--bright); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.14em; text-transform:uppercase; text-decoration:none; cursor:pointer; }
+  .meta { font-size:14px; color:var(--muted); }
+  .linkish { background:none; border:0; padding:0; cursor:pointer; color:var(--bright); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.14em; text-transform:uppercase; }
+  .linkish:hover { text-decoration:underline; }
+
+  /* A: past | future */
+  .pair { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(260px,1fr); gap:28px; align-items:start; }
+  .next { border:1px solid var(--border); border-radius:10px; padding:18px 20px; background:color-mix(in srgb,var(--solid) 70%,transparent); }
+  .next .day { font-family:'Cinzel',serif; font-size:24px; letter-spacing:.06em; color:var(--text); margin-top:6px; line-height:1.2; }
+  .next .time { font-size:16px; color:var(--body); }
+  .next .count { display:flex; align-items:baseline; gap:8px; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); }
+  .next .count b { font-family:'Cinzel',serif; font-weight:400; font-size:38px; line-height:1; color:var(--bright); }
+  .next .count span { font-style:italic; color:var(--body); }
+  .next .row { display:flex; align-items:center; justify-content:space-between; gap:10px; margin-top:12px; }
+  .shopline { display:flex; align-items:center; gap:8px; margin-top:12px; padding:8px 10px; border-radius:6px; border:1px solid color-mix(in srgb,var(--gold) 40%,var(--border)); font-size:14px; }
+  .shopline i { width:8px; height:8px; border-radius:50%; background:var(--gold); }
+  .next.empty .day { color:var(--muted); font-style:italic; font-family:'Crimson Text',serif; font-size:18px; letter-spacing:0; }
+  @media (max-width:760px) { .pair { grid-template-columns:1fr; gap:20px; } .hero { padding:24px 18px 20px; } }
+
+  .section-head { display:flex; flex-wrap:wrap; align-items:baseline; gap:6px 12px; margin:0 0 6px; }
+  .section-head h2 { font-family:'Cinzel',serif; font-weight:400; font-size:20px; letter-spacing:.12em; text-transform:uppercase; color:var(--text); margin:0; }
+  .section-head .count { font-size:15px; color:var(--muted); font-style:italic; }
+  .section-head .count b { font-family:'Cinzel',serif; font-style:normal; font-weight:400; font-size:18px; color:var(--bright); }
+  .road-sec { margin-bottom:30px; }
+
+  /* B: three tiles */
+  .tiles { display:grid; grid-template-columns:1fr 1fr 1.6fr; gap:10px; margin-top:24px; }
+  .tile { border:1px solid var(--border); border-radius:10px; padding:12px 14px; background:color-mix(in srgb,var(--solid) 60%,transparent); }
+  .tile b { display:block; font-family:'Cinzel',serif; font-weight:400; font-size:30px; line-height:1.1; color:var(--bright); }
+  .tile span { font-size:14px; color:var(--muted); font-style:italic; }
+  .tile .nd { font-family:'Cinzel',serif; font-size:18px; color:var(--text); margin-top:2px; }
+  .tile .row { display:flex; align-items:center; justify-content:space-between; gap:8px; margin-top:4px; }
+  @media (max-width:760px) { .tiles { grid-template-columns:1fr 1fr; } .tiles .tile:last-child { grid-column:1 / -1; } }
+
+  /* Road drawing (as on the homepage) */
+  svg.road { display:block; width:100%; height:auto; margin-top:6px; overflow:visible; }
+  .trail { fill:none; stroke:var(--accent); stroke-width:2; stroke-dasharray:2 7; stroke-linecap:round; opacity:.8; }
+  .ahead { fill:none; stroke:var(--muted); stroke-width:1.5; stroke-dasharray:1 9; stroke-linecap:round; opacity:.6; }
+  .wp { fill:var(--solid); stroke:var(--accent); stroke-width:1.5; }
+  .mon { font-family:'Cinzel',serif; font-size:11px; letter-spacing:.18em; fill:var(--muted); }
+  .cap { font-size:13px; fill:var(--body); }
+  .flag { fill:var(--bright); }
+  .party h2 { font-family:'Cinzel',serif; font-weight:400; font-size:20px; letter-spacing:.12em; text-transform:uppercase; color:var(--text); margin:0 0 14px; }
+  .party .orbs { display:flex; gap:18px; } .party .orbs i { width:120px; height:120px; border-radius:50%; border:1px solid var(--border); background:var(--solid); }
+</style>
+</head>
+<body>
+<div class="proto">
+  <p>Prototype: giving “The road so far” and “Next session” their own place. Compare A and B; try the states.</p>
+  <span class="ctl"><button data-opt="A" class="on">A · past | future, road below</button><button data-opt="B">B · three tiles</button></span>
+  <span class="ctl"><button data-next="set" class="on">Next session set</button><button data-next="tonight">It's tonight</button><button data-next="none">Not set</button></span>
+  <span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span>
+</div>
+<main id="page"></main>
+
+<script>
+  const state = { opt: "A", next: "set" };
+  const ROAD = `<svg class="road" viewBox="0 0 1100 210" role="img" aria-label="The road so far: two sessions, the next on Nov 17">
+    <path class="trail" d="M20 120 C 120 140, 200 130, 260 125 S 480 60, 560 70 S 640 100, 690 100"/>
+    <path class="ahead" d="M690 100 C 800 112, 900 130, 1000 108 S 1060 80, 1080 80"/>
+    <circle class="wp" cx="140" cy="130" r="14"/><circle class="wp" cx="690" cy="100" r="20"/>
+    <text class="cap" x="690" y="54" text-anchor="middle">Through the Lair of the Carrion Crawler · Sep 29</text>
+    <line x1="900" y1="120" x2="900" y2="136" stroke="currentColor" opacity=".5"/><text class="mon" x="900" y="156" text-anchor="middle">TODAY</text>
+    <path class="flag" d="M1078 80 v-32 l20 7 -20 7"/><line x1="1078" y1="48" x2="1078" y2="88" stroke="currentColor" opacity=".7"/>
+    <text class="mon" x="1060" y="36" text-anchor="middle">NEXT · NOV 17</text>
+    <text class="mon" x="230" y="196">AUG</text><text class="mon" x="470" y="196">SEP</text><text class="mon" x="700" y="196">OCT</text><text class="mon" x="930" y="196">NOV</text>
+  </svg>`;
+
+  function nextData() {
+    if (state.next === "none") return null;
+    if (state.next === "tonight") return { day: "Tonight", time: "6:30 PM", count: "4", unit: "hours to go", short: "Tonight, 6:30 PM", when: "in 4 hours" };
+    return { day: "Tue · Nov 17", time: "6:30 PM", count: "20", unit: "days to go", short: "Tue, Nov 17, 6:30 PM", when: "in 20 days" };
+  }
+
+  const lastTime = `<div class="label">Last time</div>
+    <div class="last-title">Through the Lair of the Carrion Crawler <span>· Tue, Sep 29</span></div>
+    <p class="excerpt">Deep beneath the city, where the sewers wind like the veins of some sleeping beast, the party pressed on through the dark. Eoghan felt it first: a whisper in the water…</p>
+    <div class="actions"><a class="btn" href="#">Read the Chronicle →</a><span class="meta">2 sessions so far · add your recollections</span></div>`;
+
+  function nextPanel() {
+    const n = nextData();
+    if (!n) return `<aside class="next empty" aria-labelledby="next-h"><div class="label" id="next-h">Next session</div>
+      <div class="day">Not set yet</div>
+      <div class="row" style="margin-top:14px"><button class="btn">Schedule the next session</button></div></aside>`;
+    return `<aside class="next" aria-labelledby="next-h"><div class="label" id="next-h">Next session</div>
+      <div class="day">${n.day}</div><div class="time">${n.time}</div>
+      <div class="count"><b>${n.count}</b><span>${n.unit}</span></div>
+      <div class="row"><span></span><button class="linkish">Change</button></div>
+      <div class="shopline"><i></i><span>Ironwhistle's Emporium opens 45 min before</span></div></aside>`;
+  }
+
+  function optionA() {
+    return `<section class="hero"><div class="kicker">The Chronicle · Chapter I</div><h1>We Must All Hang Together</h1><div class="rule"></div>
+        <div class="pair"><div>${lastTime}</div>${nextPanel()}</div></section>
+      <section class="road-sec" aria-labelledby="road-h">
+        <div class="section-head"><h2 id="road-h">The Road So Far</h2><span class="count">two sessions · <b>29</b> days since the party last gathered</span></div>
+        ${ROAD}
+      </section>
+      <section class="party"><h2>The Party</h2><div class="orbs"><i></i><i></i><i></i><i></i></div></section>`;
+  }
+
+  function optionB() {
+    const n = nextData();
+    return `<section class="hero"><div class="kicker">The Chronicle · Chapter I</div><h1>We Must All Hang Together</h1><div class="rule"></div>
+        ${lastTime}
+        <div class="tiles">
+          <div class="tile"><b>29</b><span>days since the party last gathered</span></div>
+          <div class="tile"><b>2</b><span>sessions on the road so far</span></div>
+          <div class="tile"><div class="label">Next session</div>${n
+            ? `<div class="nd">${n.short}</div><div class="row"><span>${n.when}</span><button class="linkish">Change</button></div>`
+            : `<div class="nd" style="font-style:italic;color:var(--muted)">Not set yet</div><div class="row"><span></span><button class="linkish">Schedule it</button></div>`}</div>
+        </div>
+        ${ROAD}
+      </section>
+      <section class="party"><h2>The Party</h2><div class="orbs"><i></i><i></i><i></i><i></i></div></section>`;
+  }
+
+  function render() { document.getElementById("page").innerHTML = state.opt === "A" ? optionA() : optionB(); }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    for (const k of ["opt", "next", "pal"]) {
+      if (b.dataset[k] === undefined) continue;
+      if (k === "pal") document.body.dataset.pal = b.dataset.pal; else state[k] = b.dataset[k];
+      document.querySelectorAll(`[data-${k}]`).forEach((x) => x.classList.toggle("on", x === b));
+    }
+    render();
+  });
+  render();
+</script>
+</body>
+</html>
