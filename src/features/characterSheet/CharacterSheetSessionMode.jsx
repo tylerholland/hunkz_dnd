@@ -1183,8 +1183,6 @@ export default function CharacterSheetSessionMode({
             { label: "Chronicle", href: "/chronicle" },
             { divider: true },
             textScaleMenuItem,
-            rollOverlayMenuItem,
-          turnAlertsMenuItem,
           ]}
         />
 
@@ -1240,13 +1238,12 @@ export default function CharacterSheetSessionMode({
         onBookClick={() => setGuideOpen((o) => !o)}
         bookOpen={guideOpen}
         menuItems={[
-          { label: "Export JSON", href: `/characters/${slug}` },
           { label: "All Characters", href: "/" },
           { label: "Chronicle", href: "/chronicle" },
           { divider: true },
-          textScaleMenuItem,
           rollOverlayMenuItem,
           turnAlertsMenuItem,
+          textScaleMenuItem,
         ]}
       />
       <ShopLine summary={shopSummary} slug={slug} only={["open", "lockup"]} className="on-sheet" />

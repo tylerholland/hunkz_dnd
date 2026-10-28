@@ -6,6 +6,7 @@ import { PalCtx } from "../features/dmDashboard/dashboardShared";
 import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
 import TopNav from "../components/TopNav";
 import { useTextScale } from "../lib/useTextScale";
+import { useDmPalette } from "../lib/dmSession";
 import { abilityCheckExpr, DEFAULT_HOUSE_RULES, isValidCheckDice, normalizeHouseRules, parseCheckDice } from "../lib/houseRules";
 import DmPasswordReset from "./DmPasswordReset";
 import DmSpellDiceCard from "./DmSpellDiceCard";
@@ -27,7 +28,7 @@ export default function DmSettingsPage() {
   const [endTurnStatus, setEndTurnStatus] = useState("");
   const { textScale, textScaleMenuItem } = useTextScale();
 
-  const palKey = sessionStorage.getItem("dnd_dm_palette") || "ocean";
+  const palKey = useDmPalette();
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
   useEffect(() => {
@@ -115,7 +116,7 @@ export default function DmSettingsPage() {
         className="dm-settings-page"
         style={{ ...palVars, zoom: textScale, background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` }}
       >
-        <TopNav backTo="/dm" title="DM Settings" menuItems={[{ label: "Campaign", href: "/dm" }, { label: "Map Library", href: "/maps" }, { label: "Chronicle", href: "/chronicle" }, { divider: true }, textScaleMenuItem]} />
+        <TopNav title="DM Settings" menuItems={[textScaleMenuItem]} />
 
         <main className="dm-settings-main">
           <h1 className="dm-settings-heading">House Rules</h1>

@@ -8,10 +8,10 @@ describe("useRollOverlayPref", () => {
   it("is on by default and remembers being switched off", () => {
     const { result, unmount } = renderHook(() => useRollOverlayPref());
     expect(result.current.enabled).toBe(true);
-    expect(result.current.menuItem.label).toBe("Roll animation: On");
-    act(() => result.current.menuItem.onClick());
+    expect(result.current.menuItem).toMatchObject({ toggle: true, label: "Roll animation", checked: true });
+    act(() => result.current.menuItem.onChange());
     expect(result.current.enabled).toBe(false);
-    expect(result.current.menuItem.label).toBe("Roll animation: Off");
+    expect(result.current.menuItem.checked).toBe(false);
     unmount();
     expect(renderHook(() => useRollOverlayPref()).result.current.enabled).toBe(false);
   });

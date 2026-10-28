@@ -6,6 +6,7 @@ import { PalCtx } from "../features/dmDashboard/dashboardShared";
 import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
 import TopNav from "../components/TopNav";
 import { useTextScale } from "../lib/useTextScale";
+import { useDmPalette } from "../lib/dmSession";
 import { CHARACTER_SKILLS, SPECIAL_ABILITIES, TALENT_DETAILS } from "../features/characterSheet/talentCatalog";
 import { setTalentCodex } from "../features/characterSheet/talentCodexStore";
 import { TooltipBody } from "../features/characterSheet/CharacterTalents";
@@ -39,7 +40,7 @@ export default function DmTalentCodexPage() {
   const [mobileEditing, setMobileEditing] = useState(false);
   const { textScale, textScaleMenuItem } = useTextScale();
 
-  const palKey = sessionStorage.getItem("dnd_dm_palette") || "ocean";
+  const palKey = useDmPalette();
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
   useEffect(() => {
@@ -159,7 +160,7 @@ export default function DmTalentCodexPage() {
         className="dm-settings-page"
         style={{ ...palVars, zoom: textScale, background: `radial-gradient(ellipse at 50% 0%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` }}
       >
-        <TopNav backTo="/dm/settings" title="Talent Codex" menuItems={[{ label: "DM Settings", href: "/dm/settings" }, { label: "Campaign", href: "/dm" }, { divider: true }, textScaleMenuItem]} />
+        <TopNav backTo="/dm/settings" title="Talent Codex" menuItems={[textScaleMenuItem]} />
         <main className="tc-main">
           <p className="dm-settings-intro">
             Your table&apos;s own words for each skill and special ability. Players see them in the info boxes on their sheets and party cards. <b>At the table</b> holds house rulings and only shows when you&apos;ve written one. <Link to="/dm/settings" className="tc-link">← DM Settings</Link>

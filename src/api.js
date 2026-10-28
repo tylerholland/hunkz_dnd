@@ -1,6 +1,7 @@
 import { noteVersions } from "./lib/versionFloors";
 import { setCustomEffects } from "./lib/spellEffects";
 import { setTableMoney } from "./lib/money";
+import { setCombatActive } from "./lib/dmSession";
 import { needsTalentCodex, setTalentCodex, talentCodexFetchFailed } from "./features/characterSheet/talentCodexStore";
 
 const BASE = import.meta.env.VITE_API_URL;
@@ -324,6 +325,8 @@ export const getSessionState = ({ dmPassword, slug } = {}) => {
     setCustomEffects(data?.houseRules?.customEffects);
     // The table's coins and rates (DM Settings → Money).
     setTableMoney(data?.houseRules?.money);
+    // Whether combat is on, for the top bar's mark beside Campaign.
+    if (data?.mapLibrary && "combatMode" in data.mapLibrary) setCombatActive(data.mapLibrary.combatMode === true);
     // Story 39 — fetch the Talent Codex only when its version changes.
     if (needsTalentCodex(data?.talentCodexVersion)) {
       getTalentCodex()

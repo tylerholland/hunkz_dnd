@@ -6,6 +6,7 @@ import { PalCtx } from "../features/dmDashboard/dashboardShared";
 import DmLoginPrompt from "../features/dmDashboard/DmLoginPrompt";
 import TopNav from "../components/TopNav";
 import { useTextScale } from "../lib/useTextScale";
+import { setCombatActive, useDmPalette } from "../lib/dmSession";
 import { useAdaptivePolling } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { USUAL, rollMarkups, rollStock, signFor } from "../features/shop/shopData";
@@ -66,7 +67,9 @@ export default function ShopDmPage() {
   const pendingRef = useRef(null);
   const savingRef = useRef(false);
   const { textScale, textScaleMenuItem } = useTextScale();
-  const palKey = sessionStorage.getItem("dnd_dm_palette") || "ocean";
+  const palKey = useDmPalette();
+  // The shop knows when combat has shut it; tell the top bar.
+  useEffect(() => { if (info) setCombatActive(info.status === "combat"); }, [info]);
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
   const load = useCallback(async () => {
@@ -220,9 +223,7 @@ export default function ShopDmPage() {
 
   return (
     <div className="sd-page" style={{ ...palVars, zoom: textScale, background: `radial-gradient(ellipse at 50% -10%, ${pal.glow1} 0%, transparent 60%), ${pal.bg}` }} data-light={pal.light ? "true" : undefined}>
-      <TopNav backTo="/dm" title={setup?.display?.name ? `Shop · ${setup.display.name}` : "Shop"} menuItems={[
-        { label: "Campaign", href: "/dm" }, { label: "📜 Chronicle", href: "/chronicle" }, { label: "⚙ DM Settings", href: "/dm/settings" }, { divider: true }, textScaleMenuItem,
-      ]} />
+      <TopNav title={setup?.display?.name ? `Shop · ${setup.display.name}` : "Shop"} menuItems={[textScaleMenuItem]} />
       {info && tab === "open" && (
         <StatusBar info={info} opening={info.opening} nextSessionAt={nextSessionAt} inStock={inStock} busy={busy} now={now} onAction={act} onSchedule={(fields) => act("schedule", fields)} onPreview={preview} />
       )}

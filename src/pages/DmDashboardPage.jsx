@@ -32,6 +32,7 @@ import { cloneLiveValue, liveValuesEqual, useAdaptivePolling, useQueuedRefresh, 
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { reportServerBuildVersion } from "../lib/staleClient";
 import { useTextScale } from "../lib/useTextScale";
+import { setCombatActive, useDmPalette } from "../lib/dmSession";
 import { computeMapSwitch } from "./combatModeToggle";
 import { NPC_EXPECTED_TTL_MS, npcCombatCaughtUp } from "./npcServerStamps";
 
@@ -100,7 +101,7 @@ export default function DmDashboardPage() {
   const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [restNotice, setRestNotice] = useState("");
-  const [palKey, setPalKey] = useState(() => sessionStorage.getItem("dnd_dm_palette") || "ocean");
+  const palKey = useDmPalette();
   const { textScale, textScaleMenuItem } = useTextScale();
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
@@ -144,6 +145,7 @@ export default function DmDashboardPage() {
   useEffect(() => {
     sessionStorage.setItem(COMBAT_MODE_STORAGE_KEY, String(combatMode));
     sessionStorage.removeItem(LEGACY_COMBAT_MODE_STORAGE_KEY);
+    setCombatActive(combatMode);
   }, [combatMode]);
 
   useEffect(() => {
@@ -961,13 +963,6 @@ export default function DmDashboardPage() {
     setAuthState("authed");
   }
 
-  function handleEndSession() {
-    sessionStorage.removeItem("dnd_dm_password");
-    setDmPassword("");
-    setAuthed(false);
-    setAuthState("prompt");
-    setShowManageParty(false);
-  }
 
   async function handleSavePartyRoster(members, nextPartyVisibilityEnabled) {
     if (!dmPassword) throw new Error("DM password required");
@@ -1263,9 +1258,8 @@ export default function DmDashboardPage() {
         zoom: textScale,
       }}>
         <TopNav
-          backTo="/"
           title="Campaign"
-          center={(
+          notch={(
             <NavSegment
               options={[
                 { key: "adventure", label: "Adventure" },
@@ -1280,26 +1274,10 @@ export default function DmDashboardPage() {
           onBookClick={() => setGuideOpen((o) => !o)}
           bookOpen={guideOpen}
           menuItems={[
-            { label: combatMode ? "✕ End Combat" : "⚔ Start Combat", onClick: toggleCombatMode },
             { label: "Manage Party", onClick: () => setShowManageParty(true) },
             { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
-            { label: "📜 Chronicle", href: "/chronicle" },
-            { label: "🛍 Shop", href: "/dm/shop" },
-            { label: "⚙ DM Settings", href: "/dm/settings" },
             { divider: true },
             textScaleMenuItem,
-            {
-              select: true,
-              label: "Theme",
-              value: palKey,
-              options: Object.keys(PALETTES).map((key) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1) })),
-              onChange: (nextKey) => {
-                setPalKey(nextKey);
-                sessionStorage.setItem("dnd_dm_palette", nextKey);
-              },
-            },
-            { divider: true },
-            { label: "Sign Out", onClick: handleEndSession, destructive: true },
           ]}
         />
 

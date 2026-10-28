@@ -60,7 +60,8 @@ export default function DmLoginPrompt({ onSuccess, checking = false }) {
                 autoFocus
                 style={{
                   width: "100%",
-                  background: "rgba(18,32,48,0.7)",
+                  // Palette-aware: the field is the page's own background (light on vellum).
+                  background: pal.bg,
                   border: `1px solid ${error ? "#c06060" : pal.accent}`,
                   borderRadius: 4,
                   color: pal.text,
@@ -77,7 +78,8 @@ export default function DmLoginPrompt({ onSuccess, checking = false }) {
               )}
               <button type="submit" disabled={loading || !pw} style={{
                 width: "100%",
-                background: loading || !pw ? "rgba(18,32,48,0.3)" : "rgba(18,32,48,0.6)",
+                background: pal.accentDim,
+                opacity: loading || !pw ? 0.55 : 1,
                 border: `1px solid ${pal.accent}`,
                 borderRadius: 4,
                 color: pal.accentBright,

@@ -16,6 +16,6 @@ export function useRollOverlayPref() {
     try { localStorage.setItem(KEY, next ? "on" : "off"); } catch { /* storage unavailable */ }
     return next;
   }), []);
-  const menuItem = { label: `Roll animation: ${enabled ? "On" : "Off"}`, onClick: toggle };
+  const menuItem = { toggle: true, label: "Roll animation", checked: enabled, onChange: toggle };
   return { enabled, menuItem };
 }

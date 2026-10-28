@@ -1,3 +1,4 @@
+import { getDmPalette } from "../../lib/dmSession";
 // Story 69 — who is looking at the Chronicle, from the credentials this
 // browser already holds: the DM password, or any character passwords the
 // player has unlocked (sessionStorage `dnd_char_<slug>`).
@@ -31,7 +32,7 @@ export function viewerCredentials(viewer, asSlug) {
 
 export function viewerPaletteKey(viewer, asSlug) {
   try {
-    if (viewer.role === "dm") return sessionStorage.getItem("dnd_dm_palette") || "ocean";
+    if (viewer.role === "dm") return getDmPalette();
     const slug = asSlug || viewer.characters[0]?.slug;
     return (slug && sessionStorage.getItem(`dnd_palette_${slug}`)) || "ocean";
   } catch {

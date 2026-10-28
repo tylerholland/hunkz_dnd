@@ -12,6 +12,7 @@ import SessionView from "../features/chronicle/SessionView";
 import ChronicleSignIn from "../features/chronicle/ChronicleSignIn";
 import { readChronicleViewer, viewerCredentials, viewerPaletteKey } from "../features/chronicle/chronicleViewer";
 import "../features/chronicle/chronicle.css";
+import { useDmPalette } from "../lib/dmSession";
 
 // Story 69 — the Session Chronicle: /chronicle (chapters → sessions),
 // /chronicle/record (DM: tag a session from the log; ?edit=<id> to change a
@@ -34,7 +35,8 @@ export default function ChroniclePage() {
   // A signed-in character's own palette (from the character list, so it's right
   // even if they signed in here); the DM's chosen palette; else ocean.
   const charSlug = viewer.role === "player" ? (asSlug || viewer.characters[0]?.slug) : null;
-  const pal = PALETTES[(charSlug && palettes[charSlug]) || viewerPaletteKey(viewer, asSlug)] || PALETTES.ocean;
+  const dmPalette = useDmPalette();
+  const pal = PALETTES[(charSlug && palettes[charSlug]) || (isDm ? dmPalette : viewerPaletteKey(viewer, asSlug))] || PALETTES.ocean;
 
   useEffect(() => {
     if (viewer.role !== "player") return undefined;
@@ -64,12 +66,10 @@ export default function ChroniclePage() {
     "--font-body": pal.fontBody,
     "--font-ui": pal.fontUI,
   };
-  const backTo = isDm ? "/dm" : asSlug ? `/characters/${asSlug}/session` : "/";
+  // The DM moves between pages with the top bar's links; players get a way back.
+  const backTo = isDm ? null : asSlug ? `/characters/${asSlug}/session` : "/";
   const menuItems = [
-    ...(isDm
-      ? [{ label: "Campaign", href: "/dm" }, { label: "Map Library", href: "/maps" }, { label: "DM Settings", href: "/dm/settings" }]
-      : [{ label: "Characters", href: "/" }]),
-    { divider: true },
+    ...(isDm ? [] : [{ label: "Characters", href: "/" }, { divider: true }]),
     textScaleMenuItem,
   ];
 

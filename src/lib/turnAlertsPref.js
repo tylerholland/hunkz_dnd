@@ -16,6 +16,6 @@ export function useTurnAlertsPref() {
     try { localStorage.setItem(KEY, next ? "on" : "off"); } catch { /* storage unavailable */ }
     return next;
   }), []);
-  const menuItem = { label: `Turn alerts: ${enabled ? "On" : "Off"}`, onClick: toggle };
+  const menuItem = { toggle: true, label: "Turn alerts", checked: enabled, onChange: toggle };
   return { enabled, menuItem };
 }

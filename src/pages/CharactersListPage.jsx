@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { listCharacters, verifyPassword, getPartyRoster, getChronicle, getSessionState, putChronicleNextSession } from "../api";
+import { listCharacters, getPartyRoster, getChronicle, getSessionState, putChronicleNextSession } from "../api";
 import ShopLine from "../features/shop/ShopLine";
 import { PALETTES } from "../components/CharacterSheet";
 import TopNav from "../components/TopNav";
@@ -14,6 +14,7 @@ import ScheduleDialog from "../components/ScheduleDialog";
 import { daysBetween, sessionTitle, toRoman, upcomingSession, WEEKDAYS, shortDate } from "../features/home/roadLayout";
 import "./pages.css";
 import "../features/home/home.css";
+import { isDmSignedIn, useDmPalette } from "../lib/dmSession";
 
 const RESERVED_CHARACTER_SLUGS = new Set(["initiative", "npc-combat", "party-roster"]);
 const NUMBER_WORDS = ["no", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine", "ten"];
@@ -27,28 +28,19 @@ function isRenderableCharacterSummary(entry) {
   return true;
 }
 
-function readDmPalette() {
-  try {
-    return sessionStorage.getItem("dnd_dm_palette");
-  } catch {
-    return null;
-  }
-}
-
 export default function CharactersListPage() {
   const [characters,  setCharacters]  = useState([]);
   const [loading,     setLoading]     = useState(true);
-  const [dmPrompt,    setDmPrompt]    = useState(false);
-  const [dmInput,     setDmInput]     = useState("");
-  const [dmError,     setDmError]     = useState(null);
-  const [dmActive,    setDmActive]    = useState(() => !!sessionStorage.getItem("dnd_dm_password"));
+  // Signing in as the DM happens at /dm (the top bar's DM button).
+  const dmActive = isDmSignedIn();
+  const dmPalette = useDmPalette();
   const [partyMemberSlugs, setPartyMemberSlugs] = useState(() => new Set());
   const [chronicle, setChronicle] = useState(null); // { chapters, sessions, nextSession }
   const [statusBySlug, setStatusBySlug] = useState(() => new Map());
   const [shopSummary, setShopSummary] = useState(null);
   const [scheduling, setScheduling] = useState(false);
   const [scheduleState, setScheduleState] = useState({ saving: false, error: null });
-  const [viewer, setViewer] = useState(readChronicleViewer);
+  const [viewer] = useState(readChronicleViewer);
   const { textScale, textScaleMenuItem } = useTextScale();
 
   useEffect(() => {
@@ -83,34 +75,6 @@ export default function CharactersListPage() {
       .catch(() => {});
   }, []);
 
-  const handleDmLogin = async (e) => {
-    e.preventDefault();
-    setDmError(null);
-    // Verify against the first available character
-    const first = characters[0];
-    if (!first) { setDmError("No characters available to verify against."); return; }
-    try {
-      const result = await verifyPassword(first.slug, dmInput);
-      if (result.valid && result.role === "dm") {
-        sessionStorage.setItem("dnd_dm_password", dmInput);
-        setDmActive(true);
-        setViewer(readChronicleViewer());
-        setDmPrompt(false);
-        setDmInput("");
-      } else {
-        setDmError("Incorrect DM password.");
-      }
-    } catch {
-      setDmError("Could not verify password.");
-    }
-  };
-
-  const handleDmLogout = () => {
-    sessionStorage.removeItem("dnd_dm_password");
-    setDmActive(false);
-    setViewer(readChronicleViewer());
-  };
-
   const visibleCharacters = characters.filter(isRenderableCharacterSummary);
   const party = visibleCharacters.filter((c) => partyMemberSlugs.has(c.slug));
   const others = visibleCharacters.filter((c) => !partyMemberSlugs.has(c.slug));
@@ -120,7 +84,7 @@ export default function CharactersListPage() {
   const me = party.find((c) => signedInSlugs.has(c.slug)) || visibleCharacters.find((c) => signedInSlugs.has(c.slug)) || null;
   const orderedParty = me && partyMemberSlugs.has(me.slug) ? [me, ...party.filter((c) => c.slug !== me.slug)] : party;
 
-  const palKey = me?.palette || (dmActive ? readDmPalette() : null) || "ocean";
+  const palKey = me?.palette || (dmActive ? dmPalette : null) || "ocean";
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
   // Palette CSS variables set once at root; children reference var(--pal-*)
@@ -141,22 +105,11 @@ export default function CharactersListPage() {
     "--pal-gem-low":       pal.gemLow,
   };
 
-  const menuItems = dmActive
-    ? [
-        { label: "Campaign", href: "/dm" },
-        { label: "Maps", href: "/maps" },
-        { label: "Chronicle", href: "/chronicle" },
-        { divider: true },
-        textScaleMenuItem,
-        { divider: true },
-        { label: "End Session", onClick: handleDmLogout, destructive: true },
-      ]
-    : [
-        { label: "Chronicle", href: "/chronicle" },
-        { label: "DM Login", onClick: () => setDmPrompt(true) },
-        { divider: true },
-        textScaleMenuItem,
-      ];
+  // The DM's places and Sign out come from the top bar itself.
+  const menuItems = [
+    ...(dmActive ? [] : [{ label: "Chronicle", href: "/chronicle" }, { divider: true }]),
+    textScaleMenuItem,
+  ];
 
   // ── The Chronicle: last time, the road so far, the next session ──
   const sessions = [...(chronicle?.sessions || [])].sort((a, b) => Date.parse(a.startAt) - Date.parse(b.startAt));
@@ -197,49 +150,6 @@ export default function CharactersListPage() {
       <main className="home-main">
         {/* Dims the page behind an open character card. */}
         <div className="home-dim" aria-hidden="true" />
-
-        {/* DM password modal */}
-        {dmPrompt && (
-          <div className="modal-overlay" style={{ zIndex: 100 }}>
-            <div className="modal-panel" style={{ maxWidth: 340 }}>
-              <div className="label-ui" style={{ marginBottom: 8, letterSpacing: "0.3em" }}>
-                DM Login
-              </div>
-              <div style={{ fontFamily: "'Cinzel', Georgia, serif", fontSize: 18, color: "#c8bfaf", marginBottom: 20 }}>
-                Dungeon Master Access
-              </div>
-              <form onSubmit={handleDmLogin}>
-                <input
-                  type="password"
-                  autoFocus
-                  placeholder="DM password…"
-                  value={dmInput}
-                  onChange={e => setDmInput(e.target.value)}
-                  className="input-base"
-                  style={{ marginBottom: 8, fontSize: 16 }}
-                />
-                {dmError && (
-                  <div style={{ color: "#c06060", fontSize: 14, fontFamily: "'Crimson Text', Georgia, serif", marginBottom: 10 }}>
-                    {dmError}
-                  </div>
-                )}
-                <div className="flex-row" style={{ gap: 8, marginTop: 4 }}>
-                  <button
-                    type="button"
-                    onClick={() => { setDmPrompt(false); setDmInput(""); setDmError(null); }}
-                    className="btn-ghost"
-                    style={{ flex: 1 }}
-                  >
-                    Cancel
-                  </button>
-                  <button type="submit" className="btn-primary" style={{ flex: 2 }}>
-                    Unlock
-                  </button>
-                </div>
-              </form>
-            </div>
-          </div>
-        )}
 
         {/* Campaign header: where we left off, and the road so far */}
         <section className="home-hero" aria-labelledby="home-hero-h">

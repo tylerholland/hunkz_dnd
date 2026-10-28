@@ -162,7 +162,7 @@
   justify-content: flex-end;
 }
 
-/* DM Session shortcut — shown on every page but /dm while the DM is signed in */
+/* The "DM" sign-in button, on the homepage while nobody is signed in */
 .topnav-dm-link {
   display: inline-flex;
   align-items: center;
@@ -461,3 +461,117 @@
   opacity: 0.6;
   pointer-events: none;
 }
+
+/* ─── DM places (design/prototypes/dm-navigation.html) ─────────────────────
+ * Places are plain text links, the current one underlined; the only pill in
+ * the bar is a mode toggle. Links take their natural width so the centre can
+ * never overlap them. */
+.topnav--dm { grid-template-columns: auto minmax(0, 1fr) auto; }
+.topnav-home { font-size: 19px; font-family: inherit; }
+.topnav-dmlinks { display: flex; align-items: stretch; height: 52px; }
+.topnav-dmlink {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  font-family: var(--font-display);
+  font-size: 13px;
+  letter-spacing: 0.06em;
+  color: var(--pal-text-body);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.topnav-dmlink:hover { color: var(--pal-accent-bright); }
+.topnav-dmlink[aria-current="page"] { color: var(--pal-text); }
+.topnav-dmlink[aria-current="page"]::after {
+  content: "";
+  position: absolute;
+  left: 10px;
+  right: 10px;
+  bottom: 0;
+  height: 2px;
+  border-radius: 2px 2px 0 0;
+  background: var(--pal-accent);
+}
+.topnav-dmlink:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: -4px; }
+
+/* In combat: a small red dot beside "Campaign" on every page. */
+.topnav-fight {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #c06060;
+  box-shadow: 0 0 0 3px rgba(192, 96, 96, 0.22);
+}
+[data-light] .topnav-fight { background: #9a2a20; box-shadow: 0 0 0 3px rgba(154, 42, 32, 0.18); }
+
+/* The places folded into one menu: on phones, and on a character's pages. */
+.topnav-dmswitch { position: relative; }
+.topnav-left .topnav-dmswitch { display: none; }
+.topnav-dmswitch-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 44px;
+  padding: 0 8px;
+  border: none;
+  background: transparent;
+  font-family: var(--font-display);
+  font-size: 15px;
+  font-variant: small-caps;
+  letter-spacing: 0.06em;
+  color: var(--pal-text);
+  cursor: pointer;
+}
+.topnav-right .topnav-dmswitch-btn { font-size: 13px; color: var(--pal-accent-bright); }
+.topnav-dmswitch-caret { font-size: 11px; color: var(--pal-text-muted); }
+.topnav-dmswitch-pop { left: 0; right: auto; }
+.topnav-right .topnav-dmswitch-pop { left: auto; right: 0; }
+.topnav-dmswitch-pop .topnav-menu-item { display: flex; align-items: center; gap: 8px; text-decoration: none; }
+.topnav-dmswitch-pop .topnav-menu-item[aria-current="page"] { color: var(--pal-text); box-shadow: inset 2px 0 0 var(--pal-accent); }
+
+@media (max-width: 900px) {
+  .topnav-dmlinks { display: none; }
+  .topnav-left .topnav-dmswitch { display: block; }
+}
+
+/* The mode toggle hangs off the bar's lower edge: a small centred tab. */
+.topnav-notch {
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translate(-50%, -1px);
+  padding: 0 8px 7px;
+  background: var(--pal-bg);
+  border: 1px solid var(--pal-border);
+  border-top: none;
+  border-radius: 0 0 16px 16px;
+}
+.topnav-notch-space { height: 38px; }
+
+/* An on/off switch in the ⋯ menu (Roll animation, Turn alerts). */
+.topnav-menu-toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.topnav-switch {
+  position: relative;
+  flex-shrink: 0;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  border: 1px solid var(--pal-border);
+  background: var(--pal-bg);
+}
+.topnav-switch i {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--pal-text-muted);
+  transition: left 150ms ease;
+}
+.topnav-switch.on { border-color: var(--pal-accent); background: var(--pal-accent-dim); }
+.topnav-switch.on i { left: 18px; background: var(--pal-accent-bright); }
+@media (prefers-reduced-motion: reduce) { .topnav-switch i { transition: none; } }

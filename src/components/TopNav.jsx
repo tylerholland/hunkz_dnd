@@ -5,7 +5,11 @@
  *   backTo      {string|null}  — URL for the back glyph; omit/null to hide it
  *   title       {string}       — page title rendered in Cinzel small-caps
  *   center      {ReactNode}    — optional center slot (segmented control)
- *   menuItems   {Array}        — items for the ⋯ context menu (see below)
+ *   notch       {ReactNode}    — a mode toggle hanging off the bar's lower
+ *                                edge (the DM's Adventure | Combat)
+ *   menuItems   {Array}        — this page's items for the ⋯ menu (see
+ *                                below); TopNav adds Settings and Theme for the
+ *                                DM, then Sign out for anyone signed in
  *   showLive    {boolean}      — whether to show the live/polling dot
  *   wsConnected {boolean}      — true = Live (green pulse), false = Polling
  *   onBookClick {function}     — called when the World Guide book icon is clicked
@@ -16,6 +20,7 @@
  *   { label: string, onClick?: fn, href?: string, destructive?: boolean }
  *   | { divider: true }
  *   | { select: true, label: string, value: string, options: [{key, label}], onChange: (key) => void }
+ *   | { toggle: true, label: string, checked: boolean, onChange: () => void }  — an on/off switch
  *
  * Export: NavSegment — the segmented-control primitive, used standalone on
  * the DM dashboard (Adventure | Combat) and in the center slot.
@@ -23,6 +28,8 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
+import { PALETTES } from "../features/characterSheet/theme";
+import { anyoneSignedIn, isDmSignedIn, setDmPalette, signOutEverywhere, useCombatActive, useDmPalette } from "../lib/dmSession";
 import "./topNav.css";
 
 const BOOK_SVG = (
@@ -132,6 +139,22 @@ export function NavMenu({ items }) {
               </div>
             );
           }
+          if (item.toggle) {
+            // A switch flips in place; the menu stays open.
+            return (
+              <button
+                key={idx}
+                type="button"
+                role="menuitemcheckbox"
+                aria-checked={!!item.checked}
+                className="topnav-menu-item topnav-menu-toggle"
+                onClick={(e) => { e.stopPropagation(); item.onChange?.(); }}
+              >
+                {item.label}
+                <span className={`topnav-switch${item.checked ? " on" : ""}`} aria-hidden="true"><i /></span>
+              </button>
+            );
+          }
           if (item.stepper) {
             return (
               <div key={idx} className="topnav-menu-stepper">
@@ -179,28 +202,66 @@ export function NavMenu({ items }) {
   );
 }
 
-/**
- * TopNav — the full sticky bar.
- */
-// A signed-in DM can always get back to the dashboard (which reopens the
-// Adventure/Combat view they left) without digging through the ⋯ menu.
-function DmSessionLink() {
-  const { pathname } = useLocation();
-  let isDm = false;
-  try { isDm = !!sessionStorage.getItem("dnd_dm_password"); } catch { /* storage blocked */ }
-  if (!isDm || pathname === "/dm") return null;
+// The DM's places, the same on every page. Settings lives in ⋯.
+const DM_PAGES = [
+  { key: "campaign", label: "Campaign", to: "/dm" },
+  { key: "shop", label: "Shop", to: "/dm/shop" },
+  { key: "maps", label: "Maps", to: "/maps" },
+  { key: "chronicle", label: "Chronicle", to: "/chronicle" },
+];
+function currentDmPage(pathname) {
+  if (pathname === "/dm") return "campaign";
+  if (pathname.startsWith("/dm/shop")) return "shop";
+  if (pathname.startsWith("/maps")) return "maps";
+  if (pathname.startsWith("/chronicle")) return "chronicle";
+  return null;
+}
+const isDmArea = (pathname) => pathname === "/" || pathname.startsWith("/dm") || pathname.startsWith("/maps") || pathname.startsWith("/chronicle");
+
+function CombatMark() {
+  return <span className="topnav-fight" role="img" aria-label="in combat" title="In combat" />;
+}
+
+// Phones (and character pages): the DM's places folded into one menu.
+function DmSwitcher({ label, current, combat }) {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+  useEffect(() => {
+    if (!open) return undefined;
+    const outside = (e) => { if (!wrapRef.current?.contains(e.target)) setOpen(false); };
+    const key = (e) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", outside);
+    document.addEventListener("keydown", key);
+    return () => { document.removeEventListener("mousedown", outside); document.removeEventListener("keydown", key); };
+  }, [open]);
   return (
-    <Link to="/dm" className="topnav-dm-link" aria-label="DM Session" title="Back to the DM session">
-      <span aria-hidden="true">⚔</span>
-      <span className="topnav-dm-link-label">DM Session</span>
-    </Link>
+    <div className="topnav-dmswitch" ref={wrapRef}>
+      <button type="button" className="topnav-dmswitch-btn" aria-haspopup="true" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="topnav-dmswitch-label">{label}</span>
+        {current === "campaign" && combat && <CombatMark />}
+        <span className="topnav-dmswitch-caret" aria-hidden="true">▾</span>
+      </button>
+      <div className={`topnav-menu-popover topnav-dmswitch-pop${open ? " topnav-menu-popover--open" : ""}`}>
+        {DM_PAGES.map((p) => (
+          <Link key={p.key} to={p.to} className="topnav-menu-item" aria-current={p.key === current ? "page" : undefined} onClick={() => setOpen(false)}>
+            {p.label}{p.key === "campaign" && combat && <CombatMark />}
+          </Link>
+        ))}
+        <div className="topnav-menu-divider" />
+        <Link to="/" className="topnav-menu-item" onClick={() => setOpen(false)}>⌂ Party (home)</Link>
+      </div>
+    </div>
   );
 }
 
+/**
+ * TopNav — the full sticky bar.
+ */
 export default function TopNav({
   backTo = null,
   title,
   center = null,
+  notch = null,
   menuItems = [],
   showLive = false,
   wsConnected = false,
@@ -209,18 +270,44 @@ export default function TopNav({
   children,
 }) {
   const [backTapped, setBackTapped] = useState(false);
+  const { pathname } = useLocation();
+  const dmPalette = useDmPalette();
+  const combat = useCombatActive();
+  const isDm = isDmSignedIn();
+  const signedIn = anyoneSignedIn();
+  const current = currentDmPage(pathname);
+  // On DM pages (and the homepage) the DM's places replace the title; on a
+  // character's pages the title stays and the places fold into "DM ▾".
+  const dmLinks = isDm && isDmArea(pathname);
+  const currentLabel = DM_PAGES.find((p) => p.key === current)?.label || title || "DM";
 
   const handleBackClick = () => {
     setBackTapped(true);
     setTimeout(() => setBackTapped(false), 220);
   };
 
+  const items = [
+    ...menuItems,
+    ...(isDm ? [
+      { divider: true },
+      ...(pathname.startsWith("/dm/settings") ? [] : [{ label: "Settings", href: "/dm/settings" }]),
+      {
+        select: true,
+        label: "Theme",
+        value: dmPalette,
+        options: Object.keys(PALETTES).map((key) => ({ key, label: key.charAt(0).toUpperCase() + key.slice(1) })),
+        onChange: setDmPalette,
+      },
+    ] : []),
+    ...(signedIn ? [{ divider: true }, { label: "Sign out", onClick: signOutEverywhere, destructive: true }] : []),
+  ].filter((item, i, all) => !(item.divider && (i === 0 || all[i - 1]?.divider)));
+
   return (
     <>
-      <nav className="topnav" aria-label="Page navigation">
-        {/* Left: back glyph + title */}
+      <nav className={`topnav${dmLinks ? " topnav--dm" : ""}${notch ? " topnav--notched" : ""}`} aria-label="Page navigation">
+        {/* Left: back glyph (or home, for the DM) + the DM's places or the title */}
         <div className="topnav-left">
-          {backTo && (
+          {backTo ? (
             <Link
               to={backTo}
               className={`topnav-back${backTapped ? " topnav-back--tapped" : ""}`}
@@ -230,8 +317,23 @@ export default function TopNav({
             >
               ‹
             </Link>
+          ) : dmLinks && pathname !== "/" && (
+            <Link to="/" className="topnav-back topnav-home" aria-label="Home — the party" title="Home — the party">⌂</Link>
           )}
-          {title && <span className="topnav-title">{title}</span>}
+          {dmLinks ? (
+            <>
+              <nav className="topnav-dmlinks" aria-label="DM pages">
+                {DM_PAGES.map((p) => (
+                  <Link key={p.key} to={p.to} className="topnav-dmlink" aria-current={p.key === current ? "page" : undefined}>
+                    {p.label}{p.key === "campaign" && combat && <CombatMark />}
+                  </Link>
+                ))}
+              </nav>
+              <DmSwitcher label={pathname === "/" ? "DM pages" : currentLabel} current={current} combat={combat} />
+            </>
+          ) : (
+            title && <span className="topnav-title">{title}</span>
+          )}
         </div>
 
         {/* Center: segmented mode control (desktop only — see mobile row below) */}
@@ -243,7 +345,8 @@ export default function TopNav({
 
         {/* Right: children (page-specific buttons) + dot + book + ⋯ */}
         <div className="topnav-right">
-          <DmSessionLink />
+          {isDm && !dmLinks && <DmSwitcher label="DM" current={current} combat={combat} />}
+          {!signedIn && pathname === "/" && <Link to="/dm" className="topnav-dm-link">DM</Link>}
           {children}
 
           {showLive && (
@@ -268,9 +371,13 @@ export default function TopNav({
             </button>
           )}
 
-          <NavMenu items={menuItems} />
+          <NavMenu items={items} />
         </div>
+
+        {/* The mode toggle hangs off the bar's lower edge, like a notch. */}
+        {notch && <div className="topnav-notch">{notch}</div>}
       </nav>
+      {notch && <div className="topnav-notch-space" aria-hidden="true" />}
 
       {/* Mobile second row: center segment drops here below 560px */}
       {center && (
