@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Item Pictures</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  Item pictures on the character sheet (Story 73) — prototype, no live API.
+
+  Session (Inventory panel)
+  - The list stays text-only: no pictures in the rows (impractical mid-play).
+  - Option A (recommended for Session): tapping an item's name unfolds its
+    details as today, now with its picture beside the description (96px;
+    tap the picture to see it large). One tap, no pop-up, nothing covers the
+    sheet during play.
+  - Option B: tapping the name opens a read-only detail card (a sheet from the
+    bottom on phones, a centred card on desktop): large picture, quantity
+    with Use, stats, description, where it was bought, and Edit.
+    Switch A/B with the control at the top to compare.
+  Profile (new Gallery)
+  - A gallery of everything the character owns, as picture tiles with name and
+    quantity; filters All · Weapons · Gear · Equipped. Tapping a tile opens
+    the same detail card as option B (in Profile there's room for it).
+  - "Gallery | List" toggle on the Profile inventory, so the existing list
+    stays one tap away.
+  Pictures
+  - A bought item shows the picture it was bought with (stored on purchase as
+    bought.art; see the shield here, bought as the battered variant).
+  - Items without a picture (made by hand, or no art yet) show their type icon
+    on a tinted tile — nothing breaks, and they still sit in the gallery.
+  Data: item.bought.art (new, set by POST /shop/purchase), else the catalog's
+  base picture when bought.itemId matches, else the type icon.
+  Open: option A or B for Session; whether the gallery replaces or sits beside
+  the Profile list.
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --surface:rgba(18,32,48,.55); --solid:#111e2c; --border:rgba(100,130,160,.22);
+    --accent:#6a8fa8; --bright:#a0c0d0; --dim:#1e3a4e; --text:#c8bfaf; --body:#b0a898; --muted:#7d95a2; --page:#080a0e;
+    --tile:#16283a; --shade:rgba(3,5,8,.7);
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --surface:rgba(220,208,185,.5); --solid:#ece4d2; --border:rgba(140,110,70,.28);
+    --accent:#7a5c30; --bright:#4a3418; --dim:rgba(140,110,70,.15); --text:#2a2018; --body:#3c2e1c; --muted:#7d6448; --page:#e9e1d2;
+    --tile:#e2d6bd; --shade:rgba(60,45,25,.45);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+  main { max-width:1180px; margin:0 auto; padding:24px 16px 80px; display:grid; gap:30px; }
+  h1 { margin:0; font-family:'Cinzel',serif; font-weight:400; letter-spacing:.08em; color:var(--text); font-size:22px; }
+  .note { margin:6px 0 0; font-style:italic; color:var(--muted); font-size:15px; max-width:820px; }
+  .where { margin:0 0 8px; font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .controls { display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+  .ctl { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .ctl button { border:0; background:transparent; padding:7px 13px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .ctl button.on { background:var(--dim); color:var(--text); }
+  .frames { display:grid; grid-template-columns:minmax(0,1fr) 390px; gap:22px; align-items:start; }
+  @media (max-width:980px){ .frames{ grid-template-columns:1fr; } }
+  .frame { position:relative; border:1px solid var(--border); border-radius:12px; background:var(--bg); padding:16px; min-height:420px; overflow:hidden; }
+  .phone { width:390px; max-width:100%; }
+  .panel-h { display:flex; align-items:center; gap:10px; margin-bottom:6px; }
+  .panel-h b { font-family:'Cinzel',serif; font-weight:400; font-size:12px; letter-spacing:.2em; text-transform:uppercase; color:var(--accent); }
+  .panel-h .sp { flex:1; }
+
+  /* Session rows (mirrors .cs-sm-ld-row) */
+  .row { border-bottom:1px solid var(--border); }
+  .main { display:flex; align-items:center; gap:6px; min-height:44px; }
+  .eq { width:28px; height:28px; display:inline-flex; align-items:center; justify-content:center; border:0; background:transparent; color:var(--accent); font-size:15px; }
+  .row.stowed .eq { color:var(--muted); opacity:.6; }
+  .name { flex:1; min-width:0; min-height:44px; display:flex; align-items:center; border:0; background:transparent; padding:0; text-align:left; font-size:15px; color:var(--text); }
+  .row.stowed .name { color:var(--muted); }
+  .qty { color:var(--muted); }
+  .caret { width:28px; border:0; background:transparent; color:var(--muted); font-size:10px; }
+  .details { display:grid; grid-template-columns:96px minmax(0,1fr); gap:12px; padding:2px 0 12px 34px; }
+  .details.noart { grid-template-columns:minmax(0,1fr); }
+  .thumb { width:96px; height:96px; border-radius:8px; border:1px solid var(--border); overflow:hidden; padding:0; background:var(--tile); }
+  .thumb img { width:100%; height:100%; object-fit:cover; display:block; }
+  .desc { font-size:15px; color:var(--body); }
+  .meta { margin-top:4px; font-size:13px; font-style:italic; color:var(--muted); }
+  .mods { margin-top:4px; font-size:14px; color:var(--accent); }
+  .acts { display:flex; gap:8px; margin-top:8px; align-items:center; flex-wrap:wrap; }
+  .qtyrow { display:inline-flex; align-items:center; gap:6px; font-size:14px; color:var(--muted); }
+  .qb { width:30px; height:30px; border:1px solid var(--border); border-radius:5px; background:transparent; }
+  .btn { min-height:34px; padding:0 12px; border:1px solid var(--border); border-radius:5px; background:transparent; font-family:'Cinzel',serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; color:var(--bright); }
+  .btn.primary { border-color:var(--accent); background:var(--dim); }
+
+  /* Type icon tile (no art) */
+  .icon-tile { display:flex; align-items:center; justify-content:center; width:100%; height:100%; background:var(--tile); color:var(--accent); font-size:30px; }
+
+  /* Detail card (option B, and the gallery) */
+  .shade { position:absolute; inset:0; background:var(--shade); display:flex; align-items:center; justify-content:center; z-index:5; }
+  .phone .shade { align-items:flex-end; }
+  .card { position:relative; width:min(440px, calc(100% - 24px)); max-height:calc(100% - 24px); overflow:auto; border:1px solid var(--accent); border-radius:14px; background:var(--solid); box-shadow:0 16px 50px rgba(0,0,0,.45); }
+  .phone .card { width:100%; border-radius:16px 16px 0 0; border-bottom:0; max-height:92%; }
+  .card .pic { aspect-ratio:1/1; max-height:300px; width:100%; background:var(--tile); border-bottom:1px solid var(--border); overflow:hidden; }
+  .card .pic img { width:100%; height:100%; object-fit:cover; display:block; }
+  .card .pic .icon-tile { font-size:64px; }
+  .phone .card .pic { max-height:220px; aspect-ratio:auto; height:220px; }
+  .card .pic.noart, .phone .card .pic.noart { aspect-ratio:auto; height:96px; }
+  .card .pic.noart .icon-tile { font-size:36px; }
+  .card .body { padding:14px 16px 16px; }
+  .card h3 { margin:0; font-family:'Cinzel',serif; font-weight:400; font-size:20px; letter-spacing:.04em; color:var(--text); }
+  .card .sub { font-size:13px; letter-spacing:.14em; text-transform:uppercase; font-family:'IM Fell English',serif; color:var(--muted); margin-top:2px; }
+  .card .x { position:absolute; top:8px; right:8px; width:40px; height:40px; border-radius:50%; border:0; background:color-mix(in srgb,var(--solid) 80%,transparent); color:var(--text); font-size:15px; z-index:1; }
+  .card .foot { display:flex; gap:8px; align-items:center; margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); }
+  .card .foot .sp { flex:1; }
+
+  /* Large picture viewer (option A: tap the thumbnail) */
+  .viewer img { max-width:min(420px, 92%); max-height:86%; border-radius:12px; border:1px solid var(--accent); }
+
+  /* Gallery */
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+  .seg button { border:0; background:transparent; padding:6px 11px; color:var(--muted); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+  .seg button.on { background:var(--dim); color:var(--text); }
+  .filters { display:flex; flex-wrap:wrap; gap:6px; margin:10px 0 12px; }
+  .chip { min-height:32px; padding:0 12px; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--muted); font-size:14px; }
+  .chip.on { border-color:var(--accent); color:var(--text); background:var(--dim); }
+  .gallery { display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px; }
+  .phone .gallery { grid-template-columns:repeat(2, 1fr); }
+  .tile { position:relative; padding:0; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--solid); text-align:left; }
+  .tile .img { aspect-ratio:1/1; background:var(--tile); }
+  .tile .img img { width:100%; height:100%; object-fit:cover; display:block; }
+  .tile .cap { padding:7px 9px 8px; font-size:14px; color:var(--text); line-height:1.25; }
+  .tile .cap small { display:block; font-size:12px; color:var(--muted); font-style:italic; }
+  .tile .badge { position:absolute; top:6px; right:6px; min-width:26px; height:22px; padding:0 7px; border-radius:11px; background:color-mix(in srgb,var(--solid) 85%,transparent); border:1px solid var(--border); font-size:13px; color:var(--text); display:flex; align-items:center; justify-content:center; }
+  .tile.stowed .img { opacity:.6; }
+  .tile:hover { border-color:var(--accent); }
+  .list-note { font-style:italic; color:var(--muted); font-size:14px; }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Item pictures on the sheet</h1>
+    <p class="note">Prototype for Story 73. Session keeps its text list; the picture shows when you open an item. Profile gets a gallery of everything the character owns. Tap item names and tiles. Items without art show their type icon.</p>
+    <div class="controls" style="margin-top:12px">
+      <span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span>
+      <span class="ctl" aria-label="Session option"><button data-opt="A" class="on">Session: A · unfold</button><button data-opt="B">Session: B · detail card</button></span>
+    </div>
+  </header>
+
+  <section>
+    <p class="where">Session · Inventory (desktop and phone)</p>
+    <div class="frames">
+      <div class="frame" id="sessWide"></div>
+      <div class="frame phone" id="sessNarrow"></div>
+    </div>
+    <p class="note" id="optNote"></p>
+  </section>
+
+  <section>
+    <p class="where">Profile · Inventory, Gallery view</p>
+    <div class="frames">
+      <div class="frame" id="galWide"></div>
+      <div class="frame phone" id="galNarrow"></div>
+    </div>
+  </section>
+</main>
+
+<script>
+  const ART = "../../public/art/shop/items/";
+  // Eòghan's kit. `art` = the picture bought with it (bought.art); none = type icon.
+  const ITEMS = [
+    { id: "a", kind: "weapon", name: "Dagger", art: "light-weapon", equipped: true, desc: "d6 damage. Can be thrown.", bought: "Ironwhistle's Emporium · 5s" },
+    { id: "b", kind: "gear", name: "Shield", art: "shield", equipped: true, mods: "AC +1", desc: "+1 Armor. Battered, but it's held.", bought: "The Drowned Lantern · 9s (haggled)", variant: true },
+    { id: "c", kind: "gear", name: "Torches", art: "torches", qty: 3, equipped: true, desc: "Each burns for about an hour.", bought: "Ironwhistle's Emporium · 1s" },
+    { id: "d", kind: "gear", name: "Rope (50')", art: "rope", equipped: true, desc: "Hemp rope." },
+    { id: "e", kind: "gear", name: "Rations", art: "rations", qty: 4, equipped: true, desc: "One day's food." },
+    { id: "f", kind: "gear", name: "Waterskin", art: "waterskin", equipped: true },
+    { id: "g", kind: "gear", name: "Quicksilver", art: "quicksilver", qty: 2, equipped: false, desc: "A Wizard can use a dose to summon a spirit they know. A mild poison and addictive drug.", bought: "Quibb's Cabinet of Wonders · 20s" },
+    { id: "h", kind: "gear", name: "Holy symbol of the Fuath", art: "holy-symbol", equipped: true },
+    { id: "i", kind: "gear", name: "Grandfather's pipe", art: null, icon: "◈", equipped: true, desc: "Carved bog-oak. Smells of peat smoke and storms." },
+  ];
+  const state = { opt: "A", open: { sessWide: null, sessNarrow: null }, card: { sessWide: null, sessNarrow: null, galWide: null, galNarrow: null }, viewer: { sessWide: null, sessNarrow: null }, filter: { galWide: "all", galNarrow: "all" } };
+  const byId = (id) => ITEMS.find((i) => i.id === id);
+  const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  const pic = (it, cls = "") => it.art ? `<img src="${ART}${it.art}.jpg" alt="" class="${cls}">` : `<span class="icon-tile" aria-hidden="true">${it.icon || "◆"}</span>`;
+
+  function detailCard(frame, it) {
+    return `<div class="shade" data-close="${frame}"><div class="card" role="dialog" aria-label="${esc(it.name)}">
+      <button class="x" data-close="${frame}" aria-label="Close">✕</button>
+      <div class="pic${it.art ? "" : " noart"}">${pic(it)}</div>
+      <div class="body">
+        <h3>${esc(it.name)}${it.qty != null ? ` <span class="qty">(${it.qty})</span>` : ""}</h3>
+        <div class="sub">${it.kind === "weapon" ? "Weapon" : "Gear"} · ${it.equipped ? "carried" : "stowed"}</div>
+        ${it.mods ? `<div class="mods">${esc(it.mods)}</div>` : ""}
+        ${it.desc ? `<p class="desc" style="margin:8px 0 0">${esc(it.desc)}</p>` : ""}
+        ${it.bought ? `<div class="meta">Bought at ${esc(it.bought)}${it.variant ? "" : ""}</div>` : ""}
+        <div class="foot">
+          ${it.qty != null ? `<span class="qtyrow">Quantity <button class="qb" aria-label="Fewer">−</button> ${it.qty} <button class="qb" aria-label="More">+</button></span><button class="btn primary">Use one</button>` : ""}
+          <span class="sp"></span><button class="btn">✎ Edit</button>
+        </div>
+      </div>
+    </div></div>`;
+  }
+
+  function session(frame) {
+    const rows = ITEMS.map((it) => {
+      const open = state.opt === "A" && state.open[frame] === it.id;
+      return `<div class="row${it.equipped ? "" : " stowed"}">
+        <div class="main">
+          <button class="eq" aria-label="${it.equipped ? "Stow" : "Equip"} ${esc(it.name)}">${it.kind === "weapon" ? "⚔" : "◆"}</button>
+          <button class="name" data-item="${it.id}" data-frame="${frame}" aria-expanded="${open}">${esc(it.name)}${it.qty != null && it.qty !== 1 ? ` <span class="qty">&nbsp;(${it.qty})</span>` : ""}</button>
+          <button class="caret" data-item="${it.id}" data-frame="${frame}" tabindex="-1" aria-hidden="true">${state.opt === "A" ? (open ? "▲" : "▼") : "›"}</button>
+        </div>
+        ${open ? `<div class="details${it.art ? "" : " noart"}">
+          ${it.art ? `<button class="thumb" data-view="${it.id}" data-frame="${frame}" aria-label="See the picture of ${esc(it.name)} large">${pic(it)}</button>` : ""}
+          <div>
+            ${it.desc ? `<div class="desc">${esc(it.desc)}</div>` : ""}
+            ${it.mods ? `<div class="mods">${esc(it.mods)}</div>` : ""}
+            ${it.bought ? `<div class="meta">Bought at ${esc(it.bought)}</div>` : ""}
+            ${it.qty != null ? `<div class="acts"><span class="qtyrow">Quantity <button class="qb" aria-label="Fewer">−</button> ${it.qty} <button class="qb" aria-label="More">+</button></span><button class="btn primary">Use item</button></div>` : ""}
+          </div>
+        </div>` : ""}
+      </div>`;
+    }).join("");
+    const card = state.opt === "B" && state.card[frame] ? detailCard(frame, byId(state.card[frame])) : "";
+    const v = state.viewer[frame] ? `<div class="shade viewer" data-close-view="${frame}"><img src="${ART}${byId(state.viewer[frame]).art}.jpg" alt="${esc(byId(state.viewer[frame]).name)}"></div>` : "";
+    return `<div class="panel-h"><b>Inventory</b><span class="sp"></span><span class="list-note">Session</span></div>${rows}${card}${v}`;
+  }
+
+  function gallery(frame) {
+    const f = state.filter[frame];
+    const shown = ITEMS.filter((it) => f === "all" || (f === "weapons" && it.kind === "weapon") || (f === "gear" && it.kind === "gear") || (f === "equipped" && it.equipped));
+    const tiles = shown.map((it) => `<button class="tile${it.equipped ? "" : " stowed"}" data-tile="${it.id}" data-frame="${frame}">
+        <div class="img">${pic(it)}</div>
+        ${it.qty != null && it.qty !== 1 ? `<span class="badge">×${it.qty}</span>` : ""}
+        <div class="cap">${esc(it.name)}${it.equipped ? "" : "<small>stowed</small>"}</div>
+      </button>`).join("");
+    const card = state.card[frame] ? detailCard(frame, byId(state.card[frame])) : "";
+    return `<div class="panel-h"><b>Inventory</b><span class="sp"></span><span class="seg"><button class="on">Gallery</button><button>List</button></span></div>
+      <div class="filters">${[["all", "All"], ["weapons", "Weapons"], ["gear", "Gear"], ["equipped", "Carried"]].map(([k, l]) => `<button class="chip${f === k ? " on" : ""}" data-filter="${k}" data-frame="${frame}">${l}</button>`).join("")}</div>
+      <div class="gallery">${tiles}</div>${card}`;
+  }
+
+  function render() {
+    for (const f of ["sessWide", "sessNarrow"]) document.getElementById(f).innerHTML = session(f);
+    for (const f of ["galWide", "galNarrow"]) document.getElementById(f).innerHTML = gallery(f);
+    document.getElementById("optNote").textContent = state.opt === "A"
+      ? "A (recommended for Session): one tap unfolds the item in place, picture beside the description; tap the picture to see it large. Nothing covers the sheet mid-play."
+      : "B: tapping an item opens a read-only detail card with a large picture, quantity and Use, stats, description and where it was bought; Edit is one more tap.";
+  }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button, .shade");
+    if (!t) return;
+    if (t.dataset.pal) { document.body.dataset.pal = t.dataset.pal; document.querySelectorAll("[data-pal]").forEach((b) => b.classList.toggle("on", b === t)); return; }
+    if (t.dataset.opt) { state.opt = t.dataset.opt; state.open = {}; state.card.sessWide = state.card.sessNarrow = null; document.querySelectorAll("[data-opt]").forEach((b) => b.classList.toggle("on", b === t)); return render(); }
+    if (t.dataset.closeView) { state.viewer[t.dataset.closeView] = null; return render(); }
+    if (t.dataset.close) { if (e.target.closest(".card") && !e.target.closest(".x")) return; state.card[t.dataset.close] = null; return render(); }
+    const fr = t.dataset.frame;
+    if (t.dataset.view) { state.viewer[fr] = t.dataset.view; return render(); }
+    if (t.dataset.item) {
+      if (state.opt === "A") state.open[fr] = state.open[fr] === t.dataset.item ? null : t.dataset.item;
+      else state.card[fr] = t.dataset.item;
+      return render();
+    }
+    if (t.dataset.tile) { state.card[fr] = t.dataset.tile; return render(); }
+    if (t.dataset.filter) { state.filter[fr] = t.dataset.filter; return render(); }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key !== "Escape") return;
+    for (const k of Object.keys(state.card)) state.card[k] = null;
+    for (const k of Object.keys(state.viewer)) state.viewer[k] = null;
+    render();
+  });
+  state.open.sessWide = "b"; state.open.sessNarrow = "c";
+  render();
+</script>
+</body>
+</html>

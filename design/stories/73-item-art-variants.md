@@ -38,7 +38,9 @@ More will come as Tyler makes more art; the design should take any number per it
 
 Only inside the shop, in the **Your pack** panel (`shopPlayer.js` matches pack entries back to the catalog via `bought.itemId`). The character sheet's inventory and Session loadout show **no item pictures**. Showing bought items' pictures on the sheet is a natural companion to this story (or its own small one) — it would use the stored `bought.art`, and could fall back to the base picture for catalog matches.
 
-### Direction for the sheet (Tyler, 2026-10-27) — to prototype
+### Direction for the sheet (Tyler, 2026-10-27)
+
+**Prototype**: `design/prototypes/item-pictures.html` (Session option A unfold vs. B detail card; Profile gallery).
 
 - **Session**: no pictures in the list itself (impractical mid-play). Show the picture only when you open an item's details.
 - **Item details**: today there is no read-only detail pop-up — tapping an item's name unfolds its description and stats under the row (`SessionLoadoutRow`, Session and Profile), and the pencil opens the editor (`ItemEditorModal`). The picture would sit in that unfolded detail (and possibly at the top of the editor). The prototype should weigh this against a proper read-only detail pop-up.
