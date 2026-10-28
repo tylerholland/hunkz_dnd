@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <!-- The home crest: a shield with the H of Hunkz (as in the top bar). -->
+  <path d="M16 2l12 4.4v8.8c0 7.6-5.4 12.5-12 15.3C9.4 27.7 4 22.8 4 15.2V6.4z" fill="#111e2c" stroke="#a0c0d0" stroke-width="2.2" stroke-linejoin="round"/>
+  <path d="M11.5 9.5v13M20.5 9.5v13M11.5 16h9" fill="none" stroke="#e6bd62" stroke-width="2.6" stroke-linecap="round"/>
+</svg>

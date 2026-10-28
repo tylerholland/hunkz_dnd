@@ -467,7 +467,20 @@
  * the bar is a mode toggle. Links take their natural width so the centre can
  * never overlap them. */
 .topnav--dm { grid-template-columns: auto minmax(0, 1fr) auto; }
-.topnav-home { font-size: 19px; font-family: inherit; }
+/* The home crest, at the far left on every page. */
+.topnav-home {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  color: var(--pal-accent);
+  transition: color 150ms ease, background 150ms ease;
+}
+.topnav-home:hover { color: var(--pal-accent-bright); background: rgba(128, 128, 128, 0.08); }
+.topnav-home:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }
 .topnav-dmlinks { display: flex; align-items: stretch; height: 52px; }
 .topnav-dmlink {
   position: relative;

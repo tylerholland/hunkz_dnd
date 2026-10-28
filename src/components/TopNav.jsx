@@ -32,6 +32,14 @@ import { PALETTES } from "../features/characterSheet/theme";
 import { anyoneSignedIn, isDmSignedIn, setDmPalette, signOutEverywhere, useCombatActive, useDmPalette } from "../lib/dmSession";
 import "./topNav.css";
 
+// The home mark: a crest with the H of Hunkz (also public/favicon.svg).
+const CREST_SVG = (
+  <svg width="24" height="24" viewBox="0 0 32 32" fill="none" stroke="currentColor" strokeWidth="2" strokeLinejoin="round" aria-hidden="true">
+    <path d="M16 3l11 4v8c0 7-5 11.5-11 14C10 26.5 5 22 5 15V7z" fill="currentColor" fillOpacity="0.14" />
+    <path d="M12 10v12M20 10v12M12 16h8" strokeLinecap="round" />
+  </svg>
+);
+
 const BOOK_SVG = (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
     <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
@@ -305,9 +313,11 @@ export default function TopNav({
   return (
     <>
       <nav className={`topnav${dmLinks ? " topnav--dm" : ""}${notch ? " topnav--notched" : ""}`} aria-label="Page navigation">
-        {/* Left: back glyph (or home, for the DM) + the DM's places or the title */}
+        {/* Left: the home crest (always), a back glyph, then the DM's places or the title */}
         <div className="topnav-left">
-          {backTo ? (
+          <Link to="/" className="topnav-home" aria-label="Home — the party" title="Home — the party">{CREST_SVG}</Link>
+          {/* Home is the crest's job; a back arrow is only for somewhere else. */}
+          {backTo && backTo !== "/" && (
             <Link
               to={backTo}
               className={`topnav-back${backTapped ? " topnav-back--tapped" : ""}`}
@@ -317,8 +327,6 @@ export default function TopNav({
             >
               ‹
             </Link>
-          ) : dmLinks && pathname !== "/" && (
-            <Link to="/" className="topnav-back topnav-home" aria-label="Home — the party" title="Home — the party">⌂</Link>
           )}
           {dmLinks ? (
             <>

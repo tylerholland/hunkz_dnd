@@ -34,6 +34,16 @@ describe("TopNav — the DM's places", () => {
     expect(screen.getByRole("button", { name: /DM/ })).toBeInTheDocument();
   });
 
+  it("always has the home crest; a back arrow only when it goes somewhere other than home", () => {
+    const { unmount } = at("/characters/aesop/session", <TopNav backTo="/" title="Aesop" />);
+    expect(screen.getByRole("link", { name: "Home — the party" })).toHaveAttribute("href", "/");
+    expect(screen.queryByRole("link", { name: "Go back" })).toBe(null);
+    unmount();
+    at("/characters/aesop/shop", <TopNav backTo="/characters/aesop/session" title="Shop" />);
+    expect(screen.getByRole("link", { name: "Home — the party" })).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Go back" })).toHaveAttribute("href", "/characters/aesop/session");
+  });
+
   it("shows players no DM links, and a DM button on the homepage when nobody is signed in", () => {
     at("/", <TopNav title="Hunkz Adventures" />);
     expect(screen.queryByRole("navigation", { name: "DM pages" })).toBe(null);
