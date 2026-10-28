@@ -69,6 +69,8 @@ import "../dmDashboard/battleMode.css";
 import "./characterSheet.css";
 import PortraitImg from "../../components/PortraitImg";
 import ShopLine from "../shop/ShopLine";
+import CombatGuide, { CombatGuideOffer } from "../combatGuide/CombatGuide";
+import { combatGuideSeen } from "../combatGuide/combatGuideSteps";
 
 // Player map band height (drag bar): 240px up to the window height minus the
 // top bar, so the map can never push itself entirely off screen.
@@ -842,6 +844,9 @@ export default function CharacterSheetSessionMode({
   const [rollOverlay, setRollOverlay] = useState(null); // { open, result }
   const { enabled: rollOverlayOn, menuItem: rollOverlayMenuItem } = useRollOverlayPref();
   const { enabled: turnAlertsOn, menuItem: turnAlertsMenuItem } = useTurnAlertsPref();
+  // Combat quick start: from ⋯, and offered once (per device) when combat starts.
+  const [combatGuideOpen, setCombatGuideOpen] = useState(false);
+  const [combatGuideOffered, setCombatGuideOffered] = useState(() => combatGuideSeen("player"));
   const goneMissTicksRef = useRef(0);
   // Mirrors DiceRoller's own advMode state so the bar's Adv/Dis strip
   // re-renders reactively — a ref-exposed value alone wouldn't trigger a
@@ -1240,6 +1245,7 @@ export default function CharacterSheetSessionMode({
         menuItems={[
           { label: "All Characters", href: "/" },
           { label: "Chronicle", href: "/chronicle" },
+          { label: "Combat quick start", onClick: () => { setCombatGuideOffered(true); setCombatGuideOpen(true); } },
           { divider: true },
           rollOverlayMenuItem,
           turnAlertsMenuItem,
@@ -1247,6 +1253,7 @@ export default function CharacterSheetSessionMode({
         ]}
       />
       <ShopLine summary={shopSummary} slug={slug} only={["open", "lockup"]} className="on-sheet" />
+      {combatGuideOpen && <CombatGuide who="player" onClose={() => setCombatGuideOpen(false)} />}
 
       {/* ── Two-column shell ── */}
       <div className="cs-session-shell">
@@ -1432,6 +1439,9 @@ export default function CharacterSheetSessionMode({
           {/* Story 60 — persistent, collapsible map band (was the Map sub-tab).
               The viewer stays mounted while collapsed so token state, damage
               freshness and combat transitions keep tracking. */}
+          {isBattleMode && !combatGuideOffered && (
+            <CombatGuideOffer who="player" onOpen={() => { setCombatGuideOffered(true); setCombatGuideOpen(true); }} onDismiss={() => setCombatGuideOffered(true)} />
+          )}
           {activeMap && (
             <section className={`cs-sm-mapband${mapOpen ? " open" : ""}`}>
               <button type="button" className="cs-sm-mapband-head" onClick={toggleMap} aria-expanded={mapOpen}>

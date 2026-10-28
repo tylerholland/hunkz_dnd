@@ -33,6 +33,8 @@ import { useSessionSocket } from "../lib/useSessionSocket";
 import { reportServerBuildVersion } from "../lib/staleClient";
 import { useTextScale } from "../lib/useTextScale";
 import { setCombatActive, useDmPalette } from "../lib/dmSession";
+import CombatGuide, { CombatGuideOffer } from "../features/combatGuide/CombatGuide";
+import { combatGuideSeen } from "../features/combatGuide/combatGuideSteps";
 import { computeMapSwitch } from "./combatModeToggle";
 import { NPC_EXPECTED_TTL_MS, npcCombatCaughtUp } from "./npcServerStamps";
 
@@ -102,6 +104,9 @@ export default function DmDashboardPage() {
   const [confirmDialog, setConfirmDialog] = useState(null);
   const [restNotice, setRestNotice] = useState("");
   const palKey = useDmPalette();
+  // Combat quick start: from ⋯, and offered once (per device) when combat starts.
+  const [combatGuideOpen, setCombatGuideOpen] = useState(false);
+  const [combatGuideOffered, setCombatGuideOffered] = useState(() => combatGuideSeen("dm"));
   const { textScale, textScaleMenuItem } = useTextScale();
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
@@ -1276,12 +1281,17 @@ export default function DmDashboardPage() {
           menuItems={[
             { label: "Manage Party", onClick: () => setShowManageParty(true) },
             { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
+            { label: "Combat quick start", onClick: () => { setCombatGuideOffered(true); setCombatGuideOpen(true); } },
             { divider: true },
             textScaleMenuItem,
           ]}
         />
 
         <div style={{ maxWidth: 1720, margin: "0 auto", padding: "20px 20px 56px" }}>
+          {combatMode && !combatGuideOffered && (
+            <CombatGuideOffer who="dm" onOpen={() => { setCombatGuideOffered(true); setCombatGuideOpen(true); }} onDismiss={() => setCombatGuideOffered(true)} />
+          )}
+          {combatGuideOpen && <CombatGuide who="dm" onClose={() => setCombatGuideOpen(false)} />}
           {restNotice && (
             <div style={{ marginBottom: 12, fontFamily: pal.fontUI, fontSize: 11, color: "#88c888", letterSpacing: "0.08em" }}>
               {restNotice}
