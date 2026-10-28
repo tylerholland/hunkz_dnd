@@ -17,8 +17,8 @@
     ("20 days to go"), Change, and the shop line (the shop opens before the
     session, so it belongs here). On phones the panel follows Last time.
   - The road leaves the hero and gets a section heading like "The Party", with
-    "29 days since the party last gathered" as its own stat beside it (large
-    numeral, its own small panel). The session count isn't repeated here; it
+    "29 days since the party last gathered" as a chapter-subtitle line under
+    it: italic book face, the number set large in Cinzel, no box. The session count isn't repeated here; it
     stays beside "Read the Chronicle". Then the drawing at full width.
     Page rhythm: Chronicle → Road → Party.
   Option B — keep everything in the hero, as a row of three tiles
@@ -86,11 +86,11 @@
   .section-head .count b { font-family:'Cinzel',serif; font-style:normal; font-weight:400; font-size:18px; color:var(--bright); }
   .road-sec { margin-bottom:30px; }
   /* The road's heading, with "days since the party last gathered" as its own stat. */
-  .road-head { display:flex; flex-wrap:wrap; align-items:flex-end; justify-content:space-between; gap:10px 24px; }
+  /* The road's heading, with a chapter-subtitle line under it. */
+  .road-head { margin-bottom:4px; }
   .road-head h2 { font-family:'Cinzel',serif; font-weight:400; font-size:20px; letter-spacing:.12em; text-transform:uppercase; color:var(--text); margin:0; }
-  .since { display:flex; align-items:center; gap:12px; padding:8px 16px 8px 14px; border:1px solid var(--border); border-radius:10px; background:color-mix(in srgb,var(--solid) 60%,transparent); }
-  .since b { font-family:'Cinzel',serif; font-weight:400; font-size:44px; line-height:1; color:var(--bright); }
-  .since span { font-size:15px; line-height:1.3; font-style:italic; color:var(--body); }
+  .since { margin:6px 0 0; font-size:20px; font-style:italic; color:var(--body); letter-spacing:.01em; }
+  .since b { font-family:'Cinzel',serif; font-style:normal; font-weight:400; font-size:32px; line-height:1; color:var(--bright); margin-right:2px; }
 
   /* B: three tiles */
   .tiles { display:grid; grid-template-columns:1fr 1fr 1.6fr; gap:10px; margin-top:24px; }
@@ -164,7 +164,7 @@
       <section class="road-sec" aria-labelledby="road-h">
         <div class="road-head">
           <h2 id="road-h">The Road So Far</h2>
-          <div class="since" aria-label="29 days since the party last gathered"><b>29</b><span>days since the party<br>last gathered</span></div>
+          <p class="since"><b>29</b> days since the party last gathered</p>
         </div>
         ${ROAD}
       </section>
