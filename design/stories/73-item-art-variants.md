@@ -30,10 +30,15 @@ More will come as Tyler makes more art; the design should take any number per it
 - **Choosing (decided)**: random, decided once when the shop opens, and the same for everyone viewing that opening. A stable hash of the **opening id + item id** gives exactly that with nothing stored (no `Math.random()` per render): it doesn't flicker on polling, and the next opening rolls fresh pictures.
 - **No DM management (decided)**: the DM never picks, pins or sees controls for pictures; it just happens.
 - **Per shop flavour (optional, automatic)**: a keeper could lean towards some variants (a shady shop's battered shield, a fancy shop's polished one) — only if the art supports it, and still without DM input.
-- **Where it applies**: the shop's shelves, item-in-hand view and receipt. Items already in a character's pack: decide whether they keep the picture they were bought with (store the variant on purchase in `bought`) or always show the base image.
+- **Where it applies**: the shop's shelves, item-in-hand view and receipt.
+- **A bought item keeps its picture (decided)**: store the variant on purchase in the item's `bought` record (`bought.art`), so it shows that picture from then on, whatever later openings roll.
 - **DM side**: the DM's shop page and preview show the same pictures players see for the opening; nothing to manage.
+
+## Where owned items show pictures today
+
+Only inside the shop, in the **Your pack** panel (`shopPlayer.js` matches pack entries back to the catalog via `bought.itemId`). The character sheet's inventory and Session loadout show **no item pictures**. Showing bought items' pictures on the sheet is a natural companion to this story (or its own small one) — it would use the stored `bought.art`, and could fall back to the base picture for catalog matches.
 
 ## Open questions
 
-- Should a bought item remember its picture?
+- Should owned items' pictures appear on the character sheet (inventory / Session loadout), and how big?
 - Do Mags's expression variants (Story 72, still open) follow the same mechanism?
