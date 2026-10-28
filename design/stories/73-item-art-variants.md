@@ -27,13 +27,13 @@ More will come as Tyler makes more art; the design should take any number per it
 
 - **Files**: convert alternates like the rest (480×480 JPEG, quality 80) as `public/art/shop/items/<id>-2.jpg`, `<id>-3.jpg`… The base `<id>.jpg` stays the default.
 - **Data**: an `ART_VARIANTS` count per item id beside `ART_IDS` (e.g. `{ "holy-symbol": 3, shield: 2 }`), with the art-files test extended to check every variant file exists.
-- **Choosing**: pick a variant from a stable hash of the **shop opening id + item id** (or saved shop + item), not `Math.random()` per render — so every player sees the same picture during one opening, it doesn't flicker on polling, and it changes next time.
-- **Per shop flavour (optional)**: let a keeper lean towards some variants (a shady shop's battered shield, a fancy shop's polished one) — only if the art supports it.
+- **Choosing (decided)**: random, decided once when the shop opens, and the same for everyone viewing that opening. A stable hash of the **opening id + item id** gives exactly that with nothing stored (no `Math.random()` per render): it doesn't flicker on polling, and the next opening rolls fresh pictures.
+- **No DM management (decided)**: the DM never picks, pins or sees controls for pictures; it just happens.
+- **Per shop flavour (optional, automatic)**: a keeper could lean towards some variants (a shady shop's battered shield, a fancy shop's polished one) — only if the art supports it, and still without DM input.
 - **Where it applies**: the shop's shelves, item-in-hand view and receipt. Items already in a character's pack: decide whether they keep the picture they were bought with (store the variant on purchase in `bought`) or always show the base image.
-- **DM side**: the DM page could show which variant is up, and perhaps pin one — only if wanted.
+- **DM side**: the DM's shop page and preview show the same pictures players see for the opening; nothing to manage.
 
 ## Open questions
 
 - Should a bought item remember its picture?
-- Purely random per opening, or does the DM get any control?
 - Do Mags's expression variants (Story 72, still open) follow the same mechanism?
