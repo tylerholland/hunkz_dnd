@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Home Mark</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital@0;1&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  The home mark: always at the far left of the top bar, on every page, for
+  everyone. It goes to the homepage (the party and the Chronicle) and doubles
+  as the favicon (index.html already points at a missing /favicon.svg).
+  Sub-pages keep their ‹ back arrow beside it; a back arrow that only went
+  home ("/") is dropped, since the mark does that now.
+  Four candidates below, each drawn as a single-colour SVG in the palette's
+  accent, so it suits every theme including vellum.
+  Open: which mark; whether it should carry the name "Hunkz" beside it on
+  wide screens when no DM links are showing.
+-->
+<style>
+  :root { --bg:#0d0f14; --solid:#111e2c; --border:rgba(100,130,160,.22); --accent:#6a8fa8; --bright:#a0c0d0; --text:#c8bfaf; --body:#b0a898; --muted:#7d95a2; --page:#080a0e; --ember:#d08a4a; }
+  body[data-pal="vellum"] { --bg:#f5f0e8; --solid:#ece4d2; --border:rgba(140,110,70,.28); --accent:#7a5c30; --bright:#4a3418; --text:#2a2018; --body:#3c2e1c; --muted:#7d6448; --page:#e9e1d2; --ember:#a0561e; }
+  * { box-sizing: border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; }
+  main { max-width:1100px; margin:0 auto; padding:24px 16px 60px; display:grid; gap:26px; }
+  h1 { margin:0; font-family:'Cinzel',serif; font-weight:400; letter-spacing:.08em; color:var(--text); font-size:22px; }
+  .note { margin:6px 0 0; font-style:italic; color:var(--muted); font-size:15px; max-width:760px; }
+  .ctl { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .ctl button { border:0; background:transparent; padding:6px 12px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; cursor:pointer; }
+  .ctl button.on { background:color-mix(in srgb,var(--accent) 20%,transparent); color:var(--text); }
+  .opt { display:grid; gap:10px; }
+  .opt h2 { margin:0; font-family:'Cinzel',serif; font-weight:400; font-size:16px; letter-spacing:.08em; color:var(--text); }
+  .opt h2 small { font-family:'Crimson Text',serif; font-style:italic; font-size:15px; letter-spacing:0; color:var(--muted); margin-left:8px; }
+  .row { display:grid; grid-template-columns:minmax(0,1fr) 380px; gap:16px; align-items:start; }
+  @media (max-width:900px){ .row{ grid-template-columns:1fr; } }
+  .bar { height:52px; display:flex; align-items:center; gap:2px; padding:0 10px; border:1px solid var(--border); border-radius:10px; background:var(--bg); }
+  .mark { width:44px; height:44px; display:inline-flex; align-items:center; justify-content:center; border-radius:6px; color:var(--accent); text-decoration:none; }
+  .mark:hover { color:var(--bright); background:color-mix(in srgb,var(--accent) 12%,transparent); }
+  .mark svg { width:26px; height:26px; }
+  .back { width:32px; height:44px; display:inline-flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:22px; color:var(--muted); }
+  .links a { padding:0 10px; font-family:'Cinzel',serif; font-size:13px; letter-spacing:.06em; color:var(--body); text-decoration:none; }
+  .links a.cur { color:var(--text); text-decoration:underline; text-underline-offset:18px; text-decoration-color:var(--accent); text-decoration-thickness:2px; }
+  .title { font-family:'Cinzel',serif; font-variant:small-caps; font-size:15px; letter-spacing:.06em; color:var(--text); margin-left:4px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .sp { flex:1; }
+  .dots { color:var(--muted); width:40px; text-align:center; }
+  .tab { display:flex; align-items:center; gap:8px; width:max-content; padding:6px 12px; border:1px solid var(--border); border-radius:8px 8px 0 0; background:var(--solid); font-size:13px; color:var(--text); }
+  .big .tab svg { width:16px; height:16px; color:var(--accent); }
+  .big { display:flex; gap:18px; align-items:center; }
+  .big svg { width:64px; height:64px; color:var(--accent); }
+  .why { margin:0; font-size:15px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Home mark</h1>
+    <p class="note">Always at the far left of the bar, on every page, for everyone; it takes you to the party page. It's also the browser-tab icon. Four ideas, shown on a DM page, a player's sheet (with its own back arrow) and a browser tab.</p>
+    <p style="margin:12px 0 0"><span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span></p>
+  </header>
+  <div id="opts"></div>
+</main>
+
+<script>
+  // Single-colour marks (currentColor), drawn on a 32×32 grid.
+  const MARKS = [
+    {
+      name: "Campfire", rec: true,
+      why: "Home is where the party gathers: the homepage is the party around the Chronicle, “where we left off”. Warm, unmistakable at 16px, and nothing else in the app uses it.",
+      svg: `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M16 4c3 4 6 6.5 6 11a6 6 0 0 1-12 0c0-2.6 1.4-4.2 2.8-5.6.4 1.8 1.2 3 2.4 3.6-.2-3.4.6-6.2.8-9z" fill="currentColor" fill-opacity=".18"/>
+        <path d="M5 27l22-5M27 27L5 22"/>
+      </svg>`,
+    },
+    {
+      name: "D20",
+      why: "Says “tabletop RPG” instantly. But the app already uses dice for rolling, so a d20 at home could read as “open the dice roller”.",
+      svg: `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true">
+        <path d="M16 3l11.3 6.5v13L16 29 4.7 22.5v-13z"/><path d="M16 3l-6.5 11h13zM9.5 14L4.7 22.5M22.5 14l4.8 8.5M9.5 14L16 29l6.5-15"/>
+      </svg>`,
+    },
+    {
+      name: "Crest",
+      why: "A heraldic shield with the H of Hunkz: the closest to a proper logo, and it gives the group an identity. Less about “home”, more about “us”.",
+      svg: `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true">
+        <path d="M16 3l11 4v8c0 7-5 11.5-11 14C10 26.5 5 22 5 15V7z" fill="currentColor" fill-opacity=".14"/>
+        <path d="M12 10v12M20 10v12M12 16h8" stroke-linecap="round"/>
+      </svg>`,
+    },
+    {
+      name: "Hearth",
+      why: "A tavern-style door under a roof: the most literal “home”, in the setting's own idiom. Clear, but the plainest of the four.",
+      svg: `<svg viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">
+        <path d="M4 15L16 5l12 10"/><path d="M7 13v15h18V13"/><path d="M13 28v-7a3 3 0 0 1 6 0v7" fill="currentColor" fill-opacity=".18"/>
+      </svg>`,
+    },
+  ];
+  const links = `<span class="links"><a href="#" class="cur">Campaign</a><a href="#">Shop</a><a href="#">Maps</a><a href="#">Chronicle</a></span>`;
+  document.getElementById("opts").innerHTML = MARKS.map((m) => `
+    <section class="opt">
+      <h2>${m.name}${m.rec ? "<small>my pick</small>" : ""}</h2>
+      <div class="row">
+        <div class="bar"><a href="#" class="mark" aria-label="Home — the party" title="Home — the party">${m.svg}</a>${links}<span class="sp"></span><span class="dots">⋯</span></div>
+        <div class="bar"><a href="#" class="mark" aria-label="Home — the party">${m.svg}</a><span class="back">‹</span><span class="title">Eòghan MacGille Fàth</span><span class="sp"></span><span class="dots">⋯</span></div>
+      </div>
+      <div class="big"><span>${m.svg}</span><span class="tab">${m.svg} Hunkz Adventures</span><p class="why">${m.why}</p></div>
+    </section>`).join("");
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pal]"); if (!b) return;
+    document.body.dataset.pal = b.dataset.pal;
+    document.querySelectorAll("[data-pal]").forEach((x) => x.classList.toggle("on", x === b));
+  });
+</script>
+</body>
+</html>
