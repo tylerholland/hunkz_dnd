@@ -1,0 +1,410 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Shop Help</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  DM shop page — info buttons and a Quick Start tour (prototype, no live API).
+
+  Info buttons (ⓘ)
+  - A small ⓘ beside each section heading and beside the controls whose
+    effect isn't obvious: Schedule, Temper, Buys back, Prices, Stock, the
+    per-shelf markup, the lock while open, the log, and the CSV round trip.
+  - Tap/click opens a short popover (title + 2–4 plain sentences, numbers
+    where they matter). One open at a time; closes on outside tap, Esc or ✕.
+    Focus moves into it and back to the ⓘ on close. Hover alone never opens
+    it (touch-first). On phones it becomes a sheet pinned to the bottom.
+  - Copy describes what the game actually does (patience, ±2, half price…),
+    never invents rules; the player-facing secrecy is called out (players
+    never see markups or temper).
+  Quick Start tour
+  - "Quick start" sits beside the tabs; the first time the DM opens the page
+    a one-line banner offers it ("New here? A one-minute tour"), dismissed for
+    good once taken or closed (per device, localStorage; harmless if blocked).
+  - 7 steps, each spotlighting the real control: status bar → the shop →
+    temper → shelves & stock → preview → open/schedule → item catalog
+    (switches tab). Back / Next / Skip; ← → Esc work; "Step n of 7".
+  - The tour only points; it never changes the shop. The page underneath
+    stays usable after it ends, on whichever tab it finished.
+  - Reduced motion: no spotlight slide, just a jump.
+  Implementation: an <InfoTip id> component reading a HELP map in
+  src/features/shop/shopHelp.js (copy in one place), and a small <ShopTour>
+  that targets elements by data-tour attributes. No backend change.
+  Open: should the tour also offer to open Preview at its Preview step?
+-->
+<style>
+  :root {
+    --bg: #0d0f14; --surface: rgba(18,32,48,0.55); --solid: #111e2c; --border: rgba(100,130,160,0.22);
+    --accent: #6a8fa8; --bright: #a0c0d0; --dim: #1e3a4e; --text: #c8bfaf; --body: #b0a898; --muted: #7d95a2;
+    --gold: #c8a040; --live: #5fb878; --danger: #c06060; --page: #080a0e; --shade: rgba(3,5,8,0.72);
+  }
+  body[data-pal="vellum"] {
+    --bg: #f5f0e8; --surface: rgba(220,208,185,0.5); --solid: #ece4d2; --border: rgba(140,110,70,0.28);
+    --accent: #7a5c30; --bright: #4a3418; --dim: rgba(140,110,70,0.15); --text: #2a2018; --body: #3c2e1c; --muted: #7d6448;
+    --gold: #8a6418; --live: #2f7a45; --danger: #9a2a20; --page: #e9e1d2; --shade: rgba(60,45,25,0.45);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--body); font-family: 'Crimson Text', Georgia, serif; font-size: 16px; line-height: 1.5; }
+  button { font: inherit; color: inherit; cursor: pointer; }
+  :focus-visible { outline: 2px solid var(--bright); outline-offset: 2px; }
+
+  .proto { max-width: 920px; margin: 0 auto; padding: 16px 16px 0; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .proto p { margin: 0; flex: 1 1 320px; font-style: italic; color: var(--muted); font-size: 14px; }
+  .ctl { display: inline-flex; border: 1px solid var(--border); border-radius: 999px; overflow: hidden; }
+  .ctl button { border: 0; background: transparent; padding: 6px 12px; color: var(--muted); font-family: 'IM Fell English', serif; font-size: 13px; }
+  .ctl button.on { background: var(--dim); color: var(--text); }
+
+  /* Top bar (as the DM navigation prototype) */
+  .bar { height: 52px; display: flex; align-items: center; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--border); margin-top: 12px; }
+  .bar a { padding: 0 10px; font-family: 'Cinzel', serif; font-size: 13px; letter-spacing: 0.06em; color: var(--body); text-decoration: none; height: 52px; display: inline-flex; align-items: center; position: relative; }
+  .bar a.cur { color: var(--text); }
+  .bar a.cur::after { content: ""; position: absolute; left: 10px; right: 10px; bottom: 0; height: 2px; background: var(--accent); }
+  .bar .sp { flex: 1; }
+  .bar .more { width: 44px; height: 44px; border: 0; background: transparent; color: var(--muted); font-size: 18px; }
+
+  /* Status bar */
+  .sbar { max-width: 920px; margin: 14px auto 0; padding: 0 16px; }
+  .sbar-in { border: 1px solid var(--border); border-radius: 12px; background: var(--solid); padding: 12px 14px; }
+  .sb-main { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--muted); }
+  .is-open .dot { background: var(--live); box-shadow: 0 0 0 4px color-mix(in srgb, var(--live) 25%, transparent); }
+  .what { flex: 1; min-width: 160px; display: flex; flex-direction: column; }
+  .what b { font-family: 'Cinzel', serif; font-weight: 400; font-size: 18px; color: var(--text); letter-spacing: 0.06em; }
+  .what span { font-size: 14px; color: var(--muted); }
+  .sb-sched { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--border); font-size: 15px; }
+  .lbl { min-width: 70px; font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; color: var(--muted); }
+  .tbtn { min-height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; background: transparent; color: var(--body); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .tbtn.primary { border-color: var(--accent); color: var(--bright); background: var(--dim); }
+  .gold { min-height: 36px; padding: 0 16px; border: 1px solid var(--gold); border-radius: 6px; background: color-mix(in srgb, var(--gold) 18%, transparent); color: var(--gold); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .push { margin-left: auto; }
+
+  main { max-width: 920px; margin: 0 auto; padding: 16px 16px 120px; }
+  .tabsrow { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 16px; }
+  .tabs { display: inline-flex; gap: 4px; padding: 3px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); }
+  .tabs button { border: 0; background: transparent; padding: 7px 14px; border-radius: 6px; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.08em; color: var(--muted); }
+  .tabs button.on { background: var(--dim); color: var(--text); }
+  .qs { display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px dashed var(--accent); border-radius: 999px; background: transparent; color: var(--bright); font-family: 'IM Fell English', serif; font-size: 14px; }
+  .qs:hover { background: var(--dim); }
+
+  .banner { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-bottom: 14px; padding: 10px 14px; border: 1px solid var(--accent); border-radius: 10px; background: var(--dim); color: var(--text); font-size: 15px; }
+  .banner .x { margin-left: auto; width: 36px; height: 36px; border: 0; background: transparent; color: var(--muted); font-size: 16px; }
+
+  .card { border: 1px solid var(--border); border-radius: 12px; background: var(--surface); padding: 16px 18px; margin-bottom: 18px; }
+  .card h3 { display: flex; align-items: center; gap: 6px; margin: 0 0 12px; font-family: 'Cinzel', serif; font-weight: 400; font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 14px; margin-top: 12px; font-size: 15px; }
+  .hint { margin: 8px 0 0; font-size: 14px; font-style: italic; color: var(--muted); }
+  .seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--border); border-radius: 5px; overflow: hidden; }
+  .seg button { border: 0; background: transparent; padding: 7px 11px; color: var(--muted); font-family: 'Cinzel', serif; font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .seg button.on { background: var(--dim); color: var(--text); }
+  .keepers { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; margin-top: 12px; }
+  .kc { height: 74px; border: 1px solid var(--border); border-radius: 8px; background: var(--solid); text-align: left; padding: 8px 10px; display: flex; align-items: flex-end; font-family: 'Cinzel', serif; font-size: 13px; color: var(--text); }
+  .kc small { display: block; font-family: 'Crimson Text', serif; font-size: 12px; color: var(--muted); }
+  .kc.on { border-color: var(--gold); box-shadow: inset 0 0 0 1px var(--gold); }
+  .in { min-height: 36px; padding: 6px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--bg); color: var(--text); font: inherit; font-size: 15px; }
+  .sw { position: relative; width: 40px; height: 22px; border-radius: 11px; border: 1px solid var(--border); background: var(--bg); padding: 0; }
+  .sw i { position: absolute; top: 3px; left: 3px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); }
+  .sw.on { border-color: var(--accent); background: var(--dim); }
+  .sw.on i { left: 21px; background: var(--bright); }
+  .shelf { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; padding: 9px 10px; margin-top: 8px; border: 1px solid var(--border); border-radius: 8px; background: var(--solid); }
+  .shelf b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--text); min-width: 110px; }
+  .mk { display: inline-flex; align-items: center; border: 1px solid var(--border); border-radius: 5px; }
+  .mk button { width: 32px; height: 32px; border: 0; background: transparent; color: var(--muted); }
+  .mk span { min-width: 52px; text-align: center; font-family: 'Cinzel', serif; font-size: 13px; color: var(--danger); }
+  .shelf small { color: var(--muted); font-size: 14px; }
+  .shelf .cnt { margin-left: auto; font-size: 14px; color: var(--muted); }
+  .log { padding: 7px 0; border-bottom: 1px dashed var(--border); font-size: 15px; }
+  .log b { color: var(--text); font-weight: 600; }
+  .ok { color: var(--live); } .bad { color: var(--danger); }
+  table { width: 100%; border-collapse: collapse; font-size: 15px; margin-top: 10px; }
+  td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+  th { font-family: 'Cinzel', serif; font-weight: 400; font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+
+  /* ⓘ — 44px hit area around a small glyph */
+  .info { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 28px; height: 28px; margin: -8px -4px; border: 0; background: transparent; padding: 0; vertical-align: middle; }
+  .info::before { content: ""; position: absolute; inset: -8px; }
+  .info span { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; border: 1px solid var(--accent); color: var(--accent); font-family: Georgia, serif; font-style: italic; font-weight: 600; font-size: 12px; line-height: 1; text-transform: none; letter-spacing: 0; }
+  .info:hover span, .info[aria-expanded="true"] span { background: var(--accent); color: var(--bg); }
+
+  .tip { position: fixed; z-index: 50; width: min(320px, calc(100vw - 32px)); padding: 14px 16px 14px; border: 1px solid var(--accent); border-radius: 10px; background: var(--solid); box-shadow: 0 14px 40px rgba(0,0,0,0.45); color: var(--body); font-size: 15px; line-height: 1.45; }
+  .tip h4 { margin: 0 28px 6px 0; font-family: 'Cinzel', serif; font-weight: 400; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--bright); }
+  .tip p { margin: 0 0 6px; } .tip p:last-child { margin: 0; }
+  .tip .close { position: absolute; top: 6px; right: 6px; width: 36px; height: 36px; border: 0; background: transparent; color: var(--muted); font-size: 15px; }
+  .tip .secret { font-style: italic; color: var(--muted); font-size: 14px; }
+  @media (max-width: 560px) {
+    .tip { left: 8px !important; right: 8px; top: auto !important; bottom: 8px; width: auto; border-radius: 12px; }
+  }
+
+  /* Tour */
+  .tour-shade { position: fixed; z-index: 60; border-radius: 12px; box-shadow: 0 0 0 9999px var(--shade); pointer-events: none; transition: all 260ms ease; outline: 2px solid var(--gold); outline-offset: 3px; }
+  .tour-card { position: fixed; z-index: 61; width: min(360px, calc(100vw - 32px)); padding: 16px 18px; border: 1px solid var(--gold); border-radius: 12px; background: var(--solid); box-shadow: 0 16px 50px rgba(0,0,0,0.5); transition: top 260ms ease, left 260ms ease; }
+  .tour-card .step { font-family: 'IM Fell English', serif; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--gold); }
+  .tour-card h4 { margin: 4px 0 6px; font-family: 'Cinzel', serif; font-weight: 400; font-size: 18px; color: var(--text); letter-spacing: 0.04em; }
+  .tour-card p { margin: 0; font-size: 15px; }
+  .tour-acts { display: flex; align-items: center; gap: 8px; margin-top: 14px; }
+  .tour-acts .skip { margin-right: auto; border: 0; background: transparent; color: var(--muted); font-family: 'IM Fell English', serif; font-size: 14px; min-height: 36px; }
+  .pips { display: flex; gap: 5px; margin-top: 10px; }
+  .pips i { width: 6px; height: 6px; border-radius: 50%; background: var(--border); }
+  .pips i.on { background: var(--gold); }
+  @media (max-width: 560px) { .tour-card { left: 8px !important; right: 8px; width: auto; top: auto !important; bottom: 8px; } }
+  @media (prefers-reduced-motion: reduce) { .tour-shade, .tour-card { transition: none; } }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<div class="proto">
+  <p>Prototype: ⓘ buttons on the DM's shop page, and a Quick Start tour. Tap any ⓘ, or “Quick start”. Nothing here saves.</p>
+  <span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span>
+  <span class="ctl"><button data-reset>Show first-visit banner</button></span>
+</div>
+
+<nav class="bar" aria-label="DM pages"><a href="#">Campaign</a><a href="#" class="cur">Shop</a><a href="#">Maps</a><a href="#">Chronicle</a><span class="sp"></span><button class="more" aria-label="More actions">⋯</button></nav>
+
+<div class="sbar" data-tour="status">
+  <div class="sbar-in is-closed">
+    <div class="sb-main">
+      <span class="dot" aria-hidden="true"></span>
+      <div class="what"><b>Closed <button class="info" data-info="status" aria-label="About the shop's status"><span>i</span></button></b><span>Players see the shutters</span></div>
+      <button class="tbtn" data-tour="preview">👁 Preview</button>
+      <button class="gold" data-tour="open">Open now</button>
+    </div>
+    <div class="sb-sched">
+      <span class="lbl">Schedule</span>
+      <span>No opening scheduled</span>
+      <button class="info" data-info="schedule" aria-label="About scheduling"><span>i</span></button>
+      <button class="tbtn primary push">＋ Schedule an opening</button>
+    </div>
+  </div>
+</div>
+
+<main>
+  <div class="banner" id="banner" hidden>
+    <span>New here? A one-minute tour of setting up and opening the shop.</span>
+    <button class="tbtn primary" data-start>Take the tour</button>
+    <button class="x" data-dismiss aria-label="Dismiss">✕</button>
+  </div>
+
+  <div class="tabsrow">
+    <div class="tabs" role="tablist"><button role="tab" class="on" data-tab="open" aria-selected="true">Open the shop</button><button role="tab" data-tab="catalog" data-tour="catalog-tab" aria-selected="false">Item catalog</button></div>
+    <button class="qs" data-start>✦ Quick start</button>
+  </div>
+
+  <div id="tab-open">
+    <section class="card" data-tour="shop">
+      <h3>The shop <button class="info" data-info="shop" aria-label="About the shop"><span>i</span></button></h3>
+      <div class="seg"><button class="on">Shop templates · 7</button><button>Saved shops · 1</button></div>
+      <div class="keepers">
+        <button class="kc on"><span>Mags<small>Ironwhistle's Emporium</small></span></button>
+        <button class="kc"><span>Aurelian<small>Aurelian &amp; Daughters</small></span></button>
+        <button class="kc"><span>Master Quibb<small>Quibb's Cabinet of Wonders</small></span></button>
+        <button class="kc"><span>Vesk<small>The Drowned Lantern</small></span></button>
+      </div>
+      <div class="row"><span class="lbl">Sign</span><div class="seg"><button class="on">Ironwhistle's Emporium</button><button>The Brass Monocle</button><button>Your own name…</button></div></div>
+      <div class="row"><span class="lbl">Town</span><input class="in" placeholder="Greyhawk" aria-label="Town" style="width:150px" /><input class="in" placeholder="Low Market" aria-label="Street" style="width:170px" /><button class="info" data-info="town" aria-label="About the sign and town"><span>i</span></button></div>
+      <div class="row" data-tour="temper"><span class="lbl">Temper</span><div class="seg"><button>Won't haggle</button><button>Stubborn</button><button class="on">Fair</button><button>Soft touch</button></div><button class="info" data-info="temper" aria-label="About temper"><span>i</span></button></div>
+      <p class="hint">Haggles at +0, patience 5: three to five tries before they won't sell you something.</p>
+      <div class="row"><span class="lbl">Buys back</span><button class="sw on" role="switch" aria-checked="true" aria-label="Buys back"><i></i></button><span>Mags buys things back at half the list price</span><button class="info" data-info="buysback" aria-label="About buying back"><span>i</span></button></div>
+    </section>
+
+    <section class="card" data-tour="stock">
+      <h3>Shelves &amp; stock <button class="info" data-info="stock" aria-label="About shelves and stock"><span>i</span></button></h3>
+      <div class="row" style="margin-top:0"><span class="lbl">Prices</span><div class="seg"><button>Cheap</button><button class="on">Low markup</button><button>High markup</button></div><button class="tbtn">⟳ Reroll prices</button><button class="info" data-info="prices" aria-label="About prices"><span>i</span></button></div>
+      <div class="row"><span class="lbl">Stock</span><div class="seg"><button>Everything</button><button class="on">Mostly full</button><button>Half-empty</button><button>Mostly empty</button></div><button class="tbtn">⟳ Reroll stock</button><button class="info" data-info="stockLevel" aria-label="About stock levels"><span>i</span></button></div>
+      <div class="shelf"><button class="sw on" role="switch" aria-checked="true" aria-label="Carry Arms"><i></i></button><b>Arms</b><span class="mk"><button aria-label="Cheaper">−</button><span>+10%</span><button aria-label="Dearer">+</button></span><button class="info" data-info="markup" aria-label="About shelf markup"><span>i</span></button><small>dagger 6s <s>5s</s></small><span class="cnt">In stock 7 of 8</span></div>
+      <div class="shelf"><button class="sw on" role="switch" aria-checked="true" aria-label="Carry Gear"><i></i></button><b>Gear</b><span class="mk"><button aria-label="Cheaper">−</button><span style="color:var(--muted)">list</span><button aria-label="Dearer">+</button></span><small>rope 1s</small><span class="cnt">In stock 14 of 15</span></div>
+      <div class="shelf" style="opacity:.6"><button class="sw" role="switch" aria-checked="false" aria-label="Carry Hirelings"><i></i></button><b>Hirelings</b><small>not carried here</small></div>
+    </section>
+
+    <section class="card" data-tour="log">
+      <h3>Haggling &amp; sales this opening <button class="info" data-info="log" aria-label="About the log"><span>i</span></button></h3>
+      <div class="log"><b>Eòghan</b> · Rope ×2, Torch · bought for 5s (haggled)</div>
+      <div class="log"><b>Eòghan</b> · Torch · <span class="ok">haggled: a tenth off — now 9s (marked 10s)</span></div>
+      <div class="log"><b>Liu Sha</b> · Dagger · <span class="bad">haggled badly — now 7s (marked 6s)</span></div>
+      <div class="log"><b>Eòghan</b> · Waterskin · sold for 1s</div>
+    </section>
+  </div>
+
+  <div id="tab-catalog" hidden>
+    <section class="card" data-tour="catalog">
+      <h3>Item catalog <button class="info" data-info="catalog" aria-label="About the catalog"><span>i</span></button></h3>
+      <p class="hint" style="margin-top:0">The list prices, seeded from World of Dungeons. Each opening marks them up or down per shelf.</p>
+      <div class="row"><input class="in" placeholder="Search items…" aria-label="Search items" /><span style="flex:1"></span><button class="tbtn">⇩ Export CSV</button><button class="tbtn">⇧ Import CSV</button><button class="info" data-info="csv" aria-label="About CSV import and export"><span>i</span></button></div>
+      <table><tr><th>Item</th><th>Shelf</th><th>Price</th></tr><tr><td>Rope (50')</td><td>Gear</td><td>1s</td></tr><tr><td>Dagger</td><td>Arms</td><td>5s</td></tr><tr><td>Quicksilver</td><td>Occult</td><td>20s</td></tr></table>
+    </section>
+  </div>
+</main>
+
+<div class="tip" id="tip" role="dialog" aria-labelledby="tip-h" hidden>
+  <button class="close" data-close aria-label="Close">✕</button>
+  <h4 id="tip-h"></h4>
+  <div id="tip-b"></div>
+</div>
+
+<div class="tour-shade" id="shade" hidden></div>
+<div class="tour-card" id="tour" role="dialog" aria-labelledby="tour-h" hidden>
+  <div class="step" id="tour-n"></div>
+  <h4 id="tour-h"></h4>
+  <p id="tour-p"></p>
+  <div class="pips" id="pips"></div>
+  <div class="tour-acts">
+    <button class="skip" data-skip>Skip tour</button>
+    <button class="tbtn" data-back>Back</button>
+    <button class="tbtn primary" data-next>Next</button>
+  </div>
+</div>
+
+<script>
+  // One place for the help copy (becomes src/features/shop/shopHelp.js).
+  const HELP = {
+    status: ["The shop's status", [
+      "<b>Closed</b>: players see the shutters. <b>Scheduled</b>: it opens on its own. <b>Open</b>: players can browse, haggle, buy and sell.",
+      "<b>Locking up</b> gives anyone with a full satchel 2 minutes to pay. Starting combat shuts it until the fight ends.",
+    ]],
+    schedule: ["Scheduling an opening", [
+      "Open it a set time before the next session (taken from the Chronicle), or pick your own times — even several days, for downtime.",
+      "You don't need to be online: the shop opens and closes itself.",
+    ]],
+    shop: ["The shop", [
+      "Pick a <b>template</b>: a shopkeeper with their usual shelves, prices and temper. Change anything; your changes are remembered for that keeper.",
+      "<b>Save this shop</b> keeps a finished set-up under Saved shops, so you can switch between towns.",
+    ]],
+    town: ["Sign and town", [
+      "The name over the door and where the shop is in your world. Leave the town blank to use the sign's suggestion.",
+    ]],
+    temper: ["Temper", [
+      "How the keeper takes haggling. Each try rolls 2d6 + the shopper's CHA + the temper (Stubborn −2, Fair +0, Soft touch +2).",
+      "Patience runs out with bad tries (Stubborn 3, Fair 5, Soft touch 8): first they refuse that item, then they stop haggling with that shopper.",
+      "<span class='secret'>Players never see the temper. They only get a sense of the keeper's mood, from a hidden WIS roll.</span>",
+    ]],
+    buysback: ["Buying back", [
+      "When on, players can sell items from their pack to this keeper for half the list price.",
+    ]],
+    stock: ["Shelves & stock", [
+      "Switch a shelf on to carry it. Each shelf gets its own markup and its own stock, rolled from the two settings above.",
+      "Tap an item to mark it sold out or back in stock.",
+    ]],
+    prices: ["Price level", [
+      "Rolls each shelf's markup: <b>Cheap</b> −20% to list, <b>Low</b> list to +15%, <b>High</b> +15% to +50%.",
+      "<span class='secret'>Players see only the marked price, never the markup.</span>",
+    ]],
+    stockLevel: ["Stock level", [
+      "How much is on the shelves. The roll favours staples: bread and rope rarely run out; armour, mounts and the occult shelf go first.",
+      "No rerolling while open; flip single items instead (they show as “Just in”).",
+    ]],
+    markup: ["A shelf's markup", [
+      "Nudge one shelf up or down in 5% steps. The example shows the marked price with the list price struck through.",
+    ]],
+    log: ["Haggling & sales", [
+      "Every haggle, purchase and sale back during this opening, newest first. It clears when the next opening starts.",
+      "Anyone thrown out appears here with <b>Let back in</b>: they can shop again, but the keeper won't haggle with them this opening.",
+    ]],
+    catalog: ["Item catalog", [
+      "The list prices for every item, from World of Dungeons. Edit names, prices, shelves and notes here.",
+      "Changes never alter items players already own: those are their own copies.",
+    ]],
+    csv: ["Spreadsheet round trip", [
+      "Export to edit in a spreadsheet, then import. You'll see what changes before anything is saved; items missing from the file can be hidden rather than deleted.",
+    ]],
+  };
+
+  const TOUR = [
+    { el: "status", t: "Is the shop open?", p: "This bar always shows the shop's state and its one main action. Players only see inside while it's open." },
+    { el: "shop", t: "Choose who keeps shop", p: "Pick a shopkeeper template. Each has a usual set of shelves, prices and temper, and their own voice. Set the sign and the town." },
+    { el: "temper", t: "Set their temper", p: "How the keeper takes haggling, from Won't haggle to Soft touch. Players never see it; they only read the keeper's mood." },
+    { el: "stock", t: "Fill the shelves", p: "Choose the price level and how full the shelves are, then reroll until it feels right. Switch shelves on or off, or flip single items." },
+    { el: "preview", t: "Walk it first", p: "Preview opens the shop as a player sees it, with these settings. Nothing is bought or changed." },
+    { el: "open", t: "Open it", p: "Open now, or schedule it under this bar — for instance 45 minutes before the next session. It opens and closes on its own." },
+    { el: "catalog", tab: "catalog", t: "The item catalog", p: "Every item and its list price lives here. Edit in place, or export and import a spreadsheet." },
+  ];
+
+  const $ = (s) => document.querySelector(s);
+  const tip = $("#tip");
+  let tipFor = null;
+
+  function placeNear(box, target) {
+    const r = target.getBoundingClientRect();
+    const w = box.offsetWidth, h = box.offsetHeight;
+    let left = Math.min(Math.max(16, r.left + r.width / 2 - w / 2), innerWidth - w - 16);
+    let top = r.bottom + 10;
+    if (top + h > innerHeight - 16) top = Math.max(16, r.top - h - 10);
+    box.style.left = `${left}px`; box.style.top = `${top}px`;
+  }
+  function openTip(btn) {
+    const [title, paras] = HELP[btn.dataset.info];
+    $("#tip-h").textContent = title;
+    $("#tip-b").innerHTML = paras.map((p) => `<p>${p}</p>`).join("");
+    if (tipFor) tipFor.setAttribute("aria-expanded", "false");
+    tipFor = btn; btn.setAttribute("aria-expanded", "true");
+    tip.hidden = false; placeNear(tip, btn);
+    tip.querySelector("[data-close]").focus();
+  }
+  function closeTip(refocus = true) {
+    if (!tipFor) return;
+    tip.hidden = true; tipFor.setAttribute("aria-expanded", "false");
+    if (refocus) tipFor.focus();
+    tipFor = null;
+  }
+
+  // Tour
+  let step = -1;
+  const shade = $("#shade"), card = $("#tour");
+  function showTab(name) {
+    document.querySelectorAll("[data-tab]").forEach((b) => { const on = b.dataset.tab === name; b.classList.toggle("on", on); b.setAttribute("aria-selected", on); });
+    $("#tab-open").hidden = name !== "open"; $("#tab-catalog").hidden = name !== "catalog";
+  }
+  function go(i) {
+    step = i;
+    const s = TOUR[i];
+    showTab(s.tab || "open");
+    const el = document.querySelector(`[data-tour="${s.el}"]`);
+    el.scrollIntoView({ block: "center", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    $("#tour-n").textContent = `Step ${i + 1} of ${TOUR.length}`;
+    $("#tour-h").textContent = s.t; $("#tour-p").textContent = s.p;
+    $("#pips").innerHTML = TOUR.map((_, j) => `<i class="${j === i ? "on" : ""}"></i>`).join("");
+    card.querySelector("[data-back]").disabled = i === 0;
+    card.querySelector("[data-next]").textContent = i === TOUR.length - 1 ? "Done" : "Next";
+    shade.hidden = false; card.hidden = false;
+    setTimeout(() => {
+      const r = el.getBoundingClientRect();
+      Object.assign(shade.style, { left: `${r.left - 6}px`, top: `${r.top - 6}px`, width: `${r.width + 12}px`, height: `${r.height + 12}px` });
+      placeNear(card, shade);
+      card.querySelector("[data-next]").focus();
+    }, 320);
+  }
+  function endTour() {
+    step = -1; shade.hidden = true; card.hidden = true;
+    try { localStorage.setItem("shopTourSeen", "1"); } catch { /* storage blocked */ }
+    $("#banner").hidden = true;
+  }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button, a");
+    if (t?.tagName === "A") e.preventDefault();
+    if (!t) { if (tipFor && !tip.contains(e.target)) closeTip(false); return; }
+    if (t.dataset.info) { tipFor === t ? closeTip() : openTip(t); return; }
+    if (t.dataset.close !== undefined) return closeTip();
+    if (tipFor && !tip.contains(t)) closeTip(false);
+    if (t.dataset.pal) { document.body.dataset.pal = t.dataset.pal; document.querySelectorAll("[data-pal]").forEach((b) => b.classList.toggle("on", b === t)); }
+    if (t.dataset.tab && step < 0) showTab(t.dataset.tab);
+    if (t.dataset.start !== undefined) go(0);
+    if (t.dataset.next !== undefined) step === TOUR.length - 1 ? endTour() : go(step + 1);
+    if (t.dataset.back !== undefined && step > 0) go(step - 1);
+    if (t.dataset.skip !== undefined) endTour();
+    if (t.dataset.dismiss !== undefined) endTour();
+    if (t.dataset.reset !== undefined) { try { localStorage.removeItem("shopTourSeen"); } catch {} $("#banner").hidden = false; }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { if (step >= 0) endTour(); else closeTip(); }
+    if (step >= 0 && e.key === "ArrowRight") step === TOUR.length - 1 ? endTour() : go(step + 1);
+    if (step >= 0 && e.key === "ArrowLeft" && step > 0) go(step - 1);
+  });
+  addEventListener("resize", () => { if (step >= 0) go(step); if (tipFor) placeNear(tip, tipFor); });
+  addEventListener("scroll", () => { if (tipFor) placeNear(tip, tipFor); if (step >= 0) { const el = document.querySelector(`[data-tour="${TOUR[step].el}"]`); const r = el.getBoundingClientRect(); Object.assign(shade.style, { left: `${r.left - 6}px`, top: `${r.top - 6}px` }); placeNear(card, shade); } }, { passive: true });
+
+  let seen = false;
+  try { seen = localStorage.getItem("shopTourSeen") === "1"; } catch { /* storage blocked */ }
+  $("#banner").hidden = seen;
+</script>
+</body>
+</html>
