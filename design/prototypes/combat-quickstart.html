@@ -22,11 +22,11 @@
     damage (riders, change dice, ↺ Again; the DM applies it) → other moves:
     a Free Roll labelled in its "For" box as you roll (the Chronicle's ✎ is
     the fallback) → End Turn.
-  - DM (7 steps): Combat on → long-press a token to act → pick the target →
+  - DM (8 steps): Combat on → long-press a token to act → pick the target →
     pick the action (to-hit is rolled in the Dice Roller) → the Deal Damage
     pop-up (Roll, Crit, ½, ×2, ±, Miss, Apply) → a player's damage roll in
-    History ("Deal Damage", "Apply Effect") → labelling events as they
-    happen (✎) and Next Turn.
+    History ("Deal Damage", "Apply Effect") → (Optional) labelling events as
+    they happen (For box, ✎) → passing the turn (▶ Next Turn).
   Where it opens:
   - ⋯ menu → "Combat quick start", on a player's Session sheet and on the
     DM's Campaign page (always available).
@@ -231,8 +231,13 @@
       },
       {
         t: "(Optional) Label Events as they happen",
-        p: ["Rolling something that isn't an attack, like an NPC's grapple or a check? Type what it's for in the Dice Roller's <b>For</b> box as you roll. Anything else in History can be labelled with <b>✎</b>, like “Ambush at the sluice”. Do it as it happens, while everyone remembers; the Chronicle's ✎ is there for anything missed.", "Use <b>▶ Next Turn</b> in Initiative to pass the turn (players can end their own if you allow it in Settings)."],
-        art: `<div class="m-col"><div class="log"><div><b>Ogre</b> −9 Eòghan · 31 → 22 <span class="tag">· Ambush at the sluice</span><span class="pen hl">✎</span></div></div><span class="chip pri">▶ Next Turn</span></div>`,
+        p: ["Rolling something that isn't an attack, like an NPC's grapple or a check? Type what it's for in the Dice Roller's <b>For</b> box as you roll.", "Anything else in History can be labelled with <b>✎</b>, like “Ambush at the sluice”. Do it as it happens, while everyone remembers; the Chronicle's ✎ is there for anything missed."],
+        art: `<div class="m-col"><div class="log"><div><b>DM</b> Free Roll · 14 <span class="tag">· Ogre tries to grapple</span></div><div><b>Ogre</b> −9 Eòghan · 31 → 22 <span class="tag">· Ambush at the sluice</span><span class="pen hl">✎</span></div></div></div>`,
+      },
+      {
+        t: "Pass the turn",
+        p: ["When someone's done, tap <b>▶ Next Turn</b> in Initiative. Players see whose turn it is, and get a banner when theirs comes round.", "Players can end their own turn too, if you allow it in Settings."],
+        art: `<div class="m-col"><span class="chip pri hl">▶ Next Turn</span><div class="lbl">Round 2 · Eòghan's turn</div></div>`,
       },
     ],
   };
