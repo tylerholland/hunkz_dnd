@@ -217,22 +217,21 @@ export default function CharactersListPage() {
               </aside>
             )}
           </div>
+
+          {/* The road so far: part of the Chronicle, below a divider. */}
+          {chronicle && sessions.length > 0 && (
+            <div className="home-road" role="group" aria-labelledby="home-road-h">
+              <h2 id="home-road-h" className="home-road-title">The Road So Far</h2>
+              {latest && (
+                <p className="home-road-since">
+                  <b>{sinceDays}</b> day{sinceDays === 1 ? "" : "s"} since the party last gathered
+                </p>
+              )}
+              <RoadSoFar sessions={sessions} next={upcoming?.at || null} />
+            </div>
+          )}
         </section>
 
-        {/* The road so far: its own section, like the party below. */}
-        {chronicle && sessions.length > 0 && (
-          <section className="home-road" aria-labelledby="home-road-h">
-            <div className="home-section-head home-road-head">
-              <h2 id="home-road-h">The Road So Far</h2>
-            </div>
-            {latest && (
-              <p className="home-road-since">
-                <b>{sinceDays}</b> day{sinceDays === 1 ? "" : "s"} since the party last gathered
-              </p>
-            )}
-            <RoadSoFar sessions={sessions} next={upcoming?.at || null} />
-          </section>
-        )}
 
         {scheduling && (
           <ScheduleDialog

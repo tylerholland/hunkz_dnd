@@ -85,9 +85,9 @@
   .home-pair { grid-template-columns: 1fr; gap: 20px; }
 }
 
-/* ── The road so far: its own section, with a chapter-subtitle line ── */
-.home-road { margin-bottom: 30px; }
-.home-road-head { margin-bottom: 0; }
+/* ── The road so far: inside the Chronicle, below a divider, with a chapter-subtitle line ── */
+.home-road { margin-top: 26px; padding-top: 22px; border-top: 1px solid var(--pal-border); }
+.home-road-title { font-family: 'Cinzel', serif; font-weight: 400; font-size: 20px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--pal-text); margin: 0; }
 .home-road-since { margin: 6px 0 0; font-size: 20px; font-style: italic; letter-spacing: 0.01em; color: var(--pal-text-body); }
 .home-road-since b { font-family: 'Cinzel', serif; font-style: normal; font-weight: 400; font-size: 32px; line-height: 1; color: var(--pal-accent-bright); margin-right: 2px; }
 
