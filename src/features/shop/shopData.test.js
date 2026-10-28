@@ -35,3 +35,12 @@ describe("shop data", () => {
     expect(signFor("humble-1", { nameIdx: 0 }, {}).where).toBe("Millbrook · By the Mill Pond");
   });
 });
+
+describe("item art", () => {
+  it("every item listed as having art has its picture in public/art/shop/items", async () => {
+    const { existsSync } = await import("node:fs");
+    const { ART_IDS, SHELF_ART } = await import("./shopData");
+    const missing = [...ART_IDS, ...Object.values(SHELF_ART)].filter((id) => !existsSync(`public/art/shop/items/${id}.jpg`));
+    expect(missing).toEqual([]);
+  });
+});

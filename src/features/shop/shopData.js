@@ -56,11 +56,12 @@ export const ART_IDS = new Set([
   "crowbar", "hatchet", "lockpicks", "ink", "fishing", "shovel", "pickaxe",
   "quicksilver", "bone-dust", "holy-water", "blood", "incense",
   "mirror", "lantern", "spyglass", "timer", "boardgame", "clothes", "clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat", "holy-symbol", "fire-oil",
-  "mule", "horse",
+  "mule", "horse", "warhorse", "cart", "wagon", "rowboat", "grapple", "pole",
+  "torchbearer", "guide", "armsman", "expert", "champion",
 ]);
 export const itemArt = (id) => (ART_IDS.has(id) ? `/art/shop/items/${id}.jpg` : null);
 // A shelf tile shows one of its pieces behind it.
-export const SHELF_ART = { arms: "martial-weapon", armor: "full-armor", gear: "rope", tools: "lockpicks", occult: "quicksilver", fancy: "lantern", travel: "horse" };
+export const SHELF_ART = { arms: "martial-weapon", armor: "full-armor", gear: "rope", tools: "lockpicks", occult: "quicksilver", fancy: "lantern", travel: "horse", hire: "armsman" };
 
 // Who keeps each shop: the name and three suggested signs [name, place,
 // subtitle]. Keys match the scene pictures; their lines are in keeperLines.js.
