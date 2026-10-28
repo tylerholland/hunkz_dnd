@@ -62,7 +62,7 @@ export function RowTag({ pal, entry, onSaveTag }) {
           onClick={start}
           aria-label={tag ? "Change this label" : "Label this roll"}
           title={failed ? "Couldn't save the label — try again" : tag ? "Change the label" : "Label this roll"}
-          style={{ color: failed ? "#d08080" : pal.textMuted }}
+          style={{ color: failed ? "#d08080" : pal.accentBright }}
         >✎</button>
       ) : null}
     </>
@@ -269,12 +269,23 @@ export function EffectHistoryRow({ pal, entry, opacity = 1, showDivider = false,
   );
 }
 
+// Money in the log (shop purchases and sales): a plain coin in the row's
+// accent, single-colour like the other glyphs (⚔ ✚ ○ ✦).
+function CoinGlyph({ color }) {
+  return (
+    <svg width="13" height="13" viewBox="0 0 16 16" fill="none" stroke={color} strokeWidth="1.5" aria-hidden="true" style={{ flexShrink: 0 }}>
+      <circle cx="8" cy="8" r="6.5" />
+      <circle cx="8" cy="8" r="3.5" />
+    </svg>
+  );
+}
+
 // Story 72 — a purchase or sale at the shop.
 export function ShopHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
   const things = (entry.items || []).map((i) => `${i.name}${i.qty > 1 ? ` ×${i.qty}` : ""}`).join(", ");
   return (
     <div className="rh-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: showDivider ? `1px solid ${pal.border}` : "none", opacity, transition: "opacity 0.4s" }}>
-      <span style={{ color: pal.accent, fontSize: 13, flexShrink: 0 }} aria-hidden="true">🛍</span>
+      <CoinGlyph color={pal.accent} />
       <span style={{ fontFamily: pal.fontBody, fontSize: 13, color: pal.accentBright, flexShrink: 0 }}>{entry.characterName}</span>
       <span style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 14, color: pal.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
         {entry.action === "sold" ? "sold" : "bought"} {things}{entry.shop ? ` at ${entry.shop}` : ""}

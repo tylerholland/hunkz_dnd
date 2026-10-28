@@ -587,7 +587,9 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
               <div className="dice-sub-label" style={{ marginBottom: 8 }}>History</div>
               <div>
                 {combinedHistory.map((entry, i) => {
-                  const opacities = [1.0, 1.0, 0.65, 0.65, 0.45, 0.45, 0.3, 0.3, 0.18, 0.18, 0.1, 0.1];
+                  // The newest four stay full; older rows fade. A hovered or
+                  // focused row comes back to full (rollHistory.css).
+                  const opacities = [1.0, 1.0, 1.0, 1.0, 0.75, 0.75, 0.5, 0.5, 0.3, 0.3, 0.15, 0.15];
                   const opacity = opacities[i] ?? 0;
                   if (opacity === 0) return null;
 

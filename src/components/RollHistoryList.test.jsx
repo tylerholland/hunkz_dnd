@@ -77,3 +77,21 @@ describe("effect riders in the log", () => {
     expect(screen.getByText(/incl\. ✦ Hex \+4/)).toBeTruthy();
   });
 });
+
+describe("money and labels in the log", () => {
+  it("shows a shop purchase with a plain coin, not an emoji", () => {
+    const { container } = render(
+      <RollHistoryRow pal={PALETTES.ocean} entry={{ id: "s1", type: "shop", action: "bought", characterName: "Eòghan", items: [{ name: "Rope", qty: 2 }], total: 2, shop: "Ironwhistle's Emporium" }} />
+    );
+    expect(container.textContent).not.toMatch(/🛍/);
+    expect(container.querySelector("svg circle")).not.toBeNull();
+    expect(screen.getByText(/bought Rope ×2 at Ironwhistle's Emporium/)).toBeInTheDocument();
+  });
+
+  it("draws the DM's ✎ in the bright accent so it reads on dark palettes", () => {
+    render(
+      <RollHistoryRow pal={PALETTES.ocean} entry={{ id: "r1", characterName: "DM", label: "Free Roll", exprLabel: "1d20", rollValues: [14], total: 14 }} onSaveTag={() => {}} />
+    );
+    expect(screen.getByRole("button", { name: "Label this roll" })).toHaveStyle({ color: PALETTES.ocean.accentBright });
+  });
+});
