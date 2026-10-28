@@ -109,3 +109,24 @@ test("postDmRoll appends a DM-scoped roll-history event and broadcasts a nudge",
   assert.match(appended[0].createdAt, /^\d{4}-\d{2}-\d{2}T/);
   assert.equal(broadcastCalls, 1);
 });
+
+test("keeps what a DM free roll was for (the For box), trimmed and bounded", async () => {
+  const appended = [];
+  const { handler } = loadHandlerWithMocks({
+    verifyPasswordResult: { valid: true, role: "dm" },
+    appendRollHistoryEvent: async (eventRecord) => { appended.push(eventRecord); },
+  });
+
+  const response = await handler({
+    headers: { "x-character-password": "dm-secret" },
+    body: JSON.stringify({ exprLabel: "1d20", label: "Free Roll", total: 14, rollValues: [14], tag: "  Ogre tries to grapple " }),
+  });
+  assert.equal(response.statusCode, 200);
+  assert.equal(appended[0].tag, "Ogre tries to grapple");
+
+  await handler({
+    headers: { "x-character-password": "dm-secret" },
+    body: JSON.stringify({ exprLabel: "1d20", label: "Free Roll", total: 3, rollValues: [3], tag: "   " }),
+  });
+  assert.equal("tag" in appended[1], false);
+});

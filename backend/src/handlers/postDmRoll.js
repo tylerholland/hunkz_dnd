@@ -54,6 +54,10 @@ exports.handler = async (event) => {
 
   const target = sanitizeTarget(body.target);
   if (target) eventRecord.target = target;
+  // What the roll was for, typed in the DM Dice Roller's "For" box (free
+  // rolls); it can still be changed later (putRollTag).
+  const tag = typeof body.tag === "string" ? body.tag.trim().slice(0, 60) : "";
+  if (tag) eventRecord.tag = tag;
 
   await appendRollHistoryEvent(eventRecord);
   await notifySessionChanged();

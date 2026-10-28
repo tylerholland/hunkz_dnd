@@ -129,3 +129,27 @@ describe("DmDiceRoller remote history", () => {
     expect(screen.getByText("DM")).toBeInTheDocument();
   });
 });
+
+describe("DmDiceRoller For box", () => {
+  it("sends what a free roll is for with it, then clears the box", () => {
+    vi.useFakeTimers();
+    render(<DmDiceRoller pal={PALETTES.ocean} dmPassword="swordfish" />);
+
+    const forBox = screen.getByLabelText("What's this roll for?");
+    fireEvent.change(forBox, { target: { value: "Ogre tries to grapple" } });
+    fireEvent.click(screen.getByRole("button", { name: /^Roll / }));
+    act(() => { vi.advanceTimersByTime(650); });
+
+    const [, payload] = apiMocks.postDmRoll.mock.calls[0];
+    expect(payload.tag).toBe("Ogre tries to grapple");
+    expect(forBox).toHaveValue("");
+  });
+
+  it("leaves the label off when the box is empty", () => {
+    vi.useFakeTimers();
+    render(<DmDiceRoller pal={PALETTES.ocean} dmPassword="swordfish" />);
+    fireEvent.click(screen.getByRole("button", { name: /^Roll / }));
+    act(() => { vi.advanceTimersByTime(650); });
+    expect("tag" in apiMocks.postDmRoll.mock.calls[0][1]).toBe(false);
+  });
+});

@@ -103,6 +103,9 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
 
   // History — last 10, session-only
   const [history, setHistory] = useState([]);
+  // What a free roll is for (optional) — becomes the log label, like the
+  // players' "For" box. Not used for rolls made from a party card.
+  const [rollTag, setRollTag] = useState("");
 
   useEffect(() => () => { if (cycleRef.current) clearInterval(cycleRef.current); }, []);
 
@@ -151,6 +154,8 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
     }, 90);
 
     const capturedAdvMode = advMode;
+    const tag = req ? "" : rollTag.trim();
+    if (!req) setRollTag("");
 
     setTimeout(() => {
       if (cycleRef.current) { clearInterval(cycleRef.current); cycleRef.current = null; }
@@ -186,6 +191,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
           timestamp: baseTimestamp + index,
           characterName: rollName,
           source: "dm",
+          tag,
         });
       });
       setHistory(prev => [...historyEntries, ...prev].slice(0, 12));
@@ -201,11 +207,12 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
           characterName: rollName,
           paletteKey: req?.palette,
           source: "dm",
+          tag,
         }));
         Promise.allSettled(rollPayloads.map((payload) => postDmRoll(dmPassword, payload))).catch(() => {});
       }
     }, 600);
-  }, [isRolling, advMode, repeatCount, exprInput, comboDice, comboMod, dieCount, selectedSides, dmPassword, checkDice]);
+  }, [isRolling, advMode, repeatCount, exprInput, comboDice, comboMod, dieCount, selectedSides, dmPassword, checkDice, rollTag]);
 
   // Party-card rolls (DM card revamp): the dashboard calls rollFor(request).
   useImperativeHandle(ref, () => ({
@@ -460,6 +467,21 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
           {exprError && (
             <div className="dice-expr-error" style={{ color: "#c88888", marginBottom: 8, letterSpacing: "0.06em" }}>{exprError}</div>
           )}
+
+          {/* What the roll is for — optional, becomes the log label */}
+          <label className="dice-tag-field" style={{ marginBottom: 10 }}>
+            <span className="dice-tag-label">For</span>
+            <input
+              type="text"
+              value={rollTag}
+              maxLength={60}
+              onChange={(e) => setRollTag(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter" && !isRolling) doRoll(); }}
+              placeholder="What's this roll for? (optional)"
+              aria-label="What's this roll for?"
+              autoComplete="off"
+            />
+          </label>
 
           {/* ── Repeat count + Roll button row ── */}
           <div className="flex-row" style={{ gap: 8, marginBottom: 14 }}>
