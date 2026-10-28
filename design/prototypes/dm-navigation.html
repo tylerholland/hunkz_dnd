@@ -21,10 +21,11 @@
   - ⌂ (far left) goes home to the party page. Sub-pages (Talent Codex, Shop
     preview) keep a ‹ back arrow to their parent.
   - ⋯ on every page, for everyone: that page's actions, then (DM) Settings,
-    then Text size and Theme, then Sign out for whoever is signed in. Theme
-    is the viewer's: the DM's device theme, or a player's character palette
-    (the same setting as edit mode, so others see it on their card too).
-    A player's Sign out forgets that character's password on this device.
+    then Text size, Theme (DM only — a player's theme belongs to the
+    character and changes in edit mode), then Sign out for whoever is signed
+    in. A player's Sign out forgets that character's password on this device.
+  - Player ⋯: Roll animation / Turn alerts are on-off switches (NavMenu gets
+    a `toggle` item type; they flip in place). Export JSON only on Profile.
     Signed-out visitors get no Sign out (nothing to sign out of).
   - Signed out: the homepage bar shows a "DM" button (replaces "DM Login" in
     ⋯). It goes to /dm's existing sign-in prompt, then into Campaign. The
@@ -99,6 +100,12 @@
   .pop hr { border: 0; border-top: 1px solid var(--border); margin: 6px 4px; }
   .pop .sel { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 12px; font-family: 'IM Fell English', serif; font-size: 14px; color: var(--muted); }
   .pop .danger { color: var(--combat); }
+  .pop .toggle { justify-content: space-between; }
+  .sw { position: relative; flex-shrink: 0; width: 36px; height: 20px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg); }
+  .sw i { position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--muted); transition: left .15s ease; }
+  .sw.on { border-color: var(--accent); background: var(--dim); }
+  .sw.on i { left: 18px; background: var(--bright); }
+  @media (prefers-reduced-motion: reduce) { .sw i { transition: none; } }
 
   .narrow .dmlinks { display: none; }
   .narrow .switcher { display: block; }
@@ -180,7 +187,7 @@
   <section>
     <p class="where">A player's sheet, as the player sees it · only ⋯ changes</p>
     <div class="frame" id="player"></div>
-    <p class="was">Players never see the DM links. Their ⋯ gains Theme (their character's palette) and Sign out (forgets the character's password on this device).</p>
+    <p class="was">Players never see the DM links. Their ⋯: Roll animation and Turn alerts as real switches (they flip in place; the menu stays open), Text size, and Sign out (forgets the character's password on this device). No Theme — it belongs to the character and changes in edit mode. Export JSON appears only on Profile.</p>
   </section>
 </main>
 
@@ -203,9 +210,10 @@
     settings: () => [],
     home: () => [],
     codex: () => [],
-    player: () => ["Export JSON", "Roll overlay", "Turn alerts"],
+    // Export JSON only from the Profile view; the two prefs are switches.
+    player: (st) => (st.playerView === "profile" ? ["Export JSON"] : []),
   };
-  const state = { page: "campaign", combat: false, auth: "in", signingIn: false, home: false };
+  const state = { page: "campaign", combat: false, auth: "in", signingIn: false, home: false, playerView: "session", prefs: { "Roll animation": true, "Turn alerts": true } };
   let openPop = null;
 
   const esc = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
@@ -228,11 +236,13 @@
     return `<div class="menuwrap"><button type="button" class="icon" data-pop="${id}" aria-label="More actions" aria-expanded="${openPop === id}">⋯</button>
       <div class="pop${openPop === id ? " open" : ""}" role="menu">
         ${acts.map((a) => `<button type="button" class="item" role="menuitem" data-act="${a}">${a}</button>`).join("")}
+        ${page === "player" && state.playerView === "session" ? Object.entries(state.prefs).map(([name, on]) =>
+          `<button type="button" class="item toggle" role="menuitemcheckbox" aria-checked="${on}" data-pref="${name}">${name}<span class="sw${on ? " on" : ""}" aria-hidden="true"><i></i></span></button>`).join("") : ""}
         ${acts.length ? "<hr />" : ""}
         ${dm && page !== "player" ? `<a href="#" role="menuitem" data-go="settings"${page === "settings" ? ' aria-current="page"' : ""}>Settings</a><hr />` : ""}
         <div class="sel">Text size <span>100%</span></div>
-        <div class="sel">Theme <span>${page === "player" ? "Ember" : document.body.dataset.pal === "vellum" ? "Vellum" : "Ocean"} ▾</span></div>
-        ${signedIn ? '<hr /><button type="button" class="item danger" role="menuitem" data-act="signout">Sign out</button>' : ""}
+        ${dm && page !== "player" ? `<div class="sel">Theme <span>${document.body.dataset.pal === "vellum" ? "Vellum" : "Ocean"} ▾</span></div>` : ""}
+        ${signedIn ? `<hr /><button type="button" class="item danger" role="menuitem" data-act="${page === "player" ? "player-signout" : "signout"}">Sign out</button>` : ""}
       </div></div>`;
   }
   function modeToggle() {
@@ -278,9 +288,9 @@
 
   function player() {
     return `<div class="bar"><div class="left"><a href="#" class="icon back" aria-label="Back">‹</a><span class="title">Eòghan MacGille Fàth</span></div>
-      <div class="center"><div class="seg"><button class="on" type="button">Session</button><button type="button">Profile</button></div></div>
+      <div class="center"><div class="seg"><button class="${state.playerView === "session" ? "on" : ""}" type="button" data-pview="session">Session</button><button class="${state.playerView === "profile" ? "on" : ""}" type="button" data-pview="profile">Profile</button></div></div>
       <div class="right"><span class="live"><i></i><span>Live</span></span><button class="icon" aria-label="World Guide" type="button">❧</button>${menu("pl-m", "player")}</div></div>
-      <div class="body"><h2>Eòghan’s sheet</h2><div class="ghost" style="width:50%"></div></div>`;
+      <div class="body"><h2>Eòghan’s ${state.playerView === "profile" ? "profile" : "sheet"}</h2>${state.playerSignedOut ? '<p class="was" style="margin:0">Signed out — the sheet would lock and ask for Eòghan’s password again.</p>' : ""}<div class="ghost" style="width:50%"></div></div>`;
   }
 
   function render() {
@@ -295,7 +305,7 @@
   }
 
   document.addEventListener("click", (e) => {
-    const t = e.target.closest("[data-go],[data-pop],[data-mode],[data-act],[data-signin-start],[data-pal],[data-auth]");
+    const t = e.target.closest("[data-go],[data-pop],[data-mode],[data-act],[data-signin-start],[data-pal],[data-auth],[data-pref],[data-pview]");
     if (!t) { if (openPop) { openPop = null; render(); } return; }
     if (t.tagName === "A") e.preventDefault();
     if (t.dataset.pal) {
@@ -309,6 +319,10 @@
       return render();
     }
     if (t.dataset.pop) { openPop = openPop === t.dataset.pop ? null : t.dataset.pop; return render(); }
+    // A switch flips in place and leaves the menu open.
+    if (t.dataset.pref) { state.prefs[t.dataset.pref] = !state.prefs[t.dataset.pref]; return render(); }
+    if (t.dataset.pview) { state.playerView = t.dataset.pview; state.playerSignedOut = false; openPop = null; return render(); }
+    if (t.dataset.act === "player-signout") { state.playerSignedOut = true; openPop = null; return render(); }
     openPop = null;
     if (t.dataset.go) {
       if (t.dataset.go === "home") { state.home = true; state.signingIn = false; }
