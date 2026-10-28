@@ -17,15 +17,16 @@
   plain sentences.
 
   Two guides, same component:
-  - Players (6 steps): open the map → hold an enemy to target → pick a weapon
+  - Players (7 steps): open the map → hold an enemy to target → pick a weapon
     or spell → roll to hit (N/ADV/DIS, tap the dice to change them) → roll
-    damage (riders, change dice, ↺ Again; the DM applies it) → your turn,
-    End Turn, labelling rolls.
+    damage (riders, change dice, ↺ Again; the DM applies it) → other moves:
+    a Free Roll labelled in its "For" box as you roll (the Chronicle's ✎ is
+    the fallback) → End Turn.
   - DM (7 steps): Combat on → long-press a token to act → pick the target →
     pick the action (to-hit is rolled in the Dice Roller) → the Deal Damage
     pop-up (Roll, Crit, ½, ×2, ±, Miss, Apply) → a player's damage roll in
-    History ("Deal Damage", "Apply Effect") → labelling events (✎) and
-    Next Turn.
+    History ("Deal Damage", "Apply Effect") → labelling events as they
+    happen (✎) and Next Turn.
   Where it opens:
   - ⋯ menu → "Combat quick start", on a player's Session sheet and on the
     DM's Campaign page (always available).
@@ -65,7 +66,7 @@
   .frames { display:grid; grid-template-columns:minmax(0,1fr) 390px; gap:22px; align-items:start; }
   @media (max-width:980px){ .frames{ grid-template-columns:1fr; } }
   .frame { position:relative; border:1px solid var(--border); border-radius:12px; background:var(--bg); min-height:640px; overflow:hidden; }
-  .phone { width:390px; max-width:100%; }
+  .phone { width:390px; max-width:100%; min-height:780px; }
   /* A sketch of the page behind */
   .behind { padding:14px; opacity:.55; }
   .behind .bar { height:40px; border-bottom:1px solid var(--border); margin:-14px -14px 12px; display:flex; align-items:center; padding:0 12px; gap:8px; font-family:'Cinzel',serif; font-size:13px; color:var(--text); }
@@ -186,9 +187,15 @@
         art: `<div class="atkbar"><div class="top">◎ Giant Rat<span class="x">×</span></div><div class="result"><b>19</b><span class="badge">CRIT</span></div><div class="m-row" style="justify-content:flex-start"><span class="chip ghost">↺ Again</span><span class="chip pri hl">⚔ Damage</span><span class="chip">✦ +1d6 Hex</span></div></div>`,
       },
       {
-        t: "Your turn, and afterwards",
-        p: ["When you're done, tap <b>End Turn</b> so the next person goes (if your DM allows it).", "Every roll goes to the session log. Label a roll later in the Chronicle with <b>✎</b>, or give a free roll a name in the dice panel's <b>For</b> box."],
-        art: `<div class="m-col"><span class="endturn">End Turn · when you're done</span><div class="log"><div><b>Eòghan</b> Dagger DMG → ◎ Giant Rat · 9 <span class="tag">· Finishing it off</span><span class="pen">✎</span></div></div></div>`,
+        t: "Other moves: free rolls",
+        p: ["Shoving, climbing, grappling, sneaking past? Open the <b>Dice</b> panel and use <b>Free Roll</b>: pick the dice, add a modifier, and type what it's for in the <b>For</b> box, like “Shove the goblin”. Then roll.", "<b>Label it as you roll</b>, while it's fresh: the log then tells the story of the fight, and nobody has to remember later what a lone 14 was for."],
+        tip: "Forgot? You can still label it afterwards in the Chronicle with ✎.",
+        art: `<div class="m-col"><div class="modal" style="max-width:400px"><div class="t">Free Roll</div><div class="m-row" style="justify-content:flex-start"><span class="chip sel">d20</span><span class="chip">+ Modifier <small>+3</small></span></div><div class="m-row" style="justify-content:flex-start;width:100%"><span style="color:var(--muted)">For</span><span class="num hl" style="flex:1;width:auto;text-align:left;padding:6px 10px">Shove the goblin</span></div><div class="m-row" style="justify-content:flex-end"><span class="chip pri">Roll 1d20+3</span></div></div><div class="log"><div><b>Eòghan</b> Free Roll · 17 <span class="tag">· Shove the goblin</span></div></div></div>`,
+      },
+      {
+        t: "End your turn",
+        p: ["When you're done, tap <b>End Turn</b> so the next person goes (if your DM allows it). Your turn shows in the Initiative list, with a banner when it comes round."],
+        art: `<div class="m-col"><span class="endturn">End Turn · when you're done</span><div class="lbl">“Your turn · Round 2” appears when it's you</div></div>`,
       },
     ],
     dm: [
@@ -223,8 +230,8 @@
         art: `<div class="log"><div><b>Eòghan</b> Dagger DMG → ◎ Giant Rat · <b>9</b><span class="chip pri hl" style="margin-left:auto;padding:3px 9px">Deal Damage</span></div><div><b>Eòghan</b> ✦ Hex → ◎ Giant Rat<span class="chip" style="margin-left:auto;padding:3px 9px">Apply Effect</span></div></div>`,
       },
       {
-        t: "Label events, and move on",
-        p: ["Tap <b>✎</b> on any History entry to give it a label, like “Persuade the goblin king”. Players can label entries too, in the Chronicle afterwards.", "Use <b>▶ Next Turn</b> in Initiative to pass the turn (players can end their own if you allow it in Settings)."],
+        t: "Label events as they happen, and move on",
+        p: ["Tap <b>✎</b> on a History entry to label it, like “Ambush at the sluice”. Do it as it happens, while everyone remembers; the Chronicle's ✎ is there for anything missed.", "Use <b>▶ Next Turn</b> in Initiative to pass the turn (players can end their own if you allow it in Settings)."],
         art: `<div class="m-col"><div class="log"><div><b>Ogre</b> −9 Eòghan · 31 → 22 <span class="tag">· Ambush at the sluice</span><span class="pen hl">✎</span></div></div><span class="chip pri">▶ Next Turn</span></div>`,
       },
     ],
