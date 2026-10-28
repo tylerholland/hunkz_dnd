@@ -77,7 +77,15 @@ export function upcomingSession(nextSession, now = new Date()) {
   const minutes = at.getMinutes();
   const time = `${((at.getHours() + 11) % 12) + 1}${minutes ? `:${String(minutes).padStart(2, "0")}` : ""} ${at.getHours() < 12 ? "AM" : "PM"}`;
   const when = days <= 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
-  return { at, days, label: `${WEEKDAYS[at.getDay()]}, ${shortDate(at)}, ${time}`, when };
+  // For the homepage's Next session panel: the day in words, the time, and a
+  // countdown in days (or hours on the day itself; none once it's under way).
+  const evening = at.getHours() >= 17;
+  const day = days <= 0 ? (evening ? "Tonight" : "Today") : days === 1 ? "Tomorrow" : `${WEEKDAYS[at.getDay()]} · ${shortDate(at)}`;
+  const hours = Math.ceil((ms - now.getTime()) / 3600000);
+  const countdown = days >= 1 ? { n: days, unit: days === 1 ? "day to go" : "days to go" }
+    : hours > 0 ? { n: hours, unit: hours === 1 ? "hour to go" : "hours to go" }
+    : null;
+  return { at, days, label: `${WEEKDAYS[at.getDay()]}, ${shortDate(at)}, ${time}`, when, day, time, countdown };
 }
 
 // A gently winding trail across the box.

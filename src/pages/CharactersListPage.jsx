@@ -151,64 +151,88 @@ export default function CharactersListPage() {
         {/* Dims the page behind an open character card. */}
         <div className="home-dim" aria-hidden="true" />
 
-        {/* Campaign header: where we left off, and the road so far */}
+        {/* Campaign header: where we left off, and what's next */}
         <section className="home-hero" aria-labelledby="home-hero-h">
           <div className="home-kicker">The Chronicle{chapter ? ` · Chapter ${toRoman(chapterIndex + 1)}` : ""}</div>
           {/* The campaign's name is in the top nav; the hero leads with the chapter. */}
           <h1 id="home-hero-h">{chapter?.name || "The Chronicle"}</h1>
           <div className="home-rule" />
 
-          {latest ? (
-            <>
-              <div className="home-label">Last time</div>
-              <div className="home-last-title">
-                {sessionTitle(latest.title)}{" "}
-                <span className="home-last-date">· {WEEKDAYS[latestDay.getDay()]}, {shortDate(latestDay)}</span>
-              </div>
-              {latest.summaryExcerpt
-                ? <p className="home-excerpt">{latest.summaryExcerpt}</p>
-                : <p className="home-excerpt home-excerpt--empty">No one has written up this session yet.</p>}
-              <div className="home-hero-actions">
-                <Link className="home-btn" to={`/chronicle/${encodeURIComponent(latest.id)}`}>Read the Chronicle →</Link>
-                <span className="home-meta">
-                  {sessions.length} session{sessions.length === 1 ? "" : "s"} so far · add your recollections
-                </span>
-              </div>
-            </>
-          ) : chronicle ? (
-            <p className="home-excerpt home-excerpt--empty">
-              The Chronicle begins with the first recorded session. <Link to="/chronicle">Open the Chronicle →</Link>
-            </p>
-          ) : null}
+          {/* Where we left off (left) and what's next (right). */}
+          <div className="home-pair">
+            <div>
+              {latest ? (
+                <>
+                  <div className="home-label">Last time</div>
+                  <div className="home-last-title">
+                    {sessionTitle(latest.title)}{" "}
+                    <span className="home-last-date">· {WEEKDAYS[latestDay.getDay()]}, {shortDate(latestDay)}</span>
+                  </div>
+                  {latest.summaryExcerpt
+                    ? <p className="home-excerpt">{latest.summaryExcerpt}</p>
+                    : <p className="home-excerpt home-excerpt--empty">No one has written up this session yet.</p>}
+                  <div className="home-hero-actions">
+                    <Link className="home-btn" to={`/chronicle/${encodeURIComponent(latest.id)}`}>Read the Chronicle →</Link>
+                    <span className="home-meta">
+                      {sessions.length} session{sessions.length === 1 ? "" : "s"} so far · add your recollections
+                    </span>
+                  </div>
+                </>
+              ) : chronicle ? (
+                <p className="home-excerpt home-excerpt--empty">
+                  The Chronicle begins with the first recorded session. <Link to="/chronicle">Open the Chronicle →</Link>
+                </p>
+              ) : null}
+            </div>
 
-          {chronicle && (
-            <div className="home-road">
-              {latest && (
-                <div className="home-road-head">
-                  <span className="home-label">The road so far</span>
-                  <span className="home-road-since">
-                    <b>{sinceDays}</b> day{sinceDays === 1 ? "" : "s"} since the party last gathered · {sessions.length} session{sessions.length === 1 ? "" : "s"}
-                  </span>
-                </div>
-              )}
-              <div className="home-next">
+            {chronicle && (
+              <aside className={`home-next${upcoming ? "" : " home-next--unset"}`} aria-labelledby="home-next-h">
+                <div className="home-label" id="home-next-h">Next session</div>
                 {upcoming ? (
                   <>
-                    Next session: <b>{upcoming.label}</b> · {upcoming.when}
-                    {canSchedule && <button type="button" className="home-linkish" onClick={() => setScheduling(true)}>Change</button>}
+                    <div className="home-next-day">{upcoming.day}</div>
+                    <div className="home-next-time">{upcoming.time}</div>
+                    <div className="home-next-count">
+                      {upcoming.countdown
+                        ? <><b>{upcoming.countdown.n}</b><span>{upcoming.countdown.unit}</span></>
+                        : <span>Under way</span>}
+                    </div>
+                    {canSchedule && (
+                      <div className="home-next-row">
+                        <button type="button" className="home-linkish" onClick={() => setScheduling(true)}>Change</button>
+                      </div>
+                    )}
                   </>
                 ) : (
                   <>
-                    No next session set yet.
-                    {canSchedule && <button type="button" className="home-linkish" onClick={() => setScheduling(true)}>Schedule the next session</button>}
+                    <div className="home-next-day">Not set yet</div>
+                    {canSchedule && (
+                      <div className="home-next-row">
+                        <button type="button" className="home-btn" onClick={() => setScheduling(true)}>Schedule the next session</button>
+                      </div>
+                    )}
                   </>
                 )}
-              </div>
-              <ShopLine summary={shopSummary} slug={me?.slug} nextSessionAt={upcoming?.at || null} className="on-home" />
-              {sessions.length > 0 && <RoadSoFar sessions={sessions} next={upcoming?.at || null} />}
-            </div>
-          )}
+                <ShopLine summary={shopSummary} slug={me?.slug} nextSessionAt={upcoming?.at || null} className="on-home" />
+              </aside>
+            )}
+          </div>
         </section>
+
+        {/* The road so far: its own section, like the party below. */}
+        {chronicle && sessions.length > 0 && (
+          <section className="home-road" aria-labelledby="home-road-h">
+            <div className="home-section-head home-road-head">
+              <h2 id="home-road-h">The Road So Far</h2>
+            </div>
+            {latest && (
+              <p className="home-road-since">
+                <b>{sinceDays}</b> day{sinceDays === 1 ? "" : "s"} since the party last gathered
+              </p>
+            )}
+            <RoadSoFar sessions={sessions} next={upcoming?.at || null} />
+          </section>
+        )}
 
         {scheduling && (
           <ScheduleDialog

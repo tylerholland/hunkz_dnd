@@ -23,6 +23,15 @@ describe("roadLayout", () => {
     expect(upcomingSession(null, now)).toBeNull();
   });
 
+  it("gives the Next session panel a day, a time and a countdown", () => {
+    const next = upcomingSession({ at: new Date(2026, 9, 30, 19, 0).toISOString() }, now);
+    expect(next).toMatchObject({ day: "Fri · Oct 30", time: "7 PM", countdown: { n: 7, unit: "days to go" } });
+    expect(upcomingSession({ at: new Date(2026, 9, 24, 18, 30).toISOString() }, now)).toMatchObject({ day: "Tomorrow", countdown: { n: 1, unit: "day to go" } });
+    // On the day: hours to go, then none once it's under way.
+    expect(upcomingSession({ at: new Date(2026, 9, 23, 18, 30).toISOString() }, now)).toMatchObject({ day: "Tonight", time: "6:30 PM", countdown: { n: 4, unit: "hours to go" } });
+    expect(upcomingSession({ at: new Date(2026, 9, 23, 14, 0).toISOString() }, now)).toMatchObject({ day: "Today", countdown: null });
+  });
+
   it("puts the flag at the next session when it's ahead, else none", () => {
     const sessions = [
       { id: "a", startAt: new Date(2026, 6, 22, 19).toISOString() },

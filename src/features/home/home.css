@@ -67,13 +67,29 @@
 }
 .home-linkish:hover { text-decoration: underline; }
 
-/* ── The road so far ── */
-.home-road { margin-top: 26px; }
-.home-road-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 14px; }
-.home-road-since { font-size: 15px; color: var(--pal-text-body); font-style: italic; }
-.home-road-since b { font-family: 'Cinzel', serif; font-style: normal; font-weight: 400; font-size: 20px; color: var(--pal-accent-bright); }
-.home-next { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 4px; font-size: 15px; color: var(--pal-text-body); }
-.home-next b { font-family: 'Cinzel', serif; font-weight: 400; color: var(--pal-accent-bright); letter-spacing: 0.04em; }
+/* ── Last time | Next session (design/prototypes/home-road.html) ── */
+.home-pair { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(260px, 1fr); gap: 28px; align-items: start; }
+.home-next {
+  border: 1px solid var(--pal-border); border-radius: 10px; padding: 18px 20px;
+  background: color-mix(in srgb, var(--pal-surface-solid) 70%, transparent);
+}
+.home-next-day { font-family: 'Cinzel', serif; font-size: 24px; letter-spacing: 0.06em; line-height: 1.2; color: var(--pal-text); margin-top: 6px; }
+.home-next--unset .home-next-day { font-family: 'Crimson Text', serif; font-style: italic; font-size: 18px; letter-spacing: 0; color: var(--home-muted); }
+.home-next-time { font-size: 16px; color: var(--pal-text-body); }
+.home-next-count { display: flex; align-items: baseline; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--pal-border); font-style: italic; color: var(--pal-text-body); }
+.home-next-count b { font-family: 'Cinzel', serif; font-style: normal; font-weight: 400; font-size: 38px; line-height: 1; color: var(--pal-accent-bright); }
+.home-next-row { display: flex; justify-content: flex-end; margin-top: 12px; }
+.home-next--unset .home-next-row { justify-content: flex-start; }
+.home-next .shopline.on-home { margin-top: 12px; }
+@media (max-width: 760px) {
+  .home-pair { grid-template-columns: 1fr; gap: 20px; }
+}
+
+/* ── The road so far: its own section, with a chapter-subtitle line ── */
+.home-road { margin-bottom: 30px; }
+.home-road-head { margin-bottom: 0; }
+.home-road-since { margin: 6px 0 0; font-size: 20px; font-style: italic; letter-spacing: 0.01em; color: var(--pal-text-body); }
+.home-road-since b { font-family: 'Cinzel', serif; font-style: normal; font-weight: 400; font-size: 32px; line-height: 1; color: var(--pal-accent-bright); margin-right: 2px; }
 
 .road-svg { display: block; width: 100%; height: auto; margin-top: 8px; overflow: visible; }
 .road-trail { fill: none; stroke: var(--pal-accent); stroke-width: 2; stroke-dasharray: 2 7; stroke-linecap: round; opacity: 0.8; }
