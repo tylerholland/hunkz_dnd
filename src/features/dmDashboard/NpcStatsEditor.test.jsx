@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import NpcStatsEditor from "./NpcStatsEditor";
 import NpcAttacksRef from "./NpcAttacksRef";
@@ -35,19 +35,33 @@ describe("NpcStatsEditor", () => {
 
 describe("NpcAttacksRef", () => {
   const template = { id: "gob", name: "Goblin Soldier", defense: { kind: "ac", ac: 15 }, attacks: [{ id: "s", name: "Scimitar", hit: "1d20+4", damage: "1d6+2", look: "cut" }] };
+  const spearGoblin = { name: "Goblin Soldier 3", librarySourceId: "gob", defense: { kind: "ac", ac: 15 }, attacks: [{ id: "s", name: "Spear", hit: "1d20+4", damage: "1d8+2", look: "cut" }] };
 
-  it("marks an NPC changed from its library creature, and resets it", () => {
+  it("shows a compact summary on the card, marked when changed from the library", () => {
+    render(<NpcAttacksRef npc={spearGoblin} template={template} onSave={vi.fn()} />);
+    expect(screen.getByText("Attacks · AC 15")).toBeInTheDocument();
+    expect(screen.getByText("Spear")).toBeInTheDocument();
+    expect(screen.getByText("1d20+4 · 1d8+2")).toBeInTheDocument();
+    expect(screen.getByText("✎ Changed")).toBeInTheDocument();
+    // The editor isn't on the card; it opens in a modal.
+    expect(screen.queryByRole("button", { name: "＋ Add an attack" })).toBeNull();
+  });
+
+  it("edits in a modal, where Reset to library brings back the creature's attacks", async () => {
     const onSave = vi.fn().mockResolvedValue(true);
-    render(<NpcAttacksRef npc={{ name: "Goblin Soldier 3", librarySourceId: "gob", defense: { kind: "ac", ac: 15 }, attacks: [{ id: "s", name: "Spear", hit: "1d20+4", damage: "1d8+2", look: "cut" }] }} template={template} onSave={onSave} />);
-    expect(screen.getByText("✎ Changed from the library")).toBeInTheDocument();
-    expect(screen.getByText("AC 15")).toBeInTheDocument();
-    fireEvent.click(screen.getByRole("button", { name: "Reset to library" }));
-    expect(onSave).toHaveBeenCalledWith({ defense: { kind: "ac", ac: 15 }, attacks: template.attacks });
+    render(<NpcAttacksRef npc={spearGoblin} template={template} onSave={onSave} />);
+    fireEvent.click(screen.getByRole("button", { name: "Edit Goblin Soldier 3's attacks and defense" }));
+    const dialog = screen.getByRole("dialog", { name: "Goblin Soldier 3" });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Reset to library" }));
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save for this one" }));
+    await waitFor(() => expect(onSave).toHaveBeenCalledWith({ defense: { kind: "ac", ac: 15 }, attacks: template.attacks }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
   });
 
   it("offers to add attacks to an NPC without any", () => {
     render(<NpcAttacksRef npc={{ name: "Rat" }} template={null} onSave={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "＋ Attacks & defense" }));
-    expect(screen.getByRole("button", { name: "Save for this one" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "+ Attacks & defense" }));
+    expect(screen.getByRole("dialog", { name: "Rat" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
   });
 });

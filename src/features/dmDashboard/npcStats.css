@@ -58,12 +58,31 @@
   .ns-chance, .ns-looks { margin-left: 0; }
 }
 
-/* Read-only summary on an NPC card */
+/* Summary on an NPC card (editing is in a modal) */
 .ns-summary { display: grid; gap: 4px; font-size: 14px; color: var(--pal-text-body); }
-.ns-summary-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.ns-summary-head { display: flex; align-items: center; gap: 8px; min-height: 28px; }
+.ns-summary-row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
 .ns-summary-row b { font-weight: 600; color: var(--pal-text); }
+.ns-summary-icon { display: inline-flex; color: var(--pal-accent-bright); }
 .ns-summary-dice { font-family: var(--font-display, "Cinzel", Georgia, serif); font-size: 12px; color: var(--pal-accent-bright); letter-spacing: 0.03em; }
-.ns-changed { display: inline-flex; align-items: center; gap: 4px; padding: 1px 9px; border-radius: 999px; border: 1px solid #c8a040; color: #c8a040; font-size: 12px; }
+.ns-changed { display: inline-flex; align-items: center; padding: 0 8px; border-radius: 999px; border: 1px solid #c8a040; color: #c8a040; font-size: 12px; }
+.ns-edit { margin-left: auto; width: 32px; height: 32px; border: none; background: transparent; color: var(--pal-text-muted); cursor: pointer; font-size: 14px; }
+.ns-edit:hover { color: var(--pal-accent-bright); }
 .ns-primary { border-color: var(--pal-accent); background: var(--pal-accent-dim); }
-.ns-card-edit { padding: 10px 0; }
-.ns-summary { padding: 8px 0 4px; }
+
+/* The edit modal */
+.ns-overlay { position: fixed; inset: 0; z-index: 400; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(3, 5, 8, 0.7); }
+.ns-modal {
+  width: min(620px, 100%); max-height: calc(100vh - 32px); overflow: auto; display: grid; gap: 14px; padding: 18px 20px;
+  border: 1px solid var(--pal-accent); border-radius: 12px; background: var(--pal-surface-solid); color: var(--pal-text-body);
+  font-family: var(--font-body, "Crimson Text", Georgia, serif); font-size: 15px; box-shadow: 0 18px 60px rgba(0, 0, 0, 0.5);
+}
+.ns-modal[data-light] { box-shadow: 0 18px 50px rgba(90, 60, 30, 0.25); }
+.ns-modal-head { display: grid; gap: 2px; }
+.ns-modal-head h2 { margin: 0; font-family: var(--font-display, "Cinzel", Georgia, serif); font-weight: 400; font-size: 20px; letter-spacing: 0.04em; color: var(--pal-text); }
+.ns-modal-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding-top: 12px; border-top: 1px solid var(--pal-border); }
+.ns-edit:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }
+@media (max-width: 560px) {
+  .ns-overlay { align-items: flex-end; padding: 0; }
+  .ns-modal { border-radius: 14px 14px 0 0; max-height: 94vh; }
+}
