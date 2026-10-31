@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NPC Attacks</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  NPC attacks and defense — prototype, no live API.
+
+  Data (new fields, all optional — NPCs without them keep today's generic list)
+  - npc-library template: defense { kind: "ac", ac: 13 } | { kind: "roll", roll: "2d6+1", name: "Dodge" };
+    attacks [{ id, name, hit: "1d6", damage: "2d4", look: "lash" }]. `hit` is the
+    WHOLE attack roll (the DM builds in whether the creature beats the table's 2d6).
+  - npc-combat NPC: copies defense + attacks when added from the library; the DM can
+    change them for that one NPC (the Spear goblin). "Changed from the library"
+    shows, with Reset to library and Save as a new library entry.
+  Take Action (DM, map)
+  - An NPC actor lists its own attacks first ("Tentacle Whip · 1d6 / 2d4"), then the
+    generic quick attacks and ✶ Magic as today.
+  - Picking one rolls the attack and compares with the target: a character's AC, or an
+    NPC's AC / defense roll (rolled on the spot). It suggests Hit or Miss — the DM can
+    overrule — then opens Deal Damage with the damage rolled and the look set.
+  Player attacks on an NPC
+  - The player's to-hit row in the DM's History reads "vs AC 13 · hits" (or, for a
+    defense roll, a "Roll Dodge" button that rolls and shows "9 · hits"). Deal Damage
+    shows the same comparison at the top. Players never see the NPC's AC or rolls.
+  Looks (the map animation)
+  - Monster looks join the weapon/spell ones: Bite, Claw, Lash, Sting, Slam, Breath,
+    Spit. Guessed from the attack's name as you type (Tentacle → Lash), changeable.
+    Phase 1 borrows the nearest existing animation (Claw→cut, Slam→chop, Spit→arrow,
+    Breath→fire, Bite→cut, Lash→cut, Sting→arrow); phase 2 draws their own.
+  Open: whether a defense roll should also apply when an NPC is attacked by another NPC
+  (assumed yes); whether characters get a defense-roll option too (not now: they use AC).
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --solid:#111e2c; --surface:rgba(18,32,48,.55); --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
+    --dim:#1e3a4e; --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#080a0e; --gold:#e6bd62; --red:#c06060; --green:#6fbf86;
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --solid:#ece4d2; --surface:rgba(220,208,185,.5); --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
+    --dim:rgba(140,110,70,.16); --text:#2a2018; --body:#3c2e1c; --muted:#7d6448; --page:#e9e1d2; --gold:#8a6418; --red:#9a2a20; --green:#2f7a45;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button, input, select { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+  main { max-width:1180px; margin:0 auto; padding:24px 16px 80px; display:grid; gap:30px; }
+  h1 { margin:0; font-family:'Cinzel',serif; font-weight:400; letter-spacing:.08em; color:var(--text); font-size:22px; }
+  .note { margin:6px 0 0; font-style:italic; color:var(--muted); font-size:15px; max-width:860px; }
+  .where { margin:0 0 8px; font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .ctl { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .ctl button { border:0; background:transparent; padding:7px 13px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .ctl button.on { background:var(--dim); color:var(--text); }
+  .card { border:1px solid var(--border); border-radius:12px; background:var(--solid); padding:16px 18px; }
+  .card h2 { margin:0; font-family:'Cinzel',serif; font-weight:400; font-size:18px; letter-spacing:.06em; color:var(--text); }
+  .sub { font-size:13px; letter-spacing:.14em; text-transform:uppercase; font-family:'IM Fell English',serif; color:var(--muted); }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1.25fr) minmax(0,1fr); gap:22px; align-items:start; }
+  @media (max-width:900px){ .grid2 { grid-template-columns:1fr; } }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; margin-top:12px; }
+  .lbl { min-width:74px; font-family:'Cinzel',serif; font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .in { min-height:38px; padding:6px 10px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); font-size:15px; }
+  .in.dice { width:96px; font-family:'Cinzel',serif; letter-spacing:.04em; }
+  .in.bad { border-color:var(--red); }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:6px; overflow:hidden; }
+  .seg button { border:0; background:transparent; padding:7px 12px; color:var(--muted); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+  .seg button.on { background:var(--dim); color:var(--text); }
+  .btn { min-height:36px; padding:0 13px; border:1px solid var(--border); border-radius:6px; background:transparent; color:var(--bright); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+  .btn.primary { border-color:var(--accent); background:var(--dim); }
+  .btn.quiet { color:var(--muted); }
+  .hint { font-size:14px; font-style:italic; color:var(--muted); margin:6px 0 0; }
+
+  /* Attack rows */
+  .atk { display:grid; grid-template-columns:44px minmax(0,1.4fr) auto auto 36px; gap:8px; align-items:end; padding:10px 0; border-bottom:1px dashed var(--border); }
+  .atk label { display:grid; gap:3px; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); font-family:'Cinzel',serif; }
+  .atk .in { width:100%; }
+  .atk .in.dice { width:100px; }
+  .look-btn { width:44px; height:38px; border:1px solid var(--border); border-radius:6px; background:var(--bg); display:flex; align-items:center; justify-content:center; color:var(--bright); }
+  .x { width:36px; height:38px; border:0; background:transparent; color:var(--muted); }
+  @media (max-width:560px){ .atk { grid-template-columns:44px 1fr 36px; } .atk .dicefield { grid-column:2 / 3; } }
+  .looks { display:flex; flex-wrap:wrap; gap:6px; padding:10px; margin:4px 0 6px 52px; border:1px solid var(--border); border-radius:8px; background:var(--bg); }
+  .looks button { display:grid; justify-items:center; gap:2px; width:62px; padding:6px 2px; border:1px solid transparent; border-radius:6px; background:transparent; color:var(--body); font-size:12px; }
+  .looks button.on { border-color:var(--gold); color:var(--text); }
+  .looks .grp { width:100%; font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  svg.ico { width:20px; height:20px; }
+
+  .flag { display:inline-flex; align-items:center; gap:6px; padding:3px 10px; border-radius:999px; border:1px solid var(--gold); color:var(--gold); font-size:13px; }
+
+  /* Take Action drawer */
+  .drawer { border:1px solid var(--accent); border-radius:12px; background:var(--solid); padding:14px 16px; }
+  .drawer .who { font-family:'Cinzel',serif; color:var(--text); font-size:15px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .chip { display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.05em; color:var(--text); }
+  .chip small { font-family:'Crimson Text',serif; font-size:13px; color:var(--accent); letter-spacing:0; }
+  .chip.own { border-color:color-mix(in srgb, var(--gold) 55%, var(--border)); }
+  .chip.on { border-color:var(--gold); box-shadow:inset 0 0 0 1px var(--gold); }
+  .divider { width:100%; height:1px; background:var(--border); margin:4px 0; }
+  .roll-step { margin-top:12px; padding-top:12px; border-top:1px dashed var(--border); display:grid; gap:10px; }
+  .vs { display:flex; flex-wrap:wrap; align-items:baseline; gap:10px; font-size:15px; }
+  .vs b.n { font-family:'Cinzel',serif; font-weight:400; font-size:30px; line-height:1; color:var(--bright); }
+  .verdict { padding:2px 10px; border-radius:999px; font-family:'Cinzel',serif; font-size:12px; letter-spacing:.12em; text-transform:uppercase; }
+  .verdict.hit { border:1px solid var(--green); color:var(--green); }
+  .verdict.miss { border:1px solid var(--red); color:var(--red); }
+
+  /* Deal Damage modal (as today, with the comparison on top) */
+  .modal { border:1px solid var(--accent); border-radius:10px; background:var(--solid); padding:14px; display:grid; gap:10px; }
+  .modal .t { font-family:'Cinzel',serif; color:var(--text); }
+  .src { font-size:14px; color:var(--body); padding:8px 10px; border-radius:6px; background:var(--bg); }
+  .hp { height:8px; border-radius:4px; background:var(--dim); overflow:hidden; } .hp i { display:block; height:100%; width:62%; background:var(--red); }
+
+  /* Log */
+  .log { display:grid; }
+  .log .r { display:flex; flex-wrap:wrap; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid var(--border); font-size:15px; }
+  .log .nm { color:var(--bright); font-size:13px; }
+  .log .tot { margin-left:auto; font-family:'Cinzel',serif; font-size:22px; color:var(--bright); }
+  .log .vsline { width:100%; padding-left:2px; font-size:14px; color:var(--muted); display:flex; align-items:center; gap:8px; }
+  .players-see { font-size:13px; font-style:italic; color:var(--muted); }
+  [hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>NPC attacks and defense</h1>
+    <p class="note">Prototype. The DM gives a library creature its defense (an AC, or a defense roll) and its attacks (each a whole attack roll, a damage roll and a look). NPCs in play copy them and can be changed one at a time. Take Action uses them; player attacks are compared against them. Everything here is clickable.</p>
+    <p style="margin:12px 0 0"><span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span></p>
+  </header>
+
+  <div class="grid2">
+    <section>
+      <p class="where">1 · Enemies Gallery · a library creature</p>
+      <div class="card" id="editor"></div>
+    </section>
+    <section>
+      <p class="where">2 · An NPC in play · changed for this one</p>
+      <div class="card" id="instance"></div>
+    </section>
+  </div>
+
+  <div class="grid2">
+    <section>
+      <p class="where">3 · Take Action · the Carrion Crawler acts</p>
+      <div class="drawer" id="drawer"></div>
+    </section>
+    <section>
+      <p class="where">4 · A player attacks it · the DM's History and Deal Damage</p>
+      <div class="card" id="logcard"></div>
+    </section>
+  </div>
+</main>
+
+<script>
+  // Looks: the monster set joins the weapon/spell set. `uses` = the animation phase 1 borrows.
+  const LOOKS = {
+    monster: [["bite","Bite","cut"],["claw","Claw","cut"],["lash","Lash","cut"],["sting","Sting","arrow"],["slam","Slam","chop"],["breath","Breath","fire"],["spit","Spit","arrow"]],
+    weapon: [["cut","Cut"],["chop","Chop"],["flurry","Flurry"],["arrow","Arrow"],["rock","Rock"]],
+    magic: [["fire","Fire"],["force","Force"],["bolt","Bolt"]],
+  };
+  const ICON = {
+    bite:'<path d="M3 8c3-4 11-4 14 0M3 12c3 4 11 4 14 0"/><path d="M6 8.6l1 2 1-2.4 1 2.4 1-2.4 1 2.4 1-2.4 1 2"/><path d="M6 11.4l1-1.8 1 2.2 1-2.2 1 2.2 1-2.2 1 2.2 1-1.8"/>',
+    claw:'<path d="M5 3c2 5 2 9 0 14M10 3c2 5 2 9 0 14M15 3c2 5 2 9 0 14"/>',
+    lash:'<path d="M3 15c3 0 4-3 5-6s3-5 6-4 2 5-1 6-3-2-1-3"/>',
+    sting:'<path d="M4 16c4-1 7-4 9-8l3-5-5 3c-4 2-7 5-8 9z"/><path d="M13 7l1 1"/>',
+    slam:'<rect x="5" y="3" width="10" height="7" rx="2"/><path d="M10 10v4M4 17h12M6 15l-2 2M14 15l2 2"/>',
+    breath:'<path d="M3 10h4"/><path d="M7 10c3-5 7-6 10-5M7 10c3 0 7 0 10 0M7 10c3 5 7 6 10 5"/>',
+    spit:'<circle cx="5" cy="10" r="2"/><path d="M8 10h3M12 8l2 2-2 2M15 10h2"/>',
+    cut:'<path d="M4 16L15 5M13 4l3 3"/>', chop:'<path d="M6 16l8-8M12 4a4 4 0 0 1 4 4l-3 1-2-2z"/>', flurry:'<path d="M5 6l3 3M9 4l3 3M5 12l3 3M12 11l3 3"/>',
+    arrow:'<path d="M3 17L15 5M11 5h4v4M5 13l-2 0 0 2"/>', rock:'<path d="M5 13l2-6 6-2 3 5-3 5-6 1z"/>',
+    fire:'<path d="M10 3c2 3 5 5 5 9a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 3 2 3 0-3 0-5 1-8z"/>', force:'<circle cx="10" cy="10" r="3"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3"/>', bolt:'<path d="M11 2L5 11h4l-1 7 7-10h-4z"/>',
+  };
+  const icon = (k) => `<svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ICON.cut}</svg>`;
+  const lookName = (k) => [...LOOKS.monster, ...LOOKS.weapon, ...LOOKS.magic].find((l) => l[0] === k)?.[1] || k;
+  // Guess a look from the attack's name.
+  const GUESS = [[/bite|fang|jaw|maw|gnaw/i,"bite"],[/claw|talon|rake|scratch/i,"claw"],[/tentacle|whip|lash|tail|tongue|vine/i,"lash"],[/sting|stinger|barb|spike/i,"sting"],[/slam|crush|squeeze|stomp|smash|ram|gore|butt/i,"slam"],[/breath|breathe|exhale/i,"breath"],[/spit|acid|web|spray|venom/i,"spit"],[/axe|hammer|club|mace/i,"chop"],[/bow|sling|throw|javelin/i,"arrow"],[/sword|blade|dagger|spear|scimitar/i,"cut"],[/fire|flame/i,"fire"]];
+  const guess = (name, fallback) => GUESS.find(([re]) => re.test(name))?.[1] || fallback;
+
+  const state = {
+    lib: { name: "Carrion Crawler", hp: 51, defense: { kind: "ac", ac: 13, roll: "2d6+1", rollName: "Dodge" },
+      attacks: [{ id: 1, name: "Tentacle Whip", hit: "1d6", damage: "2d4", look: "lash" }, { id: 2, name: "Tentacle Squeeze", hit: "2d6", damage: "1d6+1", look: "slam" }] },
+    lookOpen: null,
+    inst: { name: "Goblin Soldier 3", from: "Goblin Soldier", changed: true, attacks: [{ name: "Spear", hit: "2d6", damage: "1d8", look: "cut", changed: true }, { name: "Shield Bash", hit: "2d6-1", damage: "1d4", look: "slam" }] },
+    act: { pick: null, phase: "pick", hitTotal: null, def: null },
+    log: { defRolled: null, defMode: "ac" },
+  };
+  const validDice = (s) => /^\s*\d*d\d+(\s*[+-]\s*\d+)*\s*$|^\s*\d+\s*$/i.test(s);
+  const roll = (expr) => { let t = 0; const re = /([+-]?)\s*(\d*)d(\d+)|([+-]?)\s*(\d+)/gi; let m; while ((m = re.exec(expr))) { if (m[3]) { const n = +(m[2] || 1); let s = 0; for (let i = 0; i < n; i++) s += 1 + Math.floor(Math.random() * +m[3]); t += m[1] === "-" ? -s : s; } else if (m[5]) t += m[4] === "-" ? -+m[5] : +m[5]; } return t; };
+  const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+
+  function looksPicker(idx, cur) {
+    const grp = (title, list) => `<span class="grp">${title}</span>` + list.map(([k, l]) => `<button type="button" data-setlook="${idx}" data-look="${k}" class="${k === cur ? "on" : ""}">${icon(k)}${l}</button>`).join("");
+    return `<div class="looks" role="group" aria-label="Look">${grp("Creature", LOOKS.monster)}${grp("Weapon", LOOKS.weapon)}${grp("Magic", LOOKS.magic)}</div>`;
+  }
+
+  function editor() {
+    const L = state.lib, d = L.defense;
+    return `<div style="display:flex;align-items:baseline;gap:10px"><h2>${esc(L.name)}</h2><span class="sub">Library · HP ${L.hp}</span></div>
+      <div class="row"><span class="lbl">Defense</span>
+        <span class="seg"><button data-def="ac" class="${d.kind === "ac" ? "on" : ""}">Armour class</button><button data-def="roll" class="${d.kind === "roll" ? "on" : ""}">Defense roll</button></span>
+        ${d.kind === "ac"
+          ? `<span>AC</span><input class="in dice" style="width:64px" value="${d.ac}" data-field="ac" aria-label="Armour class">`
+          : `<input class="in" style="width:110px" value="${esc(d.rollName)}" data-field="rollName" aria-label="Defense name"><input class="in dice ${validDice(d.roll) ? "" : "bad"}" value="${esc(d.roll)}" data-field="roll" aria-label="Defense roll">`}
+      </div>
+      <p class="hint">${d.kind === "ac" ? "An attack total of this or more hits." : `Rolled when it's attacked; the attack hits if it beats the ${esc(d.rollName || "defense")} roll.`}</p>
+      <div class="row" style="margin-top:16px"><span class="lbl">Attacks</span></div>
+      ${L.attacks.map((a, i) => `
+        <div class="atk">
+          <button type="button" class="look-btn" data-look-open="${i}" aria-label="Look: ${lookName(a.look)}" title="Look: ${lookName(a.look)}">${icon(a.look)}</button>
+          <label>Name<input class="in" value="${esc(a.name)}" data-atk="${i}" data-k="name"></label>
+          <label class="dicefield">Attack roll<input class="in dice ${validDice(a.hit) ? "" : "bad"}" value="${esc(a.hit)}" data-atk="${i}" data-k="hit" placeholder="2d6"></label>
+          <label class="dicefield">Damage<input class="in dice ${validDice(a.damage) ? "" : "bad"}" value="${esc(a.damage)}" data-atk="${i}" data-k="damage" placeholder="1d6"></label>
+          <button type="button" class="x" data-del="${i}" aria-label="Remove ${esc(a.name)}">✕</button>
+        </div>
+        ${state.lookOpen === i ? looksPicker(i, a.look) : ""}`).join("")}
+      <div class="row"><button class="btn" data-add>＋ Add an attack</button><span class="hint" style="margin:0">The attack roll is the whole roll — the table's usual is 2d6, so a tougher creature might be 2d6+2.</span></div>`;
+  }
+
+  function instance() {
+    const I = state.inst;
+    return `<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h2>${esc(I.name)}</h2><span class="sub">In play · from ${esc(I.from)}</span></div>
+      <div class="row"><span class="flag">✎ Changed from the library</span></div>
+      ${I.attacks.map((a) => `<div class="row" style="margin-top:8px"><span style="color:var(--bright)">${icon(a.look)}</span><b style="font-weight:600;color:var(--text)">${esc(a.name)}</b><span class="sub" style="letter-spacing:.04em;text-transform:none">${a.hit} to hit · ${a.damage}</span>${a.changed ? `<span class="hint" style="margin:0">(library: Sword · 2d6 · 1d6)</span>` : ""}</div>`).join("")}
+      <div class="row" style="margin-top:14px"><span class="lbl">Defense</span><span>AC 12</span><span class="hint" style="margin:0">(from the library)</span></div>
+      <div class="row" style="margin-top:16px"><button class="btn">✎ Edit this one</button><button class="btn quiet">Reset to library</button><button class="btn quiet">Save as a new library entry</button></div>
+      <p class="hint">Only this goblin changes; the other four keep the library's Sword. The library itself is untouched unless you save.</p>`;
+  }
+
+  function drawer() {
+    const L = state.lib, A = state.act;
+    const own = L.attacks.map((a, i) => `<button class="chip own${A.pick === i ? " on" : ""}" data-pick="${i}">${icon(a.look)}${esc(a.name)} <small>${a.hit} · ${a.damage}</small></button>`).join("");
+    const generic = [["Unarmed Strike","1d4","flurry"],["Swing Sword","1d8","cut"],["Throw Rock","1d4","rock"]].map(([n, d, l]) => `<span class="chip">${icon(l)}${n} <small>${d}</small></span>`).join("");
+    let step = "";
+    if (A.pick != null) {
+      const a = L.attacks[A.pick];
+      if (A.phase === "roll") step = `<div class="roll-step"><div>${icon(a.look)} <b style="color:var(--text)">${esc(a.name)}</b> · attack roll <b>${a.hit}</b> against Eòghan's <b>AC 12</b></div><div><button class="btn primary" data-attack>Roll ${a.hit}</button></div></div>`;
+      else {
+        const hit = A.hitTotal >= 12;
+        step = `<div class="roll-step"><div class="vs"><b class="n">${A.hitTotal}</b><span>vs Eòghan's AC 12</span><span class="verdict ${hit ? "hit" : "miss"}">${hit ? "Hits" : "Misses"}</span></div>
+          <div class="row" style="margin-top:0">${hit
+            ? `<button class="btn primary" data-dmg>Roll damage ${a.damage} →</button><button class="btn quiet" data-miss>Call it a miss</button>`
+            : `<button class="btn primary" data-miss>Miss</button><button class="btn quiet" data-dmg>Call it a hit →</button>`}<button class="btn quiet" data-attack>↺ Again</button></div>
+          <p class="hint" style="margin:0">A suggestion — you decide.</p></div>`;
+        if (A.phase === "damage") step += `<div class="modal" style="margin-top:12px"><div class="t">Carrion Crawler → Eòghan · ${esc(a.name)}</div><div class="src">Attack ${A.hitTotal} vs AC 12 · <b>hit</b></div><div class="hp"><i></i></div>
+          <div class="row" style="margin-top:0">Damage <b style="font-family:Cinzel;font-size:24px;color:var(--bright);font-weight:400">${A.dmgTotal}</b><span class="hint" style="margin:0">rolled ${a.damage}</span><button class="btn">½</button><button class="btn">×2</button></div>
+          <div class="row" style="margin-top:0;justify-content:flex-end"><button class="btn quiet">Cancel</button><button class="btn primary">Apply Damage</button></div></div>`;
+      }
+    }
+    return `<div class="who">Carrion Crawler → Eòghan</div><div class="sub" style="margin-top:2px">Pick an action</div>
+      <div class="chips">${own}<div class="divider"></div>${generic}<span class="chip">✚ Heal</span><span class="chip">✶ Magic ▾</span></div>${step}`;
+  }
+
+  function logcard() {
+    const D = state.log;
+    const ac = D.defMode === "ac";
+    const vsline = ac
+      ? `<span class="verdict hit">Hits</span><span>vs AC 13</span>`
+      : D.defRolled == null
+        ? `<span>vs Dodge 2d6+1</span><button class="btn" data-defroll>Roll Dodge</button>`
+        : `<span>vs Dodge <b style="color:var(--text)">${D.defRolled}</b></span><span class="verdict ${15 > D.defRolled ? "hit" : "miss"}">${15 > D.defRolled ? "Hits" : "Misses"}</span><button class="btn quiet" data-defroll>↺</button>`;
+    return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="sub">History</span><span style="flex:1"></span><span class="seg"><button data-logdef="ac" class="${ac ? "on" : ""}">Creature has AC</button><button data-logdef="roll" class="${ac ? "" : "on"}">Has a defense roll</button></span></div>
+      <div class="log" style="margin-top:8px">
+        <div class="r"><span class="nm">Eòghan</span><span>Dagger ATK → ◎ Carrion Crawler</span><span class="tot">15</span><div class="vsline">${vsline}</div></div>
+        <div class="r"><span class="nm">Eòghan</span><span>Dagger DMG → ◎ Carrion Crawler</span><span class="tot">7</span><div class="vsline"><button class="btn primary">Deal Damage</button></div></div>
+      </div>
+      <div class="modal" style="margin-top:14px"><div class="t">Eòghan → Carrion Crawler · Dagger</div>
+        <div class="src">From Eòghan's roll: 1d6+3 → 7 · attack ${ac ? "15 vs AC 13 · <b>hit</b>" : D.defRolled == null ? "15 vs Dodge (not rolled yet)" : `15 vs Dodge ${D.defRolled} · <b>${15 > D.defRolled ? "hit" : "miss"}</b>`}</div>
+        <div class="row" style="margin-top:0;justify-content:flex-end"><button class="btn quiet">Miss</button><button class="btn quiet">Cancel</button><button class="btn primary">Apply Damage</button></div></div>
+      <p class="players-see">Players see none of this: no AC, no defense roll, no verdict — only the damage when you apply it.</p>`;
+  }
+
+  function render() {
+    document.getElementById("editor").innerHTML = editor();
+    document.getElementById("instance").innerHTML = instance();
+    document.getElementById("drawer").innerHTML = drawer();
+    document.getElementById("logcard").innerHTML = logcard();
+  }
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const L = state.lib, A = state.act;
+    if (b.dataset.pal) { document.body.dataset.pal = b.dataset.pal; document.querySelectorAll("[data-pal]").forEach((x) => x.classList.toggle("on", x === b)); return; }
+    if (b.dataset.def) { L.defense.kind = b.dataset.def; }
+    if (b.dataset.lookOpen != null) { const i = +b.dataset.lookOpen; state.lookOpen = state.lookOpen === i ? null : i; }
+    if (b.dataset.setlook != null) { L.attacks[+b.dataset.setlook].look = b.dataset.look; L.attacks[+b.dataset.setlook].lookSet = true; state.lookOpen = null; }
+    if (b.dataset.del != null) { L.attacks.splice(+b.dataset.del, 1); state.lookOpen = null; A.pick = null; }
+    if (b.dataset.add !== undefined) L.attacks.push({ id: Date.now(), name: "", hit: "2d6", damage: "1d6", look: "cut" });
+    if (b.dataset.pick != null) { A.pick = +b.dataset.pick; A.phase = "roll"; }
+    if (b.dataset.attack !== undefined) { A.hitTotal = roll(L.attacks[A.pick].hit); A.phase = "result"; }
+    if (b.dataset.dmg !== undefined) { A.dmgTotal = roll(L.attacks[A.pick].damage); A.phase = "damage"; }
+    if (b.dataset.miss !== undefined) { A.pick = null; }
+    if (b.dataset.logdef) { state.log.defMode = b.dataset.logdef; state.log.defRolled = null; }
+    if (b.dataset.defroll !== undefined) state.log.defRolled = roll("2d6+1");
+    render();
+  });
+  document.addEventListener("input", (e) => {
+    const t = e.target, L = state.lib;
+    if (t.dataset.field) { L.defense[t.dataset.field] = t.value; t.classList.toggle("bad", t.dataset.field === "roll" && !validDice(t.value)); return; }
+    if (t.dataset.atk != null) {
+      const a = L.attacks[+t.dataset.atk];
+      a[t.dataset.k] = t.value;
+      if (t.dataset.k !== "name") t.classList.toggle("bad", !validDice(t.value));
+      // Guess the look from the name until the DM picks one.
+      if (t.dataset.k === "name" && !a.lookSet) {
+        a.look = guess(t.value, a.look);
+        const btn = t.closest(".atk").querySelector(".look-btn"); btn.innerHTML = icon(a.look); btn.title = `Look: ${lookName(a.look)}`;
+      }
+      document.getElementById("drawer").innerHTML = drawer();
+    }
+  });
+  render();
+</script>
+</body>
+</html>
