@@ -14,13 +14,22 @@ describe("NpcStatsEditor", () => {
     render(<Harness initial={{ defense: { kind: "ac", ac: 13 }, attacks: [] }} />);
     expect(screen.getByLabelText("Armour class")).toHaveValue("13");
     fireEvent.click(screen.getByRole("button", { name: "Defense roll" }));
-    expect(screen.getByLabelText("Defense roll")).toHaveValue("1d20+3");
-    expect(screen.getByLabelText("Defense name")).toHaveValue("Dodge");
+    // Starts empty: the examples are faded placeholders, not values.
+    expect(screen.getByLabelText("Defense roll")).toHaveValue("");
+    expect(screen.getByLabelText("Defense roll")).toHaveAttribute("placeholder", "1d20+3");
+    expect(screen.getByLabelText("Defense name")).toHaveAttribute("placeholder", "Dodge");
+    // Empty isn't an error; something unreadable is.
+    expect(screen.getByLabelText("Defense roll").className).not.toMatch(/bad/);
+    fireEvent.change(screen.getByLabelText("Defense roll"), { target: { value: "lots" } });
+    expect(screen.getByLabelText("Defense roll").className).toMatch(/bad/);
   });
 
   it("adds an attack, guesses its look from the name, and shows hit chances", () => {
     render(<Harness initial={{ defense: null, attacks: [] }} />);
     fireEvent.click(screen.getByRole("button", { name: "＋ Add an attack" }));
+    // A new attack starts empty, with examples as placeholders.
+    expect(screen.getByPlaceholderText("1d20+4")).toHaveValue("");
+    expect(screen.getByPlaceholderText("1d6+2")).toHaveValue("");
     fireEvent.change(screen.getByPlaceholderText("Tentacles"), { target: { value: "Poison Bite" } });
     expect(screen.getByRole("button", { name: "Look: Bite" })).toBeInTheDocument();
     fireEvent.change(screen.getByPlaceholderText("1d20+4"), { target: { value: "1d20+8" } });

@@ -6,7 +6,10 @@ import LookIcon from "./LookIcon";
 import { LOOK_GROUPS, chanceToReach, guessLook, isDice, lookLabel } from "./npcStats";
 import "./npcStats.css";
 
-const BLANK_ATTACK = () => ({ id: `atk-${Date.now().toString(36)}`, name: "", hit: "1d20+3", damage: "1d6+1", look: "cut" });
+// New attacks start empty: the faded placeholders show an example.
+const BLANK_ATTACK = () => ({ id: `atk-${Date.now().toString(36)}`, name: "", hit: "", damage: "", look: "cut" });
+// Red only once something unreadable is typed; empty is just unfinished.
+const badDice = (v) => !!(v && String(v).trim()) && !isDice(v);
 
 export default function NpcStatsEditor({ defense, attacks, onChange }) {
   const [lookOpen, setLookOpen] = useState(null);
@@ -30,12 +33,12 @@ export default function NpcStatsEditor({ defense, attacks, onChange }) {
         <div className="ns-row">
           <div className="ns-seg" role="group" aria-label="Defense kind">
             <button type="button" className={d.kind !== "roll" ? "on" : ""} aria-pressed={d.kind !== "roll"} onClick={() => setDefense({ kind: "ac", ac: d.ac ?? "" })}>Armour class</button>
-            <button type="button" className={d.kind === "roll" ? "on" : ""} aria-pressed={d.kind === "roll"} onClick={() => setDefense({ kind: "roll", roll: d.roll || "1d20+3", name: d.name || "Dodge" })}>Defense roll</button>
+            <button type="button" className={d.kind === "roll" ? "on" : ""} aria-pressed={d.kind === "roll"} onClick={() => setDefense({ kind: "roll", roll: d.roll || "", name: d.name || "" })}>Defense roll</button>
           </div>
           {d.kind === "roll" ? (
             <>
               <input className="ns-input ns-name" value={d.name ?? ""} onChange={(e) => setDefense({ ...d, name: e.target.value })} aria-label="Defense name" placeholder="Dodge" />
-              <input className={`ns-input ns-dice${isDice(d.roll || "") ? "" : " bad"}`} value={d.roll ?? ""} onChange={(e) => setDefense({ ...d, roll: e.target.value })} aria-label="Defense roll" placeholder="1d20+3" />
+              <input className={`ns-input ns-dice${badDice(d.roll) ? " bad" : ""}`} value={d.roll ?? ""} onChange={(e) => setDefense({ ...d, roll: e.target.value })} aria-label="Defense roll" placeholder="1d20+3" />
             </>
           ) : (
             <label className="ns-ac">AC <input className="ns-input ns-dice ns-acin" inputMode="numeric" value={d.ac ?? ""} onChange={(e) => setDefense({ kind: "ac", ac: e.target.value.replace(/[^0-9]/g, "").slice(0, 2) })} aria-label="Armour class" placeholder="13" /></label>
@@ -49,7 +52,7 @@ export default function NpcStatsEditor({ defense, attacks, onChange }) {
       <div className="ns-field">
         <span className="ns-label">Attacks</span>
         {list.map((a, i) => {
-          const okHit = isDice(a.hit || ""), okDmg = isDice(a.damage || "");
+          const okHit = isDice(a.hit || "");
           return (
             <div key={a.id} className="ns-attack">
               <div className="ns-attack-row">
@@ -57,8 +60,8 @@ export default function NpcStatsEditor({ defense, attacks, onChange }) {
                   <LookIcon look={a.look} />
                 </button>
                 <label className="ns-col ns-grow">Name<input className="ns-input" value={a.name} onChange={(e) => editAttack(i, { name: e.target.value })} placeholder="Tentacles" /></label>
-                <label className="ns-col">Attack roll<input className={`ns-input ns-dice${okHit ? "" : " bad"}`} value={a.hit} onChange={(e) => editAttack(i, { hit: e.target.value })} placeholder="1d20+4" /></label>
-                <label className="ns-col">Damage<input className={`ns-input ns-dice${okDmg ? "" : " bad"}`} value={a.damage} onChange={(e) => editAttack(i, { damage: e.target.value })} placeholder="1d6+2" /></label>
+                <label className="ns-col">Attack roll<input className={`ns-input ns-dice${badDice(a.hit) ? " bad" : ""}`} value={a.hit} onChange={(e) => editAttack(i, { hit: e.target.value })} placeholder="1d20+4" /></label>
+                <label className="ns-col">Damage<input className={`ns-input ns-dice${badDice(a.damage) ? " bad" : ""}`} value={a.damage} onChange={(e) => editAttack(i, { damage: e.target.value })} placeholder="1d6+2" /></label>
                 <button type="button" className="ns-remove" aria-label={`Remove ${a.name || "this attack"}`} onClick={() => { setLookOpen(null); setAttacks(list.filter((_, j) => j !== i)); }}>✕</button>
               </div>
               {okHit && (
