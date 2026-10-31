@@ -14,12 +14,20 @@ import { DEFAULT_MONEY, normalizeMoney } from "./money";
 // playersEndTurn — players may end their own turn in initiative (Story 49).
 // customEffects — the DM's own effects ([{ name, kind }]), Story 70.
 // money — which coins are in use and their worth in silver (lib/money.js).
-export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY };
+// npcAttackDice — the attack roll for an NPC's quick attacks when the creature
+// has none of its own (standard: a d20 plus a typical monster's +3).
+export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" };
 
 const CHECK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)$/;
 
 export function isValidCheckDice(value) {
   return typeof value === "string" && CHECK_DICE_PATTERN.test(value.trim().toLowerCase());
+}
+
+// Dice with an optional bonus or penalty: 1d20+3, 2d6-1, 1d20.
+const ATTACK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)([+-]\d{1,2})?$/;
+export function isValidAttackDice(value) {
+  return typeof value === "string" && ATTACK_DICE_PATTERN.test(value.replace(/\s+/g, "").toLowerCase());
 }
 
 export function normalizeHouseRules(raw) {
@@ -31,6 +39,7 @@ export function normalizeHouseRules(raw) {
     playersEndTurn: raw?.playersEndTurn !== false,
     customEffects: normalizeCustomEffects(raw?.customEffects).map(({ name, kind }) => ({ name, kind })),
     money: normalizeMoney(raw?.money),
+    npcAttackDice: isValidAttackDice(raw?.npcAttackDice) ? raw.npcAttackDice.replace(/\s+/g, "").toLowerCase() : DEFAULT_HOUSE_RULES.npcAttackDice,
   };
 }
 

@@ -6,7 +6,9 @@ import { PALETTES } from "../features/characterSheet/theme";
 import { postDmRoll } from "../api";
 import { applyCheckAdvantage, DEFAULT_HOUSE_RULES, isCheckDiceGroups } from "../lib/houseRules";
 import { buildLocalRollHistoryEntry, buildRollHistoryPayload, extractRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
-import { isDealableRoll } from "../features/dmDashboard/takeAction/actionOptions";
+import { isDealableRoll, isToHitRoll } from "../features/dmDashboard/takeAction/actionOptions";
+import DefenseCheck from "../features/dmDashboard/takeAction/DefenseCheck";
+import { normalizeDefense } from "../features/dmDashboard/npcStats";
 import "../features/dmDashboard/takeAction/takeAction.css";
 import "./diceRoller.css";
 
@@ -629,6 +631,15 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
                       opacity={opacity}
                       showDivider={i < combinedHistory.length - 1}
                     >
+                      {/* A player's to-hit at an NPC, against its defense (AC or a roll). */}
+                      {isToHitRoll(entry) && entry.target?.type === "npc" && (
+                        <DefenseCheck
+                          total={entry.total}
+                          isCrit={!!entry.isCrit}
+                          isFumble={!!entry.isFumble}
+                          defense={normalizeDefense(npcs.find((n) => n.id === entry.target.sourceId)?.defense)}
+                        />
+                      )}
                       {/* ADR-032 — apply a player's targeted damage roll. */}
                       {onDealDamage && isDealableRoll(entry) && (
                         entry.applied || appliedRollIds?.has(entry.id) ? (

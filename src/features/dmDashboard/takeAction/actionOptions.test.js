@@ -45,3 +45,24 @@ describe("isDealableRoll", () => {
     expect(isDealableRoll({ ...roll, source: "dm" })).toBe(false);
   });
 });
+
+describe("NPC attacks in Take Action", () => {
+  it("lists a creature's own attacks first, with their attack roll and look", async () => {
+    const { actionGroups, toHitExpr } = await import("./actionOptions");
+    const groups = actionGroups({ type: "npc", npc: { attacks: [{ id: "t", name: "Tentacles", hit: "1d20+8", damage: "1d4+2", look: "lash" }] } });
+    expect(groups.own).toEqual([{ id: "own-t", name: "Tentacles", hit: "1d20+8", dice: "1d4+2", look: "lash", style: "cut", own: true }]);
+    expect(groups.primary.length).toBeGreaterThan(0);
+    expect(actionGroups({ type: "npc", npc: {} }).own).toEqual([]);
+    expect(toHitExpr("+5")).toBe("1d20+5");
+    expect(toHitExpr("-1")).toBe("1d20-1");
+    expect(toHitExpr("")).toBe("1d20");
+  });
+
+  it("finds the to-hit roll that went with a player's damage roll", async () => {
+    const { toHitRollFor } = await import("./actionOptions");
+    const atk = (total, at, attack = { id: "dagger", name: "Dagger" }) => ({ slug: "eoghan", label: "Dagger ATK", total, createdAt: at, target: { type: "npc", sourceId: "crawler" }, attack });
+    const rolls = [atk(9, "2026-10-30T10:00:00Z"), atk(15, "2026-10-30T10:01:00Z"), atk(18, "2026-10-30T10:03:00Z")];
+    const damage = { slug: "eoghan", label: "Dagger DMG", createdAt: "2026-10-30T10:02:00Z", target: { sourceId: "crawler" }, attack: { id: "dagger", name: "Dagger" } };
+    expect(toHitRollFor(rolls, damage).total).toBe(15);
+  });
+});

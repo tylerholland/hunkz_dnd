@@ -8,8 +8,10 @@
 // playersEndTurn — players may end their own turn in initiative (Story 49).
 // customEffects — the DM's own effects ([{ name, kind }]), Story 70.
 // money — which coins are in use and their worth in silver (lib/money.js).
+// npcAttackDice — the attack roll for an NPC's quick attacks when the creature
+// has none of its own: a d20 plus a typical low-level monster's +3, by default.
 const { normalizeMoney, DEFAULT_MONEY } = require("./money");
-const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY };
+const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" };
 const EFFECT_KINDS = new Set(["curse", "helpful", "neutral"]);
 
 function normalizeCustomEffects(list) {
@@ -38,6 +40,12 @@ function normalizeDice(value, fallback) {
   return isValidCheckDice(dice) ? dice : fallback;
 }
 
+// Dice with an optional bonus or penalty: 1d20+3, 2d6-1, 1d20.
+const ATTACK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)([+-]\d{1,2})?$/;
+function isValidAttackDice(value) {
+  return typeof value === "string" && ATTACK_DICE_PATTERN.test(value.replace(/\s+/g, "").toLowerCase());
+}
+
 function normalizeHouseRulesRecord(item) {
   const dice = typeof item?.abilityCheckDice === "string" ? item.abilityCheckDice.trim().toLowerCase() : "";
   return {
@@ -47,8 +55,9 @@ function normalizeHouseRulesRecord(item) {
     playersEndTurn: item?.playersEndTurn !== false,
     customEffects: normalizeCustomEffects(item?.customEffects),
     money: normalizeMoney(item?.money),
+    npcAttackDice: isValidAttackDice(item?.npcAttackDice) ? item.npcAttackDice.replace(/\s+/g, "").toLowerCase() : DEFAULT_HOUSE_RULES.npcAttackDice,
     version: Number.isFinite(item?.version) ? item.version : 0,
   };
 }
 
-module.exports = { DEFAULT_HOUSE_RULES, isValidCheckDice, normalizeHouseRulesRecord };
+module.exports = { DEFAULT_HOUSE_RULES, isValidCheckDice, isValidAttackDice, normalizeHouseRulesRecord };

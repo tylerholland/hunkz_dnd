@@ -18,6 +18,8 @@ import {
 } from "./dashboardShared";
 import TokenSizeControl from "./battleMode/TokenSizeControl";
 import "./npcCombat.css";
+import NpcAttacksRef from "./NpcAttacksRef";
+import { statsFromTemplate } from "./npcStats";
 
 /* ── Portrait/initials thumb helper (shared inside NpcCombatSection) ── */
 function NpcThumb({ portraitUrl, name, size = 32, npcPal }) {
@@ -1044,6 +1046,23 @@ function NpcCard({
       </div>
 
       {!collapsed && (
+        <NpcAttacksRef
+          npc={npc}
+          template={(libraryTemplates || []).find((t) => t.id === npc.librarySourceId) || null}
+          onSave={async (stats) => {
+            const updatedNpcs = (allNpcsRef.current || []).map((entry) => {
+              if (entry.id !== npc.id) return entry;
+              const next = { ...entry, defense: stats.defense, attacks: stats.attacks };
+              if (!next.defense) delete next.defense;
+              if (!next.attacks.length) delete next.attacks;
+              return next;
+            });
+            return onCommitNpcs(updatedNpcs);
+          }}
+        />
+      )}
+
+      {!collapsed && (
         <NpcAbilityRef
           abilities={npc.abilities}
           isActiveTurn={isActiveTurn}
@@ -1217,6 +1236,8 @@ export default function NpcCombatSection({
       ...(stagedPortraitUrl ? { portraitUrl: stagedPortraitUrl } : {}),
       ...(stagedAbilities ? { abilities: stagedAbilities } : {}),
       ...(stagedLibrarySourceId ? { librarySourceId: stagedLibrarySourceId } : {}),
+      // The creature's attacks and defense, copied so each NPC can change its own.
+      ...statsFromTemplate((npcLibrary?.templates || []).find((t) => t.id === stagedLibrarySourceId)),
     }));
     const updated = [...npcs, ...newNpcs];
     setAddName("");

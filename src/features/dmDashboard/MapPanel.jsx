@@ -582,7 +582,7 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       return { type: "character", sourceId: token.sourceId, name: member?.name || "Unknown", member };
     }
     const npc = (npcCombat?.npcs || []).find((n) => n.id === token.sourceId);
-    return { type: "npc", sourceId: token.sourceId, name: npc?.name || "Unknown" };
+    return { type: "npc", sourceId: token.sourceId, name: npc?.name || "Unknown", npc };
   }, [party, npcCombat]);
   const actorInfo = describeToken(actionTokens.actor);
   const targetInfo = describeToken(actionTokens.target);

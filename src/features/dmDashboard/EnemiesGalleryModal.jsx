@@ -1,6 +1,8 @@
 import { useContext, useEffect, useRef, useState } from "react";
 import { presignNpcPortrait, putNpcLibrary } from "../../api";
 import { PalCtx } from "./dashboardShared";
+import NpcStatsEditor from "./NpcStatsEditor";
+import { normalizeAttacks, normalizeDefense } from "./npcStats";
 import "./enemiesGallery.css";
 
 const ABILITY_MAX_LENGTH = 255;
@@ -113,6 +115,8 @@ function EntryEditor({ entry, npcPal, dmPassword, onMarkDirty, onSave, workingRe
   const [hpMax, setHpMax] = useState(entry.hpMax != null ? String(entry.hpMax) : "");
   const [abilities, setAbilities] = useState(entry.abilities || []);
   const [portraitUrl, setPortraitUrl] = useState(entry.portraitUrl || null);
+  // The creature's defense and attacks, as typed (cleaned when saved).
+  const [stats, setStats] = useState({ defense: entry.defense || null, attacks: entry.attacks || [] });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [removeConfirm, setRemoveConfirm] = useState(false);
@@ -121,14 +125,15 @@ function EntryEditor({ entry, npcPal, dmPassword, onMarkDirty, onSave, workingRe
 
   // Sync working copy up via ref so parent can read on save
   useEffect(() => {
-    workingRef.current = { name, hpMax, abilities, portraitUrl };
-  }, [name, hpMax, abilities, portraitUrl, workingRef]);
+    workingRef.current = { name, hpMax, abilities, portraitUrl, stats };
+  }, [name, hpMax, abilities, portraitUrl, stats, workingRef]);
 
   // When a new entry is selected, reset local state
   useEffect(() => {
     setName(entry.name || "");
     setHpMax(entry.hpMax != null ? String(entry.hpMax) : "");
     setAbilities(entry.abilities || []);
+    setStats({ defense: entry.defense || null, attacks: entry.attacks || [] });
     setPortraitUrl(entry.portraitUrl || null);
     setUploadError("");
     setRemoveConfirm(false);
@@ -242,6 +247,12 @@ function EntryEditor({ entry, npcPal, dmPassword, onMarkDirty, onSave, workingRe
         <span className="eg-hp-hint">Optional. Empty = no HP chip on picker rows.</span>
       </div>
 
+      <NpcStatsEditor
+        defense={stats.defense}
+        attacks={stats.attacks}
+        onChange={(next) => { setStats(next); markDirty(); }}
+      />
+
       <div className="eg-field-group">
         <label className="eg-field-label">Abilities</label>
         <AbilitiesListEditor
@@ -353,6 +364,7 @@ export default function EnemiesGalleryModal({ templates, dmPassword, onClose, on
               hpMax: Number.isFinite(hpMaxParsed) ? hpMaxParsed : null,
               abilities: w.abilities || t.abilities,
               portraitUrl: w.portraitUrl !== undefined ? w.portraitUrl : t.portraitUrl,
+              ...(w.stats ? { defense: normalizeDefense(w.stats.defense), attacks: normalizeAttacks(w.stats.attacks) } : {}),
             }
           : t
       )
@@ -452,6 +464,8 @@ export default function EnemiesGalleryModal({ templates, dmPassword, onClose, on
       hpMax: Number.isFinite(hpMaxParsed) ? hpMaxParsed : null,
       abilities: w.abilities || [],
       portraitUrl: w.portraitUrl !== undefined ? w.portraitUrl : selectedEntry.portraitUrl,
+      defense: normalizeDefense(w.stats?.defense),
+      attacks: normalizeAttacks(w.stats?.attacks),
       updatedAt: new Date().toISOString(),
     };
     const nextEntries = entries.map((t) => t.id === selectedId ? updatedEntry : t);

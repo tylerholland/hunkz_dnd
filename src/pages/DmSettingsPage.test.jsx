@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -37,7 +37,7 @@ describe("DmSettingsPage", () => {
     fireEvent.change(input, { target: { value: "1D20" } });
     expect(screen.getByText("1d20+2")).toBeInTheDocument();
     fireEvent.click(screen.getAllByText("Save")[0]);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" }));
     expect(await screen.findByText(/Saved/)).toBeInTheDocument();
   });
 
@@ -46,7 +46,7 @@ describe("DmSettingsPage", () => {
     const toggle = await screen.findByRole("switch", { name: "Features & Traits" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
     fireEvent.click(toggle);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" }));
     expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
@@ -92,7 +92,8 @@ describe("DmSettingsPage", () => {
     expect(screen.getByRole("switch", { name: "Silver" })).toBeDisabled();
     fireEvent.click(copper);
     fireEvent.change(screen.getByLabelText("Gold worth in silver"), { target: { value: "50" } });
-    fireEvent.click(screen.getAllByText("Save")[2]);
+    const moneyCard = screen.getByRole("heading", { name: "Money" }).closest("section");
+    fireEvent.click(within(moneyCard).getByText("Save"));
     await waitFor(() => expect(api.putHouseRules).toHaveBeenCalled());
     const { money } = api.putHouseRules.mock.calls[0][1];
     expect(money.coins.cp).toEqual({ on: true, rate: 0.1 });
@@ -105,7 +106,7 @@ describe("DmSettingsPage", () => {
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Spell casting dice" })).toHaveValue("1d20"));
     fireEvent.click(screen.getByRole("button", { name: "2d6" }));
     fireEvent.click(screen.getAllByText("Save")[1]);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "2d6", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "2d6", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" }));
   });
 
   it("turns player turn-ending off", async () => {
@@ -115,5 +116,27 @@ describe("DmSettingsPage", () => {
     expect(toggle).toHaveAttribute("aria-checked", "true");
     fireEvent.click(toggle);
     await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", expect.objectContaining({ playersEndTurn: false })));
+  });
+});
+
+describe("DmSettingsPage NPC attack roll", () => {
+  beforeEach(() => {
+    sessionStorage.setItem("dnd_dm_password", "swordfish");
+    api.getSessionState.mockResolvedValue({ houseRules: { abilityCheckDice: "2d6" } });
+    api.putHouseRules.mockImplementation(async (_pw, rules) => ({ houseRules: rules }));
+    api.listCharacters.mockResolvedValue([]);
+  });
+  afterEach(() => { sessionStorage.clear(); vi.clearAllMocks(); });
+
+  it("keeps the standard 1d20+3 or saves the DM's own roll", async () => {
+    render(<MemoryRouter><DmSettingsPage /></MemoryRouter>);
+    await waitFor(() => expect(screen.getByRole("button", { name: "Your own" })).toBeEnabled());
+    const card = screen.getByRole("heading", { name: "NPC attack roll" }).closest("section");
+    expect(within(card).getByText(/Hits AC 12 about/)).toHaveTextContent("60%");
+    fireEvent.click(within(card).getByRole("button", { name: "Your own" }));
+    fireEvent.change(within(card).getByLabelText("Your NPC attack roll"), { target: { value: "1d20 + 5" } });
+    fireEvent.click(within(card).getByText("Save"));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalled());
+    expect(api.putHouseRules.mock.calls[0][1].npcAttackDice).toBe("1d20+5");
   });
 });

@@ -4,14 +4,17 @@ import { buildAttackEntries, buildUnarmedStrike, normalizeSpells } from "../../c
 import { abilityModifier } from "../cardStats";
 import { classifyStrike } from "../../maps/combatFx/strikeRules";
 import { parseDiceExpr, rollDie } from "../../../components/DiceRoller";
+import { lookAnimation, normalizeAttacks } from "../npcStats";
 
 // A potion of healing — the most common heal the DM applies by hand.
 export const DEFAULT_HEAL_DICE = "2d4+2";
 
 export const HEAL_ACTION = { id: "heal", name: "Heal", style: "heal", dice: DEFAULT_HEAL_DICE, heal: true };
 
-// NPCs have no weapon stats: the DM picks the look, and the dice last used
-// for that NPC + action are remembered (see rememberedDice below).
+// Quick attacks for any NPC (and for creatures without their own): the DM
+// picks the look, and the dice last used for that NPC + action are
+// remembered (see rememberedDice below). Their attack roll is the DM
+// Setting "NPC attack roll" (houseRules.npcAttackDice).
 export const NPC_ACTIONS = [
   { id: "npc-unarmed", name: "Unarmed Strike", style: "flurry", dice: "1d4" },
   { id: "npc-sword", name: "Swing Sword", style: "cut", dice: "1d8" },
@@ -45,8 +48,33 @@ export function characterActions(member) {
     name: entry.name,
     kind: entry.kind,
     toHit: entry.toHit || "",
+    // The whole attack roll, as the DM rolls it for this character: a d20 plus
+    // the to-hit bonus.
+    hit: toHitExpr(entry.toHit),
     dice: entry.damage || "",
     style: classifyStrike({ attack: { kind: entry.kind, name: entry.name }, adjacent: entry.kind !== "spell" }),
+  }));
+}
+
+// "+5" / "5" / "-1" → "1d20+5" / "1d20-1"; nothing → "1d20".
+export function toHitExpr(toHit) {
+  const n = parseInt(String(toHit ?? "").replace(/\s+/g, ""), 10);
+  return Number.isFinite(n) && n !== 0 ? `1d20${n > 0 ? "+" : ""}${n}` : "1d20";
+}
+
+/**
+ * An NPC's own attacks (set on its library creature or on the NPC), as
+ * actions: the whole attack roll, the damage, and the animation for its look.
+ */
+export function npcOwnActions(npc) {
+  return normalizeAttacks(npc?.attacks).map((a) => ({
+    id: `own-${a.id}`,
+    name: a.name,
+    hit: a.hit,
+    dice: a.damage,
+    look: a.look,
+    style: lookAnimation(a.look),
+    own: true,
   }));
 }
 
@@ -61,7 +89,7 @@ export function actionGroups(actor) {
       magic: [],
     };
   }
-  return { primary: NPC_ACTIONS, spells: [], heal: HEAL_ACTION, magic: MAGIC_ACTIONS };
+  return { own: npcOwnActions(actor?.npc), primary: NPC_ACTIONS, spells: [], heal: HEAL_ACTION, magic: MAGIC_ACTIONS };
 }
 
 /**
@@ -76,6 +104,32 @@ export function isDealableRoll(entry) {
     && !!entry.target?.sourceId
     && !!entry.attack?.name
     && /\bDMG$/i.test(String(entry.label || "").trim());
+}
+
+/** A player's to-hit roll aimed at a target (ATK / CAST), not the damage. */
+export function isToHitRoll(entry) {
+  return !!entry
+    && entry.source !== "dm"
+    && !!entry.slug
+    && !!entry.target?.sourceId
+    && !!entry.attack?.name
+    && /\b(ATK|CAST)\b/i.test(String(entry.label || ""));
+}
+
+/**
+ * The to-hit roll that went with a player's damage roll: the newest ATK/CAST
+ * by the same player at the same target with the same attack, before it.
+ */
+export function toHitRollFor(rolls, damageEntry) {
+  const at = Date.parse(damageEntry?.createdAt || "");
+  if (!Array.isArray(rolls) || !Number.isFinite(at)) return null;
+  return rolls
+    .filter((r) => isToHitRoll(r)
+      && r.slug === damageEntry.slug
+      && r.target?.sourceId === damageEntry.target?.sourceId
+      && (r.attack.id ? r.attack.id === damageEntry.attack?.id : r.attack.name === damageEntry.attack?.name)
+      && Date.parse(r.createdAt || "") <= at)
+    .sort((a, b) => Date.parse(b.createdAt) - Date.parse(a.createdAt))[0] || null;
 }
 
 // ── Dice ────────────────────────────────────────────────────────────────────

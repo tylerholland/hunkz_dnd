@@ -4,9 +4,9 @@ import { DEFAULT_MONEY } from "./money";
 
 describe("houseRules", () => {
   it("defaults to 2d6 and validates NdS dice", () => {
-    expect(normalizeHouseRules(null)).toEqual({ abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY });
-    expect(normalizeHouseRules({ abilityCheckDice: " 1D20 " })).toEqual({ abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY });
-    expect(normalizeHouseRules({ abilityCheckDice: "2d6+1", featuresEnabled: false })).toEqual({ abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY });
+    expect(normalizeHouseRules(null)).toEqual({ abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" });
+    expect(normalizeHouseRules({ abilityCheckDice: " 1D20 " })).toEqual({ abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" });
+    expect(normalizeHouseRules({ abilityCheckDice: "2d6+1", featuresEnabled: false })).toEqual({ abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" });
     expect(normalizeHouseRules({ spellCastDice: " 2D6 " }).spellCastDice).toBe("2d6");
     expect(normalizeHouseRules({ spellCastDice: "2d6+1" }).spellCastDice).toBe("1d20");
     expect(isValidCheckDice("10d100")).toBe(true);

@@ -1,7 +1,8 @@
 import { useId } from "react";
+import LookIcon from "../LookIcon";
 import "./takeAction.css";
 
-function ActionChip({ action, glyph, onPick, variant }) {
+function ActionChip({ action, glyph, icon, onPick, variant }) {
   return (
     <button
       type="button"
@@ -9,8 +10,11 @@ function ActionChip({ action, glyph, onPick, variant }) {
       onClick={() => onPick(action)}
     >
       {glyph && <span className="ta-chip-glyph" aria-hidden="true">{glyph}</span>}
+      {icon && <span className="ta-chip-glyph" aria-hidden="true">{icon}</span>}
       {action.name}
-      {(action.toHit || action.dice) && <span className="ta-chip-meta">{action.toHit || action.dice}</span>}
+      {action.own
+        ? <span className="ta-chip-meta">{action.hit} · {action.dice}</span>
+        : (action.toHit || action.dice) && <span className="ta-chip-meta">{action.toHit || action.dice}</span>}
     </button>
   );
 }
@@ -45,7 +49,7 @@ export default function TakeActionDrawer({ step, actorName, targetName, self, gr
     );
   }
 
-  const { primary = [], spells = [], heal, magic = [] } = groups || {};
+  const { own = [], primary = [], spells = [], heal, magic = [] } = groups || {};
   return (
     <div className="ta-drawer" aria-live="polite">
       <div className="ta-drawer-head">
@@ -57,6 +61,9 @@ export default function TakeActionDrawer({ step, actorName, targetName, self, gr
         <button type="button" className="ta-chip ta-chip--ghost" onClick={onCancel}>Cancel</button>
       </div>
       <div className="ta-chips">
+        {/* The creature's own attacks first (set in the Enemies Gallery or on its card). */}
+        {own.map((action) => <ActionChip key={action.id} action={action} icon={<LookIcon look={action.look} size={15} />} variant="own" onPick={onPick} />)}
+        {own.length > 0 && <span className="ta-divider" aria-hidden="true" />}
         {primary.map((action) => <ActionChip key={action.id} action={action} onPick={onPick} />)}
         {spells.length > 0 && <span className="ta-divider" aria-hidden="true" />}
         {spells.map((action) => <ActionChip key={action.id} action={action} glyph="✶" onPick={onPick} />)}

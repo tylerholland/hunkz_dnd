@@ -469,3 +469,20 @@
     transition: none;
   }
 }
+
+/* A creature's own attacks (set in the Enemies Gallery or on its card). */
+.ta-chip--own { border-color: color-mix(in srgb, var(--pal-accent-bright) 45%, var(--pal-border)); }
+.ta-chip--own .ta-chip-glyph { display: inline-flex; color: var(--pal-accent-bright); }
+
+/* Deal Damage: the attack roll against the target's defense. */
+.ta-attack { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--pal-border); border-radius: 6px; background: color-mix(in srgb, var(--pal-bg) 60%, transparent); }
+.ta-attack-row { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.ta-attack-total { font-family: var(--font-display); font-size: 28px; line-height: 1; color: var(--pal-accent-bright); }
+.ta-attack-vs { color: var(--pal-text-body); }
+.ta-verdict { padding: 1px 10px; border-radius: 999px; font-family: var(--font-display); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; }
+.ta-verdict--hit { border: 1px solid #6fbf86; color: #6fbf86; }
+.ta-verdict--miss { border: 1px solid #c06060; color: #c06060; }
+[data-light] .ta-verdict--hit { border-color: #2f7a45; color: #2f7a45; }
+[data-light] .ta-verdict--miss { border-color: #9a2a20; color: #9a2a20; }
+.ta-attack-note { font-size: 13px; font-style: italic; color: var(--pal-text-muted); }
+.ta-defense-check { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }

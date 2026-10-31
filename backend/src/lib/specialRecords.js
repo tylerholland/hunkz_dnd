@@ -7,6 +7,7 @@ const { db, TABLE } = require("./db");
 const { normalizeHouseRulesRecord } = require("./houseRules");
 const { VersionConflictError, isConditionalFailure, currentVersion, conditionalPutParams, withVersionRetry } = require("./versioning");
 const { INITIATIVE_SLUG, NPC_COMBAT_SLUG, ROLL_HISTORY_SLUG, MAP_LIBRARY_SLUG, PARTY_ROSTER_SLUG, NPC_LIBRARY_SLUG, COUNTER_WHEELS_SLUG, HOUSE_RULES_SLUG, ROLL_HISTORY_ARCHIVE_PREFIX } = require("./specialItems");
+const { normalizeDefense, normalizeAttacks } = require("./npcStats");
 // Note: no APP_META_SLUG import here — normalizeAppMetaRecord() (Story 36b)
 // normalizes a generic item and doesn't need the slug constant; the sentinel
 // is written directly by deploy.sh and read directly by getSessionState.js.
@@ -27,6 +28,15 @@ function normalizeInitiativeRecord(item) {
   };
 }
 
+// An NPC's defense and attacks (copied from the library when added; the DM
+// can change them per NPC), cleaned — and left off entirely when not set.
+function withNpcStats(npc) {
+  const { defense: rawDefense, attacks: rawAttacks, ...rest } = npc;
+  const defense = normalizeDefense(rawDefense);
+  const attacks = normalizeAttacks(rawAttacks);
+  return { ...rest, ...(defense ? { defense } : {}), ...(attacks.length ? { attacks } : {}) };
+}
+
 function normalizeNpcCombatRecord(item) {
   const rawNpcs = Array.isArray(item?.npcs)
     ? item.npcs
@@ -37,7 +47,7 @@ function normalizeNpcCombatRecord(item) {
     : [];
 
   return {
-    npcs: rawNpcs.map((npc) => ({
+    npcs: rawNpcs.map((npc) => withNpcStats({
       ...npc,
       initiativeEntryId: npc?.initiativeEntryId ?? npc?.initiativeId ?? null,
       conditions: Array.isArray(npc?.conditions) ? npc.conditions : [],
@@ -372,6 +382,9 @@ function normalizeNpcLibraryRecord(item) {
         hpMax: Number.isFinite(t.hpMax) ? t.hpMax : null,
         portraitUrl: typeof t.portraitUrl === "string" ? t.portraitUrl : null,
         updatedAt: typeof t.updatedAt === "string" ? t.updatedAt : null,
+        // The creature's defense and attacks (DM-only), if the DM set them.
+        ...(normalizeDefense(t.defense) ? { defense: normalizeDefense(t.defense) } : {}),
+        ...(normalizeAttacks(t.attacks).length ? { attacks: normalizeAttacks(t.attacks) } : {}),
       })),
     version: currentVersion(item),
   };

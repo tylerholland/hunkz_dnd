@@ -1,0 +1,69 @@
+/* NPC defense and attacks editor (design/prototypes/npc-attacks.html). */
+.ns-editor { display: grid; gap: 16px; }
+.ns-field { display: grid; gap: 6px; }
+.ns-label {
+  font-family: var(--font-ui, "Cinzel Numerals", "IM Fell English", Georgia, serif);
+  font-size: 10px; letter-spacing: 0.22em; text-transform: uppercase; color: var(--pal-text-muted);
+}
+.ns-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.ns-hint { margin: 0; font-size: 14px; font-style: italic; line-height: 1.35; color: var(--pal-text-muted); }
+.ns-hint b { font-style: normal; font-weight: 600; color: var(--pal-text-body); }
+.ns-input {
+  box-sizing: border-box; min-height: 36px; padding: 5px 9px; border: 1px solid var(--pal-border); border-radius: 4px;
+  background: var(--pal-bg); color: var(--pal-text); font-family: var(--font-body, "Crimson Text", Georgia, serif); font-size: 15px;
+}
+.ns-input:focus { outline: none; border-color: var(--pal-accent); }
+.ns-input.bad { border-color: #c06060; }
+.ns-dice { width: 92px; font-family: var(--font-display, "Cinzel", Georgia, serif); letter-spacing: 0.03em; }
+.ns-acin { width: 60px; margin-left: 6px; }
+.ns-name { width: 110px; }
+.ns-ac { display: inline-flex; align-items: center; font-family: var(--font-display, "Cinzel", Georgia, serif); color: var(--pal-text); }
+.ns-seg { display: inline-flex; border: 1px solid var(--pal-border); border-radius: 5px; overflow: hidden; }
+.ns-seg button {
+  border: none; background: transparent; padding: 7px 11px; cursor: pointer; color: var(--pal-text-muted);
+  font-family: var(--font-ui, "Cinzel Numerals", Georgia, serif); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
+}
+.ns-seg button.on { background: var(--pal-accent-dim); color: var(--pal-text); }
+.ns-attack { padding: 8px 0; border-bottom: 1px dashed var(--pal-border); display: grid; gap: 4px; }
+.ns-attack-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto 34px; gap: 8px; align-items: end; }
+.ns-col {
+  display: grid; gap: 3px; min-width: 0;
+  font-family: var(--font-ui, "Cinzel Numerals", Georgia, serif); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-text-muted);
+}
+.ns-col .ns-input { width: 100%; }
+.ns-col .ns-dice { width: 92px; }
+.ns-look {
+  width: 40px; height: 36px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  border: 1px solid var(--pal-border); border-radius: 4px; background: var(--pal-bg); color: var(--pal-accent-bright);
+}
+.ns-remove { width: 34px; height: 36px; border: none; background: transparent; color: var(--pal-text-muted); cursor: pointer; }
+.ns-chance { margin-left: 48px; font-size: 13px; }
+.ns-looks { display: grid; gap: 6px; margin: 4px 0 2px 48px; padding: 10px; border: 1px solid var(--pal-border); border-radius: 6px; background: var(--pal-bg); }
+.ns-look-group { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.ns-look-title { width: 100%; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-text-muted); }
+.ns-looks button {
+  display: grid; justify-items: center; gap: 2px; width: 58px; padding: 5px 2px; cursor: pointer;
+  border: 1px solid transparent; border-radius: 5px; background: transparent; color: var(--pal-text-body); font-size: 12px;
+}
+.ns-looks button.on { border-color: var(--pal-accent); color: var(--pal-text); background: var(--pal-accent-dim); }
+.ns-add {
+  min-height: 34px; padding: 0 12px; cursor: pointer; border: 1px solid var(--pal-border); border-radius: 4px; background: transparent;
+  color: var(--pal-accent-bright); font-family: var(--font-ui, "Cinzel Numerals", Georgia, serif); font-size: 12px; letter-spacing: 0.08em;
+}
+.ns-add:disabled { opacity: 0.4; cursor: default; }
+.ns-look:focus-visible, .ns-remove:focus-visible, .ns-seg button:focus-visible, .ns-looks button:focus-visible, .ns-add:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }
+@media (max-width: 560px) {
+  .ns-attack-row { grid-template-columns: 40px minmax(0, 1fr) 34px; }
+  .ns-attack-row .ns-col:nth-of-type(2), .ns-attack-row .ns-col:nth-of-type(3) { grid-column: 2 / 3; }
+  .ns-chance, .ns-looks { margin-left: 0; }
+}
+
+/* Read-only summary on an NPC card */
+.ns-summary { display: grid; gap: 4px; font-size: 14px; color: var(--pal-text-body); }
+.ns-summary-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.ns-summary-row b { font-weight: 600; color: var(--pal-text); }
+.ns-summary-dice { font-family: var(--font-display, "Cinzel", Georgia, serif); font-size: 12px; color: var(--pal-accent-bright); letter-spacing: 0.03em; }
+.ns-changed { display: inline-flex; align-items: center; gap: 4px; padding: 1px 9px; border-radius: 999px; border: 1px solid #c8a040; color: #c8a040; font-size: 12px; }
+.ns-primary { border-color: var(--pal-accent); background: var(--pal-accent-dim); }
+.ns-card-edit { padding: 10px 0; }
+.ns-summary { padding: 8px 0 4px; }

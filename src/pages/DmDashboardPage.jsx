@@ -13,7 +13,7 @@ import InitiativeTracker from "../features/dmDashboard/InitiativeTracker";
 import NpcCombatSection from "../features/dmDashboard/NpcCombatSection";
 import MapPanel from "../features/dmDashboard/MapPanel";
 import DealDamageModal from "../features/dmDashboard/takeAction/DealDamageModal";
-import { characterActions, rememberDice, rememberedDice } from "../features/dmDashboard/takeAction/actionOptions";
+import { characterActions, rememberDice, rememberedDice, toHitRollFor } from "../features/dmDashboard/takeAction/actionOptions";
 import { classifyStrike, matchDeclaredAttack } from "../features/maps/combatFx/strikeRules";
 import CounterWheelsPanel from "../features/dmDashboard/CounterWheelsPanel";
 import MapLibraryStrip from "../features/dmDashboard/MapLibraryStrip";
@@ -35,6 +35,8 @@ import { useTextScale } from "../lib/useTextScale";
 import { setCombatActive, useDmPalette } from "../lib/dmSession";
 import CombatGuide, { CombatGuideOffer } from "../features/combatGuide/CombatGuide";
 import { combatGuideSeen } from "../features/combatGuide/combatGuideSteps";
+import { normalizeDefense, statsFromTemplate } from "../features/dmDashboard/npcStats";
+import { armorClassOf } from "../features/characterSheet/armorClass";
 import { computeMapSwitch } from "./combatModeToggle";
 import { NPC_EXPECTED_TTL_MS, npcCombatCaughtUp } from "./npcServerStamps";
 
@@ -139,6 +141,13 @@ export default function DmDashboardPage() {
   useEffect(() => {
     partyRef.current = party;
   }, [party]);
+
+  // The latest NPCs and house rules, for callbacks (Take Action's defenses
+  // and attack rolls) that shouldn't re-create on every poll.
+  const npcCombatRef = useRef(npcCombat);
+  useEffect(() => { npcCombatRef.current = npcCombat; }, [npcCombat]);
+  const houseRulesRef = useRef(houseRules);
+  useEffect(() => { houseRulesRef.current = houseRules; }, [houseRules]);
 
   useEffect(() => () => {
     transitionTimersRef.current.forEach((timerId) => window.clearTimeout(timerId));
@@ -523,18 +532,35 @@ export default function DmDashboardPage() {
   const [takeAction, setTakeAction] = useState(null);
   const [appliedRollIds, setAppliedRollIds] = useState(() => new Set());
 
+  // The target's defense: a character's AC, or what the DM set on the NPC.
+  const defenseOf = useCallback((target) => {
+    if (!target) return null;
+    if (target.type === "character") {
+      const member = partyRef.current.find((m) => m.slug === target.sourceId);
+      const ac = member ? armorClassOf(member) : null;
+      return Number.isFinite(ac) ? { kind: "ac", ac } : null;
+    }
+    return normalizeDefense((npcCombatRef.current.npcs || []).find((n) => n.id === target.sourceId)?.defense);
+  }, []);
+
   const handleRequestAction = useCallback(({ actor, target, action, onDone }) => {
     const actorKey = `${actor.type}:${actor.sourceId}`;
     const remembered = rememberedDice(actorKey, action.id);
+    // The attack roll: the creature's own (action.hit), a character's d20 +
+    // to-hit, or the DM Setting for an NPC's quick attacks and magic.
+    const attackExpr = action.heal ? null
+      : action.hit || (actor.type === "npc" ? houseRulesRef.current.npcAttackDice : null);
     setTakeAction({
       actor,
       target,
       action,
       initialExpr: remembered || action.dice || "",
       rememberedExpr: !!remembered,
+      attackExpr,
+      targetDefense: target.sourceId === actor.sourceId ? null : defenseOf(target),
       onDone,
     });
-  }, []);
+  }, [defenseOf]);
 
   const handleDealDamageFromRoll = useCallback((entry) => {
     const member = partyRef.current.find((m) => m.slug === entry.slug);
@@ -549,6 +575,7 @@ export default function DmDashboardPage() {
       style: classifyStrike({ attack: entry.attack }),
     };
     const { crit } = matchDeclaredAttack(rollHistory, { attackerSlug: entry.slug, targetSourceId: npc.id, at: entry.createdAt });
+    const toHit = toHitRollFor(rollHistory, entry);
     setTakeAction({
       actor: { type: "character", sourceId: member.slug, name: member.name },
       target: { type: "npc", sourceId: npc.id, name: npc.name },
@@ -556,7 +583,8 @@ export default function DmDashboardPage() {
       initialExpr: action.dice || "",
       initialAmount: Number.isFinite(entry.total) ? entry.total : 0,
       initialCrit: crit || !!entry.isCrit,
-      fromRoll: { exprLabel: entry.exprLabel, total: entry.total, isCrit: crit || !!entry.isCrit },
+      fromRoll: { exprLabel: entry.exprLabel, total: entry.total, isCrit: crit || !!entry.isCrit, hitTotal: Number.isFinite(toHit?.total) ? toHit.total : null },
+      targetDefense: normalizeDefense(npc.defense),
       rollId: entry.id,
     });
   }, [npcCombat.npcs, rollHistory]);
@@ -593,8 +621,6 @@ export default function DmDashboardPage() {
   // Story 70 — the DM's custom effects ("Covered in slime"), saved into the
   // table's house rules so every screen knows their kind. Reusing an existing
   // name just returns it.
-  const houseRulesRef = useRef(houseRules);
-  useEffect(() => { houseRulesRef.current = houseRules; }, [houseRules]);
   const customEffectsApi = useMemo(() => ({
     create: async (name, kind) => {
       const existing = spellEffect(name);
@@ -616,6 +642,21 @@ export default function DmDashboardPage() {
   }, [dmPassword, queueDashboardRefresh]);
 
   const closeTakeAction = useCallback(() => setTakeAction(null), []);
+
+  // The DM's attack roll in the pop-up goes to History, aimed at the target.
+  const handleTakeActionAttackRoll = useCallback((result) => {
+    if (!takeAction) return;
+    const { actor, target, action } = takeAction;
+    postDmRoll(dmPassword, {
+      exprLabel: result.exprLabel,
+      label: `${actor.name} · ${action.name} ATK`,
+      total: result.total,
+      rollValues: result.rollValues,
+      isCrit: result.groups.length === 1 && result.groups[0].sides === 20 && result.rollValues[0] === 20,
+      isFumble: result.groups.length === 1 && result.groups[0].sides === 20 && result.rollValues[0] === 1,
+      target: { type: target.type, sourceId: target.sourceId, name: target.name },
+    }).then(() => queueDashboardRefresh(0)).catch(() => {});
+  }, [takeAction, dmPassword, queueDashboardRefresh]);
 
   const handleTakeActionRoll = useCallback((result, rawExpr) => {
     if (!takeAction) return;
@@ -873,6 +914,7 @@ export default function DmDashboardPage() {
               hpMax: Number.isFinite(npc.hpMax) ? npc.hpMax : t.hpMax,
               abilities: Array.isArray(npc.abilities) ? npc.abilities : t.abilities,
               portraitUrl: typeof npc.portraitUrl === "string" ? npc.portraitUrl : t.portraitUrl,
+              ...statsFromTemplate(npc),
               updatedAt: now,
             }
           : t
@@ -885,6 +927,8 @@ export default function DmDashboardPage() {
         hpMax: Number.isFinite(npc.hpMax) ? npc.hpMax : null,
         abilities: Array.isArray(npc.abilities) ? npc.abilities : [],
         portraitUrl: typeof npc.portraitUrl === "string" ? npc.portraitUrl : null,
+        // Its attacks and defense too (e.g. the goblin given a Spear).
+        ...statsFromTemplate(npc),
         updatedAt: now,
       };
       nextTemplates = [newEntry, ...current];
@@ -1329,6 +1373,9 @@ export default function DmDashboardPage() {
                 initialAmount={takeAction.initialAmount ?? null}
                 initialCrit={!!takeAction.initialCrit}
                 fromRoll={takeAction.fromRoll || null}
+                attackExpr={takeAction.attackExpr ?? null}
+                targetDefense={takeAction.targetDefense || null}
+                onAttackRoll={handleTakeActionAttackRoll}
                 onRoll={handleTakeActionRoll}
                 onApply={({ amount, crit }) => applyTakeAction({ amount, crit })}
                 onMiss={() => applyTakeAction({ miss: true })}
@@ -1406,7 +1453,7 @@ export default function DmDashboardPage() {
                 <DmDiceRoller
                   pal={pal}
                   party={party.map((character) => ({ slug: character.slug, name: character.name, palette: character.palette }))}
-                  npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name }))}
+                  npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name, defense: npc.defense }))}
                   dmPassword={dmPassword}
                   onApplyDamage={handleApplyDamage}
                   onApplyNpcDamage={handleApplyNpcDamage}
