@@ -4,7 +4,7 @@ import { buildAttackEntries, buildUnarmedStrike, normalizeSpells } from "../../c
 import { abilityModifier } from "../cardStats";
 import { classifyStrike } from "../../maps/combatFx/strikeRules";
 import { parseDiceExpr, rollDie } from "../../../components/DiceRoller";
-import { lookAnimation, normalizeAttacks } from "../npcStats";
+import { lookAnimation, rollableAbilities } from "../npcStats";
 
 // A potion of healing — the most common heal the DM applies by hand.
 export const DEFAULT_HEAL_DICE = "2d4+2";
@@ -63,17 +63,17 @@ export function toHitExpr(toHit) {
 }
 
 /**
- * An NPC's own attacks (set on its library creature or on the NPC), as
+ * An NPC's rollable abilities (set on its library creature or on the NPC), as
  * actions: the whole attack roll, the damage, and the animation for its look.
  */
 export function npcOwnActions(npc) {
-  return normalizeAttacks(npc?.attacks).map((a) => ({
+  return rollableAbilities(npc).map((a) => ({
     id: `own-${a.id}`,
     name: a.name,
-    hit: a.hit,
-    dice: a.damage,
-    look: a.look,
-    style: lookAnimation(a.look),
+    hit: a.roll.hit,
+    dice: a.roll.damage,
+    look: a.roll.look,
+    style: lookAnimation(a.roll.look),
     own: true,
   }));
 }

@@ -161,246 +161,55 @@ describe("NpcCombatSection turn highlighting", () => {
   });
 });
 
-describe("NpcCombatSection Story 23 ability reference", () => {
-  it("coerces legacy string abilities into the new list display", () => {
-    renderSection({
-      npcCombat: {
-        npcs: [
-          {
-            id: "npc-1",
-            name: "Goblin Hexer",
-            hpMax: 7,
-            hpCurrent: 7,
-            conditions: [],
-            initiativeEntryId: null,
-            abilities: "Hex Bolt +5, 2d6 necrotic",
-          },
-        ],
-      },
-      initiative: { activeTurnIndex: 0, entries: [] },
-    });
+// Abilities and defense are one list now (design/prototypes/npc-abilities.html):
+// the old inline ability editor was replaced by a summary + modal.
+describe("NpcCombatSection abilities & defense", () => {
+  const inactive = (npc) => ({ npcCombat: { npcs: [{ id: "npc-1", hpMax: 7, hpCurrent: 7, conditions: [], initiativeEntryId: null, ...npc }] }, initiative: { activeTurnIndex: 0, entries: [] } });
 
-    // Inactive NPCs collapse by default (Story 29b) — expand to see the ability block.
+  it("shows old string abilities as plain lines, and old attacks as rollable ones", () => {
+    renderSection(inactive({
+      name: "Goblin Hexer",
+      abilities: ["Keen Smell: advantage on smell checks", "Pack Tactics"],
+      attacks: [{ id: "s", name: "Scimitar", hit: "1d20+4", damage: "1d6+2", look: "cut" }],
+    }));
     fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
-
-    expect(screen.getByText("Hex Bolt +5, 2d6 necrotic")).toBeInTheDocument();
-    expect(screen.getByTitle("Edit abilities")).toBeInTheDocument();
+    expect(screen.getByText("Scimitar")).toBeInTheDocument();
+    expect(screen.getByText("1d20+4 · 1d6+2")).toBeInTheDocument();
+    expect(screen.getByText("Keen Smell")).toBeInTheDocument();
+    expect(screen.getByText("advantage on smell checks")).toBeInTheDocument();
+    expect(screen.getByText("Pack Tactics")).toBeInTheDocument();
   });
 
-  it("shows only the first three abilities when collapsed and expands on demand", () => {
-    renderSection({
-      npcCombat: {
-        npcs: [
-          {
-            id: "npc-1",
-            name: "Goblin Mage",
-            hpMax: 7,
-            hpCurrent: 7,
-            conditions: [],
-            initiativeEntryId: null,
-            abilities: ["Magic Missile", "Shield", "Misty Step", "Fireball"],
-          },
-        ],
-      },
-      initiative: { activeTurnIndex: 0, entries: [] },
-    });
-
-    // Inactive NPCs collapse by default (Story 29b) — expand to see the ability block.
+  it("shows the first three plain abilities, then more on demand", () => {
+    renderSection(inactive({ name: "Goblin Mage", abilities: ["One", "Two", "Three", "Four", "Five"] }));
     fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
-
-    expect(screen.getByText("Magic Missile")).toBeInTheDocument();
-    expect(screen.getByText("Shield")).toBeInTheDocument();
-    expect(screen.getByText("Misty Step")).toBeInTheDocument();
-    expect(screen.queryByText("Fireball")).not.toBeInTheDocument();
-
-    fireEvent.click(screen.getByRole("button", { name: "Show all 4" }));
-
-    expect(screen.getByText("Fireball")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show less" })).toBeInTheDocument();
+    expect(screen.getByText("Three")).toBeInTheDocument();
+    expect(screen.queryByText("Four")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "+2 more" }));
+    expect(screen.getByText("Five")).toBeInTheDocument();
   });
 
-  it("auto-expands on the NPC turn and collapses again when the turn ends", () => {
-    const npcCombat = {
-      npcs: [
-        {
-          id: "npc-1",
-          name: "Goblin Mage",
-          hpMax: 7,
-          hpCurrent: 7,
-          conditions: [],
-          initiativeEntryId: "entry-1",
-          abilities: ["Magic Missile", "Shield", "Misty Step", "Fireball"],
-        },
-      ],
-    };
-
-    const { rerender } = renderSection({
-      npcCombat,
-      initiative: {
-        activeTurnIndex: 0,
-        entries: [
-          {
-            id: "entry-1",
-            name: "Goblin Mage",
-            initiative: 14,
-            isPC: false,
-            npcId: "npc-1",
-          },
-        ],
-      },
-    });
-
-    expect(screen.getByText("Fireball")).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show less" })).toBeInTheDocument();
-
-    rerender(
-      <PalCtx.Provider value={PALETTES.vellum}>
-        <NpcCombatSection
-          npcCombat={npcCombat}
-          initiative={{ activeTurnIndex: 0, entries: [] }}
-          dmPassword="secret"
-          onUpdate={vi.fn()}
-          onCommitNpcCombat={vi.fn(async () => true)}
-        />
-      </PalCtx.Provider>
-    );
-
-    expect(screen.queryByText("Fireball")).not.toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Show all 4" })).toBeInTheDocument();
-  });
-
-  it("cancels edit mode without committing draft changes", () => {
+  it("edits in the modal and saves one list, folding the old attacks in", async () => {
     const onCommitNpcCombat = vi.fn(async () => true);
-
-    renderSection({
-      npcCombat: {
-        npcs: [
-          {
-            id: "npc-1",
-            name: "Goblin Mage",
-            hpMax: 7,
-            hpCurrent: 7,
-            conditions: [],
-            initiativeEntryId: null,
-            abilities: ["Magic Missile"],
-          },
-        ],
-      },
-      initiative: { activeTurnIndex: 0, entries: [] },
-      onCommitNpcCombat,
-    });
-
-    // Inactive NPCs collapse by default (Story 29b) — expand to reach the ability block.
+    renderSection({ ...inactive({ name: "Goblin Mage", abilities: ["Magic Missile"], attacks: [{ id: "s", name: "Staff", hit: "1d20+2", damage: "1d6", look: "chop" }] }), onCommitNpcCombat });
     fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
-
-    fireEvent.click(screen.getByTitle("Edit abilities"));
-    fireEvent.change(screen.getByPlaceholderText("+ Add ability or spell…"), {
-      target: { value: "Counterspell" },
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-
-    expect(onCommitNpcCombat).not.toHaveBeenCalled();
-    expect(screen.getByText("Magic Missile")).toBeInTheDocument();
-    expect(screen.queryByText("Counterspell")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Edit Goblin Mage's abilities and defense" }));
+    fireEvent.click(screen.getByRole("switch", { name: "Magic Missile can be rolled" }));
+    fireEvent.change(screen.getAllByPlaceholderText("1d20+4")[0], { target: { value: "1d20+5" } });
+    fireEvent.change(screen.getAllByPlaceholderText("1d6+2")[0], { target: { value: "3d4+3" } });
+    fireEvent.change(screen.getByLabelText("Armour class"), { target: { value: "12" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(onCommitNpcCombat).toHaveBeenCalled());
+    const npc = getCommittedNpcCombat(onCommitNpcCombat).npcs[0];
+    expect(npc.attacks).toBeUndefined();
+    expect(npc.defense).toEqual({ kind: "ac", ac: 12 });
+    expect(npc.abilities.map((a) => [a.name, a.roll?.hit, a.roll?.damage])).toEqual([["Magic Missile", "1d20+5", "3d4+3"], ["Staff", "1d20+2", "1d6"]]);
   });
 
-  it("commits a trimmed ability array after add and remove edits", async () => {
-    const onCommitNpcCombat = vi.fn(async () => true);
-    const initialNpcCombat = {
-      npcs: [
-        {
-          id: "npc-1",
-          name: "Goblin Mage",
-          hpMax: 7,
-          hpCurrent: 7,
-          conditions: [],
-          initiativeEntryId: null,
-          abilities: ["Magic Missile"],
-        },
-      ],
-    };
-
-    const { rerender } = renderSection({
-      npcCombat: initialNpcCombat,
-      initiative: { activeTurnIndex: 0, entries: [] },
-      onCommitNpcCombat,
-    });
-
-    // Inactive NPCs collapse by default (Story 29b) — expand to reach the ability block.
+  it("offers to add abilities to an NPC without any", () => {
+    renderSection(inactive({ name: "Rat" }));
     fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
-
-    fireEvent.click(screen.getByTitle("Edit abilities"));
-    fireEvent.click(screen.getByTitle("Remove"));
-    fireEvent.change(screen.getByPlaceholderText("+ Add ability or spell…"), {
-      target: { value: "  Counterspell  " },
-    });
-    fireEvent.keyDown(screen.getByPlaceholderText("+ Add ability or spell…"), { key: "Enter" });
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-
-    await waitFor(() => expect(onCommitNpcCombat).toHaveBeenCalledTimes(1));
-
-    expect(getCommittedNpcCombat(onCommitNpcCombat).npcs[0].abilities).toEqual(["Counterspell"]);
-
-    rerender(
-      <PalCtx.Provider value={PALETTES.vellum}>
-        <NpcCombatSection
-          npcCombat={getCommittedNpcCombat(onCommitNpcCombat)}
-          initiative={{ activeTurnIndex: 0, entries: [] }}
-          dmPassword="secret"
-          onUpdate={vi.fn()}
-          onCommitNpcCombat={onCommitNpcCombat}
-        />
-      </PalCtx.Provider>
-    );
-
-    expect(screen.getByText("Counterspell")).toBeInTheDocument();
-    expect(screen.queryByText("Magic Missile")).not.toBeInTheDocument();
-  });
-
-  it("returns to the empty state after removing all abilities and saving", async () => {
-    const onCommitNpcCombat = vi.fn(async () => true);
-
-    const { rerender } = renderSection({
-      npcCombat: {
-        npcs: [
-          {
-            id: "npc-1",
-            name: "Goblin Mage",
-            hpMax: 7,
-            hpCurrent: 7,
-            conditions: [],
-            initiativeEntryId: null,
-            abilities: ["Magic Missile"],
-          },
-        ],
-      },
-      initiative: { activeTurnIndex: 0, entries: [] },
-      onCommitNpcCombat,
-    });
-
-    // Inactive NPCs collapse by default (Story 29b) — expand to reach the ability block.
-    fireEvent.click(screen.getByRole("button", { name: "Expand card" }));
-
-    fireEvent.click(screen.getByTitle("Edit abilities"));
-    fireEvent.click(screen.getByTitle("Remove"));
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-
-    await waitFor(() => expect(onCommitNpcCombat).toHaveBeenCalledTimes(1));
-
-    expect(getCommittedNpcCombat(onCommitNpcCombat).npcs[0].abilities).toEqual([]);
-
-    rerender(
-      <PalCtx.Provider value={PALETTES.vellum}>
-        <NpcCombatSection
-          npcCombat={getCommittedNpcCombat(onCommitNpcCombat)}
-          initiative={{ activeTurnIndex: 0, entries: [] }}
-          dmPassword="secret"
-          onUpdate={vi.fn()}
-          onCommitNpcCombat={onCommitNpcCombat}
-        />
-      </PalCtx.Provider>
-    );
-
-    expect(screen.getByRole("button", { name: "+ Ability reference" })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "+ Abilities & defense" }));
+    expect(screen.getByRole("dialog", { name: "Rat" })).toBeInTheDocument();
   });
 });

@@ -1,10 +1,12 @@
-// NPC attacks and defense (design/prototypes/npc-attacks.html). Set on a
+// NPC abilities and defense (design/prototypes/npc-abilities.html). Set on a
 // library creature, copied to NPCs in play, changeable per NPC. DM-only.
 // Keep the shapes in sync with backend/src/lib/npcStats.js.
 //
-//   defense: { kind: "ac", ac: 13 } | { kind: "roll", roll: "1d20+3", name: "Dodge" }
-//   attacks: [{ id, name, hit: "1d20+8", damage: "1d4+2", look: "lash" }]
+//   defense:   { kind: "ac", ac: 13 } | { kind: "roll", roll: "1d20+3", name: "Dodge" }
+//   abilities: [{ id, name, notes?, roll?: { hit: "1d20+8", damage: "1d4+2", look: "lash" } }]
+// A rollable ability (`roll`) shows in Take Action; the rest are notes.
 // `hit` is the whole attack roll — in D&D, a d20 plus the creature's bonus.
+// Older data had ability strings and a separate `attacks` list; both are read.
 import { parseDiceExpr, rollDie } from "../../components/DiceRoller";
 
 // What a strike looks like on the map. The creature looks are new; until they
@@ -76,19 +78,59 @@ export function normalizeAttacks(raw) {
     .slice(0, 8);
 }
 
+// "Keen Smell: advantage on…" → { name: "Keen Smell", notes: "advantage on…" }.
+function splitAbilityText(text) {
+  const t = String(text || "").trim().slice(0, 600);
+  const m = /^(.{1,40}?)\s*(?::|\s[—–-]\s)\s*(.+)$/.exec(t);
+  return m ? { name: m[1].trim(), notes: m[2].trim() } : { name: t.slice(0, 120), notes: t.length > 120 ? t.slice(120).trim() : "" };
+}
+
+/** A creature's abilities as one clean list, reading the old shapes too. */
+export function normalizeAbilities(rawAbilities, legacyAttacks) {
+  const list = Array.isArray(rawAbilities) ? rawAbilities : typeof rawAbilities === "string" && rawAbilities.trim() ? [rawAbilities] : [];
+  const out = list.map((a, i) => {
+    if (typeof a === "string") return { id: `ab-${i + 1}`, ...splitAbilityText(a) };
+    const name = String(a?.name || "").trim().slice(0, 120);
+    const notes = String(a?.notes || "").trim().slice(0, 600);
+    const hit = tidyDice(a?.roll?.hit);
+    const damage = tidyDice(a?.roll?.damage);
+    return {
+      id: String(a?.id || `ab-${i + 1}`).slice(0, 40),
+      name,
+      notes,
+      ...(hit && damage ? { roll: { hit, damage, look: LOOK_IDS.includes(a?.roll?.look) ? a.roll.look : "cut" } } : {}),
+    };
+  });
+  const names = new Set(out.map((a) => a.name.toLowerCase()));
+  for (const atk of normalizeAttacks(legacyAttacks)) {
+    if (!names.has(atk.name.toLowerCase())) out.push({ id: atk.id, name: atk.name, notes: "", roll: { hit: atk.hit, damage: atk.damage, look: atk.look } });
+  }
+  return out.filter((a) => a.name).map(({ notes, ...rest }) => (notes ? { ...rest, notes } : rest)).slice(0, 30);
+}
+
+/** An entity's (NPC's or library creature's) abilities, whatever shape they're stored in. */
+export const abilitiesOf = (entity) => normalizeAbilities(entity?.abilities, entity?.attacks);
+/** The abilities that can be rolled — what Take Action offers. */
+export const rollableAbilities = (entity) => abilitiesOf(entity).filter((a) => a.roll);
+/** Plain text of an ability, for search and short lists. */
+export const abilityText = (a) => (typeof a === "string" ? a : [a?.name, a?.notes].filter(Boolean).join(": "));
+
 /** The stats to copy onto an NPC when it's added from a library creature. */
 export function statsFromTemplate(template) {
   const defense = normalizeDefense(template?.defense);
-  const attacks = normalizeAttacks(template?.attacks);
-  return { ...(defense ? { defense } : {}), ...(attacks.length ? { attacks } : {}) };
+  const abilities = abilitiesOf(template);
+  return { ...(defense ? { defense } : {}), ...(abilities.length ? { abilities } : {}) };
 }
 
-const sameJson = (a, b) => JSON.stringify(a ?? null) === JSON.stringify(b ?? null);
-/** Has this NPC's defense or attacks been changed from its library creature? */
+// Ids don't matter for "changed": two lists with the same content are the same.
+const comparable = (entity) => JSON.stringify({
+  defense: normalizeDefense(entity?.defense),
+  abilities: abilitiesOf(entity).map(({ id, ...rest }) => rest), // eslint-disable-line no-unused-vars
+});
+/** Has this NPC's defense or abilities been changed from its library creature? */
 export function changedFromTemplate(npc, template) {
   if (!template) return false;
-  return !sameJson(normalizeDefense(npc?.defense), normalizeDefense(template.defense))
-    || !sameJson(normalizeAttacks(npc?.attacks), normalizeAttacks(template.attacks));
+  return comparable(npc) !== comparable(template);
 }
 
 /** Roll a dice expression: { total, rolls } or null if it doesn't read. */

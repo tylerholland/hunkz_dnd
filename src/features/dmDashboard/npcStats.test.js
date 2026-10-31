@@ -56,3 +56,17 @@ describe("npcStats", () => {
     expect(rollDice("nonsense")).toBeNull();
   });
 });
+
+describe("abilities as one list", () => {
+  it("reads old strings and attacks, and finds the rollable ones", async () => {
+    const { abilitiesOf, rollableAbilities, abilityText } = await import("./npcStats");
+    const old = { abilities: ["Keen Smell: advantage on smell checks", "Spider Climb"], attacks: [{ id: "t", name: "Tentacles", hit: "1d20+8", damage: "1d4+2", look: "lash" }] };
+    expect(abilitiesOf(old)).toEqual([
+      { id: "ab-1", name: "Keen Smell", notes: "advantage on smell checks" },
+      { id: "ab-2", name: "Spider Climb" },
+      { id: "t", name: "Tentacles", roll: { hit: "1d20+8", damage: "1d4+2", look: "lash" } },
+    ]);
+    expect(rollableAbilities(old).map((a) => a.name)).toEqual(["Tentacles"]);
+    expect(abilityText(abilitiesOf(old)[0])).toBe("Keen Smell: advantage on smell checks");
+  });
+});

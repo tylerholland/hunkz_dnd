@@ -2,11 +2,9 @@ import { useContext, useEffect, useRef, useState } from "react";
 import { presignNpcPortrait, putNpcLibrary } from "../../api";
 import { PalCtx } from "./dashboardShared";
 import NpcStatsEditor from "./NpcStatsEditor";
-import { normalizeAttacks, normalizeDefense } from "./npcStats";
+import { abilitiesOf, abilityText, normalizeAbilities, normalizeDefense } from "./npcStats";
 import "./enemiesGallery.css";
 
-const ABILITY_MAX_LENGTH = 255;
-const ABILITY_COUNTER_THRESHOLD = 30;
 const MAX_PORTRAIT_SIZE_BYTES = 5 * 1024 * 1024;
 const ACCEPTED_PORTRAIT_TYPES = ["image/png", "image/jpeg", "image/webp"];
 
@@ -51,72 +49,13 @@ function PortraitCircle({ portraitUrl, name, size = 84, npcPal }) {
   return <div style={style}>{initials}</div>;
 }
 
-function AbilitiesListEditor({ abilities, onChange, npcPal }) {
-  const pal = useContext(PalCtx);
-  const [addInput, setAddInput] = useState("");
-  const addInputRef = useRef(null);
-  const addInputLen = addInput.length;
-  const showCounter = addInputLen >= ABILITY_MAX_LENGTH - ABILITY_COUNTER_THRESHOLD;
-
-  function handleAdd() {
-    const text = addInput.trim();
-    if (!text) return;
-    onChange([...abilities, text]);
-    setAddInput("");
-    setTimeout(() => addInputRef.current?.focus(), 0);
-  }
-
-  function handleRemove(index) {
-    onChange(abilities.filter((_, i) => i !== index));
-  }
-
-  return (
-    <div>
-      <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-        {abilities.map((entry, idx) => (
-          <li key={idx} className="eg-ability-row">
-            <span className="eg-ability-diamond">◆</span>
-            <span className="eg-ability-text">{entry}</span>
-            <button className="eg-ability-remove" onClick={() => handleRemove(idx)} title="Remove">−</button>
-          </li>
-        ))}
-      </ul>
-      <div className="eg-ability-add-row">
-        <input
-          ref={addInputRef}
-          className="eg-input eg-ability-input"
-          type="text"
-          placeholder="add ability…"
-          maxLength={ABILITY_MAX_LENGTH}
-          value={addInput}
-          onChange={(e) => setAddInput(e.target.value)}
-          onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAdd(); } }}
-          autoComplete="off"
-        />
-        <button
-          className="eg-btn-add-ability"
-          onClick={handleAdd}
-          disabled={!addInput.trim()}
-          style={{ background: npcPal.chipBg, border: `1px solid ${npcPal.accent}`, color: npcPal.bright }}
-        >+</button>
-      </div>
-      {showCounter && (
-        <div className={`eg-char-counter${addInputLen >= ABILITY_MAX_LENGTH ? " limit" : ""}`}>
-          {ABILITY_MAX_LENGTH - addInputLen} / {ABILITY_MAX_LENGTH}
-        </div>
-      )}
-    </div>
-  );
-}
-
 function EntryEditor({ entry, npcPal, dmPassword, onMarkDirty, onSave, workingRef }) {
   const pal = useContext(PalCtx);
   const [name, setName] = useState(entry.name || "");
   const [hpMax, setHpMax] = useState(entry.hpMax != null ? String(entry.hpMax) : "");
-  const [abilities, setAbilities] = useState(entry.abilities || []);
   const [portraitUrl, setPortraitUrl] = useState(entry.portraitUrl || null);
   // The creature's defense and attacks, as typed (cleaned when saved).
-  const [stats, setStats] = useState({ defense: entry.defense || null, attacks: entry.attacks || [] });
+  const [stats, setStats] = useState({ defense: entry.defense || null, abilities: abilitiesOf(entry) });
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [removeConfirm, setRemoveConfirm] = useState(false);
@@ -125,15 +64,14 @@ function EntryEditor({ entry, npcPal, dmPassword, onMarkDirty, onSave, workingRe
 
   // Sync working copy up via ref so parent can read on save
   useEffect(() => {
-    workingRef.current = { name, hpMax, abilities, portraitUrl, stats };
-  }, [name, hpMax, abilities, portraitUrl, stats, workingRef]);
+    workingRef.current = { name, hpMax, portraitUrl, stats };
+  }, [name, hpMax, portraitUrl, stats, workingRef]);
 
   // When a new entry is selected, reset local state
   useEffect(() => {
     setName(entry.name || "");
     setHpMax(entry.hpMax != null ? String(entry.hpMax) : "");
-    setAbilities(entry.abilities || []);
-    setStats({ defense: entry.defense || null, attacks: entry.attacks || [] });
+    setStats({ defense: entry.defense || null, abilities: abilitiesOf(entry) });
     setPortraitUrl(entry.portraitUrl || null);
     setUploadError("");
     setRemoveConfirm(false);
@@ -249,18 +187,10 @@ function EntryEditor({ entry, npcPal, dmPassword, onMarkDirty, onSave, workingRe
 
       <NpcStatsEditor
         defense={stats.defense}
-        attacks={stats.attacks}
+        abilities={stats.abilities}
         onChange={(next) => { setStats(next); markDirty(); }}
       />
 
-      <div className="eg-field-group">
-        <label className="eg-field-label">Abilities</label>
-        <AbilitiesListEditor
-          abilities={abilities}
-          onChange={(next) => { setAbilities(next); markDirty(); }}
-          npcPal={npcPal}
-        />
-      </div>
     </div>
   );
 }
@@ -334,7 +264,7 @@ export default function EnemiesGalleryModal({ templates, dmPassword, onClose, on
 
   const filteredEntries = filterText.trim()
     ? entries.filter((t) => {
-        const hay = (t.name + " " + (t.abilities || []).join(" ")).toLowerCase();
+        const hay = (t.name + " " + abilitiesOf(t).map(abilityText).join(" ")).toLowerCase();
         return hay.includes(filterText.trim().toLowerCase());
       })
     : entries;
@@ -362,9 +292,8 @@ export default function EnemiesGalleryModal({ templates, dmPassword, onClose, on
               ...t,
               name: w.name || t.name,
               hpMax: Number.isFinite(hpMaxParsed) ? hpMaxParsed : null,
-              abilities: w.abilities || t.abilities,
               portraitUrl: w.portraitUrl !== undefined ? w.portraitUrl : t.portraitUrl,
-              ...(w.stats ? { defense: normalizeDefense(w.stats.defense), attacks: normalizeAttacks(w.stats.attacks) } : {}),
+              ...(w.stats ? { defense: normalizeDefense(w.stats.defense), abilities: normalizeAbilities(w.stats.abilities), attacks: undefined } : {}),
             }
           : t
       )
@@ -462,10 +391,10 @@ export default function EnemiesGalleryModal({ templates, dmPassword, onClose, on
       ...selectedEntry,
       name,
       hpMax: Number.isFinite(hpMaxParsed) ? hpMaxParsed : null,
-      abilities: w.abilities || [],
       portraitUrl: w.portraitUrl !== undefined ? w.portraitUrl : selectedEntry.portraitUrl,
       defense: normalizeDefense(w.stats?.defense),
-      attacks: normalizeAttacks(w.stats?.attacks),
+      abilities: normalizeAbilities(w.stats?.abilities),
+      attacks: undefined, // folded into abilities
       updatedAt: new Date().toISOString(),
     };
     const nextEntries = entries.map((t) => t.id === selectedId ? updatedEntry : t);
@@ -523,7 +452,7 @@ export default function EnemiesGalleryModal({ templates, dmPassword, onClose, on
               {filteredEntries.map((tpl) => {
                 const isSelected = tpl.id === selectedId;
                 const hpPart = tpl.hpMax ? `♥ ${tpl.hpMax} · ` : "";
-                const ablCount = (tpl.abilities || []).length;
+                const ablCount = abilitiesOf(tpl).length;
                 return (
                   <div
                     key={tpl.id}

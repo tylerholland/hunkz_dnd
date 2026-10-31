@@ -913,6 +913,7 @@ export default function DmDashboardPage() {
               name: npc.name ?? t.name,
               hpMax: Number.isFinite(npc.hpMax) ? npc.hpMax : t.hpMax,
               abilities: Array.isArray(npc.abilities) ? npc.abilities : t.abilities,
+              attacks: undefined, // folded into abilities
               portraitUrl: typeof npc.portraitUrl === "string" ? npc.portraitUrl : t.portraitUrl,
               ...statsFromTemplate(npc),
               updatedAt: now,
@@ -927,7 +928,7 @@ export default function DmDashboardPage() {
         hpMax: Number.isFinite(npc.hpMax) ? npc.hpMax : null,
         abilities: Array.isArray(npc.abilities) ? npc.abilities : [],
         portraitUrl: typeof npc.portraitUrl === "string" ? npc.portraitUrl : null,
-        // Its attacks and defense too (e.g. the goblin given a Spear).
+        // Its abilities and defense too (e.g. the goblin given a Spear).
         ...statsFromTemplate(npc),
         updatedAt: now,
       };

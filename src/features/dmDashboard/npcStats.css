@@ -26,21 +26,40 @@
   font-family: var(--font-ui, "Cinzel Numerals", Georgia, serif); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase;
 }
 .ns-seg button.on { background: var(--pal-accent-dim); color: var(--pal-text); }
-.ns-attack { padding: 8px 0; border-bottom: 1px dashed var(--pal-border); display: grid; gap: 4px; }
-.ns-attack-row { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto auto 34px; gap: 8px; align-items: end; }
+/* An ability line: name + notes, the "Can be rolled" switch, move/remove. */
+.ns-ability { display: grid; gap: 6px; padding: 10px 0; border-bottom: 1px dashed var(--pal-border); }
+.ns-ability-top { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 8px; align-items: start; }
+.ns-ability-text { display: grid; gap: 6px; min-width: 0; }
+.ns-ability-text .ns-input { width: 100%; }
+.ns-notes { resize: vertical; min-height: 34px; font-size: 14px; color: var(--pal-text-body); line-height: 1.35; }
+.ns-ability-tools { display: flex; align-items: center; }
+.ns-move { display: grid; }
+.ns-move button { width: 28px; height: 20px; padding: 0; border: none; background: transparent; color: var(--pal-text-muted); font-size: 11px; cursor: pointer; }
+.ns-move button:disabled { opacity: 0.3; cursor: default; }
+.ns-roll-switch {
+  display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 11px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--pal-border); border-radius: 999px; background: transparent; color: var(--pal-text-muted); font-family: var(--font-body, "Crimson Text", Georgia, serif); font-size: 14px;
+}
+.ns-roll-switch.on { color: var(--pal-text); border-color: var(--pal-accent); }
+.ns-switch { position: relative; width: 28px; height: 16px; border-radius: 8px; border: 1px solid var(--pal-border); background: var(--pal-bg); }
+.ns-switch i { position: absolute; top: 2px; left: 2px; width: 10px; height: 10px; border-radius: 50%; background: var(--pal-text-muted); transition: left 0.15s ease; }
+.ns-roll-switch.on .ns-switch { border-color: var(--pal-accent); background: var(--pal-accent-dim); }
+.ns-roll-switch.on .ns-switch i { left: 14px; background: var(--pal-accent-bright); }
+.ns-roll { display: grid; grid-template-columns: 40px auto auto 1fr; gap: 8px; align-items: end; padding: 8px 10px; border-radius: 6px; background: color-mix(in srgb, var(--pal-bg) 60%, transparent); }
+.ns-roll .ns-chance, .ns-roll .ns-looks { grid-column: 1 / -1; margin-left: 0; }
+@media (prefers-reduced-motion: reduce) { .ns-switch i { transition: none; } }
 .ns-col {
   display: grid; gap: 3px; min-width: 0;
   font-family: var(--font-ui, "Cinzel Numerals", Georgia, serif); font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-text-muted);
 }
-.ns-col .ns-input { width: 100%; }
 .ns-col .ns-dice { width: 92px; }
 .ns-look {
   width: 40px; height: 36px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
   border: 1px solid var(--pal-border); border-radius: 4px; background: var(--pal-bg); color: var(--pal-accent-bright);
 }
-.ns-remove { width: 34px; height: 36px; border: none; background: transparent; color: var(--pal-text-muted); cursor: pointer; }
-.ns-chance { margin-left: 48px; font-size: 13px; }
-.ns-looks { display: grid; gap: 6px; margin: 4px 0 2px 48px; padding: 10px; border: 1px solid var(--pal-border); border-radius: 6px; background: var(--pal-bg); }
+.ns-remove { width: 30px; height: 36px; border: none; background: transparent; color: var(--pal-text-muted); cursor: pointer; }
+.ns-chance { font-size: 13px; }
+.ns-looks { display: grid; gap: 6px; margin: 4px 0 2px; padding: 10px; border: 1px solid var(--pal-border); border-radius: 6px; background: var(--pal-bg); }
 .ns-look-group { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
 .ns-look-title { width: 100%; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--pal-text-muted); }
 .ns-looks button {
@@ -53,12 +72,13 @@
   color: var(--pal-accent-bright); font-family: var(--font-ui, "Cinzel Numerals", Georgia, serif); font-size: 12px; letter-spacing: 0.08em;
 }
 .ns-add:disabled { opacity: 0.4; cursor: default; }
-.ns-look:focus-visible, .ns-remove:focus-visible, .ns-seg button:focus-visible, .ns-looks button:focus-visible, .ns-add:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }
+.ns-look:focus-visible, .ns-remove:focus-visible, .ns-roll-switch:focus-visible, .ns-move button:focus-visible, .ns-seg button:focus-visible, .ns-looks button:focus-visible, .ns-add:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }
 @media (max-width: 560px) {
-  .ns-attack-row { grid-template-columns: 40px minmax(0, 1fr) 34px; }
-  .ns-attack-row .ns-col:nth-of-type(2), .ns-attack-row .ns-col:nth-of-type(3) { grid-column: 2 / 3; }
-  .ns-chance, .ns-looks { margin-left: 0; }
+  .ns-ability-top { grid-template-columns: minmax(0, 1fr) auto; }
+  .ns-roll-switch { grid-column: 1 / 2; justify-self: start; }
+  .ns-roll { grid-template-columns: 40px 1fr 1fr; }
 }
+
 
 /* Summary on an NPC card (editing is in a modal) */
 .ns-summary { display: grid; gap: 4px; font-size: 14px; color: var(--pal-text-body); }
@@ -88,3 +108,10 @@
   .ns-overlay { align-items: flex-end; padding: 0; }
   .ns-modal { border-radius: 14px 14px 0 0; max-height: 94vh; }
 }
+.ns-summary-plain { color: var(--pal-text-body); }
+.ns-summary-diamond { font-size: 9px; color: var(--pal-text-muted); }
+.ns-summary-name { color: var(--pal-text-body); }
+.ns-summary-plain { flex-wrap: nowrap; min-width: 0; }
+.ns-summary-plain small { flex: 1 1 0; min-width: 0; font-size: 13px; font-style: italic; color: var(--pal-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ns-summary-name { flex-shrink: 0; }
+.ns-more { min-height: 26px; }

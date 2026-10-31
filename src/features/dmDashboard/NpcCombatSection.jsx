@@ -18,8 +18,8 @@ import {
 } from "./dashboardShared";
 import TokenSizeControl from "./battleMode/TokenSizeControl";
 import "./npcCombat.css";
-import NpcAttacksRef from "./NpcAttacksRef";
-import { statsFromTemplate } from "./npcStats";
+import NpcAbilitiesRef from "./NpcAbilitiesRef";
+import { abilitiesOf, abilityText, statsFromTemplate } from "./npcStats";
 
 /* ── Portrait/initials thumb helper (shared inside NpcCombatSection) ── */
 function NpcThumb({ portraitUrl, name, size = 32, npcPal }) {
@@ -400,190 +400,6 @@ function NpcNotesStrip({ npc, allNpcsRef, onCommitNpcs, pal, npcPal }) {
   );
 }
 
-const ABILITY_MAX_LENGTH = 255;
-const ABILITY_COUNTER_THRESHOLD = 30;
-const ABILITY_COLLAPSED_LIMIT = 3;
-
-function NpcAbilityRef({ abilities: abilitiesProp, isActiveTurn, npcPal, onSave }) {
-  // Backward-compat coercion: string (legacy) → string[], absent → []
-  const abilities = Array.isArray(abilitiesProp)
-    ? abilitiesProp
-    : typeof abilitiesProp === "string" && abilitiesProp.trim()
-    ? [abilitiesProp]
-    : [];
-
-  const [expanded, setExpanded] = useState(false);
-  const [editing, setEditing] = useState(false);
-  const [draft, setDraft] = useState([]);
-  const [addInput, setAddInput] = useState("");
-  const addInputRef = useRef(null);
-
-  // Auto-expand on active turn; guard against editing state
-  useEffect(() => {
-    if (editing) return;
-    if (isActiveTurn && abilities.length > 0) setExpanded(true);
-    else setExpanded(false);
-  }, [isActiveTurn, abilities.length, editing]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  function enterEdit() {
-    setDraft([...abilities]);
-    setAddInput("");
-    setEditing(true);
-    // Focus the add input after paint
-    setTimeout(() => addInputRef.current?.focus(), 60);
-  }
-
-  function exitEdit() {
-    setEditing(false);
-    setAddInput("");
-  }
-
-  async function commitEdit() {
-    // Trim entries, drop whitespace-only
-    const cleaned = draft.map((entry) => entry.trim()).filter((entry) => entry.length > 0);
-    const success = await onSave(cleaned);
-    if (success !== false) {
-      exitEdit();
-    }
-  }
-
-  function handleAddEntry() {
-    const text = addInput.trim();
-    if (!text) return;
-    setDraft((current) => [...current, text]);
-    setAddInput("");
-    setTimeout(() => addInputRef.current?.focus(), 0);
-  }
-
-  function handleRemoveEntry(index) {
-    setDraft((current) => current.filter((_, idx) => idx !== index));
-  }
-
-  function handleAddKeyDown(e) {
-    if (e.key === "Enter") {
-      e.preventDefault();
-      handleAddEntry();
-    }
-    if (e.key === "Escape") {
-      exitEdit();
-    }
-  }
-
-  function handleEditKeyDown(e) {
-    if (e.key === "Escape") {
-      exitEdit();
-    }
-  }
-
-  const addInputLen = addInput.length;
-  const showCounter = addInputLen >= ABILITY_MAX_LENGTH - ABILITY_COUNTER_THRESHOLD;
-
-  // ── Empty state ───────────────────────────────────────────────────────────
-  if (abilities.length === 0 && !editing) {
-    return (
-      <div className="npc-ability-ref">
-        <button
-          className="npc-ability-ref-toggle"
-          onClick={enterEdit}
-          title="Add ability reference"
-        >
-          + Ability reference
-        </button>
-      </div>
-    );
-  }
-
-  // ── Edit mode ─────────────────────────────────────────────────────────────
-  if (editing) {
-    return (
-      <div className="npc-ability-ref" onKeyDown={handleEditKeyDown}>
-        {draft.map((entry, idx) => (
-          <div key={idx} className="npc-ability-ref-row">
-            <button
-              className="npc-ability-ref-remove"
-              onClick={() => handleRemoveEntry(idx)}
-              title="Remove"
-            >−</button>
-            <span className="npc-ability-ref-row-text">{entry}</span>
-          </div>
-        ))}
-
-        <div className="npc-ability-add-row">
-          <input
-            ref={addInputRef}
-            className="npc-ability-add-input"
-            type="text"
-            placeholder="+ Add ability or spell…"
-            maxLength={ABILITY_MAX_LENGTH}
-            value={addInput}
-            onChange={(e) => setAddInput(e.target.value)}
-            onKeyDown={handleAddKeyDown}
-            autoComplete="off"
-          />
-          <button
-            className="npc-ability-add-btn"
-            onClick={handleAddEntry}
-            disabled={!addInput.trim()}
-            title="Add entry"
-          >+</button>
-        </div>
-
-        <div className={`npc-ability-char-counter${showCounter ? " visible" : ""}`}>
-          {ABILITY_MAX_LENGTH - addInputLen} characters remaining
-        </div>
-
-        <div className="npc-ability-ref-actions">
-          <button className="npc-ability-cancel-btn" onClick={exitEdit}>Cancel</button>
-          <button className="npc-ability-done-btn" onClick={commitEdit}>Done</button>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Read mode (collapsed or expanded) ────────────────────────────────────
-  const visibleEntries = expanded ? abilities : abilities.slice(0, ABILITY_COLLAPSED_LIMIT);
-  const hasMore = abilities.length > ABILITY_COLLAPSED_LIMIT;
-
-  return (
-    <div className="npc-ability-ref">
-      <ul className="npc-ability-ref-list">
-        {visibleEntries.map((entry, idx) => (
-          <li key={idx} className="npc-ability-ref-item">
-            <span className="npc-ability-ref-diamond">◆</span>
-            <span className="npc-ability-ref-text">{entry}</span>
-          </li>
-        ))}
-      </ul>
-
-      <div className="npc-ability-ref-footer">
-        <div>
-          {!expanded && hasMore && (
-            <button
-              className="npc-ability-show-toggle"
-              onClick={() => setExpanded(true)}
-            >
-              Show all {abilities.length}
-            </button>
-          )}
-          {expanded && (
-            <button
-              className="npc-ability-show-toggle"
-              onClick={() => setExpanded(false)}
-            >
-              Show less
-            </button>
-          )}
-        </div>
-        <button
-          className="npc-ability-edit-btn"
-          onClick={enterEdit}
-          title="Edit abilities"
-        >✎</button>
-      </div>
-    </div>
-  );
-}
-
 function NpcOverflowMenu({ npc, npcPal, libraryTemplates, onSaveToLibrary, onClose, tokenScale, onResizeToken }) {
   const pal = useContext(PalCtx);
   // Story 65 — local echo so repeated taps step from the value just chosen,
@@ -600,7 +416,7 @@ function NpcOverflowMenu({ npc, npcPal, libraryTemplates, onSaveToLibrary, onClo
     : null;
 
   const hpMax = npc.hpMax || 0;
-  const ablCount = Array.isArray(npc.abilities) ? npc.abilities.length : 0;
+  const ablCount = abilitiesOf(npc).length;
   const existingHp = existingEntry?.hpMax || 0;
   const hpChanged = existingEntry && hpMax !== existingHp;
 
@@ -1046,31 +862,18 @@ function NpcCard({
       </div>
 
       {!collapsed && (
-        <NpcAttacksRef
+        <NpcAbilitiesRef
           npc={npc}
           template={(libraryTemplates || []).find((t) => t.id === npc.librarySourceId) || null}
           onSave={async (stats) => {
             const updatedNpcs = (allNpcsRef.current || []).map((entry) => {
               if (entry.id !== npc.id) return entry;
-              const next = { ...entry, defense: stats.defense, attacks: stats.attacks };
+              // One list now: the old separate `attacks` are folded into abilities.
+              const { attacks: _old, ...rest } = entry; // eslint-disable-line no-unused-vars
+              const next = { ...rest, defense: stats.defense, abilities: stats.abilities };
               if (!next.defense) delete next.defense;
-              if (!next.attacks.length) delete next.attacks;
               return next;
             });
-            return onCommitNpcs(updatedNpcs);
-          }}
-        />
-      )}
-
-      {!collapsed && (
-        <NpcAbilityRef
-          abilities={npc.abilities}
-          isActiveTurn={isActiveTurn}
-          npcPal={npcPal}
-          onSave={async (nextAbilities) => {
-            const updatedNpcs = (allNpcsRef.current || []).map((entry) =>
-              entry.id === npc.id ? { ...entry, abilities: nextAbilities } : entry
-            );
             return onCommitNpcs(updatedNpcs);
           }}
         />
@@ -1133,7 +936,6 @@ export default function NpcCombatSection({
   const [addCount, setAddCount] = useState(1);
   const [addNumberThem, setAddNumberThem] = useState(true);
   const [stagedPortraitUrl, setStagedPortraitUrl] = useState(null);
-  const [stagedAbilities, setStagedAbilities] = useState(null);
   const [stagedLibrarySourceId, setStagedLibrarySourceId] = useState(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [libPickerOpen, setLibPickerOpen] = useState(false);
@@ -1234,9 +1036,8 @@ export default function NpcCombatSection({
       conditions: [],
       initiativeEntryId: null,
       ...(stagedPortraitUrl ? { portraitUrl: stagedPortraitUrl } : {}),
-      ...(stagedAbilities ? { abilities: stagedAbilities } : {}),
       ...(stagedLibrarySourceId ? { librarySourceId: stagedLibrarySourceId } : {}),
-      // The creature's attacks and defense, copied so each NPC can change its own.
+      // The creature's abilities and defense, copied so each NPC can change its own.
       ...statsFromTemplate((npcLibrary?.templates || []).find((t) => t.id === stagedLibrarySourceId)),
     }));
     const updated = [...npcs, ...newNpcs];
@@ -1245,7 +1046,6 @@ export default function NpcCombatSection({
     setAddCount(1);
     setAddNumberThem(true);
     setStagedPortraitUrl(null);
-    setStagedAbilities(null);
     setStagedLibrarySourceId(null);
     setLibPickerOpen(false);
     await commitNpcList(updated);
@@ -1255,7 +1055,6 @@ export default function NpcCombatSection({
     setAddName(template.name);
     if (template.hpMax) setAddHp(String(template.hpMax));
     setStagedPortraitUrl(template.portraitUrl || null);
-    setStagedAbilities(template.abilities || null);
     setStagedLibrarySourceId(template.id);
     setLibPickerOpen(false);
     // MRU bump: update template updatedAt in library (fire and forget)
@@ -1501,7 +1300,7 @@ export default function NpcCombatSection({
                 const templates = npcLibrary?.templates || [];
                 const filtered = libPickerFilter.trim()
                   ? templates.filter((t) => {
-                      const hay = (t.name + " " + (t.abilities || []).join(" ")).toLowerCase();
+                      const hay = (t.name + " " + abilitiesOf(t).map(abilityText).join(" ")).toLowerCase();
                       return hay.includes(libPickerFilter.trim().toLowerCase());
                     })
                   : templates;
@@ -1536,17 +1335,17 @@ export default function NpcCombatSection({
                             </span>
                           )}
                         </div>
-                        {(tpl.abilities || []).length === 0 ? (
+                        {abilitiesOf(tpl).length === 0 ? (
                           <span style={{ fontFamily: pal.fontBody, fontSize: 11, fontStyle: "italic", color: pal.textMuted }}>(no abilities saved)</span>
                         ) : (
                           <>
-                            {(tpl.abilities || []).slice(0, 2).map((ab, i) => (
-                              <div key={i} style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.textBody, lineHeight: 1.55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                <span style={{ color: npcPal.accent, fontSize: 10 }}>◆</span> {ab}
+                            {abilitiesOf(tpl).slice(0, 2).map((ab) => (
+                              <div key={ab.id} style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.textBody, lineHeight: 1.55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                <span style={{ color: npcPal.accent, fontSize: 10 }}>{ab.roll ? "⚔" : "◆"}</span> {abilityText(ab)}
                               </div>
                             ))}
-                            {(tpl.abilities || []).length > 2 && (
-                              <span style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, fontStyle: "italic" }}>+{tpl.abilities.length - 2} more…</span>
+                            {abilitiesOf(tpl).length > 2 && (
+                              <span style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, fontStyle: "italic" }}>+{abilitiesOf(tpl).length - 2} more…</span>
                             )}
                           </>
                         )}

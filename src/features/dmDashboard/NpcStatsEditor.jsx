@@ -1,29 +1,44 @@
-// A creature's defense and attacks (design/prototypes/npc-attacks.html), used
-// in the Enemies Gallery (library creatures) and on an NPC's card (one NPC).
-// Edits raw values; the caller saves them through normalizeDefense/Attacks.
+// A creature's defense and abilities (design/prototypes/npc-abilities.html),
+// used in the Enemies Gallery (library creatures) and the NPC card's modal.
+// One list: each ability has a name and notes; switched to "Can be rolled" it
+// gets a look, an attack roll and damage, and shows in Take Action. Edits raw
+// values; the caller saves them through normalizeDefense/normalizeAbilities.
 import { useState } from "react";
 import LookIcon from "./LookIcon";
 import { LOOK_GROUPS, chanceToReach, guessLook, isDice, lookLabel } from "./npcStats";
 import "./npcStats.css";
 
-// New attacks start empty: the faded placeholders show an example.
-const BLANK_ATTACK = () => ({ id: `atk-${Date.now().toString(36)}`, name: "", hit: "", damage: "", look: "cut" });
+let nextId = 0;
+const newId = () => `ab-${Date.now().toString(36)}-${(nextId += 1)}`;
 // Red only once something unreadable is typed; empty is just unfinished.
 const badDice = (v) => !!(v && String(v).trim()) && !isDice(v);
 
-export default function NpcStatsEditor({ defense, attacks, onChange }) {
+export default function NpcStatsEditor({ defense, abilities, onChange }) {
   const [lookOpen, setLookOpen] = useState(null);
   // Looks the DM picked by hand stop following the name.
-  const [pickedLooks, setPickedLooks] = useState(() => new Set((attacks || []).map((a) => a.id)));
+  const [pickedLooks, setPickedLooks] = useState(() => new Set((abilities || []).filter((a) => a.roll).map((a) => a.id)));
   const d = defense || { kind: "ac", ac: "" };
-  const list = attacks || [];
+  const list = abilities || [];
 
-  const setDefense = (next) => onChange({ defense: next, attacks: list });
-  const setAttacks = (next) => onChange({ defense, attacks: next });
-  const editAttack = (i, patch) => {
-    const a = { ...list[i], ...patch };
-    if (patch.name !== undefined && !pickedLooks.has(a.id)) a.look = guessLook(patch.name, a.look);
-    setAttacks(list.map((x, j) => (j === i ? a : x)));
+  const setDefense = (next) => onChange({ defense: next, abilities: list });
+  const setList = (next) => onChange({ defense, abilities: next });
+  const edit = (i, patch) => setList(list.map((x, j) => (j === i ? { ...x, ...patch } : x)));
+  const editName = (i, name) => {
+    const a = list[i];
+    const roll = a.roll && !pickedLooks.has(a.id) ? { ...a.roll, look: guessLook(name, a.roll.look) } : a.roll;
+    edit(i, { name, ...(roll ? { roll } : {}) });
+  };
+  const editRoll = (i, patch) => edit(i, { roll: { ...list[i].roll, ...patch } });
+  const toggleRoll = (i) => {
+    const a = list[i];
+    if (a.roll) { const { roll: _drop, ...rest } = a; setList(list.map((x, j) => (j === i ? rest : x))); setLookOpen(null); } // eslint-disable-line no-unused-vars
+    else edit(i, { roll: { hit: "", damage: "", look: guessLook(a.name, "cut") } });
+  };
+  const move = (i, by) => {
+    const next = [...list];
+    [next[i], next[i + by]] = [next[i + by], next[i]];
+    setLookOpen(null);
+    setList(next);
   };
 
   return (
@@ -45,52 +60,66 @@ export default function NpcStatsEditor({ defense, attacks, onChange }) {
           )}
         </div>
         <p className="ns-hint">{d.kind === "roll"
-          ? `Rolled when it's attacked; the attack has to beat it (a tie goes to the defender, as in a D&D contest).`
+          ? "Rolled when it's attacked; the attack has to beat it (a tie goes to the defender, as in a D&D contest)."
           : "An attack total of this or more hits. Most creatures sit between 11 and 16; leave it empty if you'd rather judge each hit yourself."}</p>
       </div>
 
       <div className="ns-field">
-        <span className="ns-label">Attacks</span>
-        {list.map((a, i) => {
-          const okHit = isDice(a.hit || "");
-          return (
-            <div key={a.id} className="ns-attack">
-              <div className="ns-attack-row">
-                <button type="button" className="ns-look" aria-label={`Look: ${lookLabel(a.look)}`} title={`Look: ${lookLabel(a.look)}`} aria-expanded={lookOpen === i} onClick={() => setLookOpen(lookOpen === i ? null : i)}>
-                  <LookIcon look={a.look} />
-                </button>
-                <label className="ns-col ns-grow">Name<input className="ns-input" value={a.name} onChange={(e) => editAttack(i, { name: e.target.value })} placeholder="Tentacles" /></label>
-                <label className="ns-col">Attack roll<input className={`ns-input ns-dice${badDice(a.hit) ? " bad" : ""}`} value={a.hit} onChange={(e) => editAttack(i, { hit: e.target.value })} placeholder="1d20+4" /></label>
-                <label className="ns-col">Damage<input className={`ns-input ns-dice${badDice(a.damage) ? " bad" : ""}`} value={a.damage} onChange={(e) => editAttack(i, { damage: e.target.value })} placeholder="1d6+2" /></label>
-                <button type="button" className="ns-remove" aria-label={`Remove ${a.name || "this attack"}`} onClick={() => { setLookOpen(null); setAttacks(list.filter((_, j) => j !== i)); }}>✕</button>
+        <span className="ns-label">Abilities</span>
+        {list.map((a, i) => (
+          <div key={a.id} className="ns-ability">
+            <div className="ns-ability-top">
+              <div className="ns-ability-text">
+                <input className="ns-input" value={a.name} onChange={(e) => editName(i, e.target.value)} aria-label="Ability name" placeholder="Name, e.g. Keen Smell or Tentacles" />
+                <textarea className="ns-input ns-notes" rows={(a.notes || "").length > 70 ? 2 : 1} value={a.notes || ""} onChange={(e) => edit(i, { notes: e.target.value })} aria-label={`Notes for ${a.name || "this ability"}`} placeholder="Notes (optional): what it does" />
               </div>
-              {okHit && (
-                <p className="ns-hint ns-chance">
-                  Hits AC 12 about <b>{chanceToReach(a.hit, 12)}%</b> of the time · AC 15 about <b>{chanceToReach(a.hit, 15)}%</b> · AC 18 about <b>{chanceToReach(a.hit, 18)}%</b>
-                </p>
-              )}
-              {lookOpen === i && (
-                <div className="ns-looks" role="group" aria-label="Look on the map">
-                  {LOOK_GROUPS.map((g) => (
-                    <div key={g.title} className="ns-look-group">
-                      <span className="ns-look-title">{g.title}</span>
-                      {g.looks.map((l) => (
-                        <button key={l.id} type="button" className={l.id === a.look ? "on" : ""} aria-pressed={l.id === a.look}
-                          onClick={() => { setPickedLooks((s) => new Set(s).add(a.id)); setLookOpen(null); setAttacks(list.map((x, j) => (j === i ? { ...x, look: l.id } : x))); }}>
-                          <LookIcon look={l.id} size={20} />{l.label}
-                        </button>
-                      ))}
-                    </div>
-                  ))}
-                </div>
-              )}
+              <button type="button" className={`ns-roll-switch${a.roll ? " on" : ""}`} role="switch" aria-checked={!!a.roll} aria-label={`${a.name || "This ability"} can be rolled`} onClick={() => toggleRoll(i)}>
+                <span className="ns-switch" aria-hidden="true"><i /></span>
+                <LookIcon look="cut" size={14} /> Can be rolled
+              </button>
+              <div className="ns-ability-tools">
+                <span className="ns-move">
+                  <button type="button" aria-label={`Move ${a.name || "this ability"} up`} disabled={i === 0} onClick={() => move(i, -1)}>▲</button>
+                  <button type="button" aria-label={`Move ${a.name || "this ability"} down`} disabled={i === list.length - 1} onClick={() => move(i, 1)}>▼</button>
+                </span>
+                <button type="button" className="ns-remove" aria-label={`Remove ${a.name || "this ability"}`} onClick={() => { setLookOpen(null); setList(list.filter((_, j) => j !== i)); }}>✕</button>
+              </div>
             </div>
-          );
-        })}
+            {a.roll && (
+              <div className="ns-roll">
+                <button type="button" className="ns-look" aria-label={`Look: ${lookLabel(a.roll.look)}`} title={`Look: ${lookLabel(a.roll.look)}`} aria-expanded={lookOpen === i} onClick={() => setLookOpen(lookOpen === i ? null : i)}>
+                  <LookIcon look={a.roll.look} />
+                </button>
+                <label className="ns-col">Attack roll<input className={`ns-input ns-dice${badDice(a.roll.hit) ? " bad" : ""}`} value={a.roll.hit} onChange={(e) => editRoll(i, { hit: e.target.value })} placeholder="1d20+4" /></label>
+                <label className="ns-col">Damage<input className={`ns-input ns-dice${badDice(a.roll.damage) ? " bad" : ""}`} value={a.roll.damage} onChange={(e) => editRoll(i, { damage: e.target.value })} placeholder="1d6+2" /></label>
+                {isDice(a.roll.hit) && (
+                  <p className="ns-hint ns-chance">
+                    Hits AC 12 about <b>{chanceToReach(a.roll.hit, 12)}%</b> of the time · AC 15 about <b>{chanceToReach(a.roll.hit, 15)}%</b> · AC 18 about <b>{chanceToReach(a.roll.hit, 18)}%</b>
+                  </p>
+                )}
+                {lookOpen === i && (
+                  <div className="ns-looks" role="group" aria-label="Look on the map">
+                    {LOOK_GROUPS.map((g) => (
+                      <div key={g.title} className="ns-look-group">
+                        <span className="ns-look-title">{g.title}</span>
+                        {g.looks.map((l) => (
+                          <button key={l.id} type="button" className={l.id === a.roll.look ? "on" : ""} aria-pressed={l.id === a.roll.look}
+                            onClick={() => { setPickedLooks((s) => new Set(s).add(a.id)); setLookOpen(null); editRoll(i, { look: l.id }); }}>
+                            <LookIcon look={l.id} size={20} />{l.label}
+                          </button>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        ))}
         <div className="ns-row">
-          <button type="button" className="ns-add" onClick={() => setAttacks([...list, BLANK_ATTACK()])} disabled={list.length >= 8}>＋ Add an attack</button>
+          <button type="button" className="ns-add" onClick={() => setList([...list, { id: newId(), name: "", notes: "" }])} disabled={list.length >= 30}>＋ Add an ability</button>
         </div>
-        <p className="ns-hint">The attack roll is the whole roll: a d20 plus the creature&apos;s bonus (+3 or +4 for most low-level monsters, +8 for a dangerous one).</p>
+        <p className="ns-hint">Switch on “Can be rolled” for anything the creature attacks with: it gets an attack roll (a d20 plus its bonus: +3 or +4 for most low-level monsters, +8 for a dangerous one) and damage, and shows in Take Action. Everything else is a note for you.</p>
       </div>
     </div>
   );

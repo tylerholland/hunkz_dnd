@@ -1,12 +1,13 @@
-// An NPC's defense and attacks on its card (design/prototypes/npc-attacks.html):
+// An NPC's defense and abilities on its card (design/prototypes/npc-abilities.html):
 // copied from its library creature when added, changeable for this NPC only.
-// The card shows a compact summary; editing happens in a modal.
+// The card shows a compact summary (rollable abilities with their dice, then
+// the rest); editing happens in a modal.
 import { useContext, useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import LookIcon from "./LookIcon";
 import NpcStatsEditor from "./NpcStatsEditor";
 import { PalCtx } from "./dashboardShared";
-import { changedFromTemplate, defenseLabel, normalizeAttacks, normalizeDefense, statsFromTemplate } from "./npcStats";
+import { abilitiesOf, changedFromTemplate, defenseLabel, normalizeAbilities, normalizeDefense, statsFromTemplate } from "./npcStats";
 import "./npcStats.css";
 
 const palVars = (pal) => ({
@@ -26,7 +27,7 @@ const palVars = (pal) => ({
 
 function StatsModal({ npc, template, onSave, onClose }) {
   const pal = useContext(PalCtx);
-  const [draft, setDraft] = useState({ defense: npc.defense || null, attacks: npc.attacks || [] });
+  const [draft, setDraft] = useState({ defense: npc.defense || null, abilities: abilitiesOf(npc) });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const differs = template && changedFromTemplate(draft, template);
@@ -39,7 +40,7 @@ function StatsModal({ npc, template, onSave, onClose }) {
 
   async function save() {
     setSaving(true);
-    const ok = await onSave({ defense: normalizeDefense(draft.defense), attacks: normalizeAttacks(draft.attacks) });
+    const ok = await onSave({ defense: normalizeDefense(draft.defense), abilities: normalizeAbilities(draft.abilities) });
     setSaving(false);
     if (ok === false) setError("Couldn't save. Try again.");
     else onClose();
@@ -50,13 +51,13 @@ function StatsModal({ npc, template, onSave, onClose }) {
       <div className="ns-modal" role="dialog" aria-modal="true" aria-labelledby="ns-modal-title" data-light={pal.light ? "true" : undefined}>
         <div className="ns-modal-head">
           <h2 id="ns-modal-title">{npc.name}</h2>
-          <span className="ns-label">Attacks &amp; defense{template ? ` · from ${template.name}` : ""}</span>
+          <span className="ns-label">Abilities &amp; defense{template ? ` · from ${template.name}` : ""}</span>
         </div>
-        <NpcStatsEditor defense={draft.defense} attacks={draft.attacks} onChange={setDraft} />
+        <NpcStatsEditor defense={draft.defense} abilities={draft.abilities} onChange={setDraft} />
         {template && <p className="ns-hint">Only {npc.name} changes; the library&apos;s {template.name} stays as it is.</p>}
         {error && <p className="ns-hint" role="alert" style={{ color: "#c06060" }}>{error}</p>}
         <div className="ns-modal-foot">
-          {differs && <button type="button" className="ns-add" onClick={() => setDraft({ defense: null, attacks: [], ...statsFromTemplate(template) })}>Reset to library</button>}
+          {differs && <button type="button" className="ns-add" onClick={() => setDraft({ defense: null, abilities: [], ...statsFromTemplate(template) })}>Reset to library</button>}
           <span style={{ flex: 1 }} />
           <button type="button" className="ns-add" onClick={onClose}>Cancel</button>
           <button type="button" className="ns-add ns-primary" disabled={saving} onClick={save}>{saving ? "Saving…" : template ? "Save for this one" : "Save"}</button>
@@ -67,17 +68,24 @@ function StatsModal({ npc, template, onSave, onClose }) {
   );
 }
 
-export default function NpcAttacksRef({ npc, template, onSave }) {
+const PLAIN_SHOWN = 3;
+const short = (t, n = 60) => (t.length > n ? `${t.slice(0, n - 2)}…` : t);
+
+export default function NpcAbilitiesRef({ npc, template, onSave }) {
   const [editing, setEditing] = useState(false);
+  const [showAll, setShowAll] = useState(false);
   const defense = normalizeDefense(npc.defense);
-  const attacks = normalizeAttacks(npc.attacks);
+  const abilities = abilitiesOf(npc);
+  const rollable = abilities.filter((a) => a.roll);
+  const plain = abilities.filter((a) => !a.roll);
+  const shownPlain = showAll ? plain : plain.slice(0, PLAIN_SHOWN);
   const changed = changedFromTemplate(npc, template);
   const modal = editing && <StatsModal npc={npc} template={template} onSave={onSave} onClose={() => setEditing(false)} />;
 
-  if (!defense && !attacks.length) {
+  if (!defense && !abilities.length) {
     return (
       <div className="npc-ability-ref">
-        <button type="button" className="npc-ability-ref-toggle" onClick={() => setEditing(true)}>+ Attacks &amp; defense</button>
+        <button type="button" className="npc-ability-ref-toggle" onClick={() => setEditing(true)}>+ Abilities &amp; defense</button>
         {modal}
       </div>
     );
@@ -86,17 +94,29 @@ export default function NpcAttacksRef({ npc, template, onSave }) {
   return (
     <div className="npc-ability-ref ns-summary">
       <div className="ns-summary-head">
-        <span className="ns-label">Attacks{defense ? ` · ${defenseLabel(defense)}` : ""}</span>
+        <span className="ns-label">Abilities{defense ? ` · ${defenseLabel(defense)}` : ""}</span>
         {changed && <span className="ns-changed" title="Changed from the library">✎ Changed</span>}
-        <button type="button" className="ns-edit" aria-label={`Edit ${npc.name}'s attacks and defense`} title="Edit attacks & defense" onClick={() => setEditing(true)}>✎</button>
+        <button type="button" className="ns-edit" aria-label={`Edit ${npc.name}'s abilities and defense`} title="Edit abilities & defense" onClick={() => setEditing(true)}>✎</button>
       </div>
-      {attacks.map((a) => (
-        <div key={a.id} className="ns-summary-row">
-          <span className="ns-summary-icon"><LookIcon look={a.look} size={15} /></span>
+      {rollable.map((a) => (
+        <div key={a.id} className="ns-summary-row" title={a.notes || undefined}>
+          <span className="ns-summary-icon"><LookIcon look={a.roll.look} size={15} /></span>
           <b>{a.name}</b>
-          <span className="ns-summary-dice">{a.hit} · {a.damage}</span>
+          <span className="ns-summary-dice">{a.roll.hit} · {a.roll.damage}</span>
         </div>
       ))}
+      {shownPlain.map((a) => (
+        <div key={a.id} className="ns-summary-row ns-summary-plain" title={a.notes || undefined}>
+          <span aria-hidden="true" className="ns-summary-diamond">◆</span>
+          <span className="ns-summary-name">{a.name}</span>
+          {a.notes && <small>{short(a.notes)}</small>}
+        </div>
+      ))}
+      {plain.length > PLAIN_SHOWN && (
+        <button type="button" className="npc-ability-ref-toggle ns-more" onClick={() => setShowAll((v) => !v)}>
+          {showAll ? "Show less" : `+${plain.length - PLAIN_SHOWN} more`}
+        </button>
+      )}
       {modal}
     </div>
   );

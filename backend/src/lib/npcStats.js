@@ -45,4 +45,41 @@ function normalizeAttacks(raw) {
     .slice(0, MAX_ATTACKS);
 }
 
-module.exports = { LOOKS, normalizeDefense, normalizeAttacks };
+/**
+ * A creature's abilities as one list (design/prototypes/npc-abilities.html):
+ * [{ id, name, notes?, roll?: { hit, damage, look } }]. A rollable ability has
+ * an attack roll and damage and shows in Take Action; the rest are notes.
+ * Reads the old shapes too: ability strings ("Keen Smell: advantage…" splits
+ * into name and notes) and the separate `attacks` list (rollable abilities).
+ */
+function splitAbilityText(text) {
+  const t = str(text, 600);
+  const m = /^(.{1,40}?)\s*(?::|\s[—–-]\s)\s*(.+)$/.exec(t);
+  return m ? { name: m[1].trim(), notes: m[2].trim() } : { name: t.slice(0, 120), notes: t.length > 120 ? t.slice(120).trim() : "" };
+}
+
+function normalizeAbilities(rawAbilities, legacyAttacks) {
+  const list = Array.isArray(rawAbilities) ? rawAbilities : typeof rawAbilities === "string" && rawAbilities.trim() ? [rawAbilities] : [];
+  const out = list.map((a, i) => {
+    if (typeof a === "string") return { id: `ab-${i + 1}`, ...splitAbilityText(a) };
+    const name = str(a?.name, 120);
+    const notes = str(a?.notes, 600);
+    const hit = dice(a?.roll?.hit);
+    const damage = dice(a?.roll?.damage);
+    return {
+      id: str(a?.id, 40) || `ab-${i + 1}`,
+      name,
+      ...(notes ? { notes } : {}),
+      ...(hit && damage ? { roll: { hit, damage, look: LOOKS.includes(a?.roll?.look) ? a.roll.look : "cut" } } : {}),
+    };
+  });
+  // The old separate attacks become rollable abilities (unless already listed).
+  const names = new Set(out.map((a) => a.name.toLowerCase()));
+  for (const atk of normalizeAttacks(legacyAttacks)) {
+    if (names.has(atk.name.toLowerCase())) continue;
+    out.push({ id: atk.id, name: atk.name, roll: { hit: atk.hit, damage: atk.damage, look: atk.look } });
+  }
+  return out.filter((a) => a.name).map((a) => (a.notes === "" ? (({ notes, ...rest }) => rest)(a) : a)).slice(0, 30);
+}
+
+module.exports = { LOOKS, normalizeDefense, normalizeAttacks, normalizeAbilities };
