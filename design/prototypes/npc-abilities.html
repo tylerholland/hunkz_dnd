@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>NPC Abilities</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  One "Abilities & defense" for a creature — prototype, no live API.
+  Folds the free-text Abilities into the Attacks & defense editor
+  (design/prototypes/npc-attacks.html), so there is one list, one editor.
+
+  Editor (a modal, from the NPC card's ✎ or in the Enemies Gallery)
+  - Defense on top: Armour class or a named defense roll (unchanged).
+  - Abilities: one list. Each line has a Name and optional Notes, and a
+    "⚔ Can be rolled" switch. Switched on, it gets the look, attack roll,
+    damage and hit chances (as attacks had). Plain lines are traits and notes.
+  - Lines can be moved up/down; rollable ones are listed first on the card and
+    in Take Action whatever the order (the order is kept within each group).
+  NPC card: Defense line, rollable abilities (icon, name, dice), then plain ones
+  (the first three, then "+N more"). ✎ opens the editor. Changed from the
+  library / Reset to library as before. The old inline "+ Ability reference"
+  editor goes away.
+  Take Action: rollable abilities first, then the quick attacks and Magic.
+  Data: npc.abilities becomes [{ id, name, notes?, roll?: { hit, damage, look } }].
+  Migration (read-time, nothing lost):
+  - old ability strings → plain lines; a "Name: rest" or "Name — rest" string
+    splits into name and notes, otherwise the whole string is the name;
+  - old attacks [{ name, hit, damage, look }] → rollable lines.
+  Players never see abilities (unchanged).
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
+    --dim:#1e3a4e; --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#080a0e; --gold:#c8a040; --red:#c06060; --green:#6fbf86;
+    --card:#1a1814; --cardb:rgba(140,110,70,.3);
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --solid:#ece4d2; --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
+    --dim:rgba(140,110,70,.16); --text:#2a2018; --body:#3c2e1c; --muted:#7d6448; --page:#e9e1d2; --gold:#8a6418; --red:#9a2a20; --green:#2f7a45;
+    --card:#efe6d4; --cardb:rgba(140,110,70,.35);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button, input, textarea { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+  main { max-width:1180px; margin:0 auto; padding:24px 16px 80px; display:grid; gap:26px; }
+  h1 { margin:0; font-family:'Cinzel',serif; font-weight:400; letter-spacing:.08em; color:var(--text); font-size:22px; }
+  .note { margin:6px 0 0; font-style:italic; color:var(--muted); font-size:15px; max-width:860px; }
+  .where { margin:0 0 8px; font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .ctl { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .ctl button { border:0; background:transparent; padding:7px 13px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .ctl button.on { background:var(--dim); color:var(--text); }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1.5fr) minmax(300px,1fr); gap:24px; align-items:start; }
+  @media (max-width:900px){ .grid2 { grid-template-columns:1fr; } }
+  .label { font-family:'Cinzel',serif; font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); }
+  .hint { margin:0; font-size:14px; font-style:italic; color:var(--muted); line-height:1.35; }
+  .hint b { font-style:normal; color:var(--body); }
+  .in { box-sizing:border-box; min-height:36px; padding:5px 9px; border:1px solid var(--border); border-radius:4px; background:var(--bg); color:var(--text); font-size:15px; }
+  .in::placeholder { color:var(--muted); opacity:.55; font-style:italic; }
+  .dice { width:92px; font-family:'Cinzel',serif; letter-spacing:.03em; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+  .seg button { border:0; background:transparent; padding:7px 11px; color:var(--muted); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+  .seg button.on { background:var(--dim); color:var(--text); }
+  .btn { min-height:34px; padding:0 12px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--bright); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.06em; }
+  .btn.primary { border-color:var(--accent); background:var(--dim); }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
+  svg.ico { width:16px; height:16px; }
+
+  /* Modal */
+  .modal { border:1px solid var(--accent); border-radius:12px; background:var(--solid); padding:18px 20px; display:grid; gap:16px; box-shadow:0 18px 60px rgba(0,0,0,.4); }
+  .modal h2 { margin:0; font-family:'Cinzel',serif; font-weight:400; font-size:20px; letter-spacing:.04em; color:var(--text); }
+  .foot { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding-top:12px; border-top:1px solid var(--border); }
+
+  /* An ability line */
+  .ab { display:grid; gap:6px; padding:10px 0; border-bottom:1px dashed var(--border); }
+  .ab-top { display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:8px; align-items:start; }
+  .ab-text { display:grid; gap:6px; }
+  .ab-text .in.notes { min-height:34px; resize:vertical; font-size:14px; color:var(--body); }
+  .move { display:grid; gap:2px; }
+  .move button, .x { width:30px; height:22px; border:0; background:transparent; color:var(--muted); font-size:12px; padding:0; }
+  .x { height:34px; font-size:14px; }
+  .roll-sw { display:inline-flex; align-items:center; gap:8px; min-height:34px; padding:0 10px; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--muted); font-size:13px; white-space:nowrap; }
+  .roll-sw .sw { position:relative; width:30px; height:16px; border-radius:8px; border:1px solid var(--border); background:var(--bg); }
+  .roll-sw .sw i { position:absolute; top:2px; left:2px; width:10px; height:10px; border-radius:50%; background:var(--muted); }
+  .roll-sw.on { color:var(--text); border-color:var(--accent); }
+  .roll-sw.on .sw { background:var(--dim); border-color:var(--accent); } .roll-sw.on .sw i { left:16px; background:var(--bright); }
+  .roll { display:grid; grid-template-columns:40px auto auto 1fr; gap:8px; align-items:end; padding:8px 10px; border-radius:6px; background:color-mix(in srgb,var(--bg) 60%,transparent); }
+  .roll label { display:grid; gap:3px; font-family:'Cinzel',serif; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .look { width:40px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:4px; background:var(--bg); color:var(--bright); }
+  .roll .hint { grid-column:1 / -1; font-size:13px; }
+  @media (max-width:560px){ .roll { grid-template-columns:40px 1fr 1fr; } .ab-top { grid-template-columns:minmax(0,1fr) auto; } .move { display:none; } }
+
+  /* NPC card */
+  .npc { border:1px solid var(--cardb); border-left:3px solid var(--gold); border-radius:8px; background:var(--card); }
+  .npc-head { display:flex; align-items:center; gap:10px; padding:10px 12px; }
+  .npc-head .pt { width:40px; height:40px; border-radius:50%; background:radial-gradient(circle at 40% 35%,#6b4b3a,#2a1a14); border:2px solid var(--gold); }
+  .npc-head b { font-family:'Cinzel',serif; font-weight:400; font-size:17px; color:var(--text); letter-spacing:.04em; }
+  .npc-sec { padding:6px 12px 10px; display:grid; gap:4px; font-size:14px; }
+  .npc-sec .hd { display:flex; align-items:center; gap:8px; min-height:28px; }
+  .npc-sec .hd .edit { margin-left:auto; width:30px; height:30px; border:0; background:transparent; color:var(--muted); }
+  .line { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; }
+  .line b { font-weight:600; color:var(--text); }
+  .line .dice-t { font-family:'Cinzel',serif; font-size:12px; color:var(--bright); }
+  .line .ic { color:var(--bright); display:inline-flex; align-self:center; }
+  .line.plain { color:var(--body); }
+  .line.plain b { font-weight:400; color:var(--body); }
+  .line.plain small { color:var(--muted); font-style:italic; font-size:13px; }
+  .more { border:0; background:transparent; padding:2px 0; color:var(--muted); font-family:'Cinzel',serif; font-size:10px; letter-spacing:.14em; text-transform:uppercase; text-align:left; }
+  .changed { padding:0 8px; border-radius:999px; border:1px solid var(--gold); color:var(--gold); font-size:12px; }
+  .npc-actions { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; padding:8px 12px 12px; border-top:1px solid var(--cardb); }
+  .npc-actions span { text-align:center; padding:6px; border:1px solid var(--cardb); border-radius:4px; font-family:'Cinzel',serif; font-size:12px; color:var(--muted); }
+
+  /* Take Action drawer */
+  .drawer { border:1px solid var(--accent); border-radius:12px; background:var(--solid); padding:14px 16px; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .chip { display:inline-flex; align-items:center; gap:8px; padding:7px 12px; border:1px solid var(--border); border-radius:6px; background:var(--bg); font-family:'Cinzel',serif; font-size:12px; color:var(--text); }
+  .chip.own { border-color:color-mix(in srgb,var(--bright) 45%,var(--border)); }
+  .chip small { font-family:'Crimson Text',serif; font-size:13px; color:var(--accent); }
+  .divider { width:100%; height:1px; background:var(--border); margin:2px 0; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>One list: abilities &amp; defense</h1>
+    <p class="note">Prototype. The creature's free-text Abilities and its Attacks become one list in one editor. Any ability can be switched to “⚔ Can be rolled”, which gives it the attack roll, damage and look; plain ones stay as traits and notes. The card shows rollable abilities with their dice, then the rest. Edit the list on the left and watch the card and Take Action follow.</p>
+    <p style="margin:12px 0 0"><span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span></p>
+  </header>
+
+  <div class="grid2">
+    <section>
+      <p class="where">The editor (a modal from the card's ✎, and the Enemies Gallery)</p>
+      <div class="modal" id="editor"></div>
+    </section>
+    <div style="display:grid;gap:24px">
+      <section>
+        <p class="where">The NPC card</p>
+        <div class="npc" id="card"></div>
+      </section>
+      <section>
+        <p class="where">Take Action · the Carrion Crawler acts</p>
+        <div class="drawer" id="drawer"></div>
+      </section>
+    </div>
+  </div>
+</main>
+
+<script>
+  const ICON = {
+    bite:'<path d="M3 8c3-4 11-4 14 0M3 12c3 4 11 4 14 0"/><path d="M6 8.6l1 2 1-2.4 1 2.4 1-2.4 1 2.4 1-2.4 1 2"/><path d="M6 11.4l1-1.8 1 2.2 1-2.2 1 2.2 1-2.2 1 2.2 1-1.8"/>',
+    lash:'<path d="M3 15c3 0 4-3 5-6s3-5 6-4 2 5-1 6-3-2-1-3"/>', cut:'<path d="M4 16L15 5M13 4l3 3"/>',
+    claw:'<path d="M5 3c2 5 2 9 0 14M10 3c2 5 2 9 0 14M15 3c2 5 2 9 0 14"/>', slam:'<rect x="5" y="3" width="10" height="7" rx="2"/><path d="M10 10v4M4 17h12"/>',
+    spit:'<circle cx="5" cy="10" r="2"/><path d="M8 10h3M12 8l2 2-2 2M15 10h2"/>', sting:'<path d="M4 16c4-1 7-4 9-8l3-5-5 3c-4 2-7 5-8 9z"/>',
+  };
+  const icon = (k) => `<svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICON[k] || ICON.cut}</svg>`;
+  const GUESS = [[/bite|fang|jaw/i,"bite"],[/claw|talon|rake/i,"claw"],[/tentacle|whip|lash|tail/i,"lash"],[/sting/i,"sting"],[/slam|crush|squeeze/i,"slam"],[/spit|acid|web/i,"spit"]];
+  const guess = (n, f) => GUESS.find(([r]) => r.test(n))?.[1] || f;
+  const isDice = (v) => /^\s*(\d*d\d+|\d+)(\s*[+-]\s*(\d*d\d+|\d+))*\s*$/i.test(v || "");
+  function chance(expr, target) {
+    let dist = new Map([[0,1]]); const re=/([+-]?)\s*(\d*)d(\d+)|([+-]?)\s*(\d+)/gi; let m;
+    while ((m = re.exec(expr))) { if (m[3]) { const n=+(m[2]||1), s=+m[3]; for (let k=0;k<n;k++){ const nx=new Map(); for (const [v,p] of dist) for (let f=1;f<=s;f++) nx.set(v+f,(nx.get(v+f)||0)+p/s); dist=nx; } } else if (m[5]) { const a=(m[4]==="-"?-1:1)*+m[5]; dist=new Map([...dist].map(([v,p])=>[v+a,p])); } }
+    let p=0; for (const [v,q] of dist) if (v>=target) p+=q; return Math.round(p*100);
+  }
+  const esc = (s) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+
+  // The Monster Manual's Carrion Crawler, as one list.
+  const state = {
+    defense: { kind: "ac", ac: 13 },
+    abilities: [
+      { id: 1, name: "Multiattack", notes: "Two attacks: one with its tentacles and one with its bite." },
+      { id: 2, name: "Tentacles", notes: "The target is poisoned for 1 minute (DC 13 CON save). Poisoned this way, it's paralysed; it repeats the save at the end of each turn.", roll: { hit: "1d20+8", damage: "1d4+2", look: "lash" } },
+      { id: 3, name: "Bite", notes: "", roll: { hit: "1d20+4", damage: "2d4+2", look: "bite" } },
+      { id: 4, name: "Keen Smell", notes: "Advantage on Wisdom (Perception) checks that rely on smell." },
+      { id: 5, name: "Spider Climb", notes: "Climbs difficult surfaces, including upside down on ceilings." },
+    ],
+    showAll: false,
+  };
+
+  function editor() {
+    const d = state.defense;
+    return `<div><h2>Carrion Crawler</h2><span class="label">Abilities &amp; defense · from the library</span></div>
+      <div style="display:grid;gap:6px"><span class="label">Defense</span>
+        <div class="row"><span class="seg"><button data-def="ac" class="${d.kind === "ac" ? "on" : ""}">Armour class</button><button data-def="roll" class="${d.kind === "roll" ? "on" : ""}">Defense roll</button></span>
+        ${d.kind === "ac" ? `<span style="font-family:Cinzel;color:var(--text)">AC</span><input class="in dice" style="width:60px" value="${esc(d.ac)}" placeholder="13" aria-label="Armour class">`
+          : `<input class="in" style="width:110px" placeholder="Dodge" aria-label="Defense name"><input class="in dice" placeholder="1d20+3" aria-label="Defense roll">`}</div></div>
+      <div style="display:grid;gap:2px"><span class="label">Abilities</span>
+        ${state.abilities.map((a, i) => `
+          <div class="ab">
+            <div class="ab-top">
+              <div class="ab-text">
+                <input class="in" value="${esc(a.name)}" data-ab="${i}" data-k="name" placeholder="Name, e.g. Keen Smell or Tentacles" aria-label="Ability name">
+                <textarea class="in notes" rows="${(a.notes || "").length > 70 ? 2 : 1}" data-ab="${i}" data-k="notes" placeholder="Notes (optional): what it does" aria-label="Notes">${esc(a.notes)}</textarea>
+              </div>
+              <button type="button" class="roll-sw${a.roll ? " on" : ""}" data-toggle="${i}" aria-pressed="${!!a.roll}"><span class="sw"><i></i></span>${icon("cut")} Can be rolled</button>
+              <div class="row" style="gap:0;flex-wrap:nowrap"><span class="move"><button data-up="${i}" aria-label="Move up" ${i === 0 ? "disabled" : ""}>▲</button><button data-down="${i}" aria-label="Move down" ${i === state.abilities.length - 1 ? "disabled" : ""}>▼</button></span><button class="x" data-del="${i}" aria-label="Remove">✕</button></div>
+            </div>
+            ${a.roll ? `<div class="roll">
+              <button type="button" class="look" title="Look on the map">${icon(a.roll.look)}</button>
+              <label>Attack roll<input class="in dice" value="${esc(a.roll.hit)}" data-roll="${i}" data-k="hit" placeholder="1d20+4"></label>
+              <label>Damage<input class="in dice" value="${esc(a.roll.damage)}" data-roll="${i}" data-k="damage" placeholder="1d6+2"></label>
+              <span></span>
+              ${isDice(a.roll.hit) ? `<p class="hint">Hits AC 12 about <b>${chance(a.roll.hit, 12)}%</b> · AC 15 about <b>${chance(a.roll.hit, 15)}%</b> · AC 18 about <b>${chance(a.roll.hit, 18)}%</b></p>` : ""}
+            </div>` : ""}
+          </div>`).join("")}
+        <div class="row" style="margin-top:10px"><button class="btn" data-add>＋ Add an ability</button></div>
+        <p class="hint" style="margin-top:6px">Switch on “⚔ Can be rolled” for anything the creature attacks with: it gets an attack roll (a d20 plus its bonus) and damage, and shows in Take Action. Everything else is a note for you.</p>
+      </div>
+      <div class="foot"><button class="btn">Reset to library</button><span style="flex:1"></span><button class="btn">Cancel</button><button class="btn primary">Save for this one</button></div>`;
+  }
+
+  function card() {
+    const rollable = state.abilities.filter((a) => a.roll && a.name);
+    const plain = state.abilities.filter((a) => !a.roll && a.name);
+    const shown = state.showAll ? plain : plain.slice(0, 3);
+    const d = state.defense;
+    return `<div class="npc-head"><span class="pt"></span><b>Carrion Crawler</b><span style="margin-left:auto;font-family:Cinzel;color:var(--text)">51<small style="color:var(--muted)">/51</small></span></div>
+      <div class="npc-sec">
+        <div class="hd"><span class="label">Abilities${d.kind === "ac" && d.ac ? ` · AC ${d.ac}` : ""}</span><button class="edit" aria-label="Edit abilities and defense">✎</button></div>
+        ${rollable.map((a) => `<div class="line"><span class="ic">${icon(a.roll.look)}</span><b>${esc(a.name)}</b><span class="dice-t">${esc(a.roll.hit)} · ${esc(a.roll.damage)}</span></div>`).join("")}
+        ${shown.map((a) => `<div class="line plain"><b>◆ ${esc(a.name)}</b>${a.notes ? `<small>${esc(a.notes.length > 60 ? a.notes.slice(0, 58) + "…" : a.notes)}</small>` : ""}</div>`).join("")}
+        ${plain.length > 3 ? `<button class="more" data-more>${state.showAll ? "Show less" : `+${plain.length - 3} more`}</button>` : ""}
+      </div>
+      <div class="npc-actions"><span>⚔ Dmg</span><span>✦ Heal</span><span>+ Cond</span></div>`;
+  }
+
+  function drawer() {
+    const rollable = state.abilities.filter((a) => a.roll && a.name);
+    return `<div style="font-family:Cinzel;color:var(--text)">Carrion Crawler → Eòghan</div><span class="label">Pick an action</span>
+      <div class="chips">${rollable.map((a) => `<span class="chip own">${icon(a.roll.look)}${esc(a.name)} <small>${esc(a.roll.hit)} · ${esc(a.roll.damage)}</small></span>`).join("")}
+        ${rollable.length ? '<div class="divider"></div>' : ""}<span class="chip">Unarmed Strike <small>1d4</small></span><span class="chip">Swing Sword <small>1d8</small></span><span class="chip">✚ Heal</span><span class="chip">✶ Magic ▾</span></div>
+      <p class="hint" style="margin-top:10px">Plain abilities (Keen Smell, Spider Climb…) aren't actions, so they stay on the card.</p>`;
+  }
+
+  function render() {
+    document.getElementById("editor").innerHTML = editor();
+    document.getElementById("card").innerHTML = card();
+    document.getElementById("drawer").innerHTML = drawer();
+  }
+  function renderSide() { document.getElementById("card").innerHTML = card(); document.getElementById("drawer").innerHTML = drawer(); }
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    const A = state.abilities;
+    if (b.dataset.pal) { document.body.dataset.pal = b.dataset.pal; document.querySelectorAll("[data-pal]").forEach((x) => x.classList.toggle("on", x === b)); return; }
+    if (b.dataset.def) state.defense = b.dataset.def === "ac" ? { kind: "ac", ac: 13 } : { kind: "roll" };
+    if (b.dataset.toggle != null) { const a = A[+b.dataset.toggle]; a.roll = a.roll ? null : { hit: "", damage: "", look: guess(a.name, "cut") }; }
+    if (b.dataset.up != null) { const i = +b.dataset.up; [A[i - 1], A[i]] = [A[i], A[i - 1]]; }
+    if (b.dataset.down != null) { const i = +b.dataset.down; [A[i + 1], A[i]] = [A[i], A[i + 1]]; }
+    if (b.dataset.del != null) A.splice(+b.dataset.del, 1);
+    if (b.dataset.add !== undefined) A.push({ id: Date.now(), name: "", notes: "" });
+    if (b.dataset.more !== undefined) { state.showAll = !state.showAll; return renderSide(); }
+    render();
+  });
+  document.addEventListener("input", (e) => {
+    const t = e.target, A = state.abilities;
+    if (t.dataset.ab != null) A[+t.dataset.ab][t.dataset.k] = t.value;
+    if (t.dataset.roll != null) A[+t.dataset.roll].roll[t.dataset.k] = t.value;
+    renderSide();
+  });
+  render();
+</script>
+</body>
+</html>
