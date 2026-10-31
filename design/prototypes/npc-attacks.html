@@ -10,8 +10,14 @@
 
   Data (new fields, all optional — NPCs without them keep today's generic list)
   - npc-library template: defense { kind: "ac", ac: 13 } | { kind: "roll", roll: "2d6+1", name: "Dodge" };
-    attacks [{ id, name, hit: "1d6", damage: "2d4", look: "lash" }]. `hit` is the
-    WHOLE attack roll (the DM builds in whether the creature beats the table's 2d6).
+    attacks [{ id, name, hit: "1d20+8", damage: "1d4+2", look: "lash" }]. `hit` is the
+    WHOLE attack roll — a d20 plus the creature's bonus, as in D&D (examples use the
+    Monster Manual's Carrion Crawler and Goblin). The editor shows the hit chance
+    against AC 12 / 15 / 18 so a mistuned attack is obvious.
+  - Ties follow D&D: meeting the AC hits; a defense roll is a contest, so a tie
+    goes to the defender.
+  - DM Settings → "NPC attack roll": the roll for generic quick attacks (creatures
+    without their own). Standard 1d20+3, or the DM's own.
   - npc-combat NPC: copies defense + attacks when added from the library; the DM can
     change them for that one NPC (the Spear goblin). "Changed from the library"
     shows, with Reset to library and Save as a new library entry.
@@ -141,13 +147,18 @@
     </section>
   </div>
 
+  <section>
+    <p class="where">3 · DM Settings · a new card for the generic attacks</p>
+    <div class="card" id="settings" style="max-width:640px"></div>
+  </section>
+
   <div class="grid2">
     <section>
-      <p class="where">3 · Take Action · the Carrion Crawler acts</p>
+      <p class="where">4 · Take Action · the Carrion Crawler acts</p>
       <div class="drawer" id="drawer"></div>
     </section>
     <section>
-      <p class="where">4 · A player attacks it · the DM's History and Deal Damage</p>
+      <p class="where">5 · A player attacks it · the DM's History and Deal Damage</p>
       <div class="card" id="logcard"></div>
     </section>
   </div>
@@ -179,22 +190,38 @@
   const guess = (name, fallback) => GUESS.find(([re]) => re.test(name))?.[1] || fallback;
 
   const state = {
-    lib: { name: "Carrion Crawler", hp: 51, defense: { kind: "ac", ac: 13, roll: "2d6+1", rollName: "Dodge" },
-      attacks: [{ id: 1, name: "Tentacle Whip", hit: "1d6", damage: "2d4", look: "lash" }, { id: 2, name: "Tentacle Squeeze", hit: "2d6", damage: "1d6+1", look: "slam" }] },
+    lib: { name: "Carrion Crawler", hp: 51, defense: { kind: "ac", ac: 13, roll: "1d20+3", rollName: "Dodge" },
+      attacks: [{ id: 1, name: "Tentacles", hit: "1d20+8", damage: "1d4+2", look: "lash", note: "and the target is poisoned (paralysed)" }, { id: 2, name: "Bite", hit: "1d20+4", damage: "2d4+2", look: "bite" }] },
     lookOpen: null,
-    inst: { name: "Goblin Soldier 3", from: "Goblin Soldier", changed: true, attacks: [{ name: "Spear", hit: "2d6", damage: "1d8", look: "cut", changed: true }, { name: "Shield Bash", hit: "2d6-1", damage: "1d4", look: "slam" }] },
+    inst: { name: "Goblin Soldier 3", from: "Goblin Soldier", changed: true, attacks: [{ name: "Spear (two hands)", hit: "1d20+4", damage: "1d8+2", look: "cut", changed: true }, { name: "Shortbow", hit: "1d20+4", damage: "1d6+2", look: "arrow" }] },
     act: { pick: null, phase: "pick", hitTotal: null, def: null },
     log: { defRolled: null, defMode: "ac" },
+    settings: { custom: false, roll: "1d20+4" },
   };
-  // Generic quick attacks have no attack roll of their own: they use the
-  // table's usual one (DM Settings → ability check dice, 2d6 here).
-  const TABLE_ROLL = "2d6";
+  // Generic quick attacks have no attack roll of their own: they use the DM
+  // Setting "NPC attack roll" — standard 1d20+3 (a typical low-level monster),
+  // or the DM's own.
+  const NPC_ROLL_DEFAULT = "1d20+3";
+  const npcRoll = () => (state.settings.custom ? state.settings.roll : NPC_ROLL_DEFAULT);
   const GENERIC = [
     { name: "Unarmed Strike", damage: "1d4", look: "flurry" },
     { name: "Swing Sword", damage: "1d8", look: "cut" },
     { name: "Throw Rock", damage: "1d4", look: "rock" },
-  ].map((g) => ({ ...g, hit: TABLE_ROLL, generic: true }));
-  const attackOf = (pick) => (typeof pick === "string" ? GENERIC[+pick.slice(1)] : state.lib.attacks[pick]);
+  ].map((g) => ({ ...g, generic: true }));
+  const attackOf = (pick) => (typeof pick === "string" ? { ...GENERIC[+pick.slice(1)], hit: npcRoll() } : state.lib.attacks[pick]);
+  // Exact chance a dice expression reaches a target (for the editor's hint).
+  function distribution(expr) {
+    let dist = new Map([[0, 1]]);
+    const re = /([+-]?)\s*(\d*)d(\d+)|([+-]?)\s*(\d+)/gi; let m;
+    while ((m = re.exec(expr))) {
+      if (m[3]) {
+        const n = +(m[2] || 1), sides = +m[3], sign = m[1] === "-" ? -1 : 1;
+        for (let k = 0; k < n; k++) { const next = new Map(); for (const [v, p] of dist) for (let f = 1; f <= sides; f++) next.set(v + sign * f, (next.get(v + sign * f) || 0) + p / sides); dist = next; }
+      } else if (m[5]) { const add = (m[4] === "-" ? -1 : 1) * +m[5]; dist = new Map([...dist].map(([v, p]) => [v + add, p])); }
+    }
+    return dist;
+  }
+  const chance = (expr, target) => { let p = 0; for (const [v, q] of distribution(expr)) if (v >= target) p += q; return Math.round(p * 100); };
   const validDice = (s) => /^\s*\d*d\d+(\s*[+-]\s*\d+)*\s*$|^\s*\d+\s*$/i.test(s);
   const roll = (expr) => { let t = 0; const re = /([+-]?)\s*(\d*)d(\d+)|([+-]?)\s*(\d+)/gi; let m; while ((m = re.exec(expr))) { if (m[3]) { const n = +(m[2] || 1); let s = 0; for (let i = 0; i < n; i++) s += 1 + Math.floor(Math.random() * +m[3]); t += m[1] === "-" ? -s : s; } else if (m[5]) t += m[4] === "-" ? -+m[5] : +m[5]; } return t; };
   const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
@@ -213,7 +240,7 @@
           ? `<span>AC</span><input class="in dice" style="width:64px" value="${d.ac}" data-field="ac" aria-label="Armour class">`
           : `<input class="in" style="width:110px" value="${esc(d.rollName)}" data-field="rollName" aria-label="Defense name"><input class="in dice ${validDice(d.roll) ? "" : "bad"}" value="${esc(d.roll)}" data-field="roll" aria-label="Defense roll">`}
       </div>
-      <p class="hint">${d.kind === "ac" ? "An attack total of this or more hits." : `Rolled when it's attacked; the attack hits if it beats the ${esc(d.rollName || "defense")} roll.`}</p>
+      <p class="hint">${d.kind === "ac" ? "An attack total of this or more hits (most creatures sit between 11 and 16)." : `Rolled when it's attacked; the attack has to beat the ${esc(d.rollName || "defense")} roll (a tie goes to the defender, as in a D&D contest).`}</p>
       <div class="row" style="margin-top:16px"><span class="lbl">Attacks</span></div>
       ${L.attacks.map((a, i) => `
         <div class="atk">
@@ -223,28 +250,29 @@
           <label class="dicefield">Damage<input class="in dice ${validDice(a.damage) ? "" : "bad"}" value="${esc(a.damage)}" data-atk="${i}" data-k="damage" placeholder="1d6"></label>
           <button type="button" class="x" data-del="${i}" aria-label="Remove ${esc(a.name)}">✕</button>
         </div>
+        ${validDice(a.hit) ? `<p class="hint" style="margin:2px 0 0 52px">Hits AC 12 about <b>${chance(a.hit, 12)}%</b> of the time · AC 15 about <b>${chance(a.hit, 15)}%</b> · AC 18 about <b>${chance(a.hit, 18)}%</b></p>` : ""}
         ${state.lookOpen === i ? looksPicker(i, a.look) : ""}`).join("")}
-      <div class="row"><button class="btn" data-add>＋ Add an attack</button><span class="hint" style="margin:0">The attack roll is the whole roll — the table's usual is 2d6, so a tougher creature might be 2d6+2.</span></div>`;
+      <div class="row"><button class="btn" data-add>＋ Add an attack</button><span class="hint" style="margin:0">The attack roll is the whole roll: a d20 plus the creature's bonus (+3 or +4 for most low-level monsters, +8 for a dangerous one).</span></div>`;
   }
 
   function instance() {
     const I = state.inst;
     return `<div style="display:flex;align-items:baseline;gap:10px;flex-wrap:wrap"><h2>${esc(I.name)}</h2><span class="sub">In play · from ${esc(I.from)}</span></div>
       <div class="row"><span class="flag">✎ Changed from the library</span></div>
-      ${I.attacks.map((a) => `<div class="row" style="margin-top:8px"><span style="color:var(--bright)">${icon(a.look)}</span><b style="font-weight:600;color:var(--text)">${esc(a.name)}</b><span class="sub" style="letter-spacing:.04em;text-transform:none">${a.hit} to hit · ${a.damage}</span>${a.changed ? `<span class="hint" style="margin:0">(library: Sword · 2d6 · 1d6)</span>` : ""}</div>`).join("")}
-      <div class="row" style="margin-top:14px"><span class="lbl">Defense</span><span>AC 12</span><span class="hint" style="margin:0">(from the library)</span></div>
+      ${I.attacks.map((a) => `<div class="row" style="margin-top:8px"><span style="color:var(--bright)">${icon(a.look)}</span><b style="font-weight:600;color:var(--text)">${esc(a.name)}</b><span class="sub" style="letter-spacing:.04em;text-transform:none">${a.hit} to hit · ${a.damage}</span>${a.changed ? `<span class="hint" style="margin:0">(library: Scimitar · 1d20+4 · 1d6+2)</span>` : ""}</div>`).join("")}
+      <div class="row" style="margin-top:14px"><span class="lbl">Defense</span><span>AC 15</span><span class="hint" style="margin:0">(from the library)</span></div>
       <div class="row" style="margin-top:16px"><button class="btn">✎ Edit this one</button><button class="btn quiet">Reset to library</button><button class="btn quiet">Save as a new library entry</button></div>
-      <p class="hint">Only this goblin changes; the other four keep the library's Sword. The library itself is untouched unless you save.</p>`;
+      <p class="hint">Only this goblin changes; the other four keep the library's Scimitar. The library itself is untouched unless you save.</p>`;
   }
 
   function drawer() {
     const L = state.lib, A = state.act;
     const own = L.attacks.map((a, i) => `<button class="chip own${A.pick === i ? " on" : ""}" data-pick="${i}">${icon(a.look)}${esc(a.name)} <small>${a.hit} · ${a.damage}</small></button>`).join("");
-    const generic = GENERIC.map((g, j) => `<button class="chip${A.pick === "g" + j ? " on" : ""}" data-pick="g${j}">${icon(g.look)}${g.name} <small>${g.damage}</small></button>`).join("");
+    const generic = GENERIC.map((g, j) => `<button class="chip${A.pick === "g" + j ? " on" : ""}" data-pick="g${j}">${icon(g.look)}${g.name} <small>${npcRoll()} · ${g.damage}</small></button>`).join("");
     let step = "";
     if (A.pick != null) {
       const a = attackOf(A.pick);
-      if (A.phase === "roll") step = `<div class="roll-step"><div>${icon(a.look)} <b style="color:var(--text)">${esc(a.name)}</b> · attack roll <b>${a.hit}</b>${a.generic ? " <span class='hint' style='margin:0'>(the table's usual roll)</span>" : ""} against Eòghan's <b>AC 12</b></div><div><button class="btn primary" data-attack>Roll ${a.hit}</button></div></div>`;
+      if (A.phase === "roll") step = `<div class="roll-step"><div>${icon(a.look)} <b style="color:var(--text)">${esc(a.name)}</b> · attack roll <b>${a.hit}</b>${a.generic ? " <span class='hint' style='margin:0'>(DM Settings → NPC attack roll)</span>" : ""} against Eòghan's <b>AC 12</b></div><div><button class="btn primary" data-attack>Roll ${a.hit}</button></div></div>`;
       else {
         const hit = A.hitTotal >= 12;
         step = `<div class="roll-step"><div class="vs"><b class="n">${A.hitTotal}</b><span>vs Eòghan's AC 12</span><span class="verdict ${hit ? "hit" : "miss"}">${hit ? "Hits" : "Misses"}</span></div>
@@ -267,7 +295,7 @@
     const vsline = ac
       ? `<span class="verdict hit">Hits</span><span>vs AC 13</span>`
       : D.defRolled == null
-        ? `<span>vs Dodge 2d6+1</span><button class="btn" data-defroll>Roll Dodge</button>`
+        ? `<span>vs Dodge 1d20+3</span><button class="btn" data-defroll>Roll Dodge</button>`
         : `<span>vs Dodge <b style="color:var(--text)">${D.defRolled}</b></span><span class="verdict ${15 > D.defRolled ? "hit" : "miss"}">${15 > D.defRolled ? "Hits" : "Misses"}</span><button class="btn quiet" data-defroll>↺</button>`;
     return `<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><span class="sub">History</span><span style="flex:1"></span><span class="seg"><button data-logdef="ac" class="${ac ? "on" : ""}">Creature has AC</button><button data-logdef="roll" class="${ac ? "" : "on"}">Has a defense roll</button></span></div>
       <div class="log" style="margin-top:8px">
@@ -280,7 +308,17 @@
       <p class="players-see">Players see none of this: no AC, no defense roll, no verdict — only the damage when you apply it.</p>`;
   }
 
+  function settingsCard() {
+    const S = state.settings;
+    return `<h2 style="font-size:15px;letter-spacing:.14em;text-transform:uppercase;color:var(--accent)">NPC attack roll</h2>
+      <p class="hint" style="margin-top:4px">The attack roll for an NPC's quick attacks (Unarmed Strike, Swing Sword, Throw Rock) — the ones that aren't set up on the creature. Creatures with their own attacks use those.</p>
+      <div class="row"><span class="seg"><button data-set="std" class="${S.custom ? "" : "on"}">Standard · 1d20+3</button><button data-set="custom" class="${S.custom ? "on" : ""}">Your own</button></span>
+      ${S.custom ? `<input class="in dice ${validDice(S.roll) ? "" : "bad"}" value="${esc(S.roll)}" data-setroll aria-label="Your NPC attack roll">` : ""}</div>
+      <p class="hint">${S.custom ? `Hits AC 12 about ${chance(S.roll, 12)}% of the time.` : "A typical low-level monster: hits AC 12 about 60% of the time."}</p>`;
+  }
+
   function render() {
+    document.getElementById("settings").innerHTML = settingsCard();
     document.getElementById("editor").innerHTML = editor();
     document.getElementById("instance").innerHTML = instance();
     document.getElementById("drawer").innerHTML = drawer();
@@ -300,12 +338,14 @@
     if (b.dataset.attack !== undefined) { A.hitTotal = roll(attackOf(A.pick).hit); A.phase = "result"; }
     if (b.dataset.dmg !== undefined) { A.dmgTotal = roll(attackOf(A.pick).damage); A.phase = "damage"; }
     if (b.dataset.miss !== undefined) { A.pick = null; }
+    if (b.dataset.set) state.settings.custom = b.dataset.set === "custom";
     if (b.dataset.logdef) { state.log.defMode = b.dataset.logdef; state.log.defRolled = null; }
-    if (b.dataset.defroll !== undefined) state.log.defRolled = roll("2d6+1");
+    if (b.dataset.defroll !== undefined) state.log.defRolled = roll("1d20+3");
     render();
   });
   document.addEventListener("input", (e) => {
     const t = e.target, L = state.lib;
+    if (t.dataset.setroll !== undefined) { state.settings.roll = t.value; t.classList.toggle("bad", !validDice(t.value)); document.getElementById("drawer").innerHTML = drawer(); return; }
     if (t.dataset.field) { L.defense[t.dataset.field] = t.value; t.classList.toggle("bad", t.dataset.field === "roll" && !validDice(t.value)); return; }
     if (t.dataset.atk != null) {
       const a = L.attacks[+t.dataset.atk];
