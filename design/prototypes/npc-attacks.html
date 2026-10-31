@@ -17,7 +17,9 @@
     shows, with Reset to library and Save as a new library entry.
   Take Action (DM, map)
   - An NPC actor lists its own attacks first ("Tentacle Whip · 1d6 / 2d4"), then the
-    generic quick attacks and ✶ Magic as today.
+    generic quick attacks and ✶ Magic as today. Generic attacks have no attack roll
+    of their own, so they use the table's usual one (DM Settings, 2d6) and follow the
+    same roll → hit/miss → damage flow.
   - Picking one rolls the attack and compares with the target: a character's AC, or an
     NPC's AC / defense roll (rolled on the spot). It suggests Hit or Miss — the DM can
     overrule — then opens Deal Damage with the damage rolled and the look set.
@@ -184,6 +186,15 @@
     act: { pick: null, phase: "pick", hitTotal: null, def: null },
     log: { defRolled: null, defMode: "ac" },
   };
+  // Generic quick attacks have no attack roll of their own: they use the
+  // table's usual one (DM Settings → ability check dice, 2d6 here).
+  const TABLE_ROLL = "2d6";
+  const GENERIC = [
+    { name: "Unarmed Strike", damage: "1d4", look: "flurry" },
+    { name: "Swing Sword", damage: "1d8", look: "cut" },
+    { name: "Throw Rock", damage: "1d4", look: "rock" },
+  ].map((g) => ({ ...g, hit: TABLE_ROLL, generic: true }));
+  const attackOf = (pick) => (typeof pick === "string" ? GENERIC[+pick.slice(1)] : state.lib.attacks[pick]);
   const validDice = (s) => /^\s*\d*d\d+(\s*[+-]\s*\d+)*\s*$|^\s*\d+\s*$/i.test(s);
   const roll = (expr) => { let t = 0; const re = /([+-]?)\s*(\d*)d(\d+)|([+-]?)\s*(\d+)/gi; let m; while ((m = re.exec(expr))) { if (m[3]) { const n = +(m[2] || 1); let s = 0; for (let i = 0; i < n; i++) s += 1 + Math.floor(Math.random() * +m[3]); t += m[1] === "-" ? -s : s; } else if (m[5]) t += m[4] === "-" ? -+m[5] : +m[5]; } return t; };
   const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
@@ -229,11 +240,11 @@
   function drawer() {
     const L = state.lib, A = state.act;
     const own = L.attacks.map((a, i) => `<button class="chip own${A.pick === i ? " on" : ""}" data-pick="${i}">${icon(a.look)}${esc(a.name)} <small>${a.hit} · ${a.damage}</small></button>`).join("");
-    const generic = [["Unarmed Strike","1d4","flurry"],["Swing Sword","1d8","cut"],["Throw Rock","1d4","rock"]].map(([n, d, l]) => `<span class="chip">${icon(l)}${n} <small>${d}</small></span>`).join("");
+    const generic = GENERIC.map((g, j) => `<button class="chip${A.pick === "g" + j ? " on" : ""}" data-pick="g${j}">${icon(g.look)}${g.name} <small>${g.damage}</small></button>`).join("");
     let step = "";
     if (A.pick != null) {
-      const a = L.attacks[A.pick];
-      if (A.phase === "roll") step = `<div class="roll-step"><div>${icon(a.look)} <b style="color:var(--text)">${esc(a.name)}</b> · attack roll <b>${a.hit}</b> against Eòghan's <b>AC 12</b></div><div><button class="btn primary" data-attack>Roll ${a.hit}</button></div></div>`;
+      const a = attackOf(A.pick);
+      if (A.phase === "roll") step = `<div class="roll-step"><div>${icon(a.look)} <b style="color:var(--text)">${esc(a.name)}</b> · attack roll <b>${a.hit}</b>${a.generic ? " <span class='hint' style='margin:0'>(the table's usual roll)</span>" : ""} against Eòghan's <b>AC 12</b></div><div><button class="btn primary" data-attack>Roll ${a.hit}</button></div></div>`;
       else {
         const hit = A.hitTotal >= 12;
         step = `<div class="roll-step"><div class="vs"><b class="n">${A.hitTotal}</b><span>vs Eòghan's AC 12</span><span class="verdict ${hit ? "hit" : "miss"}">${hit ? "Hits" : "Misses"}</span></div>
@@ -285,9 +296,9 @@
     if (b.dataset.setlook != null) { L.attacks[+b.dataset.setlook].look = b.dataset.look; L.attacks[+b.dataset.setlook].lookSet = true; state.lookOpen = null; }
     if (b.dataset.del != null) { L.attacks.splice(+b.dataset.del, 1); state.lookOpen = null; A.pick = null; }
     if (b.dataset.add !== undefined) L.attacks.push({ id: Date.now(), name: "", hit: "2d6", damage: "1d6", look: "cut" });
-    if (b.dataset.pick != null) { A.pick = +b.dataset.pick; A.phase = "roll"; }
-    if (b.dataset.attack !== undefined) { A.hitTotal = roll(L.attacks[A.pick].hit); A.phase = "result"; }
-    if (b.dataset.dmg !== undefined) { A.dmgTotal = roll(L.attacks[A.pick].damage); A.phase = "damage"; }
+    if (b.dataset.pick != null) { A.pick = /^g/.test(b.dataset.pick) ? b.dataset.pick : +b.dataset.pick; A.phase = "roll"; }
+    if (b.dataset.attack !== undefined) { A.hitTotal = roll(attackOf(A.pick).hit); A.phase = "result"; }
+    if (b.dataset.dmg !== undefined) { A.dmgTotal = roll(attackOf(A.pick).damage); A.phase = "damage"; }
     if (b.dataset.miss !== undefined) { A.pick = null; }
     if (b.dataset.logdef) { state.log.defMode = b.dataset.logdef; state.log.defRolled = null; }
     if (b.dataset.defroll !== undefined) state.log.defRolled = roll("2d6+1");
