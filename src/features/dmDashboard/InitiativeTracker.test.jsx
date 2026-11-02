@@ -78,4 +78,31 @@ describe("InitiativeTracker optimistic updates", () => {
     expect(payload.activeTurnIndex).toBe(1);
     expect(options).toEqual({ optimistic: true });
   });
+
+  it("drags a row by its grip to a new place, re-sorting live, and saves on release", () => {
+    const props = renderTracker({
+      initiative: {
+        entries: [
+          { id: "a", slug: "aragorn", name: "Aragorn", initiative: 18, isPC: true, npcId: null },
+          { id: "b", slug: "liu-sha", name: "Liu Sha", initiative: 14, isPC: true, npcId: null },
+          { id: "c", name: "Goblin", initiative: 9, isPC: false, npcId: null },
+        ],
+        activeTurnIndex: 0,
+      },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Modify Order" }));
+    // Rows 40px tall, stacked from the top (jsdom has no layout).
+    document.querySelectorAll(".init-list > .init-entry").forEach((row, i) => {
+      row.getBoundingClientRect = () => ({ top: i * 40, height: 40, bottom: i * 40 + 40, left: 0, right: 200, width: 200 });
+    });
+    const grip = screen.getByRole("button", { name: "Drag to move Aragorn" });
+    fireEvent.pointerDown(grip, { button: 0, clientY: 20, pointerId: 1 });
+    fireEvent.pointerMove(window, { clientY: 110, pointerId: 1 });
+    // Live: Aragorn now shows last.
+    expect([...document.querySelectorAll(".init-name")].map((n) => n.textContent)).toEqual(["Liu Sha", "Goblin", "Aragorn"]);
+    expect(props.onCommitInitiative).not.toHaveBeenCalled();
+    fireEvent.pointerUp(window, { clientY: 110, pointerId: 1 });
+    const [payload] = props.onCommitInitiative.mock.calls[0];
+    expect(payload.entries.map((e) => e.id)).toEqual(["b", "c", "a"]);
+  });
 });

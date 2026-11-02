@@ -1142,3 +1142,18 @@
 .npc-add-close { width: 32px; height: 32px; border: none; background: transparent; color: var(--pal-text-muted); cursor: pointer; }
 .npc-add-close:hover { color: var(--npc-bright); }
 .npc-add-toggle:focus-visible, .npc-add-close:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }
+
+/* Modify Order: drag a row by its grip to sort (the ↑/↓ buttons stay). */
+.init-drag-handle {
+  flex-shrink: 0; width: 26px; height: 32px; margin-left: -4px; padding: 0;
+  border: none; background: transparent; color: var(--pal-text-muted);
+  font-size: 18px; line-height: 1; cursor: grab; touch-action: none;
+}
+.init-drag-handle:hover { color: var(--pal-accent-bright); }
+.init-drag-handle:active { cursor: grabbing; }
+.init-drag-handle:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 1px; }
+.init-entry[data-dragging="true"] .init-entry-row {
+  border-color: var(--pal-accent-bright) !important;
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.35);
+  opacity: 0.92;
+}

@@ -22,6 +22,10 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
   const [promoteOpenId, setPromoteOpenId] = useState(null);
   const [promoteHp, setPromoteHp] = useState("");
   const [modifyOrderMode, setModifyOrderMode] = useState(false);
+  // Drag to sort (Modify Order): { id, from, over } while a row is held by its grip.
+  const [drag, setDrag] = useState(null);
+  const dragRef = useRef(null); // the latest { id, from, over }, for the window listeners
+  const listRef = useRef(null);
   const vellumTurnButtonBg = pal === PALETTES.vellum
     ? getActiveTurnSurface(withAlpha(mixHex(VELLUM_CARD_MODE.paperAlt, pal.accent, 0.14), 0.82), pal.accent, 0.16, 0.05)
     : "rgba(18,32,48,0.5)";
@@ -105,18 +109,61 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
     await onCommitInitiative({ entries: [], activeTurnIndex: 0, round: 1 }, { optimistic: true });
   }
 
+  const reordered = (list, from, to) => {
+    const updated = [...list];
+    const [moved] = updated.splice(from, 1);
+    updated.splice(to, 0, moved);
+    return updated;
+  };
+
+  async function moveEntryTo(entryId, toIndexRaw) {
+    const fromIndex = entries.findIndex((entry) => entry.id === entryId);
+    if (fromIndex < 0) return;
+    const toIndex = Math.max(0, Math.min(entries.length - 1, toIndexRaw));
+    if (toIndex === fromIndex) return;
+    await onCommitInitiative(buildPayload(reordered(entries, fromIndex, toIndex)), { optimistic: true });
+  }
+
   async function moveEntry(entryId, delta) {
     const fromIndex = entries.findIndex((entry) => entry.id === entryId);
     if (fromIndex < 0) return;
-    const toIndex = Math.max(0, Math.min(entries.length - 1, fromIndex + delta));
-    if (toIndex === fromIndex) return;
-
-    const updated = [...entries];
-    const [moved] = updated.splice(fromIndex, 1);
-    updated.splice(toIndex, 0, moved);
-
-    await onCommitInitiative(buildPayload(updated), { optimistic: true });
+    await moveEntryTo(entryId, fromIndex + delta);
   }
+
+  // Drag by the grip: the list re-sorts live under the pointer (mouse or
+  // touch); the new order is saved on release. Move/release are followed on
+  // the window — re-sorting moves the dragged row in the page, which would
+  // drop a pointer capture held on its grip.
+  function startDrag(e, entryId, index) {
+    if (e.button !== undefined && e.button !== 0) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rows = [...(listRef.current?.querySelectorAll(":scope > .init-entry") || [])];
+    const mids = rows.map((row) => { const r = row.getBoundingClientRect(); return r.top + r.height / 2; });
+    const state = { id: entryId, from: index, over: index };
+    dragRef.current = state;
+    setDrag(state);
+    const onMove = (ev) => {
+      // The new slot: how many of the other rows' midpoints are above the pointer.
+      const over = mids.filter((mid, i) => i !== state.from && mid < ev.clientY).length;
+      if (over !== dragRef.current?.over) { dragRef.current = { ...state, over }; setDrag(dragRef.current); }
+    };
+    const finish = (save) => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onCancel);
+      const last = dragRef.current;
+      dragRef.current = null;
+      setDrag(null);
+      if (save && last) moveEntryTo(last.id, last.over);
+    };
+    const onUp = () => finish(true);
+    const onCancel = () => finish(false);
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onCancel);
+  }
+  const shownEntries = drag ? reordered(entries, drag.from, drag.over) : entries;
 
   return (
     <div
@@ -194,9 +241,10 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
         </div>
       ) : (
         <div style={{ marginBottom: 14 }}>
-          <ul className="init-list">
-          {entries.map((entry, idx) => {
-            const isCurrent = idx === activeTurnIndex;
+          <ul className="init-list" ref={listRef}>
+          {shownEntries.map((entry, idx) => {
+            // While dragging, the "current" marker follows its entry.
+            const isCurrent = entry.id === entries[activeTurnIndex]?.id;
             const isPromoteOpen = promoteOpenId === entry.id;
             const trackedNpc = !entry.isPC && entry.npcId ? (npcCombat?.npcs || []).find((npc) => npc.id === entry.npcId) : null;
             let hpDotColor = null;
@@ -207,7 +255,7 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
             }
             const canPromote = !entry.isPC && !entry.npcId && onPromoteToNpc;
             return (
-              <li key={entry.id} className="init-entry">
+              <li key={entry.id} className="init-entry" data-dragging={drag?.id === entry.id ? "true" : undefined}>
                 <div
                   onClick={canPromote ? () => setPromoteOpenId(isPromoteOpen ? null : entry.id) : undefined}
                   data-current={isCurrent ? "true" : undefined}
@@ -216,6 +264,16 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
                   className="init-entry-row"
                   style={{ background: isCurrent ? "rgba(106,143,168,0.12)" : pal.surface, borderColor: isCurrent ? pal.accent : isPromoteOpen ? "rgba(122,112,96,0.5)" : pal.border, borderRadius: isPromoteOpen ? "4px 4px 0 0" : 4 }}
                 >
+                  {modifyOrderMode && (
+                    <button
+                      type="button"
+                      className="init-drag-handle"
+                      aria-label={`Drag to move ${entry.name}`}
+                      title="Drag to reorder"
+                      onPointerDown={(e) => startDrag(e, entry.id, entries.findIndex((x) => x.id === entry.id))}
+                      onClick={(e) => e.stopPropagation()}
+                    >⠿</button>
+                  )}
                   <span className="num-display-sm init-value" style={{ color: isCurrent ? pal.accentBright : pal.gem, fontSize: 18 }}>{entry.initiative}</span>
                   <span className="init-name" style={{ color: isCurrent ? pal.accentBright : pal.text, fontWeight: isCurrent ? 600 : 400, fontStyle: !entry.isPC ? "italic" : "normal" }}>{entry.name}</span>
                   {hpDotColor && (
