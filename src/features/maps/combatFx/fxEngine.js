@@ -20,7 +20,11 @@ export const TABLE_PACE = 0.3;
 
 const CHARGE_MS = 350;
 const SHEETS = { slash: "/effects/fa01-slash.png", thrust: "/effects/fa01-thrust.png", punch: "/effects/fa01-punch.png" };
-const SHEET_FOR_STYLE = { cut: "slash", chop: "slash", flurry: "punch", arrow: "thrust", rock: "punch", fire: "punch", force: "punch", bolt: "punch" };
+const SHEET_FOR_STYLE = {
+  cut: "slash", chop: "slash", flurry: "punch", arrow: "thrust", rock: "punch", fire: "punch", force: "punch", bolt: "punch",
+  // Creature attacks (NPC abilities' looks).
+  bite: "slash", claw: "slash", lash: "slash", sting: "thrust", slam: "punch", breath: "punch", spit: "punch",
+};
 // A new hit on a token whose strike is still playing is absorbed (slow −/+
 // taps would otherwise stack several swings from the same attacker).
 const ABSORB_MS = 1100;
@@ -133,7 +137,8 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
     effects.push({ t0: clock + start, dur: ms, draw: (k) => {
       const p = tok(targetId); if (!p) return;
       const L = p.r * (opts.long ? 2.7 : 2.3), cx = Math.cos(angle), cy = Math.sin(angle);
-      const x0 = p.x - (cx * L) / 2, y0 = p.y - (cy * L) / 2;
+      const sh = (opts.shift || 0) * p.r;
+      const x0 = p.x - (cx * L) / 2 - cy * sh, y0 = p.y - (cy * L) / 2 + cx * sh;
       const head = easeOut(clamp01(k / 0.35)), tail = easeIn(clamp01((k - 0.2) / 0.8));
       const hx = x0 + cx * L * head, hy = y0 + cy * L * head, tx = x0 + cx * L * tail, ty = y0 + cy * L * tail;
       ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round";
@@ -157,7 +162,7 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
     const s = state(targetId); s.flash = Math.max(s.flash, second ? 0.8 : 0.5); s.flashColor = "#ff4a3a";
     if (!second) s.knock = { t0: clock, dur: 260, dist: p.r * 0.12, bearing };
   }
-  function projectile(attId, targetId, start, ms, kind, color, hue) {
+  function projectile(attId, targetId, start, ms, kind, color, hue, sparkColors = ["#ffb04a", "#ff5a24"]) {
     effects.push({ t0: clock + start, dur: ms, draw: (k) => {
       const a = tok(attId), b = tok(targetId); if (!a || !b) return;
       const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
@@ -193,7 +198,7 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
         const g = ctx.createRadialGradient(x, y, 0, x, y, r * 3.2);
         g.addColorStop(0, "rgba(255,245,210,1)"); g.addColorStop(0.25, color); g.addColorStop(1, hsl(hue ?? 20, 1, 0.55, 0));
         ctx.fillStyle = g; ctx.beginPath(); ctx.arc(x, y, r * 3.2, 0, Math.PI * 2); ctx.fill();
-        for (let i = 0; i < 3; i++) spark(x, y, { vx: (Math.random() - 0.5) * 0.08 - ux * 0.05, vy: (Math.random() - 0.5) * 0.08 - uy * 0.05 - 0.02, max: 420, size: 2 + Math.random() * 2.5, color: Math.random() < 0.5 ? "#ffb04a" : "#ff5a24", line: false });
+        for (let i = 0; i < 3; i++) spark(x, y, { vx: (Math.random() - 0.5) * 0.08 - ux * 0.05, vy: (Math.random() - 0.5) * 0.08 - uy * 0.05 - 0.02, max: 420, size: 2 + Math.random() * 2.5, color: sparkColors[Math.random() < 0.5 ? 0 : 1], line: false });
       }
       ctx.restore();
     } });
@@ -282,6 +287,93 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       }
       ctx.restore();
     } });
+  }
+
+  // ── Creature strike visuals ───────────────────────────────────────────────
+  // Jaws: two rows of teeth sweep in from either side of the target and snap
+  // shut along the line of attack.
+  function jaws(targetId, start, ms, bearing) {
+    effects.push({ t0: clock + start, dur: ms, draw: (k) => {
+      const p = tok(targetId); if (!p) return;
+      const R = p.r, close = easeIn(clamp01(k / 0.45)), fade = k < 0.6 ? 1 : Math.max(0, 1 - (k - 0.6) / 0.4);
+      ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(bearing);
+      ctx.globalCompositeOperation = "lighter"; ctx.shadowColor = "#fff2d6"; ctx.shadowBlur = 10;
+      for (const side of [-1, 1]) {
+        const gap = lerp(R * 1.25, R * 0.12, close) * side;
+        ctx.strokeStyle = `rgba(255,244,220,${0.85 * fade})`; ctx.lineWidth = 2.4;
+        ctx.beginPath(); ctx.moveTo(-R * 1.1, gap + side * R * 0.25); ctx.quadraticCurveTo(0, gap - side * R * 0.15, R * 1.1, gap + side * R * 0.25); ctx.stroke();
+        ctx.fillStyle = `rgba(255,248,232,${0.95 * fade})`;
+        for (let i = 0; i < 6; i++) {
+          const x = -R * 0.85 + (i * R * 1.7) / 5, base = gap + side * R * 0.18 * (1 - Math.abs(x) / (R * 1.4));
+          ctx.beginPath(); ctx.moveTo(x - R * 0.12, base); ctx.lineTo(x + R * 0.12, base); ctx.lineTo(x, base - side * R * 0.32); ctx.closePath(); ctx.fill();
+        }
+      }
+      ctx.restore();
+    } });
+  }
+  // A whip / tentacle / tail: uncoils from the attacker, snaps at the target.
+  function whip(attId, targetId, start, ms, color) {
+    effects.push({ t0: clock + start, dur: ms, draw: (k) => {
+      const a = tok(attId), b = tok(targetId); if (!a || !b) return;
+      const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
+      const x0 = a.x + ux * a.r * 0.8, y0 = a.y + uy * a.r * 0.8, len = d - a.r * 0.8 - b.r * 0.2;
+      const reach = easeOut(clamp01(k / 0.55)), fade = k < 0.7 ? 1 : Math.max(0, 1 - (k - 0.7) / 0.3);
+      const N = 28, amp = Math.min(len * 0.12, a.r * 1.4) * (1 - reach * 0.75);
+      ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+      for (const pass of [0, 1]) {
+        ctx.beginPath();
+        for (let i = 0; i <= N; i++) {
+          const u = (i / N) * reach, w = Math.sin(u * Math.PI * 3 - k * 14) * amp * Math.sin(Math.PI * (i / N));
+          const x = x0 + ux * len * u - uy * w, y = y0 + uy * len * u + ux * w;
+          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = pass === 0 ? "rgba(0,0,0,0.35)" : color; ctx.globalAlpha = fade;
+        ctx.lineWidth = pass === 0 ? Math.max(5, a.r * 0.32) : Math.max(3, a.r * 0.2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    } });
+  }
+  // A barbed stinger / spike: a fast straight thrust in and back out.
+  function stab(attId, targetId, start, ms, color) {
+    effects.push({ t0: clock + start, dur: ms, draw: (k) => {
+      const a = tok(attId), b = tok(targetId); if (!a || !b) return;
+      const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
+      const out = k < 0.35 ? easeOut(k / 0.35) : 1 - easeIn((k - 0.35) / 0.65);
+      const x0 = a.x + ux * a.r * 0.8, y0 = a.y + uy * a.r * 0.8, L = (d - a.r * 0.8 - b.r * 0.1) * out;
+      const hx = x0 + ux * L, hy = y0 + uy * L, w = Math.max(2.5, a.r * 0.16);
+      ctx.save(); ctx.fillStyle = color; ctx.strokeStyle = "rgba(0,0,0,0.4)"; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x0 - uy * w, y0 + ux * w); ctx.lineTo(hx, hy); ctx.lineTo(x0 + uy * w, y0 - ux * w); ctx.closePath(); ctx.fill(); ctx.stroke();
+      ctx.restore();
+    } });
+  }
+  // Breath: a cone pouring from the attacker over the target, full of embers.
+  function breathCone(attId, targetId, start, ms, colors) {
+    effects.push({ t0: clock + start, dur: ms, draw: (k) => {
+      const a = tok(attId), b = tok(targetId); if (!a || !b) return;
+      const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ang = Math.atan2(b.y - a.y, b.x - a.x);
+      const len = (d + b.r * 1.2) * easeOut(clamp01(k / 0.4)), spread = 0.42;
+      const fade = k < 0.65 ? 1 : Math.max(0, 1 - (k - 0.65) / 0.35);
+      ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.translate(a.x, a.y); ctx.rotate(ang);
+      const g = ctx.createLinearGradient(a.r * 0.6, 0, len, 0);
+      g.addColorStop(0, colors.core); g.addColorStop(0.5, colors.mid); g.addColorStop(1, "rgba(0,0,0,0)");
+      ctx.globalAlpha = 0.55 * fade; ctx.fillStyle = g;
+      ctx.beginPath(); ctx.moveTo(a.r * 0.6, -a.r * 0.2); ctx.lineTo(len, -Math.tan(spread) * len); ctx.quadraticCurveTo(len * 1.08, 0, len, Math.tan(spread) * len); ctx.lineTo(a.r * 0.6, a.r * 0.2); ctx.closePath(); ctx.fill();
+      ctx.restore();
+      if (fade > 0.3) {
+        for (let i = 0; i < 4; i++) {
+          const aa = ang + (Math.random() - 0.5) * spread * 2, sp = 0.25 + Math.random() * 0.3;
+          spark(a.x + Math.cos(ang) * a.r * 0.8, a.y + Math.sin(ang) * a.r * 0.8, { vx: Math.cos(aa) * sp, vy: Math.sin(aa) * sp, max: Math.min(900, d * 2.4 + 200), size: 2 + Math.random() * 3, color: colors.ember[i % colors.ember.length], drag: 0.985, line: false });
+        }
+      }
+    } });
+  }
+  // A splatter of droplets (venom, acid) that hangs a moment.
+  function splatter(p, bearing, colors, n) {
+    for (let i = 0; i < n; i++) {
+      const a = bearing + (Math.random() - 0.5) * 2.4, sp = 0.08 + Math.random() * 0.22;
+      spark(p.x + Math.cos(a) * p.r * 0.4, p.y + Math.sin(a) * p.r * 0.4, { vx: Math.cos(a) * sp, vy: Math.sin(a) * sp, max: 600 + Math.random() * 400, size: 1.8 + Math.random() * 2.6, color: colors[i % colors.length], drag: 0.95, g: 0.0004, shrink: false, line: false, blood: true });
+    }
   }
 
   // ── Impact ────────────────────────────────────────────────────────────────
@@ -441,6 +533,47 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       charge(attackerId, hsl(hue, 0.95, 0.68), CHARGE_MS + 120);
       forceBlast(attackerId, targetId, CHARGE_MS + 80, 900, hue);
       at(CHARGE_MS + 80 + 630, () => { boardShake = Math.max(boardShake, 3); impact(targetId, { ...common, force: true, color: hsl(hue, 0.95, 0.82), ringColor: `hsla(${Math.round(hue)},95%,72%,` }); });
+    // ── Creature attacks ───────────────────────────────────────────────────
+    } else if (style === "bite") {
+      windUp(attackerId, targetId, 300);
+      lunge(attackerId, targetId, 300, 380);
+      jaws(targetId, 380, 520, bearing);
+      at(520, () => { impact(targetId, { ...common, blade: true, color: "#ffe6d8" }); if (!miss) blood(t, t.r, bearing, crit ? 22 : 12); });
+    } else if (style === "claw") {
+      windUp(attackerId, targetId, 320);
+      lunge(attackerId, targetId, 320, 380);
+      for (const [i, shift] of [[0, -0.45], [1, 0], [2, 0.45]]) cut(targetId, 420 + i * 45, 360, bearing, { angleOffset: 0.35, shift, color: "#ffe4c4" });
+      at(470, () => impact(targetId, { ...common, blade: true, color: "#ffe4c4" }));
+    } else if (style === "lash") {
+      windUp(attackerId, targetId, 260);
+      whip(attackerId, targetId, 260, 760, "#7a6a4a");
+      at(260 + 420, () => {
+        rings.push({ x: t.x, y: t.y, r0: t.r * 0.3, r1: t.r * 1.5, t0: clock, dur: 300, color: "rgba(255,240,210,", w: 2 });
+        impact(targetId, { ...common, fist: true, color: "#f3e6cc" });
+      });
+    } else if (style === "sting") {
+      windUp(attackerId, targetId, 320);
+      stab(attackerId, targetId, 320, 420, "#d8cfa8");
+      at(320 + 150, () => { impact(targetId, { ...common, blade: true, color: "#d8f5a0" }); if (!miss) splatter(t, bearing, ["#8fd14f", "#5fae2e", "#c4f08a"], crit ? 18 : 10); });
+    } else if (style === "slam") {
+      windUp(attackerId, targetId, 560, true);
+      lunge(attackerId, targetId, 560, 460);
+      at(720, () => {
+        boardShake = Math.max(boardShake, crit ? 10 : 7);
+        rings.push({ x: t.x, y: t.y, r0: t.r * 0.8, r1: t.r * 2.6, t0: clock, dur: 520, color: "rgba(214,196,160,", w: 4 });
+        rings.push({ x: t.x, y: t.y, r0: t.r * 0.8, r1: t.r * 3.4, t0: clock + 120, dur: 620, color: "rgba(214,196,160,", w: 2 });
+        burst(t.x, t.y, "rgba(190,170,140,0.6)", 16, 0.18, 800, { size: 3.5, drag: 0.96 });
+        impact(targetId, { ...common, heavy: true, fist: true, chips: true, color: "#e8dcc4" });
+      });
+    } else if (style === "breath") {
+      charge(attackerId, "#ff8a3c", CHARGE_MS + 120);
+      breathCone(attackerId, targetId, CHARGE_MS + 120, 1100, { core: "rgba(255,240,200,1)", mid: "rgba(255,120,40,0.85)", ember: ["#ffb04a", "#ff5a24", "#ffd88a"] });
+      at(CHARGE_MS + 120 + 420, () => impact(targetId, { ...common, heavy: true, color: "#ffb35c", embers: true }));
+    } else if (style === "spit") {
+      const ms = travel(300, 560, 220);
+      charge(attackerId, "#9bd84f", CHARGE_MS);
+      projectile(attackerId, targetId, CHARGE_MS, ms, "orb", "#8fd14f", 95, ["#b8ec7a", "#6fbf2f"]);
+      at(CHARGE_MS + ms, () => { impact(targetId, { ...common, color: "#b8ec7a" }); if (!miss) splatter(t, bearing, ["#8fd14f", "#6fbf2f", "#d4f59a"], crit ? 26 : 16); });
     } else {
       // "bolt" — any other attack spell: one forked bolt, then the lingering sigil.
       charge(attackerId, hsl(hue, 0.95, 0.68), CHARGE_MS + 60);

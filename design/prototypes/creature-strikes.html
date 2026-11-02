@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Creature Strikes</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  Creature strike animations — a test bench on the REAL combat effects
+  engine (src/features/maps/combatFx/fxEngine.js), so what's approved here is
+  exactly what plays on the map. Open it through the dev server:
+    npm run dev → http://localhost:5173/design/prototypes/creature-strikes.html
+  (as a plain file it can't load the engine).
+
+  New styles (NPC abilities' looks):
+  - Bite   — wind-up, lunge, two rows of teeth snap shut on the target, blood.
+  - Claw   — wind-up, lunge, three parallel rake slashes.
+  - Lash   — a whip/tentacle/tail uncoils from the attacker (no lunge: reach),
+             cracks at the tip.
+  - Sting  — a fast barbed thrust in and out; green venom spray.
+  - Slam   — heavy wind-up and lunge; shockwave rings, dust, board shake.
+  - Breath — charge, then a cone of fire pours over the target, embers.
+  - Spit   — a glob of acid lobbed at the target; green splatter.
+  Each honours Hit / Crit (bigger, crit sprite, more shake) / Miss (whiff).
+  Today the app plays these looks with the nearest old animation
+  (lookAnimation in npcStats.js); approving them is a one-line switch there.
+  Open: colours per look (e.g. breath could take the creature's palette
+  like spells do), and whether Lash should knock the target back further.
+-->
+<style>
+  :root { --bg:#0d0f14; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0; --dim:#1e3a4e; --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; }
+  * { box-sizing:border-box; }
+  body { margin:0; background:#080a0e; color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; }
+  main { max-width:1100px; margin:0 auto; padding:22px 16px 60px; display:grid; gap:16px; }
+  h1 { margin:0; font-family:'Cinzel',serif; font-weight:400; letter-spacing:.08em; color:var(--text); font-size:22px; }
+  .note { margin:4px 0 0; font-style:italic; color:var(--muted); font-size:15px; }
+  .bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+  .grp { font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); margin-right:4px; }
+  button { font:inherit; cursor:pointer; }
+  .look { min-height:40px; padding:0 14px; border:1px solid var(--border); border-radius:6px; background:var(--solid); color:var(--text); font-family:'Cinzel',serif; font-size:13px; letter-spacing:.05em; }
+  .look.new { border-color:color-mix(in srgb,#e6bd62 55%,var(--border)); }
+  .look:hover { border-color:var(--bright); }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .seg button { border:0; background:transparent; padding:7px 13px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .seg button.on { background:var(--dim); color:var(--text); }
+  .stage { position:relative; height:440px; border:1px solid var(--border); border-radius:12px; overflow:hidden;
+    background:
+      radial-gradient(circle at 30% 40%, rgba(120,90,60,.35), transparent 60%),
+      repeating-linear-gradient(0deg, rgba(0,0,0,.18) 0 1px, transparent 1px 48px),
+      repeating-linear-gradient(90deg, rgba(0,0,0,.18) 0 1px, transparent 1px 48px),
+      linear-gradient(135deg, #4a3826, #2c2116 60%, #3a2a1c); }
+  canvas { position:absolute; inset:0; width:100%; height:100%; pointer-events:none; z-index:5; }
+  .tok { position:absolute; width:64px; height:64px; margin:-32px 0 0 -32px; border-radius:50%; display:flex; align-items:center; justify-content:center;
+    font-family:'Cinzel',serif; font-size:14px; color:#f3e6d0; box-shadow:0 4px 10px rgba(0,0,0,.5); will-change:transform; }
+  .tok.npc { border:3px solid #c06060; background:radial-gradient(circle at 40% 35%, #6b4b3a, #2a1a14); }
+  .tok.pc { border:3px solid #6a8fa8; background:radial-gradient(circle at 40% 35%, #3d5a70, #14202b); }
+  .tok span { position:absolute; top:100%; margin-top:6px; font-size:12px; color:var(--text); white-space:nowrap; text-shadow:0 1px 2px #000; }
+  .row { display:flex; flex-wrap:wrap; gap:14px; align-items:center; }
+  label.r { display:inline-flex; align-items:center; gap:8px; font-size:14px; color:var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Creature strikes</h1>
+    <p class="note">Running the real map effects engine. Pick a look to play it from the Carrion Crawler onto Eòghan. Gold-edged ones are new; the others are today's, for comparison.</p>
+  </header>
+  <div class="bar">
+    <span class="grp">New</span>
+    <button class="look new" data-style="bite">Bite</button>
+    <button class="look new" data-style="claw">Claw</button>
+    <button class="look new" data-style="lash">Lash</button>
+    <button class="look new" data-style="sting">Sting</button>
+    <button class="look new" data-style="slam">Slam</button>
+    <button class="look new" data-style="breath">Breath</button>
+    <button class="look new" data-style="spit">Spit</button>
+    <button class="look" id="all">▶ Play all new</button>
+  </div>
+  <div class="bar">
+    <span class="grp">Today's</span>
+    <button class="look" data-style="cut">Cut</button>
+    <button class="look" data-style="chop">Chop</button>
+    <button class="look" data-style="flurry">Flurry</button>
+    <button class="look" data-style="arrow">Arrow</button>
+    <button class="look" data-style="fire">Fire</button>
+  </div>
+  <div class="row">
+    <span class="seg" id="outcome"><button data-o="hit" class="on">Hit</button><button data-o="crit">Crit</button><button data-o="miss">Miss</button></span>
+    <span class="seg" id="pace"><button data-p="0.3" class="on">Table pace</button><button data-p="1">Fast</button></span>
+    <label class="r">Distance <input type="range" id="dist" min="90" max="560" value="200"></label>
+  </div>
+  <div class="stage" id="stage">
+    <div class="tok npc" id="crawler">CC<span>Carrion Crawler</span></div>
+    <div class="tok pc" id="eoghan">Eò<span>Eòghan</span></div>
+    <canvas id="fx"></canvas>
+  </div>
+</main>
+
+<script type="module">
+  import { createFxEngine } from "/src/features/maps/combatFx/fxEngine.js";
+
+  const stage = document.getElementById("stage");
+  const canvas = document.getElementById("fx");
+  const els = { crawler: document.getElementById("crawler"), eoghan: document.getElementById("eoghan") };
+  const pos = { crawler: { x: 0, y: 0 }, eoghan: { x: 0, y: 0 } };
+  let outcome = "hit", pace = 0.3, engine = null;
+
+  function layout() {
+    const w = stage.clientWidth, h = stage.clientHeight, d = +document.getElementById("dist").value;
+    pos.crawler = { x: w / 2 - d / 2, y: h / 2 + 10 };
+    pos.eoghan = { x: w / 2 + d / 2, y: h / 2 - 10 };
+    for (const id of ["crawler", "eoghan"]) { els[id].style.left = `${pos[id].x}px`; els[id].style.top = `${pos[id].y}px`; }
+  }
+  function makeEngine() {
+    engine?.destroy?.();
+    engine = createFxEngine(canvas, {
+      getToken: (id) => (pos[id] ? { x: pos[id].x, y: pos[id].y, r: 32 } : null),
+      setMotion: (id, m) => { if (els[id]) els[id].style.transform = `translate(${m.dx || 0}px, ${m.dy || 0}px) scale(${m.scale ?? 1})`; },
+      isVisible: () => true,
+    }, { timeScale: pace });
+  }
+  const play = (style) => engine.play({ style, crit: outcome === "crit", miss: outcome === "miss", attackerId: "crawler", targetId: "eoghan", hue: 205 });
+
+  document.querySelectorAll("[data-style]").forEach((b) => b.addEventListener("click", () => play(b.dataset.style)));
+  document.getElementById("all").addEventListener("click", () => {
+    const list = ["bite", "claw", "lash", "sting", "slam", "breath", "spit"];
+    list.forEach((s, i) => setTimeout(() => play(s), i * (pace < 1 ? 3600 : 1300)));
+  });
+  for (const [groupId, attr, set] of [["outcome", "o", (v) => { outcome = v; }], ["pace", "p", (v) => { pace = +v; makeEngine(); }]]) {
+    document.querySelectorAll(`#${groupId} button`).forEach((b) => b.addEventListener("click", () => {
+      set(b.dataset[attr]);
+      document.querySelectorAll(`#${groupId} button`).forEach((x) => x.classList.toggle("on", x === b));
+    }));
+  }
+  document.getElementById("dist").addEventListener("input", layout);
+  addEventListener("resize", layout);
+  layout(); makeEngine();
+</script>
+</body>
+</html>
