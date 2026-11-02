@@ -672,7 +672,7 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       at(470, () => impact(targetId, { ...common, blade: true, color: "#ffe4c4" }));
     } else if (style === "lash") {
       windUp(attackerId, targetId, 260);
-      whip(attackerId, targetId, 260, 900, "#7a6a4a");
+      whip(attackerId, targetId, 260, 900, "#a3a6a8");
       at(260 + 900 * WHIP_HIT, () => {
         rings.push({ x: t.x, y: t.y, r0: t.r * 0.3, r1: t.r * 1.5, t0: clock, dur: 300, color: "rgba(255,240,210,", w: 2 });
         impact(targetId, { ...common, fist: true, color: "#f3e6cc" });
