@@ -150,24 +150,26 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       ctx.restore();
     } });
   }
-  // A curved sword swoosh: a crescent that grows from the top of the swing
+  // A curved blade swoosh: a crescent that grows from the top of the swing
   // round the target, accelerating, thickest near its leading tip, with thin
-  // "fins" trailing off the outer edge. opts.reverse starts from the bottom.
+  // "fins" trailing off the outer edge; then it frays into strands and dashes.
+  // opts.hook: a tight, boomerang-like curl (Cut) instead of a broad arc (Chop).
+  // opts.reverse starts from the bottom.
   function swoosh(targetId, start, ms, bearing, opts = {}) {
     const light = opts.color || "#e6f2fb", shade = opts.shade || "#9fbad0";
-    const spread = opts.long ? 1.05 : 0.95;
+    const spread = opts.hook ? 1.5 : opts.long ? 1.05 : 0.95;
     effects.push({ t0: clock + start, dur: ms, draw: (k) => {
       const p = tok(targetId); if (!p) return;
       const bx = Math.cos(bearing), by = Math.sin(bearing);
-      const R = p.r * (opts.long ? 2.3 : 2.1), px = p.x - bx * (R - p.r * 0.65), py = p.y - by * (R - p.r * 0.65);
+      const R = p.r * (opts.hook ? 1.3 : opts.long ? 2.3 : 2.1), reach = opts.hook ? 0.6 : 0.65;
+      const px = p.x - bx * (R - p.r * reach), py = p.y - by * (R - p.r * reach);
       // Sweep from whichever end of the arc is higher on screen (or lower, reversed).
       const upFirst = Math.sin(bearing - spread) < Math.sin(bearing + spread);
       const dir = (upFirst ? 1 : -1) * (opts.reverse ? -1 : 1), a0 = bearing - dir * spread;
       const angAt = (u) => a0 + dir * spread * 2 * u;
       const head = easeIn(clamp01(k / 0.55));
-      const tail = Math.max(head - 0.8, easeIn(clamp01((k - 0.55) / 0.45)));
-      if (head - tail < 0.01) return;
-      const W = p.r * (opts.long ? 0.62 : 0.5);
+      const tail = Math.max(head - 0.8, easeIn(clamp01((k - 0.5) / 0.35)));
+      const W = p.r * (opts.long ? 0.68 : opts.hook ? 0.46 : 0.5);
       const band = (from, to, base, outer, inner, color, alpha) => {
         const pts = [], N = 30;
         for (let i = 0; i <= N; i++) {
@@ -182,6 +184,23 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       };
       const fade = 1 - easeIn(clamp01((k - 0.7) / 0.3)) * 0.5;
       ctx.save();
+      // Fraying: once the swing lands, the blade's path breaks into thin
+      // strands that thin out into dashes and fade.
+      const fray = clamp01((k - 0.5) / 0.5);
+      if (fray > 0) {
+        ctx.lineCap = "round";
+        for (let i = 0; i < 4; i++) {
+          const from = Math.min(0.95, 0.3 + 0.45 * fray + i * 0.06), to = 1 - i * 0.04;
+          if (to - from < 0.02) continue;
+          const a1 = angAt(from), a2 = angAt(to);
+          ctx.strokeStyle = i % 2 ? shade : light; ctx.globalAlpha = 0.95 * (1 - easeIn(fray));
+          ctx.lineWidth = Math.max(0.8, (3.4 - i * 0.6) * (1 - fray * 0.5));
+          ctx.setLineDash([Math.max(2, 18 * (1 - fray)), 2 + 12 * fray]);
+          ctx.beginPath(); ctx.arc(px, py, R + W * (0.55 - i * 0.28), a1, a2, dir < 0); ctx.stroke();
+        }
+        ctx.setLineDash([]);
+      }
+      if (head - tail < 0.01) { ctx.restore(); return; }
       ctx.shadowColor = light; ctx.shadowBlur = 10;
       band(tail, head, 0, 0.75, -0.3, shade, 0.95 * fade);
       ctx.shadowBlur = 0;
@@ -546,24 +565,21 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
     } else if (style === "cut" && !crit) {
       windUp(attackerId, targetId, 300);
       lunge(attackerId, targetId, 300, 360);
-      swoosh(targetId, 330, 480, bearing);
+      swoosh(targetId, 330, 480, bearing, { hook: true });
       at(510, () => impact(targetId, { ...common, blade: true, color: "#cfeaff" }));
-    } else if (style === "cut" || (style === "chop" && crit)) {
+    } else if (crit && (style === "cut" || style === "chop")) {
+      // Crit: a gold swing down, then one back up — a tight hook for Cut, a
+      // broad arc for Chop.
       windUp(attackerId, targetId, 480, style === "chop");
       lunge(attackerId, targetId, 480, 420);
-      if (style === "cut") {
-        // Crit: a swing down, then one back up.
-        swoosh(targetId, 500, 500, bearing, { long: true, color: "#ffe8b0", shade: "#c9a25e" });
-        swoosh(targetId, 690, 500, bearing, { long: true, reverse: true, color: "#ffe8b0", shade: "#c9a25e" });
-      } else {
-        cut(targetId, 590, 380, bearing, { long: true, angleOffset: 0.55, color: "#ffe2a0" });
-        cut(targetId, 700, 380, bearing, { long: true, angleOffset: -0.55, color: "#ffe2a0" });
-      }
-      at(style === "cut" ? 690 : 620, () => impact(targetId, { ...common, blade: true, chips: style === "chop", color: "#ffd27a" }));
+      const shape = style === "cut" ? { hook: true } : { long: true };
+      swoosh(targetId, 500, 500, bearing, { ...shape, color: "#ffe8b0", shade: "#c9a25e" });
+      swoosh(targetId, 690, 500, bearing, { ...shape, reverse: true, color: "#ffe8b0", shade: "#c9a25e" });
+      at(690, () => impact(targetId, { ...common, blade: true, chips: style === "chop", color: "#ffd27a" }));
     } else if (style === "chop") {
       windUp(attackerId, targetId, 520, true);
       lunge(attackerId, targetId, 520, 420);
-      cut(targetId, 640, 420, bearing, { long: true, angleOffset: -Math.PI / 2, color: "#ffe6c8", heavy: true });
+      swoosh(targetId, 480, 520, bearing, { long: true, color: "#f2ece2", shade: "#a8a092" });
       at(680, () => { boardShake = Math.max(boardShake, 4); impact(targetId, { ...common, heavy: true, blade: true, chips: true, color: "#ffe6c8" }); });
     } else if (style === "flurry") {
       windUp(attackerId, targetId, 220);
