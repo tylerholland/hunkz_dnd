@@ -28,6 +28,9 @@ const SHEET_FOR_STYLE = {
 // A new hit on a token whose strike is still playing is absorbed (slow −/+
 // taps would otherwise stack several swings from the same attacker).
 const ABSORB_MS = 1100;
+// Whip timing, as fractions of its duration: the tip reaches the target at
+// WHIP_HIT, and the flick finishes easing out at WHIP_LAND.
+const WHIP_HIT = 0.745, WHIP_LAND = 0.78;
 
 const clamp01 = (k) => Math.max(0, Math.min(1, k));
 const lerp = (a, b, k) => a + (b - a) * k;
@@ -397,25 +400,59 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       ctx.restore();
     } });
   }
-  // A whip / tentacle / tail: uncoils from the attacker, snaps at the target.
+  // A whip / tentacle / tail. It rises curled back on itself (tip pointing
+  // down and back toward the attacker) and creeps forward slowly; then the
+  // curl rolls out from root to tip, accelerating hard, so the tip flicks
+  // round and cracks into the target — easing out only in the last frames.
+  // Hits at WHIP_HIT of its duration.
   function whip(attId, targetId, start, ms, color) {
+    const sway = Math.random() * Math.PI * 2;
     effects.push({ t0: clock + start, dur: ms, draw: (k) => {
       const a = tok(attId), b = tok(targetId); if (!a || !b) return;
       const d = Math.hypot(b.x - a.x, b.y - a.y) || 1, ux = (b.x - a.x) / d, uy = (b.y - a.y) / d;
-      const x0 = a.x + ux * a.r * 0.8, y0 = a.y + uy * a.r * 0.8, len = d - a.r * 0.8 - b.r * 0.2;
-      const reach = easeOut(clamp01(k / 0.55)), fade = k < 0.7 ? 1 : Math.max(0, 1 - (k - 0.7) / 0.3);
-      const N = 28, amp = Math.min(len * 0.12, a.r * 1.4) * (1 - reach * 0.75);
-      ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round";
+      // Curl toward whichever side is higher on screen.
+      let nx = -uy, ny = ux; if (ny > 0) { nx = -nx; ny = -ny; }
+      const x0 = a.x + ux * a.r * 0.8, y0 = a.y + uy * a.r * 0.8, len = d - a.r * 0.8 - b.r * 0.15;
+      // Unroll progress: slow creep, then a hard accelerating flick that
+      // eases out only over its last frames, then held while it fades.
+      const coil = 0.6, crack = WHIP_LAND;
+      let p;
+      if (k < coil) p = 0.3 * (0.5 - 0.5 * Math.cos((k / coil) * Math.PI));
+      else if (k < crack) {
+        const q = (k - coil) / (crack - coil);
+        p = 0.3 + 0.7 * (q < 0.85 ? 0.96 * Math.pow(q / 0.85, 3) : 0.96 + 0.04 * easeOut((q - 0.85) / 0.15));
+      } else p = 1;
+      const fade = k < 0.86 ? 1 : Math.max(0, 1 - (k - 0.86) / 0.14);
+      // Bend along the length: the part behind the travelling loop lies along
+      // the root angle; past it, the tentacle is turned back by `curl`.
+      const rootAng = 1.15 * (1 - p) * (1 - p) + 0.12 * Math.sin(k * 11 + sway) * (1 - p);
+      const curl = -(Math.PI + 0.2) * (1 - p * p), loopAt = 0.5 + 0.55 * p, loopW = 0.3;
+      const L = len * (0.75 + 0.25 * p), N = 40, pts = [[x0, y0]];
+      let x = x0, y = y0;
+      for (let i = 1; i <= N; i++) {
+        const sAt = (i - 0.5) / N, z = clamp01((sAt - loopAt + loopW) / (2 * loopW));
+        const th = rootAng + curl * z * z * (3 - 2 * z);
+        x += (ux * Math.cos(th) + nx * Math.sin(th)) * (L / N); y += (uy * Math.cos(th) + ny * Math.sin(th)) * (L / N);
+        pts.push([x, y]);
+      }
+      ctx.save(); ctx.lineCap = "round"; ctx.lineJoin = "round"; ctx.globalAlpha = fade;
+      const w0 = Math.max(6, a.r * 0.4), w1 = Math.max(2, a.r * 0.08);
       for (const pass of [0, 1]) {
-        ctx.beginPath();
-        for (let i = 0; i <= N; i++) {
-          const u = (i / N) * reach, w = Math.sin(u * Math.PI * 3 - k * 14) * amp * Math.sin(Math.PI * (i / N));
-          const x = x0 + ux * len * u - uy * w, y = y0 + uy * len * u + ux * w;
-          if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        ctx.strokeStyle = pass === 0 ? "rgba(0,0,0,0.38)" : color;
+        for (let i = 1; i <= N; i++) {
+          const w = w0 + (w1 - w0) * (i / N);
+          ctx.lineWidth = pass === 0 ? w + 2.5 : w;
+          ctx.beginPath(); ctx.moveTo(pts[i - 1][0], pts[i - 1][1]); ctx.lineTo(pts[i][0], pts[i][1]); ctx.stroke();
         }
-        ctx.strokeStyle = pass === 0 ? "rgba(0,0,0,0.35)" : color; ctx.globalAlpha = fade;
-        ctx.lineWidth = pass === 0 ? Math.max(5, a.r * 0.32) : Math.max(3, a.r * 0.2);
-        ctx.stroke();
+      }
+      // The crack: a bright flare at the tip as it lands.
+      const flare = 1 - Math.abs(k - WHIP_HIT) / 0.06;
+      if (flare > 0) {
+        const [tx, ty] = pts[N];
+        ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = flare;
+        const g = ctx.createRadialGradient(tx, ty, 0, tx, ty, a.r * 0.7);
+        g.addColorStop(0, "rgba(255,250,235,1)"); g.addColorStop(1, "rgba(255,240,210,0)");
+        ctx.fillStyle = g; ctx.beginPath(); ctx.arc(tx, ty, a.r * 0.7, 0, Math.PI * 2); ctx.fill();
       }
       ctx.restore();
     } });
@@ -635,8 +672,8 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       at(470, () => impact(targetId, { ...common, blade: true, color: "#ffe4c4" }));
     } else if (style === "lash") {
       windUp(attackerId, targetId, 260);
-      whip(attackerId, targetId, 260, 760, "#7a6a4a");
-      at(260 + 420, () => {
+      whip(attackerId, targetId, 260, 900, "#7a6a4a");
+      at(260 + 900 * WHIP_HIT, () => {
         rings.push({ x: t.x, y: t.y, r0: t.r * 0.3, r1: t.r * 1.5, t0: clock, dur: 300, color: "rgba(255,240,210,", w: 2 });
         impact(targetId, { ...common, fist: true, color: "#f3e6cc" });
       });
