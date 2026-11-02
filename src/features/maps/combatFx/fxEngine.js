@@ -150,6 +150,57 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       ctx.restore();
     } });
   }
+  // A curved sword swoosh: a crescent that grows from the top of the swing
+  // round the target, accelerating, thickest near its leading tip, with thin
+  // "fins" trailing off the outer edge. opts.reverse starts from the bottom.
+  function swoosh(targetId, start, ms, bearing, opts = {}) {
+    const light = opts.color || "#e6f2fb", shade = opts.shade || "#9fbad0";
+    const spread = opts.long ? 1.05 : 0.95;
+    effects.push({ t0: clock + start, dur: ms, draw: (k) => {
+      const p = tok(targetId); if (!p) return;
+      const bx = Math.cos(bearing), by = Math.sin(bearing);
+      const R = p.r * (opts.long ? 2.3 : 2.1), px = p.x - bx * (R - p.r * 0.65), py = p.y - by * (R - p.r * 0.65);
+      // Sweep from whichever end of the arc is higher on screen (or lower, reversed).
+      const upFirst = Math.sin(bearing - spread) < Math.sin(bearing + spread);
+      const dir = (upFirst ? 1 : -1) * (opts.reverse ? -1 : 1), a0 = bearing - dir * spread;
+      const angAt = (u) => a0 + dir * spread * 2 * u;
+      const head = easeIn(clamp01(k / 0.55));
+      const tail = Math.max(head - 0.8, easeIn(clamp01((k - 0.55) / 0.45)));
+      if (head - tail < 0.01) return;
+      const W = p.r * (opts.long ? 0.62 : 0.5);
+      const band = (from, to, base, outer, inner, color, alpha) => {
+        const pts = [], N = 30;
+        for (let i = 0; i <= N; i++) {
+          const v = i / N, u = from + (to - from) * v, w = W * Math.sin(Math.PI * Math.pow(v, 1.8)), a = angAt(u);
+          const ro = R + base + w * outer, ri = R + base + w * inner;
+          pts.push([px + Math.cos(a) * ro, py + Math.sin(a) * ro, px + Math.cos(a) * ri, py + Math.sin(a) * ri]);
+        }
+        ctx.fillStyle = color; ctx.globalAlpha = alpha; ctx.beginPath();
+        pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+        for (let i = pts.length - 1; i >= 0; i--) ctx.lineTo(pts[i][2], pts[i][3]);
+        ctx.closePath(); ctx.fill();
+      };
+      const fade = 1 - easeIn(clamp01((k - 0.7) / 0.3)) * 0.5;
+      ctx.save();
+      ctx.shadowColor = light; ctx.shadowBlur = 10;
+      band(tail, head, 0, 0.75, -0.3, shade, 0.95 * fade);
+      ctx.shadowBlur = 0;
+      band(tail, head, 0, 0.75, 0.12, light, fade);
+      // Trailing fins: thin slivers a steady gap off the outer edge, lagging the tip.
+      for (let i = 0; i < (opts.long ? 3 : 2); i++) {
+        const lag = 0.1 + i * 0.07, fh = head - lag, ft = Math.max(tail, fh - 0.32 + i * 0.06);
+        if (fh - ft < 0.03) continue;
+        band(ft, fh, W * (0.82 + i * 0.26), 0.16, 0, i ? shade : light, 0.8 * fade);
+      }
+      // A few flecks where the swing began.
+      if (tail < 0.05) for (let j = 1; j <= 3; j++) {
+        const a = angAt(tail) - dir * j * 0.07, s = Math.max(0.8, 2.6 - j * 0.6);
+        ctx.globalAlpha = (0.8 - j * 0.2) * fade; ctx.fillStyle = light;
+        ctx.fillRect(px + Math.cos(a) * R - s / 2, py + Math.sin(a) * R - s / 2, s, s);
+      }
+      ctx.restore();
+    } });
+  }
   function jabPopHit(targetId, bearing, second) {
     const p = tok(targetId); if (!p) return;
     const cx = p.x - Math.cos(bearing) * p.r * 0.7, cy = p.y - Math.sin(bearing) * p.r * 0.7;
@@ -495,14 +546,20 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
     } else if (style === "cut" && !crit) {
       windUp(attackerId, targetId, 300);
       lunge(attackerId, targetId, 300, 360);
-      cut(targetId, 400, 360, bearing);
-      at(430, () => impact(targetId, { ...common, blade: true, color: "#cfeaff" }));
+      swoosh(targetId, 330, 480, bearing);
+      at(510, () => impact(targetId, { ...common, blade: true, color: "#cfeaff" }));
     } else if (style === "cut" || (style === "chop" && crit)) {
       windUp(attackerId, targetId, 480, style === "chop");
       lunge(attackerId, targetId, 480, 420);
-      cut(targetId, 590, 380, bearing, { long: true, angleOffset: 0.55, color: "#ffe2a0" });
-      cut(targetId, 700, 380, bearing, { long: true, angleOffset: -0.55, color: "#ffe2a0" });
-      at(620, () => impact(targetId, { ...common, blade: true, chips: style === "chop", color: "#ffd27a" }));
+      if (style === "cut") {
+        // Crit: a swing down, then one back up.
+        swoosh(targetId, 500, 500, bearing, { long: true, color: "#ffe8b0", shade: "#c9a25e" });
+        swoosh(targetId, 690, 500, bearing, { long: true, reverse: true, color: "#ffe8b0", shade: "#c9a25e" });
+      } else {
+        cut(targetId, 590, 380, bearing, { long: true, angleOffset: 0.55, color: "#ffe2a0" });
+        cut(targetId, 700, 380, bearing, { long: true, angleOffset: -0.55, color: "#ffe2a0" });
+      }
+      at(style === "cut" ? 690 : 620, () => impact(targetId, { ...common, blade: true, chips: style === "chop", color: "#ffd27a" }));
     } else if (style === "chop") {
       windUp(attackerId, targetId, 520, true);
       lunge(attackerId, targetId, 520, 420);
