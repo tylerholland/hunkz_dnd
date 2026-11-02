@@ -150,32 +150,47 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       ctx.restore();
     } });
   }
-  // A curved blade swoosh: a crescent that grows from the top of the swing
-  // round the target, accelerating, thickest near its leading tip, with thin
-  // "fins" trailing off the outer edge; then it frays into strands and dashes.
-  // opts.hook: a tight, boomerang-like curl (Cut) instead of a broad arc (Chop).
+  // A curved blade swoosh that grows from the top of the swing, accelerating,
+  // thickest near its leading tip, with thin "fins" trailing off the outer
+  // edge; then it frays into strands and dashes.
+  // - Chop (default): a broad crescent arc round the target.
+  // - opts.hook (Cut): a flat hairpin along the line of attack — forward past
+  //   the target, a sharp turn, and back — about 3× longer than it is tall.
   // opts.reverse starts from the bottom.
   function swoosh(targetId, start, ms, bearing, opts = {}) {
     const light = opts.color || "#e6f2fb", shade = opts.shade || "#9fbad0";
-    const spread = opts.hook ? 1.5 : opts.long ? 1.05 : 0.95;
+    const spread = opts.long ? 1.05 : 0.95, turn = Math.PI - 0.35;
     effects.push({ t0: clock + start, dur: ms, draw: (k) => {
       const p = tok(targetId); if (!p) return;
-      const bx = Math.cos(bearing), by = Math.sin(bearing);
-      const R = p.r * (opts.hook ? 1.3 : opts.long ? 2.3 : 2.1), reach = opts.hook ? 0.6 : 0.65;
-      const px = p.x - bx * (R - p.r * reach), py = p.y - by * (R - p.r * reach);
-      // Sweep from whichever end of the arc is higher on screen (or lower, reversed).
-      const upFirst = Math.sin(bearing - spread) < Math.sin(bearing + spread);
-      const dir = (upFirst ? 1 : -1) * (opts.reverse ? -1 : 1), a0 = bearing - dir * spread;
-      const angAt = (u) => a0 + dir * spread * 2 * u;
+      const bx = Math.cos(bearing), by = Math.sin(bearing), nx = -by, ny = bx;
+      // at(u, off): the point u (0→1) along the swing's path, pushed off
+      // outward by off — the path's shape lives here.
+      let at, dir;
+      if (opts.hook) {
+        const A = p.r * 2.1, B = p.r * 0.62, cx = p.x + bx * p.r * 0.2, cy = p.y + by * p.r * 0.2;
+        // Start on whichever side of the line of attack is higher on screen.
+        dir = (ny > 0 || (ny === 0 && nx < 0) ? 1 : -1) * (opts.reverse ? -1 : 1);
+        at = (u, off) => {
+          const th = -turn + 2 * turn * u, c = Math.cos(th), sn = Math.sin(th) * dir;
+          let ox = c / A, oy = sn / B; const m = Math.hypot(ox, oy) || 1; ox /= m; oy /= m;
+          const lx = A * c + ox * off, ly = B * sn + oy * off;
+          return [cx + bx * lx + nx * ly, cy + by * lx + ny * ly];
+        };
+      } else {
+        const R = p.r * (opts.long ? 2.3 : 2.1), px = p.x - bx * (R - p.r * 0.65), py = p.y - by * (R - p.r * 0.65);
+        // Sweep from whichever end of the arc is higher on screen.
+        const upFirst = Math.sin(bearing - spread) < Math.sin(bearing + spread);
+        dir = (upFirst ? 1 : -1) * (opts.reverse ? -1 : 1);
+        at = (u, off) => { const a = bearing - dir * spread + dir * spread * 2 * u; return [px + Math.cos(a) * (R + off), py + Math.sin(a) * (R + off)]; };
+      }
       const head = easeIn(clamp01(k / 0.55));
       const tail = Math.max(head - 0.8, easeIn(clamp01((k - 0.5) / 0.35)));
       const W = p.r * (opts.long ? 0.68 : opts.hook ? 0.46 : 0.5);
       const band = (from, to, base, outer, inner, color, alpha) => {
-        const pts = [], N = 30;
+        const pts = [], N = opts.hook ? 60 : 30;
         for (let i = 0; i <= N; i++) {
-          const v = i / N, u = from + (to - from) * v, w = W * Math.sin(Math.PI * Math.pow(v, 1.8)), a = angAt(u);
-          const ro = R + base + w * outer, ri = R + base + w * inner;
-          pts.push([px + Math.cos(a) * ro, py + Math.sin(a) * ro, px + Math.cos(a) * ri, py + Math.sin(a) * ri]);
+          const v = i / N, u = from + (to - from) * v, w = W * Math.sin(Math.PI * Math.pow(v, 1.8));
+          pts.push([...at(u, base + w * outer), ...at(u, base + w * inner)]);
         }
         ctx.fillStyle = color; ctx.globalAlpha = alpha; ctx.beginPath();
         pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
@@ -192,11 +207,12 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
         for (let i = 0; i < 4; i++) {
           const from = Math.min(0.95, 0.3 + 0.45 * fray + i * 0.06), to = 1 - i * 0.04;
           if (to - from < 0.02) continue;
-          const a1 = angAt(from), a2 = angAt(to);
           ctx.strokeStyle = i % 2 ? shade : light; ctx.globalAlpha = 0.95 * (1 - easeIn(fray));
           ctx.lineWidth = Math.max(0.8, (3.4 - i * 0.6) * (1 - fray * 0.5));
           ctx.setLineDash([Math.max(2, 18 * (1 - fray)), 2 + 12 * fray]);
-          ctx.beginPath(); ctx.arc(px, py, R + W * (0.55 - i * 0.28), a1, a2, dir < 0); ctx.stroke();
+          ctx.beginPath();
+          for (let j = 0; j <= 40; j++) { const [x, y] = at(from + ((to - from) * j) / 40, W * (0.55 - i * 0.28)); if (j) ctx.lineTo(x, y); else ctx.moveTo(x, y); }
+          ctx.stroke();
         }
         ctx.setLineDash([]);
       }
@@ -213,9 +229,9 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       }
       // A few flecks where the swing began.
       if (tail < 0.05) for (let j = 1; j <= 3; j++) {
-        const a = angAt(tail) - dir * j * 0.07, s = Math.max(0.8, 2.6 - j * 0.6);
+        const [x, y] = at(tail - j * 0.025, 0), sz = Math.max(0.8, 2.6 - j * 0.6);
         ctx.globalAlpha = (0.8 - j * 0.2) * fade; ctx.fillStyle = light;
-        ctx.fillRect(px + Math.cos(a) * R - s / 2, py + Math.sin(a) * R - s / 2, s, s);
+        ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
       }
       ctx.restore();
     } });
