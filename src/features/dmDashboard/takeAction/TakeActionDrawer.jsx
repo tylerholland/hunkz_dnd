@@ -1,4 +1,5 @@
-import { useId } from "react";
+import { useId, useState } from "react";
+import { ALL_CONDITIONS } from "../dashboardShared";
 import LookIcon from "../LookIcon";
 import "./takeAction.css";
 
@@ -22,9 +23,12 @@ function ActionChip({ action, glyph, icon, onPick, variant }) {
 /**
  * ADR-032 — the DM's Take Action drawer under the battle map.
  * idle → a one-line hint; target → "Select target"; pick → the actor's actions.
+ * At the target step the long-pressed token can also be handled directly —
+ * Damage, Heal, or its conditions — like the buttons on its card.
  */
-export default function TakeActionDrawer({ step, actorName, targetName, self, groups, onPick, onTargetSelf, onRetarget, onCancel }) {
+export default function TakeActionDrawer({ step, actorName, targetName, self, groups, onPick, onTargetSelf, onRetarget, onCancel, conditions = [], onDirect, onToggleCondition }) {
   const magicId = useId();
+  const [condOpen, setCondOpen] = useState(false);
 
   if (step === "idle") {
     return (
@@ -45,6 +49,25 @@ export default function TakeActionDrawer({ step, actorName, targetName, self, gr
           <button type="button" className="ta-chip ta-chip--ghost" onClick={onCancel}>Cancel</button>
         </div>
         <p className="ta-hint">Long-press (or tap) the token {actorName} is acting on.</p>
+        {onDirect && (
+          <div className="ta-direct">
+            <span className="ta-direct-label">Or on {actorName} directly</span>
+            <button type="button" className="ta-chip ta-chip--dmg" onClick={() => onDirect("damage")}>⚔ Dmg</button>
+            <button type="button" className="ta-chip ta-chip--heal" onClick={() => onDirect("heal")}><span className="ta-chip-glyph" aria-hidden="true">✦</span>Heal</button>
+            <button type="button" className="ta-chip" aria-expanded={condOpen} onClick={() => setCondOpen((v) => !v)}>+ Cond</button>
+          </div>
+        )}
+        {onDirect && condOpen && (
+          <div className="ta-conds" role="group" aria-label={`${actorName}'s conditions`}>
+            {ALL_CONDITIONS.map((cond) => {
+              const on = conditions.includes(cond);
+              return (
+                <button key={cond} type="button" className={`ta-cond${on ? " on" : ""}`} aria-pressed={on} onClick={() => onToggleCondition?.(cond)}>{cond}</button>
+              );
+            })}
+            <button type="button" className="ta-chip ta-chip--ghost" onClick={onCancel}>Done</button>
+          </div>
+        )}
       </div>
     );
   }

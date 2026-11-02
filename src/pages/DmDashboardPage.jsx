@@ -548,7 +548,7 @@ export default function DmDashboardPage() {
     const remembered = rememberedDice(actorKey, action.id);
     // The attack roll: the creature's own (action.hit), a character's d20 +
     // to-hit, or the DM Setting for an NPC's quick attacks and magic.
-    const attackExpr = action.heal ? null
+    const attackExpr = action.heal || action.direct ? null
       : action.hit || (actor.type === "npc" ? houseRulesRef.current.npcAttackDice : null);
     setTakeAction({
       actor,
@@ -557,7 +557,7 @@ export default function DmDashboardPage() {
       initialExpr: remembered || action.dice || "",
       rememberedExpr: !!remembered,
       attackExpr,
-      targetDefense: target.sourceId === actor.sourceId ? null : defenseOf(target),
+      targetDefense: target.sourceId === actor.sourceId || action.direct ? null : defenseOf(target),
       onDone,
     });
   }, [defenseOf]);
@@ -643,6 +643,16 @@ export default function DmDashboardPage() {
 
   const closeTakeAction = useCallback(() => setTakeAction(null), []);
 
+  // Long-press → + Cond on the map: set a token's conditions directly.
+  const handleSetTokenConditions = useCallback((who, conditions) => {
+    if (who.type === "character") {
+      commitPartySessionUpdates([{ slug: who.sourceId, conditions }]);
+    } else {
+      const npcs = (npcCombatRef.current.npcs || []).map((npc) => (npc.id === who.sourceId ? { ...npc, conditions } : npc));
+      commitNpcCombatUpdate({ npcs }, { optimistic: true });
+    }
+  }, [commitPartySessionUpdates, commitNpcCombatUpdate]);
+
   // The DM's attack roll in the pop-up goes to History, aimed at the target.
   const handleTakeActionAttackRoll = useCallback((result) => {
     if (!takeAction) return;
@@ -675,6 +685,9 @@ export default function DmDashboardPage() {
     if (!takeAction) return;
     const { actor, target, action, rollId, onDone } = takeAction;
     const heal = !!action.heal;
+    // Damage/heal on a token itself (long-press → Dmg / Heal): no attacker,
+    // so no strike effect — just the HP change, as from its card.
+    const direct = !!action.direct;
     const fx = {
       attacker: { type: actor.type, sourceId: actor.sourceId, name: actor.name },
       name: action.name,
@@ -690,8 +703,8 @@ export default function DmDashboardPage() {
         const max = member.hpMax ?? member.hp ?? 0;
         const hp = member.hpCurrent ?? 0;
         const hpCurrent = Math.max(0, Math.min(max, hp + (heal ? amount : -amount)));
-        commitPartySessionUpdates([{ slug: member.slug, hpCurrent }], { sendOnly: { [member.slug]: { fx } } });
-      } else if (member) {
+        commitPartySessionUpdates([{ slug: member.slug, hpCurrent }], direct ? {} : { sendOnly: { [member.slug]: { fx } } });
+      } else if (member && !direct) {
         patchSession(member.slug, { fx }, dmPassword).then(() => queueDashboardRefresh(0)).catch(() => {});
       }
     } else {
@@ -700,7 +713,7 @@ export default function DmDashboardPage() {
         const hpCurrent = heal ? Math.min(npc.hpMax, npc.hpCurrent + amount) : npc.hpCurrent - amount;
         return { ...npc, hpCurrent };
       });
-      commitNpcCombatUpdate({ npcs }, { optimistic: true, fxById: { [target.sourceId]: fx } });
+      commitNpcCombatUpdate({ npcs }, { optimistic: true, fxById: direct ? null : { [target.sourceId]: fx } });
     }
     onDone?.();
     setTakeAction(null);
@@ -1359,6 +1372,7 @@ export default function DmDashboardPage() {
               initiative={initiative}
               rollHistory={rollHistory}
               onRequestAction={handleRequestAction}
+              onSetConditions={handleSetTokenConditions}
             />
             {takeAction && takeActionTargetHp && (
               <DealDamageModal
@@ -1375,6 +1389,7 @@ export default function DmDashboardPage() {
                 initialCrit={!!takeAction.initialCrit}
                 fromRoll={takeAction.fromRoll || null}
                 attackExpr={takeAction.attackExpr ?? null}
+                direct={!!takeAction.action.direct}
                 targetDefense={takeAction.targetDefense || null}
                 onAttackRoll={handleTakeActionAttackRoll}
                 onRoll={handleTakeActionRoll}

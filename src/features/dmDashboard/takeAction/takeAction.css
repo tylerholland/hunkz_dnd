@@ -486,3 +486,13 @@
 [data-light] .ta-verdict--miss { border-color: #9a2a20; color: #9a2a20; }
 .ta-attack-note { font-size: 13px; font-style: italic; color: var(--pal-text-muted); }
 .ta-defense-check { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; font-size: 13px; }
+
+/* Long-press: Damage / Heal / conditions on the token itself. */
+.ta-direct { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; padding-top: 10px; border-top: 1px dashed var(--pal-border); }
+.ta-direct-label { font-size: 14px; font-style: italic; color: var(--pal-text-muted); margin-right: 4px; }
+.ta-chip--dmg { color: #d08080; border-color: rgba(192, 96, 96, 0.45); }
+[data-light] .ta-chip--dmg { color: #9a2a20; }
+.ta-conds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ta-cond { min-height: 34px; padding: 0 10px; border: 1px solid var(--pal-border); border-radius: 999px; background: transparent; color: var(--pal-text-body); font-family: var(--font-body, "Crimson Text", Georgia, serif); font-size: 15px; cursor: pointer; }
+.ta-cond.on { border-color: var(--pal-accent); background: color-mix(in srgb, var(--pal-accent) 22%, transparent); color: var(--pal-text); }
+.ta-cond:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }

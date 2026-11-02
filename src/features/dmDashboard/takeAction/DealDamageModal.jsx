@@ -45,6 +45,7 @@ export default function DealDamageModal({
   attackExpr = null, // the whole attack roll, e.g. "1d20+8" (DM-rolled actions)
   targetDefense = null, // { kind: "ac", ac } | { kind: "roll", roll, name } | null
   onAttackRoll, // (result) => void — posts the attack roll to history
+  direct = false, // damage/heal on a token itself (from a long-press), no attacker
   onRoll, // (result) => void — posts the roll to history
   onApply, // ({ amount, crit }) => void
   onMiss, // () => void
@@ -131,7 +132,7 @@ export default function DealDamageModal({
       <div className={`ta-modal${heal ? " ta-modal--heal" : ""}`} role="dialog" aria-modal="true" aria-labelledby={titleId}>
         <div className="ta-modal-head">
           <h2 id={titleId} className="ta-modal-title">
-            {actorName}<span className="ta-arrow">→</span>{self ? "Self" : targetName}
+            {direct ? targetName : <>{actorName}<span className="ta-arrow">→</span>{self ? "Self" : targetName}</>}
           </h2>
           <p className="ta-modal-sub">{actionName}{heal ? " · healing" : ""}</p>
         </div>

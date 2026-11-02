@@ -71,3 +71,11 @@ describe("DealDamageModal — attack roll against a defense", () => {
     expect(screen.getByText("Hits")).toBeTruthy();
   });
 });
+
+describe("DealDamageModal — direct damage on a token", () => {
+  it("titles by the token alone and has no attack roll", () => {
+    render(<DealDamageModal {...base} actorName="Goblin Scout" targetName="Goblin Scout" actionName="Damage" direct onApply={vi.fn()} onMiss={vi.fn()} onClose={vi.fn()} />);
+    expect(screen.getByRole("heading", { name: "Goblin Scout" })).toBeTruthy();
+    expect(screen.queryByText("Roll to hit")).toBeNull();
+  });
+});

@@ -28,7 +28,7 @@ import ConditionGlyphSprite from "./battleMode/ConditionGlyphSprite";
 import CombatFxLayer from "../maps/combatFx/CombatFxLayer";
 import { buildStrikeEvents, collectTokenHits } from "../maps/combatFx/strikeEvents";
 import TakeActionDrawer from "./takeAction/TakeActionDrawer";
-import { actionGroups } from "./takeAction/actionOptions";
+import { actionGroups, HEAL_ACTION } from "./takeAction/actionOptions";
 import {
   resolveDamageState,
   assignAoEStagger,
@@ -60,7 +60,7 @@ function buildMapViewPayload(mapId, viewerState) {
   return payload;
 }
 
-export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, serverTime, initiative, rollHistory, onRequestAction, ref }) {
+export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal, collapsedOverride = null, party, npcCombat, combatMode, mapSwitching = false, serverTime, initiative, rollHistory, onRequestAction, onSetConditions, ref }) {
   const [collapsed, setCollapsed] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const [viewerState, setViewerState] = useState(null);
@@ -595,6 +595,23 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
       onDone: cancelActionFlow,
     });
   }, [actorInfo, targetInfo, onRequestAction, cancelActionFlow]);
+  // Long-press, then Damage / Heal / conditions on that token itself (no
+  // attacker, no attack roll) — the same as the buttons on its card.
+  const handleDirect = useCallback((kind) => {
+    if (!actorInfo) return;
+    const who = { type: actorInfo.type, sourceId: actorInfo.sourceId, name: actorInfo.name };
+    const action = kind === "heal"
+      ? { ...HEAL_ACTION, id: "direct-heal", direct: true }
+      : { id: "direct-damage", name: "Damage", style: "cut", dice: "", direct: true };
+    onRequestAction?.({ actor: who, target: who, action, onDone: cancelActionFlow });
+  }, [actorInfo, onRequestAction, cancelActionFlow]);
+  const actorConditions = actorInfo?.npc?.conditions || actorInfo?.member?.conditions || [];
+  const handleToggleCondition = useCallback((cond) => {
+    if (!actorInfo || !onSetConditions) return;
+    const current = actorInfo.npc?.conditions || actorInfo.member?.conditions || [];
+    const next = current.includes(cond) ? current.filter((c) => c !== cond) : [...current, cond];
+    onSetConditions({ type: actorInfo.type, sourceId: actorInfo.sourceId }, next);
+  }, [actorInfo, onSetConditions]);
   useEffect(() => {
     if (flowStep === "idle") return undefined;
     function onKey(e) {
@@ -789,6 +806,9 @@ export default function MapPanel({ mapLibrary, dmPassword, onLibraryChange, pal,
                   onTargetSelf={() => actionTokens.actor && handleDmAction(actionTokens.actor.id)}
                   onRetarget={() => actionTokens.actor && setActionFlow({ step: "target", actorId: actionTokens.actor.id, targetId: null })}
                   onCancel={cancelActionFlow}
+                  conditions={actorConditions}
+                  onDirect={handleDirect}
+                  onToggleCondition={onSetConditions ? handleToggleCondition : undefined}
                 />
               )}
 
