@@ -374,16 +374,23 @@
     transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
 }
 
+/* Reveals by growing a grid row from 0fr to 1fr, so it opens to exactly its
+   content's height: no height cap, so a long enemy list (or the open library)
+   is never cut off — the page just scrolls. */
 .dm-prototype-side-panel {
   grid-column: 3;
   grid-row: 1;
+  display: grid;
+  grid-template-rows: 0fr;
   opacity: 0;
   transform: translateX(-18px) scaleX(0.94);
   transform-origin: left top;
   pointer-events: none;
-  max-height: 0;
+  transition: grid-template-rows 0.46s ease-out, opacity 0.46s ease-out, transform 0.46s ease-out;
+}
+.dm-prototype-side-panel > .dm-prototype-side-col {
+  min-height: 0;
   overflow: hidden;
-  transition: max-height 0.46s ease-out, opacity 0.46s ease-out, transform 0.46s ease-out;
 }
 
 .dm-prototype-shell[data-chrome="false"] .dm-prototype-party-actions {
@@ -430,7 +437,11 @@
   opacity: 1;
   transform: translateX(0) scaleX(1);
   pointer-events: auto;
-  max-height: 2200px;
+  grid-template-rows: 1fr;
+}
+/* Open: nothing clipped (menus and pop-ups inside can overflow). */
+.dm-prototype-shell[data-panels="true"] .dm-prototype-side-panel > .dm-prototype-side-col {
+  overflow: visible;
 }
 
 .dm-prototype-card-col,

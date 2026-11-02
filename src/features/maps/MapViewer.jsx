@@ -451,6 +451,8 @@ export default function MapViewer({
                   height: imageNaturalSize.h,
                   "--token-scale-multiplier": tokenScale,
                   "--map-rotation": `${rotation ?? 0}deg`,
+                  // So token pop-ups (hover card, menus) can stay page-sized at any zoom.
+                  "--map-zoom": scale,
                   pointerEvents: interactionMode === "dm" ? "auto" : "none",
                 }}
                 onClick={onTokenLayerClick ? (e) => {

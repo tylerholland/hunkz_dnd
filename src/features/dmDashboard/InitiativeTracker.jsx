@@ -18,8 +18,6 @@ function insertByInitiative(entries, entry) {
 
 export default function InitiativeTracker({ initiative, party, onCommitInitiative, onPromoteToNpc, npcCombat }) {
   const pal = useContext(PalCtx);
-  const [newName, setNewName] = useState("");
-  const [newInit, setNewInit] = useState("");
   const [pcRolls, setPcRolls] = useState({});
   const [promoteOpenId, setPromoteOpenId] = useState(null);
   const [promoteHp, setPromoteHp] = useState("");
@@ -91,21 +89,7 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
     });
   }
 
-  async function handleAddEntry() {
-    if (!newName.trim()) return;
-    const initNum = parseInt(newInit, 10);
-    const entry = {
-      id: "id" + Date.now() + Math.random().toString(36).slice(2, 6),
-      name: newName.trim(),
-      initiative: isNaN(initNum) ? 0 : initNum,
-      isPC: false,
-      npcId: null,
-    };
-    const updated = insertByInitiative(initiative.entries || [], entry);
-    await onCommitInitiative(buildPayload(updated), { optimistic: true });
-    setNewName("");
-    setNewInit("");
-  }
+
 
   async function handleRemove(id) {
     const updated = (initiative.entries || []).filter((entry) => entry.id !== id);
@@ -206,7 +190,7 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
 
       {entries.length === 0 ? (
         <div style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textMuted, textAlign: "center", padding: "20px 0", letterSpacing: "0.08em" }}>
-          No initiative set — add characters, use <span style={{ color: pal.accentBright }}>+ Init</span> on enemies, or add a manual combatant below
+          No initiative set — add characters below, and use <span style={{ color: pal.accentBright }}>+ Init</span> on enemies
         </div>
       ) : (
         <div style={{ marginBottom: 14 }}>
@@ -318,15 +302,6 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
         </div>
       )}
 
-      <div className="label-ui" style={{ letterSpacing: "0.3em", marginBottom: 4 }}>Add Manual Combatant</div>
-      <div style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginBottom: 8, letterSpacing: "0.06em" }}>
-        For allies, summons, or scene actors that do not need an enemy card.
-      </div>
-      <div className="init-add-row">
-        <input type="text" placeholder="Name…" value={newName} onChange={(e) => setNewName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEntry()} style={{ flex: 1, background: pal.surface, border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "7px 10px", outline: "none" }} />
-        <input type="number" placeholder="Init" value={newInit} onChange={(e) => setNewInit(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddEntry()} style={{ width: 50, background: pal.surface, border: "1px solid rgba(100,130,160,0.32)", borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 15, padding: "7px 6px", outline: "none", textAlign: "center" }} />
-        <button onClick={handleAddEntry} className="btn-init-add-manual">Add</button>
-      </div>
     </div>
   );
 }

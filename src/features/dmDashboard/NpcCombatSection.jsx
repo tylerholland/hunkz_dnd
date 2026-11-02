@@ -939,6 +939,8 @@ export default function NpcCombatSection({
   const [stagedLibrarySourceId, setStagedLibrarySourceId] = useState(null);
   const [showEndConfirm, setShowEndConfirm] = useState(false);
   const [libPickerOpen, setLibPickerOpen] = useState(false);
+  // The Add Enemy form: open when there are no enemies yet, else collapsed.
+  const [addOpen, setAddOpen] = useState(() => !(npcCombat.npcs || []).length);
   const [libPickerFilter, setLibPickerFilter] = useState("");
   const [libDeleteConfirmId, setLibDeleteConfirmId] = useState(null);
   const libDeleteTimerRef = useRef(null);
@@ -1048,6 +1050,7 @@ export default function NpcCombatSection({
     setStagedPortraitUrl(null);
     setStagedLibrarySourceId(null);
     setLibPickerOpen(false);
+    setAddOpen(false);
     await commitNpcList(updated);
   }
 
@@ -1156,9 +1159,187 @@ export default function NpcCombatSection({
         )}
       </div>
 
+      {/* Add Enemy sits at the top, collapsed, so it's reachable however long the list. */}
+      {addOpen ? (
+        <div className="npc-add-form" style={{ background: npcPal.surface, border: `1px dashed ${npcPal.actionBorder}` }}>
+          <div className="flex-row-spread" style={{ marginBottom: 10 }}>
+            <span className="label-ui" style={{ letterSpacing: "0.28em" }}>Add Enemy</span>
+            <button type="button" className="npc-add-close" aria-label="Close Add Enemy" onClick={() => { setAddOpen(false); setLibPickerOpen(false); }}>✕</button>
+          </div>
+          <div className="npc-add-form-row">
+            <input type="text" placeholder="Name…" value={addName} onChange={(e) => setAddName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddNpcs()} style={{ flex: 1, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "7px 10px", outline: "none" }} />
+            <input type="number" placeholder="HP" value={addHp} onChange={(e) => setAddHp(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddNpcs()} style={{ width: 64, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 15, padding: "7px 8px", outline: "none", textAlign: "center" }} />
+          </div>
+          <div className="npc-add-count-row">
+            <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>Count:</span>
+            <input
+              id="npc-add-count-input"
+              type="number"
+              min="1"
+              max="8"
+              value={addCount}
+              onChange={(e) => setAddCount(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))}
+              style={{ width: 44, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 14, padding: "4px 6px", outline: "none", textAlign: "center" }}
+            />
+            {addCount > 1 && addName.trim() && (
+              <label style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginLeft: "auto", cursor: "pointer", userSelect: "none" }}>
+                <input
+                  type="checkbox"
+                  checked={addNumberThem}
+                  onChange={(e) => setAddNumberThem(e.target.checked)}
+                  style={{ accentColor: npcPal.accent, width: 12, height: 12, cursor: "pointer" }}
+                />
+                <span>Number them</span>
+                {addNumberThem && (
+                  <span style={{ color: npcPal.bright, fontStyle: "italic" }}>({addName.trim()} 1–{addCount})</span>
+                )}
+              </label>
+            )}
+          </div>
+          <button onClick={handleAddNpcs} className="btn-npc-add-enemy">
+            {addCount > 1 ? `+ Add ${addCount} Enemies` : "+ Add Enemy"}
+          </button>
+          <div style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginTop: 8, letterSpacing: "0.08em" }}>
+            Use <span style={{ color: npcPal.bright }}>+ Init</span> on a card to add it to the turn order.
+          </div>
+
+          {/* Library picker toggle */}
+          <button
+            onClick={() => { setLibPickerOpen((current) => !current); setLibPickerFilter(""); }}
+            style={{
+              display: "flex", alignItems: "center", gap: 5,
+              background: "none", border: "none", padding: "8px 0 4px",
+              cursor: "pointer", userSelect: "none",
+            }}
+          >
+            <span style={{ fontSize: 10, color: libPickerOpen ? npcPal.accent : npcPal.accent, transform: libPickerOpen ? "rotate(45deg)" : "none", transition: "transform 0.09s", lineHeight: 1, flexShrink: 0 }}>◆</span>
+            <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: libPickerOpen ? npcPal.bright : pal.textMuted }}>
+              {libPickerOpen ? "Hide library" : "From library"}
+            </span>
+          </button>
+
+          {/* Library picker panel */}
+          {libPickerOpen && (
+            <div style={{ marginTop: 4, background: "rgba(22,18,13,0.85)", border: `1px solid ${npcPal.actionBorder}`, borderRadius: 4, overflow: "hidden" }}>
+              {/* Search — only above 20 entries */}
+              {(npcLibrary?.templates?.length || 0) > 20 && (
+                <div style={{ padding: "8px 10px 0" }}>
+                  <input
+                    type="text"
+                    placeholder="Search name or abilities…"
+                    value={libPickerFilter}
+                    onChange={(e) => setLibPickerFilter(e.target.value)}
+                    style={{ width: "100%", background: "rgba(18,14,10,0.6)", border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 12, padding: "6px 9px", outline: "none" }}
+                  />
+                </div>
+              )}
+              <div style={{ display: "flex", justifyContent: "flex-end", padding: "5px 10px", borderBottom: `1px solid ${npcPal.actionBorder}` }}>
+                <button
+                  onClick={() => setLibPickerOpen(false)}
+                  style={{ background: "none", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.14em", cursor: "pointer", minHeight: 28 }}
+                >× Close</button>
+              </div>
+              <div style={{ maxHeight: 320, overflowY: "auto" }}>
+                {(() => {
+                  const templates = npcLibrary?.templates || [];
+                  const filtered = libPickerFilter.trim()
+                    ? templates.filter((t) => {
+                        const hay = (t.name + " " + abilitiesOf(t).map(abilityText).join(" ")).toLowerCase();
+                        return hay.includes(libPickerFilter.trim().toLowerCase());
+                      })
+                    : templates;
+                  if (templates.length === 0) {
+                    return (
+                      <div style={{ padding: "16px", textAlign: "center", border: `1px dashed ${npcPal.actionBorder}`, borderRadius: 3, margin: 8 }}>
+                        <span style={{ fontFamily: pal.fontBody, fontSize: 12, fontStyle: "italic", color: pal.textMuted, lineHeight: 1.6 }}>
+                          Library is empty.<br />
+                          Save an NPC from its ⋯ menu, or build creatures in advance from ⚙ Enemies Gallery below.
+                        </span>
+                      </div>
+                    );
+                  }
+                  if (filtered.length === 0) {
+                    return <div style={{ padding: "12px 14px", fontFamily: pal.fontBody, fontSize: 12, fontStyle: "italic", color: pal.textMuted }}>No matches.</div>;
+                  }
+                  return filtered.map((tpl) => (
+                    <div key={tpl.id} style={{ borderBottom: `1px solid ${npcPal.actionBorder}`, overflow: "hidden" }}>
+                      <div
+                        style={{ display: "flex", alignItems: "flex-start", padding: "10px 12px", gap: 10, cursor: "pointer" }}
+                        onClick={() => handleLibPickerSelect(tpl)}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = npcPal.chipBg; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = ""; }}
+                      >
+                        <NpcThumb portraitUrl={tpl.portraitUrl} name={tpl.name} size={32} npcPal={npcPal} />
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
+                            <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: npcPal.bright, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, letterSpacing: "0.04em" }} title={tpl.name}>{tpl.name}</span>
+                            {tpl.hpMax && (
+                              <span style={{ fontFamily: pal.fontUI, fontSize: 10, color: npcPal.accent, flexShrink: 0 }}>
+                                <span style={{ color: "#b06868" }}>♥</span>{tpl.hpMax}
+                              </span>
+                            )}
+                          </div>
+                          {abilitiesOf(tpl).length === 0 ? (
+                            <span style={{ fontFamily: pal.fontBody, fontSize: 11, fontStyle: "italic", color: pal.textMuted }}>(no abilities saved)</span>
+                          ) : (
+                            <>
+                              {abilitiesOf(tpl).slice(0, 2).map((ab) => (
+                                <div key={ab.id} style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.textBody, lineHeight: 1.55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                  <span style={{ color: npcPal.accent, fontSize: 10 }}>{ab.roll ? "⚔" : "◆"}</span> {abilityText(ab)}
+                                </div>
+                              ))}
+                              {abilitiesOf(tpl).length > 2 && (
+                                <span style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, fontStyle: "italic" }}>+{abilitiesOf(tpl).length - 2} more…</span>
+                              )}
+                            </>
+                          )}
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleLibPickerDeleteRow(tpl.id); }}
+                          style={{ background: "none", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 13, cursor: "pointer", padding: "2px 4px", minWidth: 28, minHeight: 28, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, flexShrink: 0, transition: "color 0.12s" }}
+                          onMouseEnter={(e) => { e.currentTarget.style.color = "#c06060"; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
+                          aria-label="Delete entry"
+                        >×</button>
+                      </div>
+                      {libDeleteConfirmId === tpl.id && (
+                        <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 12px 8px" }}>
+                          <span style={{ fontFamily: pal.fontBody, fontSize: 12, fontStyle: "italic", color: pal.textMuted, flex: 1 }}>Remove from library?</span>
+                          <button
+                            onClick={() => handleLibPickerDeleteConfirm(tpl.id)}
+                            style={{ background: "transparent", border: "1px solid rgba(192,96,96,0.4)", borderRadius: 3, color: "#c06060", fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", padding: "5px 10px", minHeight: 32, cursor: "pointer" }}
+                          >Delete</button>
+                          <button
+                            onClick={handleLibPickerDeleteCancel}
+                            style={{ background: "transparent", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", padding: "5px 8px", minHeight: 32, cursor: "pointer" }}
+                          >Cancel</button>
+                        </div>
+                      )}
+                    </div>
+                  ));
+                })()}
+              </div>
+              {/* Enemies Gallery link */}
+              <div style={{ borderTop: `1px solid ${npcPal.actionBorder}` }}>
+                <button
+                  onClick={() => { setLibPickerOpen(false); onOpenEnemiesGallery?.(); }}
+                  style={{ display: "block", width: "100%", background: "transparent", border: "none", textAlign: "left", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, padding: "10px 12px", minHeight: 40, cursor: "pointer", transition: "color 0.12s" }}
+                  onMouseEnter={(e) => { e.currentTarget.style.color = npcPal.bright; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
+                >
+                  <span style={{ color: npcPal.accent, marginRight: 4 }}>⚙</span>Enemies Gallery
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <button type="button" className="npc-add-toggle" onClick={() => setAddOpen(true)}>+ Add enemy</button>
+      )}
+
       {npcs.length === 0 ? (
         <div style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.14em", color: pal.textMuted, padding: "12px 0 16px", textAlign: "center" }}>
-          No enemies tracked yet.<br />Add below to start tracking them.
+          No enemies tracked yet.<br />Add one above to start tracking them.
         </div>
       ) : (
         <>
@@ -1220,175 +1401,6 @@ export default function NpcCombatSection({
         </>
       )}
 
-      <div className="npc-add-form" style={{ background: npcPal.surface, border: `1px dashed ${npcPal.actionBorder}` }}>
-        <div className="label-ui" style={{ letterSpacing: "0.28em", marginBottom: 10 }}>Add Enemy</div>
-        <div className="npc-add-form-row">
-          <input type="text" placeholder="Name…" value={addName} onChange={(e) => setAddName(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddNpcs()} style={{ flex: 1, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 14, padding: "7px 10px", outline: "none" }} />
-          <input type="number" placeholder="HP" value={addHp} onChange={(e) => setAddHp(e.target.value)} onKeyDown={(e) => e.key === "Enter" && handleAddNpcs()} style={{ width: 64, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 15, padding: "7px 8px", outline: "none", textAlign: "center" }} />
-        </div>
-        <div className="npc-add-count-row">
-          <span style={{ fontFamily: pal.fontUI, fontSize: 11, letterSpacing: "0.1em", color: pal.textMuted }}>Count:</span>
-          <input
-            id="npc-add-count-input"
-            type="number"
-            min="1"
-            max="8"
-            value={addCount}
-            onChange={(e) => setAddCount(Math.max(1, Math.min(8, parseInt(e.target.value) || 1)))}
-            style={{ width: 44, background: npcPal.track, border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 14, padding: "4px 6px", outline: "none", textAlign: "center" }}
-          />
-          {addCount > 1 && addName.trim() && (
-            <label style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginLeft: "auto", cursor: "pointer", userSelect: "none" }}>
-              <input
-                type="checkbox"
-                checked={addNumberThem}
-                onChange={(e) => setAddNumberThem(e.target.checked)}
-                style={{ accentColor: npcPal.accent, width: 12, height: 12, cursor: "pointer" }}
-              />
-              <span>Number them</span>
-              {addNumberThem && (
-                <span style={{ color: npcPal.bright, fontStyle: "italic" }}>({addName.trim()} 1–{addCount})</span>
-              )}
-            </label>
-          )}
-        </div>
-        <button onClick={handleAddNpcs} className="btn-npc-add-enemy">
-          {addCount > 1 ? `+ Add ${addCount} Enemies` : "+ Add Enemy"}
-        </button>
-        <div style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, marginTop: 8, letterSpacing: "0.08em" }}>
-          Use <span style={{ color: npcPal.bright }}>+ Init</span> on a card to add it to the turn order.
-        </div>
-
-        {/* Library picker toggle */}
-        <button
-          onClick={() => { setLibPickerOpen((current) => !current); setLibPickerFilter(""); }}
-          style={{
-            display: "flex", alignItems: "center", gap: 5,
-            background: "none", border: "none", padding: "8px 0 4px",
-            cursor: "pointer", userSelect: "none",
-          }}
-        >
-          <span style={{ fontSize: 10, color: libPickerOpen ? npcPal.accent : npcPal.accent, transform: libPickerOpen ? "rotate(45deg)" : "none", transition: "transform 0.09s", lineHeight: 1, flexShrink: 0 }}>◆</span>
-          <span style={{ fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: libPickerOpen ? npcPal.bright : pal.textMuted }}>
-            {libPickerOpen ? "Hide library" : "From library"}
-          </span>
-        </button>
-
-        {/* Library picker panel */}
-        {libPickerOpen && (
-          <div style={{ marginTop: 4, background: "rgba(22,18,13,0.85)", border: `1px solid ${npcPal.actionBorder}`, borderRadius: 4, overflow: "hidden" }}>
-            {/* Search — only above 20 entries */}
-            {(npcLibrary?.templates?.length || 0) > 20 && (
-              <div style={{ padding: "8px 10px 0" }}>
-                <input
-                  type="text"
-                  placeholder="Search name or abilities…"
-                  value={libPickerFilter}
-                  onChange={(e) => setLibPickerFilter(e.target.value)}
-                  style={{ width: "100%", background: "rgba(18,14,10,0.6)", border: `1px solid ${npcPal.actionBorder}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontBody, fontSize: 12, padding: "6px 9px", outline: "none" }}
-                />
-              </div>
-            )}
-            <div style={{ display: "flex", justifyContent: "flex-end", padding: "5px 10px", borderBottom: `1px solid ${npcPal.actionBorder}` }}>
-              <button
-                onClick={() => setLibPickerOpen(false)}
-                style={{ background: "none", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.14em", cursor: "pointer", minHeight: 28 }}
-              >× Close</button>
-            </div>
-            <div style={{ maxHeight: 320, overflowY: "auto" }}>
-              {(() => {
-                const templates = npcLibrary?.templates || [];
-                const filtered = libPickerFilter.trim()
-                  ? templates.filter((t) => {
-                      const hay = (t.name + " " + abilitiesOf(t).map(abilityText).join(" ")).toLowerCase();
-                      return hay.includes(libPickerFilter.trim().toLowerCase());
-                    })
-                  : templates;
-                if (templates.length === 0) {
-                  return (
-                    <div style={{ padding: "16px", textAlign: "center", border: `1px dashed ${npcPal.actionBorder}`, borderRadius: 3, margin: 8 }}>
-                      <span style={{ fontFamily: pal.fontBody, fontSize: 12, fontStyle: "italic", color: pal.textMuted, lineHeight: 1.6 }}>
-                        Library is empty.<br />
-                        Save an NPC from its ⋯ menu, or build creatures in advance from ⚙ Enemies Gallery below.
-                      </span>
-                    </div>
-                  );
-                }
-                if (filtered.length === 0) {
-                  return <div style={{ padding: "12px 14px", fontFamily: pal.fontBody, fontSize: 12, fontStyle: "italic", color: pal.textMuted }}>No matches.</div>;
-                }
-                return filtered.map((tpl) => (
-                  <div key={tpl.id} style={{ borderBottom: `1px solid ${npcPal.actionBorder}`, overflow: "hidden" }}>
-                    <div
-                      style={{ display: "flex", alignItems: "flex-start", padding: "10px 12px", gap: 10, cursor: "pointer" }}
-                      onClick={() => handleLibPickerSelect(tpl)}
-                      onMouseEnter={(e) => { e.currentTarget.style.background = npcPal.chipBg; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.background = ""; }}
-                    >
-                      <NpcThumb portraitUrl={tpl.portraitUrl} name={tpl.name} size={32} npcPal={npcPal} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: "flex", alignItems: "baseline", gap: 6, marginBottom: 3 }}>
-                          <span style={{ fontFamily: pal.fontDisplay, fontSize: 13, color: npcPal.bright, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", flex: 1, letterSpacing: "0.04em" }} title={tpl.name}>{tpl.name}</span>
-                          {tpl.hpMax && (
-                            <span style={{ fontFamily: pal.fontUI, fontSize: 10, color: npcPal.accent, flexShrink: 0 }}>
-                              <span style={{ color: "#b06868" }}>♥</span>{tpl.hpMax}
-                            </span>
-                          )}
-                        </div>
-                        {abilitiesOf(tpl).length === 0 ? (
-                          <span style={{ fontFamily: pal.fontBody, fontSize: 11, fontStyle: "italic", color: pal.textMuted }}>(no abilities saved)</span>
-                        ) : (
-                          <>
-                            {abilitiesOf(tpl).slice(0, 2).map((ab) => (
-                              <div key={ab.id} style={{ fontFamily: pal.fontBody, fontSize: 11, color: pal.textBody, lineHeight: 1.55, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                <span style={{ color: npcPal.accent, fontSize: 10 }}>{ab.roll ? "⚔" : "◆"}</span> {abilityText(ab)}
-                              </div>
-                            ))}
-                            {abilitiesOf(tpl).length > 2 && (
-                              <span style={{ fontFamily: pal.fontUI, fontSize: 10, color: pal.textMuted, fontStyle: "italic" }}>+{abilitiesOf(tpl).length - 2} more…</span>
-                            )}
-                          </>
-                        )}
-                      </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleLibPickerDeleteRow(tpl.id); }}
-                        style={{ background: "none", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 13, cursor: "pointer", padding: "2px 4px", minWidth: 28, minHeight: 28, display: "flex", alignItems: "center", justifyContent: "center", borderRadius: 3, flexShrink: 0, transition: "color 0.12s" }}
-                        onMouseEnter={(e) => { e.currentTarget.style.color = "#c06060"; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
-                        aria-label="Delete entry"
-                      >×</button>
-                    </div>
-                    {libDeleteConfirmId === tpl.id && (
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "4px 12px 8px" }}>
-                        <span style={{ fontFamily: pal.fontBody, fontSize: 12, fontStyle: "italic", color: pal.textMuted, flex: 1 }}>Remove from library?</span>
-                        <button
-                          onClick={() => handleLibPickerDeleteConfirm(tpl.id)}
-                          style={{ background: "transparent", border: "1px solid rgba(192,96,96,0.4)", borderRadius: 3, color: "#c06060", fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", padding: "5px 10px", minHeight: 32, cursor: "pointer" }}
-                        >Delete</button>
-                        <button
-                          onClick={handleLibPickerDeleteCancel}
-                          style={{ background: "transparent", border: "none", color: pal.textMuted, fontFamily: pal.fontUI, fontSize: 12, letterSpacing: "0.1em", padding: "5px 8px", minHeight: 32, cursor: "pointer" }}
-                        >Cancel</button>
-                      </div>
-                    )}
-                  </div>
-                ));
-              })()}
-            </div>
-            {/* Enemies Gallery link */}
-            <div style={{ borderTop: `1px solid ${npcPal.actionBorder}` }}>
-              <button
-                onClick={() => { setLibPickerOpen(false); onOpenEnemiesGallery?.(); }}
-                style={{ display: "block", width: "100%", background: "transparent", border: "none", textAlign: "left", fontFamily: pal.fontUI, fontSize: 10, letterSpacing: "0.18em", textTransform: "uppercase", color: pal.textMuted, padding: "10px 12px", minHeight: 40, cursor: "pointer", transition: "color 0.12s" }}
-                onMouseEnter={(e) => { e.currentTarget.style.color = npcPal.bright; }}
-                onMouseLeave={(e) => { e.currentTarget.style.color = pal.textMuted; }}
-              >
-                <span style={{ color: npcPal.accent, marginRight: 4 }}>⚙</span>Enemies Gallery
-              </button>
-            </div>
-          </div>
-        )}
-      </div>
 
       {modalTarget && (
         <NpcDamageHealModal

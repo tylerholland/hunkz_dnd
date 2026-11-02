@@ -53,24 +53,6 @@ describe("InitiativeTracker optimistic updates", () => {
     expect(options).toEqual({ optimistic: true });
   });
 
-  it("adds a manual combatant with optimistic initiative commit", async () => {
-    const props = renderTracker();
-
-    fireEvent.change(screen.getByPlaceholderText("Name…"), { target: { value: "Goblin" } });
-    fireEvent.change(screen.getByPlaceholderText("Init"), { target: { value: "12" } });
-    fireEvent.click(screen.getByRole("button", { name: "Add" }));
-
-    expect(props.onCommitInitiative).toHaveBeenCalledTimes(1);
-    const [payload, options] = props.onCommitInitiative.mock.calls[0];
-    expect(payload.entries).toHaveLength(2);
-    expect(payload.entries[1]).toMatchObject({
-      name: "Goblin",
-      initiative: 12,
-      isPC: false,
-    });
-    expect(options).toEqual({ optimistic: true });
-  });
-
   it("reorders initiative entries when moving an entry down", async () => {
     const props = renderTracker({
       initiative: {

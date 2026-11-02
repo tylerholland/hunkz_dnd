@@ -213,3 +213,19 @@ describe("NpcCombatSection abilities & defense", () => {
     expect(screen.getByRole("dialog", { name: "Rat" })).toBeInTheDocument();
   });
 });
+
+describe("NpcCombatSection Add Enemy", () => {
+  it("sits collapsed at the top once there are enemies, and opens in place", () => {
+    renderSection();
+    expect(screen.queryByPlaceholderText("Name…")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "+ Add enemy" }));
+    expect(screen.getByPlaceholderText("Name…")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Close Add Enemy" }));
+    expect(screen.queryByPlaceholderText("Name…")).toBeNull();
+  });
+
+  it("starts open when there are no enemies yet", () => {
+    renderSection({ npcCombat: { npcs: [] }, initiative: { activeTurnIndex: 0, entries: [] } });
+    expect(screen.getByPlaceholderText("Name…")).toBeInTheDocument();
+  });
+});

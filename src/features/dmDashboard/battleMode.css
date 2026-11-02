@@ -32,6 +32,14 @@
   transition: none !important;
 }
 
+/* A token showing its card or long-press menu sits above its neighbours, so
+   the card isn't covered by the tokens next to it. */
+.tk-lunge:has(> .token-chip[data-expanded="true"]),
+.tk-lunge:has(.token-longpress-menu),
+.tk-lunge:has(> .token-chip:hover) {
+  z-index: 40;
+}
+
 /* ── Token chip base ──────────────────────────────────────────────────── */
 /* .token-chip's own transform now carries only the centering offset,
    rotation, and scale — position lives on the .tk-lunge wrapper above
@@ -56,10 +64,12 @@
   transform: translate(-50%, -50%) scale(calc(var(--token-scale-multiplier, 1) * var(--token-size-mult, 1) * var(--token-drag-scale, 1))) rotate(calc(0deg - var(--map-rotation, 0deg)));
   transform-origin: center;
   z-index: 10;
-  /* Story 65 — undoes the per-token size for the hover card, long-press
-     menu and resize stepper, so they read at Medium size on any token. Like
-     the condition badges, they still follow map zoom/calibration. */
-  --tk-popover-counter: calc(1 / var(--token-size-mult, 1));
+  /* Undoes the per-token size, the map's token calibration and the map zoom
+     for the hover card, long-press menu and resize stepper, so they always
+     read at the page's own size (and follow its text size) — zooming the
+     map out to see more doesn't shrink them. --map-zoom is set on
+     .token-layer by MapViewer. */
+  --tk-popover-counter: calc(1 / (var(--token-size-mult, 1) * var(--token-scale-multiplier, 1) * var(--map-zoom, 1)));
   /* The name label grows with the token only up to Large (2×); past that it
      stays Large-sized so a Colossal token's name doesn't dominate the map. */
   --tk-label-counter: calc(min(var(--token-size-mult, 1), 2) / var(--token-size-mult, 1));
@@ -299,7 +309,7 @@
      the card reads at Medium size on a Gargantuan token. */
   transform: translateX(-50%) scale(var(--tk-popover-counter, 1));
   transform-origin: top center;
-  width: 124px;
+  width: 150px;
   background: var(--pal-surface-solid, #2a160a);
   border: 1px solid var(--pal-border, rgba(160, 100, 55, 0.38));
   border-radius: 3px;
@@ -348,7 +358,7 @@
 
 .token-hp-card__numerals--hidden {
   font-style: italic;
-  font-size: 11px;
+  font-size: 12px;
   color: var(--pal-text-muted, #6a4830);
 }
 
@@ -358,14 +368,14 @@
    that colour's app-wide meaning). */
 .token-hp-card__invis-line {
   font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   color: var(--fam-unknown, #c8c0b4);
   margin-bottom: 4px;
 }
 .token-hp-card__secret-line {
   font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--tk-dm-secret, #7c93a8);
   margin-top: 1px;
@@ -378,7 +388,7 @@
 }
 .token-hp-card__cond-line {
   font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   line-height: 15px;
@@ -406,7 +416,7 @@
 }
 
 .token-hp-card__bar-wrap {
-  width: 100px;
+  width: 126px;
   height: 4px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 2px;
@@ -426,7 +436,7 @@
 
 /* NPC health-tier glow line (player view) */
 .token-hp-card__glow-line {
-  width: 100px;
+  width: 126px;
   height: 3px;
   border-radius: 2px;
   margin: 4px auto;
@@ -456,7 +466,7 @@
   background: transparent;
   border: none;
   font-family: "Cinzel Numerals", "IM Fell English", Georgia, serif;
-  font-size: 10px;
+  font-size: 12px;
   letter-spacing: 0.08em;
   color: var(--pal-text-muted, #6a4830);
   cursor: pointer;
