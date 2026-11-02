@@ -239,6 +239,21 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       ctx.restore();
     } });
   }
+  // "Punch action" streaks: three short lines rushing in at the contact point.
+  function speedLines(targetId, start, ms, bearing) {
+    effects.push({ t0: clock + start, dur: ms, draw: (k) => {
+      const p = tok(targetId); if (!p) return;
+      const ux = Math.cos(bearing), uy = Math.sin(bearing), nx = -uy, ny = ux;
+      const hx = p.x - ux * p.r * (0.7 + 0.5 * (1 - easeOut(k))), hy = p.y - uy * p.r * (0.7 + 0.5 * (1 - easeOut(k)));
+      ctx.save(); ctx.globalCompositeOperation = "lighter"; ctx.lineCap = "round"; ctx.strokeStyle = "#fff6e6";
+      for (const j of [-1, 0, 1]) {
+        const L = p.r * (j ? 0.9 : 1.3) * (1 - k * 0.6), ox = nx * j * p.r * 0.24, oy = ny * j * p.r * 0.24;
+        ctx.globalAlpha = (j ? 0.6 : 0.9) * (1 - k); ctx.lineWidth = j ? 1.8 : 2.6;
+        ctx.beginPath(); ctx.moveTo(hx + ox - ux * L, hy + oy - uy * L); ctx.lineTo(hx + ox, hy + oy); ctx.stroke();
+      }
+      ctx.restore();
+    } });
+  }
   function jabPopHit(targetId, bearing, second) {
     const p = tok(targetId); if (!p) return;
     const cx = p.x - Math.cos(bearing) * p.r * 0.7, cy = p.y - Math.sin(bearing) * p.r * 0.7;
@@ -635,11 +650,16 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       swoosh(targetId, 480, 520, bearing, { long: true, color: "#f2ece2", shade: "#a8a092" });
       at(680, () => { boardShake = Math.max(boardShake, 4); impact(targetId, { ...common, heavy: true, blade: true, chips: true, color: "#ffe6c8" }); });
     } else if (style === "flurry") {
+      // The usual wind-up, then three fast punches — boom, boom, BOOM — each
+      // landing a little off the last, the third with the full impact.
       windUp(attackerId, targetId, 220);
-      lunge(attackerId, targetId, 220, 220);
-      at(300, () => jabPop(targetId, bearing, false));
-      lunge(attackerId, targetId, 470, 240);
-      at(560, () => { jabPop(targetId, bearing, true); impact(targetId, { ...common, fist: true, color: "#f3e6cc" }); });
+      [-0.32, 0.32, 0].forEach((off, i) => {
+        const t0 = 220 + i * 120;
+        lunge(attackerId, targetId, t0, 120);
+        speedLines(targetId, t0 + 10, 90, bearing + off);
+        if (i < 2) at(t0 + 54, () => jabPop(targetId, bearing + off, i > 0));
+        else at(t0 + 54, () => { jabPop(targetId, bearing, true); impact(targetId, { ...common, fist: true, color: "#f3e6cc" }); });
+      });
     } else if (style === "arrow") {
       const ms = travel(220, 450, 160);
       windUp(attackerId, targetId, CHARGE_MS);
