@@ -50,7 +50,7 @@ describe("NPC attacks in Take Action", () => {
   it("lists a creature's own attacks first, with their attack roll and look", async () => {
     const { actionGroups, toHitExpr } = await import("./actionOptions");
     const groups = actionGroups({ type: "npc", npc: { attacks: [{ id: "t", name: "Tentacles", hit: "1d20+8", damage: "1d4+2", look: "lash" }] } });
-    expect(groups.own).toEqual([{ id: "own-t", name: "Tentacles", hit: "1d20+8", dice: "1d4+2", look: "lash", style: "cut", own: true }]);
+    expect(groups.own).toEqual([{ id: "own-t", name: "Tentacles", hit: "1d20+8", dice: "1d4+2", look: "lash", style: "lash", own: true }]);
     expect(groups.primary.length).toBeGreaterThan(0);
     expect(actionGroups({ type: "npc", npc: {} }).own).toEqual([]);
     expect(toHitExpr("+5")).toBe("1d20+5");

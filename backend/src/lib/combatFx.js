@@ -4,7 +4,9 @@
 // that animation instead of guessing from initiative + roll history.
 
 // "curse" / "bless" — a spell effect applied without damage (Hexed, Blessed…).
-const FX_STYLES = ["cut", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt", "heal", "curse", "bless"];
+// bite…spit — creature looks from NPC abilities (src/features/dmDashboard/npcStats.js).
+const FX_STYLES = ["cut", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt", "heal", "curse", "bless",
+  "bite", "claw", "lash", "sting", "slam", "breath", "spit"];
 const MAX_ID_LEN = 80;
 
 function boundedId(value) {

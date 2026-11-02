@@ -18,8 +18,9 @@ describe("npcStats", () => {
     expect(guessLook("Poison Bite")).toBe("bite");
     expect(guessLook("Greataxe")).toBe("chop");
     expect(guessLook("Mystery")).toBe("cut");
-    expect(lookAnimation("lash")).toBe("cut");
-    expect(lookAnimation("breath")).toBe("fire");
+    expect(lookAnimation("lash")).toBe("lash");
+    expect(lookAnimation("breath")).toBe("breath");
+    expect(lookAnimation("nonsense")).toBe("cut");
     expect(lookAnimation("arrow")).toBe("arrow");
   });
 

@@ -9,17 +9,13 @@
 // Older data had ability strings and a separate `attacks` list; both are read.
 import { parseDiceExpr, rollDie } from "../../components/DiceRoller";
 
-// What a strike looks like on the map. The creature looks are new; until they
-// have their own animations they play the nearest existing one (`plays`).
+// What a strike looks like on the map — each look is an animation in the
+// combat FX engine (design/prototypes/creature-strikes.html).
 export const LOOK_GROUPS = [
   { title: "Creature", looks: [
-    { id: "bite", label: "Bite", plays: "cut" },
-    { id: "claw", label: "Claw", plays: "cut" },
-    { id: "lash", label: "Lash", plays: "cut" },
-    { id: "sting", label: "Sting", plays: "arrow" },
-    { id: "slam", label: "Slam", plays: "chop" },
-    { id: "breath", label: "Breath", plays: "fire" },
-    { id: "spit", label: "Spit", plays: "arrow" },
+    { id: "bite", label: "Bite" }, { id: "claw", label: "Claw" }, { id: "lash", label: "Lash" },
+    { id: "sting", label: "Sting" }, { id: "slam", label: "Slam" }, { id: "breath", label: "Breath" },
+    { id: "spit", label: "Spit" },
   ] },
   { title: "Weapon", looks: [
     { id: "cut", label: "Cut" }, { id: "chop", label: "Chop" }, { id: "flurry", label: "Flurry" },
@@ -30,8 +26,8 @@ export const LOOK_GROUPS = [
 const ALL_LOOKS = LOOK_GROUPS.flatMap((g) => g.looks);
 export const LOOK_IDS = ALL_LOOKS.map((l) => l.id);
 export const lookLabel = (id) => ALL_LOOKS.find((l) => l.id === id)?.label || "Cut";
-/** The animation a look plays today (creature looks borrow a near one). */
-export const lookAnimation = (id) => ALL_LOOKS.find((l) => l.id === id)?.plays || (LOOK_IDS.includes(id) ? id : "cut");
+/** The animation a look plays (an unknown look plays Cut). */
+export const lookAnimation = (id) => (LOOK_IDS.includes(id) ? id : "cut");
 
 // Guess a look from an attack's name until the DM picks one.
 const GUESSES = [
