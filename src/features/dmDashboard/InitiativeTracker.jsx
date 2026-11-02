@@ -62,6 +62,13 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
     };
   }
 
+  // Double-click a row: make it that combatant's turn (same round).
+  async function makeTurn(entryId) {
+    const index = entries.findIndex((entry) => entry.id === entryId);
+    if (index < 0 || index === activeTurnIndex) return;
+    await onCommitInitiative({ entries: initiative.entries || [], activeTurnIndex: index, round: currentRound }, { optimistic: true });
+  }
+
   async function handleNextTurn() {
     if (entries.length === 0) return;
     const next = (activeTurnIndex + 1) % entries.length;
@@ -258,6 +265,12 @@ export default function InitiativeTracker({ initiative, party, onCommitInitiativ
               <li key={entry.id} className="init-entry" data-dragging={drag?.id === entry.id ? "true" : undefined}>
                 <div
                   onClick={canPromote ? () => setPromoteOpenId(isPromoteOpen ? null : entry.id) : undefined}
+                  onDoubleClick={(e) => {
+                    if (drag || e.target.closest("button, input")) return;
+                    if (canPromote) setPromoteOpenId(null); // the two clicks toggled it; leave it closed
+                    makeTurn(entry.id);
+                  }}
+                  title={isCurrent ? undefined : `Double-click to make it ${entry.name}'s turn`}
                   data-current={isCurrent ? "true" : undefined}
                   data-promote-open={isPromoteOpen ? "true" : undefined}
                   data-promote-clickable={canPromote ? "true" : undefined}

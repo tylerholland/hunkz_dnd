@@ -105,4 +105,24 @@ describe("InitiativeTracker optimistic updates", () => {
     const [payload] = props.onCommitInitiative.mock.calls[0];
     expect(payload.entries.map((e) => e.id)).toEqual(["b", "c", "a"]);
   });
+
+  it("makes a combatant's turn on double-click, keeping the round", () => {
+    const props = renderTracker({
+      initiative: {
+        entries: [
+          { id: "a", slug: "aragorn", name: "Aragorn", initiative: 18, isPC: true, npcId: null },
+          { id: "b", slug: "liu-sha", name: "Liu Sha", initiative: 14, isPC: true, npcId: null },
+        ],
+        activeTurnIndex: 0,
+        round: 3,
+      },
+    });
+    fireEvent.doubleClick(screen.getByText("Liu Sha"));
+    const [payload] = props.onCommitInitiative.mock.calls[0];
+    expect(payload.activeTurnIndex).toBe(1);
+    expect(payload.round).toBe(3);
+    // Double-clicking the current one does nothing.
+    fireEvent.doubleClick(screen.getByText("Aragorn"));
+    expect(props.onCommitInitiative).toHaveBeenCalledTimes(1);
+  });
 });
