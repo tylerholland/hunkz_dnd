@@ -14,7 +14,7 @@
 }
 .ns-input:focus { outline: none; border-color: var(--pal-accent); }
 /* Placeholders are examples, not values: faded and italic so they never read as set. */
-.ns-input::placeholder { color: var(--pal-text-muted); opacity: 0.55; font-style: italic; letter-spacing: 0; }
+.ns-input::placeholder { color: var(--pal-text-muted); opacity: 0.85; font-style: italic; letter-spacing: 0; }
 .ns-input.bad { border-color: #c06060; }
 .ns-dice { width: 92px; font-family: var(--font-display, "Cinzel", Georgia, serif); letter-spacing: 0.03em; }
 .ns-acin { width: 60px; margin-left: 6px; }
