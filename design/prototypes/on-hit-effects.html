@@ -6,39 +6,40 @@
 <title>On-Hit Effects</title>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
 <!--
-  On-hit effects (poisoned shank, charming touch, cursed blade) — prototype,
-  no live API. Exploratory: shows what the feature would add to the flow.
+  On-hit effects, round 2 — prototype, no live API.
+  Round 1 put the decisions in the Deal Damage step and felt heavy. Here the
+  effect is set up once, on the thing that causes it, and is then just a badge.
 
-  Data: a rollable ability's roll gains an optional
-    onHit: { effect: "Poisoned", save?: { dc: 11, ability: "CON" } }
-  `effect` is any condition (ALL_CONDITIONS) or effect (SPELL_EFFECTS + the
-  DM's custom effects) — it lands in the target's existing `conditions` array,
-  so map rings, player visibility, the session log and removal are unchanged.
-  No duration, no extra damage field: extra poison damage goes in the damage
-  dice ("1d4+2d6"); the DM removes the condition with the usual chips.
+  Where: any attack source — an NPC's rollable ability, a player's weapon, an
+  inventory item (a vial of poison, a cursed ring). Each shows its effect as a
+  small badge after the name: a shape and colour per effect (droplet/green =
+  Poisoned, heart/pink = Charmed…). Hover, focus or tap it for the details.
+  "＋ Effect" (an icon button after the name) opens the Effect form; tapping
+  a badge opens the same form to edit or remove it.
 
-  Flow (Deal Damage, after an attack with an on-hit effect):
-  - No save: "Also make <target> Poisoned" is ticked; Apply does both.
-  - With a save: the target saves or not. Players roll their own at the table
-    and say the number (type it, or tap Failed / Saved); "Not yet" applies the
-    damage only. Apply's label says exactly what will happen.
-  - A miss never applies it. Already has it: says so, nothing doubles.
-  - Applied: one write (HP + conditions), a small puff on the token, and
-    History reads "Eòghan is Poisoned (Poisoned Shank)".
-  Phase 2 (not shown working): the same On hit line on a player's weapon,
-  offered when the DM applies damage from that player's declared attack.
-  Open: should "Saved" still log a line ("Eòghan resists the poison")?
+  The Effect form: pick the effect (conditions + the DM's effects, as tiles
+  with their badge), a duration in turns (or "until removed"), and an optional
+  saving throw (DC + ability). A sentence at the bottom says what it will do.
+  Data: source.onHit = { effect, turns: 10 | null, save: { dc, ability } | null }
+
+  In play (the only change to Deal Damage): one pre-ticked chip with the
+  badge — "Also Poisoned · 10 turns". With a save it reads "unless they save
+  (DC 11 Con)"; untick it if they saved. A miss hides it.
+  Duration: counted down on the target's turns from the initiative tracker;
+  at 0 the condition comes off by itself (new: a timer beside the condition).
+  Out of combat a timed effect just stays until removed.
+  Open: show the turns left on the map's condition ring, or only in the card?
 -->
 <style>
   :root {
     --bg:#0d0f14; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
     --dim:#1e3a4e; --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#080a0e; --gold:#c8a040; --red:#c06060; --green:#7fc88f;
-    --card:#1a1814; --cardb:rgba(140,110,70,.3); --poison:#8fd14f; --poison-wash:rgba(143,209,79,.12);
+    --card:#1a1814; --cardb:rgba(140,110,70,.3); --tip:#0b1622; --scrim:rgba(4,8,12,.6);
   }
   body[data-pal="vellum"] {
     --bg:#f5f0e8; --solid:#ece4d2; --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
     --dim:rgba(140,110,70,.16); --text:#2a2018; --body:#3c2e1c; --muted:#6f573c; --page:#e9e1d2; --gold:#8a6418; --red:#9a2a20; --green:#2f7a45;
-    --card:#efe6d4; --cardb:rgba(140,110,70,.35); --poison:#3f7a1a; --poison-wash:rgba(63,122,26,.08);
+    --card:#efe6d4; --cardb:rgba(140,110,70,.35); --tip:#fffaf0; --scrim:rgba(60,40,20,.35);
   }
   * { box-sizing:border-box; }
   body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
@@ -52,292 +53,261 @@
   .ctl { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
   .ctl button { border:0; background:transparent; padding:7px 13px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
   .ctl button.on { background:var(--dim); color:var(--text); }
-  .grid2 { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(320px,1fr); gap:24px; align-items:start; }
+  .grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:24px; align-items:start; }
   @media (max-width:900px){ .grid2 { grid-template-columns:1fr; } }
   .label { font-family:'Cinzel',serif; font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); }
   .hint { margin:0; font-size:14px; font-style:italic; color:var(--muted); line-height:1.35; }
   .hint b { font-style:normal; color:var(--body); }
-  .in { min-height:36px; padding:5px 9px; border:1px solid var(--border); border-radius:4px; background:var(--bg); color:var(--text); font-size:15px; }
-  .in::placeholder { color:var(--muted); font-style:italic; }
-  .dice { width:92px; font-family:'Cinzel',serif; letter-spacing:.03em; }
-  .seg { display:inline-flex; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
-  .seg button { border:0; background:transparent; min-height:34px; padding:0 11px; color:var(--muted); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
+  .in { min-height:40px; padding:5px 9px; border:1px solid var(--border); border-radius:4px; background:var(--bg); color:var(--text); font-size:15px; }
+  .seg { display:inline-flex; flex-wrap:wrap; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+  .seg button { border:0; background:transparent; min-height:40px; min-width:44px; padding:0 11px; color:var(--muted); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; }
   .seg button.on { background:var(--dim); color:var(--text); }
-  .btn { min-height:36px; padding:0 12px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--bright); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.06em; }
+  .btn { min-height:40px; padding:0 14px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--bright); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.06em; }
   .btn.primary { border-color:var(--accent); background:var(--dim); color:var(--text); }
   .btn.quiet { color:var(--muted); }
-  .btn.link { border-style:dashed; color:var(--muted); }
+  .btn.danger { color:var(--red); border-color:color-mix(in srgb,var(--red) 40%,transparent); }
   .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
-  svg.ico { width:16px; height:16px; flex:none; }
-  .panel { border:1px solid var(--accent); border-radius:12px; background:var(--solid); padding:16px 18px; display:grid; gap:14px; box-shadow:0 18px 60px rgba(0,0,0,.35); }
-  .panel h2 { margin:0; font-family:'Cinzel',serif; font-weight:400; font-size:19px; letter-spacing:.04em; color:var(--text); }
+  .panel { border:1px solid var(--border); border-radius:12px; background:var(--solid); padding:14px 16px; display:grid; gap:4px; }
+  .panel h2 { margin:0 0 6px; font-family:'Cinzel',serif; font-weight:400; font-size:17px; letter-spacing:.04em; color:var(--text); }
 
-  /* Editor: one rollable ability */
-  .ab { display:grid; gap:8px; padding:10px 0; border-bottom:1px dashed var(--border); }
-  .ab .name { font-family:'Cinzel',serif; color:var(--text); font-size:15px; }
-  .roll { display:grid; grid-template-columns:40px auto auto 1fr; gap:8px; align-items:end; padding:8px 10px; border-radius:6px; background:color-mix(in srgb,var(--bg) 60%,transparent); }
-  .roll label, .onhit label { display:grid; gap:3px; font-family:'Cinzel',serif; font-size:10px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
-  .look { width:40px; height:36px; display:inline-flex; align-items:center; justify-content:center; border:1px solid var(--border); border-radius:4px; background:var(--bg); color:var(--bright); }
-  .onhit { grid-column:1 / -1; display:flex; flex-wrap:wrap; align-items:end; gap:8px 10px; padding:8px 10px; border:1px solid color-mix(in srgb,var(--poison) 40%,var(--border)); border-radius:6px; background:var(--poison-wash); }
-  .onhit .ttl { display:inline-flex; align-items:center; gap:6px; min-height:36px; font-family:'Cinzel',serif; font-size:12px; letter-spacing:.08em; color:var(--poison); }
-  .onhit select.in { min-width:150px; }
-  .onhit .x { margin-left:auto; width:36px; height:36px; border:0; background:transparent; color:var(--muted); }
-  @media (max-width:560px){ .roll { grid-template-columns:40px 1fr 1fr; } }
+  /* A source line: weapon / ability / item */
+  .src { display:flex; flex-wrap:wrap; align-items:center; gap:6px 10px; min-height:48px; padding:6px 0; border-bottom:1px dashed var(--border); }
+  .src:last-child { border-bottom:0; }
+  .src .nm { font-family:'Cinzel',serif; color:var(--text); font-size:15px; }
+  .src .dice { font-family:'Cinzel',serif; font-size:12px; color:var(--bright); }
+  .src .sp { flex:1; }
+  .addfx { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border:1px dashed var(--border); border-radius:50%; background:transparent; color:var(--muted); font-size:16px; line-height:1; }
+  .addfx:hover, .addfx:focus-visible { color:var(--text); border-color:var(--accent); }
+  .addlink { border:0; background:transparent; color:var(--muted); font-size:14px; font-style:italic; padding:0; min-height:32px; }
 
-  /* NPC card summary */
-  .npc { border:1px solid var(--cardb); border-left:3px solid var(--gold); border-radius:8px; background:var(--card); padding:10px 12px; display:grid; gap:6px; font-size:14px; }
-  .line { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; }
-  .line b { font-weight:600; color:var(--text); }
-  .line .dice-t { font-family:'Cinzel',serif; font-size:12px; color:var(--bright); }
-  .tag { display:inline-flex; align-items:center; gap:4px; padding:0 8px; border-radius:999px; border:1px solid color-mix(in srgb,var(--poison) 55%,transparent); color:var(--poison); font-size:13px; }
+  /* The badge: shape + colour per effect */
+  .badge { position:relative; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; padding:0; border-radius:50%; border:1.5px solid var(--c); background:color-mix(in srgb,var(--c) 22%,transparent); color:var(--c); }
+  body[data-pal="vellum"] .badge { background:color-mix(in srgb,var(--c) 14%,#fffaf0); color:color-mix(in srgb,var(--c) 62%,#000); border-color:color-mix(in srgb,var(--c) 62%,#000); }
+  body[data-pal="vellum"] .badge .tip b, body[data-pal="vellum"] .fxchip .tick, body[data-pal="vellum"] .tok .left { color:color-mix(in srgb,var(--c) 62%,#000); }
+  .badge svg { width:16px; height:16px; }
+  .badge.lg { width:40px; height:40px; } .badge.lg svg { width:22px; height:22px; }
+  .badge .tip { position:absolute; z-index:5; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); width:max-content; max-width:240px; padding:8px 10px; border:1px solid var(--c); border-radius:8px; background:var(--tip); color:var(--body); font-size:14px; line-height:1.3; text-align:left; box-shadow:0 8px 24px rgba(0,0,0,.35); opacity:0; pointer-events:none; transition:opacity 120ms; }
+  .badge .tip b { display:block; font-family:'Cinzel',serif; font-weight:400; color:var(--c); font-size:13px; letter-spacing:.05em; margin-bottom:2px; }
+  .badge:hover .tip, .badge:focus-visible .tip, .badge.open .tip { opacity:1; }
+  @media (prefers-reduced-motion: reduce) { .badge .tip { transition:none; } }
 
-  /* Deal Damage modal (mirrors takeAction/DealDamageModal) */
-  .ta-sub { margin:0; color:var(--muted); font-style:italic; }
-  .ta-hp { display:grid; gap:4px; }
-  .ta-hp-line { display:flex; justify-content:space-between; font-size:14px; }
-  .ta-hp-line b { font-family:'Cinzel',serif; color:var(--text); }
-  .bar { height:6px; border-radius:3px; background:var(--bg); overflow:hidden; position:relative; }
-  .bar i { position:absolute; inset:0 auto 0 0; background:var(--green); }
-  .bar s { position:absolute; top:0; bottom:0; background:var(--red); opacity:.7; }
-  .atk { display:flex; flex-wrap:wrap; align-items:center; gap:8px 12px; padding:8px 10px; border-radius:6px; background:color-mix(in srgb,var(--bg) 60%,transparent); }
-  .atk .tot { font-family:'Cinzel',serif; font-size:24px; color:var(--text); }
-  .verdict { padding:2px 10px; border-radius:999px; font-family:'Cinzel',serif; font-size:12px; letter-spacing:.08em; }
-  .verdict.hit { background:color-mix(in srgb,var(--green) 22%,transparent); color:var(--green); }
-  .verdict.miss { background:color-mix(in srgb,var(--red) 18%,transparent); color:var(--red); }
-  .amount { display:flex; align-items:center; gap:8px; }
-  .amount output { font-family:'Cinzel',serif; font-size:28px; color:var(--text); min-width:44px; text-align:center; }
-  .fx { display:grid; gap:8px; padding:10px 12px; border:1px solid color-mix(in srgb,var(--poison) 45%,var(--border)); border-radius:8px; background:var(--poison-wash); }
-  .fx.off { opacity:.55; border-style:dashed; }
-  .fx-h { display:flex; align-items:center; gap:8px; font-family:'Cinzel',serif; font-size:13px; letter-spacing:.06em; color:var(--poison); }
-  .fx-h small { font-family:'Crimson Text',serif; font-size:14px; letter-spacing:0; color:var(--muted); font-style:italic; }
-  .check { display:flex; align-items:center; gap:10px; min-height:44px; cursor:pointer; color:var(--text); }
-  .check input { width:20px; height:20px; accent-color:var(--poison); }
-  .save-in { width:64px; text-align:center; font-family:'Cinzel',serif; }
+  /* Modal */
+  .scrim { position:fixed; inset:0; z-index:20; background:var(--scrim); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .scrim[hidden] { display:none; }
+  .modal { width:min(560px,100%); max-height:calc(100vh - 32px); overflow:auto; border:1px solid var(--accent); border-radius:12px; background:var(--solid); padding:18px 20px; display:grid; gap:16px; box-shadow:0 18px 60px rgba(0,0,0,.45); }
+  .modal h3 { margin:0; font-family:'Cinzel',serif; font-weight:400; font-size:19px; color:var(--text); letter-spacing:.04em; }
+  .fld { display:grid; gap:8px; }
+  .tiles { display:grid; grid-template-columns:repeat(auto-fill,minmax(112px,1fr)); gap:6px; }
+  .tile { display:flex; align-items:center; gap:8px; min-height:44px; padding:6px 8px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--body); font-size:14px; text-align:left; }
+  .tile.on { border-color:var(--c); background:color-mix(in srgb,var(--c) 14%,var(--bg)); color:var(--text); }
+  .tile .badge { width:24px; height:24px; flex:none; } .tile .badge svg { width:14px; height:14px; }
+  .stepper { display:inline-flex; align-items:center; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+  .stepper button { width:44px; min-height:40px; border:0; background:transparent; color:var(--bright); font-size:18px; }
+  .stepper output { min-width:52px; text-align:center; font-family:'Cinzel',serif; font-size:18px; color:var(--text); }
+  .summary { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:8px; background:color-mix(in srgb,var(--bg) 70%,transparent); color:var(--body); }
   .foot { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding-top:12px; border-top:1px solid var(--border); }
   .foot .sp { flex:1; }
 
-  /* Result */
-  .result { display:grid; grid-template-columns:110px 1fr; gap:14px; align-items:center; }
-  .tokwrap { position:relative; width:110px; height:110px; border-radius:10px; background:linear-gradient(135deg,#4a3826,#2c2116); display:flex; align-items:center; justify-content:center; overflow:hidden; }
-  .tok { width:58px; height:58px; border-radius:50%; border:3px solid #6a8fa8; background:radial-gradient(circle at 40% 35%,#3d5a70,#14202b); color:#f3e6d0; font-family:'Cinzel',serif; display:flex; align-items:center; justify-content:center; position:relative; }
-  .tok.poisoned { box-shadow:0 0 0 3px rgba(143,209,79,.55), 0 0 18px rgba(143,209,79,.35); }
-  .puff { position:absolute; inset:0; pointer-events:none; }
-  .puff i { position:absolute; left:50%; top:50%; width:10px; height:10px; margin:-5px; border-radius:50%; background:#8fd14f; opacity:0; }
-  .puff.go i { animation:puff 900ms ease-out forwards; }
-  @keyframes puff { 0% { opacity:.9; transform:translate(0,0) scale(.6); } 100% { opacity:0; transform:translate(var(--dx),var(--dy)) scale(1.4); } }
-  @media (prefers-reduced-motion: reduce) { .puff.go i { animation:none; } }
-  .chipc { display:inline-flex; padding:1px 8px; border-radius:999px; font-size:13px; background:rgba(160,70,70,.15); border:1px solid rgba(192,96,96,.38); color:#d88c8c; }
-  body[data-pal="vellum"] .chipc { color:#9a2a20; }
-  .log { margin:0; padding:8px 10px; border-left:3px solid var(--poison); background:color-mix(in srgb,var(--bg) 60%,transparent); font-size:15px; color:var(--body); }
+  /* In play */
+  .ddm { border:1px solid var(--accent); border-radius:12px; background:var(--solid); padding:16px 18px; display:grid; gap:12px; }
+  .ddm h3 { margin:0; font-family:'Cinzel',serif; font-weight:400; font-size:18px; color:var(--text); }
+  .verdict { padding:2px 10px; border-radius:999px; font-family:'Cinzel',serif; font-size:12px; letter-spacing:.08em; background:color-mix(in srgb,var(--green) 22%,transparent); color:var(--green); }
+  .fxchip { display:flex; align-items:center; gap:10px; min-height:48px; padding:6px 12px 6px 8px; border:1px solid var(--c); border-radius:999px; background:color-mix(in srgb,var(--c) 10%,transparent); color:var(--text); text-align:left; }
+  .fxchip.off { border-style:dashed; opacity:.6; background:transparent; }
+  .fxchip .tick { margin-left:auto; width:22px; height:22px; border-radius:4px; border:1.5px solid var(--c); display:inline-flex; align-items:center; justify-content:center; color:var(--c); font-size:14px; }
+  .fxchip small { display:block; color:var(--muted); font-size:13px; font-style:italic; }
+  .tokrow { display:flex; align-items:center; gap:16px; }
+  .tok { position:relative; width:64px; height:64px; border-radius:50%; border:3px solid #6a8fa8; background:radial-gradient(circle at 40% 35%,#3d5a70,#14202b); color:#f3e6d0; font-family:'Cinzel',serif; display:flex; align-items:center; justify-content:center; flex:none; }
+  .tok .badge { position:absolute; right:-8px; top:-8px; width:26px; height:26px; background:var(--tip); }
+  .tok .left { position:absolute; right:-10px; bottom:-6px; min-width:20px; height:20px; padding:0 5px; border-radius:10px; background:var(--tip); border:1px solid var(--c); color:var(--c); font-family:'Cinzel',serif; font-size:12px; display:flex; align-items:center; justify-content:center; }
+  .log { margin:0; padding:6px 10px; border-left:3px solid var(--c, var(--accent)); background:color-mix(in srgb,var(--bg) 60%,transparent); font-size:15px; }
   .log b { color:var(--text); }
-  .demo { padding:10px 12px; border:1px dashed var(--border); border-radius:8px; display:grid; gap:8px; }
 </style>
 </head>
 <body>
 <main>
   <header>
-    <h1>On-hit effects</h1>
-    <p class="note">Exploratory prototype. An attack can carry an optional <b>On hit</b> effect: a condition (Poisoned, Charmed, Paralyzed…) or one of your effects (Hexed, Baned, your custom ones), with an optional saving throw. Set one up on the left, then play the attack on the right and watch what it adds to the Deal Damage step.</p>
+    <h1>On-hit effects · round 2</h1>
+    <p class="note">Set an effect up once, on the weapon, ability or item that causes it. From then on it's just a badge: a shape and colour per effect. Hover, focus or tap a badge for the details; tap “＋” to add one, or a badge to change it.</p>
     <p style="margin:12px 0 0"><span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span></p>
   </header>
 
   <div class="grid2">
-    <div style="display:grid;gap:24px">
-      <section>
-        <p class="where">1 · The abilities editor (the rollable line gains “＋ On hit”)</p>
-        <div class="panel" id="editor"></div>
-      </section>
-      <section>
-        <p class="where">2 · The NPC card</p>
-        <div class="npc" id="card"></div>
-      </section>
-      <section>
-        <p class="where">Phase 2 · a player's weapon (character sheet)</p>
-        <div class="panel" id="pc"></div>
-      </section>
+    <div style="display:grid;gap:22px">
+      <section><p class="where">An enemy's abilities (NPC card / editor)</p><div class="panel" id="npc"></div></section>
+      <section><p class="where">A player's weapons (Combat tab)</p><div class="panel" id="pc"></div></section>
+      <section><p class="where">An item (inventory)</p><div class="panel" id="items"></div></section>
     </div>
-    <div style="display:grid;gap:24px">
-      <section>
-        <p class="where">3 · Take Action → Deal Damage · Rook the Cutpurse → Eòghan</p>
-        <div class="demo"><span class="label">Demo: the attack roll</span>
-          <div class="row"><span class="seg" id="atkDemo"><button data-atk="hit" class="on">Hits (17 vs AC 15)</button><button data-atk="miss">Misses (9)</button></span></div>
-          <div class="row"><span class="label">Eòghan already</span><span class="seg" id="hasDemo"><button data-has="no" class="on">Isn't poisoned</button><button data-has="yes">Is poisoned</button></span></div>
-        </div>
-        <div class="panel" id="modal" role="dialog" aria-label="Deal damage" style="margin-top:12px"></div>
-      </section>
-      <section>
-        <p class="where">4 · What happens on Apply</p>
-        <div class="panel" id="result"></div>
-      </section>
+    <div style="display:grid;gap:22px">
+      <section><p class="where">In play · Deal Damage, Rook the Cutpurse → Eòghan</p><div class="ddm" id="ddm"></div></section>
+      <section><p class="where">After · the token, and the turns counting down</p><div class="panel" id="after"></div></section>
     </div>
   </div>
 </main>
 
+<div class="scrim" id="scrim" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt" id="modal"></div></div>
+
 <script>
-  const CONDITIONS = ["Blinded","Charmed","Deafened","Frightened","Grappled","Incapacitated","Paralyzed","Petrified","Poisoned","Prone","Restrained","Stunned","Unconscious"];
-  const EFFECTS = ["Hexed","Marked","Baned","Outlined","Covered in slime"];
-  const ABILITIES = [["STR","Strength"],["DEX","Dexterity"],["CON","Constitution"],["INT","Intelligence"],["WIS","Wisdom"],["CHA","Charisma"]];
-  const STAB = '<path d="M16 4l-8 5 3 3zM6 10l4 4M8 12l-4 4"/>';
-  const DROP = '<path d="M10 3c3 4 5 7 5 9.5a5 5 0 0 1-10 0C5 10 7 7 10 3z"/>';
-  const icon = (p) => `<svg class="ico" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+  // Shape + colour per effect.
+  const P = {
+    drop:'<path d="M10 3c3 4 5 7 5 9.5a5 5 0 0 1-10 0C5 10 7 7 10 3z"/>',
+    heart:'<path d="M10 16s-6-3.6-6-8a3.3 3.3 0 0 1 6-2 3.3 3.3 0 0 1 6 2c0 4.4-6 8-6 8z"/>',
+    ghost:'<path d="M5 17V9a5 5 0 0 1 10 0v8l-2-1.5L11.5 17 10 15.5 8.5 17 7 15.5z"/><path d="M8 9h.01M12 9h.01"/>',
+    bolt:'<path d="M11 2L5 11h4l-1 7 7-10h-4z"/>',
+    star:'<path d="M10 3l1.8 4.2L16 8l-3.2 3 1 4.5L10 13.3 6.2 15.5l1-4.5L4 8l4.2-.8z"/>',
+    eyeoff:'<path d="M3 10s2.5-5 7-5 7 5 7 5-2.5 5-7 5-7-5-7-5z"/><path d="M4 16L16 4"/>',
+    down:'<path d="M10 4v10M6 10l4 4 4-4M4 17h12"/>',
+    chain:'<rect x="3" y="7" width="8" height="6" rx="3"/><rect x="9" y="7" width="8" height="6" rx="3"/>',
+    hand:'<path d="M7 11V5a1 1 0 0 1 2 0v5M9 9V4a1 1 0 0 1 2 0v5M11 9V5a1 1 0 0 1 2 0v6M13 10a1 1 0 0 1 2 0v2a5 5 0 0 1-5 5H9a4 4 0 0 1-3.5-2L4 12a1 1 0 0 1 1.7-1L7 12.5"/>',
+    stone:'<path d="M10 3l6 3.5v7L10 17l-6-3.5v-7z"/>',
+    moon:'<path d="M14 13.5A6 6 0 0 1 7.5 4a6 6 0 1 0 6.5 9.5z"/>',
+    sigil:'<path d="M10 3l7 13H3z"/><circle cx="10" cy="11" r="2"/>',
+    chevs:'<path d="M5 5l5 4 5-4M5 11l5 4 5-4"/>',
+    target:'<circle cx="10" cy="10" r="6"/><circle cx="10" cy="10" r="2"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3"/>',
+    glow:'<path d="M10 3v3M10 14v3M3 10h3M14 10h3M5 5l2 2M13 13l2 2M15 5l-2 2M7 13l-2 2"/>',
+    blob:'<path d="M5 12c-1-4 2-7 5-7s6 2 5 6-1 5-5 5-4-1-5-4z"/>',
+  };
+  const EFFECTS = [
+    { g:"Conditions", name:"Poisoned", c:"#7fc84f", s:"drop", help:"Disadvantage on attack rolls and ability checks." },
+    { g:"Conditions", name:"Charmed", c:"#e07ab0", s:"heart", help:"Can't attack the charmer; the charmer has advantage on social checks." },
+    { g:"Conditions", name:"Frightened", c:"#a58be6", s:"ghost", help:"Disadvantage while the source is in sight; can't move closer to it." },
+    { g:"Conditions", name:"Paralyzed", c:"#e3c84a", s:"bolt", help:"Can't move or act; hits from 5 ft are critical." },
+    { g:"Conditions", name:"Stunned", c:"#e8984a", s:"star", help:"Can't move or act; fails Str and Dex saves." },
+    { g:"Conditions", name:"Blinded", c:"#9aa6b0", s:"eyeoff", help:"Can't see; its attacks have disadvantage, attacks on it advantage." },
+    { g:"Conditions", name:"Prone", c:"#c09068", s:"down", help:"On the ground: melee attacks on it have advantage." },
+    { g:"Conditions", name:"Restrained", c:"#8fb0c8", s:"chain", help:"Speed 0; its attacks have disadvantage." },
+    { g:"Conditions", name:"Grappled", c:"#c8a878", s:"hand", help:"Speed 0 until it breaks free." },
+    { g:"Conditions", name:"Petrified", c:"#a8a29a", s:"stone", help:"Turned to stone." },
+    { g:"Conditions", name:"Unconscious", c:"#7f8fe0", s:"moon", help:"Out cold; drops what it holds and falls prone." },
+    { g:"Effects", name:"Hexed", c:"#b56ee0", s:"sigil", help:"Disadvantage on one ability's checks; +1d6 necrotic from the caster." },
+    { g:"Effects", name:"Baned", c:"#d06a6a", s:"chevs", help:"−1d4 to attack rolls and saving throws." },
+    { g:"Effects", name:"Marked", c:"#e57a50", s:"target", help:"The caster deals +1d6 on each weapon hit." },
+    { g:"Effects", name:"Outlined", c:"#e0c060", s:"glow", help:"Glows; attacks against it have advantage." },
+    { g:"Effects", name:"Covered in slime", c:"#5fc0a8", s:"blob", help:"Your custom effect." },
+  ];
+  const fx = (n) => EFFECTS.find((e) => e.name === n);
+  const ABIL = [["STR","Strength"],["DEX","Dexterity"],["CON","Constitution"],["INT","Intelligence"],["WIS","Wisdom"],["CHA","Charisma"]];
+  const svg = (s) => `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${P[s]}</svg>`;
   const esc = (s) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
-  const abName = (k) => ABILITIES.find(([a]) => a === k)?.[1] || k;
+  const turnsText = (t) => (t ? `${t} turn${t === 1 ? "" : "s"}${t === 10 ? " (1 minute)" : ""}` : "until removed");
+  const saveText = (s) => (s ? `DC ${s.dc} ${ABIL.find(([k]) => k === s.ability)[1]} save` : "no save");
+  const sentence = (o) => `On a hit, the target ${o.save ? `makes a <b>${saveText(o.save)}</b>; if it fails, it's` : "is"} <b>${esc(o.effect)}</b> for <b>${turnsText(o.turns)}</b>.`;
+
+  // A badge: hover/focus shows the details, a click opens the form (`edit`).
+  // Without `edit` it's a plain span (focusable unless inside another control).
+  const badge = (o, edit, extra = "", focusable = true) => {
+    const e = fx(o.effect);
+    const label = `${esc(o.effect)} on hit, ${turnsText(o.turns)}, ${saveText(o.save)}`;
+    const inner = `${svg(e.s)}<span class="tip" role="tooltip"><b>${esc(o.effect)} on hit</b>${turnsText(o.turns)} · ${saveText(o.save)}<br><i>${esc(e.help)}</i></span>`;
+    return edit
+      ? `<button type="button" class="badge${extra}" style="--c:${e.c}" data-edit="${edit}" aria-label="${label}. Edit">${inner}</button>`
+      : `<span class="badge${extra}" style="--c:${e.c}" ${focusable ? `tabindex="0" role="img" aria-label="${label}"` : 'aria-hidden="true"'}>${inner}</span>`;
+  };
 
   const S = {
-    onHit: { effect: "Poisoned", save: { dc: 11, ability: "CON" } },
-    atk: "hit", has: false,
-    apply: true,          // no-save case: the tick
-    save: null,           // "failed" | "saved" | null (not yet)
-    saveRoll: "",
-    applied: null,
+    sources: {
+      shank:   { label: "Poisoned Shank", dice: "1d20+4 · 1d4+2", onHit: { effect: "Poisoned", turns: 10, save: { dc: 11, ability: "CON" } } },
+      gaze:    { label: "Beguiling Touch", dice: "1d20+5 · 1d6", onHit: { effect: "Charmed", turns: 3, save: { dc: 13, ability: "WIS" } } },
+      bite:    { label: "Bite", dice: "1d20+4 · 1d6+2", onHit: null },
+      needle:  { label: "Poisoned Needle", dice: "+5 · 1", onHit: { effect: "Poisoned", turns: 10, save: null } },
+      dagger:  { label: "Dagger", dice: "+5 · 1d4+3", onHit: null },
+      vial:    { label: "Vial of Basic Poison", dice: "coats a blade", onHit: { effect: "Poisoned", turns: 10, save: { dc: 10, ability: "CON" } } },
+      ring:    { label: "Ring of the Hexer", dice: "on unarmed hits", onHit: { effect: "Hexed", turns: null, save: null } },
+    },
+    editing: null, draft: null,
+    apply: true, after: null,
   };
-  const saveText = (o) => (o.save ? `DC ${o.save.dc} ${o.save.ability[0]}${o.save.ability.slice(1).toLowerCase()} save` : "no save");
 
-  function editor() {
-    const o = S.onHit;
-    return `<div><h2>Rook the Cutpurse</h2><span class="label">Abilities &amp; defense</span></div>
-      <div class="ab">
-        <span class="name">Poisoned Shank</span>
-        <div class="roll">
-          <span class="look" title="Look: Stab">${icon(STAB)}</span>
-          <label>Attack roll<input class="in dice" value="1d20+4" aria-label="Attack roll"></label>
-          <label>Damage<input class="in dice" value="1d4+2" aria-label="Damage"></label>
-          <span></span>
-          ${o ? `<div class="onhit">
-              <span class="ttl">${icon(DROP)} On hit</span>
-              <label>Effect<select class="in" id="effect">
-                <optgroup label="Conditions">${CONDITIONS.map((c) => `<option${c === o.effect ? " selected" : ""}>${c}</option>`).join("")}</optgroup>
-                <optgroup label="Effects">${EFFECTS.map((c) => `<option${c === o.effect ? " selected" : ""}>${c}</option>`).join("")}</optgroup>
-              </select></label>
-              <label>Saving throw<span class="seg"><button data-save="none" class="${o.save ? "" : "on"}">None</button><button data-save="yes" class="${o.save ? "on" : ""}">Save</button></span></label>
-              ${o.save ? `<label>DC<input class="in dice" id="dc" style="width:64px" value="${o.save.dc}" inputmode="numeric" aria-label="Save DC"></label>
-                <label>Ability<select class="in" id="abil" style="min-width:0">${ABILITIES.map(([k]) => `<option${k === o.save.ability ? " selected" : ""}>${k}</option>`).join("")}</select></label>` : ""}
-              <button class="x" data-rmhit aria-label="Remove on-hit effect">✕</button>
-              <p class="hint" style="flex-basis:100%">${o.save ? `On a hit, Eòghan (or whoever) makes a <b>${abName(o.save.ability)}</b> save against <b>${o.save.dc}</b>; failing it makes them <b>${esc(o.effect)}</b>.` : `Every hit makes the target <b>${esc(o.effect)}</b>.`} Extra poison damage? Put it in the damage dice, e.g. <b>1d4+2d6</b>.</p>
-            </div>` : `<div style="grid-column:1/-1"><button class="btn link" data-addhit>＋ On hit: poison, charm, curse…</button></div>`}
-        </div>
-      </div>
-      <p class="hint">Only rollable abilities get it. Remove the effect with the usual condition chips when it wears off: no durations to track.</p>`;
+  function srcLine(key) {
+    const s = S.sources[key];
+    return `<div class="src"><span class="nm">${esc(s.label)}</span><span class="dice">${esc(s.dice)}</span>
+      ${s.onHit ? badge(s.onHit, key) : `<button type="button" class="addfx" data-edit="${key}" aria-label="Add an on-hit effect to ${esc(s.label)}" title="Add an effect">＋</button>`}
+      <span class="sp"></span></div>`;
+  }
+  function panels() {
+    document.getElementById("npc").innerHTML = `<h2>Rook the Cutpurse</h2>${srcLine("shank")}${srcLine("gaze")}${srcLine("bite")}`;
+    document.getElementById("pc").innerHTML = `<h2>Eòghan · Weapons</h2>${srcLine("needle")}${srcLine("dagger")}`;
+    document.getElementById("items").innerHTML = `<h2>Eòghan · Inventory</h2>${srcLine("vial")}${srcLine("ring")}
+      <p class="hint" style="margin-top:6px">An item's effect rides on whatever attack uses it. Simplest first version: the DM sees it in the Deal Damage step like any other.</p>`;
   }
 
-  function card() {
-    const o = S.onHit;
-    return `<div class="line"><span class="label">Abilities · AC 14</span></div>
-      <div class="line"><span style="color:var(--bright)">${icon(STAB)}</span><b>Poisoned Shank</b><span class="dice-t">1d20+4 · 1d4+2</span>${o ? `<span class="tag">${icon(DROP)} ${esc(o.effect)}${o.save ? ` · ${saveText(o)}` : ""}</span>` : ""}</div>
-      <div class="line" style="color:var(--body)">◆ Cunning Action <small style="color:var(--muted);font-style:italic">Dash, Disengage or Hide as a bonus action.</small></div>`;
+  function ddm() {
+    const o = S.sources.shank.onHit;
+    const e = o && fx(o.effect);
+    return `<div><h3>Rook the Cutpurse <span style="color:var(--muted)">→</span> Eòghan</h3><p class="hint">Poisoned Shank</p></div>
+      <div class="row"><span class="label">Attack · vs AC 15</span><span style="font-family:Cinzel;font-size:22px;color:var(--text)">17</span><span class="verdict">Hits</span>
+        <span class="label" style="margin-left:12px">Damage</span><span style="font-family:Cinzel;font-size:22px;color:var(--text)">5</span></div>
+      ${o ? `<button type="button" class="fxchip${S.apply ? "" : " off"}" style="--c:${e.c}" data-tick aria-pressed="${S.apply}">
+          ${badge(o, null, "", false)}
+          <span>Also <b>${esc(o.effect)}</b> · ${turnsText(o.turns)}${o.save ? `<small>unless Eòghan makes the ${saveText(o.save)} — untick if they did</small>` : ""}</span>
+          <span class="tick">${S.apply ? "✓" : ""}</span></button>` : `<p class="hint">No effect on this attack.</p>`}
+      <div class="foot"><button class="btn quiet">Miss</button><span class="sp"></span><button class="btn quiet">Cancel</button><button class="btn primary" data-apply>Apply</button></div>`;
   }
-
-  function willApply() {
-    const o = S.onHit;
-    if (!o || S.atk === "miss" || S.has) return false;
-    return o.save ? S.save === "failed" : S.apply;
-  }
-
-  function effectBlock() {
-    const o = S.onHit;
-    if (!o) return "";
-    if (S.atk === "miss") return `<div class="fx off"><div class="fx-h">${icon(DROP)} ${esc(o.effect)} <small>· only on a hit</small></div></div>`;
-    if (S.has) return `<div class="fx off"><div class="fx-h">${icon(DROP)} ${esc(o.effect)} <small>· Eòghan already is</small></div></div>`;
-    if (!o.save) return `<div class="fx"><div class="fx-h">${icon(DROP)} On hit: ${esc(o.effect)}</div>
-      <label class="check"><input type="checkbox" id="tick" ${S.apply ? "checked" : ""}> Also make Eòghan ${esc(o.effect)}</label></div>`;
-    const n = parseInt(S.saveRoll, 10);
-    const auto = Number.isFinite(n) ? (n >= o.save.dc ? "saved" : "failed") : null;
-    return `<div class="fx"><div class="fx-h">${icon(DROP)} On hit: ${esc(o.effect)} <small>· ${saveText(o)}</small></div>
-      <p class="hint" style="font-style:normal;color:var(--body)">Eòghan makes a <b>${abName(o.save.ability)}</b> saving throw: ${o.save.dc} or more resists it.</p>
-      <div class="row"><label class="row" style="gap:6px"><span class="label">Their roll</span><input class="in save-in" id="saveRoll" inputmode="numeric" placeholder="—" value="${esc(S.saveRoll)}" aria-label="Eòghan's saving throw total"></label>
-        <span class="seg"><button data-sv="failed" class="${S.save === "failed" ? "on" : ""}">Failed</button><button data-sv="saved" class="${S.save === "saved" ? "on" : ""}">Saved</button><button data-sv="" class="${S.save == null ? "on" : ""}">Not yet</button></span></div>
-      ${auto ? `<p class="hint">${n} ${auto === "saved" ? `≥ ${o.save.dc}: resists` : `&lt; ${o.save.dc}: ${esc(o.effect)}`}.</p>` : `<p class="hint">Players roll their own save at the table; type their total or tap the result. “Not yet” applies the damage only.</p>`}
-    </div>`;
+  function after() {
+    const a = S.after;
+    if (!a) return `<p class="hint">Press Apply to see the result.</p>`;
+    const o = S.sources.shank.onHit, e = o && fx(o.effect);
+    if (!a.effect) return `<div class="tokrow"><div class="tok">Eò</div><p class="log"><b>Rook the Cutpurse</b> hits <b>Eòghan</b> for 5 (Poisoned Shank).</p></div>`;
+    return `<div class="tokrow">
+        <div class="tok" style="--c:${e.c}">Eò${a.left !== 0 ? `${badge({ ...o, turns: a.left }, null)}${a.left ? `<span class="left">${a.left}</span>` : ""}` : ""}</div>
+        <div style="display:grid;gap:6px">
+          <p class="log" style="--c:${e.c}"><b>Rook the Cutpurse</b> hits <b>Eòghan</b> for 5 (Poisoned Shank).</p>
+          <p class="log" style="--c:${e.c}">${a.left === 0 ? `<b>Eòghan</b> is no longer <b>${esc(o.effect)}</b>.` : `<b>Eòghan</b> is <b>${esc(o.effect)}</b>${o.turns ? ` for ${turnsText(o.turns)}` : ""} (Poisoned Shank).`}</p>
+        </div></div>
+      ${o.turns ? `<div class="row" style="margin-top:8px"><button class="btn" data-nextturn ${a.left === 0 ? "disabled" : ""}>Next turn ▸</button><span class="hint">${a.left === 0 ? "Worn off: removed by itself." : `${a.left} of Eòghan's turns left. Counts down on Eòghan's turns in the initiative tracker.`}</span></div>` : `<p class="hint" style="margin-top:8px">Until removed: clear it with the usual condition chip.</p>`}`;
   }
 
   function modal() {
-    const dmg = S.atk === "hit" ? 5 : 0;
-    const label = S.atk === "miss" ? "Miss" : willApply() ? `Apply Damage + ${S.onHit.effect}` : "Apply Damage";
-    return `<div><h2>Rook the Cutpurse <span style="color:var(--muted)">→</span> Eòghan</h2><p class="ta-sub">Poisoned Shank</p></div>
-      <div class="ta-hp"><div class="ta-hp-line"><span>Eòghan</span><span><b>31 → ${31 - dmg}</b> / 38 HP</span></div>
-        <div class="bar"><i style="width:${((31 - dmg) / 38) * 100}%"></i><s style="left:${((31 - dmg) / 38) * 100}%;width:${(dmg / 38) * 100}%"></s></div></div>
-      <div class="atk"><span class="label">Attack roll · vs AC 15</span><span class="tot">${S.atk === "hit" ? 17 : 9}</span><span class="verdict ${S.atk}">${S.atk === "hit" ? "Hits" : "Misses"}</span></div>
-      ${S.atk === "hit" ? `<div style="display:grid;gap:4px"><span class="label">Damage · 1d4+2 → [3] +2</span><div class="amount"><button class="btn" aria-label="Less">−</button><output>5</output><button class="btn" aria-label="More">+</button><button class="btn">½</button><button class="btn">×2</button></div></div>` : ""}
-      ${effectBlock()}
-      <div class="foot">${S.atk === "hit" ? `<button class="btn quiet">Miss</button>` : ""}<span class="sp"></span><button class="btn quiet">Cancel</button><button class="btn primary" data-apply>${label}</button></div>`;
-  }
-
-  function result() {
-    const r = S.applied;
-    if (!r) return `<p class="hint">Press the modal's Apply button to see the outcome.</p>`;
-    const lines = [];
-    if (r.miss) lines.push(`<b>Rook the Cutpurse</b> misses <b>Eòghan</b> (Poisoned Shank).`);
-    else {
-      lines.push(`<b>Rook the Cutpurse</b> hits <b>Eòghan</b> for 5 (Poisoned Shank).`);
-      if (r.effect) lines.push(`<b>Eòghan</b> is <b>${esc(r.effect)}</b> (Poisoned Shank).`);
-      if (r.resisted) lines.push(`<b>Eòghan</b> resists — saved against ${esc(r.resisted)}.`);
-    }
-    return `<div class="result">
-        <div class="tokwrap"><div class="tok${r.effect || S.has ? " poisoned" : ""}">Eò</div><div class="puff${r.effect ? " go" : ""}">${r.effect ? Array.from({ length: 10 }, (_, i) => { const a = (i / 10) * Math.PI * 2; return `<i style="--dx:${Math.cos(a) * 40}px;--dy:${Math.sin(a) * 40}px;animation-delay:${i * 20}ms"></i>`; }).join("") : ""}</div></div>
-        <div style="display:grid;gap:8px">
-          <div class="row"><span class="label">Eòghan's conditions</span>${r.effect || S.has ? `<span class="chipc">${esc(S.onHit?.effect || "Poisoned")}</span>` : `<span class="hint">none</span>`}</div>
-          <span class="label">History</span>${lines.map((l) => `<p class="log">${l}</p>`).join("")}
-        </div>
+    const d = S.draft, src = S.sources[S.editing];
+    const groups = ["Conditions", "Effects"];
+    return `<div><h3 id="mt">Effect on hit</h3><p class="hint">${esc(src.label)}</p></div>
+      <div class="fld"><span class="label">Effect</span>
+        ${groups.map((g) => `<span class="hint" style="font-size:13px">${g === "Effects" ? "Your effects" : g}</span><div class="tiles">${EFFECTS.filter((e) => e.g === g).map((e) =>
+          `<button type="button" class="tile${d.effect === e.name ? " on" : ""}" style="--c:${e.c}" data-pick="${esc(e.name)}" aria-pressed="${d.effect === e.name}"><span class="badge" style="--c:${e.c}">${svg(e.s)}</span>${esc(e.name)}</button>`).join("")}</div>`).join("")}
       </div>
-      <p class="hint">One write: HP and the condition together. Players see the condition chip on Eòghan as they do today; the DM clears it with the chip when it wears off.</p>`;
-  }
-
-  function pc() {
-    return `<div><h2>Eòghan · Weapons</h2><span class="label">Combat tab · editing a weapon</span></div>
-      <div class="ab" style="border:0;padding:0">
-        <span class="name">Poisoned Needle</span>
-        <div class="roll" style="grid-template-columns:auto auto 1fr">
-          <label>To hit<input class="in dice" value="+5" aria-label="To hit"></label>
-          <label>Damage<input class="in dice" value="1" aria-label="Damage"></label><span></span>
-          <div class="onhit"><span class="ttl">${icon(DROP)} On hit</span><label>Effect<select class="in"><option>Poisoned</option></select></label><label>DC<input class="in dice" style="width:64px" value="13"></label><label>Ability<select class="in" style="min-width:0"><option>CON</option></select></label></div>
-        </div>
+      <div class="fld"><span class="label">Lasts</span>
+        <div class="row"><span class="seg"><button data-dur="turns" class="${d.turns ? "on" : ""}">Turns</button><button data-dur="none" class="${d.turns ? "" : "on"}">Until removed</button></span>
+          ${d.turns ? `<span class="stepper"><button data-t="-1" aria-label="Fewer turns">−</button><output aria-live="polite">${d.turns}</output><button data-t="1" aria-label="More turns">+</button></span><span class="hint">${d.turns === 10 ? "1 minute" : "10 turns = 1 minute"}</span>` : ""}</div>
+        <p class="hint">Counted on the target's turns in combat; it comes off by itself at 0.</p>
       </div>
-      <p class="hint">Same line, same Deal Damage step: when the DM applies damage from Eòghan's declared “Poisoned Needle” roll in the log, the On hit block appears with the target's name. Bigger change (character sheet + the log's apply flow), so it would come second.</p>`;
+      <div class="fld"><span class="label">Saving throw</span>
+        <div class="row"><span class="seg"><button data-sv="none" class="${d.save ? "" : "on"}">None</button><button data-sv="yes" class="${d.save ? "on" : ""}">Save</button></span>
+          ${d.save ? `<label class="row" style="gap:6px"><span class="label">DC</span><input class="in" id="dc" style="width:64px;text-align:center;font-family:Cinzel" inputmode="numeric" value="${d.save.dc}"></label>
+            <span class="seg">${ABIL.map(([k]) => `<button data-ab="${k}" class="${d.save.ability === k ? "on" : ""}">${k}</button>`).join("")}</span>` : ""}</div>
+      </div>
+      <div class="summary">${d.effect ? badge(d, null, " lg") : ""}<span>${d.effect ? sentence(d) : "Pick an effect."}</span></div>
+      <div class="foot">${S.sources[S.editing].onHit ? `<button class="btn danger" data-remove>Remove</button>` : ""}<span class="sp"></span><button class="btn quiet" data-close>Cancel</button><button class="btn primary" data-save ${d.effect ? "" : "disabled"}>Save</button></div>`;
   }
+  const openModal = (key) => {
+    S.editing = key; const cur = S.sources[key].onHit;
+    S.draft = cur ? JSON.parse(JSON.stringify(cur)) : { effect: "Poisoned", turns: 10, save: null };
+    document.getElementById("scrim").hidden = false; renderModal();
+    document.querySelector("#modal .tile.on")?.focus();
+  };
+  const closeModal = () => { document.getElementById("scrim").hidden = true; const k = S.editing; S.editing = null; render(); document.querySelector(`[data-edit="${k}"]`)?.focus(); };
+  const renderModal = () => { document.getElementById("modal").innerHTML = modal(); };
 
-  function render() {
-    document.getElementById("editor").innerHTML = editor();
-    document.getElementById("card").innerHTML = card();
-    document.getElementById("modal").innerHTML = modal();
-    document.getElementById("result").innerHTML = result();
-    document.getElementById("pc").innerHTML = pc();
-  }
-  function renderFlow() { document.getElementById("card").innerHTML = card(); document.getElementById("modal").innerHTML = modal(); document.getElementById("result").innerHTML = result(); }
+  function render() { panels(); document.getElementById("ddm").innerHTML = ddm(); document.getElementById("after").innerHTML = after(); }
 
   document.addEventListener("click", (e) => {
-    const b = e.target.closest("button"); if (!b) return;
+    const b = e.target.closest("button"); if (!b) { if (e.target.id === "scrim") closeModal(); return; }
     if (b.dataset.pal) { document.body.dataset.pal = b.dataset.pal; document.querySelectorAll("[data-pal]").forEach((x) => x.classList.toggle("on", x === b)); return; }
-    if (b.dataset.addhit !== undefined) S.onHit = { effect: "Poisoned", save: null };
-    if (b.dataset.rmhit !== undefined) S.onHit = null;
-    if (b.dataset.save) S.onHit.save = b.dataset.save === "yes" ? { dc: 11, ability: "CON" } : null;
-    if (b.dataset.atk) { S.atk = b.dataset.atk; document.querySelectorAll("[data-atk]").forEach((x) => x.classList.toggle("on", x === b)); }
-    if (b.dataset.has) { S.has = b.dataset.has === "yes"; document.querySelectorAll("[data-has]").forEach((x) => x.classList.toggle("on", x === b)); }
-    if (b.dataset.sv !== undefined) { S.save = b.dataset.sv || null; S.saveRoll = ""; }
-    if (b.dataset.apply !== undefined) {
-      const o = S.onHit;
-      S.applied = S.atk === "miss" ? { miss: true }
-        : { effect: willApply() ? o.effect : null, resisted: o?.save && S.save === "saved" && !S.has ? o.effect : null };
-    } else S.applied = null;
-    if (b.closest("#editor")) render(); else renderFlow();
+    if (b.dataset.edit) return openModal(b.dataset.edit);
+    const d = S.draft;
+    if (b.dataset.pick) { d.effect = b.dataset.pick; return renderModal(); }
+    if (b.dataset.dur) { d.turns = b.dataset.dur === "turns" ? 10 : null; return renderModal(); }
+    if (b.dataset.t) { d.turns = Math.max(1, Math.min(100, d.turns + +b.dataset.t)); return renderModal(); }
+    if (b.dataset.sv) { d.save = b.dataset.sv === "yes" ? { dc: 11, ability: "CON" } : null; return renderModal(); }
+    if (b.dataset.ab) { d.save.ability = b.dataset.ab; return renderModal(); }
+    if (b.dataset.save !== undefined) { S.sources[S.editing].onHit = d; S.after = null; return closeModal(); }
+    if (b.dataset.remove !== undefined) { S.sources[S.editing].onHit = null; S.after = null; return closeModal(); }
+    if (b.dataset.close !== undefined) return closeModal();
+    if (b.dataset.tick !== undefined) { S.apply = !S.apply; S.after = null; return render(); }
+    if (b.dataset.apply !== undefined) { const o = S.sources.shank.onHit; S.after = { effect: !!(o && S.apply), left: o?.turns ?? null }; return render(); }
+    if (b.dataset.nextturn !== undefined) { S.after.left = Math.max(0, S.after.left - 1); return render(); }
   });
-  document.addEventListener("input", (e) => {
-    const t = e.target;
-    if (t.id === "dc") { S.onHit.save.dc = parseInt(t.value, 10) || 0; renderFlow(); }
-    if (t.id === "saveRoll") {
-      S.saveRoll = t.value; const n = parseInt(t.value, 10);
-      S.save = Number.isFinite(n) ? (n >= S.onHit.save.dc ? "saved" : "failed") : null;
-      S.applied = null; renderFlow();
-      const el = document.getElementById("saveRoll"); el.focus(); el.setSelectionRange(el.value.length, el.value.length);
-    }
-  });
-  document.addEventListener("change", (e) => {
-    const t = e.target;
-    if (t.id === "effect") S.onHit.effect = t.value;
-    if (t.id === "abil") S.onHit.save.ability = t.value;
-    if (t.id === "tick") S.apply = t.checked;
-    S.applied = null;
-    if (t.closest("#editor")) render(); else renderFlow();
-  });
+  document.addEventListener("input", (e) => { if (e.target.id === "dc") { S.draft.save.dc = parseInt(e.target.value, 10) || 0; const v = e.target.value; renderModal(); const el = document.getElementById("dc"); el.focus(); el.setSelectionRange(v.length, v.length); } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && S.editing) closeModal(); });
   render();
 </script>
 </body>
