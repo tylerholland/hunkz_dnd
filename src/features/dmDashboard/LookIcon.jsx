@@ -8,6 +8,7 @@ const PATHS = {
   breath: <><path d="M3 10h4" /><path d="M7 10c3-5 7-6 10-5M7 10h10M7 10c3 5 7 6 10 5" /></>,
   spit: <><circle cx="5" cy="10" r="2" /><path d="M8 10h3M12 8l2 2-2 2M15 10h2" /></>,
   cut: <path d="M4 16L15 5M13 4l3 3" />,
+  stab: <path d="M16 4l-8 5 3 3zM6 10l4 4M8 12l-4 4" />,
   chop: <path d="M6 16l8-8M12 4a4 4 0 0 1 4 4l-3 1-2-2z" />,
   flurry: <path d="M5 6l3 3M9 4l3 3M5 12l3 3M12 11l3 3" />,
   arrow: <path d="M3 17L15 5M11 5h4v4M5 13H3v2" />,

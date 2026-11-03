@@ -2,7 +2,7 @@
 // is matched to the declared attack in the shared roll history.
 
 // Effect styles the engine knows how to play.
-export const STYLES = ["cut", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt", "heal",
+export const STYLES = ["cut", "stab", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt", "heal",
   // Creature looks (NPC abilities).
   "bite", "claw", "lash", "sting", "slam", "breath", "spit"];
 
@@ -15,7 +15,8 @@ const WEAPON_RULES = [
   [/unarmed|fist|punch|kick|palm|monk|flurry|strike of|martial/i, "flurry"],
   [/axe|maul|hammer|mace|club|flail|morning ?star|pick/i, "chop"],
   [/bow|crossbow|sling|dart|javelin|throw|blowgun|net/i, "arrow"],
-  [/sword|dagger|blade|rapier|scimitar|knife|katana|sabre|saber|spear|glaive|halberd|pike|trident|sickle|whip/i, "cut"],
+  [/dagger|rapier|knife|stiletto|shank|shiv|needle|spear|pike|trident|lance|short ?sword|estoc|stab|thrust/i, "stab"],
+  [/sword|blade|scimitar|katana|sabre|saber|glaive|halberd|sickle|whip/i, "cut"],
 ];
 
 // Adjacent = the gap between token rims is at most one token-width.

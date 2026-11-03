@@ -13,6 +13,8 @@ describe("classifyStrike", () => {
     expect(classifyStrike({ attack: { kind: "weapon", name: "Battleaxe" } })).toBe("chop");
     expect(classifyStrike({ attack: { kind: "weapon", name: "Unarmed Strike" } })).toBe("flurry");
     expect(classifyStrike({ attack: { kind: "weapon", name: "Longsword" } })).toBe("cut");
+    expect(classifyStrike({ attack: { kind: "weapon", name: "Dagger" } })).toBe("stab");
+    expect(classifyStrike({ attack: { kind: "weapon", name: "Shortsword" } })).toBe("stab");
     expect(classifyStrike({ attack: { kind: "weapon", name: "Longbow" } })).toBe("arrow");
   });
 

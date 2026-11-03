@@ -9,7 +9,7 @@
 
 const LOOKS = [
   "bite", "claw", "lash", "sting", "slam", "breath", "spit",
-  "cut", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt",
+  "cut", "stab", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt",
 ];
 const MAX_ATTACKS = 8;
 

@@ -5,7 +5,7 @@
 
 // "curse" / "bless" — a spell effect applied without damage (Hexed, Blessed…).
 // bite…spit — creature looks from NPC abilities (src/features/dmDashboard/npcStats.js).
-const FX_STYLES = ["cut", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt", "heal", "curse", "bless",
+const FX_STYLES = ["cut", "stab", "chop", "flurry", "arrow", "rock", "fire", "force", "bolt", "heal", "curse", "bless",
   "bite", "claw", "lash", "sting", "slam", "breath", "spit"];
 const MAX_ID_LEN = 80;
 

@@ -21,7 +21,7 @@ export const TABLE_PACE = 0.3;
 const CHARGE_MS = 350;
 const SHEETS = { slash: "/effects/fa01-slash.png", thrust: "/effects/fa01-thrust.png", punch: "/effects/fa01-punch.png" };
 const SHEET_FOR_STYLE = {
-  cut: "slash", chop: "slash", flurry: "punch", arrow: "thrust", rock: "punch", fire: "punch", force: "punch", bolt: "punch",
+  cut: "slash", stab: "thrust", chop: "slash", flurry: "punch", arrow: "thrust", rock: "punch", fire: "punch", force: "punch", bolt: "punch",
   // Creature attacks (NPC abilities' looks).
   bite: "slash", claw: "slash", lash: "slash", sting: "thrust", slam: "punch", breath: "punch", spit: "punch",
 };
@@ -235,6 +235,44 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
         const [x, y] = at(tail - j * 0.025, 0), sz = Math.max(0.8, 2.6 - j * 0.6);
         ctx.globalAlpha = (0.8 - j * 0.2) * fade; ctx.fillStyle = light;
         ctx.fillRect(x - sz / 2, y - sz / 2, sz, sz);
+      }
+      ctx.restore();
+    } });
+  }
+  // A steel blade thrust into the target and pulled back out: a narrow
+  // pointed blade (cousin of Sting's barb) with a small crossguard.
+  function knife(targetId, start, ms, bearing) {
+    effects.push({ t0: clock + start, dur: ms, draw: (k) => {
+      const p = tok(targetId); if (!p) return;
+      const ux = Math.cos(bearing), uy = Math.sin(bearing), nx = -uy, ny = ux;
+      // In fast (deepest at 0.45), out a little slower.
+      const depth = k < 0.45 ? easeOut(k / 0.45) : 1 - easeIn((k - 0.45) / 0.55);
+      const tipD = -p.r * 1.7 + p.r * 2.1 * depth; // along the bearing, from the target's centre
+      const tx = p.x + ux * tipD, ty = p.y + uy * tipD, L = p.r * 1.25, w = Math.max(2.5, p.r * 0.13);
+      const bx = tx - ux * L, by = ty - uy * L;
+      const alpha = k < 0.85 ? 1 : 1 - (k - 0.85) / 0.15;
+      ctx.save(); ctx.globalAlpha = alpha; ctx.lineJoin = "round";
+      // Blade: long point, widest near the guard.
+      const g = ctx.createLinearGradient(bx + nx * w, by + ny * w, bx - nx * w, by - ny * w);
+      g.addColorStop(0, "#f4f8fb"); g.addColorStop(0.5, "#c9d3da"); g.addColorStop(1, "#8e9aa3");
+      ctx.fillStyle = g; ctx.strokeStyle = "rgba(0,0,0,0.45)"; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(tx, ty);
+      ctx.lineTo(bx + ux * L * 0.18 + nx * w, by + uy * L * 0.18 + ny * w);
+      ctx.lineTo(bx + nx * w * 0.8, by + ny * w * 0.8);
+      ctx.lineTo(bx - nx * w * 0.8, by - ny * w * 0.8);
+      ctx.lineTo(bx + ux * L * 0.18 - nx * w, by + uy * L * 0.18 - ny * w);
+      ctx.closePath(); ctx.fill(); ctx.stroke();
+      // Crossguard and a stub of grip.
+      ctx.strokeStyle = "#6f6458"; ctx.lineCap = "round"; ctx.lineWidth = Math.max(2.5, w * 0.7);
+      ctx.beginPath(); ctx.moveTo(bx + nx * w * 2.2, by + ny * w * 2.2); ctx.lineTo(bx - nx * w * 2.2, by - ny * w * 2.2); ctx.stroke();
+      ctx.lineWidth = Math.max(2, w * 0.8);
+      ctx.beginPath(); ctx.moveTo(bx, by); ctx.lineTo(bx - ux * w * 2.6, by - uy * w * 2.6); ctx.stroke();
+      // A glint running down the edge as it goes in.
+      if (k < 0.45) {
+        const gx = bx + (tx - bx) * (k / 0.45), gy = by + (ty - by) * (k / 0.45);
+        ctx.globalCompositeOperation = "lighter"; ctx.globalAlpha = 0.9 * alpha; ctx.fillStyle = "#ffffff";
+        ctx.beginPath(); ctx.arc(gx + nx * w * 0.3, gy + ny * w * 0.3, Math.max(1.5, w * 0.45), 0, Math.PI * 2); ctx.fill();
       }
       ctx.restore();
     } });
@@ -619,7 +657,7 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
     if (reducedMotion || !a || attackerId === targetId) {
       if (style === "heal") impact(targetId, { heal: true });
       else if (reducedMotion) { if (!miss) { const s = state(targetId); s.flash = 1; s.flashColor = "#ff4a3a"; } }
-      else impact(targetId, { ...common, blade: style === "cut" || style === "chop", fist: style === "flurry", color: "#ffe0d0" });
+      else impact(targetId, { ...common, blade: style === "cut" || style === "stab" || style === "chop", fist: style === "flurry", color: "#ffe0d0" });
       kick();
       return;
     }
@@ -649,6 +687,18 @@ export function createFxEngine(canvas, adapter, { reducedMotion = false, timeSca
       lunge(attackerId, targetId, 520, 420);
       swoosh(targetId, 480, 520, bearing, { long: true, color: "#f2ece2", shade: "#a8a092" });
       at(680, () => { boardShake = Math.max(boardShake, 4); impact(targetId, { ...common, heavy: true, blade: true, chips: true, color: "#ffe6c8" }); });
+    } else if (style === "stab") {
+      // The usual wind-up, then two quick thrusts of a blade, the second
+      // from a slightly different angle and with the full impact.
+      windUp(attackerId, targetId, 240);
+      [-0.22, 0.18].forEach((off, i) => {
+        const t0 = 240 + i * 170;
+        lunge(attackerId, targetId, t0, 150);
+        knife(targetId, t0, 170, bearing + off);
+        speedLines(targetId, t0 + 10, 90, bearing + off);
+        if (i === 0) at(t0 + 70, () => jabPop(targetId, bearing + off, false));
+        else at(t0 + 70, () => { jabPop(targetId, bearing + off, true); impact(targetId, { ...common, blade: true, color: "#e4ecf2" }); });
+      });
     } else if (style === "flurry") {
       // The usual wind-up, then three fast punches — boom, boom, BOOM — each
       // landing a little off the last, the third with the full impact.

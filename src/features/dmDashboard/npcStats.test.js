@@ -17,6 +17,7 @@ describe("npcStats", () => {
     expect(guessLook("Tentacles")).toBe("lash");
     expect(guessLook("Poison Bite")).toBe("bite");
     expect(guessLook("Greataxe")).toBe("chop");
+    expect(guessLook("Poisoned Shank")).toBe("stab");
     expect(guessLook("Mystery")).toBe("cut");
     expect(lookAnimation("lash")).toBe("lash");
     expect(lookAnimation("breath")).toBe("breath");

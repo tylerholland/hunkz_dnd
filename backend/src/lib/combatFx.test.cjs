@@ -13,7 +13,7 @@ test("sanitizeFx whitelists style and bounds the attacker", () => {
 });
 
 test("sanitizeFx keeps the creature looks NPC abilities play", () => {
-  for (const style of ["bite", "claw", "lash", "sting", "slam", "breath", "spit"]) assert.equal(sanitizeFx({ style }).style, style);
+  for (const style of ["stab", "bite", "claw", "lash", "sting", "slam", "breath", "spit"]) assert.equal(sanitizeFx({ style }).style, style);
 });
 
 test("buildLastFx only keeps crit on damage", () => {

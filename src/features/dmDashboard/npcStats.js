@@ -18,7 +18,7 @@ export const LOOK_GROUPS = [
     { id: "spit", label: "Spit" },
   ] },
   { title: "Weapon", looks: [
-    { id: "cut", label: "Cut" }, { id: "chop", label: "Chop" }, { id: "flurry", label: "Flurry" },
+    { id: "cut", label: "Cut" }, { id: "stab", label: "Stab" }, { id: "chop", label: "Chop" }, { id: "flurry", label: "Flurry" },
     { id: "arrow", label: "Arrow" }, { id: "rock", label: "Rock" },
   ] },
   { title: "Magic", looks: [{ id: "fire", label: "Fire" }, { id: "force", label: "Force" }, { id: "bolt", label: "Bolt" }] },
@@ -40,7 +40,8 @@ const GUESSES = [
   [/spit|acid|web|spray|venom|bile/i, "spit"],
   [/axe|hammer|club|mace|maul|flail/i, "chop"],
   [/bow|crossbow|sling|throw|javelin|dart/i, "arrow"],
-  [/sword|blade|dagger|spear|scimitar|rapier|knife|glaive|halberd|pike/i, "cut"],
+  [/dagger|rapier|knife|stiletto|shank|shiv|needle|spear|pike|trident|lance|short ?sword/i, "stab"],
+  [/sword|blade|scimitar|glaive|halberd/i, "cut"],
   [/fire|flame|burn/i, "fire"],
   [/lightning|shock|thunder/i, "bolt"],
 ];
