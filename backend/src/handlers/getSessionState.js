@@ -37,10 +37,11 @@ const {
   HOUSE_RULES_SLUG,
   TALENT_CODEX_SLUG,
   SHOP_SLUG,
+  SHOP_CATALOG_SLUG,
   CHRONICLE_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
-const { normalizeShop, shopStatus, shopSummary } = require("../lib/shop");
+const { normalizeShop, shopStatus, shopSummary, normalizeCatalog, weaponDiceMap } = require("../lib/shop");
 const { currentVersion } = require("../lib/versioning");
 const {
   normalizeInitiativeRecord,
@@ -85,6 +86,7 @@ function annotateMapLibrary(mapLibrary, { getCharacterConditions, getNpcConditio
 }
 
 const SENTINEL_SLUGS = [
+  SHOP_CATALOG_SLUG,
   INITIATIVE_SLUG,
   NPC_COMBAT_SLUG,
   ROLL_HISTORY_SLUG,
@@ -125,7 +127,10 @@ exports.handler = async (event) => {
   const roster = normalizePartyRosterRecord(sentinelBySlug.get(PARTY_ROSTER_SLUG));
   const counterWheels = normalizeCounterWheelsRecord(sentinelBySlug.get(COUNTER_WHEELS_SLUG));
   const appMeta = normalizeAppMetaRecord(sentinelBySlug.get(APP_META_SLUG));
-  const houseRules = normalizeHouseRulesRecord(sentinelBySlug.get(HOUSE_RULES_SLUG));
+  const houseRulesRecord = normalizeHouseRulesRecord(sentinelBySlug.get(HOUSE_RULES_SLUG));
+  // What un-customised shop weapons roll, by the Weapon damage rule — every
+  // attack list (sheet, Take Action) reads it (src/lib/weaponDice.js).
+  const houseRules = { ...houseRulesRecord, weaponDice: weaponDiceMap(normalizeCatalog(sentinelBySlug.get(SHOP_CATALOG_SLUG)), houseRulesRecord.weaponDamage) };
   // Story 39 — just the Talent Codex's version; screens fetch the codex itself
   // (GET /talent-codex) only when this changes.
   const talentCodexVersion = currentVersion(sentinelBySlug.get(TALENT_CODEX_SLUG));

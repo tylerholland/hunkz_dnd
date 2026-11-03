@@ -37,8 +37,20 @@ describe("DmSettingsPage", () => {
     fireEvent.change(input, { target: { value: "1D20" } });
     expect(screen.getByText("1d20+2")).toBeInTheDocument();
     fireEvent.click(screen.getAllByText("Save")[0]);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod" }));
     expect(await screen.findByText(/Saved/)).toBeInTheDocument();
+  });
+
+  it("switches weapon damage to D&D 5e", async () => {
+    renderPage();
+    await screen.findByText(/By class: light weapons d6/);
+    const group = screen.getByRole("group", { name: "Weapon damage" });
+    expect(within(group).getByRole("button", { name: "World of Dungeons" })).toHaveAttribute("aria-pressed", "true");
+    fireEvent.click(within(group).getByRole("button", { name: "D&D 5e" }));
+    expect(screen.getByText(/dagger d4, short sword d6/)).toBeInTheDocument();
+    const card = group.closest("section");
+    fireEvent.click(within(card).getByText("Save"));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", expect.objectContaining({ weaponDamage: "dnd", abilityCheckDice: "2d6" })));
   });
 
   it("turns Features & Traits off and on", async () => {
@@ -46,7 +58,7 @@ describe("DmSettingsPage", () => {
     const toggle = await screen.findByRole("switch", { name: "Features & Traits" });
     expect(toggle).toHaveAttribute("aria-checked", "true");
     fireEvent.click(toggle);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod" }));
     expect(toggle).toHaveAttribute("aria-checked", "false");
   });
 
@@ -106,7 +118,7 @@ describe("DmSettingsPage", () => {
     await waitFor(() => expect(screen.getByRole("textbox", { name: "Spell casting dice" })).toHaveValue("1d20"));
     fireEvent.click(screen.getByRole("button", { name: "2d6" }));
     fireEvent.click(screen.getAllByText("Save")[1]);
-    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "2d6", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" }));
+    await waitFor(() => expect(api.putHouseRules).toHaveBeenCalledWith("swordfish", { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "2d6", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod" }));
   });
 
   it("turns player turn-ending off", async () => {

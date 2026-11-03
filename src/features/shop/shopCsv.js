@@ -1,6 +1,8 @@
 // Story 72 — the item catalog as a spreadsheet: export, parse, and the diff
 // shown before an import is applied. Rows match by `id`.
-const COLUMNS = ["id", "name", "category", "price", "per", "effect", "notes", "shown"];
+// class / dnd / units: a weapon's World of Dungeons class, its D&D 5e die,
+// and how many come in one purchase (torches: 4).
+const COLUMNS = ["id", "name", "category", "price", "per", "effect", "notes", "shown", "class", "dnd", "units"];
 
 const cell = (v) => {
   const s = String(v ?? "");
@@ -8,7 +10,7 @@ const cell = (v) => {
 };
 
 export function catalogToCsv(items) {
-  const rows = items.map((i) => [i.id, i.name, i.cat, i.price, i.per || "", i.stat || "", i.notes || "", i.hidden ? "no" : "yes"]);
+  const rows = items.map((i) => [i.id, i.name, i.cat, i.price, i.per || "", i.stat || "", i.notes || "", i.hidden ? "no" : "yes", i.tier || "", i.dnd || "", i.units || ""]);
   return [COLUMNS, ...rows].map((r) => r.map(cell).join(",")).join("\n");
 }
 
@@ -59,12 +61,16 @@ export function csvToItems(text, shelfIds) {
     const stat = get(r, "effect") || get(r, "stat"); if (stat) item.stat = stat;
     const notes = get(r, "notes"); if (notes) item.notes = notes;
     if (/^(no|false|0|hidden)$/i.test(get(r, "shown"))) item.hidden = true;
+    const tier = get(r, "class"); if (tier) item.tier = tier;
+    const dnd = get(r, "dnd"); if (dnd) item.dnd = dnd;
+    const units = parseInt(get(r, "units"), 10); if (units >= 2) item.units = units;
     items.push(item);
   });
   return { items, errors };
 }
 
-const FIELDS = ["name", "cat", "price", "per", "stat", "notes", "hidden"];
+const FIELDS = ["name", "cat", "price", "per", "stat", "notes", "hidden", "tier", "dnd", "units"];
+const KEPT = ["tier", "dnd", "units"];
 /** What an import would change: new rows, changed rows (with which fields), and rows missing from the file. */
 export function diffCatalog(current, incoming) {
   const before = new Map(current.map((i) => [i.id, i]));
@@ -72,7 +78,8 @@ export function diffCatalog(current, incoming) {
   const added = incoming.filter((i) => !before.has(i.id));
   const changed = incoming
     .filter((i) => before.has(i.id))
-    .map((i) => ({ item: i, fields: FIELDS.filter((f) => String(before.get(i.id)[f] ?? "") !== String(i[f] ?? "")) }))
+    // Class / dnd / units missing from the file are kept on import, so they aren't changes.
+    .map((i) => ({ item: i, fields: FIELDS.filter((f) => !(KEPT.includes(f) && i[f] === undefined) && String(before.get(i.id)[f] ?? "") !== String(i[f] ?? "")) }))
     .filter((c) => c.fields.length);
   const missing = current.filter((i) => !after.has(i.id));
   return { added, changed, missing };

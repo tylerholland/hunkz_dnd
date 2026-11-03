@@ -10,7 +10,7 @@ export function ShopIcon({ name }) {
 }
 
 /** An item's round frame: its picture if there is one, else its icon. */
-export function ItemOrb({ item, art = itemArt(item.id), className = "" }) {
+export function ItemOrb({ item, art = itemArt(item.id, item.tier), className = "" }) {
   return (
     <span className={`sp-orb${art ? " art" : ""} ${className}`} style={{ "--cat": shelfColor(item.cat) }}>
       {art ? <img src={art} alt="" loading="lazy" /> : <ShopIcon name={item.icon} />}

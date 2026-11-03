@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   SEED_ITEMS, LOCKUP_MS, normalizeCatalog, normalizeShop, shopStatus, markedPrice, playerShop,
-  purseWorth, payFromPurse, addPurchase,
+  purseWorth, payFromPurse, addPurchase, normalizeCatalogItem,
 } = require("./shop");
 const { isReservedCharacterSlug, SHOP_SLUG, SHOP_CATALOG_SLUG } = require("./specialItems");
 
@@ -21,15 +21,48 @@ test("the catalog is seeded from World of Dungeons and cleaned on save", () => {
     { id: "silver-dagger", name: "Duplicate", cat: "arms", price: 1 },
     { id: "x", name: "Bad shelf", cat: "nope", price: 1 },
     { id: "y", name: "Bad price", cat: "gear", price: -1 },
-  ], seedVersion: 2 });
+  ], seedVersion: 3 });
   assert.deepEqual(items, [{ id: "silver-dagger", cat: "arms", name: "Silvered Dagger", price: 25, stat: "d6" }]);
 });
 
 test("a catalog saved before new built-in items gets them once", () => {
+  const v3 = ["dagger", "short-sword", "club", "hand-axe", "mace", "longsword", "spear", "flail", "warhammer", "rapier", "greatsword", "battle-axe", "halberd", "maul",
+    "sling", "hand-crossbow", "crossbow", "heavy-crossbow", "longbow", "potion-healing"];
   const old = { items: [{ id: "rope", name: "20ft Rope", cat: "gear", price: 2 }] };
-  assert.deepEqual(normalizeCatalog(old).items.map((i) => i.id), ["rope", "clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat"]);
-  const current = { items: old.items, seedVersion: 2 };
-  assert.deepEqual(normalizeCatalog(current).items.map((i) => i.id), ["rope"]);
+  assert.deepEqual(normalizeCatalog(old).items.map((i) => i.id), ["rope", "clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat", ...v3]);
+  assert.deepEqual(normalizeCatalog({ ...old, seedVersion: 2 }).items.map((i) => i.id), ["rope", ...v3]);
+  assert.deepEqual(normalizeCatalog({ ...old, seedVersion: 3 }).items.map((i) => i.id), ["rope"]);
+});
+
+test("saved built-in items pick up weapon classes and sets, keeping the DM's own text", () => {
+  const saved = { seedVersion: 3, items: [
+    { id: "torches", name: "Torches (4)", cat: "gear", price: 2 },
+    { id: "bow", name: "Bow", cat: "arms", price: 30, stat: "d6+1", notes: "Also crossbows." },
+    { id: "light-weapon", name: "Knives & Shivs", cat: "arms", price: 8, stat: "d6" },
+  ] };
+  const got = Object.fromEntries(normalizeCatalog(saved).items.map((i) => [i.id, i]));
+  assert.equal(got.torches.name, "Torches");
+  assert.equal(got.torches.units, 4);
+  assert.equal(got.bow.tier, "ranged");
+  assert.equal(got.bow.notes, undefined);
+  assert.equal(got["light-weapon"].name, "Knives & Shivs");
+  assert.equal(got["light-weapon"].dnd, "1d6");
+});
+
+test("weapons roll their class's dice, or their own 5e die by the table's rules", () => {
+  const { weaponDice, shelfStat, weaponDiceMap } = require("./shop");
+  const seed = Object.fromEntries(SEED_ITEMS.map((i) => [i.id, normalizeCatalogItem(i)]));
+  assert.equal(weaponDice(seed.dagger), "d6");
+  assert.equal(weaponDice(seed.dagger, "dnd"), "1d4");
+  assert.equal(weaponDice(seed["battle-axe"], "dnd"), "1d12");
+  assert.equal(weaponDice(seed.rope), null);
+  assert.equal(shelfStat(seed.spear, "wod"), "Martial weapon · d6+1");
+  assert.equal(shelfStat(seed.longbow, "dnd"), "Heavy ranged · 1d8");
+  assert.equal(shelfStat(seed.lantern, "wod"), "");
+  const map = weaponDiceMap(normalizeCatalog(null), "dnd");
+  assert.equal(map.greatsword, "2d6");
+  assert.equal(map["short-sword"], "1d6");
+  assert.equal(map.rope, undefined);
 });
 
 test("before the next session: scheduled, open, two minutes to pay, closed", () => {
@@ -136,9 +169,11 @@ test("the catalog says what World of Dungeons says, and fixes untouched saved te
 test("purchases land in the pack, stowed", () => {
   const items = Object.fromEntries(SEED_ITEMS.map((i) => [i.id, i]));
   let char = { weapons: [], equipment: [{ id: "e1", name: "Travel Rations", qty: 1 }] };
-  char = addPurchase(char, items["martial-weapon"], 2, { shopName: "Ironwhistle's" });
+  char = addPurchase(char, items.spear, 2, { shopName: "Ironwhistle's" });
   assert.equal(char.weapons.length, 2);
-  assert.deepEqual(char.weapons[0].mods, [{ attribute: "Damage", value: "d6+1" }]);
+  // A weapon with a class rolls its type's dice until its owner sets their own.
+  assert.deepEqual(char.weapons[0].mods, []);
+  assert.equal(char.weapons[0].itemId, "spear");
   assert.equal(char.weapons[0].equipped, false);
   char = addPurchase(char, items.rations, 3);
   assert.equal(char.equipment.find((e) => e.id === "e1").qty, 4);
@@ -149,4 +184,23 @@ test("purchases land in the pack, stowed", () => {
   assert.equal(char.equipment.at(-1).name, "Torch Bearer (hired)");
   char = addPurchase(char, items.lantern, 1);
   assert.equal(char.equipment.at(-1).qty, undefined);
+  char = addPurchase(char, items["potion-healing"], 1);
+  assert.deepEqual([char.equipment.at(-1).type, char.equipment.at(-1).qty], ["potion", 1]);
+});
+
+test("torches come in fours and go back a whole set at a time", () => {
+  const { sellOffers, sellOne } = require("./shop");
+  const catalog = normalizeCatalog(null);
+  const items = Object.fromEntries(catalog.items.map((i) => [i.id, i]));
+  let char = addPurchase({ weapons: [], equipment: [] }, items.torches, 1);
+  assert.deepEqual([char.equipment[0].name, char.equipment[0].qty], ["Torches", 4]);
+  char = addPurchase(char, items.torches, 1);
+  assert.equal(char.equipment[0].qty, 8);
+  const offer = sellOffers(char, catalog)[0];
+  assert.deepEqual([offer.qty, offer.per, offer.price], [2, 4, 1]);
+  char = sellOne(char, char.equipment[0].id, catalog).character;
+  assert.equal(char.equipment[0].qty, 4);
+  const three = { ...char, equipment: [{ ...char.equipment[0], qty: 3 }] };
+  assert.deepEqual(sellOffers(three, catalog), []);
+  assert.equal(sellOne(three, three.equipment[0].id, catalog), null);
 });

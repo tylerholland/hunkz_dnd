@@ -16,7 +16,10 @@ import { DEFAULT_MONEY, normalizeMoney } from "./money";
 // money — which coins are in use and their worth in silver (lib/money.js).
 // npcAttackDice — the attack roll for an NPC's quick attacks when the creature
 // has none of its own (standard: a d20 plus a typical monster's +3).
-export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" };
+// weaponDamage — what shop weapons roll: "wod" (World of Dungeons classes,
+// d6 to d6+2) or "dnd" (each weapon's D&D 5e die: dagger d4, greatsword 2d6).
+export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod" };
+export const WEAPON_DAMAGE_RULES = ["wod", "dnd"];
 
 const CHECK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)$/;
 
@@ -40,6 +43,7 @@ export function normalizeHouseRules(raw) {
     customEffects: normalizeCustomEffects(raw?.customEffects).map(({ name, kind }) => ({ name, kind })),
     money: normalizeMoney(raw?.money),
     npcAttackDice: isValidAttackDice(raw?.npcAttackDice) ? raw.npcAttackDice.replace(/\s+/g, "").toLowerCase() : DEFAULT_HOUSE_RULES.npcAttackDice,
+    weaponDamage: WEAPON_DAMAGE_RULES.includes(raw?.weaponDamage) ? raw.weaponDamage : DEFAULT_HOUSE_RULES.weaponDamage,
   };
 }
 

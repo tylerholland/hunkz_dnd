@@ -1,3 +1,4 @@
+import { setWeaponDice } from "./lib/weaponDice";
 import { noteVersions } from "./lib/versionFloors";
 import { setCustomEffects } from "./lib/spellEffects";
 import { setTableMoney } from "./lib/money";
@@ -325,6 +326,8 @@ export const getSessionState = ({ dmPassword, slug } = {}) => {
     setCustomEffects(data?.houseRules?.customEffects);
     // The table's coins and rates (DM Settings → Money).
     setTableMoney(data?.houseRules?.money);
+    // What un-customised weapons roll, by the table's Weapon damage rule.
+    setWeaponDice(data?.houseRules?.weaponDice);
     // Whether combat is on, for the top bar's mark beside Campaign.
     if (data?.mapLibrary && "combatMode" in data.mapLibrary) setCombatActive(data.mapLibrary.combatMode === true);
     // Story 39 — fetch the Talent Codex only when its version changes.

@@ -46,7 +46,7 @@ export function packGroups(character, catalogById) {
       worn: entry.equipped !== false && (isWeapon || ["armor", "shield"].includes(lower(entry.type))),
       cat: shelf.cat,
       icon: shelf.icon,
-      art: shelf.id ? itemArt(shelf.id) : null,
+      art: shelf.id ? itemArt(shelf.id, catalogById.get(shelf.id)?.tier) : null,
     };
   };
   const weapons = (character.weapons || []).map((w) => row(w, true));

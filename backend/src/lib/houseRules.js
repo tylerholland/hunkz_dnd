@@ -11,7 +11,7 @@
 // npcAttackDice — the attack roll for an NPC's quick attacks when the creature
 // has none of its own: a d20 plus a typical low-level monster's +3, by default.
 const { normalizeMoney, DEFAULT_MONEY } = require("./money");
-const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3" };
+const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod" };
 const EFFECT_KINDS = new Set(["curse", "helpful", "neutral"]);
 
 function normalizeCustomEffects(list) {
@@ -56,6 +56,7 @@ function normalizeHouseRulesRecord(item) {
     customEffects: normalizeCustomEffects(item?.customEffects),
     money: normalizeMoney(item?.money),
     npcAttackDice: isValidAttackDice(item?.npcAttackDice) ? item.npcAttackDice.replace(/\s+/g, "").toLowerCase() : DEFAULT_HOUSE_RULES.npcAttackDice,
+    weaponDamage: item?.weaponDamage === "dnd" ? "dnd" : "wod",
     version: Number.isFinite(item?.version) ? item.version : 0,
   };
 }

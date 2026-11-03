@@ -11,6 +11,7 @@ import { abilityCheckExpr, DEFAULT_HOUSE_RULES, isValidCheckDice, normalizeHouse
 import DmPasswordReset from "./DmPasswordReset";
 import DmSpellDiceCard from "./DmSpellDiceCard";
 import DmNpcAttackCard from "./DmNpcAttackCard";
+import DmWeaponDamageCard from "./DmWeaponDamageCard";
 import DmMoneyCard from "./DmMoneyCard";
 import "./dmSettings.css";
 
@@ -188,6 +189,7 @@ export default function DmSettingsPage() {
           <DmSpellDiceCard key={saved ? "loaded" : "loading"} dmPassword={dmPassword} saved={saved} onSaved={setSaved} />
 
           <DmNpcAttackCard key={saved ? "loaded-npc" : "loading-npc"} dmPassword={dmPassword} saved={saved} onSaved={setSaved} />
+          <DmWeaponDamageCard key={saved ? "loaded-weapons" : "loading-weapons"} dmPassword={dmPassword} saved={saved} onSaved={setSaved} />
 
           <section className="dm-settings-card" aria-labelledby="hr-features">
             <div className="dm-settings-row">

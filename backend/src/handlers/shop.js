@@ -59,6 +59,8 @@ async function readAll() {
     catalogVersion: currentVersion(catalogItem),
     // The table's coins and their worth in silver (DM Settings → Money).
     money: normalizeMoney(bySlug.get(HOUSE_RULES_SLUG)?.money),
+    // DM Settings → Weapon damage: which dice the shelves show for weapons.
+    rules: bySlug.get(HOUSE_RULES_SLUG)?.weaponDamage === "dnd" ? "dnd" : "wod",
     statusInfo: shopStatus(shop, {
       nextSessionAt: bySlug.get(CHRONICLE_SLUG)?.nextSession?.at || null,
       combatMode: bySlug.get(MAP_LIBRARY_SLUG)?.combatMode === true,
@@ -142,7 +144,7 @@ exports.handler = async (event) => {
   // GET /shop
   if (parts.length === 1 && method === "GET") {
     const state = await readAll();
-    const body = { ...playerShop(state.shop, state.catalog, state.statusInfo), version: state.shopVersion };
+    const body = { ...playerShop(state.shop, state.catalog, state.statusInfo, state.rules), version: state.shopVersion };
     const asSlug = event.queryStringParameters?.asSlug;
     const who = asSlug ? await shopper(event, asSlug) : null;
     if (who) {
@@ -163,7 +165,7 @@ exports.handler = async (event) => {
   if (parts[1] === "preview" && parts.length === 2 && method === "GET") {
     if (!(await isDm(event))) return forbidden("DM password required");
     const state = await readAll();
-    const view = playerShop(state.shop, state.catalog, { ...state.statusInfo, status: "open", lockupUntil: null });
+    const view = playerShop(state.shop, state.catalog, { ...state.statusInfo, status: "open", lockupUntil: null }, state.rules);
     return ok({ ...view, realStatus: state.statusInfo.status, version: state.shopVersion });
   }
 

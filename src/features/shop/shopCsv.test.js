@@ -11,8 +11,15 @@ const items = [
 describe("catalog CSV", () => {
   it("round-trips through export and import", () => {
     const csv = catalogToCsv(items);
-    expect(csv.split("\n")[0]).toBe("id,name,category,price,per,effect,notes,shown");
+    expect(csv.split("\n")[0]).toBe("id,name,category,price,per,effect,notes,shown,class,dnd,units");
     expect(csvToItems(csv, SHELF_IDS)).toEqual({ items, errors: [] });
+  });
+
+  it("carries weapon classes, 5e dice and sets, and an older file keeps them", () => {
+    const weapons = [{ id: "dagger", name: "Dagger", cat: "arms", price: 10, stat: "d6", tier: "light", dnd: "1d4" }, { id: "torches", name: "Torches", cat: "gear", price: 2, units: 4 }];
+    expect(csvToItems(catalogToCsv(weapons), SHELF_IDS).items).toEqual(weapons);
+    const old = csvToItems("id,name,category,price\ndagger,Dagger,arms,12", SHELF_IDS).items;
+    expect(diffCatalog(weapons, old).changed).toEqual([{ item: old[0], fields: ["price", "stat"] }]);
   });
 
   it("parses quotes, commas and newlines inside cells", () => {

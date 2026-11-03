@@ -36,7 +36,7 @@ describe("keeper lines", () => {
 
   it("Master Quibb has a word on every piece in the catalog", async () => {
     const src = (await import("../../../backend/src/lib/shop.js?raw")).default;
-    const ids = [...src.slice(src.indexOf("const SEED_ITEMS"), src.indexOf("];", src.indexOf("const SEED_ITEMS"))).matchAll(/id: "([^"]+)"/g)].map((m) => m[1]);
+    const ids = [...src.slice(src.indexOf("const SEED_ITEMS"), src.indexOf("];", src.indexOf("const SEED_ITEMS"))).matchAll(/(?:id: |weapon\()"([^"]+)"/g)].map((m) => m[1]);
     const missing = ids.filter((id) => !KEEPER_LINES["fancy-2"].items[id]);
     expect(missing).toEqual([]);
   });

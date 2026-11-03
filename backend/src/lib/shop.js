@@ -10,13 +10,51 @@ const MAX_ITEMS = 300;
 const MAX_QTY = 99;
 
 // World of Dungeons equipment, priced in silver.
+// World of Dungeons' weapon classes. Each weapon on the shelf belongs to one:
+// it sets the price and the damage (`stat`, editable per item); `dnd` is the
+// D&D 5e die, used when DM Settings → Weapon damage says so. Keep in sync
+// with WEAPON_TIERS in src/features/shop/shopData.js.
+const WEAPON_TIERS = {
+  light: { label: "Light weapon", stat: "d6", price: 10, icon: "blade", notes: "Wield as a second weapon to re-roll damage once per attack." },
+  martial: { label: "Martial weapon", stat: "d6+1", price: 30, icon: "sword", notes: "Main hand only." },
+  great: { label: "Great weapon", stat: "d6+2", price: 40, icon: "great", notes: "Uses both hands." },
+  "light-ranged": { label: "Light ranged", stat: "d6", price: 10, icon: "bow" },
+  ranged: { label: "Ranged", stat: "d6+1", price: 30, icon: "bow" },
+  "heavy-ranged": { label: "Heavy ranged", stat: "d6+2", price: 50, icon: "bow", notes: "Full damage only when firing from a stationary position." },
+};
+const weapon = (id, name, tier, dnd, extra = {}) => {
+  const t = WEAPON_TIERS[tier];
+  return { id, cat: "arms", name, price: t.price, icon: t.icon, stat: t.stat, tier, dnd, ...(t.notes ? { notes: t.notes } : {}), ...extra };
+};
+
 const SEED_ITEMS = [
-  { id: "light-weapon", cat: "arms", name: "Light Weapon", price: 10, icon: "blade", stat: "d6", notes: "Daggers, short swords, hand axes. Wield as a second weapon to re-roll damage once per attack." },
-  { id: "martial-weapon", cat: "arms", name: "Martial Weapon", price: 30, icon: "sword", stat: "d6+1", notes: "Long swords, hammers, axes, spears. Main hand only." },
-  { id: "great-weapon", cat: "arms", name: "Great Weapon", price: 40, icon: "great", stat: "d6+2", notes: "Two-handed swords, battle-axes, pole arms. Uses both hands." },
-  { id: "shortbow", cat: "arms", name: "Shortbow", price: 10, icon: "bow", stat: "d6", notes: "Also slings." },
-  { id: "bow", cat: "arms", name: "Bow", price: 30, icon: "bow", stat: "d6+1", notes: "Also crossbows." },
-  { id: "heavy-bow", cat: "arms", name: "Heavy Bow", price: 50, icon: "bow", stat: "d6+2", notes: "d6+2 damage if firing from a stationary position. Includes arbalests." },
+  // The class-only weapons World of Dungeons lists; hidden now that the shelf
+  // names real weapons, but kept so things linked to them still resolve.
+  { id: "light-weapon", cat: "arms", name: "Light Weapon", price: 10, icon: "blade", stat: "d6", tier: "light", dnd: "1d6", hidden: true, notes: "Daggers, short swords, hand axes. Wield as a second weapon to re-roll damage once per attack." },
+  { id: "martial-weapon", cat: "arms", name: "Martial Weapon", price: 30, icon: "sword", stat: "d6+1", tier: "martial", dnd: "1d8", hidden: true, notes: "Long swords, hammers, axes, spears. Main hand only." },
+  { id: "great-weapon", cat: "arms", name: "Great Weapon", price: 40, icon: "great", stat: "d6+2", tier: "great", dnd: "2d6", hidden: true, notes: "Two-handed swords, battle-axes, pole arms. Uses both hands." },
+  weapon("dagger", "Dagger", "light", "1d4", { notes: "Easy to hide; can be thrown. Wield as a second weapon to re-roll damage once per attack." }),
+  weapon("short-sword", "Short Sword", "light", "1d6"),
+  weapon("club", "Club", "light", "1d4"),
+  weapon("hand-axe", "Hand Axe", "light", "1d6", { hidden: true }),
+  weapon("mace", "Mace", "light", "1d6", { hidden: true }),
+  weapon("longsword", "Longsword", "martial", "1d8"),
+  weapon("spear", "Spear", "martial", "1d6", { notes: "Can be thrown. Main hand only." }),
+  weapon("flail", "Flail", "martial", "1d8"),
+  weapon("warhammer", "Warhammer", "martial", "1d8", { hidden: true }),
+  weapon("rapier", "Rapier", "martial", "1d8", { hidden: true }),
+  weapon("greatsword", "Greatsword", "great", "2d6"),
+  weapon("battle-axe", "Battle-Axe", "great", "1d12"),
+  weapon("halberd", "Halberd", "great", "1d10", { hidden: true }),
+  weapon("maul", "Maul", "great", "2d6", { hidden: true }),
+  weapon("shortbow", "Shortbow", "light-ranged", "1d6"),
+  weapon("sling", "Sling", "light-ranged", "1d4"),
+  weapon("hand-crossbow", "Hand Crossbow", "light-ranged", "1d6"),
+  weapon("bow", "Bow", "ranged", "1d8"),
+  weapon("crossbow", "Crossbow", "ranged", "1d8"),
+  { id: "heavy-bow", cat: "arms", name: "Heavy Bow", price: 50, icon: "bow", stat: "d6+2", tier: "heavy-ranged", dnd: "1d10", hidden: true, notes: "d6+2 damage if firing from a stationary position. Includes arbalests." },
+  weapon("heavy-crossbow", "Heavy Crossbow", "heavy-ranged", "1d10"),
+  weapon("longbow", "Longbow", "heavy-ranged", "1d8"),
   { id: "light-armor", cat: "armor", name: "Light Armour", price: 30, icon: "armor", stat: "Armour 1" },
   { id: "full-armor", cat: "armor", name: "Full Armour", price: 60, icon: "heavy", stat: "Armour 2", notes: "Always has a helm. Makes it very hard to run, move quietly, swim, leap etc." },
   { id: "shield", cat: "armor", name: "Shield", price: 10, icon: "shield", stat: "+1 Armour" },
@@ -25,7 +63,7 @@ const SEED_ITEMS = [
   { id: "chalk", cat: "gear", name: "Chalk", price: 2, icon: "pack" },
   { id: "parchment", cat: "gear", name: "Parchment", price: 2, icon: "pack" },
   { id: "flint", cat: "gear", name: "Flint & Steel", price: 2, icon: "fire" },
-  { id: "torches", cat: "gear", name: "Torches (4)", price: 2, icon: "torch" },
+  { id: "torches", cat: "gear", name: "Torches", price: 2, icon: "torch", units: 4, stat: "Sold in fours" },
   { id: "tent", cat: "gear", name: "Tent", price: 2, icon: "house" },
   { id: "dice", cat: "gear", name: "Dice", price: 2, icon: "pack" },
   { id: "caltrops", cat: "gear", name: "Caltrops", price: 2, icon: "pack", stat: "slows pursuers" },
@@ -48,6 +86,7 @@ const SEED_ITEMS = [
   { id: "holy-water", cat: "occult", name: "Vial of Holy Water", price: 10, icon: "flask", stat: "one use", notes: "A Cleric with Bless can anoint items with it (holy and magical, +3 damage vs. evil, for a short time); with Vision, drink it to commune with their deity." },
   { id: "blood", cat: "occult", name: "Vial of Blood", price: 10, icon: "flask" },
   { id: "incense", cat: "occult", name: "Ritual Incense & Oils", price: 10, icon: "fire" },
+  { id: "potion-healing", cat: "occult", name: "Potion of Healing", price: 12, icon: "flask", stat: "Heals 2d4+2", notes: "Drink it (or pour it down a friend) to heal 2d4+2 HP." },
   { id: "mirror", cat: "fancy", name: "Mirror", price: 20, icon: "mirror" },
   { id: "lantern", cat: "fancy", name: "Lantern", price: 20, icon: "lantern" },
   { id: "spyglass", cat: "fancy", name: "Spyglass", price: 20, icon: "pick" },
@@ -77,13 +116,23 @@ const SEED_ITEMS = [
 // saved, by seed version. A saved catalog older than a version gets that
 // version's items appended once (unless it already has them); anything the DM
 // removed before then stays removed.
-const CATALOG_SEED_VERSION = 2;
-const SEED_ADDITIONS = { 2: ["clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat"] };
+const CATALOG_SEED_VERSION = 3;
+const SEED_ADDITIONS = {
+  2: ["clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat"],
+  3: ["dagger", "short-sword", "club", "hand-axe", "mace", "longsword", "spear", "flail", "warhammer", "rapier", "greatsword", "battle-axe", "halberd", "maul",
+    "sling", "hand-crossbow", "crossbow", "heavy-crossbow", "longbow", "potion-healing"],
+};
+// Structure a saved catalog's built-in items pick up from the seed when they
+// don't have it yet: weapon classes, 5e dice, and torches sold in fours.
+const SEED_STRUCTURE = ["tier", "dnd", "units"];
 
 // Text the seed used to carry that wasn't in World of Dungeons (or split one
 // rule in two). A saved catalog still holding that exact text gets the
 // corrected seed text; anything the DM wrote themselves is left alone.
 const SEED_CORRECTIONS = {
+  "torches": { "name": "Torches (4)" },
+  "shortbow": { "notes": "Also slings." },
+  "bow": { "notes": "Also crossbows." },
   "heavy-bow": {
     "notes": "A tall archer's longbow, carried across the back. Full power when you loose from a standing position."
   },
@@ -144,7 +193,34 @@ function normalizeCatalogItem(raw) {
   const notes = clip(raw.notes, 400); if (notes) item.notes = notes;
   const icon = clip(raw.icon, 20); if (icon) item.icon = icon;
   if (raw.hidden === true) item.hidden = true;
+  if (WEAPON_TIERS[raw.tier]) item.tier = raw.tier;
+  const dnd = clip(raw.dnd, 20).replace(/\s+/g, ""); if (DICE.test(dnd)) item.dnd = dnd;
+  const units = toInt(raw.units); if (units >= 2 && units <= 100) item.units = units;
   return item;
+}
+
+// ── Weapon damage ───────────────────────────────────────────────────────────
+// `rules`: DM Settings → Weapon damage — "wod" (World of Dungeons: the item's
+// `stat`, by class) or "dnd" (the item's D&D 5e die, falling back to `stat`).
+const DICE = /^(\d*d\d+|\d+)([+-](\d*d\d+|\d+))*$/i;
+/** The damage dice a catalog weapon rolls under the table's rules, or null. */
+function weaponDice(item, rules = "wod") {
+  if (item?.cat !== "arms") return null;
+  if (rules === "dnd" && item.dnd) return item.dnd;
+  const stat = String(item.stat || "").replace(/\s+/g, "");
+  return DICE.test(stat) ? stat : null;
+}
+/** The shelf line under a weapon's name: "Martial weapon · d6+1". */
+function shelfStat(item, rules) {
+  const tier = WEAPON_TIERS[item.tier];
+  if (!tier) return item.stat || "";
+  return [tier.label, weaponDice(item, rules)].filter(Boolean).join(" · ");
+}
+/** { itemId: dice } for every catalog weapon — what un-customised weapons roll. */
+function weaponDiceMap(catalog, rules) {
+  const out = {};
+  for (const it of catalog?.items || []) { const d = weaponDice(it, rules); if (d) out[it.id] = d; }
+  return out;
 }
 
 /** The catalog record: seeded from World of Dungeons until the DM saves one. */
@@ -161,10 +237,12 @@ function normalizeCatalog(record) {
   }
   if (Array.isArray(record?.items)) {
     source = source.map((raw) => {
-      const fix = raw && SEED_CORRECTIONS[raw.id];
-      if (!fix) return raw;
-      const seed = SEED_ITEMS.find((it) => it.id === raw.id);
+      const seed = raw && SEED_ITEMS.find((it) => it.id === raw.id);
+      if (!seed) return raw;
       const next = { ...raw };
+      for (const field of SEED_STRUCTURE) if (seed[field] !== undefined && raw[field] === undefined) next[field] = seed[field];
+      const fix = SEED_CORRECTIONS[raw.id];
+      if (!fix) return next;
       for (const [field, oldText] of Object.entries(fix)) {
         if (oldText && raw[field] === oldText) {
           if (seed[field]) next[field] = seed[field]; else delete next[field];
@@ -295,7 +373,7 @@ function markedPrice(item, markups) {
 }
 
 /** What players get: never markups, temper, or anything while it's shut. */
-function playerShop(shop, catalog, statusInfo) {
+function playerShop(shop, catalog, statusInfo, rules = "wod") {
   const browsing = statusInfo.status === "open" || statusInfo.status === "lockup";
   const out = new Set(shop.out);
   const items = browsing
@@ -303,7 +381,8 @@ function playerShop(shop, catalog, statusInfo) {
       .filter((it) => !it.hidden && shop.carries.includes(it.cat))
       .map((it) => {
         const view = { id: it.id, cat: it.cat, name: it.name, price: markedPrice(it, shop.markups) };
-        for (const k of ["per", "stat", "notes", "icon"]) if (it[k]) view[k] = it[k];
+        for (const k of ["per", "notes", "icon", "tier", "units"]) if (it[k]) view[k] = it[k];
+        const stat = shelfStat(it, rules); if (stat) view.stat = stat;
         if (out.has(it.id)) view.out = true;
         if (!out.has(it.id) && shop.justIn[it.id]) view.justIn = true;
         return view;
@@ -337,8 +416,8 @@ function shopSummary(shop, statusInfo, version) {
 const { purseWorth, payFromPurse } = require("./money");
 
 // ── Into the pack ───────────────────────────────────────────────────────────
-const CONSUMABLE = new Set(["rations", "torches", "bandages", "quicksilver", "holy-water", "blood", "bone-dust", "incense", "fire-oil", "chalk", "parchment", "spike", "caltrops"]);
-const POTIONS = new Set(["quicksilver", "holy-water", "blood", "fire-oil"]);
+const CONSUMABLE = new Set(["potion-healing", "rations", "torches", "bandages", "quicksilver", "holy-water", "blood", "bone-dust", "incense", "fire-oil", "chalk", "parchment", "spike", "caltrops"]);
+const POTIONS = new Set(["potion-healing", "quicksilver", "holy-water", "blood", "fire-oil"]);
 const newItemId = () => crypto.randomUUID();
 
 function describe(item) {
@@ -358,13 +437,18 @@ const linkedId = (entry) => entry?.itemId || entry?.bought?.itemId || null;
  * equipment, merged into a matching stack. New things arrive stowed, so
  * nothing changes the character's AC until they put it on.
  */
-function addPurchase(character, item, qty, { shopName } = {}) {
+function addPurchase(character, item, sets, { shopName } = {}) {
+  // Things sold in sets (torches, in fours) land as single pieces.
+  const qty = item.cat === "arms" ? sets : sets * (item.units || 1);
   const char = { ...character, weapons: [...(character.weapons || [])], equipment: [...(character.equipment || [])] };
   const bought = shopName ? { from: shopName, itemId: item.id, at: new Date().toISOString() } : { itemId: item.id };
   const name = item.per ? `${item.name} (hired)` : item.name;
   if (item.cat === "arms") {
+    // A weapon with a class rolls its type's dice (by the table's rules) until
+    // its owner sets their own Damage; older class-less ones carry it.
+    const mods = !item.tier && item.stat ? [{ attribute: "Damage", value: item.stat }] : [];
     for (let i = 0; i < qty; i += 1) {
-      char.weapons.push({ id: newItemId(), itemId: item.id, name, description: describe(item), mods: item.stat ? [{ attribute: "Damage", value: item.stat }] : [], equipped: false, bought });
+      char.weapons.push({ id: newItemId(), itemId: item.id, name, description: describe(item), mods: mods.map((m) => ({ ...m })), equipped: false, bought });
     }
     return char;
   }
@@ -381,7 +465,7 @@ function addPurchase(character, item, qty, { shopName } = {}) {
   }
   const entry = { id: newItemId(), itemId: item.id, name, description: describe(item), mods: [], equipped: false, bought };
   if (type) entry.type = type;
-  if (qty !== 1 || CONSUMABLE.has(item.id)) entry.qty = qty;
+  if (qty !== 1 || CONSUMABLE.has(item.id) || item.units) entry.qty = qty;
   char.equipment.push(entry);
   return char;
 }
@@ -405,7 +489,11 @@ function sellOffers(character, catalog) {
     for (const entry of list || []) {
       const item = catalogMatch(entry, catalog);
       if (!item || item.cat === "hire" || !entry.id) continue;
-      offers.push({ entryId: entry.id, kind, name: entry.name, itemId: item.id, itemName: item.name, cat: item.cat, icon: item.icon, qty: kind === "weapon" ? 1 : Math.max(1, toInt(entry.qty ?? 1)), price: sellPrice(item), worn: entry.equipped !== false && (kind === "weapon" || ["armor", "shield"].includes(String(entry.type || "").toLowerCase())) });
+      // Things sold in sets go back a whole set at a time (four torches).
+      const have = kind === "weapon" ? 1 : Math.max(1, toInt(entry.qty ?? 1));
+      const per = kind === "weapon" ? 1 : item.units || 1;
+      if (have < per) continue;
+      offers.push({ entryId: entry.id, kind, name: entry.name, itemId: item.id, itemName: item.name, cat: item.cat, icon: item.icon, ...(item.tier ? { tier: item.tier } : {}), qty: Math.floor(have / per), ...(per > 1 ? { per } : {}), price: sellPrice(item), worn: entry.equipped !== false && (kind === "weapon" || ["armor", "shield"].includes(String(entry.type || "").toLowerCase())) });
     }
   }
   return offers;
@@ -422,7 +510,9 @@ function sellOne(character, entryId, catalog) {
     if (!item || item.cat === "hire") return null;
     const price = sellPrice(item);
     const qty = key === "weapons" ? 1 : Math.max(1, toInt(entry.qty ?? 1));
-    const next = qty > 1 ? list.map((e, i) => (i === idx ? { ...e, qty: qty - 1 } : e)) : list.filter((_, i) => i !== idx);
+    const per = key === "weapons" ? 1 : item.units || 1;
+    if (qty < per) return null;
+    const next = qty > per ? list.map((e, i) => (i === idx ? { ...e, qty: qty - per } : e)) : list.filter((_, i) => i !== idx);
     const coin = { ...(character.coin || {}) };
     coin.sp = Math.max(0, toInt(coin.sp)) + price;
     return { character: { ...character, [key]: next, coin }, item, name: entry.name, price };
@@ -436,4 +526,5 @@ module.exports = {
   normalizeCatalog, normalizeCatalogItem, normalizeShop, normalizeOpening,
   openingWindow, shopStatus, markedPrice, playerShop, shopSummary,
   purseWorth, payFromPurse, addPurchase,
+  WEAPON_TIERS, weaponDice, weaponDiceMap, shelfStat,
 };

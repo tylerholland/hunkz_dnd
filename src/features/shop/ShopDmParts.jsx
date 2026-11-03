@@ -311,7 +311,10 @@ export function CatalogEditor({ items, onSave, busy }) {
   function applyImport() {
     const { incoming, diff, hideMissing } = importing;
     const byId = new Map(incoming.map((i) => [i.id, i]));
-    const next = draft.map((it) => byId.get(it.id) || (hideMissing && diff.missing.some((m) => m.id === it.id) ? { ...it, hidden: true } : it));
+    // A file without the newer columns (or the icon, which CSVs don't carry)
+    // keeps what the item already had.
+    const keep = (it, inc) => ({ ...Object.fromEntries(["icon", "tier", "dnd", "units"].filter((k) => it[k] !== undefined).map((k) => [k, it[k]])), ...inc });
+    const next = draft.map((it) => (byId.get(it.id) && keep(it, byId.get(it.id))) || (hideMissing && diff.missing.some((m) => m.id === it.id) ? { ...it, hidden: true } : it));
     for (const it of diff.added) next.push(it);
     setDraft(next);
     setImporting(null);

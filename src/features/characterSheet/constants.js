@@ -1,3 +1,4 @@
+import { weaponDamage } from "../../lib/weaponDice";
 import { restFeatures } from "./features";
 export const modOf = (s) => Math.floor((s - 10) / 2);
 // Spell and item descriptions: room for a full 5e entry with its conditions
@@ -52,7 +53,8 @@ export function buildAttackEntries({ weapons = [], spells = [] } = {}) {
     kind: "weapon",
     name: w.name,
     toHit: w.mods?.find((m) => m.attribute === "Attack Bonus")?.value,
-    damage: w.mods?.find((m) => m.attribute === "Damage")?.value,
+    // Their own Damage, else what their shop item type rolls (lib/weaponDice).
+    damage: weaponDamage(w) || undefined,
     description: w.description,
   }));
   const spellEntries = spells

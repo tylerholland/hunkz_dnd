@@ -381,7 +381,7 @@ export default function ShopPage({ preview = false }) {
   const shelf = SHELVES.find((s) => s.id === currentCat);
   const shelfItems = items.filter((it) => it.cat === currentCat);
   const groups = packGroups(character, byId);
-  const satchelRows = satchelLines.map((l) => ({ key: `s-${l.item.id}`, id: l.item.id, name: l.item.name, qty: l.qty, cat: l.item.cat, icon: l.item.icon, art: itemArt(l.item.id) }));
+  const satchelRows = satchelLines.map((l) => ({ key: `s-${l.item.id}`, id: l.item.id, name: l.item.name, qty: l.qty, cat: l.item.cat, icon: l.item.icon, art: itemArt(l.item.id, l.item.tier) }));
 
   return (
     <div className={`sp-page${shut || status === "combat" ? " sp-shut" : ""}${status === "lockup" ? " sp-locking" : ""}`} style={pageStyle} data-light={pal.light ? "true" : undefined}>
@@ -418,8 +418,8 @@ export default function ShopPage({ preview = false }) {
                 <div key={`sell-${selling.entryId}`} className="sp-float pop" style={{ "--cat": shelfColor(selling.cat) }}>
                   <button className="x" type="button" aria-label="Keep it" onClick={() => { setSelling(null); setLine(speak(voice.putBack)); }}>×</button>
                   <div className="sp-eyebrow">Sell to {display.keeperName}</div>
-                  {itemArt(selling.itemId)
-                    ? <div className="sp-showcase"><img src={itemArt(selling.itemId)} alt={selling.name} /></div>
+                  {itemArt(selling.itemId, selling.tier)
+                    ? <div className="sp-showcase"><img src={itemArt(selling.itemId, selling.tier)} alt={selling.name} /></div>
                     : <ItemOrb item={{ id: selling.itemId, cat: selling.cat, icon: selling.icon }} />}
                   <h3>{selling.name}</h3>
                   <p>You have {selling.qty}{selling.worn ? ", and you're wearing it" : ""}. {display.keeperName} buys back at half the list price, one at a time.</p>
@@ -433,8 +433,8 @@ export default function ShopPage({ preview = false }) {
                 <div key={popKey} className={`sp-float${popKey ? " pop" : ""}`} style={{ "--cat": shelfColor(inHand.cat) }}>
                   {inHandId && <button className="x" type="button" aria-label="Put it back" onClick={() => { setInHandId(null); setLine(speak(voice.putBack)); }}>×</button>}
                   <div className="sp-eyebrow">{!inHandId && inHand === recommended ? `${display.keeperName} recommends` : SHELVES.find((s) => s.id === inHand.cat)?.name}</div>
-                  {itemArt(inHand.id)
-                    ? <div className="sp-showcase"><img src={itemArt(inHand.id)} alt={inHand.name} /></div>
+                  {itemArt(inHand.id, inHand.tier)
+                    ? <div className="sp-showcase"><img src={itemArt(inHand.id, inHand.tier)} alt={inHand.name} /></div>
                     : <ItemOrb item={inHand} />}
                   <h3>{inHand.name}</h3>
                   {inHand.stat && <span className="sp-stat">{inHand.stat}</span>}
@@ -511,8 +511,8 @@ export default function ShopPage({ preview = false }) {
                     {offers.map((o) => (
                       <button key={o.entryId} type="button" className={`sp-good${selling?.entryId === o.entryId ? " sel" : ""}`} style={{ "--cat": shelfColor(o.cat) }} onClick={() => offer(o)} aria-label={`Sell ${o.name} for ${o.price} silver`}>
                         <span className="sp-tag deal">+{o.price}s</span>
-                        <ItemOrb item={{ id: o.itemId, cat: o.cat, icon: o.icon }} />
-                        {o.qty > 1 && <span className="sp-have">×{o.qty}</span>}
+                        <ItemOrb item={{ id: o.itemId, cat: o.cat, icon: o.icon, tier: o.tier }} />
+                        {o.qty > 1 && <span className="sp-have">×{o.qty}</span>}{o.per > 1 && <span className="sp-have">set of {o.per}</span>}
                         <span className="nm">{o.name}</span><span className="st">{[o.itemName && o.itemName.toLowerCase() !== String(o.name).toLowerCase() ? o.itemName : "", o.worn ? "worn" : ""].filter(Boolean).join(" · ")}</span>
                       </button>
                     ))}
