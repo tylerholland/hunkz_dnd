@@ -29,6 +29,18 @@ describe("shop page helpers", () => {
     expect(groups[2].rows[0]).toMatchObject({ qty: 2, art: "/art/shop/items/rope.jpg" });
   });
 
+  it("shows a renamed item's type under its name", () => {
+    const blade = { id: "light-weapon", cat: "arms", name: "Light Weapon" };
+    const byId = new Map([[rope.id, rope], [blade.id, blade]]);
+    const groups = packGroups({
+      weapons: [{ id: "w", name: "Dagger of Bone", itemId: "light-weapon" }],
+      equipment: [{ id: "r", name: "20ft Rope", itemId: "rope" }, { id: "g", name: "Grandpa's Rope", itemId: "rope" }],
+    }, byId);
+    expect(groups[0].rows[0]).toMatchObject({ name: "Dagger of Bone", kind: "Light Weapon", art: "/art/shop/items/light-weapon.jpg" });
+    expect(groups[1].rows.map((r) => r.kind)).toEqual([null, "20ft Rope"]);
+    expect(haveCount({ equipment: [{ name: "Grandpa's Rope", itemId: "rope" }] }, rope)).toBe(1);
+  });
+
   it("keeps the satchel only for the same opening", () => {
     saveSatchel("eoghan", "o1", [{ itemId: "rope", qty: 2 }]);
     expect(loadSatchel("eoghan", "o1")).toEqual([{ itemId: "rope", qty: 2 }]);

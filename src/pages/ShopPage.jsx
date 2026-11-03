@@ -11,7 +11,7 @@ import {
   KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime, townOf, dealPrice,
 } from "../features/shop/shopData";
 import { byMood, fillLine, linesFor } from "../features/shop/keeperLines";
-import { haveCount, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
+import { haveCount, linkedId, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
 import { ShopIcon, ItemOrb, ShopShutters, PackPanel, SatchelSheet, Receipt } from "../features/shop/ShopParts";
 import { purseWorth, useTableMoney } from "../lib/money";
 import "../features/shop/shop.css";
@@ -317,7 +317,7 @@ export default function ShopPage({ preview = false }) {
       const res = await postShopPurchase(slug, password, satchelLines.map((l) => ({ itemId: l.item.id, qty: l.qty })));
       setCharacter((prev) => ({ ...prev, ...res.character }));
       const after = [...(res.character.weapons || []), ...(res.character.equipment || [])];
-      setFresh(new Set(after.filter((e) => !before.has(e.id) || satchelLines.some((l) => e.bought?.itemId === l.item.id)).map((e) => e.id || e.name)));
+      setFresh(new Set(after.filter((e) => !before.has(e.id) || satchelLines.some((l) => linkedId(e) === l.item.id)).map((e) => e.id || e.name)));
       setSatchel([]); setSheetOpen(false);
       setReceipt({ lines: res.lines, total: res.total });
       setLine(speak(voice.pay));
@@ -513,7 +513,7 @@ export default function ShopPage({ preview = false }) {
                         <span className="sp-tag deal">+{o.price}s</span>
                         <ItemOrb item={{ id: o.itemId, cat: o.cat, icon: o.icon }} />
                         {o.qty > 1 && <span className="sp-have">×{o.qty}</span>}
-                        <span className="nm">{o.name}</span><span className="st">{o.worn ? "worn" : ""}</span>
+                        <span className="nm">{o.name}</span><span className="st">{[o.itemName && o.itemName.toLowerCase() !== String(o.name).toLowerCase() ? o.itemName : "", o.worn ? "worn" : ""].filter(Boolean).join(" · ")}</span>
                       </button>
                     ))}
                   </div>

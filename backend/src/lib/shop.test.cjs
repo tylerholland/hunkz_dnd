@@ -97,6 +97,26 @@ test("selling back: half the list price, one at a time, never hirelings", () => 
   assert.equal(sellOne(char, "w", catalog).character.weapons.length, 0);
 });
 
+test("an item's type stays with it: renamed things still sell, stack and stay theirs", () => {
+  const { sellOffers } = require("./shop");
+  const catalog = normalizeCatalog(null);
+  const items = Object.fromEntries(SEED_ITEMS.map((i) => [i.id, i]));
+  let char = { coin: {}, weapons: [{ id: "d", name: "Dagger of Bone", itemId: "light-weapon" }], equipment: [
+    { id: "r", name: "20ft Rope", itemId: "rope" }, { id: "g", name: "Grandpa's Rope", itemId: "rope" },
+  ] };
+  const offers = sellOffers(char, catalog);
+  assert.deepEqual(offers.map((o) => [o.name, o.itemName]), [["Dagger of Bone", "Light Weapon"], ["20ft Rope", "20ft Rope"], ["Grandpa's Rope", "20ft Rope"]]);
+  // Buying more stacks onto the line with the shop's name, not the renamed one.
+  char = addPurchase(char, items.rope, 2);
+  assert.equal(char.equipment.find((e) => e.id === "r").qty, 3);
+  assert.equal(char.equipment.find((e) => e.id === "g").qty, undefined);
+  // New things carry their type.
+  char = addPurchase(char, items.lantern, 1);
+  assert.equal(char.equipment.at(-1).itemId, "lantern");
+  char = addPurchase(char, items["light-weapon"], 1);
+  assert.equal(char.weapons.at(-1).itemId, "light-weapon");
+});
+
 test("the catalog says what World of Dungeons says, and fixes untouched saved text", () => {
   const seed = Object.fromEntries(normalizeCatalog(null).items.map((i) => [i.id, i]));
   assert.equal(seed.quicksilver.stat, undefined);

@@ -4,13 +4,15 @@
 import { itemArt } from "./shopData";
 
 const lower = (s) => String(s || "").trim().toLowerCase();
+// An entry's item type — the catalog item it is (older purchases: bought.itemId).
+export const linkedId = (entry) => entry?.itemId || entry?.bought?.itemId || null;
 const qtyOf = (entry) => Math.max(0, parseInt(entry?.qty ?? 1, 10) || 0);
 
 /** How many of a catalog item the character already carries. */
 export function haveCount(character, item) {
   if (!character) return 0;
   const names = new Set([lower(item.name), lower(`${item.name} (hired)`)]);
-  const match = (e) => e?.bought?.itemId === item.id || names.has(lower(e?.name));
+  const match = (e) => linkedId(e) === item.id || names.has(lower(e?.name));
   const weapons = (character.weapons || []).filter(match).length;
   const gear = (character.equipment || []).filter(match).reduce((n, e) => n + qtyOf(e), 0);
   return weapons + gear;
@@ -18,7 +20,7 @@ export function haveCount(character, item) {
 
 // The shelf a carried thing belongs to, for its colour and icon.
 function shelfFor(entry, catalogById) {
-  const fromShop = entry?.bought?.itemId && catalogById.get(entry.bought.itemId);
+  const fromShop = linkedId(entry) && catalogById.get(linkedId(entry));
   if (fromShop) return { cat: fromShop.cat, id: fromShop.id, icon: fromShop.icon };
   const t = lower(entry?.type);
   if (t === "armor") return { cat: "armor", icon: "armor" };
@@ -32,10 +34,13 @@ function shelfFor(entry, catalogById) {
 export function packGroups(character, catalogById) {
   if (!character) return [];
   const row = (entry, isWeapon) => {
-    const shelf = isWeapon ? { cat: "arms", icon: "blade", ...(entry?.bought?.itemId ? { id: entry.bought.itemId } : {}) } : shelfFor(entry, catalogById);
+    const shelf = isWeapon ? { cat: "arms", icon: "blade", ...(linkedId(entry) ? { id: linkedId(entry) } : {}) } : shelfFor(entry, catalogById);
+    // The item type, when the player's name for it differs ("Dagger of Bone" · Light Weapon).
+    const typeName = shelf.id ? catalogById.get(shelf.id)?.name : null;
     return {
       key: entry.id || entry.name,
       name: entry.name || "Unnamed",
+      kind: typeName && lower(typeName) !== lower(entry.name).replace(/ \(hired\)$/, "") ? typeName : null,
       note: entry.bought?.from ? "" : (entry.description || "").split("\n")[0].slice(0, 60),
       qty: isWeapon ? 1 : qtyOf(entry),
       worn: entry.equipped !== false && (isWeapon || ["armor", "shield"].includes(lower(entry.type))),

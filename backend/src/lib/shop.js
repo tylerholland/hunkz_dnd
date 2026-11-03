@@ -347,6 +347,11 @@ function describe(item) {
   return parts.join(" — ");
 }
 
+// An inventory entry's item type: the catalog item it is (`itemId`), set on
+// purchase or linked by the DM. Its name and description are the player's to
+// change. Older purchases carry it only as `bought.itemId`.
+const linkedId = (entry) => entry?.itemId || entry?.bought?.itemId || null;
+
 /**
  * The character with `qty` of a catalog item added: weapons for arms (one
  * entry each), armour and shields as armour items, everything else as
@@ -359,20 +364,22 @@ function addPurchase(character, item, qty, { shopName } = {}) {
   const name = item.per ? `${item.name} (hired)` : item.name;
   if (item.cat === "arms") {
     for (let i = 0; i < qty; i += 1) {
-      char.weapons.push({ id: newItemId(), name, description: describe(item), mods: item.stat ? [{ attribute: "Damage", value: item.stat }] : [], equipped: false, bought });
+      char.weapons.push({ id: newItemId(), itemId: item.id, name, description: describe(item), mods: item.stat ? [{ attribute: "Damage", value: item.stat }] : [], equipped: false, bought });
     }
     return char;
   }
   const type = item.cat === "armor" ? (item.id === "shield" ? "shield" : "armor") : POTIONS.has(item.id) ? "potion" : item.cat === "tools" ? "tool" : "";
+  // Stack onto the same thing under the same name; a stack the player renamed
+  // ("Grandpa's Rope") stays theirs, and new rope starts its own line.
   const match = item.cat !== "armor" && item.cat !== "hire" && item.cat !== "travel"
-    ? char.equipment.findIndex((e) => String(e?.name || "").trim().toLowerCase() === name.toLowerCase())
+    ? char.equipment.findIndex((e) => String(e?.name || "").trim().toLowerCase() === name.toLowerCase() && (!linkedId(e) || linkedId(e) === item.id))
     : -1;
   if (match >= 0) {
     const existing = char.equipment[match];
-    char.equipment[match] = { ...existing, qty: Math.max(0, toInt(existing.qty ?? 1)) + qty };
+    char.equipment[match] = { ...existing, itemId: item.id, qty: Math.max(0, toInt(existing.qty ?? 1)) + qty };
     return char;
   }
-  const entry = { id: newItemId(), name, description: describe(item), mods: [], equipped: false, bought };
+  const entry = { id: newItemId(), itemId: item.id, name, description: describe(item), mods: [], equipped: false, bought };
   if (type) entry.type = type;
   if (qty !== 1 || CONSUMABLE.has(item.id)) entry.qty = qty;
   char.equipment.push(entry);
@@ -380,11 +387,11 @@ function addPurchase(character, item, qty, { shopName } = {}) {
 }
 
 // ── Selling back ────────────────────────────────────────────────────────────
-// Anything in the pack that matches a catalog item (by where it was bought, or
-// by name) can be sold back for half its list price. Hirelings can't.
+// Anything in the pack that matches a catalog item (by its item type, or by
+// name) can be sold back for half its list price. Hirelings can't.
 function catalogMatch(entry, catalog) {
   if (!entry) return null;
-  const byId = entry.bought?.itemId && catalog.items.find((it) => it.id === entry.bought.itemId);
+  const byId = linkedId(entry) && catalog.items.find((it) => it.id === linkedId(entry));
   if (byId) return byId;
   const name = String(entry.name || "").trim().toLowerCase().replace(/ \(hired\)$/, "");
   return catalog.items.find((it) => it.name.toLowerCase() === name) || null;
@@ -398,7 +405,7 @@ function sellOffers(character, catalog) {
     for (const entry of list || []) {
       const item = catalogMatch(entry, catalog);
       if (!item || item.cat === "hire" || !entry.id) continue;
-      offers.push({ entryId: entry.id, kind, name: entry.name, itemId: item.id, cat: item.cat, icon: item.icon, qty: kind === "weapon" ? 1 : Math.max(1, toInt(entry.qty ?? 1)), price: sellPrice(item), worn: entry.equipped !== false && (kind === "weapon" || ["armor", "shield"].includes(String(entry.type || "").toLowerCase())) });
+      offers.push({ entryId: entry.id, kind, name: entry.name, itemId: item.id, itemName: item.name, cat: item.cat, icon: item.icon, qty: kind === "weapon" ? 1 : Math.max(1, toInt(entry.qty ?? 1)), price: sellPrice(item), worn: entry.equipped !== false && (kind === "weapon" || ["armor", "shield"].includes(String(entry.type || "").toLowerCase())) });
     }
   }
   return offers;

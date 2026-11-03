@@ -60,7 +60,7 @@ export function PackPanel({ character, groups, satchelRows, fresh, open, onToggl
   const row = (r, extra = "") => (
     <div className={`sp-pack-row${extra}${fresh.has(r.key) ? " fresh" : ""}`} key={r.key}>
       <ItemOrb item={{ id: r.id || r.key, cat: r.cat, icon: r.icon }} art={r.art} />
-      <span className="nm">{r.name}</span>
+      <span className="nm">{r.name}{r.kind && <small className="sp-kind">{r.kind}</small>}</span>
       {r.worn ? <span className="worn">worn</span> : <span className="q">{r.qty > 1 ? `×${r.qty}` : ""}</span>}
     </div>
   );
