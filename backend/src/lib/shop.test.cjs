@@ -85,10 +85,10 @@ test("before the next session: scheduled, open, two minutes to pay, closed", () 
   assert.equal(shopStatus(shop, { now: T }).status, "closed");
 });
 
-test("opened by hand stays open until closed; combat shuts it", () => {
+test("opened by hand stays open until closed, even through combat", () => {
   const shop = normalizeShop({ opening: { id: "o2", mode: "now", nowClose: "manual", openedAt: new Date(T).toISOString() } });
   assert.equal(shopStatus(shop, { now: T + 999 * min }).status, "open");
-  assert.equal(shopStatus(shop, { now: T + min, combatMode: true }).status, "combat");
+  assert.equal(shopStatus(shop, { now: T + min, combatMode: true }).status, "open");
   const closed = normalizeShop({ ...shop, opening: { ...shop.opening, closedAt: new Date(T + 10 * min).toISOString() } });
   assert.equal(shopStatus(closed, { now: T + 11 * min }).status, "lockup");
   assert.equal(shopStatus(closed, { now: T + 13 * min }).status, "closed");

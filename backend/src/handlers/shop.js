@@ -63,8 +63,9 @@ async function readAll() {
     rules: bySlug.get(HOUSE_RULES_SLUG)?.weaponDamage === "dnd" ? "dnd" : "wod",
     statusInfo: shopStatus(shop, {
       nextSessionAt: bySlug.get(CHRONICLE_SLUG)?.nextSession?.at || null,
-      combatMode: bySlug.get(MAP_LIBRARY_SLUG)?.combatMode === true,
     }),
+    // Whether the DM is in his Combat view (for the shop page's top bar).
+    combatMode: bySlug.get(MAP_LIBRARY_SLUG)?.combatMode === true,
   };
 }
 
@@ -130,7 +131,7 @@ const SETUP_FIELDS = ["place", "buysBack", "keeper", "pick", "sign", "display", 
 const live = (status) => status === "open" || status === "lockup";
 
 function dmView(state) {
-  return { shop: state.shop, catalog: state.catalog, ...state.statusInfo, version: state.shopVersion, catalogVersion: state.catalogVersion };
+  return { shop: state.shop, catalog: state.catalog, ...state.statusInfo, combatMode: state.combatMode, version: state.shopVersion, catalogVersion: state.catalogVersion };
 }
 
 exports.handler = async (event) => {
@@ -179,7 +180,7 @@ exports.handler = async (event) => {
       const next = { ...shop };
       for (const key of SETUP_FIELDS) if (setup[key] !== undefined) next[key] = setup[key];
       const merged = normalizeShop(next);
-      if (live(statusInfo.status) || statusInfo.status === "combat") {
+      if (live(statusInfo.status)) {
         const wasOut = new Set(shop.out);
         const nowOut = new Set(merged.out);
         const at = new Date().toISOString();
@@ -207,7 +208,7 @@ exports.handler = async (event) => {
         return freshHaggling({ ...shop, justIn: {}, opening: { id: crypto.randomUUID(), mode: "now", nowClose: body.nowClose || "manual", openedAt: at } });
       }
       if (action === "close") {
-        if (!opening || !live(statusInfo.status) && statusInfo.status !== "combat") return { error: badRequest("The shop isn't open") };
+        if (!opening || !live(statusInfo.status)) return { error: badRequest("The shop isn't open") };
         return { ...shop, opening: { ...opening, closedAt: at } };
       }
       if (action === "closeNow") {
@@ -261,7 +262,6 @@ exports.handler = async (event) => {
     if (!lines.length || lines.length > 50) return badRequest("lines must hold 1–50 items");
 
     const { shop, catalog, statusInfo, money } = await readAll();
-    if (statusInfo.status === "combat") return conflict("The shutters are down for the fighting");
     if (!live(statusInfo.status)) return conflict("The shop is closed");
     const visit = visitOf(shop, slug);
     if (visit.thrownOut) return conflict("You've been thrown out of this shop");

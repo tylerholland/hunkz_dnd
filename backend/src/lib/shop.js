@@ -343,9 +343,11 @@ function openingWindow(opening, nextSessionAt) {
 
 /**
  * Whether the shop is open, worked out from times on every read.
- * closed · scheduled · open · lockup (two minutes to pay after a close) · combat.
+ * closed · scheduled · open · lockup (two minutes to pay after a close).
+ * Combat doesn't shut it: the DM's Combat view offers to close it instead, so
+ * setting up a fight doesn't throw shoppers out.
  */
-function shopStatus(shop, { now = Date.now(), nextSessionAt = null, combatMode = false } = {}) {
+function shopStatus(shop, { now = Date.now(), nextSessionAt = null } = {}) {
   const opening = shop?.opening || null;
   const w = openingWindow(opening, nextSessionAt);
   let status = "closed";
@@ -360,7 +362,6 @@ function shopStatus(shop, { now = Date.now(), nextSessionAt = null, combatMode =
       status = "open";
     }
   }
-  if (combatMode && (status === "open" || status === "lockup")) status = "combat";
   return {
     status,
     opensAt: iso(w?.opens),
@@ -412,6 +413,8 @@ function shopSummary(shop, statusInfo, version) {
     keeper: shop.keeper,
     keeperName: shop.display.keeperName,
     name: shop.display.name,
+    // Which opening this is — the DM's Combat view asks once per opening.
+    openingId: shop.opening?.id || null,
     version,
   };
 }

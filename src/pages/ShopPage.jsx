@@ -363,11 +363,10 @@ export default function ShopPage({ preview = false }) {
   }
 
   const lockLeft = shop?.lockupUntil ? Math.max(0, Math.ceil((Date.parse(shop.lockupUntil) - now) / 1000)) : 0;
-  const realLabel = { open: "open", lockup: "locking up", combat: "shut for the fighting", scheduled: "scheduled", closed: "closed" }[shop?.realStatus] || "closed";
+  const realLabel = { open: "open", lockup: "locking up", scheduled: "scheduled", closed: "closed" }[shop?.realStatus] || "closed";
   const hoursText = !status ? "Opening the doors…" : preview ? `Preview · really ${realLabel}` : thrownOut ? "Thrown out" : {
     open: `Open · ${closesText(shop || {}, null)}`,
     lockup: "Locking up",
-    combat: "Shut for the fighting",
     scheduled: shop?.opensAt ? `Opens ${new Date(shop.opensAt).toLocaleString(undefined, { weekday: "long", hour: "numeric", minute: "2-digit" })}` : "Opening soon",
     closed: "Closed",
   }[status];
@@ -384,7 +383,7 @@ export default function ShopPage({ preview = false }) {
   const satchelRows = satchelLines.map((l) => ({ key: `s-${l.item.id}`, id: l.item.id, name: l.item.name, qty: l.qty, cat: l.item.cat, icon: l.item.icon, art: itemArt(l.item.id, l.item.tier, l.item.art) }));
 
   return (
-    <div className={`sp-page${shut || status === "combat" ? " sp-shut" : ""}${status === "lockup" ? " sp-locking" : ""}`} style={pageStyle} data-light={pal.light ? "true" : undefined}>
+    <div className={`sp-page${shut ? " sp-shut" : ""}${status === "lockup" ? " sp-locking" : ""}`} style={pageStyle} data-light={pal.light ? "true" : undefined}>
       {previewBanner}
       {nav}
       <main className="sp-main">

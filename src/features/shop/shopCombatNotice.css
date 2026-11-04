@@ -1,0 +1,15 @@
+/* The DM's Combat view, while the shop is open (ShopCombatNotice). */
+.shop-combat-note {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin: 0 0 10px; padding: 6px 6px 6px 12px;
+  border: 1px solid var(--pal-accent); border-radius: 8px; background: var(--pal-surface-solid);
+  font-family: 'Crimson Text', Georgia, serif; font-size: 15px; color: var(--pal-text);
+}
+.shop-combat-note b { font-weight: 600; }
+.shop-combat-note-actions { display: inline-flex; gap: 6px; margin-left: auto; }
+.shop-combat-note-close, .shop-combat-note-keep {
+  min-height: 36px; padding: 0 12px; border-radius: 4px; font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; cursor: pointer;
+}
+.shop-combat-note-close { border: 1px solid var(--pal-accent); background: var(--pal-accent-dim); color: var(--pal-text); }
+.shop-combat-note-close:disabled { opacity: 0.6; cursor: progress; }
+.shop-combat-note-keep { border: 1px solid var(--pal-border); background: transparent; color: var(--pal-text); }
+.shop-combat-note-err { flex-basis: 100%; font-size: 14px; color: #c06060; }

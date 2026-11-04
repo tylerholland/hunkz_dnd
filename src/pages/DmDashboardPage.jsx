@@ -39,6 +39,7 @@ import { normalizeDefense, statsFromTemplate } from "../features/dmDashboard/npc
 import { armorClassOf } from "../features/characterSheet/armorClass";
 import { computeMapSwitch } from "./combatModeToggle";
 import { NPC_EXPECTED_TTL_MS, npcCombatCaughtUp } from "./npcServerStamps";
+import ShopCombatNotice from "../features/shop/ShopCombatNotice";
 
 // Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
 // server-side only (putNpcCombat.js) whenever an NPC's hpCurrent drops — a
@@ -101,6 +102,8 @@ export default function DmDashboardPage() {
   const [serverTime, setServerTime] = useState(null);
   // DM Settings → house rules (e.g. ability-check dice); shared with players.
   const [houseRules, setHouseRules] = useState(DEFAULT_HOUSE_RULES);
+  // The shop's status from the poll — the Combat view offers to close it.
+  const [shopSummary, setShopSummary] = useState(null);
   const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
   const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -359,6 +362,7 @@ export default function DmDashboardPage() {
       if (acceptMapLibrary) setMapLibrary(mapLibraryData || { activeMapId: null, activeMapView: null, maps: [] });
       setServerTime(sessionData.serverTime || null);
       setHouseRules(normalizeHouseRules(sessionData.houseRules));
+      setShopSummary(sessionData.shop || null);
       reportServerBuildVersion(sessionData.buildVersion);
     } catch {
       // Show stale data rather than error on poll failure.
@@ -1350,6 +1354,7 @@ export default function DmDashboardPage() {
             <CombatGuideOffer who="dm" onOpen={() => { setCombatGuideOffered(true); setCombatGuideOpen(true); }} onDismiss={() => setCombatGuideOffered(true)} />
           )}
           {combatGuideOpen && <CombatGuide who="dm" onClose={() => setCombatGuideOpen(false)} />}
+          {combatMode && <ShopCombatNotice shop={shopSummary} dmPassword={dmPassword} onChanged={() => fetchDashboardData({ background: true, force: true })} />}
           {restNotice && (
             <div style={{ marginBottom: 12, fontFamily: pal.fontUI, fontSize: 11, color: "#88c888", letterSpacing: "0.08em" }}>
               {restNotice}

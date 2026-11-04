@@ -28,14 +28,6 @@ export function ShopShutters({ status, opensAt, closesText, keeperName, plaques 
       </div>
     );
   }
-  if (status === "combat") {
-    return (
-      <div className="sp-shutters fight" role="status">
-        <div className="sp-plaque"><h2>Closed for the Fighting</h2><p>“{plaques.fight}” — {keeperName}</p></div>
-        <p style={{ fontStyle: "italic", opacity: 0.85, margin: 0 }}>The shop reopens when the fighting ends. Your satchel keeps.</p>
-      </div>
-    );
-  }
   if (status === "scheduled" && opensAt) {
     const t = Date.parse(opensAt);
     return (

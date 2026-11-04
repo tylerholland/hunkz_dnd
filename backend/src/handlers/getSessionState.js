@@ -141,7 +141,6 @@ exports.handler = async (event) => {
   const shopRecord = normalizeShop(shopItem);
   const shop = shopSummary(shopRecord, shopStatus(shopRecord, {
     nextSessionAt: sentinelBySlug.get(CHRONICLE_SLUG)?.nextSession?.at || null,
-    combatMode: mapLibrary.combatMode === true,
   }), currentVersion(shopItem));
 
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.

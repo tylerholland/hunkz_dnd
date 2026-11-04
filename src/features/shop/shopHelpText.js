@@ -8,7 +8,7 @@ export const HELP = {
     title: "The shop's status",
     paras: [
       "**Closed**: players see the shutters. **Scheduled**: it opens on its own. **Open**: players can browse, haggle, buy and sell.",
-      "**Locking up** gives anyone with a full satchel 2 minutes to pay. Starting combat shuts it until the fight ends.",
+      "**Locking up** gives anyone with a full satchel 2 minutes to pay. Combat doesn't close it: your Combat view offers to.",
     ],
   },
   schedule: {
@@ -85,7 +85,7 @@ export const HELP = {
 };
 
 // Each step spotlights the element marked data-tour={el}; a step whose
-// element isn't on the page (e.g. no main action during combat) is skipped.
+// element isn't on the page is skipped.
 export const TOUR = [
   { el: "status", title: "Is the shop open?", text: "This bar always shows the shop's state and its one main action. Players only see inside while it's open." },
   { el: "shop", title: "Choose who keeps shop", text: "Pick a shopkeeper template. Each has a usual set of shelves, prices and temper, and their own voice. Set the sign and the town." },

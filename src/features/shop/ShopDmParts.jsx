@@ -30,11 +30,10 @@ export function StatusBar({ info, opening, nextSessionAt, inStock, busy, onActio
   const s = {
     open: { t: "Open", sub: <><small>In stock</small> {inStock}</>, main: ["close", "Close now"] },
     lockup: { t: "Locking up", sub: `Anyone with something in their satchel has ${Math.floor(lockLeft / 60)}:${String(lockLeft % 60).padStart(2, "0")} to pay`, main: ["closeNow", "Close at once"] },
-    combat: { t: "Shut for the fighting", sub: "Combat closed it; it reopens when combat ends" },
     scheduled: { t: "Scheduled", sub: opens ? `Opens ${fmtDay(opens)} at ${fmtTime(opens)} · ${fromNow(opens, now)}, no need to be online` : "", main: ["open", "Open now"], alt: ["cancel", "Cancel opening"] },
     closed: { t: "Closed", sub: "Players see the shutters", main: ["open", "Open now"] },
   }[status] || { t: status };
-  const none = status === "closed" || status === "combat";
+  const none = status === "closed";
   const cap = (t) => t.charAt(0).toUpperCase() + t.slice(1);
   const schedText = isLive ? cap(closesText(info, nextSessionAt))
     : status === "scheduled" && opens && opening?.mode === "next" && nextSessionAt

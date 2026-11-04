@@ -30,7 +30,7 @@ describe("InfoTip", () => {
 
 describe("ShopTour", () => {
   function page() {
-    // Every step's target except the main action (as during combat).
+    // Every step's target except the main action (one that isn't on the page).
     return TOUR.filter((s) => s.el !== "main").map((s) => <div key={s.el} data-tour={s.el} />);
   }
 

@@ -22,7 +22,7 @@ import "../features/shop/shopDm.css";
 // stays live and the rest is locked until the DM unlocks it.
 
 const SETUP_KEYS = ["place", "buysBack", "keeper", "pick", "sign", "display", "carries", "level", "markups", "temper", "fill", "out", "memo", "saved"];
-const statusOf = (d) => ({ status: d.status, opensAt: d.opensAt, closesAt: d.closesAt, lockupUntil: d.lockupUntil, openingId: d.openingId, opening: d.shop?.opening || null });
+const statusOf = (d) => ({ status: d.status, opensAt: d.opensAt, closesAt: d.closesAt, lockupUntil: d.lockupUntil, openingId: d.openingId, opening: d.shop?.opening || null, combatMode: d.combatMode === true });
 const setupOf = (shop) => Object.fromEntries(SETUP_KEYS.map((k) => [k, shop[k]]));
 // This opening's haggling: the log, and who's been thrown out (names from the log).
 function haggleOf(shop) {
@@ -68,8 +68,8 @@ export default function ShopDmPage() {
   const savingRef = useRef(false);
   const { textScale, textScaleMenuItem } = useTextScale();
   const palKey = useDmPalette();
-  // The shop knows when combat has shut it; tell the top bar.
-  useEffect(() => { if (info) setCombatActive(info.status === "combat"); }, [info]);
+  // Whether the DM's Combat view is on, for the top bar's mark.
+  useEffect(() => { if (info) setCombatActive(info.combatMode); }, [info]);
   const pal = PALETTES[palKey] || PALETTES.ocean;
 
   const load = useCallback(async () => {
