@@ -51,6 +51,7 @@ export const shelfColor = (id) => `var(--shop-${id})`;
 // to their line icon.
 export const ART_IDS = new Set([
   "light-weapon", "martial-weapon", "great-weapon", "shortbow", "bow", "heavy-bow",
+  "dagger", "club", "flail", "sling", "hand-crossbow", "crossbow",
   "light-armor", "full-armor", "shield",
   "rope", "spike", "chalk", "parchment", "flint", "torches", "tent", "dice", "caltrops", "bandages", "rations", "waterskin", "wineskin",
   "crowbar", "hatchet", "lockpicks", "ink", "fishing", "shovel", "pickaxe",
