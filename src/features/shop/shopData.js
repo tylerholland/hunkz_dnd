@@ -62,7 +62,8 @@ export const ART_IDS = new Set([
 // A weapon class's picture, for weapons on the shelf that have none of their
 // own yet (Dagger shows the light-weapon art). Classes: backend WEAPON_TIERS.
 export const TIER_ART = { light: "light-weapon", martial: "martial-weapon", great: "great-weapon", "light-ranged": "shortbow", ranged: "bow", "heavy-ranged": "heavy-bow" };
-export const itemArt = (id, tier) => (ART_IDS.has(id) ? `/art/shop/items/${id}.jpg` : TIER_ART[tier] ? `/art/shop/items/${TIER_ART[tier]}.jpg` : null);
+// An uploaded picture (`art`, Item catalog) wins over the built-in one.
+export const itemArt = (id, tier, art) => art || (ART_IDS.has(id) ? `/art/shop/items/${id}.jpg` : TIER_ART[tier] ? `/art/shop/items/${TIER_ART[tier]}.jpg` : null);
 // A shelf tile shows one of its pieces behind it.
 export const SHELF_ART = { arms: "martial-weapon", armor: "full-armor", gear: "rope", tools: "lockpicks", occult: "quicksilver", fancy: "lantern", travel: "horse", hire: "armsman" };
 

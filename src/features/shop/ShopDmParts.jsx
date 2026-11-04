@@ -6,6 +6,7 @@ import {
 } from "./shopData";
 import { byMood, fillLine, linesFor } from "./keeperLines";
 import { catalogToCsv, csvToItems, diffCatalog } from "./shopCsv";
+import { uploadItemArt } from "./itemArtUpload";
 import { ItemOrb } from "./ShopParts";
 import { InfoTip } from "./ShopHelp";
 
@@ -283,8 +284,14 @@ export function ShelvesStock({ setup, items, isLive, locked, onUpdate, onRollPri
 }
 
 // ── The item catalog: edit in place, or round-trip a spreadsheet.
-export function CatalogEditor({ items, onSave, busy }) {
+export function CatalogEditor({ items, onSave, busy, dmPassword }) {
   const [draft, setDraft] = useState(items);
+  // Items added this visit, newest first, shown at the top of the list.
+  const [fresh, setFresh] = useState([]);
+  // The row whose picture is uploading or failed: { id, error? }.
+  const [artState, setArtState] = useState(null);
+  const artRef = useRef(null);
+  const artFor = useRef(null);
   const [baseline, setBaseline] = useState(items);
   const [importing, setImporting] = useState(null);
   const [filter, setFilter] = useState("");
@@ -294,7 +301,8 @@ export function CatalogEditor({ items, onSave, busy }) {
   const dirty = JSON.stringify(draft) !== JSON.stringify(items);
   const edit = (id, patch) => setDraft((d) => d.map((it) => (it.id === id ? { ...it, ...patch } : it)));
   const q = filter.trim().toLowerCase();
-  const rows = draft.filter((it) => (!shelf || it.cat === shelf) && (!q || it.name.toLowerCase().includes(q)));
+  const shown = draft.filter((it) => fresh.includes(it.id) || ((!shelf || it.cat === shelf) && (!q || it.name.toLowerCase().includes(q))));
+  const rows = [...fresh.map((id) => shown.find((it) => it.id === id)).filter(Boolean), ...shown.filter((it) => !fresh.includes(it.id))];
 
   function exportCsv() {
     const a = document.createElement("a");
@@ -313,7 +321,7 @@ export function CatalogEditor({ items, onSave, busy }) {
     const byId = new Map(incoming.map((i) => [i.id, i]));
     // A file without the newer columns (or the icon, which CSVs don't carry)
     // keeps what the item already had.
-    const keep = (it, inc) => ({ ...Object.fromEntries(["icon", "tier", "dnd", "units"].filter((k) => it[k] !== undefined).map((k) => [k, it[k]])), ...inc });
+    const keep = (it, inc) => ({ ...Object.fromEntries(["icon", "tier", "dnd", "units", "art"].filter((k) => it[k] !== undefined).map((k) => [k, it[k]])), ...inc });
     const next = draft.map((it) => (byId.get(it.id) && keep(it, byId.get(it.id))) || (hideMissing && diff.missing.some((m) => m.id === it.id) ? { ...it, hidden: true } : it));
     for (const it of diff.added) next.push(it);
     setDraft(next);
@@ -322,6 +330,23 @@ export function CatalogEditor({ items, onSave, busy }) {
   function addItem() {
     const id = `item-${Date.now().toString(36)}`;
     setDraft((d) => [...d, { id, name: "New item", cat: shelf || "gear", price: 1 }]);
+    setFresh((f) => [id, ...f]);
+  }
+  function pickArt(id) {
+    artFor.current = id;
+    artRef.current?.click();
+  }
+  async function uploadArt(file) {
+    const id = artFor.current;
+    if (!file || !id) return;
+    setArtState({ id });
+    try {
+      const art = await uploadItemArt(file, dmPassword);
+      edit(id, { art });
+      setArtState(null);
+    } catch (err) {
+      setArtState({ id, error: err?.status === 403 ? "DM password rejected." : err?.message || "Couldn't upload." });
+    }
   }
 
   return (
@@ -339,6 +364,7 @@ export function CatalogEditor({ items, onSave, busy }) {
         <button className="sd-tbtn" type="button" onClick={() => fileRef.current?.click()}>⇧ Import CSV</button>
         <InfoTip id="csv" />
         <input ref={fileRef} type="file" accept=".csv,text/csv" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) readFile(f); e.target.value = ""; }} />
+        <input ref={artRef} type="file" accept="image/*" hidden aria-label="Item picture" onChange={(e) => { uploadArt(e.target.files?.[0]); e.target.value = ""; }} />
         <button className="sd-tbtn" type="button" onClick={addItem}>＋ Add item</button>
       </div>
       <div className="sd-table-wrap">
@@ -346,9 +372,17 @@ export function CatalogEditor({ items, onSave, busy }) {
           <thead><tr><th /><th>Item</th><th>Shelf</th><th>Price (s)</th><th>Per</th><th>Effect</th><th>Notes</th><th title="Shown in the shop">Shown</th></tr></thead>
           <tbody>
             {rows.map((it) => (
-              <tr key={it.id} className={it.hidden ? "hidden" : ""}>
-                <td><ItemOrb item={it} /></td>
-                <td><input className="sd-in" value={it.name} onChange={(e) => edit(it.id, { name: e.target.value })} aria-label="Name" /></td>
+              <tr key={it.id} className={`${it.hidden ? "hidden" : ""}${fresh.includes(it.id) ? " fresh" : ""}`}>
+                <td className="sd-art">
+                  <button type="button" className="sd-art-btn" onClick={() => pickArt(it.id)} disabled={artState?.id === it.id && !artState.error}
+                    aria-label={`Change the picture for ${it.name}`} title="Change the picture">
+                    <ItemOrb item={it} />
+                    <span className="sd-art-edit" aria-hidden="true">{artState?.id === it.id && !artState.error ? "…" : "✎"}</span>
+                  </button>
+                  {it.art && <button type="button" className="sd-art-reset" onClick={() => edit(it.id, { art: undefined })} title="Use the built-in picture">Default</button>}
+                  {artState?.id === it.id && artState.error && <span className="sd-art-err" role="alert">{artState.error}</span>}
+                </td>
+                <td><input className="sd-in" value={it.name} onChange={(e) => edit(it.id, { name: e.target.value })} aria-label="Name" autoFocus={fresh[0] === it.id} onFocus={(e) => { if (fresh[0] === it.id && it.name === "New item") e.target.select(); }} /></td>
                 <td><select className="sd-in" value={it.cat} onChange={(e) => edit(it.id, { cat: e.target.value })} aria-label="Shelf">{SHELVES.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}</select></td>
                 <td><input className="sd-in" style={{ width: 72 }} inputMode="decimal" value={it.price} onChange={(e) => edit(it.id, { price: e.target.value === "" ? "" : Number(e.target.value) })} aria-label="Price" /></td>
                 <td><input className="sd-in" style={{ width: 60 }} value={it.per || ""} onChange={(e) => edit(it.id, { per: e.target.value })} aria-label="Per" placeholder="—" /></td>

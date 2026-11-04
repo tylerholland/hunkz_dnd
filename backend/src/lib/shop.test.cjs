@@ -49,6 +49,13 @@ test("saved built-in items pick up weapon classes and sets, keeping the DM's own
   assert.equal(got["light-weapon"].dnd, "1d6");
 });
 
+test("an item keeps a picture the DM uploaded, from our bucket only", () => {
+  const ok = "https://dnd-portraits.s3.us-west-1.amazonaws.com/shop-items/1f2e3d.jpg";
+  assert.equal(normalizeCatalogItem({ id: "dagger", name: "Dagger", cat: "arms", price: 10, art: ok }).art, ok);
+  assert.equal(normalizeCatalogItem({ id: "dagger", name: "Dagger", cat: "arms", price: 10, art: "https://evil.example/x.jpg" }).art, undefined);
+  assert.equal(normalizeCatalogItem({ id: "dagger", name: "Dagger", cat: "arms", price: 10, art: "https://dnd-portraits.s3.us-west-1.amazonaws.com/npc-portraits/1.jpg" }).art, undefined);
+});
+
 test("weapons roll their class's dice, or their own 5e die by the table's rules", () => {
   const { weaponDice, shelfStat, weaponDiceMap } = require("./shop");
   const seed = Object.fromEntries(SEED_ITEMS.map((i) => [i.id, normalizeCatalogItem(i)]));

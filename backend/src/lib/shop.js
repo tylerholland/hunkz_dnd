@@ -194,10 +194,14 @@ function normalizeCatalogItem(raw) {
   const icon = clip(raw.icon, 20); if (icon) item.icon = icon;
   if (raw.hidden === true) item.hidden = true;
   if (WEAPON_TIERS[raw.tier]) item.tier = raw.tier;
+  // A picture the DM uploaded (Item catalog), from our own bucket only.
+  if (typeof raw.art === "string" && ITEM_ART_URL.test(raw.art)) item.art = raw.art;
   const dnd = clip(raw.dnd, 20).replace(/\s+/g, ""); if (DICE.test(dnd)) item.dnd = dnd;
   const units = toInt(raw.units); if (units >= 2 && units <= 100) item.units = units;
   return item;
 }
+
+const ITEM_ART_URL = /^https:\/\/[a-z0-9.-]+\.s3\.[a-z0-9-]+\.amazonaws\.com\/shop-items\/[a-z0-9-]+\.(jpg|jpeg|png|webp)$/;
 
 // ── Weapon damage ───────────────────────────────────────────────────────────
 // `rules`: DM Settings → Weapon damage — "wod" (World of Dungeons: the item's
@@ -381,7 +385,7 @@ function playerShop(shop, catalog, statusInfo, rules = "wod") {
       .filter((it) => !it.hidden && shop.carries.includes(it.cat))
       .map((it) => {
         const view = { id: it.id, cat: it.cat, name: it.name, price: markedPrice(it, shop.markups) };
-        for (const k of ["per", "notes", "icon", "tier", "units"]) if (it[k]) view[k] = it[k];
+        for (const k of ["per", "notes", "icon", "tier", "units", "art"]) if (it[k]) view[k] = it[k];
         const stat = shelfStat(it, rules); if (stat) view.stat = stat;
         if (out.has(it.id)) view.out = true;
         if (!out.has(it.id) && shop.justIn[it.id]) view.justIn = true;
@@ -493,7 +497,7 @@ function sellOffers(character, catalog) {
       const have = kind === "weapon" ? 1 : Math.max(1, toInt(entry.qty ?? 1));
       const per = kind === "weapon" ? 1 : item.units || 1;
       if (have < per) continue;
-      offers.push({ entryId: entry.id, kind, name: entry.name, itemId: item.id, itemName: item.name, cat: item.cat, icon: item.icon, ...(item.tier ? { tier: item.tier } : {}), qty: Math.floor(have / per), ...(per > 1 ? { per } : {}), price: sellPrice(item), worn: entry.equipped !== false && (kind === "weapon" || ["armor", "shield"].includes(String(entry.type || "").toLowerCase())) });
+      offers.push({ entryId: entry.id, kind, name: entry.name, itemId: item.id, itemName: item.name, cat: item.cat, icon: item.icon, ...(item.tier ? { tier: item.tier } : {}), ...(item.art ? { art: item.art } : {}), qty: Math.floor(have / per), ...(per > 1 ? { per } : {}), price: sellPrice(item), worn: entry.equipped !== false && (kind === "weapon" || ["armor", "shield"].includes(String(entry.type || "").toLowerCase())) });
     }
   }
   return offers;

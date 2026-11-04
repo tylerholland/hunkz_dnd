@@ -16,17 +16,19 @@ exports.handler = async (event) => {
 
   const body = JSON.parse(event.body || "{}");
   const { filename, contentType, size } = body;
+  // The same upload serves shop item pictures (Item catalog), in their own folder.
+  const folder = body.kind === "shop-item" ? "shop-items" : "npc-portraits";
 
   if (!filename || typeof filename !== "string") return badRequest("filename required");
   if (!contentType || !contentType.startsWith("image/")) {
-    return badRequest("Only image files are supported for NPC portraits");
+    return badRequest("Only image files are supported");
   }
   if (!Number.isFinite(size) || size <= 0) return badRequest("size required");
-  if (size > MAX_PORTRAIT_SIZE_BYTES) return badRequest("NPC portraits must be 5 MB or smaller");
+  if (size > MAX_PORTRAIT_SIZE_BYTES) return badRequest("Pictures must be 5 MB or smaller");
 
   const id = crypto.randomUUID();
   const ext = contentType.split("/")[1].replace("jpeg", "jpg");
-  const s3Key = `npc-portraits/${id}.${ext}`;
+  const s3Key = `${folder}/${id}.${ext}`;
 
   const uploadUrl = await getSignedUrl(
     s3,

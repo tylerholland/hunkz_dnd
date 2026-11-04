@@ -238,7 +238,7 @@ export default function ShopDmPage() {
         </div>
         {error && <p className="sd-error" role="alert">{error}</p>}
         {!setup || !catalog ? <p className="sd-hint">Loading the shop…</p> : tab === "catalog" ? (
-          <CatalogEditor items={catalog} onSave={saveCatalog} busy={busy} />
+          <CatalogEditor items={catalog} onSave={saveCatalog} busy={busy} dmPassword={dmPassword} />
         ) : isLive ? (
           <>
             <div className="sd-lockbar">

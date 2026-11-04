@@ -304,6 +304,14 @@ export const putHouseRules = (dmPassword, rules) =>
     body: JSON.stringify(rules),
   });
 
+// A shop item's picture (Item catalog) uses the same upload, in its own folder.
+export const presignShopItemArt = (filename, contentType, size, dmPassword) =>
+  request("/npc-library/portraits/presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ filename, contentType, size, kind: "shop-item" }),
+  });
+
 export const presignNpcPortrait = (filename, contentType, size, dmPassword) =>
   request("/npc-library/portraits/presign", {
     method: "POST",
