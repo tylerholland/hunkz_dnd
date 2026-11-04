@@ -53,7 +53,7 @@ const SEED_ITEMS = [
   weapon("bow", "Bow", "ranged", "1d8"),
   weapon("crossbow", "Crossbow", "ranged", "1d8"),
   { id: "heavy-bow", cat: "arms", name: "Heavy Bow", price: 50, icon: "bow", stat: "d6+2", tier: "heavy-ranged", dnd: "1d10", hidden: true, notes: "d6+2 damage if firing from a stationary position. Includes arbalests." },
-  weapon("heavy-crossbow", "Heavy Crossbow", "heavy-ranged", "1d10"),
+  weapon("heavy-crossbow", "Heavy Crossbow", "heavy-ranged", "1d10", { hidden: true }),
   weapon("longbow", "Longbow", "heavy-ranged", "1d8"),
   { id: "light-armor", cat: "armor", name: "Light Armour", price: 30, icon: "armor", stat: "Armour 1" },
   { id: "full-armor", cat: "armor", name: "Full Armour", price: 60, icon: "heavy", stat: "Armour 2", notes: "Always has a helm. Makes it very hard to run, move quietly, swim, leap etc." },
