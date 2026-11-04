@@ -43,4 +43,23 @@ describe("item art", () => {
     const missing = [...ART_IDS, ...Object.values(SHELF_ART)].filter((id) => !existsSync(`public/art/shop/items/${id}.jpg`));
     expect(missing).toEqual([]);
   });
+
+  it("every alternate picture has its file", async () => {
+    const { existsSync } = await import("node:fs");
+    const { ART_VARIANTS } = await import("./shopData");
+    const missing = Object.entries(ART_VARIANTS).flatMap(([id, n]) => Array.from({ length: n - 1 }, (_, i) => `${id}-${i + 2}`)).filter((f) => !existsSync(`public/art/shop/items/${f}.jpg`));
+    expect(missing).toEqual([]);
+  });
+
+  it("each opening picks one picture per item, the same for everyone, and an owned item keeps its own", async () => {
+    const { artVariant, itemArt } = await import("./shopData");
+    const picks = new Set(Array.from({ length: 40 }, (_, i) => artVariant(`opening-${i}`, "battle-axe")));
+    expect(picks).toEqual(new Set([1, 2])); // both pictures turn up across openings
+    expect(artVariant("o1", "battle-axe")).toBe(artVariant("o1", "battle-axe")); // steady
+    expect(artVariant("o1", "rope")).toBe(1); // one picture: always the base
+    expect(artVariant(null, "battle-axe")).toBe(1);
+    expect(itemArt("battle-axe", "great", undefined, 2)).toBe("/art/shop/items/battle-axe-2.jpg");
+    expect(itemArt("rope", undefined, undefined, 2)).toBe("/art/shop/items/rope.jpg");
+    expect(itemArt("battle-axe", "great", "https://x/up.jpg", 2)).toBe("https://x/up.jpg");
+  });
 });

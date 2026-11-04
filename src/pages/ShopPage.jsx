@@ -7,9 +7,7 @@ import { useTextScale } from "../lib/useTextScale";
 import { useAdaptivePolling, ACTIVE_POLL_MS, CONNECTED_POLL_MS } from "../lib/liveSync";
 import { useSessionSocket } from "../lib/useSessionSocket";
 import { acceptVersion, characterVersionKey } from "../lib/versionFloors";
-import {
-  KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime, townOf, dealPrice,
-} from "../features/shop/shopData";
+import { KEEPERS, SCENES, SHELVES, shelfColor, itemArt, SHELF_ART, pick, closesText, fmtTime, townOf, dealPrice, artVariant } from "../features/shop/shopData";
 import { byMood, fillLine, linesFor } from "../features/shop/keeperLines";
 import { haveCount, linkedId, packGroups, loadSatchel, saveSatchel, placeBubble, flyCoins } from "../features/shop/shopPlayer";
 import { ShopIcon, ItemOrb, ShopShutters, PackPanel, SatchelSheet, Receipt } from "../features/shop/ShopParts";
@@ -164,7 +162,8 @@ export default function ShopPage({ preview = false }) {
     where: summary?.name ? "" : keeper.names[0][1],
     sub: summary?.name ? "" : keeper.names[0][2],
   };
-  const items = useMemo(() => shop?.items || [], [shop]);
+  // Each item's picture for this opening (Story 73), the same for everyone.
+  const items = useMemo(() => (shop?.items || []).map((it) => ({ ...it, variant: artVariant(shop?.openingId, it.id) })), [shop]);
   const byId = useMemo(() => new Map(items.map((it) => [it.id, it])), [items]);
   const shelves = useMemo(() => SHELVES.filter((s) => items.some((it) => it.cat === s.id)), [items]);
   // This shopper's own haggling: deals struck, items refused to them, thrown out.
@@ -314,7 +313,7 @@ export default function ShopPage({ preview = false }) {
     if (!reducedMotion()) flyCoins(payRef.current?.querySelector(".sp-btn.gold"), sceneRef.current, total);
     try {
       const before = new Set([...(character?.weapons || []), ...(character?.equipment || [])].map((e) => e.id));
-      const res = await postShopPurchase(slug, password, satchelLines.map((l) => ({ itemId: l.item.id, qty: l.qty })));
+      const res = await postShopPurchase(slug, password, satchelLines.map((l) => ({ itemId: l.item.id, qty: l.qty, variant: l.item.variant })));
       setCharacter((prev) => ({ ...prev, ...res.character }));
       const after = [...(res.character.weapons || []), ...(res.character.equipment || [])];
       setFresh(new Set(after.filter((e) => !before.has(e.id) || satchelLines.some((l) => linkedId(e) === l.item.id)).map((e) => e.id || e.name)));
@@ -380,7 +379,7 @@ export default function ShopPage({ preview = false }) {
   const shelf = SHELVES.find((s) => s.id === currentCat);
   const shelfItems = items.filter((it) => it.cat === currentCat);
   const groups = packGroups(character, byId);
-  const satchelRows = satchelLines.map((l) => ({ key: `s-${l.item.id}`, id: l.item.id, name: l.item.name, qty: l.qty, cat: l.item.cat, icon: l.item.icon, art: itemArt(l.item.id, l.item.tier, l.item.art) }));
+  const satchelRows = satchelLines.map((l) => ({ key: `s-${l.item.id}`, id: l.item.id, name: l.item.name, qty: l.qty, cat: l.item.cat, icon: l.item.icon, art: itemArt(l.item.id, l.item.tier, l.item.art, l.item.variant) }));
 
   return (
     <div className={`sp-page${shut ? " sp-shut" : ""}${status === "lockup" ? " sp-locking" : ""}`} style={pageStyle} data-light={pal.light ? "true" : undefined}>
@@ -417,8 +416,8 @@ export default function ShopPage({ preview = false }) {
                 <div key={`sell-${selling.entryId}`} className="sp-float pop" style={{ "--cat": shelfColor(selling.cat) }}>
                   <button className="x" type="button" aria-label="Keep it" onClick={() => { setSelling(null); setLine(speak(voice.putBack)); }}>×</button>
                   <div className="sp-eyebrow">Sell to {display.keeperName}</div>
-                  {itemArt(selling.itemId, selling.tier, selling.art)
-                    ? <div className="sp-showcase"><img src={itemArt(selling.itemId, selling.tier, selling.art)} alt={selling.name} /></div>
+                  {itemArt(selling.itemId, selling.tier, selling.art, selling.variant)
+                    ? <div className="sp-showcase"><img src={itemArt(selling.itemId, selling.tier, selling.art, selling.variant)} alt={selling.name} /></div>
                     : <ItemOrb item={{ id: selling.itemId, cat: selling.cat, icon: selling.icon }} />}
                   <h3>{selling.name}</h3>
                   <p>You have {selling.qty}{selling.worn ? ", and you're wearing it" : ""}. {display.keeperName} buys back at half the list price, one at a time.</p>
@@ -432,8 +431,8 @@ export default function ShopPage({ preview = false }) {
                 <div key={popKey} className={`sp-float${popKey ? " pop" : ""}`} style={{ "--cat": shelfColor(inHand.cat) }}>
                   {inHandId && <button className="x" type="button" aria-label="Put it back" onClick={() => { setInHandId(null); setLine(speak(voice.putBack)); }}>×</button>}
                   <div className="sp-eyebrow">{!inHandId && inHand === recommended ? `${display.keeperName} recommends` : SHELVES.find((s) => s.id === inHand.cat)?.name}</div>
-                  {itemArt(inHand.id, inHand.tier, inHand.art)
-                    ? <div className="sp-showcase"><img src={itemArt(inHand.id, inHand.tier, inHand.art)} alt={inHand.name} /></div>
+                  {itemArt(inHand.id, inHand.tier, inHand.art, inHand.variant)
+                    ? <div className="sp-showcase"><img src={itemArt(inHand.id, inHand.tier, inHand.art, inHand.variant)} alt={inHand.name} /></div>
                     : <ItemOrb item={inHand} />}
                   <h3>{inHand.name}</h3>
                   {inHand.stat && <span className="sp-stat">{inHand.stat}</span>}
@@ -510,7 +509,7 @@ export default function ShopPage({ preview = false }) {
                     {offers.map((o) => (
                       <button key={o.entryId} type="button" className={`sp-good${selling?.entryId === o.entryId ? " sel" : ""}`} style={{ "--cat": shelfColor(o.cat) }} onClick={() => offer(o)} aria-label={`Sell ${o.name} for ${o.price} silver`}>
                         <span className="sp-tag deal">+{o.price}s</span>
-                        <ItemOrb item={{ id: o.itemId, cat: o.cat, icon: o.icon, tier: o.tier, art: o.art }} />
+                        <ItemOrb item={{ id: o.itemId, cat: o.cat, icon: o.icon, tier: o.tier, art: o.art, variant: o.variant }} />
                         {o.qty > 1 && <span className="sp-have">×{o.qty}</span>}{o.per > 1 && <span className="sp-have">set of {o.per}</span>}
                         <span className="nm">{o.name}</span><span className="st">{[o.itemName && o.itemName.toLowerCase() !== String(o.name).toLowerCase() ? o.itemName : "", o.worn ? "worn" : ""].filter(Boolean).join(" · ")}</span>
                       </button>

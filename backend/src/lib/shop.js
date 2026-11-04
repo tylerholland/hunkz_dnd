@@ -444,11 +444,14 @@ const linkedId = (entry) => entry?.itemId || entry?.bought?.itemId || null;
  * equipment, merged into a matching stack. New things arrive stowed, so
  * nothing changes the character's AC until they put it on.
  */
-function addPurchase(character, item, sets, { shopName } = {}) {
+function addPurchase(character, item, sets, { shopName, variant } = {}) {
   // Things sold in sets (torches, in fours) land as single pieces.
   const qty = item.cat === "arms" ? sets : sets * (item.units || 1);
   const char = { ...character, weapons: [...(character.weapons || [])], equipment: [...(character.equipment || [])] };
   const bought = shopName ? { from: shopName, itemId: item.id, at: new Date().toISOString() } : { itemId: item.id };
+  // Which of the item's pictures the buyer saw (Story 73), so it keeps it.
+  const v = parseInt(variant, 10);
+  if (v >= 2 && v <= 9) bought.variant = v;
   const name = item.per ? `${item.name} (hired)` : item.name;
   if (item.cat === "arms") {
     // A weapon with a class rolls its type's dice (by the table's rules) until
@@ -500,7 +503,7 @@ function sellOffers(character, catalog) {
       const have = kind === "weapon" ? 1 : Math.max(1, toInt(entry.qty ?? 1));
       const per = kind === "weapon" ? 1 : item.units || 1;
       if (have < per) continue;
-      offers.push({ entryId: entry.id, kind, name: entry.name, itemId: item.id, itemName: item.name, cat: item.cat, icon: item.icon, ...(item.tier ? { tier: item.tier } : {}), ...(item.art ? { art: item.art } : {}), qty: Math.floor(have / per), ...(per > 1 ? { per } : {}), price: sellPrice(item), worn: entry.equipped !== false && (kind === "weapon" || ["armor", "shield"].includes(String(entry.type || "").toLowerCase())) });
+      offers.push({ entryId: entry.id, kind, name: entry.name, itemId: item.id, itemName: item.name, cat: item.cat, icon: item.icon, ...(item.tier ? { tier: item.tier } : {}), ...(item.art ? { art: item.art } : {}), ...(entry.bought?.variant ? { variant: entry.bought.variant } : {}), qty: Math.floor(have / per), ...(per > 1 ? { per } : {}), price: sellPrice(item), worn: entry.equipped !== false && (kind === "weapon" || ["armor", "shield"].includes(String(entry.type || "").toLowerCase())) });
     }
   }
   return offers;

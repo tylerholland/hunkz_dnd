@@ -1,6 +1,6 @@
 # Feature Story 73: Item Art Variants
 
-**Status**: Backlog — not started (written 2026-10-27, to revisit when more item art exists).
+**Status**: Built 2026-11-03 for the shop — `ART_VARIANTS` + `artVariant()` in `src/features/shop/shopData.js` (hash of opening + item), `bought.variant` keeps a bought item's picture. First item with alternates: Battle-Axe (2). The other alternates listed below are not converted yet.
 **Builds on**: Story 72 (The Item Shop) — item art lives in `public/art/shop/items/<id>.jpg`, listed in `ART_IDS` in `src/features/shop/shopData.js`.
 
 ## Goal

@@ -63,8 +63,26 @@ export const ART_IDS = new Set([
 // A weapon class's picture, for weapons on the shelf that have none of their
 // own yet (Dagger shows the light-weapon art). Classes: backend WEAPON_TIERS.
 export const TIER_ART = { light: "light-weapon", martial: "martial-weapon", great: "great-weapon", "light-ranged": "shortbow", ranged: "bow", "heavy-ranged": "heavy-bow" };
-// An uploaded picture (`art`, Item catalog) wins over the built-in one.
-export const itemArt = (id, tier, art) => art || (ART_IDS.has(id) ? `/art/shop/items/${id}.jpg` : TIER_ART[tier] ? `/art/shop/items/${TIER_ART[tier]}.jpg` : null);
+// Story 73 — items with more than one built-in picture: how many (files are
+// <id>.jpg, <id>-2.jpg …). Each opening shows one, picked by artVariant.
+export const ART_VARIANTS = { "battle-axe": 2 };
+
+// Which picture an item shows this opening: random, the same for everyone
+// viewing it, steady across polls, and fresh next opening (a hash of the
+// opening and the item, so nothing is stored). 1 is the base picture.
+export function artVariant(openingId, itemId) {
+  const n = ART_VARIANTS[itemId] || 1;
+  if (n < 2 || !openingId) return 1;
+  let h = 0x811c9dc5;
+  for (const ch of `${openingId}|${itemId}`) { h ^= ch.charCodeAt(0); h = Math.imul(h, 0x01000193) >>> 0; }
+  return 1 + (h % n);
+}
+
+// An uploaded picture (`art`, Item catalog) wins over the built-in one; a
+// variant (2, 3…) picks one of an item's alternate built-in pictures.
+export const itemArt = (id, tier, art, variant = 1) => art
+  || (ART_IDS.has(id) ? `/art/shop/items/${id}${variant > 1 && variant <= (ART_VARIANTS[id] || 1) ? `-${variant}` : ""}.jpg`
+    : TIER_ART[tier] ? `/art/shop/items/${TIER_ART[tier]}.jpg` : null);
 // A shelf tile shows one of its pieces behind it.
 export const SHELF_ART = { arms: "martial-weapon", armor: "full-armor", gear: "rope", tools: "lockpicks", occult: "quicksilver", fancy: "lantern", travel: "horse", hire: "armsman" };
 

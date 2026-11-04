@@ -195,6 +195,14 @@ test("purchases land in the pack, stowed", () => {
   assert.deepEqual([char.equipment.at(-1).type, char.equipment.at(-1).qty], ["potion", 1]);
 });
 
+test("a bought item keeps the picture its buyer saw", () => {
+  const items = Object.fromEntries(SEED_ITEMS.map((i) => [i.id, i]));
+  let char = addPurchase({ weapons: [], equipment: [] }, items["battle-axe"], 1, { shopName: "Ironwhistle's", variant: 2 });
+  assert.equal(char.weapons[0].bought.variant, 2);
+  char = addPurchase(char, items["battle-axe"], 1, { variant: "nonsense" });
+  assert.equal(char.weapons[1].bought.variant, undefined);
+});
+
 test("torches come in fours and go back a whole set at a time", () => {
   const { sellOffers, sellOne } = require("./shop");
   const catalog = normalizeCatalog(null);

@@ -277,7 +277,7 @@ exports.handler = async (event) => {
       if (!Number.isFinite(qty) || qty < 1 || qty > MAX_QTY) return badRequest("qty must be 1–99");
       // Your haggled price, if you struck one.
       const mult = dealMult(visit, item.id);
-      wanted.push({ item, qty, each: dealPrice(markedPrice(item, shop.markups), mult), short: mult !== 1 ? visit.deals[item.id]?.short || null : null });
+      wanted.push({ item, qty, variant: line?.variant, each: dealPrice(markedPrice(item, shop.markups), mult), short: mult !== 1 ? visit.deals[item.id]?.short || null : null });
     }
     const total = wanted.reduce((sum, w) => sum + w.each * w.qty, 0);
 
@@ -293,7 +293,7 @@ exports.handler = async (event) => {
         const coin = payFromPurse(character.coin || {}, total, money);
         if (!coin) return { status: "poor" };
         let next = { ...character, coin };
-        for (const w of wanted) next = addPurchase(next, w.item, w.qty, { shopName: shop.display.name });
+        for (const w of wanted) next = addPurchase(next, w.item, w.qty, { shopName: shop.display.name, variant: w.variant });
         const expected = currentVersion(character);
         try {
           await db.send(new PutCommand(conditionalPutParams(TABLE, { ...next, slug, updatedAt: new Date().toISOString() }, expected)));
