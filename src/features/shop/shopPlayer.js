@@ -18,9 +18,18 @@ export function haveCount(character, item) {
   return weapons + gear;
 }
 
+// The catalog item a carried thing is: its item type, else a catalog item with
+// exactly its name (as selling back matches it).
+function catalogItemFor(entry, catalogById) {
+  if (linkedId(entry)) return catalogById.get(linkedId(entry)) || null;
+  const name = lower(entry?.name).replace(/ \(hired\)$/, "");
+  for (const it of catalogById.values()) if (lower(it.name) === name) return it;
+  return null;
+}
+
 // The shelf a carried thing belongs to, for its colour and icon.
 function shelfFor(entry, catalogById) {
-  const fromShop = linkedId(entry) && catalogById.get(linkedId(entry));
+  const fromShop = catalogItemFor(entry, catalogById);
   if (fromShop) return { cat: fromShop.cat, id: fromShop.id, icon: fromShop.icon };
   const t = lower(entry?.type);
   if (t === "armor") return { cat: "armor", icon: "armor" };
@@ -34,7 +43,8 @@ function shelfFor(entry, catalogById) {
 export function packGroups(character, catalogById) {
   if (!character) return [];
   const row = (entry, isWeapon) => {
-    const shelf = isWeapon ? { cat: "arms", icon: "blade", ...(linkedId(entry) ? { id: linkedId(entry) } : {}) } : shelfFor(entry, catalogById);
+    const asWeapon = isWeapon && catalogItemFor(entry, catalogById);
+    const shelf = isWeapon ? { cat: "arms", icon: asWeapon?.icon || "blade", ...(asWeapon ? { id: asWeapon.id } : {}) } : shelfFor(entry, catalogById);
     // The item type, when the player's name for it differs ("Dagger of Bone" · Light Weapon).
     const typeName = shelf.id ? catalogById.get(shelf.id)?.name : null;
     return {

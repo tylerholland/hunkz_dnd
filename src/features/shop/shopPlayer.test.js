@@ -41,6 +41,15 @@ describe("shop page helpers", () => {
     expect(haveCount({ equipment: [{ name: "Grandpa's Rope", itemId: "rope" }] }, rope)).toBe(1);
   });
 
+  it("shows a shop picture for an unlinked thing named exactly like a shop item", () => {
+    const blade = { id: "dagger", cat: "arms", name: "Dagger", icon: "blade", tier: "light" };
+    const byId = new Map([[rope.id, rope], [blade.id, blade]]);
+    const groups = packGroups({ weapons: [{ id: "w", name: "Dagger" }], equipment: [{ id: "r", name: "20ft Rope", type: "tool" }, { id: "x", name: "Lucky pebble" }] }, byId);
+    expect(groups[0].rows[0]).toMatchObject({ art: "/art/shop/items/dagger.jpg", kind: null });
+    expect(groups[1].rows[0]).toMatchObject({ cat: "gear", art: "/art/shop/items/rope.jpg" });
+    expect(groups[1].rows[1].art).toBeNull();
+  });
+
   it("keeps the satchel only for the same opening", () => {
     saveSatchel("eoghan", "o1", [{ itemId: "rope", qty: 2 }]);
     expect(loadSatchel("eoghan", "o1")).toEqual([{ itemId: "rope", qty: 2 }]);
