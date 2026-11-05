@@ -20,3 +20,6 @@ backend/.aws-sam/
 src/assets/Living-Greyhawk-Gazetteer.pdf
 # Combat FX source art pack (59MB); only the sheets in public/effects ship
 src/assets/FA01/
+
+# Local data backups (player data; never committed)
+backups/
