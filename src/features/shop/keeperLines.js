@@ -327,7 +327,7 @@ export const KEEPER_LINES = {
       "bone-dust": "Bone dust, properly prepared. I don't ask whose.",
       "holy-water": "Blessed at the Cathedral of the Dawn. You can tell.",
       "blood": "Vial of blood. Fresh. Don't ask, and I won't tell.",
-      "potion-healing": "A potion of healing. Red as a robin, and twice as welcome.",
+      "potion-healing": "A potion of healing. Green as spring moss, and twice as welcome.",
       "incense": "Temple incense and anointing oils. Smells of old prayers.",
       "mirror": "Silvered glass, gilt frame. From a noble house. It's seen things.",
       "lantern": "Brass hooded lantern. Good shutters. Keeps the wind out.",
