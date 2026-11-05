@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Who's Here</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  Who's here — presence dots. Prototype, no live API.
+
+  Signal: every open page polls GET /session-state every 1–30 s (a hidden tab
+  ~once a minute at worst). Each poll that names a character (player pages) or
+  carries the DM password stamps that person's "last seen" in one shared
+  `presence` record — at most once a minute per person — and the poll returns
+  { slug|"dm": lastSeenAt } to everyone.
+
+  States (deliberately slow, so quiet tables don't flicker):
+  - green  · online            seen in the last 5 min (≈5 missed check-ins)
+  - yellow · recently active   5–30 min
+  - gray   · away              over 30 min, or never
+  A tab left open in the background counts as online. Locking a phone or
+  closing the tab turns someone yellow after 5 min, gray after 30.
+
+  Where: a dot on each portrait in the DM's party cards (Adventure and
+  Combat), the same on the players' Party strip (Session mode), and a small
+  "DM" marker in the top bar for players. Hover/focus/tap for the words.
+  Trust: presence trusts the character a poll names (ADR-005), like the rest.
+  Not shown: map tokens (clutter), home page orbs (later, if wanted).
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
+    --dim:#1e3a4e; --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#080a0e; --card:#121a24; --tip:#0b1622;
+    --on:#4fd17a; --on-glow:rgba(79,209,122,.55); --recent:#e6c14a; --away:#6b7682;
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --solid:#ece4d2; --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
+    --dim:rgba(140,110,70,.16); --text:#2a2018; --body:#3c2e1c; --muted:#6f573c; --page:#e9e1d2; --card:#efe6d4; --tip:#fffaf0;
+    --on:#2f9a52; --on-glow:rgba(47,154,82,.35); --recent:#b8860b; --away:#9a8f80;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button, input { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+  main { max-width:1180px; margin:0 auto; padding:24px 16px 80px; display:grid; gap:26px; }
+  h1 { margin:0; font-family:'Cinzel',serif; font-weight:400; letter-spacing:.08em; color:var(--text); font-size:22px; }
+  .note { margin:6px 0 0; font-style:italic; color:var(--muted); font-size:15px; max-width:860px; }
+  .where { margin:0 0 8px; font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .ctl { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .ctl button { border:0; background:transparent; padding:7px 13px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .ctl button.on { background:var(--dim); color:var(--text); }
+  .label { font-family:'Cinzel',serif; font-size:10px; letter-spacing:.22em; text-transform:uppercase; color:var(--muted); }
+  .hint { margin:0; font-size:14px; font-style:italic; color:var(--muted); }
+
+  /* The dot */
+  .presence { position:absolute; right:2px; bottom:2px; width:var(--d,16px); height:var(--d,16px); border-radius:50%; border:2px solid var(--card); background:var(--away); z-index:2; }
+  .presence.on { background:var(--on); box-shadow:0 0 0 0 var(--on-glow), 0 0 8px var(--on-glow); }
+  .presence.recent { background:var(--recent); }
+  .presence.away { background:var(--away); }
+  .presence .tip { position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); width:max-content; padding:5px 9px; border:1px solid var(--border); border-radius:6px; background:var(--tip); color:var(--text); font-family:'Crimson Text',Georgia,serif; font-size:14px; text-transform:none; letter-spacing:0; opacity:0; pointer-events:none; transition:opacity 120ms; }
+  .presence:hover .tip, .presence:focus-visible .tip, .presence.open .tip { opacity:1; }
+  @media (prefers-reduced-motion: reduce) { .presence .tip { transition:none; } }
+
+  /* DM party cards */
+  .cards { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:12px; }
+  .cc { display:flex; gap:12px; align-items:center; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
+  .portrait { position:relative; width:80px; height:80px; flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:30px; color:#f3e6d0; }
+  .portrait .face { position:absolute; inset:0; border-radius:50%; border:2px solid var(--accent); }
+  .cc b { display:block; font-family:'Cinzel',serif; font-weight:400; font-size:17px; color:var(--text); }
+  .cc small { color:var(--muted); font-size:14px; }
+
+  /* Player party strip */
+  .strip { display:grid; gap:6px; max-width:320px; padding:12px; border:1px solid var(--border); border-radius:10px; background:var(--card); }
+  .pm { display:flex; align-items:center; gap:10px; min-height:48px; }
+  .pm .portrait { width:40px; height:40px; font-size:16px; }
+  .pm .presence { --d:12px; right:-1px; bottom:-1px; }
+  .pm span { font-family:'Cinzel',serif; font-size:14px; color:var(--text); }
+  .pm em { margin-left:auto; color:var(--muted); font-size:13px; }
+
+  /* Top bar */
+  .topbar { display:flex; align-items:center; gap:16px; padding:10px 14px; border:1px solid var(--border); border-radius:10px; background:var(--solid); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.12em; text-transform:uppercase; color:var(--muted); }
+  .topbar .sp { flex:1; }
+  .live { display:inline-flex; align-items:center; gap:6px; }
+  .live i { width:8px; height:8px; border-radius:50%; background:#c06060; }
+  .dmmark { position:relative; display:inline-flex; align-items:center; gap:6px; padding:3px 9px; border:1px solid var(--border); border-radius:999px; }
+  .dmmark .presence { position:static; --d:10px; border:0; }
+  .dmmark .presence .tip { text-transform:none; letter-spacing:0; font-family:'Crimson Text',serif; }
+
+  /* Controls */
+  .sim { display:grid; gap:10px; padding:12px 14px; border:1px dashed var(--border); border-radius:10px; }
+  .sim-row { display:grid; grid-template-columns:110px 1fr 170px; gap:12px; align-items:center; }
+  .sim-row input { width:100%; }
+  .legend { display:flex; flex-wrap:wrap; gap:18px; }
+  .legend span { display:inline-flex; align-items:center; gap:8px; font-size:15px; }
+  .legend .presence { position:static; }
+  @media (max-width:560px){ .sim-row { grid-template-columns:80px 1fr; } .sim-row output { grid-column:1 / -1; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Who's here</h1>
+    <p class="note">A dot on each portrait shows who has the app open. Every open page checks in with the server at least once a minute, so the dots change slowly: green until someone's been gone 5 minutes, then yellow, then gray after 30. Drag the sliders to simulate time since each person last checked in.</p>
+    <p style="margin:12px 0 0"><span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span></p>
+  </header>
+
+  <section>
+    <p class="where">Legend</p>
+    <div class="legend">
+      <span><i class="presence on" style="--d:14px"></i> Online · checked in within 5 min</span>
+      <span><i class="presence recent" style="--d:14px"></i> Recently active · 5–30 min ago</span>
+      <span><i class="presence away" style="--d:14px"></i> Away · over 30 min, or never</span>
+    </div>
+  </section>
+
+  <section>
+    <p class="where">Simulate · minutes since each last checked in</p>
+    <div class="sim" id="sim"></div>
+  </section>
+
+  <section>
+    <p class="where">1 · Top bar, as a player sees it</p>
+    <div class="topbar" id="topbar"></div>
+  </section>
+
+  <section>
+    <p class="where">2 · The DM's party cards (Adventure and Combat)</p>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section>
+    <p class="where">3 · A player's Party strip (Session mode) · Eòghan's view</p>
+    <div class="strip" id="strip"></div>
+  </section>
+</main>
+
+<script>
+  const PEOPLE = [
+    { id: "dm", name: "The DM", ago: 1 },
+    { id: "eoghan", name: "Eòghan", cls: "Warlock 3", color: "#3d5a70", ago: 0 },
+    { id: "liu", name: "Liu Sha", cls: "Monk 3", color: "#6b4b3a", ago: 2 },
+    { id: "aesop", name: "Aesop", cls: "Cleric 3", color: "#5a6b3a", ago: 12 },
+    { id: "mj", name: "Meanjeans", cls: "Rogue 3", color: "#5a3a6b", ago: 45 },
+    { id: "qc", name: "Quietclaw", cls: "Ranger 3", color: "#3a6b62", ago: null },
+  ];
+  const state = (ago) => (ago == null || ago > 30 ? "away" : ago > 5 ? "recent" : "on");
+  const words = (p) => {
+    const s = state(p.ago);
+    if (s === "on") return `${p.name} · online`;
+    if (s === "recent") return `${p.name} · last here ${p.ago} min ago`;
+    return p.ago == null ? `${p.name} · not seen yet` : `${p.name} · away`;
+  };
+  const dot = (p, extra = "") => `<span class="presence ${state(p.ago)}" tabindex="0" role="img" aria-label="${words(p)}"${extra}><span class="tip">${words(p)}</span></span>`;
+
+  function render() {
+    const dm = PEOPLE[0], party = PEOPLE.slice(1);
+    document.getElementById("sim").innerHTML = PEOPLE.map((p, i) => `
+      <div class="sim-row"><span class="label">${p.name}</span>
+        <input type="range" min="0" max="60" value="${p.ago ?? 60}" data-i="${i}" aria-label="Minutes since ${p.name} checked in">
+        <output>${p.ago == null || p.ago >= 60 ? "never / long ago" : p.ago === 0 ? "just now" : p.ago + " min ago"}</output></div>`).join("");
+    document.getElementById("topbar").innerHTML = `<span style="font-size:16px">⛨</span><span>Campaign</span><span>Shop</span><span class="sp"></span>
+      <span class="dmmark">${dot(dm)} DM</span><span class="live"><i></i> Live</span>`;
+    document.getElementById("cards").innerHTML = party.map((p) => `
+      <div class="cc"><div class="portrait" style="background:radial-gradient(circle at 40% 35%, ${p.color}, #14202b)"><span class="face"></span>${p.name[0]}${dot(p)}</div>
+        <div><b>${p.name}</b><small>${p.cls} · 24/31 HP</small></div></div>`).join("");
+    document.getElementById("strip").innerHTML = party.map((p) => `
+      <div class="pm"><div class="portrait" style="background:radial-gradient(circle at 40% 35%, ${p.color}, #14202b)"><span class="face"></span>${p.name[0]}${dot(p)}</div>
+        <span>${p.name}${p.id === "eoghan" ? " (you)" : ""}</span><em>24/31</em></div>`).join("");
+  }
+  document.addEventListener("input", (e) => {
+    const i = e.target.dataset.i; if (i == null) return;
+    const v = +e.target.value; PEOPLE[+i].ago = v >= 60 ? null : v;
+    render(); document.querySelector(`[data-i="${i}"]`).focus();
+  });
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("[data-pal]");
+    if (b) { document.body.dataset.pal = b.dataset.pal; document.querySelectorAll("[data-pal]").forEach((x) => x.classList.toggle("on", x === b)); return; }
+    const d = e.target.closest(".presence"); document.querySelectorAll(".presence.open").forEach((x) => x !== d && x.classList.remove("open")); if (d) d.classList.toggle("open");
+  });
+  render();
+</script>
+</body>
+</html>
