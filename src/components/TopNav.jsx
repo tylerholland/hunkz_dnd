@@ -12,6 +12,7 @@
  *                                DM, then Sign out for anyone signed in
  *   showLive    {boolean}      — whether to show the live/polling dot
  *   wsConnected {boolean}      — true = Live (green pulse), false = Polling
+ *   dmPresence  {object|null}  — players: { lastSeen, now, light } for the DM's who's-here marker
  *   onBookClick {function}     — called when the World Guide book icon is clicked
  *   bookOpen    {boolean}      — whether the World Guide is currently open
  *   children    {ReactNode}    — extra action buttons in the right slot (e.g. Upload)
@@ -31,6 +32,7 @@ import { Link, useLocation } from "react-router-dom";
 import { PALETTES } from "../features/characterSheet/theme";
 import { anyoneSignedIn, isDmSignedIn, setDmPalette, signOutEverywhere, useCombatActive, useDmPalette } from "../lib/dmSession";
 import "./topNav.css";
+import PresenceDot from "./PresenceDot";
 
 // The home mark: a crest with the H of Hunkz (also public/favicon.svg).
 const CREST_SVG = (
@@ -273,6 +275,7 @@ export default function TopNav({
   menuItems = [],
   showLive = false,
   wsConnected = false,
+  dmPresence = null,
   onBookClick,
   bookOpen = false,
   children,
@@ -357,6 +360,13 @@ export default function TopNav({
           {!signedIn && pathname === "/" && <Link to="/dm" className="topnav-dm-link">DM</Link>}
           {children}
 
+          {/* Players only: the DM doesn't need his own dot (he has his switcher here). */}
+          {dmPresence && !isDm && (
+            <span className="topnav-dm">
+              <PresenceDot name="The DM" lastSeen={dmPresence.lastSeen} now={dmPresence.now} light={dmPresence.light} size={10} inline />
+              <span className="topnav-dot-label">DM</span>
+            </span>
+          )}
           {showLive && (
             <div
               className={`topnav-dot-wrap${wsConnected ? "" : " topnav-dot-wrap--polling"}`}

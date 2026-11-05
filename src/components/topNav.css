@@ -209,6 +209,9 @@
 }
 
 /* Live/Polling dot */
+/* Who's here — the DM's dot, for players (components/PresenceDot). */
+.topnav-dm { display: flex; align-items: center; gap: 5px; padding: 0 6px; flex-shrink: 0; position: relative; }
+
 .topnav-dot-wrap {
   display: flex;
   align-items: center;

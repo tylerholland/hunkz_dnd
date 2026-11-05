@@ -398,6 +398,8 @@ export default function CharacterSheetSessionMode({
   isBattleMode,
   sessionPassword,
   partyStatus,
+  // Who's here — everyone's last check-in from the poll (lib/presence.js).
+  presence = {},
   initiativeData,
   npcCombat,
   wsConnected,
@@ -1240,6 +1242,7 @@ export default function CharacterSheetSessionMode({
         center={modeSegment}
         showLive={true}
         wsConnected={wsConnected}
+        dmPresence={serverTime ? { lastSeen: presence?.dm, now: serverTime, light: !!pal.light } : null}
         onBookClick={() => setGuideOpen((o) => !o)}
         bookOpen={guideOpen}
         menuItems={[
@@ -1421,6 +1424,8 @@ export default function CharacterSheetSessionMode({
                 isActiveTurn={entries[activeTurnIndex]?.slug === member.slug}
                 expanded={openPartyDetails.has(member.slug)}
                 onToggle={() => togglePartyDetails(member.slug)}
+                lastSeen={presence?.[member.slug]}
+                serverTime={serverTime}
               />
             ))}
           </div>

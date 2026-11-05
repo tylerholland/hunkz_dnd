@@ -25,6 +25,9 @@ function loadHandlerWithMocks({ send, verifyPasswordImpl }) {
         BatchGetCommand: class BatchGetCommand {
           constructor(input) { this.input = input; }
         },
+        UpdateCommand: class UpdateCommand {
+          constructor(input) { this.input = input; }
+        },
       };
     }
 
@@ -183,7 +186,8 @@ test("getSessionState never fetches the npc-library sentinel", async () => {
 
 test("getSessionState issues at most two DynamoDB round trips", async () => {
   let sendCalls = 0;
-  const innerSend = makeSend({});
+  // The DM checked in moments ago, so this poll has no presence stamp to write.
+  const innerSend = makeSend({ presence: { slug: "presence", seen: { dm: new Date().toISOString() } } });
   const send = async (command) => {
     sendCalls += 1;
     return innerSend(command);
@@ -218,7 +222,7 @@ test("getSessionState DM variant returns full consolidated payload", async () =>
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(Object.keys(body).sort(), [
-    "buildVersion", "counterWheels", "houseRules", "initiative", "mapLibrary", "npcCombat", "party", "rollHistory", "serverTime", "shop", "talentCodexVersion",
+    "buildVersion", "counterWheels", "houseRules", "initiative", "mapLibrary", "npcCombat", "party", "presence", "rollHistory", "serverTime", "shop", "talentCodexVersion",
   ].sort());
   assert.equal(body.buildVersion, "abc1234");
 
@@ -256,7 +260,7 @@ test("getSessionState public variant leaks nothing beyond the old public project
 
   assert.equal(result.statusCode, 200);
   assert.deepEqual(Object.keys(body).sort(), [
-    "buildVersion", "houseRules", "initiativePublic", "mapLibrary", "npcCombatPublic", "partyStatus", "rollHistory", "serverTime", "shop", "talentCodexVersion",
+    "buildVersion", "houseRules", "initiativePublic", "mapLibrary", "npcCombatPublic", "partyStatus", "presence", "rollHistory", "serverTime", "shop", "talentCodexVersion",
   ].sort());
   assert.equal(body.buildVersion, "abc1234");
 
@@ -508,4 +512,25 @@ test("getSessionState (Story 69) public log hides NPC HP totals and anything abo
   assert.equal(byId.h1.delta, -8);
   assert.equal(byId.h1.by, null);
   assert.equal(byId.h3.to, 24);
+});
+
+test("getSessionState stamps who's here at most once a minute and returns the party's times", async () => {
+  const updates = [];
+  const recent = new Date(Date.now() - 20 * 1000).toISOString();
+  const inner = makeSend({ presence: { slug: "presence", seen: { aragorn: "2026-01-01T00:00:00.000Z", dm: recent, stranger: recent } } });
+  const send = async (command) => {
+    if (command.constructor.name === "UpdateCommand") { updates.push(command.input); return {}; }
+    return inner(command);
+  };
+  const { handler } = loadHandlerWithMocks({ send, verifyPasswordImpl: async () => ({ valid: false }) });
+
+  // A player page polling for Aragorn, last seen long ago: stamped.
+  const res = await handler({ headers: {}, queryStringParameters: { slug: "aragorn" } });
+  const body = JSON.parse(res.body);
+  assert.equal(updates.length, 1);
+  assert.equal(updates[0].Key.slug, "presence");
+  assert.deepEqual(updates[0].ExpressionAttributeNames, { "#w": "aragorn" });
+  assert.equal(body.presence.aragorn, updates[0].ExpressionAttributeValues[":at"]);
+  assert.equal(body.presence.dm, recent);
+  assert.equal(body.presence.stranger, undefined);
 });

@@ -11,6 +11,7 @@ import {
 import PartyMemberDetails from "./PartyMemberDetails";
 import "../dmDashboard/characterCard.css";
 import PortraitImg from "../../components/PortraitImg";
+import PresenceDot from "../../components/PresenceDot";
 
 /**
  * Story 61 — a read-only, narrower cousin of the DM's party card for the
@@ -21,7 +22,7 @@ import PortraitImg from "../../components/PortraitImg";
  * member: { slug, name, palette, portraitUrl, hpCurrent, hpMax, tempHP,
  *           conditions, concentration, inspiration, deathSaves, partyCard }
  */
-export default function PartyMemberCard({ member, pal, isYou = false, isActiveTurn = false, expanded, onToggle }) {
+export default function PartyMemberCard({ member, pal, isYou = false, isActiveTurn = false, expanded, onToggle, lastSeen, serverTime }) {
   const charPal = PALETTES[member.palette] || PALETTES.ocean;
   const cardPal = getPartyCardPalette(charPal, pal);
   const card = member.partyCard || null;
@@ -87,10 +88,13 @@ export default function PartyMemberCard({ member, pal, isYou = false, isActiveTu
       <div className="cc-stripe" style={{ background: hpDanger ? "#c06060" : cardPal.accent }} />
 
       <div className="cc-header-grid">
-        <div className="cc-portrait">
-          {member.portraitUrl
-            ? <PortraitImg src={member.portraitUrl} focus={member.portraitFocus} alt="" />
-            : <span className="cc-portrait-initial">{(member.name || "?").charAt(0).toUpperCase()}</span>}
+        <div className="cc-portrait-wrap">
+          <div className="cc-portrait">
+            {member.portraitUrl
+              ? <PortraitImg src={member.portraitUrl} focus={member.portraitFocus} alt="" />
+              : <span className="cc-portrait-initial">{(member.name || "?").charAt(0).toUpperCase()}</span>}
+          </div>
+          {serverTime && <PresenceDot name={isYou ? "You" : member.name || "They"} lastSeen={lastSeen} now={serverTime} light={!!pal?.light} size={14} />}
         </div>
         <div className="cc-identity">
           <div className="cc-name-row">

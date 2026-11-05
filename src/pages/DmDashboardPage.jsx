@@ -104,6 +104,8 @@ export default function DmDashboardPage() {
   const [houseRules, setHouseRules] = useState(DEFAULT_HOUSE_RULES);
   // The shop's status from the poll — the Combat view offers to close it.
   const [shopSummary, setShopSummary] = useState(null);
+  // Who's here — everyone's last check-in, from the poll (lib/presence.js).
+  const [presence, setPresence] = useState({});
   const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
   const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -363,6 +365,7 @@ export default function DmDashboardPage() {
       setServerTime(sessionData.serverTime || null);
       setHouseRules(normalizeHouseRules(sessionData.houseRules));
       setShopSummary(sessionData.shop || null);
+      setPresence(sessionData.presence || {});
       reportServerBuildVersion(sessionData.buildVersion);
     } catch {
       // Show stale data rather than error on poll failure.
@@ -1272,6 +1275,8 @@ export default function DmDashboardPage() {
           onRoll={(request) => diceRollerRef.current?.rollFor(request)}
           checkDice={houseRules.abilityCheckDice}
           featuresEnabled={houseRules.featuresEnabled !== false}
+          lastSeen={presence[char.slug]}
+          serverTime={serverTime}
         />
       </div>
     ))

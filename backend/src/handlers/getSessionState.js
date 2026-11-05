@@ -22,7 +22,8 @@
 // normalizes to buildVersion: null, so clients on a pre-36b bundle simply
 // never see a version to compare against and never reload.
 
-const { BatchGetCommand } = require("@aws-sdk/lib-dynamodb");
+const { BatchGetCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
+const { seenOf, shouldStamp, publicPresence } = require("../lib/presence");
 const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok } = require("../lib/response");
@@ -38,6 +39,7 @@ const {
   TALENT_CODEX_SLUG,
   SHOP_SLUG,
   SHOP_CATALOG_SLUG,
+  PRESENCE_SLUG,
   CHRONICLE_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
@@ -87,6 +89,7 @@ function annotateMapLibrary(mapLibrary, { getCharacterConditions, getNpcConditio
 
 const SENTINEL_SLUGS = [
   SHOP_CATALOG_SLUG,
+  PRESENCE_SLUG,
   INITIATIVE_SLUG,
   NPC_COMBAT_SLUG,
   ROLL_HISTORY_SLUG,
@@ -99,6 +102,19 @@ const SENTINEL_SLUGS = [
   SHOP_SLUG,
   CHRONICLE_SLUG,
 ];
+
+// Best effort: presence never fails a poll. The first stamp ever creates the map.
+async function stampPresence(who, at) {
+  try {
+    await db.send(new UpdateCommand({ TableName: TABLE, Key: { slug: PRESENCE_SLUG }, UpdateExpression: "SET seen.#w = :at", ExpressionAttributeNames: { "#w": who }, ExpressionAttributeValues: { ":at": at } }));
+  } catch {
+    try {
+      await db.send(new UpdateCommand({ TableName: TABLE, Key: { slug: PRESENCE_SLUG }, UpdateExpression: "SET seen = :seen", ConditionExpression: "attribute_not_exists(seen)", ExpressionAttributeValues: { ":seen": { [who]: at } } }));
+    } catch {
+      // someone else created it this instant; the next poll stamps
+    }
+  }
+}
 
 exports.handler = async (event) => {
   const password = event.headers?.["x-character-password"] || "";
@@ -143,6 +159,17 @@ exports.handler = async (event) => {
     nextSessionAt: sentinelBySlug.get(CHRONICLE_SLUG)?.nextSession?.at || null,
   }), currentVersion(shopItem));
 
+  // Who's here — stamp this poller's last-seen time (at most once a minute):
+  // the DM by password, a player by the character the page names.
+  const seen = seenOf(sentinelBySlug.get(PRESENCE_SLUG));
+  const who = isDm ? "dm" : querySlug;
+  // Runs alongside round trip 2 (still two sequential trips); awaited before replying.
+  let stamping = null;
+  if (shouldStamp(seen, who)) {
+    seen[who] = serverTime;
+    stamping = stampPresence(who, serverTime);
+  }
+
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.
   // Keyed off the roster only — if no roster item exists yet, party/partyStatus
   // is simply empty for this endpoint (old endpoints keep their Scan-based
@@ -179,6 +206,7 @@ exports.handler = async (event) => {
     const party = orderedMembers
       .filter((slug) => rawItemsBySlug.has(slug))
       .map((slug) => projectDmPartyItem(rawItemsBySlug.get(slug)));
+    await stamping;
     const responseBody = {
       party,
       initiative,
@@ -189,6 +217,7 @@ exports.handler = async (event) => {
       houseRules,
       talentCodexVersion,
       shop,
+      presence: publicPresence(seen, memberSlugs),
       serverTime,
       buildVersion: appMeta.buildVersion,
     };
@@ -310,6 +339,7 @@ exports.handler = async (event) => {
     }),
   };
 
+  await stamping;
   const responseBody = {
     partyStatus,
     initiativePublic: buildPublicInitiativePayload(initiative, npcCombat),
@@ -319,6 +349,7 @@ exports.handler = async (event) => {
     houseRules,
     talentCodexVersion,
     shop,
+    presence: publicPresence(seen, memberSlugs),
     serverTime,
     buildVersion: appMeta.buildVersion,
   };

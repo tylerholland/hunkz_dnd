@@ -1,0 +1,27 @@
+/* Who's here — design/prototypes/presence-dots.html. Placed in a
+   position:relative parent (a portrait) unless --inline. */
+.presence-dot {
+  --pd-on: #4fd17a; --pd-on-glow: rgba(79, 209, 122, 0.55); --pd-recent: #e6c14a; --pd-away: #6b7682;
+  position: absolute; right: 2px; bottom: 2px; z-index: 2;
+  width: var(--pd-size, 16px); height: var(--pd-size, 16px); border-radius: 50%;
+  border: 2px solid var(--pal-surface-solid, #111e2c); background: var(--pd-away); cursor: default;
+}
+.presence-dot--light {
+  --pd-on: #239a48; --pd-on-glow: rgba(35, 154, 72, 0.35); --pd-recent: #d89a06; --pd-away: #2b2620;
+  box-shadow: 0 0 0 1px rgba(40, 28, 14, 0.45);
+}
+.presence-dot--on { background: var(--pd-on); box-shadow: 0 0 8px var(--pd-on-glow); }
+.presence-dot--light.presence-dot--on { box-shadow: 0 0 0 1px rgba(40, 28, 14, 0.45), 0 0 6px var(--pd-on-glow); }
+.presence-dot--recent { background: var(--pd-recent); }
+.presence-dot--away { background: var(--pd-away); }
+.presence-dot--inline { position: relative; right: auto; bottom: auto; display: inline-block; border: 0; vertical-align: middle; }
+.presence-dot:focus-visible { outline: 2px solid var(--pal-accent-bright, #a0c0d0); outline-offset: 2px; }
+.presence-dot-tip {
+  position: absolute; left: 50%; bottom: calc(100% + 8px); transform: translateX(-50%);
+  width: max-content; max-width: 220px; padding: 5px 9px; border: 1px solid var(--pal-border, rgba(100,130,160,.24)); border-radius: 6px;
+  background: var(--pal-surface-solid, #0b1622); color: var(--pal-text, #c8bfaf);
+  font-family: 'Crimson Text', Georgia, serif; font-size: 14px; font-weight: 400; letter-spacing: 0; text-transform: none; line-height: 1.3;
+  opacity: 0; pointer-events: none; transition: opacity 120ms; z-index: 5;
+}
+.presence-dot:hover .presence-dot-tip, .presence-dot:focus-visible .presence-dot-tip, .presence-dot.open .presence-dot-tip { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .presence-dot-tip { transition: none; } }

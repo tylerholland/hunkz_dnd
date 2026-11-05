@@ -61,6 +61,8 @@ export default function CharacterModePage() {
   // Stories 52–54 — GET /session-state's serverTime for damage/condition age
   // arithmetic on the player's Map sub-tab.
   const [serverTime, setServerTime] = useState(null);
+  // Who's here — everyone's last check-in, from the poll (lib/presence.js).
+  const [presence, setPresence] = useState({});
   const [houseRules, setHouseRules] = useState(null);
   const [shopSummary, setShopSummary] = useState(null);
   const [rollHistory, setRollHistory] = useState([]);
@@ -201,6 +203,7 @@ export default function CharacterModePage() {
         setNpcCombat(npcIncoming || { npcs: [] });
       }
       setServerTime(d.serverTime || null);
+      setPresence(d.presence || {});
       setHouseRules(d.houseRules || null);
       setShopSummary(d.shop || null);
       setRollHistory(d.rollHistory?.rolls || []);
@@ -453,6 +456,7 @@ export default function CharacterModePage() {
       npcCombat={npcCombat}
       wsConnected={wsConnected}
       serverTime={serverTime}
+      presence={presence}
       houseRules={houseRules}
       shopSummary={shopSummary}
       rollHistory={rollHistory}

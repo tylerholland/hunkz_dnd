@@ -85,6 +85,8 @@
 
 /* ─── Portrait circle ────────────────────────────────────────────────────── */
 
+.cc-portrait-wrap { position: relative; width: fit-content; height: fit-content; }
+
 .cc-portrait {
   width: 80px;
   height: 80px;

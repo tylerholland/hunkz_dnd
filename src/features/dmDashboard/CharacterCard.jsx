@@ -30,6 +30,7 @@ import { armorClassOf } from "../characterSheet/armorClass";
 import { clearLinkHover, setLinkHover, useLinkHover } from "./battleMode/tokenLink";
 import "./characterCard.css";
 import PortraitImg from "../../components/PortraitImg";
+import PresenceDot from "../../components/PresenceDot";
 
 export { AwardXpModal } from "./characterCard/AwardXpModal";
 export { DistributeCoinModal } from "./characterCard/DistributeCoinModal";
@@ -61,6 +62,9 @@ export default function CharacterCard({
   onRoll,
   checkDice,
   featuresEnabled = true,
+  // Who's here — this player's last check-in and the server's time (lib/presence.js).
+  lastSeen,
+  serverTime,
 }) {
   const pal = useContext(PalCtx);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -386,13 +390,16 @@ export default function CharacterCard({
       )}
 
       <div className="cc-header-grid">
-        {/* Portrait */}
-        <div className="cc-portrait">
-          {char.portraitUrl ? (
-            <PortraitImg src={char.portraitUrl} focus={char.portraitFocus} alt={char.name} />
-          ) : (
-            <span className="cc-portrait-initial">{initial}</span>
-          )}
+        {/* Portrait, with the who's-here dot outside its clip */}
+        <div className="cc-portrait-wrap">
+          <div className="cc-portrait">
+            {char.portraitUrl ? (
+              <PortraitImg src={char.portraitUrl} focus={char.portraitFocus} alt={char.name} />
+            ) : (
+              <span className="cc-portrait-initial">{initial}</span>
+            )}
+          </div>
+          {serverTime && <PresenceDot name={char.name || "They"} lastSeen={lastSeen} now={serverTime} light={!!pal?.light} />}
         </div>
 
         {/* Character body */}
