@@ -8,10 +8,8 @@
 }
 .presence-dot--light {
   --pd-on: #239a48; --pd-on-glow: rgba(35, 154, 72, 0.35); --pd-recent: #d89a06; --pd-away: #2b2620;
-  box-shadow: 0 0 0 1px rgba(40, 28, 14, 0.45);
 }
 .presence-dot--on { background: var(--pd-on); box-shadow: 0 0 8px var(--pd-on-glow); }
-.presence-dot--light.presence-dot--on { box-shadow: 0 0 0 1px rgba(40, 28, 14, 0.45), 0 0 6px var(--pd-on-glow); }
 .presence-dot--recent { background: var(--pd-recent); }
 .presence-dot--away { background: var(--pd-away); }
 .presence-dot--inline { position: relative; right: auto; bottom: auto; display: inline-block; border: 0; vertical-align: middle; }

@@ -58,9 +58,6 @@
   .presence.on { background:var(--on); box-shadow:0 0 0 0 var(--on-glow), 0 0 8px var(--on-glow); }
   .presence.recent { background:var(--recent); }
   .presence.away { background:var(--away); }
-  /* Light palettes: a thin dark edge so the colour reads against cream. */
-  body[data-pal="vellum"] .presence { box-shadow:0 0 0 1px rgba(40,28,14,.45); }
-  body[data-pal="vellum"] .presence.on { box-shadow:0 0 0 1px rgba(40,28,14,.45), 0 0 6px var(--on-glow); }
   .presence .tip { position:absolute; left:50%; bottom:calc(100% + 8px); transform:translateX(-50%); width:max-content; padding:5px 9px; border:1px solid var(--border); border-radius:6px; background:var(--tip); color:var(--text); font-family:'Crimson Text',Georgia,serif; font-size:14px; text-transform:none; letter-spacing:0; opacity:0; pointer-events:none; transition:opacity 120ms; }
   .presence:hover .tip, .presence:focus-visible .tip, .presence.open .tip { opacity:1; }
   @media (prefers-reduced-motion: reduce) { .presence .tip { transition:none; } }
