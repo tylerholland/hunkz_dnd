@@ -54,7 +54,7 @@ export const ART_IDS = new Set([
   "dagger", "club", "flail", "sling", "hand-crossbow", "crossbow", "spear", "battle-axe", "greatsword", "longsword",
   "light-armor", "full-armor", "shield",
   "rope", "spike", "chalk", "parchment", "flint", "torches", "tent", "dice", "caltrops", "bandages", "rations", "waterskin", "wineskin",
-  "crowbar", "hatchet", "lockpicks", "ink", "fishing", "shovel", "pickaxe",
+  "crowbar", "hatchet", "trap", "lockpicks", "ink", "fishing", "shovel", "pickaxe",
   "quicksilver", "bone-dust", "holy-water", "blood", "incense", "potion-healing",
   "mirror", "lantern", "spyglass", "timer", "boardgame", "clothes", "clothes-boots", "clothes-cloak", "clothes-gloves", "clothes-hat", "holy-symbol", "fire-oil",
   "mule", "horse", "warhorse", "cart", "wagon", "rowboat", "grapple", "pole",
