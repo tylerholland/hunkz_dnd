@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
 import "./rollHistory.css";
+import { voteLogText } from "../features/vote/voteUtil";
 
 // A label on any logged event ("Climbing the grate"), set by the player when
 // rolling or by the DM at any time. With `onSaveTag` (DM only) a faint ✎
@@ -285,6 +286,19 @@ export function ShopHistoryRow({ pal, entry, opacity = 1, showDivider = false })
   );
 }
 
+// The party vote's outcome (or just that one was held, if the DM kept the result).
+export function VoteHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  return (
+    <div className="rh-row" style={{ display: "flex", alignItems: "center", gap: 8, padding: "7px 0", borderBottom: showDivider ? `1px solid ${pal.border}` : "none", opacity, transition: "opacity 0.4s" }}>
+      <span style={{ color: pal.accent, fontFamily: pal.fontUI, fontSize: 13, lineHeight: 1, flexShrink: 0, width: 13, textAlign: "center" }} aria-hidden="true">⚑</span>
+      <span style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 14, color: pal.text, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{voteLogText(entry)}</span>
+      {!entry.hidden && Number.isFinite(entry.top) && entry.top > 0 && (
+        <span style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textBody, marginLeft: "auto", flexShrink: 0 }}>{entry.top} of {entry.voted}</span>
+      )}
+    </div>
+  );
+}
+
 export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null, below = null, onSaveTag }) {
   // Branch on type: "wheel" entries render differently from dice rows
   const rowProps = { pal, entry, opacity, showDivider, onSaveTag };
@@ -294,6 +308,7 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
   if (entry.type === "turn") return <TurnHistoryRow {...rowProps} />;
   if (entry.type === "effect") return <EffectHistoryRow {...rowProps} below={below}>{children}</EffectHistoryRow>;
   if (entry.type === "shop") return <ShopHistoryRow {...rowProps} />;
+  if (entry.type === "vote") return <VoteHistoryRow {...rowProps} />;
   // A spell's cast roll reads "casts Hex" rather than "Hex CAST".
   const isCast = entry.attack?.kind === "spell" && /\bCAST\b/.test(String(entry.label || ""));
   const actionLabel = isCast ? null : normalizeRollActionLabel(entry.label);

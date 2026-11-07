@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag, putHouseRules } from "../api";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag, putHouseRules, putVote } from "../api";
 import { CustomEffectsCtx } from "../features/dmDashboard/customEffectsContext";
 import { isHelpfulEffect, setCustomEffects, spellEffect } from "../lib/spellEffects";
 import DmDiceRoller from "../components/DmDiceRoller";
@@ -40,6 +40,8 @@ import { armorClassOf } from "../features/characterSheet/armorClass";
 import { computeMapSwitch } from "./combatModeToggle";
 import { NPC_EXPECTED_TTL_MS, npcCombatCaughtUp } from "./npcServerStamps";
 import ShopCombatNotice from "../features/shop/ShopCombatNotice";
+import DmVoteCard from "../features/vote/DmVoteCard";
+import VoteComposer from "../features/vote/VoteComposer";
 
 // Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
 // server-side only (putNpcCombat.js) whenever an NPC's hpCurrent drops — a
@@ -106,6 +108,9 @@ export default function DmDashboardPage() {
   const [shopSummary, setShopSummary] = useState(null);
   // Who's here — everyone's last check-in, from the poll (lib/presence.js).
   const [presence, setPresence] = useState({});
+  // The party vote (features/vote): what the poll says, and the DM's form.
+  const [vote, setVote] = useState(null);
+  const [voteFormOpen, setVoteFormOpen] = useState(false);
   const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
   const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -366,6 +371,7 @@ export default function DmDashboardPage() {
       setHouseRules(normalizeHouseRules(sessionData.houseRules));
       setShopSummary(sessionData.shop || null);
       setPresence(sessionData.presence || {});
+      setVote(sessionData.vote || null);
       reportServerBuildVersion(sessionData.buildVersion);
     } catch {
       // Show stale data rather than error on poll failure.
@@ -1281,7 +1287,26 @@ export default function DmDashboardPage() {
       </div>
     ))
   );
+  const refreshSoon = () => fetchDashboardData({ background: true, force: true });
+  async function startVote(fields) {
+    try {
+      const res = await putVote(dmPassword, "start", fields);
+      setVote(res.vote || null);
+      refreshSoon();
+      return true;
+    } catch (err) {
+      return err?.status === 409 ? "A vote is already open." : err?.status === 403 ? "DM password rejected." : "Couldn't send it. Try again.";
+    }
+  }
+  async function voteAction(action) {
+    try {
+      const res = await putVote(dmPassword, action);
+      setVote(res.vote || null);
+    } catch { /* the next poll shows where it stands */ }
+    refreshSoon();
+  }
   const partyActionButtons = [
+    ...(vote?.status === "open" ? [] : [{ key: "vote", label: "⚑ Call a Vote", action: () => setVoteFormOpen(true) }]),
     {
       key: "short-rest",
       label: "Short Rest",
@@ -1348,6 +1373,7 @@ export default function DmDashboardPage() {
           menuItems={[
             { label: "Manage Party", onClick: () => setShowManageParty(true) },
             { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
+            { label: "Call a Vote", onClick: () => setVoteFormOpen(true) },
             { label: "Combat quick start", onClick: () => { setCombatGuideOffered(true); setCombatGuideOpen(true); } },
             { divider: true },
             textScaleMenuItem,
@@ -1359,6 +1385,8 @@ export default function DmDashboardPage() {
             <CombatGuideOffer who="dm" onOpen={() => { setCombatGuideOffered(true); setCombatGuideOpen(true); }} onDismiss={() => setCombatGuideOffered(true)} />
           )}
           {combatGuideOpen && <CombatGuide who="dm" onClose={() => setCombatGuideOpen(false)} />}
+          {vote && <DmVoteCard vote={vote} members={party} presence={presence} serverTime={serverTime} onAction={voteAction} />}
+          {voteFormOpen && <VoteComposer onSend={startVote} onClose={() => setVoteFormOpen(false)} />}
           {combatMode && <ShopCombatNotice shop={shopSummary} dmPassword={dmPassword} onChanged={() => fetchDashboardData({ background: true, force: true })} />}
           {restNotice && (
             <div style={{ marginBottom: 12, fontFamily: pal.fontUI, fontSize: 11, color: "#88c888", letterSpacing: "0.08em" }}>

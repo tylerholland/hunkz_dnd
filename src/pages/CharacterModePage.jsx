@@ -63,6 +63,8 @@ export default function CharacterModePage() {
   const [serverTime, setServerTime] = useState(null);
   // Who's here — everyone's last check-in, from the poll (lib/presence.js).
   const [presence, setPresence] = useState({});
+  // The party vote, as this player may see it (features/vote).
+  const [vote, setVote] = useState(null);
   const [houseRules, setHouseRules] = useState(null);
   const [shopSummary, setShopSummary] = useState(null);
   const [rollHistory, setRollHistory] = useState([]);
@@ -204,6 +206,7 @@ export default function CharacterModePage() {
       }
       setServerTime(d.serverTime || null);
       setPresence(d.presence || {});
+      setVote(d.vote || null);
       setHouseRules(d.houseRules || null);
       setShopSummary(d.shop || null);
       setRollHistory(d.rollHistory?.rolls || []);
@@ -457,6 +460,7 @@ export default function CharacterModePage() {
       wsConnected={wsConnected}
       serverTime={serverTime}
       presence={presence}
+      vote={vote}
       houseRules={houseRules}
       shopSummary={shopSummary}
       rollHistory={rollHistory}

@@ -71,6 +71,7 @@ import PortraitImg from "../../components/PortraitImg";
 import ShopLine from "../shop/ShopLine";
 import CombatGuide, { CombatGuideOffer } from "../combatGuide/CombatGuide";
 import { combatGuideSeen } from "../combatGuide/combatGuideSteps";
+import PlayerVote from "../vote/PlayerVote";
 
 // Player map band height (drag bar): 240px up to the window height minus the
 // top bar, so the map can never push itself entirely off screen.
@@ -400,6 +401,8 @@ export default function CharacterSheetSessionMode({
   partyStatus,
   // Who's here — everyone's last check-in from the poll (lib/presence.js).
   presence = {},
+  // The party vote, as this player may see it (features/vote/PlayerVote).
+  vote = null,
   initiativeData,
   npcCombat,
   wsConnected,
@@ -1176,6 +1179,7 @@ export default function CharacterSheetSessionMode({
         data-light={pal.light ? "true" : undefined}
       >
         <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
+        <PlayerVote vote={vote} slug={slug} password={sessionPassword} members={partyCards} serverTime={serverTime} light={!!pal.light} />
         <TopNav
           backTo="/"
           title={char?.name}
@@ -1235,6 +1239,9 @@ export default function CharacterSheetSessionMode({
         data-light={pal.light ? "true" : undefined}
     >
       <WorldGuideDrawer open={guideOpen} onClose={() => setGuideOpen(false)} pal={pal} />
+      {/* The party vote: a card near the top while the DM asks the party something. */}
+      <PlayerVote vote={vote} slug={slug} password={sessionPassword} members={partyCards} serverTime={serverTime} light={!!pal.light} />
+
       {/* ── Top bar (shared TopNav) ── */}
       <TopNav
         backTo="/"

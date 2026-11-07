@@ -461,3 +461,20 @@ export const putShopCatalog = (dmPassword, items) =>
 /** Pay for the satchel: lines [{ itemId, qty }]. Password is the character's (or the DM's). */
 export const postShopPurchase = (slug, password, lines) =>
   request("/shop/purchase", { method: "POST", headers: shopHeaders(password, true), body: JSON.stringify({ asSlug: slug, lines }) });
+
+// Party vote (lib/vote.js on the server). The DM runs it: "start" (question,
+// options, multi, limitSec, showLive, showResult), "close", "cancel", "dismiss".
+export const putVote = (dmPassword, action, fields = {}) =>
+  request("/vote", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ ...fields, action }),
+  });
+
+/** A player's ballot (their password); picks are option indexes. */
+export const postVoteBallot = (slug, password, voteId, picks) =>
+  request("/vote/ballot", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": password },
+    body: JSON.stringify({ asSlug: slug, voteId, picks }),
+  });
