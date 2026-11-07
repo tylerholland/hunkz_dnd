@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Party Vote</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  Party vote — prototype, no live API.
+
+  DM: "Call a Vote" (party actions row in Adventure, and the ⋯ menu so it
+  works in Combat too) opens a small form: the question, options A, B, C…
+  (2–6; "Yes / No" fills two), "Players can pick more than one", a time
+  limit (none · 30 s · 1 min · 2 min · 5 min), and "Show the running tally
+  to players" (off by default, so nobody just follows the crowd). Send.
+  While it's open the DM sees a live card: bars per option with who chose
+  what, who hasn't voted yet (with their who's-here dot), the countdown,
+  Close now / Cancel. It closes by itself when time runs out or everyone
+  has voted. Then: the winner (or "Tie — your call"), which players see too.
+
+  Players: the vote pops up on their page (not blocking: "Later" tucks it
+  into a pill with the countdown). Pick, Vote; they can change their vote
+  until it closes. When it closes they see the result.
+
+  Data sketch: one `vote` record (sentinel), riding the session poll:
+  { id, question, options[], multi, endsAt|null, showTally, status: open|closed,
+    ballots: { slug: [optionIndex…] } }. Only the DM gets ballots by name;
+    players get their own ballot (+ counts if showTally, or once closed).
+  The result goes in the session log ("Vote · Where next? → The tavern, 3 of 5").
+  Open: should the DM be able to vote/break ties in the app, or just decide?
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
+    --dim:#1e3a4e; --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#080a0e; --card:#121a24; --scrim:rgba(4,8,12,.62);
+    --win:#d9b45a; --on:#4fd17a; --recent:#e6c14a; --away:#6b7682; --danger:#c06060;
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --solid:#ece4d2; --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
+    --dim:rgba(140,110,70,.16); --text:#2a2018; --body:#3c2e1c; --muted:#6f573c; --page:#e9e1d2; --card:#efe6d4; --scrim:rgba(60,40,20,.35);
+    --win:#8a6418; --on:#239a48; --recent:#d89a06; --away:#2b2620; --danger:#9a2a20;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button, input { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+  main { max-width:1220px; margin:0 auto; padding:24px 16px 80px; display:grid; gap:22px; }
+  h1 { margin:0; font-family:'Cinzel',serif; font-weight:400; letter-spacing:.08em; color:var(--text); font-size:22px; }
+  .note { margin:6px 0 0; font-style:italic; color:var(--muted); font-size:15px; max-width:880px; }
+  .where { margin:0 0 8px; font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .ctl { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .ctl button { border:0; background:transparent; padding:7px 13px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .ctl button.on { background:var(--dim); color:var(--text); }
+  .cols { display:grid; grid-template-columns:minmax(0,1.35fr) minmax(300px,380px); gap:24px; align-items:start; }
+  @media (max-width:900px){ .cols { grid-template-columns:1fr; } }
+  .label { font-family:'Cinzel',serif; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+  .hint { margin:0; font-size:14px; font-style:italic; color:var(--muted); }
+  .btn { min-height:40px; padding:0 14px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--bright); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.06em; }
+  .btn.primary { border-color:var(--accent); background:var(--dim); color:var(--text); }
+  .btn.quiet { color:var(--muted); }
+  .btn.danger { color:var(--danger); border-color:color-mix(in srgb,var(--danger) 40%,transparent); }
+  .btn:disabled { opacity:.5; cursor:not-allowed; }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
+  .in { min-height:42px; padding:6px 10px; border:1px solid var(--border); border-radius:4px; background:var(--bg); color:var(--text); font-size:16px; width:100%; }
+  .in::placeholder { color:var(--muted); font-style:italic; }
+  .seg { display:inline-flex; flex-wrap:wrap; border:1px solid var(--border); border-radius:5px; overflow:hidden; }
+  .seg button { border:0; background:transparent; min-height:38px; padding:0 11px; color:var(--muted); font-family:'Cinzel',serif; font-size:11px; letter-spacing:.08em; }
+  .seg button.on { background:var(--dim); color:var(--text); }
+  .switch { display:flex; align-items:center; gap:10px; min-height:40px; padding:0; border:0; background:transparent; cursor:pointer; color:var(--text); text-align:left; }
+  .switch .sw { position:relative; width:36px; height:20px; border-radius:10px; border:1px solid var(--border); background:var(--bg); flex:none; }
+  .switch .sw i { position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--muted); transition:left 120ms; }
+  .switch[aria-checked="true"] .sw { background:var(--dim); border-color:var(--accent); }
+  .switch[aria-checked="true"] .sw i { left:18px; background:var(--bright); }
+
+  /* DM dashboard strip */
+  .dash { border:1px solid var(--border); border-radius:12px; background:var(--solid); padding:14px 16px; display:grid; gap:14px; }
+  .actions { display:flex; flex-wrap:wrap; gap:8px; }
+  .actions .btn { color:var(--muted); }
+  .actions .btn.vote { color:var(--text); border-color:var(--accent); }
+
+  /* Composer */
+  .scrim { position:fixed; inset:0; z-index:30; background:var(--scrim); display:flex; align-items:center; justify-content:center; padding:16px; }
+  .scrim[hidden] { display:none; }
+  .modal { width:min(520px,100%); max-height:calc(100vh - 32px); overflow:auto; border:1px solid var(--accent); border-radius:12px; background:var(--solid); padding:18px 20px; display:grid; gap:14px; }
+  .modal h3 { margin:0; font-family:'Cinzel',serif; font-weight:400; font-size:19px; color:var(--text); }
+  .opt-row { display:grid; grid-template-columns:32px 1fr 36px; gap:8px; align-items:center; }
+  .letter { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; border:1px solid var(--accent); font-family:'Cinzel',serif; font-size:13px; color:var(--bright); }
+  .x { width:36px; height:36px; border:0; background:transparent; color:var(--muted); }
+  .foot { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding-top:12px; border-top:1px solid var(--border); }
+  .foot .sp { flex:1; }
+
+  /* Live / result card (DM) */
+  .vote-card { border:1px solid var(--accent); border-radius:10px; background:var(--card); padding:14px 16px; display:grid; gap:12px; }
+  .vote-card.closed { border-color:var(--win); }
+  .vc-head { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .vc-head b { font-family:'Cinzel',serif; font-weight:400; font-size:18px; color:var(--text); }
+  .clock { margin-left:auto; font-family:'Cinzel',serif; font-size:16px; color:var(--bright); font-variant-numeric:tabular-nums; }
+  .clock.low { color:var(--danger); }
+  .bar-row { display:grid; gap:4px; }
+  .bar-top { display:flex; align-items:center; gap:8px; }
+  .bar-top .nm { color:var(--text); }
+  .bar-top .ct { margin-left:auto; font-family:'Cinzel',serif; color:var(--bright); }
+  .bar { height:8px; border-radius:4px; background:var(--bg); overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--accent); border-radius:4px; transition:width 300ms; }
+  .bar-row.win .bar i { background:var(--win); }
+  .bars-closed .bar-row:not(.win) .bar i { opacity:.4; }
+  .bar-row.win .nm { color:var(--win); font-weight:600; }
+  .who { display:flex; flex-wrap:wrap; gap:4px; }
+  .chip { display:inline-flex; align-items:center; gap:5px; padding:1px 8px 1px 3px; border-radius:999px; border:1px solid var(--border); font-size:13px; color:var(--body); }
+  .chip .av { width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:10px; color:#f3e6d0; }
+  .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
+  .verdict { padding:8px 12px; border-radius:6px; background:color-mix(in srgb,var(--win) 14%,transparent); color:var(--text); }
+  .verdict b { color:var(--win); }
+
+  /* Player phone */
+  .phone { position:relative; width:100%; max-width:380px; height:680px; border:1px solid var(--border); border-radius:28px; background:var(--bg); overflow:hidden; box-shadow:0 18px 50px rgba(0,0,0,.35); }
+  .phone-sheet { padding:18px 16px; display:grid; gap:10px; opacity:.55; }
+  .phone-sheet .ph { height:14px; border-radius:4px; background:var(--dim); }
+  .pill { position:absolute; top:12px; left:50%; transform:translateX(-50%); display:inline-flex; align-items:center; gap:8px; min-height:40px; padding:0 14px; border:1px solid var(--accent); border-radius:999px; background:var(--solid); color:var(--text); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.06em; z-index:5; }
+  .pvote { position:absolute; left:10px; right:10px; bottom:10px; border:1px solid var(--accent); border-radius:16px; background:var(--solid); padding:16px; display:grid; gap:10px; box-shadow:0 -10px 40px rgba(0,0,0,.4); z-index:6; animation:rise 220ms ease-out; }
+  @keyframes rise { from { transform:translateY(30px); opacity:0; } to { transform:none; opacity:1; } }
+  @media (prefers-reduced-motion: reduce) { .pvote { animation:none; } }
+  .pvote h4 { margin:0; font-family:'Cinzel',serif; font-weight:400; font-size:18px; color:var(--text); }
+  .choice { display:flex; align-items:center; gap:10px; min-height:52px; padding:8px 12px; border:1px solid var(--border); border-radius:10px; background:var(--bg); color:var(--text); text-align:left; width:100%; }
+  .choice .letter { flex:none; }
+  .choice.on { border-color:var(--accent); background:var(--dim); }
+  .choice.on .letter { background:var(--accent); color:var(--solid); }
+  .choice .tick { margin-left:auto; color:var(--bright); }
+  .sim { display:grid; gap:8px; padding:12px 14px; border:1px dashed var(--border); border-radius:10px; }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Party vote</h1>
+    <p class="note">The DM asks the table a quick question with a few options. Each player's page shows the vote; they pick and send; the DM sees the tally build and the outcome. Try it: Call a Vote on the left, then vote as Eòghan on the phone. The rest of the party votes on their own.</p>
+    <p style="margin:12px 0 0"><span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span></p>
+  </header>
+
+  <div class="cols">
+    <section>
+      <p class="where">The DM's dashboard</p>
+      <div class="dash" id="dm"></div>
+    </section>
+    <section>
+      <p class="where">A player's page · Eòghan's phone</p>
+      <div class="phone" id="phone"></div>
+      <div class="sim" style="margin-top:12px">
+        <span class="label">Demo</span>
+        <div class="row"><button class="btn quiet" data-ff>⏩ Skip 15 seconds</button><span class="hint">The other players vote on their own as time passes.</span></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="scrim" id="scrim" hidden><div class="modal" role="dialog" aria-modal="true" aria-labelledby="ct" id="composer"></div></div>
+
+<script>
+  const PARTY = [
+    { slug: "eoghan", name: "Eòghan", c: "#3d5a70", here: "on", me: true },
+    { slug: "liu", name: "Liu Sha", c: "#7a4b32", here: "on" },
+    { slug: "aesop", name: "Aesop", c: "#4f6b32", here: "on" },
+    { slug: "mj", name: "Meanjeans", c: "#5a3a6b", here: "recent" },
+    { slug: "qc", name: "Quietclaw", c: "#2f6b62", here: "away" },
+  ];
+  const LETTERS = "ABCDEF";
+  const LIMITS = [[0, "No limit"], [30, "30 s"], [60, "1 min"], [120, "2 min"], [300, "5 min"]];
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+
+  let draft = null;      // composer
+  let vote = null;       // { question, options, multi, limit, showTally, startedAt, endsAt, ballots, status, now }
+  let mine = [];         // Eòghan's selection
+  let tucked = false;    // player tucked the vote away
+  let clock = 0;         // simulated seconds since send
+  let tick = null;
+
+  const fresh = () => ({ question: "", options: ["", ""], multi: false, limit: 60, showTally: false });
+
+  // ── DM ──
+  function dm() {
+    const actions = `<div class="actions"><button class="btn">Start Combat</button><button class="btn">Short Rest</button><button class="btn">Long Rest</button>
+      <button class="btn vote" data-call ${vote && vote.status === "open" ? "disabled" : ""}>⚑ Call a Vote</button></div>`;
+    return `<div class="row"><span class="label">Party actions</span></div>${actions}${vote ? dmCard() : `<p class="hint">Ask the party anything: where to go next, which door, whether to trust the beggar.</p>`}`;
+  }
+  function counts() {
+    const n = vote.options.map(() => 0);
+    for (const picks of Object.values(vote.ballots)) for (const i of picks) n[i] += 1;
+    return n;
+  }
+  function winners() {
+    const n = counts(); const max = Math.max(...n);
+    return max === 0 ? [] : n.map((v, i) => (v === max ? i : -1)).filter((i) => i >= 0);
+  }
+  const left = () => (vote.limit ? Math.max(0, vote.limit - clock) : null);
+  const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
+  function bars(showWho) {
+    const n = counts(), total = Object.keys(vote.ballots).length || 1, win = vote.status === "closed" ? winners() : [];
+    return vote.options.map((o, i) => `<div class="bar-row${win.includes(i) ? " win" : ""}">
+      <div class="bar-top"><span class="letter" style="width:24px;height:24px;font-size:11px">${LETTERS[i]}</span><span class="nm">${esc(o)}</span><span class="ct">${n[i]}</span></div>
+      <div class="bar"><i style="width:${(n[i] / total) * 100}%"></i></div>
+      ${showWho ? `<div class="who">${PARTY.filter((p) => vote.ballots[p.slug]?.includes(i)).map((p) => `<span class="chip"><span class="av" style="background:${p.c}">${p.name[0]}</span>${esc(p.name)}</span>`).join("")}</div>` : ""}
+    </div>`).join("");
+  }
+  function verdict() {
+    const w = winners(), n = counts(), voted = Object.keys(vote.ballots).length;
+    if (!w.length) return `<div class="verdict">Nobody voted.</div>`;
+    if (w.length > 1) return `<div class="verdict"><b>Tie</b> between ${w.map((i) => esc(vote.options[i])).join(" and ")} · ${n[w[0]]} each. Your call.</div>`;
+    return `<div class="verdict">The party chose <b>${esc(vote.options[w[0]])}</b> · ${n[w[0]]} of ${voted}</div>`;
+  }
+  function dmCard() {
+    const waiting = PARTY.filter((p) => !vote.ballots[p.slug]);
+    const t = left();
+    if (vote.status === "closed") return `<div class="vote-card closed">
+        <div class="vc-head"><span class="label">Vote closed</span><b>${esc(vote.question)}</b></div>
+        ${verdict()}<div class="bars-closed" style="display:grid;gap:12px">${bars(true)}</div>
+        <div class="foot"><span class="hint">Players see the result. It's in the session log.</span><span class="sp"></span><button class="btn primary" data-done>Done</button></div></div>`;
+    return `<div class="vote-card">
+        <div class="vc-head"><span class="label">Vote open</span><b>${esc(vote.question)}</b>${t != null ? `<span class="clock${t <= 10 ? " low" : ""}">${fmt(t)}</span>` : ""}</div>
+        <span class="hint">${vote.multi ? "Players can pick more than one." : "One choice each."} ${vote.showTally ? "Players see the running tally." : "Players see the result when it closes."}</span>
+        ${bars(true)}
+        <div class="row"><span class="label">Waiting on</span>${waiting.length ? waiting.map((p) => `<span class="chip"><span class="dot" style="background:var(--${p.here})"></span>${esc(p.name)}</span>`).join("") : `<span class="hint">Everyone's voted.</span>`}</div>
+        <div class="foot"><button class="btn danger" data-cancel>Cancel vote</button><span class="sp"></span><button class="btn primary" data-close>Close now</button></div></div>`;
+  }
+
+  // ── Composer ──
+  function composer() {
+    const d = draft, ok = d.question.trim() && d.options.filter((o) => o.trim()).length >= 2;
+    return `<div><h3 id="ct">Call a Vote</h3><p class="hint">Asks everyone in the party at once.</p></div>
+      <label style="display:grid;gap:6px"><span class="label">Question</span><input class="in" id="q" value="${esc(d.question)}" placeholder="Where do we go next?" maxlength="80"></label>
+      <div style="display:grid;gap:8px"><div class="row"><span class="label">Options</span><span class="sp" style="flex:1"></span><button class="btn quiet" data-yesno>Yes / No</button></div>
+        ${d.options.map((o, i) => `<div class="opt-row"><span class="letter">${LETTERS[i]}</span><input class="in" data-opt="${i}" value="${esc(o)}" placeholder="${["The tavern", "The temple", "The docks", "", "", ""][i] || "Another option"}" maxlength="60" aria-label="Option ${LETTERS[i]}">
+          ${d.options.length > 2 ? `<button class="x" data-rm="${i}" aria-label="Remove option ${LETTERS[i]}">✕</button>` : "<span></span>"}</div>`).join("")}
+        ${d.options.length < 6 ? `<button class="btn quiet" data-add style="justify-self:start">＋ Add option</button>` : ""}</div>
+      <button type="button" class="switch" role="switch" aria-checked="${d.multi}" data-multi><span class="sw"><i></i></span>Players can pick more than one</button>
+      <div style="display:grid;gap:6px"><span class="label">Time limit</span><span class="seg">${LIMITS.map(([s, l]) => `<button data-limit="${s}" class="${d.limit === s ? "on" : ""}">${l}</button>`).join("")}</span>
+        <p class="hint">${d.limit ? "It closes by itself then, or as soon as everyone's voted." : "It stays open until everyone's voted or you close it."}</p></div>
+      <button type="button" class="switch" role="switch" aria-checked="${d.showTally}" data-tally><span class="sw"><i></i></span>Show the running tally to players</button>
+      <div class="foot"><span class="sp"></span><button class="btn quiet" data-x>Cancel</button><button class="btn primary" data-send ${ok ? "" : "disabled"}>Send to the party</button></div>`;
+  }
+
+  // ── Player ──
+  function phone() {
+    const sheet = `<div class="phone-sheet"><span class="label">Eòghan · Session</span>${Array.from({ length: 12 }, (_, i) => `<div class="ph" style="width:${55 + ((i * 37) % 40)}%"></div>`).join("")}</div>`;
+    if (!vote) return sheet;
+    const t = left(), voted = vote.ballots.eoghan;
+    if (vote.status === "open" && tucked) return `${sheet}<button class="pill" data-untuck>⚑ Vote open${t != null ? ` · ${fmt(t)}` : ""}</button>`;
+    if (vote.status === "closed") return `${sheet}<div class="pvote" role="dialog" aria-label="Vote result"><span class="label">The party has spoken</span><h4>${esc(vote.question)}</h4>${verdict()}<div class="bars-closed" style="display:grid;gap:10px">${bars(false)}</div><div class="row"><span class="sp" style="flex:1"></span><button class="btn primary" data-pdone>OK</button></div></div>`;
+    const n = counts();
+    return `${sheet}<div class="pvote" role="dialog" aria-label="Vote">
+      <div class="row"><span class="label">The DM asks</span>${t != null ? `<span class="clock${t <= 10 ? " low" : ""}" style="margin-left:auto">${fmt(t)}</span>` : ""}</div>
+      <h4>${esc(vote.question)}</h4>
+      <span class="hint">${vote.multi ? "Pick any that you'd go for." : "Pick one."}${voted ? " You can change your vote until it closes." : ""}</span>
+      ${vote.options.map((o, i) => `<button class="choice${mine.includes(i) ? " on" : ""}" data-pick="${i}" aria-pressed="${mine.includes(i)}"><span class="letter">${LETTERS[i]}</span>${esc(o)}${vote.showTally ? `<span class="tick" style="color:var(--muted)">${n[i]}</span>` : mine.includes(i) ? `<span class="tick">✓</span>` : ""}</button>`).join("")}
+      <div class="row"><button class="btn quiet" data-tuck>Later</button><span class="sp" style="flex:1"></span>
+        <button class="btn primary" data-vote ${mine.length ? "" : "disabled"}>${voted ? (String(voted) === String(mine) ? "Voted ✓" : "Change vote") : "Vote"}</button></div></div>`;
+  }
+
+  function render() {
+    document.getElementById("dm").innerHTML = dm();
+    document.getElementById("phone").innerHTML = phone();
+    if (!document.getElementById("scrim").hidden) document.getElementById("composer").innerHTML = composer();
+  }
+
+  // ── Simulation: the rest of the party votes as time passes ──
+  const plans = {};
+  function plan() {
+    const others = PARTY.filter((p) => !p.me && p.here !== "away");
+    others.forEach((p, k) => { plans[p.slug] = { at: 4 + k * 7 + Math.floor(Math.random() * 6), pick: vote.multi ? [k % vote.options.length, (k + 1) % vote.options.length].slice(0, 1 + (k % 2)) : [k % 2 === 0 ? 0 : Math.min(1, vote.options.length - 1)] }; });
+  }
+  function advance(sec) {
+    if (!vote || vote.status !== "open") return;
+    clock += sec;
+    for (const [slug, p] of Object.entries(plans)) if (!vote.ballots[slug] && clock >= p.at) vote.ballots[slug] = p.pick;
+    const everyone = PARTY.every((p) => vote.ballots[p.slug]);
+    if (everyone || (vote.limit && clock >= vote.limit)) close();
+    render();
+  }
+  function close() { vote.status = "closed"; tucked = false; clearInterval(tick); }
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.pal) { document.body.dataset.pal = b.dataset.pal; document.querySelectorAll("[data-pal]").forEach((x) => x.classList.toggle("on", x === b)); return; }
+    if (b.dataset.call !== undefined) { draft = fresh(); document.getElementById("scrim").hidden = false; render(); document.getElementById("q").focus(); return; }
+    if (b.dataset.x !== undefined) { document.getElementById("scrim").hidden = true; return; }
+    if (b.dataset.yesno !== undefined) { draft.options = ["Yes", "No"]; render(); return; }
+    if (b.dataset.add !== undefined) { draft.options.push(""); render(); document.querySelector(`[data-opt="${draft.options.length - 1}"]`).focus(); return; }
+    if (b.dataset.rm) { draft.options.splice(+b.dataset.rm, 1); render(); return; }
+    if (b.dataset.multi !== undefined) { draft.multi = !draft.multi; render(); return; }
+    if (b.dataset.tally !== undefined) { draft.showTally = !draft.showTally; render(); return; }
+    if (b.dataset.limit) { draft.limit = +b.dataset.limit; render(); return; }
+    if (b.dataset.send !== undefined) {
+      vote = { ...draft, options: draft.options.map((o) => o.trim()).filter(Boolean), ballots: {}, status: "open" };
+      mine = []; tucked = false; clock = 0; plan();
+      document.getElementById("scrim").hidden = true;
+      clearInterval(tick); tick = setInterval(() => advance(1), 1000);
+      render(); return;
+    }
+    if (b.dataset.close !== undefined) { close(); render(); return; }
+    if (b.dataset.cancel !== undefined) { clearInterval(tick); vote = null; render(); return; }
+    if (b.dataset.done !== undefined) { vote = null; render(); return; }
+    if (b.dataset.pdone !== undefined) { vote = null; render(); return; }
+    if (b.dataset.ff !== undefined) { advance(15); return; }
+    if (b.dataset.tuck !== undefined) { tucked = true; render(); return; }
+    if (b.dataset.untuck !== undefined) { tucked = false; render(); return; }
+    if (b.dataset.pick) {
+      const i = +b.dataset.pick;
+      mine = vote.multi ? (mine.includes(i) ? mine.filter((x) => x !== i) : [...mine, i].sort()) : [i];
+      render(); return;
+    }
+    if (b.dataset.vote !== undefined) { vote.ballots.eoghan = [...mine]; advance(0); render(); return; }
+  });
+  document.addEventListener("input", (e) => {
+    const t = e.target; if (!draft) return;
+    if (t.id === "q") draft.question = t.value;
+    if (t.dataset.opt) draft.options[+t.dataset.opt] = t.value;
+    const ok = draft.question.trim() && draft.options.filter((o) => o.trim()).length >= 2;
+    document.querySelector("[data-send]").disabled = !ok;
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !document.getElementById("scrim").hidden) document.getElementById("scrim").hidden = true; });
+  render();
+</script>
+</body>
+</html>
