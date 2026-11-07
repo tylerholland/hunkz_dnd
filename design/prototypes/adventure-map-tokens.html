@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Adventure Map Tokens</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  Adventure map tokens — prototype, no live API.
+
+  The adventure map (a city like Greyhawk) gets things on it outside combat:
+  - Party token: one marker for the whole group, on the map by default. The
+    DM drags it to wherever he says the party is. He can take it off (token ▸
+    Remove) and put it back (Put the party on the map).
+  - Players' own tokens: when the party splits up, he drags a character from
+    the party list onto the map. The party token stays unless he removes it.
+  - Markers he adds on demand: "＋ Marker", tap the map, give it a label and
+    an icon (landmark, inn, quest, danger, rumour, pin). "Players can see it"
+    on = a landmark everyone sees; off = a hidden pin just for him (dashed on
+    his map, absent on players').
+  - Moving: drag anything. Removing: drag it onto "Remove from map", or tap
+    it ▸ Remove. Tap a marker to edit its label, icon or visibility.
+  Players see the same map read-only: party token, characters, visible
+  markers with their labels. Nothing hidden reaches them.
+
+  Data sketch: the map's existing `tokens` list gains `type: "party"` and
+  `type: "marker"` ({ label, icon, hidden }); characters reuse
+  `type: "character"`. Players' projection drops hidden markers. Today
+  players' maps only draw tokens in combat; adventure maps would draw these.
+  Open: should players be able to move their own token in adventure (they
+  can in combat), or is the adventure map the DM's alone?
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
+    --dim:#1e3a4e; --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#080a0e; --card:#121a24; --tip:#0b1622;
+    --gold:#d9b45a; --danger:#c06060;
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --solid:#ece4d2; --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
+    --dim:rgba(140,110,70,.16); --text:#2a2018; --body:#3c2e1c; --muted:#6f573c; --page:#e9e1d2; --card:#efe6d4; --tip:#fffaf0;
+    --gold:#8a6418; --danger:#9a2a20;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button, input { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+  main { max-width:1240px; margin:0 auto; padding:24px 16px 80px; display:grid; gap:22px; }
+  h1 { margin:0; font-family:'Cinzel',serif; font-weight:400; letter-spacing:.08em; color:var(--text); font-size:22px; }
+  .note { margin:6px 0 0; font-style:italic; color:var(--muted); font-size:15px; max-width:900px; }
+  .where { margin:0 0 8px; font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--muted); }
+  .ctl { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .ctl button { border:0; background:transparent; padding:7px 13px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .ctl button.on { background:var(--dim); color:var(--text); }
+  .label { font-family:'Cinzel',serif; font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); }
+  .hint { margin:0; font-size:14px; font-style:italic; color:var(--muted); }
+  .btn { min-height:40px; padding:0 14px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--bright); font-family:'Cinzel',serif; font-size:12px; letter-spacing:.06em; }
+  .btn.primary { border-color:var(--accent); background:var(--dim); color:var(--text); }
+  .btn.on { border-color:var(--gold); color:var(--gold); }
+  .btn.quiet { color:var(--muted); }
+  .btn.danger { color:var(--danger); }
+  .row { display:flex; flex-wrap:wrap; align-items:center; gap:8px 10px; }
+  .in { min-height:40px; padding:6px 10px; border:1px solid var(--border); border-radius:4px; background:var(--bg); color:var(--text); width:100%; }
+  .in::placeholder { color:var(--muted); font-style:italic; }
+
+  .dm { display:grid; grid-template-columns:minmax(0,1fr) 220px; gap:16px; align-items:start; }
+  @media (max-width:860px){ .dm { grid-template-columns:1fr; } }
+  .panel { border:1px solid var(--border); border-radius:12px; background:var(--solid); padding:12px 14px; display:grid; gap:10px; }
+
+  /* The map */
+  .map { position:relative; width:100%; aspect-ratio:16/10; border-radius:8px; overflow:hidden; border:1px solid var(--border); touch-action:none; user-select:none; }
+  .map svg.city { position:absolute; inset:0; width:100%; height:100%; }
+  .map.placing { cursor:crosshair; }
+  .tok { position:absolute; transform:translate(-50%,-50%); display:flex; flex-direction:column; align-items:center; gap:2px; cursor:grab; z-index:3; }
+  .tok.dragging { cursor:grabbing; z-index:9; filter:drop-shadow(0 6px 10px rgba(0,0,0,.5)); }
+  .readonly .tok { cursor:default; }
+  .disc { width:40px; height:40px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:15px; color:#f3e6d0; border:2px solid #f3e6d0; box-shadow:0 2px 6px rgba(0,0,0,.5); }
+  .tok.party .disc { width:48px; height:48px; background:radial-gradient(circle at 40% 35%, #8a6a2a, #3a2a10); border:3px solid #e9c46a; font-size:20px; box-shadow:0 0 0 3px rgba(233,196,106,.25), 0 3px 8px rgba(0,0,0,.5); }
+  .tag { padding:0 7px; border-radius:999px; background:rgba(20,16,10,.82); color:#f3e6d0; font-family:'Cinzel',serif; font-size:11px; letter-spacing:.04em; white-space:nowrap; max-width:160px; overflow:hidden; text-overflow:ellipsis; }
+  .pin { width:30px; height:30px; border-radius:50% 50% 50% 0; transform:rotate(-45deg); display:flex; align-items:center; justify-content:center; border:2px solid #2a1d0c; box-shadow:0 2px 5px rgba(0,0,0,.45); }
+  .pin span { transform:rotate(45deg); font-size:14px; line-height:1; color:#1d150a; }
+  .tok.marker { transform:translate(-50%,-90%); }
+  .tok.hidden .pin { opacity:.55; border-style:dashed; }
+  .tok.hidden .tag { background:rgba(20,16,10,.55); font-style:italic; }
+  .tok.sel .disc, .tok.sel .pin { outline:2px solid var(--gold); outline-offset:3px; }
+  .remove-zone { position:absolute; left:50%; bottom:10px; transform:translateX(-50%); padding:8px 16px; border:2px dashed var(--danger); border-radius:999px; background:rgba(20,10,10,.82); color:#f0c0c0; font-family:'Cinzel',serif; font-size:12px; letter-spacing:.06em; z-index:8; opacity:0; pointer-events:none; transition:opacity 120ms; }
+  .remove-zone.show { opacity:1; }
+  .remove-zone.hot { background:rgba(150,40,40,.9); color:#fff; }
+  .ghost { position:fixed; z-index:50; pointer-events:none; transform:translate(-50%,-50%); }
+
+  /* Popover editor */
+  .pop { position:absolute; z-index:10; width:250px; padding:12px; border:1px solid var(--accent); border-radius:10px; background:var(--tip); display:grid; gap:8px; box-shadow:0 10px 30px rgba(0,0,0,.45); }
+  .icons { display:flex; flex-wrap:wrap; gap:6px; }
+  .icons button { width:40px; height:40px; border:1px solid var(--border); border-radius:6px; background:var(--bg); font-size:17px; }
+  .icons button.on { border-color:var(--gold); background:color-mix(in srgb,var(--gold) 16%,var(--bg)); }
+  .switch { display:flex; align-items:center; gap:10px; min-height:40px; padding:0; border:0; background:transparent; color:var(--text); text-align:left; }
+  .switch .sw { position:relative; width:36px; height:20px; border-radius:10px; border:1px solid var(--border); background:var(--bg); flex:none; }
+  .switch .sw i { position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--muted); transition:left 120ms; }
+  .switch[aria-checked="true"] .sw { background:var(--dim); border-color:var(--accent); }
+  .switch[aria-checked="true"] .sw i { left:18px; background:var(--bright); }
+
+  /* Party list (drag sources) */
+  .chip { display:flex; align-items:center; gap:10px; min-height:48px; padding:4px 10px 4px 4px; border:1px solid var(--border); border-radius:999px; background:var(--card); cursor:grab; touch-action:none; }
+  .chip .disc { width:36px; height:36px; font-size:13px; border-width:2px; }
+  .chip b { font-weight:400; font-family:'Cinzel',serif; font-size:14px; color:var(--text); }
+  .chip small { margin-left:auto; color:var(--muted); font-size:13px; }
+  .chip.placed { border-color:var(--accent); }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>Adventure map tokens</h1>
+    <p class="note">The party token sits on the city map, and the DM drags it wherever he says the party is. When the party splits, he drags characters from the party list onto the map. He adds markers on demand (landmarks everyone sees, or hidden pins only he sees). Drag anything onto “Remove from map” to take it off. Players see the same map, minus hidden pins.</p>
+    <p style="margin:12px 0 0"><span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span></p>
+  </header>
+
+  <section>
+    <p class="where">The DM's Adventure map</p>
+    <div class="dm">
+      <div class="panel">
+        <div class="row" id="toolbar"></div>
+        <div class="map" id="dmmap"></div>
+      </div>
+      <div class="panel">
+        <span class="label">The party · drag onto the map</span>
+        <div id="party" style="display:grid;gap:8px"></div>
+        <p class="hint">A character on the map shows there too. The party token stays unless you remove it.</p>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <p class="where">What players see</p>
+    <div class="panel" style="max-width:760px"><div class="map readonly" id="plmap"></div></div>
+  </section>
+</main>
+
+<script>
+  const ICONS = { landmark: "🏰", inn: "🍺", quest: "!", danger: "☠", rumour: "?", pin: "•" };
+  const ICON_BG = { landmark: "#e9c46a", inn: "#d9a066", quest: "#f2d16b", danger: "#e07a6a", rumour: "#b9a6e0", pin: "#cfc2a8" };
+  const PARTY = [
+    { slug: "eoghan", name: "Eòghan", c: "#3d5a70" }, { slug: "liu", name: "Liu Sha", c: "#7a4b32" },
+    { slug: "aesop", name: "Aesop", c: "#4f6b32" }, { slug: "mj", name: "Meanjeans", c: "#5a3a6b" }, { slug: "qc", name: "Quietclaw", c: "#2f6b62" },
+  ];
+  const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
+
+  let tokens = [
+    { id: "party", type: "party", x: 30, y: 62 },
+    { id: "m1", type: "marker", icon: "inn", label: "The Green Dragon Inn", x: 62, y: 38, hidden: false },
+    { id: "m2", type: "marker", icon: "landmark", label: "Temple of Pelor", x: 78, y: 66, hidden: false },
+    { id: "m3", type: "marker", icon: "pin", label: "Beggar (if they go north)", x: 46, y: 30, hidden: true },
+  ];
+  let placing = false, sel = null, editing = null;
+
+  // A simple parchment city: river, wall, roads, blocks.
+  const CITY = `<svg class="city" viewBox="0 0 160 100" preserveAspectRatio="none" aria-hidden="true">
+    <defs><radialGradient id="pg" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#e8d9b5"/><stop offset="1" stop-color="#b89c68"/></radialGradient></defs>
+    <rect width="160" height="100" fill="url(#pg)"/>
+    <path d="M-5 70 C 30 60, 50 85, 80 72 S 130 55, 170 64 L170 80 C 130 72, 110 92, 80 86 S 30 76, -5 86 Z" fill="#7aa2b0" opacity=".75"/>
+    <path d="M20 12 L140 10 L148 52 L130 92 L28 94 L12 56 Z" fill="none" stroke="#6b5232" stroke-width="1.6" stroke-dasharray="3 1.5"/>
+    <g stroke="#8a6d45" stroke-width="1.2" fill="none" opacity=".8"><path d="M20 30 L140 34"/><path d="M60 10 L70 94"/><path d="M105 10 L100 94"/><path d="M14 55 L148 50"/></g>
+    <g fill="#9c7f55" opacity=".55">${Array.from({ length: 34 }, (_, i) => { const x = 24 + (i * 37) % 112, y = 15 + (i * 23) % 70; return (y > 58 && y < 82) ? "" : `<rect x="${x}" y="${y}" width="${4 + (i % 3) * 2}" height="${3 + (i % 2) * 2}"/>`; }).join("")}</g>
+    <text x="80" y="7" text-anchor="middle" font-family="Cinzel" font-size="4" fill="#5a4024" letter-spacing="1">GREYHAWK</text>
+  </svg>`;
+
+  function tokHtml(t, readonly) {
+    const sel_ = sel === t.id ? " sel" : "";
+    if (t.type === "party") return `<div class="tok party${sel_}" data-tok="${t.id}" style="left:${t.x}%;top:${t.y}%"><div class="disc" title="The party">⚑</div><span class="tag">The party</span></div>`;
+    if (t.type === "character") { const p = PARTY.find((x) => x.slug === t.slug); return `<div class="tok${sel_}" data-tok="${t.id}" style="left:${t.x}%;top:${t.y}%"><div class="disc" style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)">${p.name[0]}</div><span class="tag">${esc(p.name)}</span></div>`; }
+    return `<div class="tok marker${t.hidden ? " hidden" : ""}${sel_}" data-tok="${t.id}" style="left:${t.x}%;top:${t.y}%"><div class="pin" style="background:${ICON_BG[t.icon]}"><span>${ICONS[t.icon]}</span></div>${t.label ? `<span class="tag">${t.hidden ? "◌ " : ""}${esc(t.label)}</span>` : ""}</div>`;
+  }
+
+  function popHtml() {
+    const t = tokens.find((x) => x.id === (editing || sel)); if (!t) return "";
+    const left = t.x > 60 ? `calc(${t.x}% - 270px)` : `calc(${t.x}% + 30px)`, top = `max(8px, calc(${t.y}% - 60px))`;
+    if (t.type !== "marker") {
+      const name = t.type === "party" ? "The party" : PARTY.find((p) => p.slug === t.slug).name;
+      return `<div class="pop" style="left:${left};top:${top}" data-pop><b style="font-family:Cinzel;font-weight:400;color:var(--text)">${esc(name)}</b>
+        <p class="hint">Drag to move.</p><div class="row"><button class="btn danger" data-remove>Remove from map</button><span style="flex:1"></span><button class="btn quiet" data-unsel>Close</button></div></div>`;
+    }
+    return `<div class="pop" style="left:${left};top:${top}" data-pop>
+      <label style="display:grid;gap:4px"><span class="label">Label</span><input class="in" id="lbl" value="${esc(t.label)}" placeholder="The Green Dragon Inn" maxlength="40"></label>
+      <div class="icons">${Object.entries(ICONS).map(([k, v]) => `<button data-icon="${k}" class="${t.icon === k ? "on" : ""}" title="${k}" aria-label="${k}">${v}</button>`).join("")}</div>
+      <button type="button" class="switch" role="switch" aria-checked="${!t.hidden}" data-vis><span class="sw"><i></i></span>Players can see it</button>
+      <p class="hint">${t.hidden ? "Hidden: only you see this pin." : "Everyone sees it on their map."}</p>
+      <div class="row"><button class="btn danger" data-remove>Delete</button><span style="flex:1"></span><button class="btn primary" data-unsel>Done</button></div></div>`;
+  }
+
+  function render() {
+    const onMap = new Set(tokens.filter((t) => t.type === "character").map((t) => t.slug));
+    const hasParty = tokens.some((t) => t.type === "party");
+    document.getElementById("toolbar").innerHTML = `<button class="btn${placing ? " on" : ""}" data-place>${placing ? "Tap the map to place it…" : "＋ Marker"}</button>
+      ${hasParty ? "" : `<button class="btn primary" data-addparty>⚑ Put the party on the map</button>`}
+      <span class="hint" style="margin-left:auto">${placing ? "Esc to cancel" : "Drag to move · tap to edit or remove"}</span>`;
+    const dm = document.getElementById("dmmap");
+    dm.classList.toggle("placing", placing);
+    dm.innerHTML = CITY + tokens.map((t) => tokHtml(t, false)).join("") + popHtml() + `<div class="remove-zone" id="rz">Remove from map</div>`;
+    document.getElementById("plmap").innerHTML = CITY + tokens.filter((t) => !(t.type === "marker" && t.hidden)).map((t) => tokHtml({ ...t }, true)).join("").replaceAll(" sel", "");
+    document.getElementById("party").innerHTML = PARTY.map((p) => `<div class="chip${onMap.has(p.slug) ? " placed" : ""}" data-chip="${p.slug}" tabindex="0" role="button" aria-label="Drag ${esc(p.name)} onto the map"><div class="disc" style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)">${p.name[0]}</div><b>${esc(p.name)}</b><small>${onMap.has(p.slug) ? "on map" : ""}</small></div>`).join("");
+  }
+
+  // ── Dragging (tokens on the map, characters from the list) ──
+  const dmMap = () => document.getElementById("dmmap");
+  const pctAt = (e) => { const r = dmMap().getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width) * 100, y: ((e.clientY - r.top) / r.height) * 100, inside: e.clientX >= r.left && e.clientX <= r.right && e.clientY >= r.top && e.clientY <= r.bottom }; };
+  const overRemove = (e) => { const z = document.getElementById("rz"); if (!z) return false; const r = z.getBoundingClientRect(); return e.clientX >= r.left - 10 && e.clientX <= r.right + 10 && e.clientY >= r.top - 10 && e.clientY <= r.bottom + 10; };
+  let drag = null;
+
+  document.addEventListener("pointerdown", (e) => {
+    if (e.target.closest("[data-pop]")) return;
+    const tokEl = e.target.closest("#dmmap [data-tok]");
+    const chip = e.target.closest("[data-chip]");
+    if (tokEl) {
+      e.preventDefault();
+      drag = { kind: "tok", id: tokEl.dataset.tok, startX: e.clientX, startY: e.clientY, moved: false };
+    } else if (chip) {
+      e.preventDefault();
+      const p = PARTY.find((x) => x.slug === chip.dataset.chip);
+      const g = document.createElement("div"); g.className = "ghost"; g.innerHTML = `<div class="disc" style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)">${p.name[0]}</div>`;
+      g.style.left = e.clientX + "px"; g.style.top = e.clientY + "px"; document.body.appendChild(g);
+      drag = { kind: "chip", slug: p.slug, ghost: g };
+    }
+  });
+  window.addEventListener("pointermove", (e) => {
+    if (!drag) return;
+    if (drag.kind === "chip") { drag.ghost.style.left = e.clientX + "px"; drag.ghost.style.top = e.clientY + "px"; return; }
+    if (!drag.moved && Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) < 5) return;
+    drag.moved = true; sel = null; editing = null;
+    const t = tokens.find((x) => x.id === drag.id), p = pctAt(e);
+    t.x = Math.max(0, Math.min(100, p.x)); t.y = Math.max(0, Math.min(100, p.y));
+    const el = document.querySelector(`#dmmap [data-tok="${drag.id}"]`);
+    if (el) { el.style.left = t.x + "%"; el.style.top = t.y + "%"; el.classList.add("dragging"); }
+    document.querySelector("#dmmap .pop")?.remove();
+    const z = document.getElementById("rz"); z.classList.add("show"); z.classList.toggle("hot", overRemove(e));
+  });
+  window.addEventListener("pointerup", (e) => {
+    if (!drag) return;
+    const d = drag; drag = null;
+    if (d.kind === "chip") {
+      d.ghost.remove();
+      const p = pctAt(e);
+      if (p.inside) {
+        const existing = tokens.find((t) => t.type === "character" && t.slug === d.slug);
+        if (existing) { existing.x = p.x; existing.y = p.y; } else tokens.push({ id: `c-${d.slug}`, type: "character", slug: d.slug, x: p.x, y: p.y });
+      }
+      render(); return;
+    }
+    if (!d.moved) { sel = d.id; editing = null; render(); return; }
+    if (overRemove(e)) tokens = tokens.filter((t) => t.id !== d.id);
+    render();
+  });
+
+  // ── Clicks ──
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button");
+    if (b?.dataset.pal) { document.body.dataset.pal = b.dataset.pal; document.querySelectorAll("[data-pal]").forEach((x) => x.classList.toggle("on", x === b)); return; }
+    if (b?.dataset.place !== undefined) { placing = !placing; sel = null; render(); return; }
+    if (b?.dataset.addparty !== undefined) { tokens.unshift({ id: "party", type: "party", x: 50, y: 50 }); render(); return; }
+    if (b?.dataset.remove !== undefined) { tokens = tokens.filter((t) => t.id !== (editing || sel)); sel = editing = null; render(); return; }
+    if (b?.dataset.unsel !== undefined) { sel = editing = null; render(); return; }
+    if (b?.dataset.icon) { tokens.find((t) => t.id === sel).icon = b.dataset.icon; render(); return; }
+    if (b?.dataset.vis !== undefined) { const t = tokens.find((x) => x.id === sel); t.hidden = !t.hidden; render(); return; }
+    if (placing && e.target.closest("#dmmap") && !e.target.closest("[data-tok]")) {
+      const p = pctAt(e); const id = `m${Date.now()}`;
+      tokens.push({ id, type: "marker", icon: "pin", label: "", x: p.x, y: p.y, hidden: false });
+      placing = false; sel = id; render(); document.getElementById("lbl")?.focus(); return;
+    }
+    if (e.target.closest("#dmmap") && !e.target.closest("[data-tok]") && !e.target.closest("[data-pop]")) { sel = null; render(); }
+  });
+  document.addEventListener("input", (e) => { if (e.target.id === "lbl") { tokens.find((t) => t.id === sel).label = e.target.value; const v = e.target.value; document.getElementById("plmap").innerHTML = CITY + tokens.filter((t) => !(t.type === "marker" && t.hidden)).map((t) => tokHtml(t, true)).join("").replaceAll(" sel", ""); const el = document.querySelector(`#dmmap [data-tok="${sel}"] .tag`); if (el) el.textContent = v; } });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") { placing = false; sel = editing = null; render(); } });
+  render();
+</script>
+</body>
+</html>
