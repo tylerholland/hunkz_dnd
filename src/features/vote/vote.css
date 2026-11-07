@@ -1,5 +1,5 @@
 /* Party vote — design/prototypes/party-vote.html. Uses the page's --pal-* colours. */
-.vb-label { font-family: 'Cinzel', serif; font-size: 10px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pal-text-muted); }
+.vb-label { font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pal-accent); }
 .vb-hint { margin: 0; font-family: 'Crimson Text', Georgia, serif; font-size: 14px; font-style: italic; color: var(--pal-text-muted); }
 .vb-letter { width: 26px; height: 26px; flex: none; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--pal-accent); font-family: 'Cinzel', serif; font-size: 11px; color: var(--pal-accent-bright); }
 
