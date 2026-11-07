@@ -24,6 +24,7 @@
 
 const { BatchGetCommand, UpdateCommand } = require("@aws-sdk/lib-dynamodb");
 const { seenOf, shouldStamp, publicPresence } = require("../lib/presence");
+const { normalizeVote, projectVote } = require("../lib/vote");
 const { db, TABLE } = require("../lib/db");
 const { verifyPassword } = require("../lib/auth");
 const { ok } = require("../lib/response");
@@ -40,6 +41,7 @@ const {
   SHOP_SLUG,
   SHOP_CATALOG_SLUG,
   PRESENCE_SLUG,
+  VOTE_SLUG,
   CHRONICLE_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
@@ -90,6 +92,7 @@ function annotateMapLibrary(mapLibrary, { getCharacterConditions, getNpcConditio
 const SENTINEL_SLUGS = [
   SHOP_CATALOG_SLUG,
   PRESENCE_SLUG,
+  VOTE_SLUG,
   INITIATIVE_SLUG,
   NPC_COMBAT_SLUG,
   ROLL_HISTORY_SLUG,
@@ -170,6 +173,9 @@ exports.handler = async (event) => {
     stamping = stampPresence(who, serverTime);
   }
 
+  // The party vote, as this poller may see it (lib/vote.js).
+  const vote = projectVote(normalizeVote(sentinelBySlug.get(VOTE_SLUG)), { isDm, slug: querySlug, partySlugs: roster.members });
+
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.
   // Keyed off the roster only — if no roster item exists yet, party/partyStatus
   // is simply empty for this endpoint (old endpoints keep their Scan-based
@@ -218,6 +224,7 @@ exports.handler = async (event) => {
       talentCodexVersion,
       shop,
       presence: publicPresence(seen, memberSlugs),
+      vote,
       serverTime,
       buildVersion: appMeta.buildVersion,
     };
@@ -350,6 +357,7 @@ exports.handler = async (event) => {
     talentCodexVersion,
     shop,
     presence: publicPresence(seen, memberSlugs),
+    vote,
     serverTime,
     buildVersion: appMeta.buildVersion,
   };
