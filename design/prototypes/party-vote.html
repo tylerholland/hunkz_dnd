@@ -11,14 +11,16 @@
   DM: "Call a Vote" (party actions row in Adventure, and the ⋯ menu so it
   works in Combat too) opens a small form: the question, options A, B, C…
   (2–6; "Yes / No" fills two), "Players can pick more than one", a time
-  limit (none · 30 s · 1 min · 2 min · 5 min), and "Show vote counts to
-  players" (off by default: players see only the outcome, so nobody is
-  swayed by how the others voted). Send.
-  While it's open the DM sees a live card: bars per option with who chose
-  what, who hasn't voted yet (with their who's-here dot), the countdown,
+  limit (none · 30 s · 1 min · 2 min · 5 min), and two visibility settings:
+  "Show votes to players as they come in" (off by default, so nobody is
+  swayed by how the others voted) and "Show the result to players when it
+  closes" (on by default; off = he's just taking the table's temperature,
+  and players only learn that it closed). Send.
+  While it's open the DM sees a live board: a box per option with each
+  player's token in the box they chose (popping in as they vote), the
+  leading box glowing, a "Still deciding" tray with their who's-here dots, the countdown,
   Close now / Cancel. It closes by itself when time runs out or everyone
-  has voted. Then: the winner (or "Tie — your call"). Players see just the
-  outcome ("The party chose …"), with counts only if the DM turned them on.
+  has voted. Then: the winner's box in gold (or "Tie — your call").
 
   Players (desktop first; phone too): the vote appears as a card near the
   top of their page, over the sheet but not blocking it; "Later" tucks it
@@ -26,10 +28,10 @@
   their vote until it closes. When it closes they see the outcome.
 
   Data sketch: one `vote` record (sentinel), riding the session poll:
-  { id, question, options[], multi, endsAt|null, showCounts, status: open|closed,
+  { id, question, options[], multi, endsAt|null, showLive, showResult, status: open|closed,
     ballots: { slug: [optionIndex…] } }. Only the DM gets ballots by name;
-    players get their own ballot, the outcome once closed, and counts only
-    if showCounts.
+    players get their own ballot; everyone's ballots while open only if
+    showLive; the result once closed only if showResult.
   The result goes in the session log ("Vote · Where next? → The tavern, 3 of 5").
   Open: should the DM be able to vote/break ties in the app, or just decide?
 -->
@@ -112,6 +114,30 @@
   .bars-closed .bar-row:not(.win) .bar i { opacity:.4; }
   .bar-row.win .nm { color:var(--win); font-weight:600; }
   .who { display:flex; flex-wrap:wrap; gap:4px; }
+  /* The vote board: a box per option, players' tokens in the box they chose */
+  .board { display:grid; grid-template-columns:repeat(auto-fit,minmax(170px,1fr)); gap:10px; }
+  .box { border:1px solid var(--border); border-radius:12px; background:var(--bg); padding:10px 12px 12px; min-height:112px; display:grid; align-content:start; gap:10px; transition:border-color 250ms, box-shadow 250ms, opacity 250ms; }
+  .box-h { display:flex; align-items:center; gap:8px; }
+  .box-h .nm { color:var(--text); line-height:1.2; }
+  .box-h .ct { margin-left:auto; font-family:'Cinzel',serif; font-size:18px; color:var(--bright); }
+  .box .lead-tag { display:none; font-family:'Cinzel',serif; font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--win); }
+  .box.lead { border-color:var(--win); box-shadow:0 0 0 1px var(--win), 0 0 20px color-mix(in srgb,var(--win) 28%,transparent); }
+  .box.lead .lead-tag { display:block; }
+  .box.lead .nm, .box.lead .ct { color:var(--win); }
+  .board.closed .box:not(.lead) { opacity:.6; }
+  .toks { display:flex; flex-wrap:wrap; gap:8px; }
+  .vtok { display:grid; justify-items:center; gap:2px; width:54px; }
+  .vtok i { position:relative; width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-style:normal; font-size:14px; color:#f3e6d0; border:2px solid #f3e6d0; box-shadow:0 2px 6px rgba(0,0,0,.45); }
+  .vtok small { font-size:12px; color:var(--body); max-width:54px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .vtok.pop i { animation:pop 420ms cubic-bezier(.2,1.6,.4,1); }
+  @keyframes pop { from { transform:scale(.2); opacity:0; } to { transform:scale(1); opacity:1; } }
+  @media (prefers-reduced-motion: reduce) { .vtok.pop i { animation:none; } }
+  .tray { display:flex; flex-wrap:wrap; align-items:center; gap:10px; padding:8px 12px; border:1px dashed var(--border); border-radius:12px; }
+  .tray .vtok i { opacity:.5; filter:grayscale(.4); }
+  .tray .vtok .pd { position:absolute; right:-3px; bottom:-3px; width:11px; height:11px; border-radius:50%; border:2px solid var(--bg); }
+  .choice .mini { margin-left:auto; display:flex; gap:3px; }
+  .choice .mini i { width:20px; height:20px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-style:normal; font-size:10px; color:#f3e6d0; border:1px solid #f3e6d0; }
+  .choice.lead { box-shadow:0 0 0 1px var(--win); }
   .chip { display:inline-flex; align-items:center; gap:5px; padding:1px 8px 1px 3px; border-radius:999px; border:1px solid var(--border); font-size:13px; color:var(--body); }
   .chip .av { width:18px; height:18px; border-radius:50%; display:inline-flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:10px; color:#f3e6d0; }
   .dot { width:8px; height:8px; border-radius:50%; display:inline-block; }
@@ -157,7 +183,7 @@
 <main>
   <header>
     <h1>Party vote</h1>
-    <p class="note">The DM asks the table a quick question with a few options. Each player's page shows the vote; they pick and send; the DM sees the tally build and the outcome. Try it: Call a Vote, then vote as Eòghan on his page below (desktop or phone). The rest of the party votes on their own. Players see only the outcome unless the DM turns on vote counts.</p>
+    <p class="note">The DM asks the table a quick question with a few options. Each player's page shows the vote; they pick and send; the DM sees the tally build and the outcome. Try it: Call a Vote, then vote as Eòghan on his page below (desktop or phone). The rest of the party votes on their own. The DM chooses whether players see the votes as they come in, and whether they see the result.</p>
     <p style="margin:12px 0 0" class="row"><span class="ctl"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span>
       <span class="ctl"><button data-view="desktop" class="on">Player on desktop</button><button data-view="phone">Player on a phone</button></span></p>
   </header>
@@ -193,14 +219,15 @@
   const esc = (s) => String(s ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/"/g, "&quot;");
 
   let draft = null;      // composer
-  let vote = null;       // { question, options, multi, limit, showCounts, startedAt, endsAt, ballots, status, now }
+  let vote = null;       // { question, options, multi, limit, showLive, showResult, startedAt, endsAt, ballots, status, now }
   let mine = [];         // Eòghan's selection
   let tucked = false;    // player tucked the vote away
   let clock = 0;         // simulated seconds since send
   let tick = null;
   let enter = false;     // animate the player's card in on its next draw only
 
-  const fresh = () => ({ question: "", options: ["", ""], multi: false, limit: 60, showCounts: false });
+  const fresh = () => ({ question: "", options: ["", ""], multi: false, limit: 60, showLive: false, showResult: true });
+  const seenTok = new Set(); // tokens already placed, so only new votes pop in
 
   // ── DM ──
   function dm() {
@@ -219,32 +246,43 @@
   }
   const left = () => (vote.limit ? Math.max(0, vote.limit - clock) : null);
   const fmt = (s) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, "0")}`;
-  function bars(showWho) {
-    const n = counts(), total = Object.keys(vote.ballots).length || 1, win = vote.status === "closed" ? winners() : [];
-    return vote.options.map((o, i) => `<div class="bar-row${win.includes(i) ? " win" : ""}">
-      <div class="bar-top"><span class="letter" style="width:24px;height:24px;font-size:11px">${LETTERS[i]}</span><span class="nm">${esc(o)}</span><span class="ct">${n[i]}</span></div>
-      <div class="bar"><i style="width:${(n[i] / total) * 100}%"></i></div>
-      ${showWho ? `<div class="who">${PARTY.filter((p) => vote.ballots[p.slug]?.includes(i)).map((p) => `<span class="chip"><span class="av" style="background:${p.c}">${p.name[0]}</span>${esc(p.name)}</span>`).join("")}</div>` : ""}
-    </div>`).join("");
-  }
   function verdict() {
     const w = winners(), n = counts(), voted = Object.keys(vote.ballots).length;
     if (!w.length) return `<div class="verdict">Nobody voted.</div>`;
     if (w.length > 1) return `<div class="verdict"><b>Tie</b> between ${w.map((i) => esc(vote.options[i])).join(" and ")} · ${n[w[0]]} each. Your call.</div>`;
     return `<div class="verdict">The party chose <b>${esc(vote.options[w[0]])}</b> · ${n[w[0]]} of ${voted}</div>`;
   }
-  function dmCard() {
+  // A token for a player; pops in the first time it lands in a box.
+  function vtok(p, where, extra = "") {
+    const key = `${p.slug}|${where}`, fresh = !seenTok.has(key);
+    seenTok.add(key);
+    return `<span class="vtok${fresh && where !== "tray" ? " pop" : ""}" title="${esc(p.name)}"><i style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)">${p.name[0]}${extra}</i><small>${esc(p.name)}</small></span>`;
+  }
+  // The board: a box per option, each player's token in the box they chose.
+  function board({ tray = false } = {}) {
+    const n = counts(), max = Math.max(0, ...n), closed = vote.status === "closed";
+    // Glow for a sole leader; when it closes on a tie, the tied boxes are marked.
+    const top = n.filter((v) => v === max).length, tie = top > 1;
+    const lead = (i) => max > 0 && n[i] === max && (!tie || closed);
+    const boxes = vote.options.map((o, i) => `<div class="box${lead(i) ? " lead" : ""}">
+        <div class="box-h"><span class="letter" style="width:26px;height:26px;font-size:11px">${LETTERS[i]}</span><span class="nm">${esc(o)}</span><span class="ct">${n[i]}</span></div>
+        <span class="lead-tag">${closed ? (tie ? "Tied" : "Chosen") : "Leading"}</span>
+        <div class="toks">${PARTY.filter((p) => vote.ballots[p.slug]?.includes(i)).map((p) => vtok(p, i)).join("")}</div></div>`).join("");
     const waiting = PARTY.filter((p) => !vote.ballots[p.slug]);
+    const trayHtml = tray && !closed ? `<div class="tray"><span class="label">Still deciding</span>${waiting.length ? waiting.map((p) => vtok(p, "tray", `<span class="pd" style="background:var(--${p.here})"></span>`)).join("") : `<span class="hint">Everyone's voted.</span>`}</div>` : "";
+    return `<div class="board${closed ? " closed" : ""}">${boxes}</div>${trayHtml}`;
+  }
+  const seesText = (v) => `${v.showLive ? "Players see the votes as they come in." : "Players can't see each other's votes while it's open."} ${v.showResult ? "They see the result when it closes." : "When it closes they only see that it closed."}`;
+  function dmCard() {
     const t = left();
     if (vote.status === "closed") return `<div class="vote-card closed">
         <div class="vc-head"><span class="label">Vote closed</span><b>${esc(vote.question)}</b></div>
-        ${verdict()}<div class="bars-closed" style="display:grid;gap:12px">${bars(true)}</div>
-        <div class="foot"><span class="hint">${vote.showCounts ? "Players see the result with the counts." : "Players see the outcome, not the counts."} It's in the session log.</span><span class="sp"></span><button class="btn primary" data-done>Done</button></div></div>`;
+        ${verdict()}${board()}
+        <div class="foot"><span class="hint">${vote.showResult ? "Players see this result." : "Only you see the result."} It's in the session log.</span><span class="sp"></span><button class="btn primary" data-done>Done</button></div></div>`;
     return `<div class="vote-card">
         <div class="vc-head"><span class="label">Vote open</span><b>${esc(vote.question)}</b>${t != null ? `<span class="clock${t <= 10 ? " low" : ""}" data-clock>${fmt(t)}</span>` : ""}</div>
-        <span class="hint">${vote.multi ? "Players can pick more than one." : "One choice each."} ${vote.showCounts ? "Players see the counts." : "Only you see the counts; players get the outcome."}</span>
-        ${bars(true)}
-        <div class="row"><span class="label">Waiting on</span>${waiting.length ? waiting.map((p) => `<span class="chip"><span class="dot" style="background:var(--${p.here})"></span>${esc(p.name)}</span>`).join("") : `<span class="hint">Everyone's voted.</span>`}</div>
+        <span class="hint">${vote.multi ? "Players can pick more than one." : "One choice each."} ${seesText(vote)}</span>
+        ${board({ tray: true })}
         <div class="foot"><button class="btn danger" data-cancel>Cancel vote</button><span class="sp"></span><button class="btn primary" data-close>Close now</button></div></div>`;
   }
 
@@ -260,15 +298,16 @@
       <button type="button" class="switch" role="switch" aria-checked="${d.multi}" data-multi><span class="sw"><i></i></span>Players can pick more than one</button>
       <div style="display:grid;gap:6px"><span class="label">Time limit</span><span class="seg">${LIMITS.map(([s, l]) => `<button data-limit="${s}" class="${d.limit === s ? "on" : ""}">${l}</button>`).join("")}</span>
         <p class="hint">${d.limit ? "It closes by itself then, or as soon as everyone's voted." : "It stays open until everyone's voted or you close it."}</p></div>
-      <button type="button" class="switch" role="switch" aria-checked="${d.showCounts}" data-tally><span class="sw"><i></i></span>Show vote counts to players</button>
-      <p class="hint" style="margin-top:-8px">${d.showCounts ? "Players see how many chose each option, while voting and after." : "Off: only you see the counts. Players just learn the outcome, so nobody is swayed by the others."}</p>
+      <div style="display:grid;gap:2px"><span class="label">What players see</span>
+        <button type="button" class="switch" role="switch" aria-checked="${d.showLive}" data-live><span class="sw"><i></i></span>Show votes to players as they come in</button>
+        <p class="hint">${d.showLive ? "Everyone sees who picked what while it's open." : "Off: nobody sees how the others voted while it's open, so nobody is swayed."}</p>
+        <button type="button" class="switch" role="switch" aria-checked="${d.showResult}" data-result><span class="sw"><i></i></span>Show the result to players when it closes</button>
+        <p class="hint">${d.showResult ? "When it closes, everyone sees the result." : "Off: players only learn it closed. The result stays with you, a quiet temperature check."}</p></div>
       <div class="foot"><span class="sp"></span><button class="btn quiet" data-x>Cancel</button><button class="btn primary" data-send ${ok ? "" : "disabled"}>Send to the party</button></div>`;
   }
 
   // ── Player ──
-  // The outcome as players see it: no counts unless the DM turned them on.
   function playerVerdict() {
-    if (vote.showCounts) return verdict().replace("Your call.", "The DM will decide.");
     const w = winners();
     if (!w.length) return `<div class="verdict">Nobody voted.</div>`;
     if (w.length > 1) return `<div class="verdict"><b>Tie</b> between ${w.map((i) => esc(vote.options[i])).join(" and ")}. The DM will decide.</div>`;
@@ -276,16 +315,23 @@
   }
   function voteCard(desktop) {
     const t = left(), voted = vote.ballots.eoghan, cls = `pvote${enter ? " enter" : ""}`;
-    if (vote.status === "closed") return `<div class="${cls}" role="dialog" aria-label="Vote result"><span class="label">The party has spoken</span><h4>${esc(vote.question)}</h4>${playerVerdict()}
-      ${vote.showCounts ? `<div class="bars-closed" style="display:grid;gap:10px">${bars(false)}</div>` : ""}
-      ${voted ? `<span class="hint">You voted ${voted.map((i) => esc(vote.options[i])).join(" and ")}.</span>` : ""}
-      <div class="row"><span class="sp" style="flex:1"></span><button class="btn primary" data-pdone>OK</button></div></div>`;
-    const n = counts();
+    const yours = voted ? `<span class="hint">You voted ${voted.map((i) => esc(vote.options[i])).join(" and ")}.</span>` : "";
+    if (vote.status === "closed") {
+      if (!vote.showResult) return `<div class="${cls}" role="dialog" aria-label="Vote closed"><span class="label">Vote closed</span><h4>${esc(vote.question)}</h4>
+        <div class="verdict">The vote has closed. The DM has the result.</div>${yours}
+        <div class="row"><span class="sp" style="flex:1"></span><button class="btn primary" data-pdone>OK</button></div></div>`;
+      return `<div class="${cls}" role="dialog" aria-label="Vote result"><span class="label">The party has spoken</span><h4>${esc(vote.question)}</h4>${playerVerdict()}${board()}${yours}
+        <div class="row"><span class="sp" style="flex:1"></span><button class="btn primary" data-pdone>OK</button></div></div>`;
+    }
+    const n = counts(), max = Math.max(0, ...n), soleLead = n.filter((v) => v === max).length === 1;
+    const others = (i) => PARTY.filter((p) => !p.me && vote.ballots[p.slug]?.includes(i));
     return `<div class="${cls}" role="dialog" aria-label="Vote">
       <div class="row"><span class="label">The DM asks</span>${t != null ? `<span class="clock${t <= 10 ? " low" : ""}" style="margin-left:auto" data-clock>${fmt(t)}</span>` : ""}</div>
       <h4>${esc(vote.question)}</h4>
       <span class="hint">${vote.multi ? "Pick any that you'd go for." : "Pick one."}${voted ? " You can change your vote until it closes." : ""}</span>
-      <div class="${desktop ? "choices" : ""}" style="${desktop ? "" : "display:grid;gap:10px"}">${vote.options.map((o, i) => `<button class="choice${mine.includes(i) ? " on" : ""}" data-pick="${i}" aria-pressed="${mine.includes(i)}"><span class="letter">${LETTERS[i]}</span>${esc(o)}${vote.showCounts ? `<span class="tick" style="color:var(--muted)">${n[i]}</span>` : mine.includes(i) ? `<span class="tick">✓</span>` : ""}</button>`).join("")}</div>
+      <div class="${desktop ? "choices" : ""}" style="${desktop ? "" : "display:grid;gap:10px"}">${vote.options.map((o, i) => `<button class="choice${mine.includes(i) ? " on" : ""}${vote.showLive && soleLead && max > 0 && n[i] === max ? " lead" : ""}" data-pick="${i}" aria-pressed="${mine.includes(i)}"><span class="letter">${LETTERS[i]}</span>${esc(o)}${vote.showLive
+        ? `<span class="mini">${others(i).map((p) => `<i style="background:${p.c}" title="${esc(p.name)}">${p.name[0]}</i>`).join("")}</span>`
+        : mine.includes(i) ? `<span class="tick">✓</span>` : ""}</button>`).join("")}</div>
       <div class="row"><button class="btn quiet" data-tuck>Later</button><span class="sp" style="flex:1"></span>
         <button class="btn primary" data-vote ${mine.length ? "" : "disabled"}>${voted ? (String(voted) === String(mine) ? "Voted ✓" : "Change vote") : "Vote"}</button></div></div>`;
   }
@@ -327,7 +373,10 @@
     for (const [slug, p] of Object.entries(plans)) if (!vote.ballots[slug] && clock >= p.at) vote.ballots[slug] = p.pick;
     const everyone = PARTY.every((p) => vote.ballots[p.slug]);
     if (everyone || (vote.limit && clock >= vote.limit)) { close(); render(); return; }
-    if (Object.keys(vote.ballots).length !== before) { document.getElementById("dm").innerHTML = dm(); }
+    if (Object.keys(vote.ballots).length !== before) {
+      document.getElementById("dm").innerHTML = dm();
+      if (vote.showLive && !tucked) document.getElementById("phone").innerHTML = phone();
+    }
     const t = left();
     document.querySelectorAll("[data-clock]").forEach((el) => { el.textContent = fmt(t); el.classList.toggle("low", t <= 10); });
   }
@@ -342,11 +391,12 @@
     if (b.dataset.add !== undefined) { draft.options.push(""); render(); document.querySelector(`[data-opt="${draft.options.length - 1}"]`).focus(); return; }
     if (b.dataset.rm) { draft.options.splice(+b.dataset.rm, 1); render(); return; }
     if (b.dataset.multi !== undefined) { draft.multi = !draft.multi; render(); return; }
-    if (b.dataset.tally !== undefined) { draft.showCounts = !draft.showCounts; render(); return; }
+    if (b.dataset.live !== undefined) { draft.showLive = !draft.showLive; render(); return; }
+    if (b.dataset.result !== undefined) { draft.showResult = !draft.showResult; render(); return; }
     if (b.dataset.limit) { draft.limit = +b.dataset.limit; render(); return; }
     if (b.dataset.send !== undefined) {
       vote = { ...draft, options: draft.options.map((o) => o.trim()).filter(Boolean), ballots: {}, status: "open" };
-      mine = []; tucked = false; clock = 0; enter = true; plan();
+      mine = []; tucked = false; clock = 0; enter = true; seenTok.clear(); plan();
       document.getElementById("scrim").hidden = true;
       clearInterval(tick); tick = setInterval(() => advance(1), 1000);
       render(); return;
