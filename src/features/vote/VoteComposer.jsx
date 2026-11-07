@@ -63,15 +63,15 @@ export default function VoteComposer({ onSend, onClose }) {
           {options.length < 6 && <button type="button" className="vc-btn vc-btn--quiet" style={{ justifySelf: "start" }} onClick={() => setOptions((list) => [...list, ""])}>＋ Add option</button>}
         </div>
         <Switch on={multi} onToggle={() => setMulti((v) => !v)}>Players can pick more than one</Switch>
-        <div className="vc-field"><span className="vb-label">Time limit</span>
-          <span className="vc-seg">{TIME_LIMITS.map(([s, label]) => <button key={s} type="button" className={limitSec === s ? "on" : ""} aria-pressed={limitSec === s} onClick={() => setLimitSec(s)}>{label}</button>)}</span>
-          <p className="vb-hint">{limitSec ? "It closes by itself then, or as soon as everyone's voted." : "It stays open until everyone's voted or you close it."}</p>
-        </div>
         <div className="vc-field"><span className="vb-label">What players see</span>
           <Switch on={showLive} onToggle={() => setShowLive((v) => !v)}>Show votes to players as they come in</Switch>
           <p className="vb-hint">{showLive ? "Everyone sees who picked what while it's open." : "Off: nobody sees how the others voted while it's open, so nobody is swayed."}</p>
           <Switch on={showResult} onToggle={() => setShowResult((v) => !v)}>Show the result to players when it closes</Switch>
           <p className="vb-hint">{showResult ? "When it closes, everyone sees the result." : "Off: players only learn it closed. The result stays with you, a quiet temperature check."}</p>
+        </div>
+        <div className="vc-field"><span className="vb-label">Time limit</span>
+          <span className="vc-seg">{TIME_LIMITS.map(([s, label]) => <button key={s} type="button" className={limitSec === s ? "on" : ""} aria-pressed={limitSec === s} onClick={() => setLimitSec(s)}>{label}</button>)}</span>
+          <p className="vb-hint">{limitSec ? "It closes by itself then, or as soon as everyone's voted." : "It stays open until everyone's voted or you close it."}</p>
         </div>
         {state.error && <p className="vc-error" role="alert">{state.error}</p>}
         <div className="vc-foot"><span style={{ flex: 1 }} />
