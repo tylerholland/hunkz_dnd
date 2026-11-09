@@ -37,8 +37,12 @@
     deck [ { id, kind, title, text, picture|null, to: "all"|"choose"|[slugs], canReply, showPassed, usedAt|null } ] (DM-only)
     deliveries: a moment goes to the log for everyone; a note only into its recipients'
       projection (others get "a note was passed" if showPassed). Replies attach to the note.
-  Open: should players see each other's results on a group check? Should a moment be able to
-    open a Story 76 scene later? Should notes be kept in the Chronicle (DM-only)?
+  Decided (Tyler, 2026-11-08): players see only their own roll; the DM can "Reveal rolls" (once
+    they're in, or any time) and then everyone sees the whole row. Notes and replies are kept in the
+    Chronicle, DM-only (to revisit). This prototype is for placement and flow only: the real build
+    keeps today's styles for the map (including its vertical resize), party cards, dice roller and
+    counter wheels; only the new pieces (tiles, feed, deck, prompts) need new styling.
+  Open: should a moment be able to open a Story 76 scene later?
 -->
 <style>
   :root {
@@ -436,6 +440,7 @@
       return `<div class="fi${f}"><span class="ic">🎯</span><div>
         <div class="meta"><span class="who">${esc(checkName(e.check))}${e.dc ? ` · DC ${e.dc}` : ""}</span><span class="time">${e.time}</span></div>
         <p>${e.rows.map((r) => `${esc(P(r.slug).name)} <b>${r.total ?? "—"}</b>${r.pass === true ? " ✓" : r.pass === false ? " ✗" : ""}`).join(" · ")}</p>
+        ${e.revealed ? `<p class="hint">Revealed to the party</p>` : ""}
         ${e.dc && passed.length ? `<div class="row" style="margin-top:6px"><button class="btn sm" data-act="note-passed" data-id="${e.id}">✉ Note to the ${passed.length === 1 ? "one" : passed.length} who passed</button>${failed.length ? `<button class="btn sm quiet" data-act="note-failed" data-id="${e.id}">✉ …or the ${failed.length} who didn't</button>` : ""}</div>` : ""}
       </div></div>`;
     }
@@ -457,7 +462,9 @@
       <h3>${esc(checkName(r.check))}</h3>
       <p class="hint">${r.dc ? `DC ${r.dc}${r.showDc ? " (players see it)" : " (hidden from players)"}` : "No DC: you judge the result"}${r.adv !== "normal" ? ` · ${r.adv === "adv" ? "with advantage" : "with disadvantage"}` : ""}</p>
       <div class="rrows">${rows}</div>
-      <div class="row"><button class="btn sm quiet" data-act="rr-cancel">Cancel</button><span style="flex:1"></span><button class="btn sm primary" data-act="rr-close">${inCount === r.targets.length ? "Done" : "Close it now"}</button></div>
+      <div class="row"><button class="btn sm quiet" data-act="rr-cancel">Cancel</button><span style="flex:1"></span>
+        ${r.revealed ? `<span class="hint">Revealed to the party</span>` : `<button class="btn sm${inCount === r.targets.length ? "" : " quiet"}" data-act="rr-reveal" title="Everyone who rolled sees everyone's results">Reveal rolls</button>`}
+        <button class="btn sm primary" data-act="rr-close">${inCount === r.targets.length ? "Done" : "Close it now"}</button></div>
     </section>`;
   }
   function liveVoteHtml() {
@@ -649,7 +656,7 @@
     const r = rollReq; if (!r) return;
     rollReq = null;
     Object.values(inbox).forEach((b) => { if (b.roll === r) b.roll = null; });
-    if (!cancel) push({ id: r.id, type: "rollreq-done", time: tick(), check: r.check, dc: r.dc, rows: r.targets.map((s) => ({ slug: s, total: r.results[s]?.total ?? null, pass: r.results[s] && r.dc ? r.results[s].total >= r.dc : null })) });
+    if (!cancel) push({ id: r.id, type: "rollreq-done", time: tick(), check: r.check, dc: r.dc, revealed: !!r.revealed, rows: r.targets.map((s) => ({ slug: s, total: r.results[s]?.total ?? null, pass: r.results[s] && r.dc ? r.results[s].total >= r.dc : null })) });
     else render();
   }
 
@@ -663,7 +670,7 @@
         ? `<div class="fi note"><span class="ic">✉</span><div><div class="meta"><span class="who">A note from the DM</span><span class="time">${e.time}</span></div><div class="quote">${esc(e.text)}</div>${e.reply && e.reply.slug === slug ? `<div class="reply">You: ${esc(e.reply.text)}</div>` : ""}</div></div>`
         : `<div class="fi note"><span class="ic">✉</span><div><div class="meta"><span class="who">The DM passed ${esc(names(e.to))} a note</span><span class="time">${e.time}</span></div></div></div>`;
       if (e.type === "vote-done") return `<div class="fi"><span class="ic">⚑</span><div><div class="meta"><span class="who">Vote · ${esc(e.q)} → ${esc(e.win)}</span><span class="time">${e.time}</span></div></div></div>`;
-      if (e.type === "rollreq-done") { const mine = e.rows.find((r) => r.slug === slug); return `<div class="fi"><span class="ic">🎯</span><div><div class="meta"><span class="who">You rolled ${esc(shortCheck(e.check))}: <b>${mine.total ?? "—"}</b></span><span class="time">${e.time}</span></div></div></div>`; }
+      if (e.type === "rollreq-done") { const mine = e.rows.find((r) => r.slug === slug); return `<div class="fi"><span class="ic">🎯</span><div><div class="meta"><span class="who">You rolled ${esc(shortCheck(e.check))}: <b>${mine.total ?? "—"}</b></span><span class="time">${e.time}</span></div>${e.revealed ? `<p class="hint">${e.rows.filter((r) => r.slug !== slug).map((r) => `${esc(P(r.slug).name)} ${r.total ?? "—"}`).join(" · ")}</p>` : ""}</div></div>`; }
       return "";
     };
     return `<div class="page">
@@ -686,7 +693,8 @@
         <span class="label">The DM asks for a roll</span>
         <h3>${esc(checkName(r.check))}</h3>
         <p class="hint">${r.adv === "adv" ? "With advantage: roll two, keep the higher. " : r.adv === "dis" ? "With disadvantage: roll two, keep the lower. " : ""}${r.dc && r.showDc ? `DC ${r.dc}.` : ""}</p>
-        ${res ? `<div class="row"><span class="rolled">${res.total}</span><span class="hint">${res.nat != null ? `(${res.nat} ${sgn(b)})` : "(your dice)"} · sent to the DM</span></div>`
+        ${res ? `<div class="row"><span class="rolled">${res.total}</span><span class="hint">${res.nat != null ? `(${res.nat} ${sgn(b)})` : "(your dice)"} · sent to the DM</span></div>
+            ${r.revealed ? `<span class="label">The DM revealed the rolls</span><div class="rrows">${r.targets.map((s2) => `<div class="rrow">${discHtml(P(s2), "sm")}<span>${esc(P(s2).name)}</span><span></span><span class="res${r.results[s2] ? "" : " wait"}">${r.results[s2] ? r.results[s2].total : "rolling…"}</span></div>`).join("")}</div><div class="row"><span style="flex:1"></span><button class="btn sm" data-act="p-dismiss">OK</button></div>` : ""}`
           : `<button class="btn primary bigroll" data-act="p-roll">Roll d20 ${sgn(b)}${r.adv !== "normal" ? (r.adv === "adv" ? " · adv" : " · dis") : ""}</button>
              <div class="row"><span class="hint">Rolled real dice?</span><input class="in" style="width:90px" inputmode="numeric" placeholder="Total" data-p="manual" aria-label="Your total"><button class="btn sm" data-act="p-manual">Send</button></div>`}
       </div>`;
@@ -795,6 +803,7 @@
       case "m-send": startRoll(modal); modal = null; break;
       case "rr-close": closeRoll(false); return;
       case "rr-cancel": closeRoll(true); return;
+      case "rr-reveal": rollReq.revealed = true; toast("Everyone who rolled now sees the results"); break;
       case "note-passed": case "note-failed": {
         const ent = feed.find((x) => x.id === d.id); const want = a === "note-passed";
         const to = ent.rows.filter((r) => r.pass === want).map((r) => r.slug);
@@ -839,10 +848,11 @@
       case "pick-cancel": picking = null; break;
       case "close": modal = null; break;
       // Player side
-      case "p-roll": rollFor(view); setTimeout(() => { const r = inbox[view]?.roll; if (r && r.results[view]) { inbox[view].roll = null; render(); } }, 3500); break;
+      case "p-roll": { const me = view; rollFor(me); setTimeout(() => { const r = inbox[me]?.roll; if (r && r.results[me] && !r.revealed) { inbox[me].roll = null; render(); } }, 3500); break; }
       case "p-manual": { const v = parseInt(document.querySelector('[data-p="manual"]').value, 10); if (v > 0) { rollFor(view, v); setTimeout(() => { if (inbox[view]) { inbox[view].roll = null; render(); } }, 3500); } break; }
       case "p-reply": { const v = document.querySelector('[data-p="reply"]').value.trim(); const e2 = inbox[view].note; if (v) { e2.reply = { slug: view, text: v }; inbox[view].note = null; toast("Sent to the DM"); } break; }
       case "p-gotit": { const e2 = inbox[view].note; e2.gotIt = [...new Set([...(e2.gotIt || []), view])]; inbox[view].note = null; break; }
+      case "p-dismiss": inbox[view].roll = null; break;
       case "p-continue": { inbox[view].moment = null; break; }
       case "reopen": inbox[view].moment = feed.find((x) => x.id === d.id); break;
     }
