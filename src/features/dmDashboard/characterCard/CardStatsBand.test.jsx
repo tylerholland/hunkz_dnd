@@ -24,7 +24,15 @@ describe("DM card stats band", () => {
     expect(screen.getByTitle("Wisdom")).toHaveTextContent("Wis+3");
     expect(screen.getByTitle("Dexterity")).toHaveTextContent("Dex+2");
     expect(screen.getByTitle("Charisma")).toHaveTextContent("Cha+0");
-    expect(screen.getByRole("button", { name: "+1" })).toBeInTheDocument(); // 5 skills, 4 shown
+  });
+
+  it("lists skills, then special abilities, six at a glance", () => {
+    const { rerender } = render(<CardStatsBand char={char} expanded={false} onToggleExpand={() => {}} />);
+    expect(screen.getByText("Athletics")).toBeInTheDocument();
+    expect(screen.getByText("Favored Enemy")).toBeInTheDocument(); // 5 skills + 1 ability: all shown
+    expect(screen.queryByRole("button", { name: /^\+\d/ })).not.toBeInTheDocument();
+    rerender(<CardStatsBand char={{ ...char, specialAbilities: ["favored enemy", "darkvision"] }} expanded={false} onToggleExpand={() => {}} />);
+    expect(screen.getByRole("button", { name: "+1" })).toBeInTheDocument();
   });
 
   it("rolls a 2d6 ability check (house rule); skill chips are names only", () => {

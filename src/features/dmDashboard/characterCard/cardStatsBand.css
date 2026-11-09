@@ -170,6 +170,12 @@
 
 /* ─── Drawer ─────────────────────────────────────────────────────────────── */
 
+/* The drawer sits inside the card body, so it reaches past the body's
+   side padding to stay full width. */
+.cc-drawer-slot { margin: 0 -14px 0 -18px; }
+.cc-card--compact .cc-drawer-slot { margin: 0 -10px 0 -12px; }
+.cc-collapse.open .cc-drawer { border-bottom: 1px solid var(--pal-border); margin-bottom: 8px; }
+
 .cc-drawer {
   max-height: 320px;
   overflow-y: auto;

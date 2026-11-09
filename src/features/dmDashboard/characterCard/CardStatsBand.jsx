@@ -1,21 +1,33 @@
-import { formatMod, getAbilityMods, getPassivePerception, getSkillNames, getSpeed } from "../cardStats";
+import { formatMod, getAbilityMods, getPassivePerception, getSkillNames, getSpeed, titleCase } from "../cardStats";
 import { abilityCheckExpr } from "../../../lib/houseRules";
+import { getTalentDetail } from "../../characterSheet/talentCatalog";
+import { useTalentCodexVersion } from "../../characterSheet/talentCodexStore";
 import "./cardStatsBand.css";
 
 const KEY_ABILITIES = new Set(["Wis", "Con", "Dex"]);
-const MAX_GLANCE_SKILLS = 4;
+// Skills, then special abilities (Ritual, Vision…), as name chips.
+const MAX_GLANCE_CHIPS = 6;
 
 // At-a-glance band (Stories 50/64): six ability modifiers, passive
-// perception, speed, and skill names. Clicking an ability rolls a check with
+// perception, speed, and skill and special-ability names (hover an ability for
+// what it does). Clicking an ability score rolls a check with
 // the table's house-rule dice (DM Settings; default 2d6) when onRoll is
 // provided; skills are names only for now.
 export default function CardStatsBand({ char, onRoll, expanded, onToggleExpand, checkDice }) {
   const abilities = getAbilityMods(char);
-  const skills = getSkillNames(char);
+  useTalentCodexVersion(); // re-render when ability descriptions load
+  const skills = getSkillNames(char).map((name) => ({ key: `s:${name}`, label: name, description: "" }));
+  const specials = (char?.specialAbilities || [])
+    .filter((a) => typeof a === "string" && a.trim())
+    .map((a) => {
+      const info = getTalentDetail(a);
+      return { key: `a:${a}`, label: info.label && info.label !== a ? info.label : titleCase(a), description: info.description || "" };
+    });
+  const chips = [...skills, ...specials];
   const perception = getPassivePerception(char);
   const { speed, zeroed, notable } = getSpeed(char);
-  const glanceSkills = skills.slice(0, MAX_GLANCE_SKILLS);
-  const hiddenSkills = skills.length - glanceSkills.length;
+  const glanceChips = chips.slice(0, MAX_GLANCE_CHIPS);
+  const hiddenChips = chips.length - glanceChips.length;
 
   return (
     <div className="cc-stats-band">
@@ -45,12 +57,12 @@ export default function CardStatsBand({ char, onRoll, expanded, onToggleExpand, 
             <span className="cc-glance-value">{speed}ft</span>
           </span>
         )}
-        {glanceSkills.map((name) => (
-          <span key={name} className="cc-skill-chip cc-skill-chip--static">{name}</span>
+        {glanceChips.map(({ key, label, description }) => (
+          <span key={key} className="cc-skill-chip cc-skill-chip--static" title={description || undefined}>{label}</span>
         ))}
-        {hiddenSkills > 0 && (
+        {hiddenChips > 0 && (
           <button type="button" className="cc-skill-chip cc-skill-chip--more" onClick={() => !expanded && onToggleExpand()}>
-            +{hiddenSkills}
+            +{hiddenChips}
           </button>
         )}
       </div>

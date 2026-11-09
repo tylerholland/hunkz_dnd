@@ -594,6 +594,13 @@ export default function CharacterCard({
             checkDice={checkDice}
           />
 
+          {/* The loadout drawer opens right under its toggle (above XP / Coin). */}
+          <div className="cc-drawer-slot">
+            <DrawerCollapse open={expanded}>
+              <CardLoadoutDrawer char={char} onRoll={cardRoll} onToggleEquipped={toggleItemEquipped} featuresEnabled={featuresEnabled} />
+            </DrawerCollapse>
+          </div>
+
           {/* Tier-2 collapse: XP + Coin */}
           <XpCoinRow
             char={char}
@@ -606,9 +613,6 @@ export default function CharacterCard({
           />
       </div>
 
-      <DrawerCollapse open={expanded}>
-        <CardLoadoutDrawer char={char} onRoll={cardRoll} onToggleEquipped={toggleItemEquipped} featuresEnabled={featuresEnabled} />
-      </DrawerCollapse>
 
       <DmNotesStrip
         slug={char.slug}
