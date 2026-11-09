@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { formatRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
 import "./rollHistory.css";
+import { checkName } from "../features/rollRequests/rollCheck";
 import { voteLogText } from "../features/vote/voteUtil";
 
 // A label on any logged event ("Climbing the grate"), set by the player when
@@ -299,6 +300,29 @@ export function VoteHistoryRow({ pal, entry, opacity = 1, showDivider = false })
   );
 }
 
+// A roll the DM asked for, once it's closed: the check, then each result
+// (✓ / ✗ against a DC the viewer may see). Players get their own row unless
+// the DM revealed everyone's; the label is the DM's.
+export function CheckHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  const rows = Array.isArray(entry.rows) ? entry.rows : [];
+  return (
+    <div className="rh-row" style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "2px 8px", padding: "7px 0", borderBottom: showDivider ? `1px solid ${pal.border}` : "none", opacity, transition: "opacity 0.4s" }}>
+      <span style={{ color: pal.accent, fontFamily: pal.fontUI, fontSize: 13, lineHeight: 1, flexShrink: 0, width: 13, textAlign: "center" }} aria-hidden="true">◎</span>
+      <span style={{ fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 14, color: pal.text }}>
+        {entry.label ? `${entry.label} · ` : ""}{checkName(entry.check)}{entry.dc ? ` · DC ${entry.dc}` : ""}
+      </span>
+      <span style={{ flexBasis: "100%", height: 0 }} />
+      <span style={{ paddingLeft: 21, fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody }}>
+        {rows.map((r, i) => (
+          <span key={r.slug || i}>
+            {i > 0 && " · "}{r.name || r.slug} <b style={{ fontFamily: pal.fontDisplay, fontWeight: 400, color: r.pass === true ? "#5fbf7f" : r.pass === false ? "#d07a6a" : pal.text }}>{r.total ?? "—"}</b>{r.pass === true ? " ✓" : r.pass === false ? " ✗" : ""}
+          </span>
+        ))}
+      </span>
+    </div>
+  );
+}
+
 export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null, below = null, onSaveTag }) {
   // Branch on type: "wheel" entries render differently from dice rows
   const rowProps = { pal, entry, opacity, showDivider, onSaveTag };
@@ -309,6 +333,7 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
   if (entry.type === "effect") return <EffectHistoryRow {...rowProps} below={below}>{children}</EffectHistoryRow>;
   if (entry.type === "shop") return <ShopHistoryRow {...rowProps} />;
   if (entry.type === "vote") return <VoteHistoryRow {...rowProps} />;
+  if (entry.type === "check") return <CheckHistoryRow {...rowProps} />;
   // A spell's cast roll reads "casts Hex" rather than "Hex CAST".
   const isCast = entry.attack?.kind === "spell" && /\bCAST\b/.test(String(entry.label || ""));
   const actionLabel = isCast ? null : normalizeRollActionLabel(entry.label);

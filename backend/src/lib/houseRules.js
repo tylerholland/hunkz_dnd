@@ -8,10 +8,13 @@
 // playersEndTurn — players may end their own turn in initiative (Story 49).
 // customEffects — the DM's own effects ([{ name, kind }]), Story 70.
 // money — which coins are in use and their worth in silver (lib/money.js).
+// saveDice — what a saving throw rolls (before the ability modifier).
+// skillBonus — what a proficient skill adds to a check: "none" (the ability
+// modifier alone) or "proficiency" (D&D 5e: +2 at levels 1–4, rising with level).
 // npcAttackDice — the attack roll for an NPC's quick attacks when the creature
 // has none of its own: a d20 plus a typical low-level monster's +3, by default.
 const { normalizeMoney, DEFAULT_MONEY } = require("./money");
-const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod" };
+const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none" };
 const EFFECT_KINDS = new Set(["curse", "helpful", "neutral"]);
 
 function normalizeCustomEffects(list) {
@@ -57,6 +60,8 @@ function normalizeHouseRulesRecord(item) {
     money: normalizeMoney(item?.money),
     npcAttackDice: isValidAttackDice(item?.npcAttackDice) ? item.npcAttackDice.replace(/\s+/g, "").toLowerCase() : DEFAULT_HOUSE_RULES.npcAttackDice,
     weaponDamage: item?.weaponDamage === "dnd" ? "dnd" : "wod",
+    saveDice: normalizeDice(item?.saveDice, DEFAULT_HOUSE_RULES.saveDice),
+    skillBonus: item?.skillBonus === "proficiency" ? "proficiency" : "none",
     version: Number.isFinite(item?.version) ? item.version : 0,
   };
 }

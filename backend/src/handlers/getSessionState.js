@@ -42,10 +42,12 @@ const {
   SHOP_CATALOG_SLUG,
   PRESENCE_SLUG,
   VOTE_SLUG,
+  ROLL_REQUESTS_SLUG,
   CHRONICLE_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
 const { normalizeShop, shopStatus, shopSummary, normalizeCatalog, weaponDiceMap } = require("../lib/shop");
+const { normalizeRollRequests, projectRollRequests, publicCheckEvent } = require("../lib/rollRequests");
 const { currentVersion } = require("../lib/versioning");
 const {
   normalizeInitiativeRecord,
@@ -93,6 +95,7 @@ const SENTINEL_SLUGS = [
   SHOP_CATALOG_SLUG,
   PRESENCE_SLUG,
   VOTE_SLUG,
+  ROLL_REQUESTS_SLUG,
   INITIATIVE_SLUG,
   NPC_COMBAT_SLUG,
   ROLL_HISTORY_SLUG,
@@ -175,6 +178,8 @@ exports.handler = async (event) => {
 
   // The party vote, as this poller may see it (lib/vote.js).
   const vote = projectVote(normalizeVote(sentinelBySlug.get(VOTE_SLUG)), { isDm, slug: querySlug, partySlugs: roster.members });
+  // Roll requests (lib/rollRequests.js): all for the DM; a player gets theirs.
+  const rollRequests = projectRollRequests(normalizeRollRequests(sentinelBySlug.get(ROLL_REQUESTS_SLUG)), { isDm, slug: querySlug });
 
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.
   // Keyed off the roster only — if no roster item exists yet, party/partyStatus
@@ -225,6 +230,7 @@ exports.handler = async (event) => {
       shop,
       presence: publicPresence(seen, memberSlugs),
       vote,
+      rollRequests,
       serverTime,
       buildVersion: appMeta.buildVersion,
     };
@@ -337,6 +343,7 @@ exports.handler = async (event) => {
   const publicRollHistory = {
     ...rollHistory,
     rolls: (rollHistory.rolls || []).flatMap((event) => {
+      if (event?.type === "check") return [publicCheckEvent(event, querySlug)];
       if (event?.type !== "hp" && event?.type !== "condition" && event?.type !== "turn") return [event];
       if (shouldStripAttackerRef(event.subject, { getCharacterConditions, getNpcConditions, hiddenSubjectKeys })) return [];
       const out = { ...event };
@@ -358,6 +365,7 @@ exports.handler = async (event) => {
     shop,
     presence: publicPresence(seen, memberSlugs),
     vote,
+    rollRequests,
     serverTime,
     buildVersion: appMeta.buildVersion,
   };

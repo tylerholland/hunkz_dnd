@@ -6,6 +6,7 @@ import {
   sessionTakingMs, startOfDay, toLocalInput,
 } from "./chronicleData";
 import { voteLogText } from "../vote/voteUtil";
+import { checkName } from "../rollRequests/rollCheck";
 
 const DAY = 86400000;
 
@@ -31,6 +32,7 @@ function eventTextParts(e) {
   if (e.type === "turn") return { who: `Round ${e.round}`, what: `${e.subject?.name || "?"}'s turn` };
   if (e.type === "shop") return { who: e.characterName || "?", what: `${shopEventText(e)}` };
   if (e.type === "vote") return { who: "Party vote", what: voteLogText(e) };
+  if (e.type === "check") return { who: e.label || "Roll", what: `${checkName(e.check)}${e.dc ? ` (DC ${e.dc})` : ""}: ${(e.rows || []).map((r) => `${r.name || r.slug} ${r.total ?? "—"}${r.pass === true ? " ✓" : r.pass === false ? " ✗" : ""}`).join(", ")}` };
   return { who: e.characterName || "DM", what: `${e.label || "Roll"} ${e.exprLabel || ""}${e.target?.name ? ` ◎ ${e.target.name}` : ""}` };
 }
 

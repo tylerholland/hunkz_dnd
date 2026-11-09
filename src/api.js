@@ -478,3 +478,20 @@ export const postVoteBallot = (slug, password, voteId, picks) =>
     headers: { "Content-Type": "application/json", "x-character-password": password },
     body: JSON.stringify({ asSlug: slug, voteId, picks }),
   });
+
+// Roll requests — the DM asks players for a check or save
+// (backend/src/handlers/rollRequests.js). Actions: start, reveal, close, cancel.
+export const putRollRequest = (dmPassword, action, fields = {}) =>
+  request("/roll-requests", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ ...fields, action }),
+  });
+
+/** A player's roll for a request (their password): { total, rolls, manual }. */
+export const postRollResult = (slug, password, id, result) =>
+  request("/roll-requests/result", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": password },
+    body: JSON.stringify({ asSlug: slug, id, ...result }),
+  });

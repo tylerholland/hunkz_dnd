@@ -13,7 +13,9 @@ const MAX_GLANCE_CHIPS = 6;
 // what it does). Clicking an ability score rolls a check with
 // the table's house-rule dice (DM Settings; default 2d6) when onRoll is
 // provided; skills are names only for now.
-export default function CardStatsBand({ char, onRoll, expanded, onToggleExpand, checkDice }) {
+// With onAbilityTap (roll requests), tapping a score opens "ask this player"
+// instead of rolling, and onCheck adds a Check button by the drawer toggle.
+export default function CardStatsBand({ char, onRoll, expanded, onToggleExpand, checkDice, onAbilityTap, onCheck, askOpen = null }) {
   const abilities = getAbilityMods(char);
   useTalentCodexVersion(); // re-render when ability descriptions load
   const skills = getSkillNames(char).map((name) => ({ key: `s:${name}`, label: name, description: "" }));
@@ -37,9 +39,10 @@ export default function CardStatsBand({ char, onRoll, expanded, onToggleExpand, 
             key={stat}
             type="button"
             className={`cc-abil-cell${KEY_ABILITIES.has(abbr) ? " cc-abil-cell--key" : ""}`}
-            onClick={() => onRoll?.(abilityCheckExpr(mod, checkDice), `${stat} check`, { isCheck: true })}
-            disabled={!onRoll}
-            title={onRoll ? `Roll ${stat} (${abilityCheckExpr(mod, checkDice)})` : stat}
+            onClick={() => (onAbilityTap ? onAbilityTap(abbr.toLowerCase()) : onRoll?.(abilityCheckExpr(mod, checkDice), `${stat} check`, { isCheck: true }))}
+            disabled={!onRoll && !onAbilityTap}
+            aria-pressed={onAbilityTap ? askOpen === abbr.toLowerCase() : undefined}
+            title={onAbilityTap ? `Ask ${char?.name || "them"} to roll ${stat}` : onRoll ? `Roll ${stat} (${abilityCheckExpr(mod, checkDice)})` : stat}
           >
             <span className="cc-abil-abbr">{abbr}</span>
             <span className="cc-abil-mod">{formatMod(mod)}</span>
@@ -67,15 +70,20 @@ export default function CardStatsBand({ char, onRoll, expanded, onToggleExpand, 
         )}
       </div>
 
-      <button
-        type="button"
-        className={`cc-loadout-toggle${expanded ? " open" : ""}`}
-        onClick={onToggleExpand}
-        aria-expanded={expanded}
-      >
-        <span className="cc-loadout-caret" aria-hidden="true">▸</span>
-        Weapons · Spells · Abilities · Inventory
-      </button>
+      <div className={onCheck ? "cc-loadout-row" : undefined} style={onCheck ? undefined : { display: "contents" }}>
+        <button
+          type="button"
+          className={`cc-loadout-toggle${expanded ? " open" : ""}`}
+          onClick={onToggleExpand}
+          aria-expanded={expanded}
+        >
+          <span className="cc-loadout-caret" aria-hidden="true">▸</span>
+          Weapons · Spells · Abilities · Inventory
+        </button>
+        {onCheck && (
+          <button type="button" className={`cc-ask-btn${askOpen === "check" ? " on" : ""}`} aria-expanded={askOpen === "check"} onClick={onCheck} title={`Ask ${char?.name || "them"} for a check`}>Check</button>
+        )}
+      </div>
     </div>
   );
 }

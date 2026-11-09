@@ -25,7 +25,9 @@ import DeathSavesStrip from "./characterCard/DeathSavesStrip";
 import CardStatsBand from "./characterCard/CardStatsBand";
 import CardLoadoutDrawer from "./characterCard/CardLoadoutDrawer";
 import DrawerCollapse from "./characterCard/DrawerCollapse";
-import { abilityModifier, formatMod } from "./cardStats";
+import { ABILITY_ORDER, abilityModifier, formatMod } from "./cardStats";
+import { abilityCheckExpr } from "../../lib/houseRules";
+import CardAskPanel from "../rollRequests/CardAskPanel";
 import { armorClassOf } from "../characterSheet/armorClass";
 import { clearLinkHover, setLinkHover, useLinkHover } from "./battleMode/tokenLink";
 import "./characterCard.css";
@@ -65,6 +67,10 @@ export default function CharacterCard({
   // Who's here — this player's last check-in and the server's time (lib/presence.js).
   lastSeen,
   serverTime,
+  // Roll requests: ask this player to roll (one tap), or open the full form.
+  rules,
+  onAskRoll,
+  onOpenAsk,
 }) {
   const pal = useContext(PalCtx);
   const [popoverOpen, setPopoverOpen] = useState(false);
@@ -75,6 +81,9 @@ export default function CharacterCard({
   const [localExpanded, setLocalExpanded] = useState(false);
   const expanded = expandedProp ?? localExpanded;
   const toggleExpanded = onToggleExpand ?? (() => setLocalExpanded((value) => !value));
+  // Which "ask this player" panel is open: an ability key ("wis"), "check", or none.
+  const [askOpen, setAskOpen] = useState(null);
+  const toggleAsk = (which) => setAskOpen((cur) => (cur === which ? null : which));
   const cardRoll = onRoll
     ? (expr, label, opts) => onRoll({ expr, label, characterName: char.name, palette: char.palette, isCheck: !!opts?.isCheck })
     : undefined;
@@ -592,7 +601,27 @@ export default function CharacterCard({
             expanded={expanded}
             onToggleExpand={toggleExpanded}
             checkDice={checkDice}
+            onAbilityTap={onAskRoll ? (ability) => toggleAsk(ability) : undefined}
+            onCheck={onAskRoll ? () => toggleAsk("check") : undefined}
+            askOpen={askOpen}
           />
+
+          {askOpen && onAskRoll && (
+            <CardAskPanel
+              char={char}
+              rules={rules}
+              ability={askOpen === "check" ? null : askOpen}
+              onAsk={(check) => { setAskOpen(null); onAskRoll(check); }}
+              onRollSelf={cardRoll ? () => {
+                const stat = ABILITY_ORDER.find((a) => a.abbr.toLowerCase() === askOpen)?.stat;
+                const mod = abilityModifier(char, stat);
+                setAskOpen(null);
+                cardRoll(abilityCheckExpr(mod, checkDice), `${stat} check`, { isCheck: true });
+              } : undefined}
+              onMore={() => { const ability = askOpen === "check" ? null : askOpen; setAskOpen(null); onOpenAsk?.(ability); }}
+              onClose={() => setAskOpen(null)}
+            />
+          )}
 
           {/* The loadout drawer opens right under its toggle (above XP / Coin). */}
           <div className="cc-drawer-slot">

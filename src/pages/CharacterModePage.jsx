@@ -65,6 +65,8 @@ export default function CharacterModePage() {
   const [presence, setPresence] = useState({});
   // The party vote, as this player may see it (features/vote).
   const [vote, setVote] = useState(null);
+  // Rolls the DM has asked this player for (features/rollRequests).
+  const [rollRequests, setRollRequests] = useState([]);
   const [houseRules, setHouseRules] = useState(null);
   const [shopSummary, setShopSummary] = useState(null);
   const [rollHistory, setRollHistory] = useState([]);
@@ -207,6 +209,7 @@ export default function CharacterModePage() {
       setServerTime(d.serverTime || null);
       setPresence(d.presence || {});
       setVote(d.vote || null);
+      setRollRequests(Array.isArray(d.rollRequests) ? d.rollRequests : []);
       setHouseRules(d.houseRules || null);
       setShopSummary(d.shop || null);
       setRollHistory(d.rollHistory?.rolls || []);
@@ -461,6 +464,7 @@ export default function CharacterModePage() {
       serverTime={serverTime}
       presence={presence}
       vote={vote}
+      rollRequests={rollRequests}
       houseRules={houseRules}
       shopSummary={shopSummary}
       rollHistory={rollHistory}

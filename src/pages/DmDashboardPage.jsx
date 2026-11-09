@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag, putHouseRules, putVote } from "../api";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag, putHouseRules, putVote, putRollRequest } from "../api";
 import { CustomEffectsCtx } from "../features/dmDashboard/customEffectsContext";
 import { isHelpfulEffect, setCustomEffects, spellEffect } from "../lib/spellEffects";
 import DmDiceRoller from "../components/DmDiceRoller";
@@ -42,6 +42,9 @@ import { NPC_EXPECTED_TTL_MS, npcCombatCaughtUp } from "./npcServerStamps";
 import ShopCombatNotice from "../features/shop/ShopCombatNotice";
 import DmVoteCard from "../features/vote/DmVoteCard";
 import DmActionTiles from "../features/dmDashboard/DmActionTiles";
+import AskRollModal from "../features/rollRequests/AskRollModal";
+import RollRequestCard from "../features/rollRequests/RollRequestCard";
+import { abilityCheck, skillCheck } from "../features/rollRequests/rollCheck";
 import VoteComposer from "../features/vote/VoteComposer";
 
 // Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
@@ -114,6 +117,9 @@ export default function DmDashboardPage() {
   // The party vote (features/vote): what the poll says, and the DM's form.
   const [vote, setVote] = useState(null);
   const [voteFormOpen, setVoteFormOpen] = useState(false);
+  // Roll requests out to players, and the Ask for a Roll form ({ who, check, more }).
+  const [rollRequests, setRollRequests] = useState([]);
+  const [askForm, setAskForm] = useState(null);
   const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
   const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -375,6 +381,7 @@ export default function DmDashboardPage() {
       setShopSummary(sessionData.shop || null);
       setPresence(sessionData.presence || {});
       setVote(sessionData.vote || null);
+      setRollRequests(Array.isArray(sessionData.rollRequests) ? sessionData.rollRequests : []);
       reportServerBuildVersion(sessionData.buildVersion);
     } catch {
       // Show stale data rather than error on poll failure.
@@ -1282,6 +1289,9 @@ export default function DmDashboardPage() {
           expanded={expandedCardSlug === char.slug}
           onToggleExpand={() => setExpandedCardSlug((current) => (current === char.slug ? null : char.slug))}
           onRoll={(request) => diceRollerRef.current?.rollFor(request)}
+          rules={houseRules}
+          onAskRoll={(check) => askRoll({ targets: [char.slug], check, adv: "normal" })}
+          onOpenAsk={(ability) => setAskForm({ who: [char.slug], check: ability ? abilityCheck(ability) : skillCheck("perception"), more: !!ability })}
           checkDice={houseRules.abilityCheckDice}
           featuresEnabled={houseRules.featuresEnabled !== false}
           lastSeen={presence[char.slug]}
@@ -1328,8 +1338,30 @@ export default function DmDashboardPage() {
       }),
     },
   ];
+  async function askRoll(fields) {
+    try {
+      const res = await putRollRequest(dmPassword, "start", fields);
+      setRollRequests(res.rollRequests || []);
+      refreshSoon();
+      return true;
+    } catch (err) {
+      return err?.status === 403 ? "DM password rejected." : err?.data?.error || "Couldn't send it. Try again.";
+    }
+  }
+  async function rollRequestAction(action, id) {
+    try {
+      const names = Object.fromEntries(party.map((c) => [c.slug, c.name]));
+      const res = await putRollRequest(dmPassword, action, { id, names });
+      setRollRequests(res.rollRequests || []);
+    } catch { /* the next poll shows where it stands */ }
+    refreshSoon();
+  }
+  const rollRequestCards = rollRequests.map((request) => (
+    <RollRequestCard key={request.id} request={request} members={party} rules={houseRules} onAction={rollRequestAction} />
+  ));
   const voteOpen = vote?.status === "open";
   const actionTiles = [
+    { key: "ask", icon: "🎯", title: "Ask for a Roll", sub: rollRequests.length ? `${rollRequests.length} out now` : "A check or save, for anyone", onClick: () => setAskForm({ who: [], check: skillCheck("perception") }) },
     { key: "vote", icon: "⚑", title: "Call a Vote", sub: voteOpen ? "A vote is open" : "Let the party choose", onClick: () => setVoteFormOpen(true), disabled: voteOpen },
   ];
   const palVars = {
@@ -1393,6 +1425,8 @@ export default function DmDashboardPage() {
           {combatGuideOpen && <CombatGuide who="dm" onClose={() => setCombatGuideOpen(false)} />}
           {vote && combatLayoutActive && <DmVoteCard vote={vote} members={party} presence={presence} serverTime={serverTime} onAction={voteAction} />}
           {voteFormOpen && <VoteComposer onSend={startVote} onClose={() => setVoteFormOpen(false)} />}
+          {combatLayoutActive && rollRequestCards}
+          {askForm && <AskRollModal members={party} rules={houseRules} initial={askForm} onSend={askRoll} onClose={() => setAskForm(null)} />}
           {combatMode && <ShopCombatNotice shop={shopSummary} dmPassword={dmPassword} onChanged={() => fetchDashboardData({ background: true, force: true })} />}
           {restNotice && (
             <div style={{ marginBottom: 12, fontFamily: pal.fontUI, fontSize: 11, color: "#88c888", letterSpacing: "0.08em" }}>
@@ -1535,6 +1569,7 @@ export default function DmDashboardPage() {
               <div className="dm-feed-panel">
                 <div className="dm-feed-head"><span className="label-ui">At the table</span></div>
                 {vote && !combatLayoutActive && <DmVoteCard vote={vote} members={party} presence={presence} serverTime={serverTime} onAction={voteAction} />}
+                {!combatLayoutActive && rollRequestCards}
                 <div ref={setFeedEl} className="dm-feed-list" />
               </div>
             </section>
