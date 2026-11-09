@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>DM Adventure Layout</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  DM adventure layout: prototype, no live API.
+
+  Layout (desktop first). The map stays on top (collapsible). Below it, three columns:
+    Party: the same stacked cards as Combat, in the same place, so nothing moves when
+      the DM switches modes. Each card keeps AC, HP, all six ability mods, passive Perception,
+      spells and abilities (expand), and DM notes. The newest check result shows on the card.
+    At the table (the feed): everything that happens, newest first. Live things (a roll
+      request, a vote) are pinned to the top until they finish. Filters: All, Rolls, Story, Notes.
+    DM tools: four main actions as tiles (Ask for a roll, Call a vote, Read a moment, Pass a
+      note), the smaller party actions under them (rests, XP, coin, Roll initiative), then the
+      dice roller, the counter wheels and the prep deck.
+
+  Ask for a roll: pick a check (common skills one tap, every skill and save available), who rolls
+    (everyone or chosen players), an optional DC (hidden from players by default) and
+    advantage. Players get a prompt with the right bonus already worked out from their sheet
+    (d20 + ability mod + proficiency), or can enter a physical die. Results arrive as rows on a
+    live card; with a DC, each row shows pass or fail. When it's done: "Note to the ones who
+    passed".
+
+  Prep deck: cards written before the session. A card sent to Everyone is a MOMENT (read-aloud
+    text, optional picture): players get it as a pop-up and it lands in the log. A card sent to
+    one or more players is a NOTE: only they see it, they can reply once or tap "Got it", and
+    the others see "The DM passed Liu a note" (switchable). A note can be "Choose when sending",
+    e.g. "whoever passes Insight". One tap sends; Undo for a few seconds. Used cards move to
+    "Used tonight". Ad hoc moments and notes use the same form, with "Save to deck" or "Send now".
+
+  Data sketch (all sentinel records riding the session poll, like the vote):
+    rollRequest { id, check, ability, skill|null, save, targets[], dc|null, showDc, adv, results{slug:{roll,total}}, status }
+    deck [ { id, kind, title, text, picture|null, to: "all"|"choose"|[slugs], canReply, showPassed, usedAt|null } ] (DM-only)
+    deliveries: a moment goes to the log for everyone; a note only into its recipients'
+      projection (others get "a note was passed" if showPassed). Replies attach to the note.
+  Open: should players see each other's results on a group check? Should a moment be able to
+    open a Story 76 scene later? Should notes be kept in the Chronicle (DM-only)?
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
+    --dim:#1e3a4e; --wash:rgba(106,143,168,.12); --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#080a0e; --card:#121a24; --scrim:rgba(4,8,12,.62);
+    --win:#d9b45a; --pass:#5fbf7f; --fail:#d07a6a; --on:#4fd17a; --recent:#e6c14a; --away:#6b7682; --note:#c9a45c;
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --solid:#ece4d2; --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
+    --dim:rgba(140,110,70,.16); --wash:rgba(140,110,70,.08); --text:#2a2018; --body:#3c2e1c; --muted:#6f573c; --page:#e9e1d2; --card:#efe6d4; --scrim:rgba(60,40,20,.35);
+    --win:#8a6418; --pass:#1f7a3e; --fail:#9a2a20; --on:#239a48; --recent:#d89a06; --away:#2b2620; --note:#7a5418;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button, input, textarea, select { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+  .label { font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--accent); }
+  .hint { margin:0; font-style:italic; color:var(--muted); font-size:14px; }
+  h2, h3 { margin:0; font-family:'Cinzel',serif; font-weight:400; color:var(--text); letter-spacing:.06em; }
+  h2 { font-size:15px; }
+  h3 { font-size:19px; }
+
+  /* Prototype chrome */
+  .proto { position:sticky; top:0; z-index:40; display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; padding:8px 16px; background:color-mix(in srgb, var(--page) 88%, transparent); backdrop-filter:blur(6px); border-bottom:1px solid var(--border); }
+  .proto .t { font-family:'Cinzel',serif; color:var(--text); letter-spacing:.08em; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .seg button { border:0; background:transparent; padding:6px 12px; min-height:34px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .seg button.on { background:var(--dim); color:var(--text); }
+
+  /* Shared bits */
+  .btn { display:inline-flex; align-items:center; justify-content:center; gap:6px; min-height:38px; padding:6px 14px; border:1px solid var(--border); border-radius:6px; background:transparent; color:var(--text); font-family:'IM Fell English',serif; font-size:14px; letter-spacing:.04em; }
+  .btn:hover { border-color:var(--accent); }
+  .btn.primary { background:var(--dim); border-color:var(--accent); }
+  .btn.quiet { color:var(--muted); }
+  .btn.sm { min-height:32px; padding:4px 10px; font-size:13px; }
+  .btn:disabled { opacity:.45; cursor:default; }
+  .in { width:100%; padding:9px 11px; border:1px solid var(--border); border-radius:6px; background:var(--bg); color:var(--text); }
+  textarea.in { resize:vertical; min-height:96px; line-height:1.45; }
+  .disc { width:34px; height:34px; border-radius:50%; flex:none; display:inline-flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:14px; color:#f2ead8; border:1.5px solid rgba(255,255,255,.25); position:relative; }
+  .disc.sm { width:24px; height:24px; font-size:11px; }
+  .disc.lg { width:46px; height:46px; font-size:18px; }
+  .dot { position:absolute; right:-2px; bottom:-2px; width:10px; height:10px; border-radius:50%; border:2px solid var(--card); }
+  body[data-pal="vellum"] .dot { border:0; width:9px; height:9px; }
+  .chip { display:inline-flex; align-items:center; gap:6px; min-height:34px; padding:3px 11px 3px 4px; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--body); font-size:15px; }
+  .chip.txt { padding:3px 12px; font-family:'IM Fell English',serif; font-size:14px; }
+  .chip.on { background:var(--dim); border-color:var(--accent); color:var(--text); }
+  .switch { display:flex; align-items:center; gap:10px; min-height:38px; padding:0; border:0; background:transparent; color:var(--text); text-align:left; }
+  .switch .sw { position:relative; width:36px; height:20px; border-radius:10px; border:1px solid var(--border); background:var(--bg); flex:none; }
+  .switch .sw i { position:absolute; top:2px; left:2px; width:14px; height:14px; border-radius:50%; background:var(--muted); transition:left 120ms; }
+  .switch[aria-checked="true"] .sw { background:var(--dim); border-color:var(--accent); }
+  .switch[aria-checked="true"] .sw i { left:18px; background:var(--bright); }
+  .panel { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:14px; }
+  .panel-h { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .panel-h .grow { flex:1; }
+
+  /* Page */
+  .page { max-width:1600px; margin:0 auto; padding:16px 16px 80px; display:grid; gap:16px; }
+  .top { display:flex; flex-wrap:wrap; align-items:center; gap:10px 14px; }
+  .top .title { font-family:'Cinzel',serif; font-size:20px; color:var(--text); letter-spacing:.08em; }
+
+  /* Map */
+  .mapwrap { position:relative; border:1px solid var(--border); border-radius:10px; overflow:hidden; background:var(--card); }
+  .map { position:relative; height:300px; transition:height 220ms ease; }
+  .mapwrap.closed .map { height:0; }
+  .map svg { position:absolute; inset:0; width:100%; height:100%; }
+  .mapbar { display:flex; align-items:center; gap:10px; padding:6px 10px; border-top:1px solid var(--border); }
+  .mapwrap.closed .mapbar { border-top:0; }
+  .ptok { position:absolute; transform:translate(-50%,-50%); display:grid; justify-items:center; gap:2px; }
+  .ptok .pd { width:36px; height:36px; border-radius:50%; background:radial-gradient(circle at 40% 35%, #d9b45a, #6b4a14); border:2px solid #f2e2b0; color:#2a1a04; display:flex; align-items:center; justify-content:center; font-size:16px; box-shadow:0 2px 8px rgba(0,0,0,.45); }
+  .ptok .tg { font-family:'IM Fell English',serif; font-size:12px; color:#2a1a04; background:rgba(242,226,176,.85); padding:0 6px; border-radius:4px; }
+  .pin { position:absolute; transform:translate(-50%,-100%); font-family:'IM Fell English',serif; font-size:12px; color:#3a2810; background:rgba(242,226,176,.8); padding:1px 6px; border-radius:4px; }
+
+  /* Three columns */
+  .cols { display:grid; grid-template-columns:minmax(300px, 360px) minmax(0,1fr) minmax(340px, 400px); grid-template-areas:"party feed tools"; gap:16px; align-items:start; }
+  .c-party { grid-area:party; display:grid; gap:12px; }
+  .c-feed { grid-area:feed; }
+  .c-tools { grid-area:tools; display:grid; gap:14px; }
+  @media (max-width:1180px) {
+    .cols { grid-template-columns:minmax(0,1fr) minmax(320px, 380px); grid-template-areas:"feed tools" "feed party"; }
+  }
+  @media (max-width:760px) {
+    .cols { grid-template-columns:minmax(0,1fr); grid-template-areas:"tools" "feed" "party"; }
+    .map { height:200px; }
+  }
+
+  /* Party cards */
+  .pc { background:var(--card); border:1px solid var(--border); border-radius:10px; padding:12px; display:grid; gap:9px; }
+  .pc-h { display:flex; gap:10px; align-items:center; }
+  .pc-name { font-family:'Cinzel',serif; color:var(--text); font-size:16px; line-height:1.1; }
+  .pc-sub { font-size:13px; color:var(--muted); font-style:italic; }
+  .pc-ac { margin-left:auto; display:grid; justify-items:center; min-width:44px; padding:2px 6px; border:1px solid var(--border); border-radius:8px 8px 14px 14px; }
+  .pc-ac b { font-family:'Cinzel',serif; font-size:18px; color:var(--text); font-weight:400; line-height:1.1; }
+  .pc-ac small { font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.12em; color:var(--muted); }
+  .hp { display:grid; gap:3px; }
+  .hp-row { display:flex; justify-content:space-between; font-size:13px; color:var(--muted); }
+  .hp-row b { font-family:'Cinzel',serif; font-weight:400; color:var(--text); font-size:15px; }
+  .hp-bar { height:6px; border-radius:3px; background:var(--bg); overflow:hidden; border:1px solid var(--border); }
+  .hp-bar i { display:block; height:100%; background:linear-gradient(90deg, #4f9a63, #79c48a); }
+  body[data-pal="vellum"] .hp-bar i { background:linear-gradient(90deg, #2f7a44, #4a9a5c); }
+  .mods { display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; }
+  .mods div { text-align:center; padding:3px 0; border:1px solid var(--border); border-radius:6px; }
+  .mods small { display:block; font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.1em; color:var(--muted); }
+  .mods b { font-family:'Cinzel',serif; font-weight:400; color:var(--text); font-size:15px; }
+  .pc-foot { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .pp { font-size:13px; color:var(--muted); }
+  .pp b { color:var(--text); font-family:'Cinzel',serif; font-weight:400; }
+  .lastcheck { margin-left:auto; font-size:13px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); color:var(--text); }
+  .lastcheck.pass { border-color:var(--pass); }
+  .lastcheck.fail { border-color:var(--fail); }
+  .abil { display:grid; gap:4px; padding-top:4px; border-top:1px dashed var(--border); font-size:14px; }
+  .abil div b { color:var(--text); font-weight:600; }
+  .notes { display:grid; gap:6px; padding-top:6px; border-top:1px dashed var(--border); }
+  .notes p { margin:0; font-size:14px; }
+
+  /* Feed */
+  .feed { display:grid; gap:10px; }
+  .fi { display:grid; grid-template-columns:30px minmax(0,1fr); gap:10px; padding:10px 12px; border:1px solid var(--border); border-radius:8px; background:var(--card); }
+  .fi .ic { width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--wash); color:var(--bright); font-size:15px; }
+  .fi .meta { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+  .fi .meta .who { color:var(--text); }
+  .fi .meta .time { margin-left:auto; font-size:13px; color:var(--muted); }
+  .fi p { margin:2px 0 0; }
+  .fi .quote { margin-top:4px; padding-left:10px; border-left:2px solid var(--border); font-style:italic; color:var(--body); }
+  .fi.moment .ic { color:var(--win); }
+  .fi.note .ic { color:var(--note); }
+  .fi .reply { margin-top:6px; padding:6px 10px; border-radius:6px; background:var(--wash); }
+  .fi.fresh { animation:slide 260ms ease-out; }
+  @keyframes slide { from { opacity:0; transform:translateY(-6px); } }
+  .live { border:1px solid var(--accent); border-radius:10px; background:var(--card); padding:14px; display:grid; gap:10px; box-shadow:0 0 0 3px var(--wash); }
+  .live-h { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; }
+  .live-h .grow { flex:1; }
+  .rrows { display:grid; gap:6px; }
+  .rrow { display:grid; grid-template-columns:24px minmax(0,1fr) auto auto; gap:10px; align-items:center; min-height:34px; padding:2px 6px; border-radius:6px; }
+  .rrow .bonus { font-size:13px; color:var(--muted); }
+  .rrow .res { min-width:64px; text-align:right; font-family:'Cinzel',serif; font-size:18px; color:var(--text); }
+  .rrow .res.wait { font-family:'Crimson Text',serif; font-style:italic; font-size:14px; color:var(--muted); }
+  .rrow.pass .res { color:var(--pass); }
+  .rrow.fail .res { color:var(--fail); }
+  .rrow .mark { font-size:13px; min-width:44px; color:var(--muted); }
+  .rrow.pass .mark { color:var(--pass); }
+  .rrow.fail .mark { color:var(--fail); }
+  .vboxes { display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:8px; }
+  .vbox { border:1px solid var(--border); border-radius:8px; padding:8px; min-height:74px; display:grid; align-content:start; gap:6px; }
+  .vbox.lead { border-color:var(--win); box-shadow:0 0 0 2px color-mix(in srgb, var(--win) 25%, transparent); }
+  .vbox .toks { display:flex; gap:4px; flex-wrap:wrap; min-height:24px; }
+
+  /* Tools */
+  .tiles { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .tile { display:grid; grid-template-columns:auto 1fr; grid-template-rows:auto auto; column-gap:8px; align-items:center; text-align:left; padding:12px; min-height:68px; border:1px solid var(--border); border-radius:10px; background:var(--solid); color:var(--text); }
+  .tile:hover { border-color:var(--accent); }
+  .tile .ti { grid-row:1 / span 2; width:30px; height:30px; border-radius:50%; display:flex; align-items:center; justify-content:center; background:var(--wash); color:var(--bright); font-size:18px; }
+  .tile b { font-family:'Cinzel',serif; font-weight:400; font-size:14px; letter-spacing:.02em; white-space:nowrap; }
+  .tile small { font-size:13px; color:var(--muted); font-style:italic; line-height:1.2; }
+  .tile[aria-disabled="true"] { opacity:.55; }
+  .minor { display:flex; flex-wrap:wrap; gap:6px; }
+  .dice { display:flex; flex-wrap:wrap; gap:6px; }
+  .dice button { min-width:46px; min-height:40px; border:1px solid var(--border); border-radius:6px; background:transparent; color:var(--text); font-family:'Cinzel',serif; font-size:14px; position:relative; }
+  .dice button .n { position:absolute; top:-7px; right:-6px; min-width:18px; height:18px; border-radius:9px; background:var(--accent); color:var(--bg); font-size:11px; line-height:18px; }
+  .droll { display:flex; align-items:center; gap:10px; margin-top:10px; }
+  .droll .expr { flex:1; font-family:'Cinzel',serif; color:var(--text); }
+  .dres { margin-top:8px; font-size:14px; color:var(--muted); min-height:22px; }
+  .dres b { font-family:'Cinzel',serif; font-size:22px; font-weight:400; color:var(--text); margin-right:6px; }
+  .wheels { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+  .wheel { display:grid; justify-items:center; gap:4px; padding:8px 4px; border:1px solid var(--border); border-radius:8px; }
+  .ring { width:64px; height:64px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:22px; color:var(--text); }
+  .wheel .wn { font-size:13px; color:var(--muted); text-align:center; line-height:1.15; }
+  .wheel .wb { display:flex; gap:4px; }
+  .wheel .wb button { width:34px; height:30px; border:1px solid var(--border); border-radius:6px; background:transparent; color:var(--text); }
+
+  /* Deck */
+  .deck { display:grid; gap:8px; }
+  .dc { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:6px 10px; padding:10px; border:1px solid var(--border); border-radius:8px; background:var(--solid); }
+  .dc .dch { display:flex; gap:8px; align-items:center; min-width:0; }
+  .dc .k { font-size:14px; }
+  .dc .k.moment { color:var(--win); }
+  .dc .k.note { color:var(--note); }
+  .dc .dt { font-family:'Cinzel',serif; font-size:14px; color:var(--text); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .dc .to { font-size:12px; font-family:'IM Fell English',serif; letter-spacing:.06em; color:var(--muted); border:1px solid var(--border); border-radius:999px; padding:0 8px; white-space:nowrap; }
+  .dc .ex { grid-column:1; font-size:14px; color:var(--body); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+  .dc .act { grid-column:2; grid-row:1 / span 2; display:grid; gap:4px; align-content:start; }
+  .dc .thumb { width:44px; height:32px; flex:none; border-radius:4px; background-size:cover; background-position:center; border:1px solid var(--border); }
+  .dc.used { opacity:.6; }
+  .dc .pick { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:6px; padding-top:6px; border-top:1px dashed var(--border); }
+  .used-h { display:flex; align-items:center; gap:8px; min-height:34px; border:0; background:transparent; color:var(--muted); padding:0; font-family:'IM Fell English',serif; font-size:13px; letter-spacing:.1em; text-transform:uppercase; }
+
+  /* Modal */
+  .scrim { position:fixed; inset:0; z-index:60; background:var(--scrim); display:flex; align-items:flex-start; justify-content:center; padding:56px 16px 16px; overflow:auto; }
+  .modal { width:min(560px, 100%); background:var(--solid); border:1px solid var(--accent); border-radius:12px; padding:20px; display:grid; gap:14px; box-shadow:0 20px 50px rgba(0,0,0,.45); }
+  .field { display:grid; gap:6px; }
+  .row { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .foot { display:flex; gap:8px; align-items:center; padding-top:12px; border-top:1px solid var(--border); }
+  .foot .grow { flex:1; }
+  .pics { display:flex; gap:6px; flex-wrap:wrap; }
+  .pics button { width:84px; height:56px; border-radius:6px; border:1px solid var(--border); background:var(--bg) center/cover; color:var(--muted); font-size:12px; }
+  .pics button.on { outline:2px solid var(--bright); outline-offset:1px; }
+  .group { display:grid; gap:4px; }
+  .group small { font-size:12px; color:var(--muted); font-family:'IM Fell English',serif; letter-spacing:.1em; }
+
+  /* Toast */
+  .toast { position:fixed; left:50%; bottom:22px; transform:translateX(-50%); z-index:70; display:flex; gap:12px; align-items:center; padding:10px 14px; border-radius:8px; background:var(--solid); border:1px solid var(--accent); color:var(--text); box-shadow:0 10px 30px rgba(0,0,0,.4); max-width:calc(100% - 32px); }
+
+  /* Player view */
+  .pl { display:grid; grid-template-columns:minmax(0,1fr) 340px; gap:16px; align-items:start; }
+  @media (max-width:900px) { .pl { grid-template-columns:minmax(0,1fr); } }
+  .sheet { display:grid; gap:10px; }
+  .ghost { height:22px; border-radius:6px; background:var(--wash); }
+  .story { display:grid; gap:8px; }
+  .story .fi { grid-template-columns:24px minmax(0,1fr); padding:8px 10px; font-size:15px; }
+  .story .fi .ic { width:24px; height:24px; font-size:13px; }
+  .pcard { position:fixed; top:64px; left:50%; transform:translateX(-50%); z-index:50; width:min(460px, calc(100% - 32px)); background:var(--solid); border:1px solid var(--accent); border-radius:12px; padding:16px; display:grid; gap:10px; box-shadow:0 16px 40px rgba(0,0,0,.45); animation:drop 240ms ease-out; }
+  @keyframes drop { from { opacity:0; transform:translate(-50%, -10px); } }
+  .pcard .bigroll { min-height:56px; font-size:18px; }
+  .pcard .rolled { font-family:'Cinzel',serif; font-size:30px; color:var(--text); }
+  .pcard.note { border-color:var(--note); }
+  .pcard .seal { width:34px; height:34px; border-radius:50%; background:radial-gradient(circle at 40% 35%, #b4483a, #5a160e); color:#f2d6c8; display:flex; align-items:center; justify-content:center; font-size:15px; flex:none; }
+  .moment-scrim { position:fixed; inset:0; z-index:55; background:var(--scrim); display:flex; align-items:center; justify-content:center; padding:16px; animation:fade 300ms ease-out; }
+  @keyframes fade { from { opacity:0; } }
+  .scroll { width:min(620px, 100%); max-height:calc(100vh - 32px); overflow:auto; background:var(--solid); border:1px solid var(--win); border-radius:4px; box-shadow:0 0 0 6px var(--solid), 0 0 0 7px var(--border), 0 24px 60px rgba(0,0,0,.5); }
+  .scroll .pic { height:220px; background:center/cover; border-bottom:1px solid var(--border); }
+  .scroll .tx { padding:20px 26px 22px; display:grid; gap:12px; }
+  .scroll h3 { font-size:22px; text-align:center; }
+  .scroll p { margin:0; font-size:18px; line-height:1.55; color:var(--text); white-space:pre-line; }
+  .scroll .orn { text-align:center; color:var(--win); letter-spacing:.6em; font-size:12px; }
+  @media (max-width:640px) {
+    .pcard { top:auto; bottom:0; border-radius:14px 14px 0 0; width:100%; animation:none; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body data-pal="ocean">
+<div class="proto">
+  <span class="t">DM adventure layout · prototype</span>
+  <span class="seg" id="viewSeg">
+    <button data-view="dm" class="on">DM</button>
+    <button data-view="eoghan">Player: Eòghan</button>
+    <button data-view="liu">Player: Liu Sha</button>
+  </span>
+  <span class="seg" id="palSeg"><button data-pal="ocean" class="on">Ocean</button><button data-pal="vellum">Vellum</button></span>
+  <span class="hint">Try: Ask for a roll, then switch to Eòghan to roll. Read a moment. Pass Liu a note, then reply as Liu.</span>
+</div>
+<div id="app"></div>
+<div id="layer"></div>
+<div id="toast"></div>
+
+<script>
+  const ART = (f) => `/art/shop/scenes/${f}`;
+  const ABIL = ["str", "dex", "con", "int", "wis", "cha"];
+  const ABIL_NAME = { str: "Strength", dex: "Dexterity", con: "Constitution", int: "Intelligence", wis: "Wisdom", cha: "Charisma" };
+  const SKILLS = {
+    Athletics: "str", Acrobatics: "dex", "Sleight of Hand": "dex", Stealth: "dex", Arcana: "int", History: "int", Investigation: "int", Nature: "int", Religion: "int",
+    "Animal Handling": "wis", Insight: "wis", Medicine: "wis", Perception: "wis", Survival: "wis", Deception: "cha", Intimidation: "cha", Performance: "cha", Persuasion: "cha",
+  };
+  const QUICK = ["Perception", "Investigation", "Insight", "Stealth", "Athletics", "Survival"];
+  const PARTY = [
+    { slug: "eoghan", name: "Eòghan", c: "#3d5a70", here: "on", cls: "Ranger 3", hp: 24, max: 28, ac: 15, m: { str: 1, dex: 3, con: 1, int: 0, wis: 2, cha: -1 }, prof: ["Perception", "Stealth", "Survival", "Athletics"], abil: [["Hunter's Mark", "1st-level spell · 2 slots left"], ["Favored Foe", "Mark a creature, +1d4 once per turn"], ["Longbow", "+5 to hit · d8 (WoD)"]], notes: ["Owes the ferryman 5 sp"] },
+    { slug: "liu", name: "Liu Sha", c: "#7a4b32", here: "on", cls: "Rogue 3", hp: 19, max: 21, ac: 14, m: { str: -1, dex: 4, con: 1, int: 2, wis: 1, cha: 1 }, prof: ["Perception", "Stealth", "Investigation", "Sleight of Hand", "Deception"], abil: [["Sneak Attack", "+2d6 once per turn"], ["Cunning Action", "Dash, Disengage or Hide as a bonus action"], ["Thieves' Tools", "Proficient"]], notes: [] },
+    { slug: "aesop", name: "Aesop", c: "#4f6b32", here: "on", cls: "Cleric 3", hp: 22, max: 24, ac: 18, m: { str: 1, dex: 0, con: 2, int: 0, wis: 3, cha: 1 }, prof: ["Insight", "Medicine", "History", "Religion"], abil: [["Cure Wounds", "1st-level spell · 3 slots left"], ["Channel Divinity", "1 use · Turn Undead"], ["Spiritual Weapon", "2nd-level spell · 1 slot left"]], notes: ["Suspicious of the Guildmaster"] },
+    { slug: "mj", name: "Meanjeans", c: "#5a3a6b", here: "recent", cls: "Fighter 3", hp: 31, max: 31, ac: 17, m: { str: 3, dex: 1, con: 2, int: -1, wis: 0, cha: 0 }, prof: ["Athletics", "Intimidation", "Survival"], abil: [["Second Wind", "1d10+3 HP · ready"], ["Action Surge", "1 use · ready"], ["Battle-Axe", "+5 to hit · d10 (WoD)"]], notes: [] },
+    { slug: "qc", name: "Quietclaw", c: "#2f6b62", here: "away", cls: "Druid 3", hp: 18, max: 22, ac: 13, m: { str: 0, dex: 2, con: 1, int: 1, wis: 3, cha: -1 }, prof: ["Perception", "Nature", "Animal Handling", "Survival"], abil: [["Wild Shape", "2 uses · CR 1/4"], ["Goodberry", "1st-level spell · 2 slots left"], ["Moonbeam", "2nd-level spell · 2 slots left"]], notes: [] },
+  ];
+  const P = (slug) => PARTY.find((p) => p.slug === slug);
+  const bonus = (p, check) => {
+    if (check.save) return p.m[check.ability] + (["wis", "cha"].includes(check.ability) && p.cls.startsWith("Cleric") ? 2 : 0);
+    return p.m[check.ability] + (check.skill && p.prof.includes(check.skill) ? 2 : 0);
+  };
+  const passive = (p) => 10 + bonus(p, { ability: "wis", skill: "Perception" });
+  const sgn = (n) => (n >= 0 ? `+${n}` : `−${-n}`);
+  const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const checkName = (c) => (c.save ? `${ABIL_NAME[c.ability]} save` : c.skill ? `${ABIL_NAME[c.ability]} (${c.skill})` : `${ABIL_NAME[c.ability]} check`);
+  const shortCheck = (c) => (c.save ? `${c.ability.toUpperCase()} save` : c.skill || `${c.ability.toUpperCase()} check`);
+  const d20 = () => 1 + Math.floor(Math.random() * 20);
+
+  // Clock: "now" in the session, moves on with each thing that happens.
+  let minute = 41;
+  const now = () => `8:${String(Math.min(59, minute)).padStart(2, "0")} pm`;
+  const tick = () => { minute += 1; return now(); };
+
+  let view = "dm", pal = "ocean", filter = "all", mapOpen = true, deckFilter = "all", usedOpen = false;
+  let expanded = new Set(), notesOpen = new Set(), picking = null, modal = null, toastT = null, undo = null;
+  let lastCheck = {}; // slug -> { label, total, pass }
+  let rollReq = null; // live roll request
+  let vote = null;
+  let wheels = [{ n: "Torch (turns)", v: 4, c: "#d9b45a" }, { n: "Guild alarm", v: 1, c: "#d07a6a" }, { n: "Days till the moot", v: 3, c: "#6a8fa8" }];
+  let dice = { pool: {}, mod: 0, last: null, show: false };
+  // What each player has waiting on their screen.
+  const inbox = { eoghan: { moment: null, note: null, seen: [] }, liu: { moment: null, note: null, seen: [] } };
+
+  let deck = [
+    { id: "m1", kind: "moment", title: "The Guildmaster's signal", to: "all", pic: "fancy-1.jpg",
+      text: "The Guildmaster signals to the shadows, and a woman is brought forth. Her hands shake as she speaks: her brother went into the mountains three days ago and never came back.\n\nShe fears the Silver Hand took him. They were unhappy about the debt he refused to pay." },
+    { id: "m2", kind: "moment", title: "Smoke over the north gate", to: "all", pic: "shady-1.jpg",
+      text: "As you leave the guildhall, bells start up from the north gate. A column of black smoke climbs over the rooftops, and the crowd in the square turns as one to look." },
+    { id: "n1", kind: "note", title: "The cloak clasp", to: ["qc"], canReply: true, showPassed: true,
+      text: "You recognise the woman's cloak clasp: a silver hand, palm out. The same mark was on the men who tried to recruit you two winters ago." },
+    { id: "n2", kind: "note", title: "Not the whole truth", to: "choose", canReply: true, showPassed: true,
+      text: "She's telling the truth about her brother. But when she says 'debt', her eyes flick to the Guildmaster." },
+    { id: "n3", kind: "note", title: "The boy on the stairs", to: ["liu"], canReply: true, showPassed: true,
+      text: "While the others talk, you notice a boy watching from the stairs. When you meet his eye, he slips out the back door." },
+    { id: "m0", kind: "moment", title: "Dusk at the Green Dragon", to: "all", pic: "humble-1.jpg", usedAt: "8:31 pm",
+      text: "The Green Dragon is loud tonight. Pipe smoke hangs under the beams, and a bard in the corner is losing a fight with his lute." },
+    { id: "n0", kind: "note", title: "Smoke on the wind", to: ["qc"], canReply: true, showPassed: true, usedAt: "8:36 pm",
+      text: "Your nose catches it before anyone else's: smoke, and something sweet burning with it." },
+  ];
+
+  let feed = [
+    { id: "f1", type: "vote-done", time: "8:38 pm", q: "Where next?", win: "The guildhall", top: 3, of: 5 },
+    { id: "f2", type: "note", time: "8:36 pm", to: ["qc"], title: "Smoke on the wind", text: deck.find((d) => d.id === "n0").text, reply: { slug: "qc", text: "I tell the others, quietly." } },
+    { id: "f3", type: "dm-roll", time: "8:35 pm", expr: "1d6", total: 4, hidden: true },
+    { id: "f4", type: "roll", time: "8:33 pm", slug: "aesop", label: "History", total: 14 },
+    { id: "f5", type: "moment", time: "8:31 pm", title: "Dusk at the Green Dragon", text: deck.find((d) => d.id === "m0").text, seenBy: 5 },
+  ];
+  let fresh = new Set();
+
+  function push(entry) { entry.id = entry.id || `f${Math.random().toString(36).slice(2, 8)}`; feed.unshift(entry); fresh.add(entry.id); render(); setTimeout(() => fresh.delete(entry.id), 400); return entry; }
+  function toast(html, withUndo) {
+    clearTimeout(toastT);
+    undo = withUndo || null;
+    document.getElementById("toast").innerHTML = `<div class="toast" role="status"><span>${html}</span>${withUndo ? `<button class="btn sm" data-act="undo">Undo</button>` : ""}</div>`;
+    toastT = setTimeout(() => { document.getElementById("toast").innerHTML = ""; undo = null; }, withUndo ? 6000 : 3500);
+  }
+
+  /* ───────── Map ───────── */
+  const CITY = `<svg viewBox="0 0 160 60" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <defs><radialGradient id="pg" cx="50%" cy="45%" r="75%"><stop offset="0" stop-color="#e8d9b5"/><stop offset="1" stop-color="#b89c68"/></radialGradient></defs>
+    <rect width="160" height="60" fill="url(#pg)"/>
+    <path d="M-5 44 C 30 38, 50 52, 80 45 S 130 34, 170 40 L170 50 C 130 45, 110 58, 80 54 S 30 48, -5 54 Z" fill="#7aa2b0" opacity=".75"/>
+    <path d="M20 6 L140 5 L148 32 L130 56 L28 57 L12 34 Z" fill="none" stroke="#6b5232" stroke-width="1" stroke-dasharray="3 1.5"/>
+    <g stroke="#8a6d45" stroke-width=".8" fill="none" opacity=".8"><path d="M20 18 L140 20"/><path d="M60 5 L70 57"/><path d="M105 5 L100 57"/><path d="M14 33 L148 30"/></g>
+    <g fill="#9c7f55" opacity=".55">${Array.from({ length: 34 }, (_, i) => { const x = 24 + (i * 37) % 112, y = 9 + (i * 23) % 42; return (y > 36 && y < 50) ? "" : `<rect x="${x}" y="${y}" width="${3 + (i % 3) * 1.5}" height="${2 + (i % 2) * 1.5}"/>`; }).join("")}</g>
+    <text x="80" y="4" text-anchor="middle" font-family="Cinzel" font-size="3" fill="#5a4024" letter-spacing="1">GREYHAWK</text>
+  </svg>`;
+  function mapHtml(readonly) {
+    return `<div class="mapwrap${mapOpen ? "" : " closed"}">
+      <div class="map">${CITY}
+        <span class="pin" style="left:30%;top:36%">The Green Dragon</span>
+        <span class="pin" style="left:74%;top:22%">North gate</span>
+        <div class="ptok" style="left:56%;top:46%"><div class="pd">⚑</div><span class="tg">The party · Guildhall</span></div>
+      </div>
+      <div class="mapbar"><span class="label">${readonly ? "Map" : "Adventure map"}</span><span class="hint">${readonly ? "The DM moves the party." : "Drag the party token to move it."}</span><span style="flex:1"></span>
+        <button class="btn sm quiet" data-act="map">${mapOpen ? "▴ Hide map" : "▾ Show map"}</button></div>
+    </div>`;
+  }
+
+  /* ───────── DM: party ───────── */
+  function dotColor(h) { return h === "on" ? "var(--on)" : h === "recent" ? "var(--recent)" : "var(--away)"; }
+  function discHtml(p, cls = "") { return `<span class="disc ${cls}" style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)" title="${esc(p.name)}">${esc(p.name[0])}</span>`; }
+  function partyCard(p) {
+    const lc = lastCheck[p.slug];
+    return `<article class="pc" aria-label="${esc(p.name)}">
+      <div class="pc-h">
+        <span class="disc lg" style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)">${esc(p.name[0])}<i class="dot" style="background:${dotColor(p.here)}"></i></span>
+        <div><div class="pc-name">${esc(p.name)}</div><div class="pc-sub">${p.cls}</div></div>
+        <div class="pc-ac"><b>${p.ac}</b><small>AC</small></div>
+      </div>
+      <div class="hp"><div class="hp-row"><span>HP</span><span><b>${p.hp}</b> / ${p.max}</span></div><div class="hp-bar"><i style="width:${(p.hp / p.max) * 100}%"></i></div></div>
+      <div class="mods">${ABIL.map((a) => `<div><small>${a.toUpperCase()}</small><b>${sgn(p.m[a])}</b></div>`).join("")}</div>
+      <div class="pc-foot">
+        <span class="pp">Passive Perception <b>${passive(p)}</b></span>
+        ${lc ? `<span class="lastcheck ${lc.pass === true ? "pass" : lc.pass === false ? "fail" : ""}" title="Last check">${esc(lc.label)} ${lc.total}${lc.pass === true ? " ✓" : lc.pass === false ? " ✗" : ""}</span>` : ""}
+      </div>
+      <div class="row">
+        <button class="btn sm quiet" data-act="abil" data-slug="${p.slug}" aria-expanded="${expanded.has(p.slug)}">${expanded.has(p.slug) ? "▴" : "▾"} Spells & abilities</button>
+        <button class="btn sm quiet" data-act="notes" data-slug="${p.slug}" aria-expanded="${notesOpen.has(p.slug)}">✎ Notes${p.notes.length ? ` · ${p.notes.length}` : ""}</button>
+        <button class="btn sm quiet" data-act="note-to" data-slug="${p.slug}" title="Pass ${esc(p.name)} a note">✉ Note</button>
+      </div>
+      ${expanded.has(p.slug) ? `<div class="abil">${p.abil.map(([n, d]) => `<div><b>${esc(n)}</b> · ${esc(d)}</div>`).join("")}</div>` : ""}
+      ${notesOpen.has(p.slug) ? `<div class="notes"><span class="label">DM notes · private</span>${p.notes.map((n) => `<p>• ${esc(n)}</p>`).join("") || `<p class="hint">No notes yet.</p>`}<div class="row"><input class="in" data-noteinput="${p.slug}" placeholder="Add a note…" style="flex:1"><button class="btn sm" data-act="addnote" data-slug="${p.slug}">Add</button></div></div>` : ""}
+    </article>`;
+  }
+
+  /* ───────── DM: feed ───────── */
+  function feedKind(e) {
+    if (["roll", "dm-roll", "rollreq-done"].includes(e.type)) return "rolls";
+    if (["moment", "vote-done"].includes(e.type)) return "story";
+    if (e.type === "note") return "notes";
+    return "other";
+  }
+  function names(list) { return list.map((s) => P(s).name).join(", "); }
+  function feedItem(e) {
+    const f = fresh.has(e.id) ? " fresh" : "";
+    if (e.type === "moment") return `<div class="fi moment${f}"><span class="ic">📜</span><div>
+      <div class="meta"><span class="who">Read to everyone · ${esc(e.title)}</span><span class="time">${e.time}</span></div>
+      <div class="quote">${esc(e.text.split("\n")[0])}</div>
+      <p class="hint" style="margin-top:4px">Seen by ${Math.min(5, e.seenBy)} of 5</p></div></div>`;
+    if (e.type === "note") return `<div class="fi note${f}"><span class="ic">✉</span><div>
+      <div class="meta"><span class="who">Note to ${esc(names(e.to))}${e.title ? ` · ${esc(e.title)}` : ""}</span><span class="time">${e.time}</span></div>
+      <div class="quote">${esc(e.text)}</div>
+      ${e.reply ? `<div class="reply"><b style="color:var(--text)">${esc(P(e.reply.slug).name)}:</b> ${esc(e.reply.text)}</div>` : e.gotIt ? `<p class="hint" style="margin-top:4px">${esc(names(e.gotIt))}: Got it ✓</p>` : `<p class="hint" style="margin-top:4px">Waiting for ${esc(names(e.to))}…</p>`}
+      </div></div>`;
+    if (e.type === "roll") return `<div class="fi${f}"><span class="ic">🎲</span><div><div class="meta"><span class="who">${esc(P(e.slug).name)} rolled ${esc(e.label)}: <b>${e.total}</b></span><span class="time">${e.time}</span></div></div></div>`;
+    if (e.type === "dm-roll") return `<div class="fi${f}"><span class="ic">🎲</span><div><div class="meta"><span class="who">You rolled ${esc(e.expr)}: <b>${e.total}</b></span><span class="hint">${e.hidden ? "hidden from players" : "shown to players"}</span><span class="time">${e.time}</span></div>${e.detail ? `<p class="hint">${esc(e.detail)}</p>` : ""}</div></div>`;
+    if (e.type === "rollreq-done") {
+      const passed = e.rows.filter((r) => r.pass === true), failed = e.rows.filter((r) => r.pass === false);
+      return `<div class="fi${f}"><span class="ic">🎯</span><div>
+        <div class="meta"><span class="who">${esc(checkName(e.check))}${e.dc ? ` · DC ${e.dc}` : ""}</span><span class="time">${e.time}</span></div>
+        <p>${e.rows.map((r) => `${esc(P(r.slug).name)} <b>${r.total ?? "—"}</b>${r.pass === true ? " ✓" : r.pass === false ? " ✗" : ""}`).join(" · ")}</p>
+        ${e.dc && passed.length ? `<div class="row" style="margin-top:6px"><button class="btn sm" data-act="note-passed" data-id="${e.id}">✉ Note to the ${passed.length === 1 ? "one" : passed.length} who passed</button>${failed.length ? `<button class="btn sm quiet" data-act="note-failed" data-id="${e.id}">✉ …or the ${failed.length} who didn't</button>` : ""}</div>` : ""}
+      </div></div>`;
+    }
+    if (e.type === "vote-done") return `<div class="fi${f}"><span class="ic">⚑</span><div><div class="meta"><span class="who">Vote · ${esc(e.q)} → <b>${esc(e.win)}</b>, ${e.top} of ${e.of}</span><span class="time">${e.time}</span></div></div></div>`;
+    return "";
+  }
+  function liveRollHtml() {
+    const r = rollReq; if (!r) return "";
+    const rows = r.targets.map((slug) => {
+      const p = P(slug), res = r.results[slug], b = bonus(p, r.check);
+      const pass = res && r.dc ? res.total >= r.dc : null;
+      return `<div class="rrow ${pass === true ? "pass" : pass === false ? "fail" : ""}">${discHtml(p, "sm")}<span>${esc(p.name)} <span class="bonus">${sgn(b)}</span></span>
+        <span class="mark">${res ? (res.nat === 20 ? "nat 20" : res.nat === 1 ? "nat 1" : pass === true ? "pass" : pass === false ? "fail" : "") : ""}</span>
+        <span class="res ${res ? "" : "wait"}">${res ? res.total : "rolling…"}</span></div>`;
+    }).join("");
+    const inCount = Object.keys(r.results).length;
+    return `<section class="live" aria-label="Roll request">
+      <div class="live-h"><span class="label">Asked for a roll</span><span class="grow"></span><span class="hint">${inCount} of ${r.targets.length} in</span></div>
+      <h3>${esc(checkName(r.check))}</h3>
+      <p class="hint">${r.dc ? `DC ${r.dc}${r.showDc ? " (players see it)" : " (hidden from players)"}` : "No DC: you judge the result"}${r.adv !== "normal" ? ` · ${r.adv === "adv" ? "with advantage" : "with disadvantage"}` : ""}</p>
+      <div class="rrows">${rows}</div>
+      <div class="row"><button class="btn sm quiet" data-act="rr-cancel">Cancel</button><span style="flex:1"></span><button class="btn sm primary" data-act="rr-close">${inCount === r.targets.length ? "Done" : "Close it now"}</button></div>
+    </section>`;
+  }
+  function liveVoteHtml() {
+    const v = vote; if (!v) return "";
+    const counts = v.options.map((_, i) => Object.values(v.ballots).filter((b) => b === i).length);
+    const max = Math.max(...counts), sole = counts.filter((c) => c === max).length === 1 && max > 0;
+    const waiting = PARTY.filter((p) => v.ballots[p.slug] === undefined);
+    return `<section class="live" aria-label="Vote">
+      <div class="live-h"><span class="label">Vote</span><span class="grow"></span><span class="hint">${Object.keys(v.ballots).length} of 5 voted</span></div>
+      <h3>${esc(v.q)}</h3>
+      <div class="vboxes">${v.options.map((o, i) => `<div class="vbox${sole && counts[i] === max ? " lead" : ""}"><span>${"ABC"[i]} · ${esc(o)}</span><div class="toks">${PARTY.filter((p) => v.ballots[p.slug] === i).map((p) => discHtml(p, "sm")).join("")}</div></div>`).join("")}</div>
+      ${waiting.length ? `<p class="hint">Still deciding: ${esc(waiting.map((p) => p.name).join(", "))}</p>` : ""}
+      <p class="hint">(The real vote card, already built, sits here while it's open.)</p>
+    </section>`;
+  }
+  function feedHtml() {
+    const items = feed.filter((e) => filter === "all" || feedKind(e) === filter);
+    return `<section class="c-feed panel" aria-label="At the table">
+      <div class="panel-h"><h2>At the table</h2><span class="grow"></span>
+        <span class="seg">${[["all", "All"], ["rolls", "Rolls"], ["story", "Story"], ["notes", "Notes"]].map(([k, l]) => `<button data-act="filter" data-k="${k}" class="${filter === k ? "on" : ""}">${l}</button>`).join("")}</span></div>
+      <div class="feed">${liveRollHtml()}${liveVoteHtml()}${items.map(feedItem).join("") || `<p class="hint">Nothing here yet.</p>`}</div>
+    </section>`;
+  }
+
+  /* ───────── DM: tools ───────── */
+  function toolsHtml() {
+    const moments = deck.filter((d) => d.kind === "moment" && !d.usedAt).length, notes = deck.filter((d) => d.kind === "note" && !d.usedAt).length;
+    return `<aside class="c-tools">
+      <section class="panel"><div class="tiles">
+        <button class="tile" data-act="ask"${rollReq ? ' aria-disabled="true"' : ""}><span class="ti">🎯</span><b>Ask for a roll</b><small>${rollReq ? "One is out now" : "A check or save, for anyone"}</small></button>
+        <button class="tile" data-act="vote"${vote ? ' aria-disabled="true"' : ""}><span class="ti">⚑</span><b>Call a vote</b><small>${vote ? "One is open now" : "Let the party choose"}</small></button>
+        <button class="tile" data-act="compose" data-kind="moment"><span class="ti">📜</span><b>Read a moment</b><small>${moments} prepared</small></button>
+        <button class="tile" data-act="compose" data-kind="note"><span class="ti">✉</span><b>Pass a note</b><small>${notes} prepared</small></button>
+      </div>
+      <div class="minor" style="margin-top:10px">
+        <button class="btn sm quiet" data-act="stub" data-msg="Short Rest: as today">Short Rest</button>
+        <button class="btn sm quiet" data-act="stub" data-msg="Long Rest: as today">Long Rest</button>
+        <button class="btn sm quiet" data-act="stub" data-msg="Award XP: as today">Award XP</button>
+        <button class="btn sm quiet" data-act="stub" data-msg="Share Coin: as today">Share Coin</button>
+        <button class="btn sm" data-act="stub" data-msg="Roll Initiative: switches to Combat and asks everyone for initiative at once (a roll request)">Roll Initiative</button>
+      </div></section>
+      ${diceHtml()}
+      ${wheelsHtml()}
+      ${deckHtml()}
+    </aside>`;
+  }
+  function diceHtml() {
+    const parts = Object.entries(dice.pool).filter(([, n]) => n).map(([d, n]) => `${n}d${d}`);
+    const expr = parts.join(" + ") + (dice.mod ? ` ${dice.mod > 0 ? "+" : "−"} ${Math.abs(dice.mod)}` : "");
+    return `<section class="panel" aria-label="Dice">
+      <div class="panel-h"><h2>Dice</h2><span class="grow"></span>
+        <button class="switch" role="switch" aria-checked="${dice.show}" data-act="dshow"><span class="sw"><i></i></span><span style="font-size:14px">Show players</span></button></div>
+      <div class="dice">${[4, 6, 8, 10, 12, 20, 100].map((d) => `<button data-act="die" data-d="${d}" aria-label="Add a d${d}">d${d}${dice.pool[d] ? `<span class="n">${dice.pool[d]}</span>` : ""}</button>`).join("")}
+        <button data-act="dmod" data-v="-1" aria-label="Minus one">−1</button><button data-act="dmod" data-v="1" aria-label="Plus one">+1</button></div>
+      <div class="droll"><span class="expr">${expr || `<span class="hint">Tap dice to build a roll</span>`}</span>
+        <button class="btn sm quiet" data-act="dclear"${expr ? "" : " disabled"}>Clear</button><button class="btn sm primary" data-act="droll"${parts.length ? "" : " disabled"}>Roll</button></div>
+      <div class="dres">${dice.last ? `<b>${dice.last.total}</b>${esc(dice.last.detail)}` : ""}</div>
+    </section>`;
+  }
+  function wheelsHtml() {
+    return `<section class="panel" aria-label="Counters"><div class="panel-h"><h2>Counters</h2><span class="grow"></span><button class="btn sm quiet" data-act="stub" data-msg="Add a counter: as today">＋</button></div>
+      <div class="wheels">${wheels.map((w, i) => `<div class="wheel"><div class="ring" style="background:conic-gradient(${w.c} ${Math.min(100, w.v * 10)}%, var(--wash) 0); box-shadow:inset 0 0 0 7px var(--card)">${w.v}</div><span class="wn">${esc(w.n)}</span>
+        <span class="wb"><button data-act="wheel" data-i="${i}" data-v="-1" aria-label="${esc(w.n)} down">−</button><button data-act="wheel" data-i="${i}" data-v="1" aria-label="${esc(w.n)} up">＋</button></span></div>`).join("")}</div></section>`;
+  }
+  function toLabel(d) { return d.to === "all" ? "Everyone" : d.to === "choose" ? "Choose when sending" : names(d.to); }
+  function deckCard(d) {
+    const isPick = picking === d.id;
+    return `<div class="dc${d.usedAt ? " used" : ""}">
+      <div class="dch">${d.pic ? `<span class="thumb" style="background-image:url('${ART(d.pic)}')"></span>` : ""}<span class="k ${d.kind}">${d.kind === "moment" ? "📜" : "✉"}</span><span class="dt">${esc(d.title)}</span></div>
+      <div class="act">
+        ${d.usedAt ? `<span class="hint" style="font-size:13px">${d.usedAt}</span><button class="btn sm quiet" data-act="send" data-id="${d.id}">Again</button>`
+          : `<button class="btn sm primary" data-act="send" data-id="${d.id}">${d.kind === "moment" ? "Read" : "Pass"}</button>`}
+        <button class="btn sm quiet" data-act="edit" data-id="${d.id}">Edit</button>
+      </div>
+      <div class="ex"><span class="to">${esc(toLabel(d))}</span> ${esc(d.text)}</div>
+      ${isPick ? `<div class="pick"><span class="hint" style="width:100%">Pass it to…</span>${PARTY.map((p) => `<button class="chip" data-act="pick-send" data-id="${d.id}" data-slug="${p.slug}">${discHtml(p, "sm")}${esc(p.name)}</button>`).join("")}<button class="btn sm quiet" data-act="pick-cancel">Cancel</button></div>` : ""}
+    </div>`;
+  }
+  function deckHtml() {
+    const list = deck.filter((d) => deckFilter === "all" || d.kind === deckFilter);
+    const ready = list.filter((d) => !d.usedAt), used = list.filter((d) => d.usedAt);
+    return `<section class="panel" aria-label="Prep deck">
+      <div class="panel-h"><h2>Prep deck</h2><span class="grow"></span><button class="btn sm" data-act="compose" data-kind="moment" data-save="1">＋ Prepare</button></div>
+      <div class="row" style="margin-bottom:10px"><span class="seg">${[["all", "All"], ["moment", "Moments"], ["note", "Notes"]].map(([k, l]) => `<button data-act="dfilter" data-k="${k}" class="${deckFilter === k ? "on" : ""}">${l}</button>`).join("")}</span></div>
+      <div class="deck">${ready.map(deckCard).join("") || `<p class="hint">Nothing prepared. Write moments and notes before the session, then send them in one tap.</p>`}
+        ${used.length ? `<button class="used-h" data-act="used" aria-expanded="${usedOpen}">${usedOpen ? "▴" : "▾"} Used tonight · ${used.length}</button>${usedOpen ? used.map(deckCard).join("") : ""}` : ""}</div>
+    </section>`;
+  }
+
+  /* ───────── Modals ───────── */
+  function askModal() {
+    const m = modal;
+    const allSkills = Object.keys(SKILLS).sort();
+    return `<div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+      <div><h3 id="mt">Ask for a roll</h3><p class="hint">Each player gets a prompt with their bonus worked out from their sheet.</p></div>
+      <div class="field"><span class="label">Check</span>
+        <div class="row">${QUICK.map((s) => `<button class="chip txt${m.check.skill === s ? " on" : ""}" data-act="m-skill" data-s="${s}">${s}</button>`).join("")}</div>
+        <div class="row"><select class="in" style="flex:1;min-width:180px" data-act="m-skillsel" aria-label="Any skill">
+          <option value="">Another skill…</option>${allSkills.map((s) => `<option value="${s}"${m.check.skill === s && !QUICK.includes(s) ? " selected" : ""}>${s} (${SKILLS[s].toUpperCase()})</option>`).join("")}</select></div>
+        <div class="group"><small>Saving throw</small><div class="row">${ABIL.map((a) => `<button class="chip txt${m.check.save && m.check.ability === a ? " on" : ""}" data-act="m-save" data-a="${a}">${a.toUpperCase()}</button>`).join("")}</div></div>
+        <div class="group"><small>Plain ability check</small><div class="row">${ABIL.map((a) => `<button class="chip txt${!m.check.save && !m.check.skill && m.check.ability === a ? " on" : ""}" data-act="m-abil" data-a="${a}">${a.toUpperCase()}</button>`).join("")}</div></div>
+        <p class="hint">${esc(checkName(m.check))}</p>
+      </div>
+      <div class="field"><span class="label">Who rolls</span>
+        <div class="row"><button class="chip txt${m.who.length === 5 ? " on" : ""}" data-act="m-all">Everyone</button>
+        ${PARTY.map((p) => `<button class="chip${m.who.includes(p.slug) && m.who.length < 5 ? " on" : ""}" data-act="m-who" data-slug="${p.slug}">${discHtml(p, "sm")}${esc(p.name)} <span class="hint" style="font-size:13px">${sgn(bonus(p, m.check))}</span></button>`).join("")}</div></div>
+      <div class="field"><span class="label">Difficulty</span>
+        <div class="row"><input class="in" style="width:90px" inputmode="numeric" placeholder="DC" value="${m.dc || ""}" data-act="m-dc" aria-label="DC">
+          ${[10, 12, 15, 20].map((n) => `<button class="chip txt${m.dc === n ? " on" : ""}" data-act="m-dcq" data-n="${n}">${n}</button>`).join("")}</div>
+        <p class="hint">${m.dc ? "Each result shows pass or fail for you." : "Leave it blank to judge the results yourself."}</p>
+        ${m.dc ? `<button class="switch" role="switch" aria-checked="${m.showDc}" data-act="m-showdc"><span class="sw"><i></i></span>Players see the DC</button>` : ""}
+      </div>
+      <div class="field"><span class="label">Roll with</span>
+        <span class="seg">${[["normal", "Normal"], ["adv", "Advantage"], ["dis", "Disadvantage"]].map(([k, l]) => `<button data-act="m-adv" data-k="${k}" class="${m.adv === k ? "on" : ""}">${l}</button>`).join("")}</span></div>
+      <div class="foot"><span class="grow"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="m-send"${m.who.length ? "" : " disabled"}>Ask ${m.who.length === 5 ? "everyone" : m.who.length === 1 ? P(m.who[0]).name : `${m.who.length} players`}</button></div>
+    </div></div>`;
+  }
+  const PICS = ["fancy-1.jpg", "shady-1.jpg", "humble-1.jpg", "fancy-2.jpg"];
+  function composeModal() {
+    const m = modal, isAll = m.to === "all";
+    const prepared = deck.filter((d) => !d.usedAt && d.kind === (isAll ? "moment" : "note") && d.id !== m.id);
+    return `<div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+      <div><h3 id="mt">${m.editing ? "Edit card" : isAll ? "Read a moment" : "Pass a note"}</h3>
+        <p class="hint">${isAll ? "Everyone sees it as a pop-up, and it goes in the story log." : "Only the players you pick see it. They can reply."}</p></div>
+      ${!m.editing && !m.saveOnly && prepared.length ? `<div class="field"><span class="label">From your deck</span><div class="row">${prepared.map((d) => `<button class="chip txt" data-act="m-load" data-id="${d.id}">${d.kind === "moment" ? "📜" : "✉"} ${esc(d.title)}</button>`).join("")}</div></div>` : ""}
+      <div class="field"><span class="label">To</span>
+        <div class="row"><button class="chip txt${isAll ? " on" : ""}" data-act="m-to-all">Everyone</button>
+          ${PARTY.map((p) => `<button class="chip${Array.isArray(m.to) && m.to.includes(p.slug) ? " on" : ""}" data-act="m-to" data-slug="${p.slug}">${discHtml(p, "sm")}${esc(p.name)}</button>`).join("")}
+          ${m.saveOnly || m.editing ? `<button class="chip txt${m.to === "choose" ? " on" : ""}" data-act="m-to-choose">Choose when sending</button>` : ""}</div></div>
+      <div class="field"><span class="label">Title</span><input class="in" data-act="m-title" value="${esc(m.title)}" placeholder="${isAll ? "The Guildmaster's signal" : "Optional"}" maxlength="60"></div>
+      <div class="field"><span class="label">${isAll ? "What you read out" : "The note"}</span><textarea class="in" data-act="m-text" rows="5" placeholder="${isAll ? "The Guildmaster signals to the shadows…" : "You notice…"}">${esc(m.text)}</textarea></div>
+      ${isAll ? `<div class="field"><span class="label">Picture</span><div class="pics"><button data-act="m-pic" data-p="" class="${m.pic ? "" : "on"}">None</button>${PICS.map((f) => `<button data-act="m-pic" data-p="${f}" class="${m.pic === f ? "on" : ""}" style="background-image:url('${ART(f)}')" aria-label="Picture ${f}"></button>`).join("")}</div><p class="hint">Upload your own, like item pictures.</p></div>`
+        : `<button class="switch" role="switch" aria-checked="${m.canReply}" data-act="m-reply"><span class="sw"><i></i></span>They can reply</button>
+           <button class="switch" role="switch" aria-checked="${m.showPassed}" data-act="m-passed"><span class="sw"><i></i></span>The others see that a note was passed</button>
+           <p class="hint">${m.showPassed ? "Like at the table: everyone sees the note go by, not what it says." : "Nobody else knows."}</p>`}
+      <div class="foot">${m.editing ? `<button class="btn quiet" data-act="m-delete">Delete</button>` : ""}<span class="grow"></span><button class="btn quiet" data-act="close">Cancel</button>
+        ${m.editing ? `<button class="btn primary" data-act="m-save">Save</button>` : `<button class="btn" data-act="m-save"${m.text.trim() ? "" : " disabled"}>Save to deck</button>`}
+        ${m.editing || m.saveOnly ? "" : `<button class="btn primary" data-act="m-sendnow"${m.text.trim() && (isAll || (Array.isArray(m.to) && m.to.length)) ? "" : " disabled"}>${isAll ? "Read it now" : "Pass it now"}</button>`}</div>
+    </div></div>`;
+  }
+  function voteModal() {
+    return `<div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+      <h3 id="mt">Call a Vote</h3><p class="hint">This opens the Call a Vote form that's already built. For the prototype, send a sample.</p>
+      <div class="foot"><span class="grow"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="vote-send">Send “Help the woman?”</button></div></div></div>`;
+  }
+
+  /* ───────── Actions ───────── */
+  function sendCard(d, toOverride) {
+    const time = tick();
+    const to = toOverride || d.to;
+    if (d.kind === "moment") {
+      const e = push({ type: "moment", time, title: d.title, text: d.text, pic: d.pic, seenBy: 0 });
+      Object.values(inbox).forEach((b) => { b.moment = e; });
+      [1200, 2600, 4200].forEach((ms) => setTimeout(() => { e.seenBy += 1; render(); }, ms));
+      d.usedAt = time;
+      toast(`Read “${esc(d.title)}” to everyone`, () => { feed = feed.filter((x) => x !== e); Object.values(inbox).forEach((b) => { if (b.moment === e) b.moment = null; }); d.usedAt = null; });
+    } else {
+      const e = push({ type: "note", time, to, title: d.title, text: d.text, canReply: d.canReply, showPassed: d.showPassed, gotIt: null, reply: null });
+      to.forEach((s) => { if (inbox[s]) inbox[s].note = e; });
+      const sim = to.filter((s) => !inbox[s]);
+      if (sim.length) setTimeout(() => { if (!e.reply && feed.includes(e)) { e.reply = d.canReply ? { slug: sim[0], text: SIM_REPLY[sim[0]] } : null; e.gotIt = d.canReply ? null : sim; render(); } }, 4500);
+      d.usedAt = time;
+      toast(`Passed “${esc(d.title || "a note")}” to ${esc(names(to))}`, () => { feed = feed.filter((x) => x !== e); Object.values(inbox).forEach((b) => { if (b.note === e) b.note = null; }); d.usedAt = null; });
+    }
+    render();
+  }
+  const SIM_REPLY = { aesop: "Can I ask her what the debt was for?", mj: "I'm keeping my hand on my axe.", qc: "I keep my hood up and say nothing for now." };
+
+  function startRoll(m) {
+    rollReq = { id: `rr${Date.now()}`, check: m.check, targets: m.who.slice(), dc: m.dc || null, showDc: m.showDc, adv: m.adv, results: {} };
+    const r = rollReq;
+    r.targets.forEach((slug, i) => {
+      if (inbox[slug]) { inbox[slug].roll = r; setTimeout(() => { if (rollReq === r && !r.results[slug] && view !== slug) rollFor(slug); }, 15000 + i * 800); }
+      else setTimeout(() => { if (rollReq === r) rollFor(slug); }, 1500 + i * 1100);
+    });
+    render();
+  }
+  function rollFor(slug, manual) {
+    const r = rollReq; if (!r || r.results[slug]) return;
+    const a = d20(), b = d20();
+    const nat = r.adv === "adv" ? Math.max(a, b) : r.adv === "dis" ? Math.min(a, b) : a;
+    const total = manual ?? nat + bonus(P(slug), r.check);
+    r.results[slug] = { nat: manual ? null : nat, total };
+    lastCheck[slug] = { label: shortCheck(r.check), total, pass: r.dc ? total >= r.dc : null };
+    render();
+    return r.results[slug];
+  }
+  function closeRoll(cancel) {
+    const r = rollReq; if (!r) return;
+    rollReq = null;
+    Object.values(inbox).forEach((b) => { if (b.roll === r) b.roll = null; });
+    if (!cancel) push({ id: r.id, type: "rollreq-done", time: tick(), check: r.check, dc: r.dc, rows: r.targets.map((s) => ({ slug: s, total: r.results[s]?.total ?? null, pass: r.results[s] && r.dc ? r.results[s].total >= r.dc : null })) });
+    else render();
+  }
+
+  /* ───────── Player view ───────── */
+  function playerHtml(slug) {
+    const p = P(slug), box = inbox[slug];
+    const story = feed.filter((e) => e.type === "moment" || e.type === "vote-done" || (e.type === "note" && (e.to.includes(slug) || e.showPassed)) || (e.type === "rollreq-done" && e.rows.some((r) => r.slug === slug)));
+    const storyItem = (e) => {
+      if (e.type === "moment") return `<div class="fi moment"><span class="ic">📜</span><div><div class="meta"><span class="who">${esc(e.title)}</span><span class="time">${e.time}</span></div><div class="quote">${esc(e.text.split("\n")[0])}</div><button class="btn sm quiet" data-act="reopen" data-id="${e.id}" style="margin-top:4px">Read again</button></div></div>`;
+      if (e.type === "note") return e.to.includes(slug)
+        ? `<div class="fi note"><span class="ic">✉</span><div><div class="meta"><span class="who">A note from the DM</span><span class="time">${e.time}</span></div><div class="quote">${esc(e.text)}</div>${e.reply && e.reply.slug === slug ? `<div class="reply">You: ${esc(e.reply.text)}</div>` : ""}</div></div>`
+        : `<div class="fi note"><span class="ic">✉</span><div><div class="meta"><span class="who">The DM passed ${esc(names(e.to))} a note</span><span class="time">${e.time}</span></div></div></div>`;
+      if (e.type === "vote-done") return `<div class="fi"><span class="ic">⚑</span><div><div class="meta"><span class="who">Vote · ${esc(e.q)} → ${esc(e.win)}</span><span class="time">${e.time}</span></div></div></div>`;
+      if (e.type === "rollreq-done") { const mine = e.rows.find((r) => r.slug === slug); return `<div class="fi"><span class="ic">🎯</span><div><div class="meta"><span class="who">You rolled ${esc(shortCheck(e.check))}: <b>${mine.total ?? "—"}</b></span><span class="time">${e.time}</span></div></div></div>`; }
+      return "";
+    };
+    return `<div class="page">
+      <div class="top"><span class="disc lg" style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)">${esc(p.name[0])}</span><span class="title">${esc(p.name)}</span><span class="hint">${p.cls} · Adventure</span></div>
+      ${mapHtml(true)}
+      <div class="pl">
+        <section class="panel sheet" aria-label="Character sheet"><div class="panel-h"><h2>Your sheet</h2><span class="hint">(as today)</span></div>
+          <div class="mods">${ABIL.map((a) => `<div><small>${a.toUpperCase()}</small><b>${sgn(p.m[a])}</b></div>`).join("")}</div>
+          ${[70, 92, 60, 84, 76, 50].map((w) => `<div class="ghost" style="width:${w}%"></div>`).join("")}</section>
+        <section class="panel" aria-label="Story so far"><div class="panel-h"><h2>The story so far</h2></div><div class="story">${story.map(storyItem).join("")}</div></section>
+      </div>
+    </div>`;
+  }
+  function playerLayer(slug) {
+    const box = inbox[slug], p = P(slug); let out = "";
+    const r = box.roll;
+    if (r) {
+      const res = r.results[slug], b = bonus(p, r.check);
+      out += `<div class="pcard" role="dialog" aria-label="The DM asks for a roll">
+        <span class="label">The DM asks for a roll</span>
+        <h3>${esc(checkName(r.check))}</h3>
+        <p class="hint">${r.adv === "adv" ? "With advantage: roll two, keep the higher. " : r.adv === "dis" ? "With disadvantage: roll two, keep the lower. " : ""}${r.dc && r.showDc ? `DC ${r.dc}.` : ""}</p>
+        ${res ? `<div class="row"><span class="rolled">${res.total}</span><span class="hint">${res.nat != null ? `(${res.nat} ${sgn(b)})` : "(your dice)"} · sent to the DM</span></div>`
+          : `<button class="btn primary bigroll" data-act="p-roll">Roll d20 ${sgn(b)}${r.adv !== "normal" ? (r.adv === "adv" ? " · adv" : " · dis") : ""}</button>
+             <div class="row"><span class="hint">Rolled real dice?</span><input class="in" style="width:90px" inputmode="numeric" placeholder="Total" data-p="manual" aria-label="Your total"><button class="btn sm" data-act="p-manual">Send</button></div>`}
+      </div>`;
+    }
+    if (box.note && !r) {
+      const e = box.note;
+      out += `<div class="pcard note" role="dialog" aria-label="A note from the DM">
+        <div class="row" style="flex-wrap:nowrap"><span class="seal">✉</span><div><span class="label" style="color:var(--note)">A note from the DM</span><p class="hint">Only you can see this${e.to.length > 1 ? ` (and ${esc(names(e.to.filter((s) => s !== slug)))})` : ""}.</p></div></div>
+        ${e.title ? `<h3>${esc(e.title)}</h3>` : ""}
+        <p style="margin:0;font-size:17px;color:var(--text)">${esc(e.text)}</p>
+        ${e.canReply ? `<div class="row"><input class="in" style="flex:1" data-p="reply" placeholder="Reply to the DM (optional)" maxlength="140"><button class="btn sm" data-act="p-reply">Send</button></div>` : ""}
+        <div class="row"><span style="flex:1"></span><button class="btn primary" data-act="p-gotit">Got it</button></div>
+      </div>`;
+    }
+    if (box.moment) {
+      const e = box.moment;
+      out += `<div class="moment-scrim"><div class="scroll" role="dialog" aria-modal="true" aria-labelledby="sm-t">
+        ${e.pic ? `<div class="pic" style="background-image:url('${ART(e.pic)}')"></div>` : ""}
+        <div class="tx"><div class="orn">◆ ◆ ◆</div><h3 id="sm-t">${esc(e.title)}</h3><p>${esc(e.text)}</p>
+        <div class="row" style="justify-content:center;padding-top:6px"><button class="btn primary" data-act="p-continue">Continue</button></div>
+        <p class="hint" style="text-align:center">It stays in your story log.</p></div></div></div>`;
+    }
+    return out;
+  }
+
+  /* ───────── Render ───────── */
+  function render() {
+    document.body.dataset.pal = pal;
+    document.querySelectorAll("#viewSeg button").forEach((b) => b.classList.toggle("on", b.dataset.view === view));
+    document.querySelectorAll("#palSeg button").forEach((b) => b.classList.toggle("on", b.dataset.pal === pal));
+    const app = document.getElementById("app"), layer = document.getElementById("layer");
+    // Keep focus/typing in text fields across re-renders.
+    const act = document.activeElement, key = act && (act.dataset.act || act.dataset.p || act.dataset.noteinput), sel = act && act.selectionStart;
+    if (view === "dm") {
+      app.innerHTML = `<div class="page">
+        <div class="top"><span class="title">Hunkz Adventures</span><span class="seg"><button class="on">Adventure</button><button data-act="stub" data-msg="The prototype covers Adventure only">Combat</button></span><span style="flex:1"></span><span class="hint">Session 14 · ${now()}</span></div>
+        ${mapHtml(false)}
+        <div class="cols"><section class="c-party" aria-label="Party">${PARTY.map(partyCard).join("")}</section>${feedHtml()}${toolsHtml()}</div>
+      </div>`;
+      layer.innerHTML = modal ? (modal.type === "ask" ? askModal() : modal.type === "vote" ? voteModal() : composeModal()) : "";
+    } else {
+      app.innerHTML = playerHtml(view);
+      layer.innerHTML = playerLayer(view);
+    }
+    if (key) {
+      const el = document.querySelector(`[data-act="${key}"], [data-p="${key}"], [data-noteinput="${key}"]`);
+      if (el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA")) { el.focus(); try { el.setSelectionRange(sel, sel); } catch { /* number inputs */ } }
+    }
+  }
+
+  /* ───────── Events ───────── */
+  document.getElementById("viewSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { view = b.dataset.view; modal = null; document.getElementById("toast").innerHTML = ""; render(); } });
+  document.getElementById("palSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (b) { pal = b.dataset.pal; render(); } });
+
+  document.addEventListener("input", (e) => {
+    const a = e.target.dataset.act; if (!modal) return;
+    if (a === "m-title") modal.title = e.target.value;
+    else if (a === "m-text") { const had = !!modal.text.trim(); modal.text = e.target.value; if (had !== !!modal.text.trim()) render(); }
+    else if (a === "m-dc") { const n = parseInt(e.target.value, 10); modal.dc = n > 0 && n < 40 ? n : null; render(); }
+  });
+  document.addEventListener("change", (e) => {
+    if (e.target.dataset.act === "m-skillsel" && e.target.value) { const s = e.target.value; modal.check = { ability: SKILLS[s], skill: s, save: false }; render(); }
+  });
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && modal) { modal = null; render(); } });
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-act]"); if (!t) return;
+    const a = t.dataset.act, d = t.dataset;
+    if (a === "scrim") { if (e.target === t) { modal = null; render(); } return; }
+    const card = d.id && deck.find((x) => x.id === d.id);
+    switch (a) {
+      case "map": mapOpen = !mapOpen; break;
+      case "abil": expanded.has(d.slug) ? expanded.delete(d.slug) : expanded.add(d.slug); break;
+      case "notes": notesOpen.has(d.slug) ? notesOpen.delete(d.slug) : notesOpen.add(d.slug); break;
+      case "addnote": { const inp = document.querySelector(`[data-noteinput="${d.slug}"]`); if (inp.value.trim()) P(d.slug).notes.push(inp.value.trim()); break; }
+      case "note-to": modal = { type: "compose", to: [d.slug], title: "", text: "", pic: "", canReply: true, showPassed: true }; break;
+      case "filter": filter = d.k; break;
+      case "dfilter": deckFilter = d.k; break;
+      case "used": usedOpen = !usedOpen; break;
+      case "stub": toast(esc(d.msg)); return;
+      case "undo": if (undo) { undo(); undo = null; document.getElementById("toast").innerHTML = ""; } break;
+      // Dice + counters
+      case "die": dice.pool[d.d] = (dice.pool[d.d] || 0) + 1; break;
+      case "dmod": dice.mod += Number(d.v); break;
+      case "dclear": dice.pool = {}; dice.mod = 0; break;
+      case "dshow": dice.show = !dice.show; break;
+      case "droll": {
+        const rolls = []; Object.entries(dice.pool).forEach(([s, n]) => { for (let i = 0; i < n; i++) rolls.push(1 + Math.floor(Math.random() * Number(s))); });
+        const total = rolls.reduce((x, y) => x + y, 0) + dice.mod;
+        const expr = Object.entries(dice.pool).filter(([, n]) => n).map(([s, n]) => `${n}d${s}`).join(" + ") + (dice.mod ? ` ${dice.mod > 0 ? "+" : "−"} ${Math.abs(dice.mod)}` : "");
+        dice.last = { total, detail: `${expr} · ${rolls.join(", ")}${dice.mod ? ` ${dice.mod > 0 ? "+" : "−"} ${Math.abs(dice.mod)}` : ""}` };
+        push({ type: "dm-roll", time: tick(), expr, total, hidden: !dice.show, detail: rolls.length > 1 ? rolls.join(", ") : "" });
+        return;
+      }
+      case "wheel": wheels[d.i].v = Math.max(0, wheels[d.i].v + Number(d.v)); break;
+      // Roll requests
+      case "ask": if (rollReq) { toast("A roll request is already out. Close it first."); return; } modal = { type: "ask", check: { ability: "wis", skill: "Perception", save: false }, who: PARTY.map((p) => p.slug), dc: null, showDc: false, adv: "normal" }; break;
+      case "m-skill": modal.check = { ability: SKILLS[d.s], skill: d.s, save: false }; break;
+      case "m-save": modal.check = { ability: d.a, skill: null, save: true }; break;
+      case "m-abil": modal.check = { ability: d.a, skill: null, save: false }; break;
+      case "m-all": modal.who = modal.who.length === 5 ? [] : PARTY.map((p) => p.slug); break;
+      case "m-who": { const w = modal.who.length === 5 ? [] : modal.who; modal.who = w.includes(d.slug) ? w.filter((s) => s !== d.slug) : [...w, d.slug]; break; }
+      case "m-dcq": modal.dc = modal.dc === Number(d.n) ? null : Number(d.n); break;
+      case "m-showdc": modal.showDc = !modal.showDc; break;
+      case "m-adv": modal.adv = d.k; break;
+      case "m-send": startRoll(modal); modal = null; break;
+      case "rr-close": closeRoll(false); return;
+      case "rr-cancel": closeRoll(true); return;
+      case "note-passed": case "note-failed": {
+        const ent = feed.find((x) => x.id === d.id); const want = a === "note-passed";
+        const to = ent.rows.filter((r) => r.pass === want).map((r) => r.slug);
+        const prepared = deck.find((x) => x.to === "choose" && !x.usedAt);
+        modal = { type: "compose", to, title: prepared?.title || "", text: prepared?.text || "", pic: "", canReply: true, showPassed: true };
+        break;
+      }
+      // Vote
+      case "vote": if (vote) { toast("A vote is already open."); return; } modal = { type: "vote" }; break;
+      case "vote-send": {
+        modal = null; vote = { q: "Help the woman find her brother?", options: ["Yes, tonight", "Yes, at dawn", "Not our problem"], ballots: {} };
+        const v = vote; [["aesop", 0, 1500], ["liu", 1, 2600], ["mj", 0, 3600], ["eoghan", 0, 5200], ["qc", 2, 7000]].forEach(([s, i, ms]) => setTimeout(() => {
+          if (vote !== v) return; v.ballots[s] = i; render();
+          if (Object.keys(v.ballots).length === 5) setTimeout(() => { if (vote === v) { vote = null; push({ type: "vote-done", time: tick(), q: v.q, win: "Yes, tonight", top: 3, of: 5 }); } }, 1500);
+        }, ms));
+        break;
+      }
+      // Moments + notes
+      case "compose": modal = { type: "compose", to: d.kind === "moment" ? "all" : [], title: "", text: "", pic: "", canReply: true, showPassed: true, saveOnly: !!d.save }; break;
+      case "edit": modal = { type: "compose", editing: true, id: card.id, kind: card.kind, to: Array.isArray(card.to) ? card.to.slice() : card.to, title: card.title, text: card.text, pic: card.pic || "", canReply: card.canReply !== false, showPassed: card.showPassed !== false }; break;
+      case "m-load": { const c = deck.find((x) => x.id === d.id); Object.assign(modal, { id: c.id, title: c.title, text: c.text, pic: c.pic || "", to: c.to === "choose" ? (Array.isArray(modal.to) ? modal.to : []) : Array.isArray(c.to) ? c.to.slice() : c.to, canReply: c.canReply !== false, showPassed: c.showPassed !== false }); break; }
+      case "m-to-all": modal.to = "all"; break;
+      case "m-to-choose": modal.to = "choose"; break;
+      case "m-to": { const cur = Array.isArray(modal.to) ? modal.to : []; modal.to = cur.includes(d.slug) ? cur.filter((s) => s !== d.slug) : [...cur, d.slug]; break; }
+      case "m-pic": modal.pic = d.p; break;
+      case "m-reply": modal.canReply = !modal.canReply; break;
+      case "m-passed": modal.showPassed = !modal.showPassed; break;
+      case "m-delete": deck = deck.filter((x) => x.id !== modal.id); modal = null; toast("Deleted from the deck"); break;
+      case "m-save": case "m-sendnow": {
+        const m = modal, kind = m.to === "all" ? "moment" : "note";
+        const fields = { kind, title: m.title.trim() || (kind === "moment" ? "A moment" : ""), text: m.text.trim(), to: m.to, pic: kind === "moment" ? m.pic : "", canReply: m.canReply, showPassed: m.showPassed };
+        let c = m.id && deck.find((x) => x.id === m.id);
+        if (c) Object.assign(c, fields);
+        else { c = { id: `d${Date.now()}`, ...fields, usedAt: null }; if (a === "m-save") deck.unshift(c); }
+        modal = null;
+        if (a === "m-sendnow") sendCard(c, Array.isArray(m.to) ? m.to : null);
+        else toast(m.editing ? "Saved" : "Saved to the prep deck");
+        break;
+      }
+      case "send": if (card.to === "choose" && !card.usedAt) { picking = card.id; break; } if (card.to === "choose") { picking = card.id; break; } sendCard(card); return;
+      case "pick-send": picking = null; sendCard(card, [d.slug]); return;
+      case "pick-cancel": picking = null; break;
+      case "close": modal = null; break;
+      // Player side
+      case "p-roll": rollFor(view); setTimeout(() => { const r = inbox[view]?.roll; if (r && r.results[view]) { inbox[view].roll = null; render(); } }, 3500); break;
+      case "p-manual": { const v = parseInt(document.querySelector('[data-p="manual"]').value, 10); if (v > 0) { rollFor(view, v); setTimeout(() => { if (inbox[view]) { inbox[view].roll = null; render(); } }, 3500); } break; }
+      case "p-reply": { const v = document.querySelector('[data-p="reply"]').value.trim(); const e2 = inbox[view].note; if (v) { e2.reply = { slug: view, text: v }; inbox[view].note = null; toast("Sent to the DM"); } break; }
+      case "p-gotit": { const e2 = inbox[view].note; e2.gotIt = [...new Set([...(e2.gotIt || []), view])]; inbox[view].note = null; break; }
+      case "p-continue": { inbox[view].moment = null; break; }
+      case "reopen": inbox[view].moment = feed.find((x) => x.id === d.id); break;
+    }
+    render();
+  });
+
+  render();
+</script>
+</body>
+</html>
