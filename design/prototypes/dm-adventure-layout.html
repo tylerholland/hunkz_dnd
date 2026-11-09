@@ -49,9 +49,15 @@
   Dice (2026-11-09): two DM Settings house rules, both changeable: "Ability checks roll" (exists
     today, 2d6 or 1d20) and a new "Saving throws roll". Every roll request, card ask, and the
     players' own sheets follow them; DC quick picks follow the dice (2d6: 7/10/12, d20: 10–20).
-  Card abilities: "Names" shows attacks and abilities two to a row (name + uses left; hover or
-    focus for what it does); "Details" shows one per row with the description. One switch for the
-    whole party column. Spells stay folded.
+  Card abilities: two to a row by default (name + uses left; hover or focus for what it does).
+    The party column's "Ability descriptions" switch shows one per row with the description.
+    Spells stay folded.
+  Ask for a roll is built around the common case: who (everyone selected; tap to leave someone
+    out), then the check (the 8 skills DMs ask for most, roughly in order: Perception,
+    Investigation, Insight, Stealth, Persuasion, Athletics, Survival, Arcana; the rest in "Other
+    skill"), difficulty and advantage on one row. Saves, plain ability checks and "players see the
+    DC" are under More options. Each card has "Check" with the same skills for that one player
+    (saves folded), one tap to send.
   Card ability scores: tapping one asks THAT player to roll (check, its skills, or the save),
     popping up on their screen with the roll loaded, instead of the DM rolling for them. "Roll it
     myself" remains for an absent player; "DC, advantage…" opens the full form.
@@ -254,6 +260,9 @@
   .dc .thumb { width:44px; height:32px; flex:none; border-radius:4px; background-size:cover; background-position:center; border:1px solid var(--border); }
   .dc.used { opacity:.6; }
   .dc .pick { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:6px; padding-top:6px; border-top:1px dashed var(--border); }
+  .linkbtn { border:0; background:none; padding:0; color:var(--bright); text-decoration:underline; font:inherit; font-style:normal; cursor:pointer; }
+  .chip-select { width:auto; min-height:34px; padding:3px 10px; border-radius:999px; font-family:'IM Fell English',serif; font-size:14px; }
+  .chip-select.on { background:var(--dim); border-color:var(--accent); color:var(--text); }
   .used-h { display:flex; align-items:center; gap:8px; min-height:34px; border:0; background:transparent; color:var(--muted); padding:0; font-family:'IM Fell English',serif; font-size:13px; letter-spacing:.1em; text-transform:uppercase; }
 
   /* Modal */
@@ -327,7 +336,8 @@
     Athletics: "str", Acrobatics: "dex", "Sleight of Hand": "dex", Stealth: "dex", Arcana: "int", History: "int", Investigation: "int", Nature: "int", Religion: "int",
     "Animal Handling": "wis", Insight: "wis", Medicine: "wis", Perception: "wis", Survival: "wis", Deception: "cha", Intimidation: "cha", Performance: "cha", Persuasion: "cha",
   };
-  const QUICK = ["Perception", "Investigation", "Insight", "Stealth", "Athletics", "Survival"];
+  // The checks a DM asks for most outside combat, roughly most-used first.
+  const QUICK = ["Perception", "Investigation", "Insight", "Stealth", "Persuasion", "Athletics", "Survival", "Arcana"];
   const PARTY = [
     { slug: "eoghan", name: "Eòghan", c: "#3d5a70", here: "on", cls: "Ranger 3", hp: 24, max: 28, ac: 15, m: { str: 1, dex: 3, con: 1, int: 0, wis: 2, cha: -1 }, prof: ["Perception", "Stealth", "Survival", "Athletics"], atk: [["Longbow", "+5 · d6+1"], ["Shortsword", "+5 · d6"]], feat: [["Favored Foe", "+1d4 once a turn", "2/2"], ["Natural Explorer", "Can't get lost in forests", ""]], spells: [["Hunter's Mark", "1st"], ["Cure Wounds", "1st"], ["Goodberry", "1st"]], slots: "2 of 3 slots left", notes: ["Owes the ferryman 5 sp"] },
     { slug: "liu", name: "Liu Sha", c: "#7a4b32", here: "on", cls: "Rogue 3", hp: 19, max: 21, ac: 14, m: { str: -1, dex: 4, con: 1, int: 2, wis: 1, cha: 1 }, prof: ["Perception", "Stealth", "Investigation", "Sleight of Hand", "Deception"], atk: [["Shortsword", "+6 · d6"], ["Hand Crossbow", "+6 · d6"]], feat: [["Sneak Attack", "+2d6 once a turn", ""], ["Cunning Action", "Dash, Disengage or Hide as a bonus", ""]], spells: [], slots: "", notes: [] },
@@ -429,6 +439,23 @@
   /* ───────── DM: party ───────── */
   function dotColor(h) { return h === "on" ? "var(--on)" : h === "recent" ? "var(--recent)" : "var(--away)"; }
   function discHtml(p, cls = "") { return `<span class="disc ${cls}" style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)" title="${esc(p.name)}">${esc(p.name[0])}</span>`; }
+  function cardOpts(a) {
+    if (!a) return [...QUICK.map((k) => ({ ability: SKILLS[k], skill: k, save: false })), ...ABIL.map((x) => ({ ability: x, skill: null, save: true }))];
+    return [{ ability: a, skill: null, save: false }, ...Object.keys(SKILLS).filter((k) => SKILLS[k] === a).map((k) => ({ ability: a, skill: k, save: false })), { ability: a, skill: null, save: true }];
+  }
+  function cardCheckHtml(p) {
+    const opts = cardOpts(null), others = Object.keys(SKILLS).filter((k) => !QUICK.includes(k)).sort();
+    const chip = (c, i) => `<button class="chip txt" data-act="cardask-send" data-slug="${p.slug}" data-i="${i}">${esc(shortCheck(c))} <span class="hint" style="font-size:13px">${sgn(bonus(p, c))}</span></button>`;
+    return `<div class="cardask" role="group" aria-label="Ask ${esc(p.name)} for a check">
+      <span class="label">Ask ${esc(p.name)} for a check</span>
+      <div class="row">${opts.map((c, i) => (c.save ? "" : chip(c, i))).join("")}
+        <select class="in chip-select" data-ch="cardask-skillsel" data-slug="${p.slug}" aria-label="Another skill"><option value="">Other skill…</option>${others.map((k) => `<option value="${k}">${k} ${sgn(bonus(p, { ability: SKILLS[k], skill: k }))}</option>`).join("")}</select></div>
+      <button class="used-h" data-act="cardask-saves" aria-expanded="${!!cardAsk.saves}">${cardAsk.saves ? "▴" : "▾"} Saving throw</button>
+      ${cardAsk.saves ? `<div class="row">${opts.map((c, i) => (c.save ? chip(c, i) : "")).join("")}</div>` : ""}
+      <div class="row"><span class="hint">One tap: it pops up on their screen with the roll loaded.</span></div>
+      <div class="row"><button class="btn sm quiet" data-act="cardask-more" data-slug="${p.slug}">DC, advantage…</button><span style="flex:1"></span><button class="btn sm quiet" data-act="cardask-close">Close</button></div>
+    </div>`;
+  }
   function cardAskHtml(p, a) {
     const opts = [{ ability: a, skill: null, save: false }, ...Object.keys(SKILLS).filter((k) => SKILLS[k] === a).map((k) => ({ ability: a, skill: k, save: false })), { ability: a, skill: null, save: true }];
     return `<div class="cardask" role="group" aria-label="Ask ${esc(p.name)} to roll">
@@ -448,17 +475,19 @@
       </div>
       <div class="hp"><div class="hp-row"><span>HP</span><span><b>${p.hp}</b> / ${p.max}</span></div><div class="hp-bar"><i style="width:${(p.hp / p.max) * 100}%"></i></div></div>
       <div class="mods">${ABIL.map((a) => `<button class="mod${cardAsk && cardAsk.slug === p.slug && cardAsk.a === a ? " on" : ""}" data-act="modask" data-slug="${p.slug}" data-a="${a}" title="Ask ${esc(p.name)} for a ${ABIL_NAME[a]} roll"><small>${a.toUpperCase()}</small><b>${sgn(p.m[a])}</b></button>`).join("")}</div>
-      ${cardAsk && cardAsk.slug === p.slug ? cardAskHtml(p, cardAsk.a) : ""}
+      ${cardAsk && cardAsk.slug === p.slug && cardAsk.a ? cardAskHtml(p, cardAsk.a) : ""}
       <div class="abil${abilMode === "names" ? " names" : ""}">${[...p.atk.map(([n, d]) => [n, d, ""]), ...p.feat].map(([n, d, u]) => `<div class="ar" tabindex="0" data-tip="${esc(n)}: ${esc(d)}"><b>${esc(n)}</b><span>${esc(d)}</span>${u ? `<span class="uses">${u}</span>` : ""}</div>`).join("")}</div>
       <div class="pc-foot">
         <span class="pp">Passive Perception <b>${passive(p)}</b></span>
         ${lc ? `<span class="lastcheck ${lc.pass === true ? "pass" : lc.pass === false ? "fail" : ""}" title="Last check">${esc(lc.label)} ${lc.total}${lc.pass === true ? " ✓" : lc.pass === false ? " ✗" : ""}</span>` : ""}
       </div>
       <div class="row">
+        <button class="btn sm${cardAsk && cardAsk.slug === p.slug && !cardAsk.a ? " primary" : ""}" data-act="cardcheck" data-slug="${p.slug}">🎯 Check</button>
         ${p.spells.length ? `<button class="btn sm quiet" data-act="abil" data-slug="${p.slug}" aria-expanded="${expanded.has(p.slug)}">${expanded.has(p.slug) ? "▴" : "▾"} Spells · ${p.spells.length}</button>` : ""}
         <button class="btn sm quiet" data-act="notes" data-slug="${p.slug}" aria-expanded="${notesOpen.has(p.slug)}">✎ Notes${p.notes.length ? ` · ${p.notes.length}` : ""}</button>
         <button class="btn sm quiet" data-act="note-to" data-slug="${p.slug}" title="Pass ${esc(p.name)} a note">✉ Note</button>
       </div>
+      ${cardAsk && cardAsk.slug === p.slug && !cardAsk.a ? cardCheckHtml(p) : ""}
       ${expanded.has(p.slug) ? `<div class="spells"><span class="pp">${esc(p.slots)}</span>${p.spells.map(([n, l]) => `<div class="ar"><b style="font-weight:400">${esc(n)}</b><span>${l}</span></div>`).join("")}</div>` : ""}
       ${notesOpen.has(p.slug) ? `<div class="notes"><span class="label">DM notes · private</span>${p.notes.map((n) => `<p>• ${esc(n)}</p>`).join("") || `<p class="hint">No notes yet.</p>`}<div class="row"><input class="in" data-noteinput="${p.slug}" placeholder="Add a note…" style="flex:1"><button class="btn sm" data-act="addnote" data-slug="${p.slug}">Add</button></div></div>` : ""}
     </article>`;
@@ -617,29 +646,32 @@
   /* ───────── Modals ───────── */
   function askModal() {
     const m = modal;
-    const allSkills = Object.keys(SKILLS).sort();
+    const others = Object.keys(SKILLS).filter((k) => !QUICK.includes(k)).sort();
+    const everyone = m.who.length === PARTY.length;
+    const label = m.check.save ? `${ABIL_NAME[m.check.ability]} save` : m.check.skill || `${ABIL_NAME[m.check.ability]} check`;
+    const extra = m.check.save || (!m.check.skill);
     return `<div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
-      <div><h3 id="mt">Ask for a roll</h3><p class="hint">Each player gets a prompt with their bonus worked out from their sheet. Checks roll ${rules.check}, saves roll ${rules.save} (DM Settings).</p></div>
+      <div><h3 id="mt">Ask for a roll</h3></div>
+      <div class="field"><span class="label">Who rolls</span>
+        <div class="row">${PARTY.map((p) => `<button class="chip${m.who.includes(p.slug) ? " on" : ""}" data-act="m-who" data-slug="${p.slug}" aria-pressed="${m.who.includes(p.slug)}">${discHtml(p, "sm")}${esc(p.name)} <span class="hint" style="font-size:13px">${sgn(bonus(p, m.check))}</span></button>`).join("")}</div>
+        <p class="hint">${everyone ? "Everyone. Tap a name to leave them out." : `${m.who.length} of ${PARTY.length}. <button class="linkbtn" data-act="m-all">Everyone</button>`}</p></div>
       <div class="field"><span class="label">Check</span>
-        <div class="row">${QUICK.map((s) => `<button class="chip txt${m.check.skill === s ? " on" : ""}" data-act="m-skill" data-s="${s}">${s}</button>`).join("")}</div>
-        <div class="row"><select class="in" style="flex:1;min-width:180px" data-act="m-skillsel" aria-label="Any skill">
-          <option value="">Another skill…</option>${allSkills.map((s) => `<option value="${s}"${m.check.skill === s && !QUICK.includes(s) ? " selected" : ""}>${s} (${SKILLS[s].toUpperCase()})</option>`).join("")}</select></div>
+        <div class="row">${QUICK.map((k) => `<button class="chip txt${m.check.skill === k ? " on" : ""}" data-act="m-skill" data-s="${k}">${k}</button>`).join("")}
+          <select class="in chip-select${m.check.skill && !QUICK.includes(m.check.skill) ? " on" : ""}" data-ch="m-skillsel" aria-label="Another skill">
+            <option value="">Other skill…</option>${others.map((k) => `<option value="${k}"${m.check.skill === k ? " selected" : ""}>${k}</option>`).join("")}</select></div></div>
+      <div class="field"><span class="label">Difficulty</span>
+        <div class="row">${dcPresets(diceFor(m.check)).map((n) => `<button class="chip txt${m.dc === n ? " on" : ""}" data-act="m-dcq" data-n="${n}">DC ${n}</button>`).join("")}
+          <input class="in" style="width:76px" inputmode="numeric" placeholder="DC" value="${m.dc && !dcPresets(diceFor(m.check)).includes(m.dc) ? m.dc : ""}" data-act="m-dc" aria-label="Other DC">
+          <span style="flex:1"></span>
+          <span class="seg">${[["normal", "Normal"], ["adv", "Adv."], ["dis", "Dis."]].map(([k, l]) => `<button data-act="m-adv" data-k="${k}" class="${m.adv === k ? "on" : ""}" title="${k === "adv" ? "Advantage" : k === "dis" ? "Disadvantage" : "Normal"}">${l}</button>`).join("")}</span></div>
+        <p class="hint">${m.dc ? `Results show pass or fail for you. Players ${m.showDc ? "see" : "don't see"} the DC.` : "No DC: you judge the results."}</p></div>
+      <button class="used-h" data-act="m-more" aria-expanded="${m.more}">${m.more ? "▴" : "▾"} More options${extra && !m.more ? ` · ${esc(label)}` : ""}</button>
+      ${m.more ? `<div class="field" style="padding-left:10px;border-left:2px solid var(--border)">
         <div class="group"><small>Saving throw</small><div class="row">${ABIL.map((a) => `<button class="chip txt${m.check.save && m.check.ability === a ? " on" : ""}" data-act="m-save" data-a="${a}">${a.toUpperCase()}</button>`).join("")}</div></div>
         <div class="group"><small>Plain ability check</small><div class="row">${ABIL.map((a) => `<button class="chip txt${!m.check.save && !m.check.skill && m.check.ability === a ? " on" : ""}" data-act="m-abil" data-a="${a}">${a.toUpperCase()}</button>`).join("")}</div></div>
-        <p class="hint">${esc(checkName(m.check))}</p>
-      </div>
-      <div class="field"><span class="label">Who rolls</span>
-        <div class="row"><button class="chip txt${m.who.length === 5 ? " on" : ""}" data-act="m-all">Everyone</button>
-        ${PARTY.map((p) => `<button class="chip${m.who.includes(p.slug) && m.who.length < 5 ? " on" : ""}" data-act="m-who" data-slug="${p.slug}">${discHtml(p, "sm")}${esc(p.name)} <span class="hint" style="font-size:13px">${sgn(bonus(p, m.check))}</span></button>`).join("")}</div></div>
-      <div class="field"><span class="label">Difficulty</span>
-        <div class="row"><input class="in" style="width:90px" inputmode="numeric" placeholder="DC" value="${m.dc || ""}" data-act="m-dc" aria-label="DC">
-          ${dcPresets(diceFor(m.check)).map((n) => `<button class="chip txt${m.dc === n ? " on" : ""}" data-act="m-dcq" data-n="${n}">${n}</button>`).join("")}</div>
-        <p class="hint">${m.dc ? "Each result shows pass or fail for you." : "Leave it blank to judge the results yourself."}</p>
         ${m.dc ? `<button class="switch" role="switch" aria-checked="${m.showDc}" data-act="m-showdc"><span class="sw"><i></i></span>Players see the DC</button>` : ""}
-      </div>
-      <div class="field"><span class="label">Roll with</span>
-        <span class="seg">${[["normal", "Normal"], ["adv", "Advantage"], ["dis", "Disadvantage"]].map(([k, l]) => `<button data-act="m-adv" data-k="${k}" class="${m.adv === k ? "on" : ""}">${l}</button>`).join("")}</span></div>
-      <div class="foot"><span class="grow"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="m-send"${m.who.length ? "" : " disabled"}>Ask ${m.who.length === 5 ? "everyone" : m.who.length === 1 ? P(m.who[0]).name : `${m.who.length} players`}</button></div>
+      </div>` : ""}
+      <div class="foot"><span class="hint">${esc(label)} · ${diceFor(m.check)}${m.adv !== "normal" ? (m.adv === "adv" ? " · advantage" : " · disadvantage") : ""}${m.dc ? ` · DC ${m.dc}` : ""}</span><span class="grow"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="m-send"${m.who.length ? "" : " disabled"}>Ask ${everyone ? "everyone" : m.who.length === 1 ? P(m.who[0]).name : `${m.who.length} players`}</button></div>
     </div></div>`;
   }
   const PICS = ["fancy-1.jpg", "shady-1.jpg", "humble-1.jpg", "fancy-2.jpg"];
@@ -805,7 +837,7 @@
       app.innerHTML = `<div class="page">
         <div class="top"><span class="title">Hunkz Adventures</span><span class="seg"><button class="on">Adventure</button><button data-act="stub" data-msg="The prototype covers Adventure only">Combat</button></span><span style="flex:1"></span><span class="hint">Session 14 · ${now()}</span><button class="btn sm quiet" data-act="settings">⚙ DM Settings</button></div>
         ${mapHtml(false)}
-        <div class="cols">${toolsHtml()}${feedHtml()}<section class="c-party" aria-label="Party"><div class="party-h"><h2>Party</h2><span class="grow"></span><span class="seg" aria-label="Abilities">${[["names", "Names"], ["details", "Details"]].map(([k, l]) => `<button data-act="abilmode" data-k="${k}" class="${abilMode === k ? "on" : ""}">${l}</button>`).join("")}</span></div>${PARTY.map(partyCard).join("")}</section></div>
+        <div class="cols">${toolsHtml()}${feedHtml()}<section class="c-party" aria-label="Party"><div class="party-h"><h2>Party</h2><span class="grow"></span><button class="switch" role="switch" aria-checked="${abilMode === "details"}" data-act="abilmode" title="Show what each attack and ability does"><span class="sw"><i></i></span><span style="font-size:14px">Ability descriptions</span></button></div>${PARTY.map(partyCard).join("")}</section></div>
       </div>`;
       layer.innerHTML = modal ? (modal.type === "ask" ? askModal() : modal.type === "vote" ? voteModal() : modal.type === "settings" ? settingsModal() : composeModal()) : "";
     } else {
@@ -829,7 +861,9 @@
     else if (a === "m-dc") { const n = parseInt(e.target.value, 10); modal.dc = n > 0 && n < 40 ? n : null; render(); }
   });
   document.addEventListener("change", (e) => {
-    if (e.target.dataset.act === "m-skillsel" && e.target.value) { const s = e.target.value; modal.check = { ability: SKILLS[s], skill: s, save: false }; render(); }
+    const ch = e.target.dataset.ch;
+    if (ch === "m-skillsel" && e.target.value) { const k = e.target.value; modal.check = { ability: SKILLS[k], skill: k, save: false }; render(); }
+    if (ch === "cardask-skillsel" && e.target.value) { const k = e.target.value, slug = e.target.dataset.slug; cardAsk = null; startRoll({ check: { ability: SKILLS[k], skill: k, save: false }, who: [slug], dc: null, showDc: false, adv: "normal" }); toast(`Asked ${esc(P(slug).name)} for ${esc(k)}`); }
   });
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && modal) { modal = null; render(); } });
 
@@ -864,12 +898,13 @@
       }
       case "wheel": wheels[d.i].v = Math.max(0, wheels[d.i].v + Number(d.v)); break;
       // Roll requests
-      case "ask": modal = { type: "ask", check: { ability: "wis", skill: "Perception", save: false }, who: PARTY.map((p) => p.slug), dc: null, showDc: false, adv: "normal" }; break;
+      case "ask": modal = { type: "ask", check: { ability: "wis", skill: "Perception", save: false }, who: PARTY.map((p) => p.slug), dc: null, showDc: false, adv: "normal", more: false }; break;
       case "m-skill": modal.check = { ability: SKILLS[d.s], skill: d.s, save: false }; break;
       case "m-save": modal.check = { ability: d.a, skill: null, save: true }; break;
       case "m-abil": modal.check = { ability: d.a, skill: null, save: false }; break;
-      case "m-all": modal.who = modal.who.length === 5 ? [] : PARTY.map((p) => p.slug); break;
-      case "m-who": { const w = modal.who.length === 5 ? [] : modal.who; modal.who = w.includes(d.slug) ? w.filter((s) => s !== d.slug) : [...w, d.slug]; break; }
+      case "m-all": modal.who = PARTY.map((p) => p.slug); break;
+      case "m-who": modal.who = modal.who.includes(d.slug) ? modal.who.filter((s) => s !== d.slug) : [...modal.who, d.slug]; break;
+      case "m-more": modal.more = !modal.more; break;
       case "m-dcq": modal.dc = modal.dc === Number(d.n) ? null : Number(d.n); break;
       case "m-showdc": modal.showDc = !modal.showDc; break;
       case "m-adv": modal.adv = d.k; break;
@@ -922,12 +957,13 @@
       case "close": modal = null; break;
       case "settings": modal = { type: "settings" }; break;
       case "rule": rules[d.k] = d.v; break;
-      case "abilmode": abilMode = d.k; break;
+      case "abilmode": abilMode = abilMode === "details" ? "names" : "details"; break;
       case "modask": cardAsk = cardAsk && cardAsk.slug === d.slug && cardAsk.a === d.a ? null : { slug: d.slug, a: d.a }; break;
       case "cardask-close": cardAsk = null; break;
+      case "cardcheck": cardAsk = cardAsk && cardAsk.slug === d.slug && !cardAsk.a ? null : { slug: d.slug, a: null }; break;
+      case "cardask-saves": cardAsk.saves = !cardAsk.saves; break;
       case "cardask-send": {
-        const a2 = cardAsk.a, opts = [{ ability: a2, skill: null, save: false }, ...Object.keys(SKILLS).filter((k) => SKILLS[k] === a2).map((k) => ({ ability: a2, skill: k, save: false })), { ability: a2, skill: null, save: true }];
-        const c = opts[Number(d.i)]; cardAsk = null;
+        const c = cardOpts(cardAsk.a)[Number(d.i)]; cardAsk = null;
         startRoll({ check: c, who: [d.slug], dc: null, showDc: false, adv: "normal" });
         toast(`Asked ${esc(P(d.slug).name)} for ${esc(shortCheck(c))}`);
         return;
@@ -938,7 +974,7 @@
         push({ type: "dm-roll", time: tick(), expr: `${p2.name}'s ${a2.toUpperCase()} check (${expr} ${sgn(p2.m[a2])})`, total, hidden: true, detail: "" });
         return;
       }
-      case "cardask-more": modal = { type: "ask", check: { ability: cardAsk.a, skill: null, save: false }, who: [d.slug], dc: null, showDc: false, adv: "normal" }; cardAsk = null; break;
+      case "cardask-more": modal = { type: "ask", check: cardAsk.a ? { ability: cardAsk.a, skill: null, save: false } : { ability: "wis", skill: "Perception", save: false }, who: [d.slug], dc: null, showDc: false, adv: "normal", more: !!cardAsk.a }; cardAsk = null; break;
       case "silence": {
         if (silence) { silence = null; toast("Silence lifted"); break; }
         const s2 = silence = { acks: [] };
