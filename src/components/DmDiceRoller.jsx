@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useImperativeHandle } from "react";
+import { createPortal } from "react-dom";
 import { parseDiceExpr, rollDie, DieShape } from "./DiceRoller";
 import { RollHistoryRow } from "./RollHistoryList";
 import EffectLogRow from "./ApplyEffectAction";
@@ -80,7 +81,10 @@ function createClientRollId(timestamp, index) {
 }
 
 // ── DmDiceRoller ───────────────────────────────────────────────────────────────
-export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, onDealDamage, onApplyEffect, onSaveTag, appliedRollIds, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice }) {
+// How many log rows the table feed shows.
+const FEED_LIMIT = 40;
+
+export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, onDealDamage, onApplyEffect, onSaveTag, appliedRollIds, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice, historyTarget = null }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
     sessionStorage.getItem("dnd_dice_dm_open") !== "false"
@@ -288,6 +292,79 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
   ]
     .sort((a, b) => b.sortTime - a.sortTime)
     .filter((entry, index, items) => index === items.findIndex((candidate) => candidate.id === entry.id));
+
+
+  // The history rows, inline in the panel or (Adventure) in the table feed.
+  function renderHistory(inFeed) {
+    return combinedHistory.map((entry, i) => {
+      // The newest four stay full; older rows fade. A hovered or
+      // focused row comes back to full (rollHistory.css). The feed
+      // has room, so it keeps a longer list at full strength.
+      const opacities = [1.0, 1.0, 1.0, 1.0, 0.75, 0.75, 0.5, 0.5, 0.3, 0.3, 0.15, 0.15];
+      const opacity = inFeed ? (i < FEED_LIMIT ? 1 : 0) : (opacities[i] ?? 0);
+      if (opacity === 0) return null;
+
+      const palette = entry.source === "character"
+        ? (PALETTES[entry.paletteKey] || PALETTES.ember)
+        : null;
+      const isDmEntry = entry.source === "dm";
+
+      const shownEntry = {
+        ...entry,
+        nameColor: palette?.accent || (isDmEntry ? pal.accentBright : undefined),
+        totalAccentColor: palette?.accent || (isDmEntry ? pal.gem : undefined),
+      };
+      // Only events from the shared log can be labelled (the DM's own
+      // panel rolls shown locally have no server id).
+      const canTag = onSaveTag && entry.fromServer;
+      if (entry.type === "effect" && onApplyEffect) {
+        return (
+          <EffectLogRow
+            key={entry.id}
+            pal={pal}
+            entry={shownEntry}
+            applied={!!entry.applied || !!appliedRollIds?.has(entry.id)}
+            onApplyEffect={onApplyEffect}
+            onSaveTag={canTag ? onSaveTag : undefined}
+            opacity={opacity}
+            showDivider={i < combinedHistory.length - 1}
+          />
+        );
+      }
+      return (
+        <RollHistoryRow
+          key={entry.id}
+          pal={pal}
+          entry={shownEntry}
+          onSaveTag={canTag ? onSaveTag : undefined}
+          opacity={opacity}
+          showDivider={i < combinedHistory.length - 1}
+        >
+          {/* A player's to-hit at an NPC, against its defense (AC or a roll). */}
+          {isToHitRoll(entry) && entry.target?.type === "npc" && (
+            <DefenseCheck
+              total={entry.total}
+              isCrit={!!entry.isCrit}
+              isFumble={!!entry.isFumble}
+              defense={normalizeDefense(npcs.find((n) => n.id === entry.target.sourceId)?.defense)}
+            />
+          )}
+          {/* ADR-032 — apply a player's targeted damage roll. */}
+          {onDealDamage && isDealableRoll(entry) && (
+            entry.applied || appliedRollIds?.has(entry.id) ? (
+              <span className="ta-applied">
+                {entry.applied?.kind === "miss" ? "Marked as a miss" : `✓ Applied${entry.applied?.amount != null ? ` ${entry.applied.amount}` : ""}`}
+              </span>
+            ) : (
+              <button type="button" className="ta-deal" onClick={() => onDealDamage(entry)}>
+                Deal Damage
+              </button>
+            )
+          )}
+        </RollHistoryRow>
+      );
+    });
+  }
 
   return (
     <div
@@ -583,83 +660,21 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
 
           <hr className="divider" style={{ margin: "12px 0" }} />
 
-          {/* ── History ── */}
-          {combinedHistory.length > 0 && (
+          {/* ── History (in Adventure it's shown in the table feed instead) ── */}
+          {!historyTarget && combinedHistory.length > 0 && (
             <>
               <div className="dice-sub-label" style={{ marginBottom: 8 }}>History</div>
-              <div>
-                {combinedHistory.map((entry, i) => {
-                  // The newest four stay full; older rows fade. A hovered or
-                  // focused row comes back to full (rollHistory.css).
-                  const opacities = [1.0, 1.0, 1.0, 1.0, 0.75, 0.75, 0.5, 0.5, 0.3, 0.3, 0.15, 0.15];
-                  const opacity = opacities[i] ?? 0;
-                  if (opacity === 0) return null;
-
-                  const palette = entry.source === "character"
-                    ? (PALETTES[entry.paletteKey] || PALETTES.ember)
-                    : null;
-                  const isDmEntry = entry.source === "dm";
-
-                  const shownEntry = {
-                    ...entry,
-                    nameColor: palette?.accent || (isDmEntry ? pal.accentBright : undefined),
-                    totalAccentColor: palette?.accent || (isDmEntry ? pal.gem : undefined),
-                  };
-                  // Only events from the shared log can be labelled (the DM's own
-                  // panel rolls shown locally have no server id).
-                  const canTag = onSaveTag && entry.fromServer;
-                  if (entry.type === "effect" && onApplyEffect) {
-                    return (
-                      <EffectLogRow
-                        key={entry.id}
-                        pal={pal}
-                        entry={shownEntry}
-                        applied={!!entry.applied || !!appliedRollIds?.has(entry.id)}
-                        onApplyEffect={onApplyEffect}
-                        onSaveTag={canTag ? onSaveTag : undefined}
-                        opacity={opacity}
-                        showDivider={i < combinedHistory.length - 1}
-                      />
-                    );
-                  }
-                  return (
-                    <RollHistoryRow
-                      key={entry.id}
-                      pal={pal}
-                      entry={shownEntry}
-                      onSaveTag={canTag ? onSaveTag : undefined}
-                      opacity={opacity}
-                      showDivider={i < combinedHistory.length - 1}
-                    >
-                      {/* A player's to-hit at an NPC, against its defense (AC or a roll). */}
-                      {isToHitRoll(entry) && entry.target?.type === "npc" && (
-                        <DefenseCheck
-                          total={entry.total}
-                          isCrit={!!entry.isCrit}
-                          isFumble={!!entry.isFumble}
-                          defense={normalizeDefense(npcs.find((n) => n.id === entry.target.sourceId)?.defense)}
-                        />
-                      )}
-                      {/* ADR-032 — apply a player's targeted damage roll. */}
-                      {onDealDamage && isDealableRoll(entry) && (
-                        entry.applied || appliedRollIds?.has(entry.id) ? (
-                          <span className="ta-applied">
-                            {entry.applied?.kind === "miss" ? "Marked as a miss" : `✓ Applied${entry.applied?.amount != null ? ` ${entry.applied.amount}` : ""}`}
-                          </span>
-                        ) : (
-                          <button type="button" className="ta-deal" onClick={() => onDealDamage(entry)}>
-                            Deal Damage
-                          </button>
-                        )
-                      )}
-                    </RollHistoryRow>
-                  );
-                })}
-              </div>
+              <div>{renderHistory(false)}</div>
             </>
           )}
 
         </div>
+      )}
+      {historyTarget && createPortal(
+        combinedHistory.length > 0
+          ? renderHistory(true)
+          : <p className="dm-feed-empty">Nothing yet tonight. Rolls, votes and what happens at the table show up here.</p>,
+        historyTarget,
       )}
     </div>
   );

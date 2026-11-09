@@ -251,16 +251,13 @@
 
 /* ─── Dashboard layout ───────────────────────────────────────────────────── */
 
+/* One column of party cards in both modes: right column in Adventure, left
+   in Combat. The cards slide between them (FLIP, DmDashboardPage). */
 .dm-prototype-cards {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
-  padding-top: 16px;
-  align-items: start;
-}
-
-.dm-prototype-shell[data-combat="true"] .dm-prototype-cards {
   grid-template-columns: 1fr;
+  gap: 16px;
+  align-items: start;
 }
 
 .dm-prototype-card-item {
@@ -270,9 +267,11 @@
   margin-top: 10px;
 }
 
+/* Adventure: DM tools | the table feed | the party.
+   Combat:    the party | dice + counters | initiative + enemies. */
 .dm-prototype-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) 0fr;
+  grid-template-columns: minmax(300px, 1.25fr) minmax(340px, 1.6fr) minmax(300px, 1.4fr);
   gap: 20px;
   align-items: start;
   transition: grid-template-columns 0.3s ease-out, gap 0.3s ease-out;
@@ -283,23 +282,135 @@
 }
 
 .dm-prototype-cards-panel {
-  grid-column: 1 / span 2;
+  grid-column: 3;
   grid-row: 1;
   min-width: 0;
-  transition: grid-column 0.3s ease-out;
+  position: relative;
+  z-index: 1;
 }
 
 .dm-prototype-shell[data-combat="true"] .dm-prototype-cards-panel {
   grid-column: 1;
   grid-row: 1;
 }
+/* While the side panel is shut it must not take clicks over the cards. */
+.dm-prototype-shell[data-panels="false"] .dm-prototype-side-panel {
+  visibility: hidden;
+  transition: grid-template-rows 0.46s ease-out, opacity 0.46s ease-out, transform 0.46s ease-out, visibility 0s linear 0.46s;
+}
 
-/* Wraps wheels-wrapper + dice-panel so they stack independently of the
-   other two columns' height. display: contents in adventure mode keeps
-   them as plain grid children of the existing 4-row single-column stack
-   (rows 3/4) — the wrapper itself is invisible to layout there. */
+/* The DM's tools: the action tiles and party actions (Adventure only), then
+   the counter wheels and dice. Left column in Adventure, middle in Combat.
+   While modes switch, everything in it has faded out before it moves. */
+.dm-tools-col {
+  grid-column: 1;
+  grid-row: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+.dm-prototype-shell[data-combat="true"] .dm-tools-col {
+  grid-column: 2;
+}
+
 .dm-prototype-col2-stack {
-  display: contents;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+
+/* ─── The table feed (Adventure) ─────────────────────────────────────────── */
+.dm-feed-col {
+  grid-column: 2;
+  grid-row: 1;
+  min-width: 0;
+  transition: opacity 0.22s ease-in, transform 0.22s ease-in;
+}
+.dm-prototype-shell[data-chrome="false"] .dm-feed-col {
+  opacity: 0;
+  transform: translateY(-8px);
+  pointer-events: none;
+}
+.dm-prototype-shell[data-chrome="true"] .dm-feed-col {
+  transition: opacity 0.42s cubic-bezier(0.16, 1, 0.3, 1), transform 0.42s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.dm-prototype-shell[data-combat="true"] .dm-feed-col {
+  display: none;
+}
+.dm-feed-panel {
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  padding: 14px 16px;
+  display: grid;
+  gap: 12px;
+}
+.dm-feed-head { display: flex; align-items: center; gap: 10px; }
+.dm-feed-head .label-ui { margin-bottom: 0; }
+.dm-feed-empty {
+  margin: 0;
+  font-family: var(--font-body, 'Crimson Text', Georgia, serif);
+  font-style: italic;
+  font-size: 14px;
+  color: var(--pal-text-muted);
+}
+
+/* ─── Action tiles (Adventure) ───────────────────────────────────────────── */
+.dm-action-tiles {
+  display: grid;
+  gap: 12px;
+  padding-bottom: 20px;
+}
+.dm-action-tiles-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 8px;
+}
+.dm-action-tile {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: 10px;
+  align-items: center;
+  min-height: 64px;
+  padding: 10px 12px;
+  text-align: left;
+  background: var(--pal-surface);
+  border: 1px solid var(--pal-border);
+  border-radius: 4px;
+  color: var(--pal-text);
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.dm-action-tile:hover:not(:disabled) { border-color: var(--pal-accent); }
+.dm-action-tile:focus-visible { outline: 2px solid var(--pal-accent-bright); outline-offset: 2px; }
+.dm-action-tile:disabled { cursor: default; opacity: 0.6; }
+.dm-action-tile-icon {
+  grid-row: 1 / span 2;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--pal-accent-dim);
+  color: var(--pal-accent-bright);
+  font-size: 16px;
+}
+[data-light="true"] .dm-action-tile-icon { background: rgba(140, 110, 70, 0.12); }
+.dm-action-tile-title {
+  font-family: var(--font-display, 'Cinzel', serif);
+  font-size: 15px;
+  letter-spacing: 0.04em;
+  color: var(--pal-text);
+}
+.dm-action-tile-sub {
+  font-family: var(--font-body, 'Crimson Text', Georgia, serif);
+  font-style: italic;
+  font-size: 13px;
+  color: var(--pal-text-muted);
+  line-height: 1.2;
 }
 
 .dm-prototype-combat-grid {
@@ -318,15 +429,11 @@
 }
 
 .dm-prototype-party-actions {
-  grid-column: 1 / span 2;
-  grid-row: 2;
   transition: max-height 0.2s ease-in, opacity 0.2s ease-in, transform 0.2s ease-in;
   transform-origin: top center;
 }
 
 .dm-prototype-wheels-wrapper {
-  grid-column: 1 / span 2;
-  grid-row: 3;
   opacity: 1;
   transform: translateY(0) scale(1);
   transform-origin: top center;
@@ -350,18 +457,8 @@
     transform 240ms cubic-bezier(0.4, 0, 1, 1);
 }
 
-.dm-prototype-shell[data-combat="true"] .dm-prototype-col2-stack {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  grid-column: 2;
-  grid-row: 1;
-  min-width: 0;
-}
 
 .dm-prototype-dice-panel {
-  grid-column: 1 / span 2;
-  grid-row: 4;
   opacity: 1;
   transform: translateY(0) scale(1);
   transform-origin: top center;
@@ -380,6 +477,7 @@
 .dm-prototype-side-panel {
   grid-column: 3;
   grid-row: 1;
+  z-index: 0;
   display: grid;
   grid-template-rows: 0fr;
   opacity: 0;
@@ -483,6 +581,11 @@
     grid-column: 1 / -1;
     grid-row: 2;
   }
+  /* Adventure, two columns: tools left; the feed over the party on the right. */
+  .dm-prototype-shell[data-combat="false"] .dm-tools-col { grid-column: 1; grid-row: 1 / span 2; }
+  .dm-prototype-shell[data-combat="false"] .dm-feed-col { grid-column: 2; grid-row: 1; }
+  .dm-prototype-shell[data-combat="false"] .dm-prototype-cards-panel,
+  .dm-prototype-shell[data-combat="false"] .dm-prototype-side-panel { grid-column: 2; grid-row: 2; }
   .dm-prototype-shell[data-combat="true"] .dm-prototype-side-col,
   .dm-prototype-side-col {
     grid-column: 1 / -1;
@@ -524,16 +627,14 @@
     grid-template-columns: 1fr !important;
   }
   .dm-prototype-cards-panel,
-  .dm-prototype-party-actions,
-  .dm-prototype-dice-panel,
-  .dm-prototype-side-panel,
-  .dm-prototype-wheels-wrapper {
+  .dm-tools-col,
+  .dm-feed-col,
+  .dm-prototype-side-panel {
     grid-column: 1 !important;
     grid-row: auto !important;
   }
-  .dm-prototype-shell[data-combat="true"] .dm-prototype-col2-stack {
-    display: contents !important;
-  }
+  /* One column: in Combat the party comes first. */
+  .dm-prototype-shell[data-combat="true"] .dm-prototype-cards-panel { order: -1; }
   .dm-prototype-shell[data-combat="true"] .dm-prototype-cards-panel {
     grid-row: auto !important;
   }

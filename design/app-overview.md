@@ -387,7 +387,12 @@ A dedicated DM session-management view accessible at `/dm`.
 - Updating the roster changes which PCs appear in the party column and which PCs are available to add to initiative
 - Removing a PC from the roster also removes that PC's initiative entries so campaign state stays coherent
 
-**Party card strip** (left column, stacked vertically):
+**Layout** (2026-11, `design/prototypes/dm-adventure-layout.html`): the map stays on top. Below it, three columns:
+- Adventure: DM tools (action tiles, e.g. Call a Vote; the party actions row; counter wheels; dice roller) | **At the table** feed (the live vote card, then the session log: `DmDiceRoller` renders its history into the feed via `historyTarget` instead of inside the roller) | party cards.
+- Combat: party cards | dice roller + counter wheels (history back inside the roller) | initiative + enemies.
+- Switching is staged in `toggleCombatMode()`: tools and feed fade out, the cards slide across columns (FLIP), then dice/counters and the side panel (or tools and feed) come back. Below 1180px Adventure is two columns (tools | feed over cards); below 900px everything stacks (cards first in Combat).
+
+**Party card strip** (right column in Adventure, left in Combat; stacked vertically):
 - One card per character returned by `GET /dm/party`
 - Each card uses the character's own palette for accent stripe, portrait border, name color, and HP bar — providing instant visual identification
 - Vellum characters receive a special dark-dashboard treatment so they remain readable on Ocean / other dark campaign themes

@@ -41,6 +41,7 @@ import { computeMapSwitch } from "./combatModeToggle";
 import { NPC_EXPECTED_TTL_MS, npcCombatCaughtUp } from "./npcServerStamps";
 import ShopCombatNotice from "../features/shop/ShopCombatNotice";
 import DmVoteCard from "../features/vote/DmVoteCard";
+import DmActionTiles from "../features/dmDashboard/DmActionTiles";
 import VoteComposer from "../features/vote/VoteComposer";
 
 // Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
@@ -83,6 +84,8 @@ export default function DmDashboardPage() {
   const mapPanelRef = useRef(null);
   const [combatMode, setCombatMode] = useState(initialCombatMode);
   const [mapCollapsed, setMapCollapsed] = useState(false);
+  // The table feed's list, where the dice roller shows the session log in Adventure.
+  const [feedEl, setFeedEl] = useState(null);
   const [combatLayoutActive, setCombatLayoutActive] = useState(initialCombatMode);
   const [diceLayoutActive, setDiceLayoutActive] = useState(initialCombatMode);
   const [diceVisible, setDiceVisible] = useState(true);
@@ -1306,7 +1309,6 @@ export default function DmDashboardPage() {
     refreshSoon();
   }
   const partyActionButtons = [
-    ...(vote?.status === "open" ? [] : [{ key: "vote", label: "⚑ Call a Vote", action: () => setVoteFormOpen(true) }]),
     {
       key: "short-rest",
       label: "Short Rest",
@@ -1325,6 +1327,10 @@ export default function DmDashboardPage() {
         onConfirm: doLongRest,
       }),
     },
+  ];
+  const voteOpen = vote?.status === "open";
+  const actionTiles = [
+    { key: "vote", icon: "⚑", title: "Call a Vote", sub: voteOpen ? "A vote is open" : "Let the party choose", onClick: () => setVoteFormOpen(true), disabled: voteOpen },
   ];
   const palVars = {
     "--pal-bg":            pal.bg,
@@ -1385,7 +1391,7 @@ export default function DmDashboardPage() {
             <CombatGuideOffer who="dm" onOpen={() => { setCombatGuideOffered(true); setCombatGuideOpen(true); }} onDismiss={() => setCombatGuideOffered(true)} />
           )}
           {combatGuideOpen && <CombatGuide who="dm" onClose={() => setCombatGuideOpen(false)} />}
-          {vote && <DmVoteCard vote={vote} members={party} presence={presence} serverTime={serverTime} onAction={voteAction} />}
+          {vote && combatLayoutActive && <DmVoteCard vote={vote} members={party} presence={presence} serverTime={serverTime} onAction={voteAction} />}
           {voteFormOpen && <VoteComposer onSend={startVote} onClose={() => setVoteFormOpen(false)} />}
           {combatMode && <ShopCombatNotice shop={shopSummary} dmPassword={dmPassword} onChanged={() => fetchDashboardData({ background: true, force: true })} />}
           {restNotice && (
@@ -1447,79 +1453,95 @@ export default function DmDashboardPage() {
             data-chrome={nonCombatChromeVisible ? "true" : "false"}
             data-panels={combatPanelsVisible ? "true" : "false"}
           >
+            {/* Adventure: tools on the left, the table feed in the middle, the
+                party on the right. Combat: cards left, dice and counters in
+                the middle, initiative and enemies right. */}
+            <div className="dm-tools-col">
+              <div
+                className="dm-prototype-party-actions"
+                style={{
+                  overflow: "hidden",
+                  maxHeight: nonCombatChromeVisible ? 640 : 0,
+                  opacity: nonCombatChromeVisible ? 1 : 0,
+                }}
+              >
+                <DmActionTiles tiles={actionTiles}>
+                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                    <button
+                      onClick={toggleCombatMode}
+                      style={{ ...topButtonStyle, borderColor: "rgba(90,138,96,0.5)", color: "#88b888" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#88b888"; e.currentTarget.style.color = "#88b888"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(90,138,96,0.5)"; e.currentTarget.style.color = "#88b888"; }}
+                    >Start Combat</button>
+                    {partyActionButtons.map(({ key, label, action }) => (
+                      <button
+                        key={key}
+                        onClick={action}
+                        style={{ ...topButtonStyle, minWidth: 0 }}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
+                      >{label}</button>
+                    ))}
+                    {partyHasXp && (
+                      <button
+                        onClick={() => setShowAwardXpParty(true)}
+                        style={topButtonStyle}
+                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
+                      >Award XP</button>
+                    )}
+                    <button
+                      onClick={() => setShowDistributeCoinParty(true)}
+                      style={{ ...topButtonStyle, borderColor: "rgba(200,160,64,0.3)", color: "rgba(200,160,64,0.75)" }}
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c8a040"; e.currentTarget.style.color = "#c8a040"; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(200,160,64,0.3)"; e.currentTarget.style.color = "rgba(200,160,64,0.75)"; }}
+                    >Distribute Coin</button>
+                  </div>
+                </DmActionTiles>
+              </div>
+
+              <div className="dm-prototype-col2-stack">
+                <div className="dm-prototype-wheels-wrapper">
+                  <CounterWheelsPanel
+                    pal={pal}
+                    dmPassword={dmPassword}
+                    initiativeEntries={initiative.entries}
+                  />
+                </div>
+
+                <div className="dm-prototype-dice-panel">
+                  <DmDiceRoller
+                    pal={pal}
+                    party={party.map((character) => ({ slug: character.slug, name: character.name, palette: character.palette }))}
+                    npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name, defense: npc.defense }))}
+                    dmPassword={dmPassword}
+                    onApplyDamage={handleApplyDamage}
+                    onApplyNpcDamage={handleApplyNpcDamage}
+                    onDealDamage={handleDealDamageFromRoll}
+                    onApplyEffect={handleApplyEffect}
+                    onSaveTag={handleSaveRollTag}
+                    appliedRollIds={appliedRollIds}
+                    remoteHistory={rollHistory}
+                    marginTop={0}
+                    ref={diceRollerRef}
+                    checkDice={houseRules.abilityCheckDice}
+                    historyTarget={combatLayoutActive ? null : feedEl}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <section className="dm-feed-col" aria-label="At the table">
+              <div className="dm-feed-panel">
+                <div className="dm-feed-head"><span className="label-ui">At the table</span></div>
+                {vote && !combatLayoutActive && <DmVoteCard vote={vote} members={party} presence={presence} serverTime={serverTime} onAction={voteAction} />}
+                <div ref={setFeedEl} className="dm-feed-list" />
+              </div>
+            </section>
+
             <div className="dm-prototype-cards-panel">
               <div className="dm-prototype-cards">
                 {partyCardItems}
-              </div>
-            </div>
-
-            <div
-              className="dm-prototype-party-actions"
-              style={{
-                overflow: "hidden",
-                maxHeight: nonCombatChromeVisible ? 160 : 0,
-                opacity: nonCombatChromeVisible ? 1 : 0,
-              }}
-            >
-              <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                <button
-                  onClick={toggleCombatMode}
-                  style={{ ...topButtonStyle, borderColor: "rgba(90,138,96,0.5)", color: "#88b888" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#88b888"; e.currentTarget.style.color = "#88b888"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(90,138,96,0.5)"; e.currentTarget.style.color = "#88b888"; }}
-                >Start Combat</button>
-                {partyActionButtons.map(({ key, label, action }) => (
-                  <button
-                    key={key}
-                    onClick={action}
-                    style={{ ...topButtonStyle, minWidth: 0 }}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
-                  >{label}</button>
-                ))}
-                {partyHasXp && (
-                  <button
-                    onClick={() => setShowAwardXpParty(true)}
-                    style={topButtonStyle}
-                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
-                  >Award XP</button>
-                )}
-                <button
-                  onClick={() => setShowDistributeCoinParty(true)}
-                  style={{ ...topButtonStyle, borderColor: "rgba(200,160,64,0.3)", color: "rgba(200,160,64,0.75)" }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c8a040"; e.currentTarget.style.color = "#c8a040"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(200,160,64,0.3)"; e.currentTarget.style.color = "rgba(200,160,64,0.75)"; }}
-                >Distribute Coin</button>
-              </div>
-            </div>
-
-            <div className="dm-prototype-col2-stack">
-              <div className="dm-prototype-wheels-wrapper">
-                <CounterWheelsPanel
-                  pal={pal}
-                  dmPassword={dmPassword}
-                  initiativeEntries={initiative.entries}
-                />
-              </div>
-
-              <div className="dm-prototype-dice-panel">
-                <DmDiceRoller
-                  pal={pal}
-                  party={party.map((character) => ({ slug: character.slug, name: character.name, palette: character.palette }))}
-                  npcs={(npcCombat.npcs || []).map((npc) => ({ id: npc.id, name: npc.name, defense: npc.defense }))}
-                  dmPassword={dmPassword}
-                  onApplyDamage={handleApplyDamage}
-                  onApplyNpcDamage={handleApplyNpcDamage}
-                  onDealDamage={handleDealDamageFromRoll}
-                  onApplyEffect={handleApplyEffect}
-                  onSaveTag={handleSaveRollTag}
-                  appliedRollIds={appliedRollIds}
-                  remoteHistory={rollHistory}
-                  marginTop={0}
-                  ref={diceRollerRef}
-                  checkDice={houseRules.abilityCheckDice}
-                />
               </div>
             </div>
 
