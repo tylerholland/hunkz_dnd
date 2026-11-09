@@ -42,7 +42,12 @@
     Chronicle, DM-only (to revisit). This prototype is for placement and flow only: the real build
     keeps today's styles for the map (including its vertical resize), party cards, dice roller and
     counter wheels; only the new pieces (tiles, feed, deck, prompts) need new styling.
-  Open: should a moment be able to open a Story 76 scene later?
+  Columns (2026-11-09): DM tools on the left, the feed in the middle, the party on the right. In
+    Adventure the tools are what the DM uses most and the cards are reference; Combat keeps the
+    cards on the left, where they're primary. Cards show attacks and abilities (with uses left)
+    all the time, compactly; spells fold away and open on demand.
+  Rolls follow the ability-check dice house rule (DM Settings: 2d6 here, 1d20 in standard 5e).
+  Open: should a moment be able to open a Story 76 scene later? Do saves use the check dice too?
 -->
 <style>
   :root {
@@ -117,12 +122,12 @@
   .pin { position:absolute; transform:translate(-50%,-100%); font-family:'IM Fell English',serif; font-size:12px; color:#3a2810; background:rgba(242,226,176,.8); padding:1px 6px; border-radius:4px; }
 
   /* Three columns */
-  .cols { display:grid; grid-template-columns:minmax(300px, 360px) minmax(0,1fr) minmax(340px, 400px); grid-template-areas:"party feed tools"; gap:16px; align-items:start; }
+  .cols { display:grid; grid-template-columns:minmax(340px, 400px) minmax(0,1fr) minmax(300px, 360px); grid-template-areas:"tools feed party"; gap:16px; align-items:start; }
   .c-party { grid-area:party; display:grid; gap:12px; }
   .c-feed { grid-area:feed; }
   .c-tools { grid-area:tools; display:grid; gap:14px; }
   @media (max-width:1180px) {
-    .cols { grid-template-columns:minmax(0,1fr) minmax(320px, 380px); grid-template-areas:"feed tools" "feed party"; }
+    .cols { grid-template-columns:minmax(320px, 380px) minmax(0,1fr); grid-template-areas:"tools feed" "tools party"; }
   }
   @media (max-width:760px) {
     .cols { grid-template-columns:minmax(0,1fr); grid-template-areas:"tools" "feed" "party"; }
@@ -153,8 +158,12 @@
   .lastcheck { margin-left:auto; font-size:13px; padding:2px 8px; border-radius:999px; border:1px solid var(--border); color:var(--text); }
   .lastcheck.pass { border-color:var(--pass); }
   .lastcheck.fail { border-color:var(--fail); }
-  .abil { display:grid; gap:4px; padding-top:4px; border-top:1px dashed var(--border); font-size:14px; }
-  .abil div b { color:var(--text); font-weight:600; }
+  .abil { display:grid; gap:2px; padding-top:6px; border-top:1px dashed var(--border); font-size:14px; line-height:1.3; }
+  .ar { display:flex; gap:8px; align-items:baseline; min-width:0; }
+  .ar b { color:var(--text); font-weight:600; white-space:nowrap; }
+  .ar span { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .ar .uses { margin-left:auto; color:var(--text); font-family:'Cinzel',serif; font-size:13px; flex:none; }
+  .spells { display:grid; gap:2px; font-size:14px; padding-left:10px; border-left:2px solid var(--border); }
   .notes { display:grid; gap:6px; padding-top:6px; border-top:1px dashed var(--border); }
   .notes p { margin:0; font-size:14px; }
 
@@ -298,11 +307,11 @@
   };
   const QUICK = ["Perception", "Investigation", "Insight", "Stealth", "Athletics", "Survival"];
   const PARTY = [
-    { slug: "eoghan", name: "Eòghan", c: "#3d5a70", here: "on", cls: "Ranger 3", hp: 24, max: 28, ac: 15, m: { str: 1, dex: 3, con: 1, int: 0, wis: 2, cha: -1 }, prof: ["Perception", "Stealth", "Survival", "Athletics"], abil: [["Hunter's Mark", "1st-level spell · 2 slots left"], ["Favored Foe", "Mark a creature, +1d4 once per turn"], ["Longbow", "+5 to hit · d8 (WoD)"]], notes: ["Owes the ferryman 5 sp"] },
-    { slug: "liu", name: "Liu Sha", c: "#7a4b32", here: "on", cls: "Rogue 3", hp: 19, max: 21, ac: 14, m: { str: -1, dex: 4, con: 1, int: 2, wis: 1, cha: 1 }, prof: ["Perception", "Stealth", "Investigation", "Sleight of Hand", "Deception"], abil: [["Sneak Attack", "+2d6 once per turn"], ["Cunning Action", "Dash, Disengage or Hide as a bonus action"], ["Thieves' Tools", "Proficient"]], notes: [] },
-    { slug: "aesop", name: "Aesop", c: "#4f6b32", here: "on", cls: "Cleric 3", hp: 22, max: 24, ac: 18, m: { str: 1, dex: 0, con: 2, int: 0, wis: 3, cha: 1 }, prof: ["Insight", "Medicine", "History", "Religion"], abil: [["Cure Wounds", "1st-level spell · 3 slots left"], ["Channel Divinity", "1 use · Turn Undead"], ["Spiritual Weapon", "2nd-level spell · 1 slot left"]], notes: ["Suspicious of the Guildmaster"] },
-    { slug: "mj", name: "Meanjeans", c: "#5a3a6b", here: "recent", cls: "Fighter 3", hp: 31, max: 31, ac: 17, m: { str: 3, dex: 1, con: 2, int: -1, wis: 0, cha: 0 }, prof: ["Athletics", "Intimidation", "Survival"], abil: [["Second Wind", "1d10+3 HP · ready"], ["Action Surge", "1 use · ready"], ["Battle-Axe", "+5 to hit · d10 (WoD)"]], notes: [] },
-    { slug: "qc", name: "Quietclaw", c: "#2f6b62", here: "away", cls: "Druid 3", hp: 18, max: 22, ac: 13, m: { str: 0, dex: 2, con: 1, int: 1, wis: 3, cha: -1 }, prof: ["Perception", "Nature", "Animal Handling", "Survival"], abil: [["Wild Shape", "2 uses · CR 1/4"], ["Goodberry", "1st-level spell · 2 slots left"], ["Moonbeam", "2nd-level spell · 2 slots left"]], notes: [] },
+    { slug: "eoghan", name: "Eòghan", c: "#3d5a70", here: "on", cls: "Ranger 3", hp: 24, max: 28, ac: 15, m: { str: 1, dex: 3, con: 1, int: 0, wis: 2, cha: -1 }, prof: ["Perception", "Stealth", "Survival", "Athletics"], atk: [["Longbow", "+5 · d6+1"], ["Shortsword", "+5 · d6"]], feat: [["Favored Foe", "+1d4 once a turn", "2/2"], ["Natural Explorer", "Can't get lost in forests", ""]], spells: [["Hunter's Mark", "1st"], ["Cure Wounds", "1st"], ["Goodberry", "1st"]], slots: "2 of 3 slots left", notes: ["Owes the ferryman 5 sp"] },
+    { slug: "liu", name: "Liu Sha", c: "#7a4b32", here: "on", cls: "Rogue 3", hp: 19, max: 21, ac: 14, m: { str: -1, dex: 4, con: 1, int: 2, wis: 1, cha: 1 }, prof: ["Perception", "Stealth", "Investigation", "Sleight of Hand", "Deception"], atk: [["Shortsword", "+6 · d6"], ["Hand Crossbow", "+6 · d6"]], feat: [["Sneak Attack", "+2d6 once a turn", ""], ["Cunning Action", "Dash, Disengage or Hide as a bonus", ""]], spells: [], slots: "", notes: [] },
+    { slug: "aesop", name: "Aesop", c: "#4f6b32", here: "on", cls: "Cleric 3", hp: 22, max: 24, ac: 18, m: { str: 1, dex: 0, con: 2, int: 0, wis: 3, cha: 1 }, prof: ["Insight", "Medicine", "History", "Religion"], atk: [["Mace", "+3 · d6"]], feat: [["Channel Divinity", "Turn Undead", "1/1"], ["Disciple of Life", "Extra healing", ""]], spells: [["Guidance", "cantrip"], ["Sacred Flame", "cantrip"], ["Cure Wounds", "1st"], ["Bless", "1st"], ["Spiritual Weapon", "2nd"]], slots: "3 of 6 slots left", notes: ["Suspicious of the Guildmaster"] },
+    { slug: "mj", name: "Meanjeans", c: "#5a3a6b", here: "recent", cls: "Fighter 3", hp: 31, max: 31, ac: 17, m: { str: 3, dex: 1, con: 2, int: -1, wis: 0, cha: 0 }, prof: ["Athletics", "Intimidation", "Survival"], atk: [["Battle-Axe", "+5 · d6+2"], ["Handaxe", "+5 · d6"]], feat: [["Second Wind", "1d10+3 HP", "1/1"], ["Action Surge", "One more action", "1/1"]], spells: [], slots: "", notes: [] },
+    { slug: "qc", name: "Quietclaw", c: "#2f6b62", here: "away", cls: "Druid 3", hp: 18, max: 22, ac: 13, m: { str: 0, dex: 2, con: 1, int: 1, wis: 3, cha: -1 }, prof: ["Perception", "Nature", "Animal Handling", "Survival"], atk: [["Quarterstaff", "+2 · d6"]], feat: [["Wild Shape", "Beast up to CR 1/4", "2/2"]], spells: [["Druidcraft", "cantrip"], ["Goodberry", "1st"], ["Entangle", "1st"], ["Moonbeam", "2nd"]], slots: "4 of 6 slots left", notes: [] },
   ];
   const P = (slug) => PARTY.find((p) => p.slug === slug);
   const bonus = (p, check) => {
@@ -314,7 +323,10 @@
   const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const checkName = (c) => (c.save ? `${ABIL_NAME[c.ability]} save` : c.skill ? `${ABIL_NAME[c.ability]} (${c.skill})` : `${ABIL_NAME[c.ability]} check`);
   const shortCheck = (c) => (c.save ? `${c.ability.toUpperCase()} save` : c.skill || `${c.ability.toUpperCase()} check`);
-  const d20 = () => 1 + Math.floor(Math.random() * 20);
+  // DM Settings → ability-check dice (house rule; 2d6 at this table, 1d20 in standard 5e).
+  const CHECK_DICE = "2d6";
+  const rollCheckDice = () => { const [n, f] = CHECK_DICE.split("d").map(Number); return Array.from({ length: n }, () => 1 + Math.floor(Math.random() * f)).reduce((a, b) => a + b, 0); };
+  const DC_PRESETS = CHECK_DICE === "2d6" ? [7, 10, 12] : [10, 12, 15, 20];
 
   // Clock: "now" in the session, moves on with each thing that happens.
   let minute = 41;
@@ -400,16 +412,17 @@
       </div>
       <div class="hp"><div class="hp-row"><span>HP</span><span><b>${p.hp}</b> / ${p.max}</span></div><div class="hp-bar"><i style="width:${(p.hp / p.max) * 100}%"></i></div></div>
       <div class="mods">${ABIL.map((a) => `<div><small>${a.toUpperCase()}</small><b>${sgn(p.m[a])}</b></div>`).join("")}</div>
+      <div class="abil">${[...p.atk.map(([n, d]) => [n, d, ""]), ...p.feat].map(([n, d, u]) => `<div class="ar"><b>${esc(n)}</b><span>${esc(d)}</span>${u ? `<span class="uses">${u}</span>` : ""}</div>`).join("")}</div>
       <div class="pc-foot">
         <span class="pp">Passive Perception <b>${passive(p)}</b></span>
         ${lc ? `<span class="lastcheck ${lc.pass === true ? "pass" : lc.pass === false ? "fail" : ""}" title="Last check">${esc(lc.label)} ${lc.total}${lc.pass === true ? " ✓" : lc.pass === false ? " ✗" : ""}</span>` : ""}
       </div>
       <div class="row">
-        <button class="btn sm quiet" data-act="abil" data-slug="${p.slug}" aria-expanded="${expanded.has(p.slug)}">${expanded.has(p.slug) ? "▴" : "▾"} Spells & abilities</button>
+        ${p.spells.length ? `<button class="btn sm quiet" data-act="abil" data-slug="${p.slug}" aria-expanded="${expanded.has(p.slug)}">${expanded.has(p.slug) ? "▴" : "▾"} Spells · ${p.spells.length}</button>` : ""}
         <button class="btn sm quiet" data-act="notes" data-slug="${p.slug}" aria-expanded="${notesOpen.has(p.slug)}">✎ Notes${p.notes.length ? ` · ${p.notes.length}` : ""}</button>
         <button class="btn sm quiet" data-act="note-to" data-slug="${p.slug}" title="Pass ${esc(p.name)} a note">✉ Note</button>
       </div>
-      ${expanded.has(p.slug) ? `<div class="abil">${p.abil.map(([n, d]) => `<div><b>${esc(n)}</b> · ${esc(d)}</div>`).join("")}</div>` : ""}
+      ${expanded.has(p.slug) ? `<div class="spells"><span class="pp">${esc(p.slots)}</span>${p.spells.map(([n, l]) => `<div class="ar"><b style="font-weight:400">${esc(n)}</b><span>${l}</span></div>`).join("")}</div>` : ""}
       ${notesOpen.has(p.slug) ? `<div class="notes"><span class="label">DM notes · private</span>${p.notes.map((n) => `<p>• ${esc(n)}</p>`).join("") || `<p class="hint">No notes yet.</p>`}<div class="row"><input class="in" data-noteinput="${p.slug}" placeholder="Add a note…" style="flex:1"><button class="btn sm" data-act="addnote" data-slug="${p.slug}">Add</button></div></div>` : ""}
     </article>`;
   }
@@ -453,7 +466,7 @@
       const p = P(slug), res = r.results[slug], b = bonus(p, r.check);
       const pass = res && r.dc ? res.total >= r.dc : null;
       return `<div class="rrow ${pass === true ? "pass" : pass === false ? "fail" : ""}">${discHtml(p, "sm")}<span>${esc(p.name)} <span class="bonus">${sgn(b)}</span></span>
-        <span class="mark">${res ? (res.nat === 20 ? "nat 20" : res.nat === 1 ? "nat 1" : pass === true ? "pass" : pass === false ? "fail" : "") : ""}</span>
+        <span class="mark">${res ? (pass === true ? "pass" : pass === false ? "fail" : "") : ""}</span>
         <span class="res ${res ? "" : "wait"}">${res ? res.total : "rolling…"}</span></div>`;
     }).join("");
     const inCount = Object.keys(r.results).length;
@@ -559,7 +572,7 @@
     const m = modal;
     const allSkills = Object.keys(SKILLS).sort();
     return `<div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
-      <div><h3 id="mt">Ask for a roll</h3><p class="hint">Each player gets a prompt with their bonus worked out from their sheet.</p></div>
+      <div><h3 id="mt">Ask for a roll</h3><p class="hint">Each player gets a prompt with their bonus worked out from their sheet. Rolls use your check dice (${CHECK_DICE}, from DM Settings).</p></div>
       <div class="field"><span class="label">Check</span>
         <div class="row">${QUICK.map((s) => `<button class="chip txt${m.check.skill === s ? " on" : ""}" data-act="m-skill" data-s="${s}">${s}</button>`).join("")}</div>
         <div class="row"><select class="in" style="flex:1;min-width:180px" data-act="m-skillsel" aria-label="Any skill">
@@ -573,7 +586,7 @@
         ${PARTY.map((p) => `<button class="chip${m.who.includes(p.slug) && m.who.length < 5 ? " on" : ""}" data-act="m-who" data-slug="${p.slug}">${discHtml(p, "sm")}${esc(p.name)} <span class="hint" style="font-size:13px">${sgn(bonus(p, m.check))}</span></button>`).join("")}</div></div>
       <div class="field"><span class="label">Difficulty</span>
         <div class="row"><input class="in" style="width:90px" inputmode="numeric" placeholder="DC" value="${m.dc || ""}" data-act="m-dc" aria-label="DC">
-          ${[10, 12, 15, 20].map((n) => `<button class="chip txt${m.dc === n ? " on" : ""}" data-act="m-dcq" data-n="${n}">${n}</button>`).join("")}</div>
+          ${DC_PRESETS.map((n) => `<button class="chip txt${m.dc === n ? " on" : ""}" data-act="m-dcq" data-n="${n}">${n}</button>`).join("")}</div>
         <p class="hint">${m.dc ? "Each result shows pass or fail for you." : "Leave it blank to judge the results yourself."}</p>
         ${m.dc ? `<button class="switch" role="switch" aria-checked="${m.showDc}" data-act="m-showdc"><span class="sw"><i></i></span>Players see the DC</button>` : ""}
       </div>
@@ -644,7 +657,7 @@
   }
   function rollFor(slug, manual) {
     const r = rollReq; if (!r || r.results[slug]) return;
-    const a = d20(), b = d20();
+    const a = rollCheckDice(), b = rollCheckDice();
     const nat = r.adv === "adv" ? Math.max(a, b) : r.adv === "dis" ? Math.min(a, b) : a;
     const total = manual ?? nat + bonus(P(slug), r.check);
     r.results[slug] = { nat: manual ? null : nat, total };
@@ -692,10 +705,10 @@
       out += `<div class="pcard" role="dialog" aria-label="The DM asks for a roll">
         <span class="label">The DM asks for a roll</span>
         <h3>${esc(checkName(r.check))}</h3>
-        <p class="hint">${r.adv === "adv" ? "With advantage: roll two, keep the higher. " : r.adv === "dis" ? "With disadvantage: roll two, keep the lower. " : ""}${r.dc && r.showDc ? `DC ${r.dc}.` : ""}</p>
+        <p class="hint">${r.adv === "adv" ? "With advantage: roll twice, keep the better. " : r.adv === "dis" ? "With disadvantage: roll twice, keep the worse. " : ""}${r.dc && r.showDc ? `DC ${r.dc}.` : ""}</p>
         ${res ? `<div class="row"><span class="rolled">${res.total}</span><span class="hint">${res.nat != null ? `(${res.nat} ${sgn(b)})` : "(your dice)"} · sent to the DM</span></div>
             ${r.revealed ? `<span class="label">The DM revealed the rolls</span><div class="rrows">${r.targets.map((s2) => `<div class="rrow">${discHtml(P(s2), "sm")}<span>${esc(P(s2).name)}</span><span></span><span class="res${r.results[s2] ? "" : " wait"}">${r.results[s2] ? r.results[s2].total : "rolling…"}</span></div>`).join("")}</div><div class="row"><span style="flex:1"></span><button class="btn sm" data-act="p-dismiss">OK</button></div>` : ""}`
-          : `<button class="btn primary bigroll" data-act="p-roll">Roll d20 ${sgn(b)}${r.adv !== "normal" ? (r.adv === "adv" ? " · adv" : " · dis") : ""}</button>
+          : `<button class="btn primary bigroll" data-act="p-roll">Roll ${CHECK_DICE} ${sgn(b)}${r.adv !== "normal" ? (r.adv === "adv" ? " · adv" : " · dis") : ""}</button>
              <div class="row"><span class="hint">Rolled real dice?</span><input class="in" style="width:90px" inputmode="numeric" placeholder="Total" data-p="manual" aria-label="Your total"><button class="btn sm" data-act="p-manual">Send</button></div>`}
       </div>`;
     }
@@ -732,7 +745,7 @@
       app.innerHTML = `<div class="page">
         <div class="top"><span class="title">Hunkz Adventures</span><span class="seg"><button class="on">Adventure</button><button data-act="stub" data-msg="The prototype covers Adventure only">Combat</button></span><span style="flex:1"></span><span class="hint">Session 14 · ${now()}</span></div>
         ${mapHtml(false)}
-        <div class="cols"><section class="c-party" aria-label="Party">${PARTY.map(partyCard).join("")}</section>${feedHtml()}${toolsHtml()}</div>
+        <div class="cols">${toolsHtml()}${feedHtml()}<section class="c-party" aria-label="Party">${PARTY.map(partyCard).join("")}</section></div>
       </div>`;
       layer.innerHTML = modal ? (modal.type === "ask" ? askModal() : modal.type === "vote" ? voteModal() : composeModal()) : "";
     } else {
