@@ -46,8 +46,18 @@
     Adventure the tools are what the DM uses most and the cards are reference; Combat keeps the
     cards on the left, where they're primary. Cards show attacks and abilities (with uses left)
     all the time, compactly; spells fold away and open on demand.
-  Rolls follow the ability-check dice house rule (DM Settings: 2d6 here, 1d20 in standard 5e).
-  Open: should a moment be able to open a Story 76 scene later? Do saves use the check dice too?
+  Dice (2026-11-09): two DM Settings house rules, both changeable: "Ability checks roll" (exists
+    today, 2d6 or 1d20) and a new "Saving throws roll". Every roll request, card ask, and the
+    players' own sheets follow them; DC quick picks follow the dice (2d6: 7/10/12, d20: 10–20).
+  Card abilities: "Names" shows attacks and abilities two to a row (name + uses left; hover or
+    focus for what it does); "Details" shows one per row with the description. One switch for the
+    whole party column. Spells stay folded.
+  Card ability scores: tapping one asks THAT player to roll (check, its skills, or the save),
+    popping up on their screen with the roll loaded, instead of the DM rolling for them. "Roll it
+    myself" remains for an absent player; "DC, advantage…" opens the full form.
+  Request silence: a big "Your DM requests your attention! Silence, please." over every player's
+    screen until they tap "I'm listening" or the DM lifts it; the DM sees who has acknowledged.
+  Open: should a moment be able to open a Story 76 scene later?
 -->
 <style>
   :root {
@@ -149,7 +159,9 @@
   .hp-bar i { display:block; height:100%; background:linear-gradient(90deg, #4f9a63, #79c48a); }
   body[data-pal="vellum"] .hp-bar i { background:linear-gradient(90deg, #2f7a44, #4a9a5c); }
   .mods { display:grid; grid-template-columns:repeat(6, 1fr); gap:4px; }
-  .mods div { text-align:center; padding:3px 0; border:1px solid var(--border); border-radius:6px; }
+  .mods div, .mods .mod { text-align:center; padding:3px 0; border:1px solid var(--border); border-radius:6px; background:transparent; color:inherit; font:inherit; }
+  .mods .mod:hover, .mods .mod.on { border-color:var(--accent); background:var(--wash); }
+  .cardask { display:grid; gap:8px; padding:10px; border:1px solid var(--accent); border-radius:8px; background:var(--solid); }
   .mods small { display:block; font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.1em; color:var(--muted); }
   .mods b { font-family:'Cinzel',serif; font-weight:400; color:var(--text); font-size:15px; }
   .pc-foot { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
@@ -163,6 +175,12 @@
   .ar b { color:var(--text); font-weight:600; white-space:nowrap; }
   .ar span { color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .ar .uses { margin-left:auto; color:var(--text); font-family:'Cinzel',serif; font-size:13px; flex:none; }
+  .abil.names { grid-template-columns:1fr 1fr; column-gap:12px; }
+  .abil.names .ar span:not(.uses) { display:none; }
+  .ar[data-tip] { position:relative; cursor:help; }
+  .ar[data-tip]:hover::after, .ar[data-tip]:focus::after { content:attr(data-tip); position:absolute; left:0; bottom:calc(100% + 4px); z-index:5; width:max-content; max-width:240px; white-space:normal; padding:6px 9px; border-radius:6px; background:var(--solid); border:1px solid var(--accent); color:var(--text); font-size:13px; box-shadow:0 6px 18px rgba(0,0,0,.35); }
+  .party-h { display:flex; align-items:center; gap:10px; padding:2px 2px 0; }
+  .party-h .grow { flex:1; }
   .spells { display:grid; gap:2px; font-size:14px; padding-left:10px; border-left:2px solid var(--border); }
   .notes { display:grid; gap:6px; padding-top:6px; border-top:1px dashed var(--border); }
   .notes p { margin:0; font-size:14px; }
@@ -276,6 +294,10 @@
   .scroll h3 { font-size:22px; text-align:center; }
   .scroll p { margin:0; font-size:18px; line-height:1.55; color:var(--text); white-space:pre-line; }
   .scroll .orn { text-align:center; color:var(--win); letter-spacing:.6em; font-size:12px; }
+  .hush { width:min(640px, 100%); padding:40px 28px; text-align:center; display:grid; gap:14px; justify-items:center; background:var(--solid); border:2px solid var(--win); border-radius:14px; box-shadow:0 30px 80px rgba(0,0,0,.55); }
+  .hush-i { font-size:56px; line-height:1; }
+  .hush h3 { font-size:30px; letter-spacing:.06em; line-height:1.2; }
+  .hush p { margin:0; font-size:22px; font-style:italic; color:var(--text); }
   @media (max-width:640px) {
     .pcard { top:auto; bottom:0; border-radius:14px 14px 0 0; width:100%; animation:none; }
   }
@@ -324,9 +346,11 @@
   const checkName = (c) => (c.save ? `${ABIL_NAME[c.ability]} save` : c.skill ? `${ABIL_NAME[c.ability]} (${c.skill})` : `${ABIL_NAME[c.ability]} check`);
   const shortCheck = (c) => (c.save ? `${c.ability.toUpperCase()} save` : c.skill || `${c.ability.toUpperCase()} check`);
   // DM Settings → ability-check dice (house rule; 2d6 at this table, 1d20 in standard 5e).
-  const CHECK_DICE = "2d6";
-  const rollCheckDice = () => { const [n, f] = CHECK_DICE.split("d").map(Number); return Array.from({ length: n }, () => 1 + Math.floor(Math.random() * f)).reduce((a, b) => a + b, 0); };
-  const DC_PRESETS = CHECK_DICE === "2d6" ? [7, 10, 12] : [10, 12, 15, 20];
+  // Both are DM Settings (house rules): what an ability check rolls, and what a saving throw rolls.
+  let rules = { check: "2d6", save: "1d20" };
+  const diceFor = (check) => (check.save ? rules.save : rules.check);
+  const rollDice = (expr) => { const [n, f] = expr.split("d").map(Number); return Array.from({ length: n }, () => 1 + Math.floor(Math.random() * f)).reduce((a, b) => a + b, 0); };
+  const dcPresets = (expr) => (expr === "2d6" ? [7, 10, 12] : [10, 12, 15, 20]);
 
   // Clock: "now" in the session, moves on with each thing that happens.
   let minute = 41;
@@ -336,7 +360,10 @@
   let view = "dm", pal = "ocean", filter = "all", mapOpen = true, deckFilter = "all", usedOpen = false;
   let expanded = new Set(), notesOpen = new Set(), picking = null, modal = null, toastT = null, undo = null;
   let lastCheck = {}; // slug -> { label, total, pass }
-  let rollReq = null; // live roll request
+  let rollReqs = []; // live roll requests (the Ask form, or a tap on a card)
+  let cardAsk = null; // { slug, a }: the ask-this-player popover on a card
+  let abilMode = "names"; // party cards: "names" (two columns) or "details"
+  let silence = null; // { acks: [slugs] } while the DM is asking for quiet
   let vote = null;
   let wheels = [{ n: "Torch (turns)", v: 4, c: "#d9b45a" }, { n: "Guild alarm", v: 1, c: "#d07a6a" }, { n: "Days till the moot", v: 3, c: "#6a8fa8" }];
   let dice = { pool: {}, mod: 0, last: null, show: false };
@@ -402,6 +429,15 @@
   /* ───────── DM: party ───────── */
   function dotColor(h) { return h === "on" ? "var(--on)" : h === "recent" ? "var(--recent)" : "var(--away)"; }
   function discHtml(p, cls = "") { return `<span class="disc ${cls}" style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)" title="${esc(p.name)}">${esc(p.name[0])}</span>`; }
+  function cardAskHtml(p, a) {
+    const opts = [{ ability: a, skill: null, save: false }, ...Object.keys(SKILLS).filter((k) => SKILLS[k] === a).map((k) => ({ ability: a, skill: k, save: false })), { ability: a, skill: null, save: true }];
+    return `<div class="cardask" role="group" aria-label="Ask ${esc(p.name)} to roll">
+      <span class="label">Ask ${esc(p.name)} to roll</span>
+      <div class="row">${opts.map((c, i) => `<button class="chip txt" data-act="cardask-send" data-slug="${p.slug}" data-i="${i}">${esc(shortCheck(c))} <span class="hint" style="font-size:13px">${sgn(bonus(p, c))}</span></button>`).join("")}</div>
+      <div class="row"><span class="hint">It pops up on their screen with the roll loaded (${rules.check} for checks, ${rules.save} for saves).</span></div>
+      <div class="row"><button class="btn sm quiet" data-act="cardask-self" data-slug="${p.slug}">Roll it myself</button><button class="btn sm quiet" data-act="cardask-more" data-slug="${p.slug}">DC, advantage…</button><span style="flex:1"></span><button class="btn sm quiet" data-act="cardask-close">Close</button></div>
+    </div>`;
+  }
   function partyCard(p) {
     const lc = lastCheck[p.slug];
     return `<article class="pc" aria-label="${esc(p.name)}">
@@ -411,8 +447,9 @@
         <div class="pc-ac"><b>${p.ac}</b><small>AC</small></div>
       </div>
       <div class="hp"><div class="hp-row"><span>HP</span><span><b>${p.hp}</b> / ${p.max}</span></div><div class="hp-bar"><i style="width:${(p.hp / p.max) * 100}%"></i></div></div>
-      <div class="mods">${ABIL.map((a) => `<div><small>${a.toUpperCase()}</small><b>${sgn(p.m[a])}</b></div>`).join("")}</div>
-      <div class="abil">${[...p.atk.map(([n, d]) => [n, d, ""]), ...p.feat].map(([n, d, u]) => `<div class="ar"><b>${esc(n)}</b><span>${esc(d)}</span>${u ? `<span class="uses">${u}</span>` : ""}</div>`).join("")}</div>
+      <div class="mods">${ABIL.map((a) => `<button class="mod${cardAsk && cardAsk.slug === p.slug && cardAsk.a === a ? " on" : ""}" data-act="modask" data-slug="${p.slug}" data-a="${a}" title="Ask ${esc(p.name)} for a ${ABIL_NAME[a]} roll"><small>${a.toUpperCase()}</small><b>${sgn(p.m[a])}</b></button>`).join("")}</div>
+      ${cardAsk && cardAsk.slug === p.slug ? cardAskHtml(p, cardAsk.a) : ""}
+      <div class="abil${abilMode === "names" ? " names" : ""}">${[...p.atk.map(([n, d]) => [n, d, ""]), ...p.feat].map(([n, d, u]) => `<div class="ar" tabindex="0" data-tip="${esc(n)}: ${esc(d)}"><b>${esc(n)}</b><span>${esc(d)}</span>${u ? `<span class="uses">${u}</span>` : ""}</div>`).join("")}</div>
       <div class="pc-foot">
         <span class="pp">Passive Perception <b>${passive(p)}</b></span>
         ${lc ? `<span class="lastcheck ${lc.pass === true ? "pass" : lc.pass === false ? "fail" : ""}" title="Last check">${esc(lc.label)} ${lc.total}${lc.pass === true ? " ✓" : lc.pass === false ? " ✗" : ""}</span>` : ""}
@@ -460,8 +497,7 @@
     if (e.type === "vote-done") return `<div class="fi${f}"><span class="ic">⚑</span><div><div class="meta"><span class="who">Vote · ${esc(e.q)} → <b>${esc(e.win)}</b>, ${e.top} of ${e.of}</span><span class="time">${e.time}</span></div></div></div>`;
     return "";
   }
-  function liveRollHtml() {
-    const r = rollReq; if (!r) return "";
+  function liveRollHtml(r) {
     const rows = r.targets.map((slug) => {
       const p = P(slug), res = r.results[slug], b = bonus(p, r.check);
       const pass = res && r.dc ? res.total >= r.dc : null;
@@ -471,13 +507,23 @@
     }).join("");
     const inCount = Object.keys(r.results).length;
     return `<section class="live" aria-label="Roll request">
-      <div class="live-h"><span class="label">Asked for a roll</span><span class="grow"></span><span class="hint">${inCount} of ${r.targets.length} in</span></div>
+      <div class="live-h"><span class="label">Asked for a roll · ${r.dice}</span><span class="grow"></span><span class="hint">${inCount} of ${r.targets.length} in</span></div>
       <h3>${esc(checkName(r.check))}</h3>
       <p class="hint">${r.dc ? `DC ${r.dc}${r.showDc ? " (players see it)" : " (hidden from players)"}` : "No DC: you judge the result"}${r.adv !== "normal" ? ` · ${r.adv === "adv" ? "with advantage" : "with disadvantage"}` : ""}</p>
       <div class="rrows">${rows}</div>
-      <div class="row"><button class="btn sm quiet" data-act="rr-cancel">Cancel</button><span style="flex:1"></span>
-        ${r.revealed ? `<span class="hint">Revealed to the party</span>` : `<button class="btn sm${inCount === r.targets.length ? "" : " quiet"}" data-act="rr-reveal" title="Everyone who rolled sees everyone's results">Reveal rolls</button>`}
-        <button class="btn sm primary" data-act="rr-close">${inCount === r.targets.length ? "Done" : "Close it now"}</button></div>
+      <div class="row"><button class="btn sm quiet" data-act="rr-cancel" data-id="${r.id}">Cancel</button><span style="flex:1"></span>
+        ${r.targets.length < 2 ? "" : r.revealed ? `<span class="hint">Revealed to the party</span>` : `<button class="btn sm${inCount === r.targets.length ? "" : " quiet"}" data-act="rr-reveal" data-id="${r.id}" title="Everyone who rolled sees everyone's results">Reveal rolls</button>`}
+        <button class="btn sm primary" data-act="rr-close" data-id="${r.id}">${inCount === r.targets.length ? "Done" : "Close it now"}</button></div>
+    </section>`;
+  }
+  function silenceHtml() {
+    if (!silence) return "";
+    const waiting = PARTY.filter((p) => !silence.acks.includes(p.slug));
+    return `<section class="live" aria-label="Silence requested">
+      <div class="live-h"><span class="label">✋ Silence requested</span><span class="grow"></span><span class="hint">${silence.acks.length} of 5 listening</span></div>
+      <div class="row">${PARTY.map((p) => `<span class="chip" style="opacity:${silence.acks.includes(p.slug) ? 1 : .45}">${discHtml(p, "sm")}${esc(p.name)}${silence.acks.includes(p.slug) ? " ✓" : ""}</span>`).join("")}</div>
+      ${waiting.length ? `<p class="hint">Still on their screen for ${esc(waiting.map((p) => p.name).join(", "))}.</p>` : ""}
+      <div class="row"><span style="flex:1"></span><button class="btn sm primary" data-act="silence">Lift it</button></div>
     </section>`;
   }
   function liveVoteHtml() {
@@ -498,7 +544,7 @@
     return `<section class="c-feed panel" aria-label="At the table">
       <div class="panel-h"><h2>At the table</h2><span class="grow"></span>
         <span class="seg">${[["all", "All"], ["rolls", "Rolls"], ["story", "Story"], ["notes", "Notes"]].map(([k, l]) => `<button data-act="filter" data-k="${k}" class="${filter === k ? "on" : ""}">${l}</button>`).join("")}</span></div>
-      <div class="feed">${liveRollHtml()}${liveVoteHtml()}${items.map(feedItem).join("") || `<p class="hint">Nothing here yet.</p>`}</div>
+      <div class="feed">${silenceHtml()}${rollReqs.map(liveRollHtml).join("")}${liveVoteHtml()}${items.map(feedItem).join("") || `<p class="hint">Nothing here yet.</p>`}</div>
     </section>`;
   }
 
@@ -507,11 +553,12 @@
     const moments = deck.filter((d) => d.kind === "moment" && !d.usedAt).length, notes = deck.filter((d) => d.kind === "note" && !d.usedAt).length;
     return `<aside class="c-tools">
       <section class="panel"><div class="tiles">
-        <button class="tile" data-act="ask"${rollReq ? ' aria-disabled="true"' : ""}><span class="ti">🎯</span><b>Ask for a roll</b><small>${rollReq ? "One is out now" : "A check or save, for anyone"}</small></button>
+        <button class="tile" data-act="ask"><span class="ti">🎯</span><b>Ask for a roll</b><small>${rollReqs.length ? `${rollReqs.length} out now` : "A check or save, for anyone"}</small></button>
         <button class="tile" data-act="vote"${vote ? ' aria-disabled="true"' : ""}><span class="ti">⚑</span><b>Call a vote</b><small>${vote ? "One is open now" : "Let the party choose"}</small></button>
         <button class="tile" data-act="compose" data-kind="moment"><span class="ti">📜</span><b>Read a moment</b><small>${moments} prepared</small></button>
         <button class="tile" data-act="compose" data-kind="note"><span class="ti">✉</span><b>Pass a note</b><small>${notes} prepared</small></button>
       </div>
+      <button class="btn${silence ? " primary" : ""}" data-act="silence" style="width:100%;margin-top:8px;min-height:44px">${silence ? "✋ Asking for silence… (lift it)" : "✋ Request silence"}</button>
       <div class="minor" style="margin-top:10px">
         <button class="btn sm quiet" data-act="stub" data-msg="Short Rest: as today">Short Rest</button>
         <button class="btn sm quiet" data-act="stub" data-msg="Long Rest: as today">Long Rest</button>
@@ -572,7 +619,7 @@
     const m = modal;
     const allSkills = Object.keys(SKILLS).sort();
     return `<div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
-      <div><h3 id="mt">Ask for a roll</h3><p class="hint">Each player gets a prompt with their bonus worked out from their sheet. Rolls use your check dice (${CHECK_DICE}, from DM Settings).</p></div>
+      <div><h3 id="mt">Ask for a roll</h3><p class="hint">Each player gets a prompt with their bonus worked out from their sheet. Checks roll ${rules.check}, saves roll ${rules.save} (DM Settings).</p></div>
       <div class="field"><span class="label">Check</span>
         <div class="row">${QUICK.map((s) => `<button class="chip txt${m.check.skill === s ? " on" : ""}" data-act="m-skill" data-s="${s}">${s}</button>`).join("")}</div>
         <div class="row"><select class="in" style="flex:1;min-width:180px" data-act="m-skillsel" aria-label="Any skill">
@@ -586,7 +633,7 @@
         ${PARTY.map((p) => `<button class="chip${m.who.includes(p.slug) && m.who.length < 5 ? " on" : ""}" data-act="m-who" data-slug="${p.slug}">${discHtml(p, "sm")}${esc(p.name)} <span class="hint" style="font-size:13px">${sgn(bonus(p, m.check))}</span></button>`).join("")}</div></div>
       <div class="field"><span class="label">Difficulty</span>
         <div class="row"><input class="in" style="width:90px" inputmode="numeric" placeholder="DC" value="${m.dc || ""}" data-act="m-dc" aria-label="DC">
-          ${DC_PRESETS.map((n) => `<button class="chip txt${m.dc === n ? " on" : ""}" data-act="m-dcq" data-n="${n}">${n}</button>`).join("")}</div>
+          ${dcPresets(diceFor(m.check)).map((n) => `<button class="chip txt${m.dc === n ? " on" : ""}" data-act="m-dcq" data-n="${n}">${n}</button>`).join("")}</div>
         <p class="hint">${m.dc ? "Each result shows pass or fail for you." : "Leave it blank to judge the results yourself."}</p>
         ${m.dc ? `<button class="switch" role="switch" aria-checked="${m.showDc}" data-act="m-showdc"><span class="sw"><i></i></span>Players see the DC</button>` : ""}
       </div>
@@ -618,6 +665,14 @@
         ${m.editing || m.saveOnly ? "" : `<button class="btn primary" data-act="m-sendnow"${m.text.trim() && (isAll || (Array.isArray(m.to) && m.to.length)) ? "" : " disabled"}>${isAll ? "Read it now" : "Pass it now"}</button>`}</div>
     </div></div>`;
   }
+  function settingsModal() {
+    const seg = (key) => `<span class="seg">${["2d6", "1d20"].map((v) => `<button data-act="rule" data-k="${key}" data-v="${v}" class="${rules[key] === v ? "on" : ""}">${v}</button>`).join("")}</span>`;
+    return `<div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
+      <div><h3 id="mt">DM Settings · Dice</h3><p class="hint">(Only the two dice rules this feature uses are shown here; the rest of DM Settings is as today.)</p></div>
+      <div class="field"><span class="label">Ability checks roll</span>${seg("check")}<p class="hint">Skills and plain ability checks: the card buttons, Ask for a roll, and players' own sheets. 2d6 (World of Dungeons style) or 1d20 (D&D 5e).</p></div>
+      <div class="field"><span class="label">Saving throws roll</span>${seg("save")}<p class="hint">Saves asked for from a card or Ask for a roll, and players' own saves.</p></div>
+      <div class="foot"><span class="grow"></span><button class="btn primary" data-act="close">Done</button></div></div></div>`;
+  }
   function voteModal() {
     return `<div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
       <h3 id="mt">Call a Vote</h3><p class="hint">This opens the Call a Vote form that's already built. For the prototype, send a sample.</p>
@@ -647,17 +702,17 @@
   const SIM_REPLY = { aesop: "Can I ask her what the debt was for?", mj: "I'm keeping my hand on my axe.", qc: "I keep my hood up and say nothing for now." };
 
   function startRoll(m) {
-    rollReq = { id: `rr${Date.now()}`, check: m.check, targets: m.who.slice(), dc: m.dc || null, showDc: m.showDc, adv: m.adv, results: {} };
-    const r = rollReq;
+    const r = { id: `rr${Date.now()}`, check: m.check, dice: diceFor(m.check), targets: m.who.slice(), dc: m.dc || null, showDc: m.showDc, adv: m.adv, results: {} };
+    rollReqs.unshift(r);
     r.targets.forEach((slug, i) => {
-      if (inbox[slug]) { inbox[slug].roll = r; setTimeout(() => { if (rollReq === r && !r.results[slug] && view !== slug) rollFor(slug); }, 15000 + i * 800); }
-      else setTimeout(() => { if (rollReq === r) rollFor(slug); }, 1500 + i * 1100);
+      if (inbox[slug]) { inbox[slug].roll = r; setTimeout(() => { if (rollReqs.includes(r) && !r.results[slug] && view !== slug) rollFor(slug, null, r); }, 15000 + i * 800); }
+      else setTimeout(() => { if (rollReqs.includes(r)) rollFor(slug, null, r); }, 1500 + i * 1100);
     });
     render();
   }
-  function rollFor(slug, manual) {
-    const r = rollReq; if (!r || r.results[slug]) return;
-    const a = rollCheckDice(), b = rollCheckDice();
+  function rollFor(slug, manual, r) {
+    if (!r || r.results[slug]) return;
+    const a = rollDice(r.dice), b = rollDice(r.dice);
     const nat = r.adv === "adv" ? Math.max(a, b) : r.adv === "dis" ? Math.min(a, b) : a;
     const total = manual ?? nat + bonus(P(slug), r.check);
     r.results[slug] = { nat: manual ? null : nat, total };
@@ -665,9 +720,9 @@
     render();
     return r.results[slug];
   }
-  function closeRoll(cancel) {
-    const r = rollReq; if (!r) return;
-    rollReq = null;
+  function closeRoll(id, cancel) {
+    const r = rollReqs.find((x) => x.id === id); if (!r) return;
+    rollReqs = rollReqs.filter((x) => x !== r);
     Object.values(inbox).forEach((b) => { if (b.roll === r) b.roll = null; });
     if (!cancel) push({ id: r.id, type: "rollreq-done", time: tick(), check: r.check, dc: r.dc, revealed: !!r.revealed, rows: r.targets.map((s) => ({ slug: s, total: r.results[s]?.total ?? null, pass: r.results[s] && r.dc ? r.results[s].total >= r.dc : null })) });
     else render();
@@ -708,7 +763,7 @@
         <p class="hint">${r.adv === "adv" ? "With advantage: roll twice, keep the better. " : r.adv === "dis" ? "With disadvantage: roll twice, keep the worse. " : ""}${r.dc && r.showDc ? `DC ${r.dc}.` : ""}</p>
         ${res ? `<div class="row"><span class="rolled">${res.total}</span><span class="hint">${res.nat != null ? `(${res.nat} ${sgn(b)})` : "(your dice)"} · sent to the DM</span></div>
             ${r.revealed ? `<span class="label">The DM revealed the rolls</span><div class="rrows">${r.targets.map((s2) => `<div class="rrow">${discHtml(P(s2), "sm")}<span>${esc(P(s2).name)}</span><span></span><span class="res${r.results[s2] ? "" : " wait"}">${r.results[s2] ? r.results[s2].total : "rolling…"}</span></div>`).join("")}</div><div class="row"><span style="flex:1"></span><button class="btn sm" data-act="p-dismiss">OK</button></div>` : ""}`
-          : `<button class="btn primary bigroll" data-act="p-roll">Roll ${CHECK_DICE} ${sgn(b)}${r.adv !== "normal" ? (r.adv === "adv" ? " · adv" : " · dis") : ""}</button>
+          : `<button class="btn primary bigroll" data-act="p-roll">Roll ${r.dice} ${sgn(b)}${r.adv !== "normal" ? (r.adv === "adv" ? " · adv" : " · dis") : ""}</button>
              <div class="row"><span class="hint">Rolled real dice?</span><input class="in" style="width:90px" inputmode="numeric" placeholder="Total" data-p="manual" aria-label="Your total"><button class="btn sm" data-act="p-manual">Send</button></div>`}
       </div>`;
     }
@@ -721,6 +776,11 @@
         ${e.canReply ? `<div class="row"><input class="in" style="flex:1" data-p="reply" placeholder="Reply to the DM (optional)" maxlength="140"><button class="btn sm" data-act="p-reply">Send</button></div>` : ""}
         <div class="row"><span style="flex:1"></span><button class="btn primary" data-act="p-gotit">Got it</button></div>
       </div>`;
+    }
+    if (silence && !silence.acks.includes(slug)) {
+      return out + `<div class="moment-scrim" style="z-index:80"><div class="hush" role="alertdialog" aria-labelledby="hush-t">
+        <div class="hush-i">✋</div><h3 id="hush-t">Your DM requests your attention!</h3><p>Silence, please.</p>
+        <button class="btn primary" data-act="p-listen" style="min-height:48px;padding:8px 22px">I'm listening</button></div></div>`;
     }
     if (box.moment) {
       const e = box.moment;
@@ -743,11 +803,11 @@
     const act = document.activeElement, key = act && (act.dataset.act || act.dataset.p || act.dataset.noteinput), sel = act && act.selectionStart;
     if (view === "dm") {
       app.innerHTML = `<div class="page">
-        <div class="top"><span class="title">Hunkz Adventures</span><span class="seg"><button class="on">Adventure</button><button data-act="stub" data-msg="The prototype covers Adventure only">Combat</button></span><span style="flex:1"></span><span class="hint">Session 14 · ${now()}</span></div>
+        <div class="top"><span class="title">Hunkz Adventures</span><span class="seg"><button class="on">Adventure</button><button data-act="stub" data-msg="The prototype covers Adventure only">Combat</button></span><span style="flex:1"></span><span class="hint">Session 14 · ${now()}</span><button class="btn sm quiet" data-act="settings">⚙ DM Settings</button></div>
         ${mapHtml(false)}
-        <div class="cols">${toolsHtml()}${feedHtml()}<section class="c-party" aria-label="Party">${PARTY.map(partyCard).join("")}</section></div>
+        <div class="cols">${toolsHtml()}${feedHtml()}<section class="c-party" aria-label="Party"><div class="party-h"><h2>Party</h2><span class="grow"></span><span class="seg" aria-label="Abilities">${[["names", "Names"], ["details", "Details"]].map(([k, l]) => `<button data-act="abilmode" data-k="${k}" class="${abilMode === k ? "on" : ""}">${l}</button>`).join("")}</span></div>${PARTY.map(partyCard).join("")}</section></div>
       </div>`;
-      layer.innerHTML = modal ? (modal.type === "ask" ? askModal() : modal.type === "vote" ? voteModal() : composeModal()) : "";
+      layer.innerHTML = modal ? (modal.type === "ask" ? askModal() : modal.type === "vote" ? voteModal() : modal.type === "settings" ? settingsModal() : composeModal()) : "";
     } else {
       app.innerHTML = playerHtml(view);
       layer.innerHTML = playerLayer(view);
@@ -804,7 +864,7 @@
       }
       case "wheel": wheels[d.i].v = Math.max(0, wheels[d.i].v + Number(d.v)); break;
       // Roll requests
-      case "ask": if (rollReq) { toast("A roll request is already out. Close it first."); return; } modal = { type: "ask", check: { ability: "wis", skill: "Perception", save: false }, who: PARTY.map((p) => p.slug), dc: null, showDc: false, adv: "normal" }; break;
+      case "ask": modal = { type: "ask", check: { ability: "wis", skill: "Perception", save: false }, who: PARTY.map((p) => p.slug), dc: null, showDc: false, adv: "normal" }; break;
       case "m-skill": modal.check = { ability: SKILLS[d.s], skill: d.s, save: false }; break;
       case "m-save": modal.check = { ability: d.a, skill: null, save: true }; break;
       case "m-abil": modal.check = { ability: d.a, skill: null, save: false }; break;
@@ -814,9 +874,9 @@
       case "m-showdc": modal.showDc = !modal.showDc; break;
       case "m-adv": modal.adv = d.k; break;
       case "m-send": startRoll(modal); modal = null; break;
-      case "rr-close": closeRoll(false); return;
-      case "rr-cancel": closeRoll(true); return;
-      case "rr-reveal": rollReq.revealed = true; toast("Everyone who rolled now sees the results"); break;
+      case "rr-close": closeRoll(d.id, false); return;
+      case "rr-cancel": closeRoll(d.id, true); return;
+      case "rr-reveal": rollReqs.find((x) => x.id === d.id).revealed = true; toast("Everyone who rolled now sees the results"); break;
       case "note-passed": case "note-failed": {
         const ent = feed.find((x) => x.id === d.id); const want = a === "note-passed";
         const to = ent.rows.filter((r) => r.pass === want).map((r) => r.slug);
@@ -860,9 +920,35 @@
       case "pick-send": picking = null; sendCard(card, [d.slug]); return;
       case "pick-cancel": picking = null; break;
       case "close": modal = null; break;
+      case "settings": modal = { type: "settings" }; break;
+      case "rule": rules[d.k] = d.v; break;
+      case "abilmode": abilMode = d.k; break;
+      case "modask": cardAsk = cardAsk && cardAsk.slug === d.slug && cardAsk.a === d.a ? null : { slug: d.slug, a: d.a }; break;
+      case "cardask-close": cardAsk = null; break;
+      case "cardask-send": {
+        const a2 = cardAsk.a, opts = [{ ability: a2, skill: null, save: false }, ...Object.keys(SKILLS).filter((k) => SKILLS[k] === a2).map((k) => ({ ability: a2, skill: k, save: false })), { ability: a2, skill: null, save: true }];
+        const c = opts[Number(d.i)]; cardAsk = null;
+        startRoll({ check: c, who: [d.slug], dc: null, showDc: false, adv: "normal" });
+        toast(`Asked ${esc(P(d.slug).name)} for ${esc(shortCheck(c))}`);
+        return;
+      }
+      case "cardask-self": {
+        const a2 = cardAsk.a, p2 = P(d.slug), expr = rules.check, roll = rollDice(expr), total = roll + p2.m[a2];
+        cardAsk = null;
+        push({ type: "dm-roll", time: tick(), expr: `${p2.name}'s ${a2.toUpperCase()} check (${expr} ${sgn(p2.m[a2])})`, total, hidden: true, detail: "" });
+        return;
+      }
+      case "cardask-more": modal = { type: "ask", check: { ability: cardAsk.a, skill: null, save: false }, who: [d.slug], dc: null, showDc: false, adv: "normal" }; cardAsk = null; break;
+      case "silence": {
+        if (silence) { silence = null; toast("Silence lifted"); break; }
+        const s2 = silence = { acks: [] };
+        [["aesop", 1200], ["mj", 2600], ["eoghan", 16000], ["liu", 17000]].forEach(([slug, ms]) => setTimeout(() => { if (silence === s2 && !s2.acks.includes(slug) && view !== slug) { s2.acks.push(slug); render(); } }, ms));
+        break;
+      }
+      case "p-listen": if (silence && !silence.acks.includes(view)) silence.acks.push(view); break;
       // Player side
-      case "p-roll": { const me = view; rollFor(me); setTimeout(() => { const r = inbox[me]?.roll; if (r && r.results[me] && !r.revealed) { inbox[me].roll = null; render(); } }, 3500); break; }
-      case "p-manual": { const v = parseInt(document.querySelector('[data-p="manual"]').value, 10); if (v > 0) { rollFor(view, v); setTimeout(() => { if (inbox[view]) { inbox[view].roll = null; render(); } }, 3500); } break; }
+      case "p-roll": { const me = view; rollFor(me, null, inbox[me].roll); setTimeout(() => { const r = inbox[me]?.roll; if (r && r.results[me] && !r.revealed) { inbox[me].roll = null; render(); } }, 3500); break; }
+      case "p-manual": { const v = parseInt(document.querySelector('[data-p="manual"]').value, 10); if (v > 0) { rollFor(view, v, inbox[view].roll); setTimeout(() => { if (inbox[view]) { inbox[view].roll = null; render(); } }, 3500); } break; }
       case "p-reply": { const v = document.querySelector('[data-p="reply"]').value.trim(); const e2 = inbox[view].note; if (v) { e2.reply = { slug: view, text: v }; inbox[view].note = null; toast("Sent to the DM"); } break; }
       case "p-gotit": { const e2 = inbox[view].note; e2.gotIt = [...new Set([...(e2.gotIt || []), view])]; inbox[view].note = null; break; }
       case "p-dismiss": inbox[view].roll = null; break;
