@@ -43,11 +43,13 @@ const {
   PRESENCE_SLUG,
   VOTE_SLUG,
   ROLL_REQUESTS_SLUG,
+  SILENCE_SLUG,
   CHRONICLE_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
 const { normalizeShop, shopStatus, shopSummary, normalizeCatalog, weaponDiceMap } = require("../lib/shop");
 const { normalizeRollRequests, projectRollRequests, publicCheckEvent } = require("../lib/rollRequests");
+const { normalizeSilence } = require("../lib/silence");
 const { currentVersion } = require("../lib/versioning");
 const {
   normalizeInitiativeRecord,
@@ -96,6 +98,7 @@ const SENTINEL_SLUGS = [
   PRESENCE_SLUG,
   VOTE_SLUG,
   ROLL_REQUESTS_SLUG,
+  SILENCE_SLUG,
   INITIATIVE_SLUG,
   NPC_COMBAT_SLUG,
   ROLL_HISTORY_SLUG,
@@ -180,6 +183,8 @@ exports.handler = async (event) => {
   const vote = projectVote(normalizeVote(sentinelBySlug.get(VOTE_SLUG)), { isDm, slug: querySlug, partySlugs: roster.members });
   // Roll requests (lib/rollRequests.js): all for the DM; a player gets theirs.
   const rollRequests = projectRollRequests(normalizeRollRequests(sentinelBySlug.get(ROLL_REQUESTS_SLUG)), { isDm, slug: querySlug });
+  // The DM asking for quiet (lib/silence.js): the same for everyone.
+  const silence = normalizeSilence(sentinelBySlug.get(SILENCE_SLUG));
 
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.
   // Keyed off the roster only — if no roster item exists yet, party/partyStatus
@@ -231,6 +236,7 @@ exports.handler = async (event) => {
       presence: publicPresence(seen, memberSlugs),
       vote,
       rollRequests,
+      silence,
       serverTime,
       buildVersion: appMeta.buildVersion,
     };
@@ -366,6 +372,7 @@ exports.handler = async (event) => {
     presence: publicPresence(seen, memberSlugs),
     vote,
     rollRequests,
+    silence,
     serverTime,
     buildVersion: appMeta.buildVersion,
   };

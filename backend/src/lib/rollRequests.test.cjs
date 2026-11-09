@@ -54,3 +54,8 @@ test("there's a cap on open requests; junk in the record is dropped", () => {
   assert.ok(addRequest(state, ask()).error);
   assert.equal(normalizeRollRequests({ requests: [{ id: "x", check: { skill: "nope" } }, null] }).requests.length, 0);
 });
+
+test("initiative is its own kind, on its own dice", () => {
+  const r = startRequest({ check: { initiative: true }, targets: ["eoghan"] }, { id: "i1", rules: { ...rules, initiativeDice: "1d20" }, partySlugs: party });
+  assert.deepEqual([r.check, r.dice], [{ ability: "dex", skill: null, save: false, initiative: true }, "1d20"]);
+});

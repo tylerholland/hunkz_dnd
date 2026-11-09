@@ -19,9 +19,11 @@ import { DEFAULT_MONEY, normalizeMoney } from "./money";
 // saveDice — what a saving throw rolls (before the ability modifier).
 // skillBonus — what a proficient skill adds to a check: "none" (ability
 // modifier only) or "proficiency" (D&D 5e: +2 at levels 1–4, rising with level).
+// initiativeDice — what initiative rolls (plus DEX and any initiative bonus).
+// autoInitiative — starting combat asks every player to roll initiative.
 // weaponDamage — what shop weapons roll: "wod" (World of Dungeons classes,
 // d6 to d6+2) or "dnd" (each weapon's D&D 5e die: dagger d4, greatsword 2d6).
-export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none" };
+export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true };
 export const WEAPON_DAMAGE_RULES = ["wod", "dnd"];
 
 const CHECK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)$/;
@@ -49,6 +51,8 @@ export function normalizeHouseRules(raw) {
     weaponDamage: WEAPON_DAMAGE_RULES.includes(raw?.weaponDamage) ? raw.weaponDamage : DEFAULT_HOUSE_RULES.weaponDamage,
     saveDice: isValidCheckDice(raw?.saveDice) ? raw.saveDice.trim().toLowerCase() : DEFAULT_HOUSE_RULES.saveDice,
     skillBonus: raw?.skillBonus === "proficiency" ? "proficiency" : "none",
+    initiativeDice: isValidCheckDice(raw?.initiativeDice) ? raw.initiativeDice.trim().toLowerCase() : DEFAULT_HOUSE_RULES.initiativeDice,
+    autoInitiative: raw?.autoInitiative !== false,
   };
 }
 

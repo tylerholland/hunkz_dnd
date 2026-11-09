@@ -67,6 +67,8 @@ export default function CharacterModePage() {
   const [vote, setVote] = useState(null);
   // Rolls the DM has asked this player for (features/rollRequests).
   const [rollRequests, setRollRequests] = useState([]);
+  // The DM asking for quiet (features/silence).
+  const [silence, setSilence] = useState(null);
   const [houseRules, setHouseRules] = useState(null);
   const [shopSummary, setShopSummary] = useState(null);
   const [rollHistory, setRollHistory] = useState([]);
@@ -210,6 +212,7 @@ export default function CharacterModePage() {
       setPresence(d.presence || {});
       setVote(d.vote || null);
       setRollRequests(Array.isArray(d.rollRequests) ? d.rollRequests : []);
+      setSilence(d.silence || null);
       setHouseRules(d.houseRules || null);
       setShopSummary(d.shop || null);
       setRollHistory(d.rollHistory?.rolls || []);
@@ -465,6 +468,7 @@ export default function CharacterModePage() {
       presence={presence}
       vote={vote}
       rollRequests={rollRequests}
+      silence={silence}
       houseRules={houseRules}
       shopSummary={shopSummary}
       rollHistory={rollHistory}

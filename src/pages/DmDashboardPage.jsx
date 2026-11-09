@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag, putHouseRules, putVote, putRollRequest } from "../api";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag, putHouseRules, putVote, putRollRequest, putSilence } from "../api";
 import { CustomEffectsCtx } from "../features/dmDashboard/customEffectsContext";
 import { isHelpfulEffect, setCustomEffects, spellEffect } from "../lib/spellEffects";
 import DmDiceRoller from "../components/DmDiceRoller";
@@ -44,7 +44,8 @@ import DmVoteCard from "../features/vote/DmVoteCard";
 import DmActionTiles from "../features/dmDashboard/DmActionTiles";
 import AskRollModal from "../features/rollRequests/AskRollModal";
 import RollRequestCard from "../features/rollRequests/RollRequestCard";
-import { abilityCheck, skillCheck } from "../features/rollRequests/rollCheck";
+import { abilityCheck, initiativeCheck, mergeInitiative, skillCheck } from "../features/rollRequests/rollCheck";
+import SilenceCard from "../features/silence/SilenceCard";
 import VoteComposer from "../features/vote/VoteComposer";
 
 // Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
@@ -120,6 +121,8 @@ export default function DmDashboardPage() {
   // Roll requests out to players, and the Ask for a Roll form ({ who, check, more }).
   const [rollRequests, setRollRequests] = useState([]);
   const [askForm, setAskForm] = useState(null);
+  // "Request silence" while it's up: { id, acks }.
+  const [silence, setSilence] = useState(null);
   const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
   const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -382,6 +385,7 @@ export default function DmDashboardPage() {
       setPresence(sessionData.presence || {});
       setVote(sessionData.vote || null);
       setRollRequests(Array.isArray(sessionData.rollRequests) ? sessionData.rollRequests : []);
+      setSilence(sessionData.silence || null);
       reportServerBuildVersion(sessionData.buildVersion);
     } catch {
       // Show stale data rather than error on poll failure.
@@ -1144,8 +1148,11 @@ export default function DmDashboardPage() {
     await commitInitiativeUpdate({ entries, activeTurnIndex: nextIndex }, { optimistic: true });
   }
 
-  function toggleCombatMode() {
+  // Entering combat asks every player for initiative when the house rule says
+  // so (or when Roll Initiative asked for it).
+  function toggleCombatMode({ askInitiative: forceAsk = false } = {}) {
     clearTransitionSteps();
+    if (!combatMode && (forceAsk || houseRules.autoInitiative !== false)) askInitiative();
 
     const { action, incomingMap, modeOpts } = computeMapSwitch(combatMode, mapLibrary);
     const nextCombatMode = !combatMode;
@@ -1348,7 +1355,19 @@ export default function DmDashboardPage() {
       return err?.status === 403 ? "DM password rejected." : err?.data?.error || "Couldn't send it. Try again.";
     }
   }
+  async function askInitiative() {
+    if (!party.length || rollRequests.some((r) => r.check?.initiative)) return;
+    await askRoll({ targets: party.map((c) => c.slug), check: initiativeCheck(), adv: "normal" });
+  }
   async function rollRequestAction(action, id) {
+    // Initiative results go into the initiative order when the DM sets it.
+    const request = rollRequests.find((r) => r.id === id);
+    if (action === "close" && request?.check?.initiative) {
+      const results = request.targets
+        .filter((slug) => request.results?.[slug])
+        .map((slug) => ({ slug, name: party.find((c) => c.slug === slug)?.name || slug, total: request.results[slug].total }));
+      if (results.length) commitInitiativeUpdate(mergeInitiative(initiative, results), { optimistic: true });
+    }
     try {
       const names = Object.fromEntries(party.map((c) => [c.slug, c.name]));
       const res = await putRollRequest(dmPassword, action, { id, names });
@@ -1356,6 +1375,14 @@ export default function DmDashboardPage() {
     } catch { /* the next poll shows where it stands */ }
     refreshSoon();
   }
+  async function silenceAction(action) {
+    try {
+      const res = await putSilence(dmPassword, action);
+      setSilence(res.silence || null);
+    } catch { /* the next poll shows where it stands */ }
+    refreshSoon();
+  }
+  const silenceCard = silence && <SilenceCard silence={silence} members={party} onLift={() => silenceAction("lift")} />;
   const rollRequestCards = rollRequests.map((request) => (
     <RollRequestCard key={request.id} request={request} members={party} rules={houseRules} onAction={rollRequestAction} />
   ));
@@ -1363,6 +1390,7 @@ export default function DmDashboardPage() {
   const actionTiles = [
     { key: "ask", icon: "🎯", title: "Ask for a Roll", sub: rollRequests.length ? `${rollRequests.length} out now` : "A check or save, for anyone", onClick: () => setAskForm({ who: [], check: skillCheck("perception") }) },
     { key: "vote", icon: "⚑", title: "Call a Vote", sub: voteOpen ? "A vote is open" : "Let the party choose", onClick: () => setVoteFormOpen(true), disabled: voteOpen },
+    { key: "silence", icon: "✋", title: silence ? "Lift Silence" : "Request Silence", sub: silence ? `${(silence.acks || []).length} of ${party.length} listening` : "A big “Silence, please” on every screen", onClick: () => silenceAction(silence ? "lift" : "start"), wide: true },
   ];
   const palVars = {
     "--pal-bg":            pal.bg,
@@ -1412,6 +1440,8 @@ export default function DmDashboardPage() {
             { label: "Manage Party", onClick: () => setShowManageParty(true) },
             { label: "Enemies Gallery", onClick: () => setShowEnemiesGallery(true) },
             { label: "Call a Vote", onClick: () => setVoteFormOpen(true) },
+            { label: silence ? "Lift Silence" : "Request Silence", onClick: () => silenceAction(silence ? "lift" : "start") },
+            { label: "Roll Initiative", onClick: () => (combatMode ? askInitiative() : toggleCombatMode({ askInitiative: true })) },
             { label: "Combat quick start", onClick: () => { setCombatGuideOffered(true); setCombatGuideOpen(true); } },
             { divider: true },
             textScaleMenuItem,
@@ -1425,6 +1455,7 @@ export default function DmDashboardPage() {
           {combatGuideOpen && <CombatGuide who="dm" onClose={() => setCombatGuideOpen(false)} />}
           {vote && combatLayoutActive && <DmVoteCard vote={vote} members={party} presence={presence} serverTime={serverTime} onAction={voteAction} />}
           {voteFormOpen && <VoteComposer onSend={startVote} onClose={() => setVoteFormOpen(false)} />}
+          {combatLayoutActive && silenceCard}
           {combatLayoutActive && rollRequestCards}
           {askForm && <AskRollModal members={party} rules={houseRules} initial={askForm} onSend={askRoll} onClose={() => setAskForm(null)} />}
           {combatMode && <ShopCombatNotice shop={shopSummary} dmPassword={dmPassword} onChanged={() => fetchDashboardData({ background: true, force: true })} />}
@@ -1502,11 +1533,18 @@ export default function DmDashboardPage() {
                 <DmActionTiles tiles={actionTiles}>
                   <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
                     <button
-                      onClick={toggleCombatMode}
+                      onClick={() => toggleCombatMode()}
                       style={{ ...topButtonStyle, borderColor: "rgba(90,138,96,0.5)", color: "#88b888" }}
                       onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#88b888"; e.currentTarget.style.color = "#88b888"; }}
                       onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(90,138,96,0.5)"; e.currentTarget.style.color = "#88b888"; }}
                     >Start Combat</button>
+                    <button
+                      onClick={() => toggleCombatMode({ askInitiative: true })}
+                      style={{ ...topButtonStyle, minWidth: 0 }}
+                      title="Start combat and ask everyone to roll initiative"
+                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
+                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
+                    >Roll Initiative</button>
                     {partyActionButtons.map(({ key, label, action }) => (
                       <button
                         key={key}
@@ -1568,6 +1606,7 @@ export default function DmDashboardPage() {
             <section className="dm-feed-col" aria-label="At the table">
               <div className="dm-feed-panel">
                 <div className="dm-feed-head"><span className="label-ui">At the table</span></div>
+                {!combatLayoutActive && silenceCard}
                 {vote && !combatLayoutActive && <DmVoteCard vote={vote} members={party} presence={presence} serverTime={serverTime} onAction={voteAction} />}
                 {!combatLayoutActive && rollRequestCards}
                 <div ref={setFeedEl} className="dm-feed-list" />

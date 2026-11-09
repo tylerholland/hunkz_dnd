@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { abilityCheck, checkBonus, checkName, dcPresets, rollFor, savingThrow, skillCheck } from "./rollCheck";
+import { abilityCheck, checkBonus, checkName, dcPresets, diceFor, initiativeCheck, mergeInitiative, rollFor, savingThrow, skillCheck } from "./rollCheck";
 import AskRollModal from "./AskRollModal";
 import PlayerRollPrompt from "./PlayerRollPrompt";
 
@@ -27,6 +27,22 @@ describe("roll checks", () => {
     expect(r).toEqual({ total: 12, rolls: [4, 6], dropped: 1 });
     expect(dcPresets("2d6")).toEqual([7, 10, 12]);
     expect(dcPresets("1d20")).toEqual([10, 12, 15, 20]);
+  });
+});
+
+describe("initiative", () => {
+  it("is DEX plus any initiative gear, on its own dice", () => {
+    const geared = { ...eoghan, equipment: [{ id: "b", name: "Boots", mods: [{ attribute: "Initiative", value: "2" }] }] };
+    expect(checkName(initiativeCheck())).toBe("Initiative");
+    expect(checkBonus(geared, initiativeCheck())).toBe(5);
+    expect(diceFor(initiativeCheck(), { initiativeDice: "1d20", abilityCheckDice: "2d6" })).toBe("1d20");
+  });
+
+  it("merges results into the order: PCs updated or added, sorted high to low", () => {
+    const current = { entries: [{ id: "g", name: "Goblin", initiative: 12, isPC: false, npcId: "n1" }, { id: "e", slug: "eoghan", name: "Eòghan", initiative: 0, isPC: true }], activeTurnIndex: 1, round: 1 };
+    const next = mergeInitiative(current, [{ slug: "eoghan", name: "Eòghan", total: 15 }, { slug: "liu", name: "Liu Sha", total: 9 }]);
+    expect(next.entries.map((e) => [e.name, e.initiative])).toEqual([["Eòghan", 15], ["Goblin", 12], ["Liu Sha", 9]]);
+    expect(next.activeTurnIndex).toBe(0);
   });
 });
 

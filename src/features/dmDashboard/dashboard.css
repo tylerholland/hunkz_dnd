@@ -364,9 +364,10 @@
 }
 .dm-action-tiles-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
   gap: 8px;
 }
+.dm-action-tile--wide { grid-column: 1 / -1; min-height: 52px; }
 .dm-action-tile {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

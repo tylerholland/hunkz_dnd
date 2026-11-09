@@ -13,18 +13,19 @@ export default function RollRequestCard({ request, members, rules, onAction }) {
   const results = request.results || {};
   const inCount = request.targets.filter((s) => results[s]).length;
   const allIn = inCount === request.targets.length;
+  const initiative = !!request.check?.initiative;
   return (
     <section className="vc-card rq-card" aria-label="Roll request">
       <div className="vc-head">
-        <span className="vb-label">Asked for a roll · {request.dice}</span>
+        <span className="vb-label">{initiative ? "Roll for initiative" : "Asked for a roll"} · {request.dice}</span>
         <span className="rq-count">{inCount} of {request.targets.length} in</span>
       </div>
       <b className="rq-card-title">{checkName(request.check)}</b>
       {request.label && <p className="rq-card-label">“{request.label}”</p>}
-      <p className="vb-hint">
+      {initiative ? <p className="vb-hint">Set the order puts everyone into initiative, highest first.</p> : <p className="vb-hint">
         {request.dc ? `DC ${request.dc}${request.showDc ? " (players see it)" : " (hidden from players)"}` : "No DC: you judge the result"}
         {request.adv === "adv" ? " · with advantage" : request.adv === "dis" ? " · with disadvantage" : ""}
-      </p>
+      </p>}
       <div className="rq-rows">
         {request.targets.map((slug) => {
           const member = bySlug.get(slug) || { slug, name: slug };
@@ -43,10 +44,10 @@ export default function RollRequestCard({ request, members, rules, onAction }) {
       <div className="vc-foot">
         <button type="button" className="vc-btn vc-btn--danger" onClick={() => onAction("cancel", request.id)}>Cancel</button>
         <span style={{ flex: 1 }} />
-        {request.targets.length > 1 && (request.revealed
+        {!initiative && request.targets.length > 1 && (request.revealed
           ? <span className="vb-hint">Revealed to the party</span>
           : <button type="button" className={`vc-btn${allIn ? "" : " vc-btn--quiet"}`} title="Everyone asked sees everyone's results" onClick={() => onAction("reveal", request.id)}>Reveal rolls</button>)}
-        <button type="button" className="vc-btn vc-btn--primary" onClick={() => onAction("close", request.id)}>{allIn ? "Done" : "Close it now"}</button>
+        <button type="button" className="vc-btn vc-btn--primary" onClick={() => onAction("close", request.id)}>{initiative ? (allIn ? "Set the order" : "Set the order now") : allIn ? "Done" : "Close it now"}</button>
       </div>
     </section>
   );

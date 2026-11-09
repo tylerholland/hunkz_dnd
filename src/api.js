@@ -495,3 +495,19 @@ export const postRollResult = (slug, password, id, result) =>
     headers: { "Content-Type": "application/json", "x-character-password": password },
     body: JSON.stringify({ asSlug: slug, id, ...result }),
   });
+
+// "Request silence" (backend/src/handlers/silence.js): the DM starts or lifts it;
+// a player says they're listening.
+export const putSilence = (dmPassword, action) =>
+  request("/silence", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ action }),
+  });
+
+export const postSilenceAck = (slug, password, id) =>
+  request("/silence/ack", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": password },
+    body: JSON.stringify({ asSlug: slug, id }),
+  });

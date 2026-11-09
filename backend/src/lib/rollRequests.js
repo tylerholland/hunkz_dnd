@@ -19,8 +19,10 @@ const MAX_OPEN = 8;
 const clip = (v, n) => (typeof v === "string" ? v.trim().slice(0, n) : "");
 const intIn = (v, lo, hi) => (Number.isInteger(v) && v >= lo && v <= hi ? v : null);
 
-/** { ability, skill, save } from loose input, or null. A skill decides its ability. */
+/** { ability, skill, save } from loose input, or null. A skill decides its
+ * ability. Initiative is its own kind: { ability: "dex", initiative: true }. */
 function normalizeCheck(raw) {
+  if (raw?.initiative === true) return { ability: "dex", skill: null, save: false, initiative: true };
   const skill = typeof raw?.skill === "string" ? raw.skill.trim().toLowerCase() : "";
   if (skill) return SKILLS[skill] ? { ability: SKILLS[skill], skill, save: false } : null;
   const ability = typeof raw?.ability === "string" ? raw.ability.trim().toLowerCase() : "";
@@ -41,7 +43,7 @@ function startRequest(fields, { id, now = Date.now(), rules = {}, partySlugs = [
     id,
     label: clip(fields?.label, 60),
     check,
-    dice: check.save ? (rules.saveDice || "1d20") : (rules.abilityCheckDice || "2d6"),
+    dice: check.initiative ? (rules.initiativeDice || "1d20") : check.save ? (rules.saveDice || "1d20") : (rules.abilityCheckDice || "2d6"),
     adv: ADV.includes(fields?.adv) ? fields.adv : "normal",
     dc,
     showDc: !!dc && fields?.showDc === true,

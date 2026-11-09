@@ -15,14 +15,16 @@ const SKILL_RULES = [
 export default function DmRollRulesCard({ dmPassword, saved, onSaved }) {
   const [saveDice, setSaveDice] = useState(saved?.saveDice || DEFAULT_HOUSE_RULES.saveDice);
   const [skillBonus, setSkillBonus] = useState(saved?.skillBonus || "none");
+  const [initiativeDice, setInitiativeDice] = useState(saved?.initiativeDice || DEFAULT_HOUSE_RULES.initiativeDice);
+  const [autoInitiative, setAutoInitiative] = useState(saved ? saved.autoInitiative !== false : true);
   const [status, setStatus] = useState({ kind: "idle", message: "" });
-  const dirty = !!saved && (saveDice !== saved.saveDice || skillBonus !== saved.skillBonus);
+  const dirty = !!saved && (saveDice !== saved.saveDice || skillBonus !== saved.skillBonus || initiativeDice !== saved.initiativeDice || autoInitiative !== (saved.autoInitiative !== false));
 
   async function save() {
     if (!dirty) return;
     setStatus({ kind: "saving", message: "Saving…" });
     try {
-      const res = await putHouseRules(dmPassword, { ...saved, saveDice, skillBonus });
+      const res = await putHouseRules(dmPassword, { ...saved, saveDice, skillBonus, initiativeDice, autoInitiative });
       onSaved(normalizeHouseRules(res.houseRules));
       setStatus({ kind: "saved", message: "Saved — the next roll you ask for uses it." });
     } catch (err) {
@@ -36,9 +38,9 @@ export default function DmRollRulesCard({ dmPassword, saved, onSaved }) {
     <section className="dm-settings-card" aria-labelledby="hr-roll-rules">
       <div className="dm-settings-row">
         <div className="dm-settings-label-col">
-          <h2 id="hr-roll-rules" className="dm-settings-label">Saving throws and skills</h2>
+          <h2 id="hr-roll-rules" className="dm-settings-label">Saves, skills and initiative</h2>
           <p className="dm-settings-help">
-            Used when you ask players for a roll (Ask for a Roll, or Check on a party card). Ability checks use the Ability check dice above.
+            Used when you ask players for a roll (Ask for a Roll, or Check on a party card), and for initiative when combat starts. Ability checks use the Ability check dice above.
           </p>
         </div>
         <div className="dm-settings-control-col">
@@ -56,11 +58,24 @@ export default function DmRollRulesCard({ dmPassword, saved, onSaved }) {
                 onClick={() => pick(setSkillBonus)(r.id)}>{r.label}</button>
             ))}
           </div>
+          <span className="dm-settings-help" style={{ margin: "10px 0 0" }}>Initiative rolls</span>
+          <div className="dm-settings-presets" role="group" aria-label="Initiative dice">
+            {SAVE_DICE.map((d) => (
+              <button key={d} type="button" className={`dm-settings-preset${initiativeDice === d ? " active" : ""}`} aria-pressed={initiativeDice === d} disabled={!saved}
+                onClick={() => pick(setInitiativeDice)(d)}>{d}{d === DEFAULT_HOUSE_RULES.initiativeDice ? " (default)" : ""}</button>
+            ))}
+          </div>
+          <button type="button" role="switch" aria-checked={autoInitiative} aria-label="Ask everyone for initiative when combat starts"
+            className={`dm-settings-switch${autoInitiative ? " on" : ""}`} disabled={!saved} style={{ marginTop: 10 }}
+            onClick={() => pick(setAutoInitiative)(!autoInitiative)}>
+            <span className="dm-settings-switch-knob" aria-hidden="true" />
+            {autoInitiative ? "Ask for initiative when combat starts" : "Initiative only when you ask"}
+          </button>
         </div>
       </div>
 
       <div className="dm-settings-preview" aria-live="polite">
-        {saved ? <>A save rolls <strong>{saveDice}</strong> plus the ability modifier. {skillRule.eg}</> : "Loading current setting…"}
+        {saved ? <>A save rolls <strong>{saveDice}</strong> plus the ability modifier. {skillRule.eg} Initiative rolls <strong>{initiativeDice}</strong> plus DEX{autoInitiative ? "; starting combat asks every player to roll it, and their results fill the initiative order" : "; use Roll Initiative when you want it"}.</> : "Loading current setting…"}
       </div>
 
       <div className="dm-settings-actions">
