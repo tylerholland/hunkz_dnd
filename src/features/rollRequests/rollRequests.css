@@ -27,6 +27,11 @@
 .vc-in.rq-dc-in { width: 84px; min-height: 36px; }
 .rq-more { justify-self: start; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0; border: 0; background: transparent; color: var(--pal-text-muted); font-family: var(--font-ui, 'IM Fell English', serif); font-size: 12px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
 .rq-more-body { display: grid; gap: 12px; padding-left: 12px; border-left: 2px solid var(--pal-border); }
+/* Saving throws | plain ability checks, side by side; each a 3 × 2 grid. */
+.rq-more-cols { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.rq-abil-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.rq-abil-grid .rq-chip { padding: 0 6px; }
+@media (max-width: 480px) { .rq-more-cols { grid-template-columns: 1fr; } }
 
 /* The DM's live card. */
 .rq-card-title { font-family: 'Cinzel', serif; font-weight: 400; font-size: 18px; color: var(--pal-text); }

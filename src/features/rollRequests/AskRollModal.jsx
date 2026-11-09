@@ -126,20 +126,22 @@ export default function AskRollModal({ members, rules, initial = {}, onSend, onC
         </button>
         {more && (
           <div className="rq-more-body">
-            <div className="vc-field">
-              <span className="rq-sub">Saving throw</span>
-              <div className="rq-chips">
-                {ABILITIES.map((a) => (
-                  <button key={a.key} type="button" className={`rq-chip${check.save && check.ability === a.key ? " on" : ""}`} onClick={() => setCheck(savingThrow(a.key))}>{a.abbr}</button>
-                ))}
+            <div className="rq-more-cols">
+              <div className="vc-field">
+                <span className="rq-sub">Saving throw</span>
+                <div className="rq-abil-grid">
+                  {ABILITIES.map((a) => (
+                    <button key={a.key} type="button" className={`rq-chip${check.save && check.ability === a.key ? " on" : ""}`} onClick={() => setCheck(savingThrow(a.key))}>{a.abbr}</button>
+                  ))}
+                </div>
               </div>
-            </div>
-            <div className="vc-field">
-              <span className="rq-sub">Plain ability check</span>
-              <div className="rq-chips">
-                {ABILITIES.map((a) => (
-                  <button key={a.key} type="button" className={`rq-chip${!check.save && !check.skill && check.ability === a.key ? " on" : ""}`} onClick={() => setCheck(abilityCheck(a.key))}>{a.abbr}</button>
-                ))}
+              <div className="vc-field">
+                <span className="rq-sub">Plain ability check</span>
+                <div className="rq-abil-grid">
+                  {ABILITIES.map((a) => (
+                    <button key={a.key} type="button" className={`rq-chip${!check.save && !check.skill && check.ability === a.key ? " on" : ""}`} onClick={() => setCheck(abilityCheck(a.key))}>{a.abbr}</button>
+                  ))}
+                </div>
               </div>
             </div>
             {dc && (
