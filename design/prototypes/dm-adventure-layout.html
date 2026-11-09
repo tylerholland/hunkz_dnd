@@ -63,6 +63,13 @@
     myself" remains for an absent player; "DC, advantage…" opens the full form.
   Request silence: a big "Your DM requests your attention! Silence, please." over every player's
     screen until they tap "I'm listening" or the DM lifts it; the DM sees who has acknowledged.
+  Roll labels: optional ("Searching the Guildmaster's study"), shown on the DM's card and in the
+    session log and Chronicle; not shown to players.
+  Who rolls: avatar row (5 across), nobody picked by default (asking one player is the common
+    case); "Everyone" picks all.
+  Initiative (D&D 5e: rolled once when combat starts, kept for every round): starting Combat asks
+    every player to roll initiative (DM Setting, on by default; dice also a setting, 1d20 default);
+    results plus enemies' rolls sort into the existing initiative order, still reorderable.
   Open: should a moment be able to open a Story 76 scene later?
 -->
 <style>
@@ -260,6 +267,15 @@
   .dc .thumb { width:44px; height:32px; flex:none; border-radius:4px; background-size:cover; background-position:center; border:1px solid var(--border); }
   .dc.used { opacity:.6; }
   .dc .pick { grid-column:1 / -1; display:flex; flex-wrap:wrap; gap:6px; padding-top:6px; border-top:1px dashed var(--border); }
+  .who { display:grid; grid-template-columns:repeat(5, minmax(0,1fr)); gap:6px; }
+  .whob { display:grid; justify-items:center; gap:3px; padding:8px 2px 6px; border:1px solid transparent; border-radius:10px; background:transparent; color:var(--body); }
+  .whob .disc.xl { width:52px; height:52px; font-size:20px; opacity:.55; transition:opacity 120ms, box-shadow 120ms; }
+  .whob .wn { font-size:14px; line-height:1.15; text-align:center; overflow-wrap:anywhere; }
+  .whob .wb { font-size:12px; color:var(--muted); font-family:'Cinzel',serif; }
+  .whob:hover .disc.xl { opacity:.8; }
+  .whob.on { border-color:var(--accent); background:var(--wash); }
+  .whob.on .disc.xl { opacity:1; box-shadow:0 0 0 2px var(--bright); }
+  .whob.on .wn { color:var(--text); }
   .linkbtn { border:0; background:none; padding:0; color:var(--bright); text-decoration:underline; font:inherit; font-style:normal; cursor:pointer; }
   .chip-select { width:auto; min-height:34px; padding:3px 10px; border-radius:999px; font-family:'IM Fell English',serif; font-size:14px; }
   .chip-select.on { background:var(--dim); border-color:var(--accent); color:var(--text); }
@@ -357,7 +373,7 @@
   const shortCheck = (c) => (c.save ? `${c.ability.toUpperCase()} save` : c.skill || `${c.ability.toUpperCase()} check`);
   // DM Settings → ability-check dice (house rule; 2d6 at this table, 1d20 in standard 5e).
   // Both are DM Settings (house rules): what an ability check rolls, and what a saving throw rolls.
-  let rules = { check: "2d6", save: "1d20" };
+  let rules = { check: "2d6", save: "1d20", init: "1d20", autoInit: true };
   const diceFor = (check) => (check.save ? rules.save : rules.check);
   const rollDice = (expr) => { const [n, f] = expr.split("d").map(Number); return Array.from({ length: n }, () => 1 + Math.floor(Math.random() * f)).reduce((a, b) => a + b, 0); };
   const dcPresets = (expr) => (expr === "2d6" ? [7, 10, 12] : [10, 12, 15, 20]);
@@ -517,7 +533,7 @@
     if (e.type === "rollreq-done") {
       const passed = e.rows.filter((r) => r.pass === true), failed = e.rows.filter((r) => r.pass === false);
       return `<div class="fi${f}"><span class="ic">🎯</span><div>
-        <div class="meta"><span class="who">${esc(checkName(e.check))}${e.dc ? ` · DC ${e.dc}` : ""}</span><span class="time">${e.time}</span></div>
+        <div class="meta"><span class="who">${e.label ? `${esc(e.label)} · ` : ""}${esc(checkName(e.check))}${e.dc ? ` · DC ${e.dc}` : ""}</span><span class="time">${e.time}</span></div>
         <p>${e.rows.map((r) => `${esc(P(r.slug).name)} <b>${r.total ?? "—"}</b>${r.pass === true ? " ✓" : r.pass === false ? " ✗" : ""}`).join(" · ")}</p>
         ${e.revealed ? `<p class="hint">Revealed to the party</p>` : ""}
         ${e.dc && passed.length ? `<div class="row" style="margin-top:6px"><button class="btn sm" data-act="note-passed" data-id="${e.id}">✉ Note to the ${passed.length === 1 ? "one" : passed.length} who passed</button>${failed.length ? `<button class="btn sm quiet" data-act="note-failed" data-id="${e.id}">✉ …or the ${failed.length} who didn't</button>` : ""}</div>` : ""}
@@ -538,6 +554,7 @@
     return `<section class="live" aria-label="Roll request">
       <div class="live-h"><span class="label">Asked for a roll · ${r.dice}</span><span class="grow"></span><span class="hint">${inCount} of ${r.targets.length} in</span></div>
       <h3>${esc(checkName(r.check))}</h3>
+      ${r.label ? `<p style="margin:0;color:var(--text)">“${esc(r.label)}”</p>` : ""}
       <p class="hint">${r.dc ? `DC ${r.dc}${r.showDc ? " (players see it)" : " (hidden from players)"}` : "No DC: you judge the result"}${r.adv !== "normal" ? ` · ${r.adv === "adv" ? "with advantage" : "with disadvantage"}` : ""}</p>
       <div class="rrows">${rows}</div>
       <div class="row"><button class="btn sm quiet" data-act="rr-cancel" data-id="${r.id}">Cancel</button><span style="flex:1"></span>
@@ -593,7 +610,7 @@
         <button class="btn sm quiet" data-act="stub" data-msg="Long Rest: as today">Long Rest</button>
         <button class="btn sm quiet" data-act="stub" data-msg="Award XP: as today">Award XP</button>
         <button class="btn sm quiet" data-act="stub" data-msg="Share Coin: as today">Share Coin</button>
-        <button class="btn sm" data-act="stub" data-msg="Roll Initiative: switches to Combat and asks everyone for initiative at once (a roll request)">Roll Initiative</button>
+        <button class="btn sm" data-act="stub" data-msg="Roll Initiative: switches to Combat and asks every player to roll initiative; their results (and the enemies', rolled for you) sort into the initiative order. You can still reorder by hand.">Roll Initiative</button>
       </div></section>
       ${diceHtml()}
       ${wheelsHtml()}
@@ -652,9 +669,10 @@
     const extra = m.check.save || (!m.check.skill);
     return `<div class="scrim" data-act="scrim"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="mt">
       <div><h3 id="mt">Ask for a roll</h3></div>
-      <div class="field"><span class="label">Who rolls</span>
-        <div class="row">${PARTY.map((p) => `<button class="chip${m.who.includes(p.slug) ? " on" : ""}" data-act="m-who" data-slug="${p.slug}" aria-pressed="${m.who.includes(p.slug)}">${discHtml(p, "sm")}${esc(p.name)} <span class="hint" style="font-size:13px">${sgn(bonus(p, m.check))}</span></button>`).join("")}</div>
-        <p class="hint">${everyone ? "Everyone. Tap a name to leave them out." : `${m.who.length} of ${PARTY.length}. <button class="linkbtn" data-act="m-all">Everyone</button>`}</p></div>
+      <div class="field"><div class="row"><span class="label">Who rolls</span><span style="flex:1"></span><button class="btn sm quiet" data-act="m-all">${everyone ? "Clear" : "Everyone"}</button></div>
+        <div class="who">${PARTY.map((p) => `<button class="whob${m.who.includes(p.slug) ? " on" : ""}" data-act="m-who" data-slug="${p.slug}" aria-pressed="${m.who.includes(p.slug)}">
+          <span class="disc xl" style="background:radial-gradient(circle at 40% 35%, ${p.c}, #14202b)">${esc(p.name[0])}<i class="dot" style="background:${dotColor(p.here)}"></i></span>
+          <span class="wn">${esc(p.name)}</span><span class="wb">${sgn(bonus(p, m.check))}</span></button>`).join("")}</div></div>
       <div class="field"><span class="label">Check</span>
         <div class="row">${QUICK.map((k) => `<button class="chip txt${m.check.skill === k ? " on" : ""}" data-act="m-skill" data-s="${k}">${k}</button>`).join("")}
           <select class="in chip-select${m.check.skill && !QUICK.includes(m.check.skill) ? " on" : ""}" data-ch="m-skillsel" aria-label="Another skill">
@@ -665,13 +683,15 @@
           <span style="flex:1"></span>
           <span class="seg">${[["normal", "Normal"], ["adv", "Adv."], ["dis", "Dis."]].map(([k, l]) => `<button data-act="m-adv" data-k="${k}" class="${m.adv === k ? "on" : ""}" title="${k === "adv" ? "Advantage" : k === "dis" ? "Disadvantage" : "Normal"}">${l}</button>`).join("")}</span></div>
         <p class="hint">${m.dc ? `Results show pass or fail for you. Players ${m.showDc ? "see" : "don't see"} the DC.` : "No DC: you judge the results."}</p></div>
+      <div class="field"><span class="label">Label <span style="text-transform:none;letter-spacing:0;font-family:'Crimson Text',serif;font-style:italic;color:var(--muted)">optional, for the session log and Chronicle</span></span>
+        <input class="in" data-act="m-label" value="${esc(m.label || "")}" placeholder="Searching the Guildmaster's study" maxlength="60"></div>
       <button class="used-h" data-act="m-more" aria-expanded="${m.more}">${m.more ? "▴" : "▾"} More options${extra && !m.more ? ` · ${esc(label)}` : ""}</button>
       ${m.more ? `<div class="field" style="padding-left:10px;border-left:2px solid var(--border)">
         <div class="group"><small>Saving throw</small><div class="row">${ABIL.map((a) => `<button class="chip txt${m.check.save && m.check.ability === a ? " on" : ""}" data-act="m-save" data-a="${a}">${a.toUpperCase()}</button>`).join("")}</div></div>
         <div class="group"><small>Plain ability check</small><div class="row">${ABIL.map((a) => `<button class="chip txt${!m.check.save && !m.check.skill && m.check.ability === a ? " on" : ""}" data-act="m-abil" data-a="${a}">${a.toUpperCase()}</button>`).join("")}</div></div>
         ${m.dc ? `<button class="switch" role="switch" aria-checked="${m.showDc}" data-act="m-showdc"><span class="sw"><i></i></span>Players see the DC</button>` : ""}
       </div>` : ""}
-      <div class="foot"><span class="hint">${esc(label)} · ${diceFor(m.check)}${m.adv !== "normal" ? (m.adv === "adv" ? " · advantage" : " · disadvantage") : ""}${m.dc ? ` · DC ${m.dc}` : ""}</span><span class="grow"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="m-send"${m.who.length ? "" : " disabled"}>Ask ${everyone ? "everyone" : m.who.length === 1 ? P(m.who[0]).name : `${m.who.length} players`}</button></div>
+      <div class="foot"><span class="hint">${esc(label)} · ${diceFor(m.check)}${m.adv !== "normal" ? (m.adv === "adv" ? " · advantage" : " · disadvantage") : ""}${m.dc ? ` · DC ${m.dc}` : ""}</span><span class="grow"></span><button class="btn quiet" data-act="close">Cancel</button><button class="btn primary" data-act="m-send"${m.who.length ? "" : " disabled"}>${!m.who.length ? "Pick who rolls" : `Ask ${everyone ? "everyone" : m.who.length === 1 ? P(m.who[0]).name : `${m.who.length} players`}`}</button></div>
     </div></div>`;
   }
   const PICS = ["fancy-1.jpg", "shady-1.jpg", "humble-1.jpg", "fancy-2.jpg"];
@@ -703,6 +723,9 @@
       <div><h3 id="mt">DM Settings · Dice</h3><p class="hint">(Only the two dice rules this feature uses are shown here; the rest of DM Settings is as today.)</p></div>
       <div class="field"><span class="label">Ability checks roll</span>${seg("check")}<p class="hint">Skills and plain ability checks: the card buttons, Ask for a roll, and players' own sheets. 2d6 (World of Dungeons style) or 1d20 (D&D 5e).</p></div>
       <div class="field"><span class="label">Saving throws roll</span>${seg("save")}<p class="hint">Saves asked for from a card or Ask for a roll, and players' own saves.</p></div>
+      <div class="field"><span class="label">Initiative rolls</span>${seg("init")}<p class="hint">Plus each character's initiative bonus (usually DEX). 1d20 spreads the order out; 2d6 gives more ties.</p>
+        <button class="switch" role="switch" aria-checked="${rules.autoInit}" data-act="autoinit"><span class="sw"><i></i></span>Ask everyone for initiative when combat starts</button>
+        <p class="hint">${rules.autoInit ? "Switching to Combat asks every player to roll; results fill the initiative order, enemies rolled for you." : "Off: use Roll Initiative when you're ready."}</p></div>
       <div class="foot"><span class="grow"></span><button class="btn primary" data-act="close">Done</button></div></div></div>`;
   }
   function voteModal() {
@@ -734,7 +757,7 @@
   const SIM_REPLY = { aesop: "Can I ask her what the debt was for?", mj: "I'm keeping my hand on my axe.", qc: "I keep my hood up and say nothing for now." };
 
   function startRoll(m) {
-    const r = { id: `rr${Date.now()}`, check: m.check, dice: diceFor(m.check), targets: m.who.slice(), dc: m.dc || null, showDc: m.showDc, adv: m.adv, results: {} };
+    const r = { id: `rr${Date.now()}`, label: (m.label || "").trim(), check: m.check, dice: diceFor(m.check), targets: m.who.slice(), dc: m.dc || null, showDc: m.showDc, adv: m.adv, results: {} };
     rollReqs.unshift(r);
     r.targets.forEach((slug, i) => {
       if (inbox[slug]) { inbox[slug].roll = r; setTimeout(() => { if (rollReqs.includes(r) && !r.results[slug] && view !== slug) rollFor(slug, null, r); }, 15000 + i * 800); }
@@ -756,7 +779,7 @@
     const r = rollReqs.find((x) => x.id === id); if (!r) return;
     rollReqs = rollReqs.filter((x) => x !== r);
     Object.values(inbox).forEach((b) => { if (b.roll === r) b.roll = null; });
-    if (!cancel) push({ id: r.id, type: "rollreq-done", time: tick(), check: r.check, dc: r.dc, revealed: !!r.revealed, rows: r.targets.map((s) => ({ slug: s, total: r.results[s]?.total ?? null, pass: r.results[s] && r.dc ? r.results[s].total >= r.dc : null })) });
+    if (!cancel) push({ id: r.id, type: "rollreq-done", time: tick(), label: r.label, check: r.check, dc: r.dc, revealed: !!r.revealed, rows: r.targets.map((s) => ({ slug: s, total: r.results[s]?.total ?? null, pass: r.results[s] && r.dc ? r.results[s].total >= r.dc : null })) });
     else render();
   }
 
@@ -835,7 +858,7 @@
     const act = document.activeElement, key = act && (act.dataset.act || act.dataset.p || act.dataset.noteinput), sel = act && act.selectionStart;
     if (view === "dm") {
       app.innerHTML = `<div class="page">
-        <div class="top"><span class="title">Hunkz Adventures</span><span class="seg"><button class="on">Adventure</button><button data-act="stub" data-msg="The prototype covers Adventure only">Combat</button></span><span style="flex:1"></span><span class="hint">Session 14 · ${now()}</span><button class="btn sm quiet" data-act="settings">⚙ DM Settings</button></div>
+        <div class="top"><span class="title">Hunkz Adventures</span><span class="seg"><button class="on">Adventure</button><button data-act="stub" data-msg="Combat: if DM Settings says so, every player is asked to roll initiative as it opens (the prototype covers Adventure only)">Combat</button></span><span style="flex:1"></span><span class="hint">Session 14 · ${now()}</span><button class="btn sm quiet" data-act="settings">⚙ DM Settings</button></div>
         ${mapHtml(false)}
         <div class="cols">${toolsHtml()}${feedHtml()}<section class="c-party" aria-label="Party"><div class="party-h"><h2>Party</h2><span class="grow"></span><button class="switch" role="switch" aria-checked="${abilMode === "details"}" data-act="abilmode" title="Show what each attack and ability does"><span class="sw"><i></i></span><span style="font-size:14px">Ability descriptions</span></button></div>${PARTY.map(partyCard).join("")}</section></div>
       </div>`;
@@ -858,6 +881,7 @@
     const a = e.target.dataset.act; if (!modal) return;
     if (a === "m-title") modal.title = e.target.value;
     else if (a === "m-text") { const had = !!modal.text.trim(); modal.text = e.target.value; if (had !== !!modal.text.trim()) render(); }
+    else if (a === "m-label") modal.label = e.target.value;
     else if (a === "m-dc") { const n = parseInt(e.target.value, 10); modal.dc = n > 0 && n < 40 ? n : null; render(); }
   });
   document.addEventListener("change", (e) => {
@@ -898,11 +922,11 @@
       }
       case "wheel": wheels[d.i].v = Math.max(0, wheels[d.i].v + Number(d.v)); break;
       // Roll requests
-      case "ask": modal = { type: "ask", check: { ability: "wis", skill: "Perception", save: false }, who: PARTY.map((p) => p.slug), dc: null, showDc: false, adv: "normal", more: false }; break;
+      case "ask": modal = { type: "ask", check: { ability: "wis", skill: "Perception", save: false }, who: [], dc: null, showDc: false, adv: "normal", more: false, label: "" }; break;
       case "m-skill": modal.check = { ability: SKILLS[d.s], skill: d.s, save: false }; break;
       case "m-save": modal.check = { ability: d.a, skill: null, save: true }; break;
       case "m-abil": modal.check = { ability: d.a, skill: null, save: false }; break;
-      case "m-all": modal.who = PARTY.map((p) => p.slug); break;
+      case "m-all": modal.who = modal.who.length === PARTY.length ? [] : PARTY.map((p) => p.slug); break;
       case "m-who": modal.who = modal.who.includes(d.slug) ? modal.who.filter((s) => s !== d.slug) : [...modal.who, d.slug]; break;
       case "m-more": modal.more = !modal.more; break;
       case "m-dcq": modal.dc = modal.dc === Number(d.n) ? null : Number(d.n); break;
@@ -957,6 +981,7 @@
       case "close": modal = null; break;
       case "settings": modal = { type: "settings" }; break;
       case "rule": rules[d.k] = d.v; break;
+      case "autoinit": rules.autoInit = !rules.autoInit; break;
       case "abilmode": abilMode = abilMode === "details" ? "names" : "details"; break;
       case "modask": cardAsk = cardAsk && cardAsk.slug === d.slug && cardAsk.a === d.a ? null : { slug: d.slug, a: d.a }; break;
       case "cardask-close": cardAsk = null; break;
@@ -974,7 +999,7 @@
         push({ type: "dm-roll", time: tick(), expr: `${p2.name}'s ${a2.toUpperCase()} check (${expr} ${sgn(p2.m[a2])})`, total, hidden: true, detail: "" });
         return;
       }
-      case "cardask-more": modal = { type: "ask", check: cardAsk.a ? { ability: cardAsk.a, skill: null, save: false } : { ability: "wis", skill: "Perception", save: false }, who: [d.slug], dc: null, showDc: false, adv: "normal", more: !!cardAsk.a }; cardAsk = null; break;
+      case "cardask-more": modal = { type: "ask", label: "", check: cardAsk.a ? { ability: cardAsk.a, skill: null, save: false } : { ability: "wis", skill: "Perception", save: false }, who: [d.slug], dc: null, showDc: false, adv: "normal", more: !!cardAsk.a }; cardAsk = null; break;
       case "silence": {
         if (silence) { silence = null; toast("Silence lifted"); break; }
         const s2 = silence = { acks: [] };
