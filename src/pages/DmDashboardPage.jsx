@@ -46,6 +46,7 @@ import AskRollModal from "../features/rollRequests/AskRollModal";
 import RollRequestCard from "../features/rollRequests/RollRequestCard";
 import { abilityCheck, initiativeCheck, mergeInitiative, skillCheck } from "../features/rollRequests/rollCheck";
 import SilenceCard from "../features/silence/SilenceCard";
+import { HushIcon, RollIcon, VoteIcon } from "../features/dmDashboard/actionIcons";
 import VoteComposer from "../features/vote/VoteComposer";
 
 // Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
@@ -1388,9 +1389,9 @@ export default function DmDashboardPage() {
   ));
   const voteOpen = vote?.status === "open";
   const actionTiles = [
-    { key: "ask", icon: "🎯", title: "Ask for a Roll", sub: rollRequests.length ? `${rollRequests.length} out now` : "A check or save, for anyone", onClick: () => setAskForm({ who: [], check: skillCheck("perception") }) },
-    { key: "vote", icon: "⚑", title: "Call a Vote", sub: voteOpen ? "A vote is open" : "Let the party choose", onClick: () => setVoteFormOpen(true), disabled: voteOpen },
-    { key: "silence", icon: "✋", title: silence ? "Lift Silence" : "Request Silence", sub: silence ? `${(silence.acks || []).length} of ${party.length} listening` : "A big “Silence, please” on every screen", onClick: () => silenceAction(silence ? "lift" : "start"), wide: true },
+    { key: "ask", icon: <RollIcon />, title: "Ask for a Roll", sub: rollRequests.length ? `${rollRequests.length} out now` : "A check or save, for anyone", onClick: () => setAskForm({ who: [], check: skillCheck("perception") }) },
+    { key: "vote", icon: <VoteIcon />, title: "Call a Vote", sub: voteOpen ? "A vote is open" : "Let the party choose", onClick: () => setVoteFormOpen(true), disabled: voteOpen },
+    { key: "silence", icon: <HushIcon />, title: silence ? "Lift Silence" : "Request Silence", sub: silence ? `${(silence.acks || []).length} of ${party.length} listening` : "A big “Silence, please” on every screen", onClick: () => silenceAction(silence ? "lift" : "start"), wide: true },
   ];
   const palVars = {
     "--pal-bg":            pal.bg,
