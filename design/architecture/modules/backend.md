@@ -12,3 +12,5 @@ Read for handlers, validation, auth, projections, persistence, or infrastructure
 - `app-meta` is stamped by deployment, not ordinary gameplay handlers. WebSocket connections have a separate table with TTL.
 
 Search [data model](../data-model.md), [backend reference](../backend-reference.md), or [ADRs](../decisions.md) for the affected record/decision. Treat inventories as orientation; verify exact contracts in current source and nearby tests.
+
+Planned, not built: campaigns, accounts and more than one table — see the [multi-campaign plan](../multi-campaign-plan.md). Until phase 0 lands, new special records and endpoints should keep to patterns that plan can move (no new global Scans; new live state as one record that could become a campaign `STATE#` item).
