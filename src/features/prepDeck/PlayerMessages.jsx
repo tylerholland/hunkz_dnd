@@ -7,7 +7,7 @@ import "./prepDeck.css";
 /**
  * What the DM sent this player, one at a time, oldest first: a MOMENT as a
  * scroll over the page (Continue), or a NOTE only they can see, as a card near
- * the top (reply once, or Got it). Both stay in their story log afterwards.
+ * the top (reply once, or Got it). Both go in the session log (and the Chronicle).
  * `messages` are this player's (getSessionState → tableMessages).
  */
 export default function PlayerMessages({ messages = [], slug, password, light = false }) {
@@ -51,7 +51,7 @@ export default function PlayerMessages({ messages = [], slug, password, light = 
             <p className="pm-text">{message.text}</p>
             <div className="pm-foot">
               <button type="button" className="vc-btn vc-btn--primary" onClick={seen} autoFocus>Continue</button>
-              <span className="vb-hint">It stays in your story log.</span>
+              <span className="vb-hint">It goes in the session log, kept in the Chronicle.</span>
             </div>
           </div>
         </div>

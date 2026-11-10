@@ -74,7 +74,7 @@ export default function MessageComposer({ members, deck = [], initial = {}, dmPa
       <div className="vc-modal pd-modal" role="dialog" aria-modal="true" aria-labelledby="pd-title">
         <div>
           <h3 id="pd-title">{editing ? "Edit card" : initial.saveOnly ? "Prepare a card" : isMoment ? "Read a Moment" : "Pass a Note"}</h3>
-          <p className="vb-hint">{isMoment ? "Everyone sees it as a pop-up, and it goes in the story log." : to === "choose" ? "You'll pick who gets it when you pass it." : "Only the players you pick see it. Everyone else sees that a note was passed (if you allow it)."}</p>
+          <p className="vb-hint">{isMoment ? "Everyone sees it as a pop-up, and it goes in the session log." : to === "choose" ? "You'll pick who gets it when you pass it." : "Only the players you pick see it. Everyone else sees that a note was passed (if you allow it)."}</p>
         </div>
 
         {!editing && !initial.saveOnly && prepared.length > 0 && (
