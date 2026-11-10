@@ -6,7 +6,8 @@
 // (and a picture) that pops up for every player and goes in the log. Sent to
 // players (`to: [slug…]`) it's a NOTE: only they see it; they can reply once or
 // tap "Got it"; the others see that a note was passed (`showPassed`). A card
-// can be `to: "choose"`: the DM picks who when sending.
+// can be `to: "choose"`: the DM picks who (everyone, or players) when sending.
+// Any card can have a picture.
 const MAX_CARDS = 80;
 const MAX_MESSAGES = 30;
 
@@ -30,7 +31,7 @@ function normalizeCard(raw) {
     kind,
     title: clip(raw.title, 80),
     text: clip(raw.text, 2000),
-    picture: kind === "moment" ? pictureOf(raw.picture) : "",
+    picture: pictureOf(raw.picture),
     to,
     canReply: raw.canReply !== false,
     showPassed: raw.showPassed !== false,
@@ -71,7 +72,7 @@ function normalizeMessage(raw) {
     kind: to === "all" ? "moment" : "note",
     title: clip(raw.title, 80),
     text: clip(raw.text, 2000),
-    picture: to === "all" ? pictureOf(raw.picture) : "",
+    picture: pictureOf(raw.picture),
     to,
     canReply: to !== "all" && raw.canReply !== false,
     showPassed: raw.showPassed !== false,
@@ -141,7 +142,7 @@ function projectMessages(state, { isDm = false, slug = null } = {}) {
   return state.messages.flatMap((m) => {
     if (m.kind === "moment") return [{ id: m.id, kind: m.kind, title: m.title, text: m.text, picture: m.picture, sentAt: m.sentAt, seenByMe: !!slug && m.seen.includes(slug) }];
     if (slug && m.to.includes(slug)) {
-      return [{ id: m.id, kind: m.kind, title: m.title, text: m.text, to: m.to, canReply: m.canReply, sentAt: m.sentAt, seenByMe: m.seen.includes(slug), myReply: m.replies[slug]?.text || null }];
+      return [{ id: m.id, kind: m.kind, title: m.title, text: m.text, picture: m.picture, to: m.to, canReply: m.canReply, sentAt: m.sentAt, seenByMe: m.seen.includes(slug), myReply: m.replies[slug]?.text || null }];
     }
     return m.showPassed ? [{ id: m.id, kind: m.kind, passed: true, to: m.to, sentAt: m.sentAt }] : [];
   });

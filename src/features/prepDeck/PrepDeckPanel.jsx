@@ -28,13 +28,14 @@ function DeckCard({ card, members, picking, onPick, onSend, onEdit, onCancelPick
       <div className="pd-card-actions">
         {used && <span className="pd-used-at">{new Date(card.usedAt).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}</span>}
         <button type="button" className={`vc-btn${used ? " vc-btn--quiet" : " vc-btn--primary"}`} onClick={() => (card.to === "choose" ? onPick(card.id) : onSend(card))}>
-          {used ? "Again" : card.kind === "moment" ? "Read" : "Pass"}
+          {used ? "Again" : card.to === "choose" ? "Send" : card.kind === "moment" ? "Read" : "Pass"}
         </button>
         <button type="button" className="vc-btn vc-btn--quiet" onClick={() => onEdit(card)}>Edit</button>
       </div>
       {picking && (
         <div className="pd-pick">
-          <span className="vb-hint">Pass it to…</span>
+          <span className="vb-hint">Send it to…</span>
+          <button type="button" className="rq-chip" onClick={() => onSend(card, "all")}>Everyone</button>
           {members.map((m) => (
             <button key={m.slug} type="button" className="rq-chip pd-to-chip" onClick={() => onSend(card, [m.slug])}><VoteToken member={m} small />{m.name}</button>
           ))}
@@ -53,7 +54,7 @@ export default function PrepDeckPanel({ cards, members, onSend, onEdit, onPrepar
   const [filter, setFilter] = useState("all");
   const [usedOpen, setUsedOpen] = useState(false);
   const [picking, setPicking] = useState(null);
-  const list = cards.filter((c) => filter === "all" || c.kind === filter);
+  const list = cards.filter((c) => filter === "all" || c.kind === filter || c.to === "choose");
   const ready = list.filter((c) => !c.usedAt);
   const used = list.filter((c) => c.usedAt);
   const send = (card, to) => { setPicking(null); onSend(card, to); };

@@ -37,10 +37,10 @@ export default function MessageComposer({ members, deck = [], initial = {}, dmPa
     return () => window.removeEventListener("keydown", onKey);
   }, [onClose]);
 
-  const fields = () => ({ id: cardId || undefined, to, title: title.trim(), text: text.trim(), picture: isMoment ? picture : "", canReply, showPassed });
+  const fields = () => ({ id: cardId || undefined, to, title: title.trim(), text: text.trim(), picture, canReply, showPassed });
   const toggleMember = (slug) => setTo((cur) => { const list = toList(cur); return list.includes(slug) ? list.filter((s) => s !== slug) : [...list, slug]; });
   const canSend = !!text.trim() && (isMoment || toList(to).length > 0);
-  const prepared = deck.filter((c) => !c.usedAt && (c.kind === "moment") === isMoment && c.id !== cardId);
+  const prepared = deck.filter((c) => !c.usedAt && (c.to === "choose" || (c.kind === "moment") === isMoment) && c.id !== cardId);
 
   function load(card) {
     setCardId(card.id);
@@ -113,17 +113,16 @@ export default function MessageComposer({ members, deck = [], initial = {}, dmPa
           <textarea ref={textRef} className="vc-in pd-text" rows={5} value={text} onChange={(e) => setText(e.target.value)} placeholder={isMoment ? "The Guildmaster signals to the shadows…" : "You notice…"} maxLength={2000} />
         </label>
 
-        {isMoment ? (
-          <div className="vc-field">
-            <span className="vb-label">Picture <span className="rq-aside">optional</span></span>
-            <div className="pd-picture-row">
-              {picture && <img className="pd-thumb" src={picture} alt="" />}
-              <button type="button" className="vc-btn" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? "Uploading…" : picture ? "Change picture" : "Add a picture"}</button>
-              {picture && <button type="button" className="vc-btn vc-btn--quiet" onClick={() => setPicture("")}>Remove</button>}
-              <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPicture} />
-            </div>
+        <div className="vc-field">
+          <span className="vb-label">Picture <span className="rq-aside">optional</span></span>
+          <div className="pd-picture-row">
+            {picture && <img className="pd-thumb" src={picture} alt="" />}
+            <button type="button" className="vc-btn" onClick={() => fileRef.current?.click()} disabled={uploading}>{uploading ? "Uploading…" : picture ? "Change picture" : "Add a picture"}</button>
+            {picture && <button type="button" className="vc-btn vc-btn--quiet" onClick={() => setPicture("")}>Remove</button>}
+            <input ref={fileRef} type="file" accept="image/*" hidden onChange={pickPicture} />
           </div>
-        ) : (
+        </div>
+        {!isMoment && (
           <div className="vc-field">
             <button type="button" className="vc-switch" role="switch" aria-checked={canReply} onClick={() => setCanReply((v) => !v)}><span className="vc-sw"><i /></span>They can reply</button>
             <button type="button" className="vc-switch" role="switch" aria-checked={showPassed} onClick={() => setShowPassed((v) => !v)}><span className="vc-sw"><i /></span>The others see that a note was passed</button>

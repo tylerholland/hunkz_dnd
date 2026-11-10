@@ -69,6 +69,7 @@ export default function PlayerMessages({ messages = [], slug, password, light = 
           <p className="vb-hint">Only you can see this{others ? ` (and ${others} other${others > 1 ? "s" : ""})` : ""}.</p>
         </div>
       </div>
+      {message.picture && <img className="pm-note-pic" src={message.picture} alt="" />}
       {message.title && <h4>{message.title}</h4>}
       <p className="pm-note-text">{message.text}</p>
       {message.canReply && !message.myReply && (

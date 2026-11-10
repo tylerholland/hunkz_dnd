@@ -18,6 +18,14 @@ test("cards: to everyone = a moment, to players or 'choose' = a note; edits keep
   assert.equal(normalizeDeck({ cards: [{ id: "x", text: "hi", to: "all", picture: "javascript:alert(1)" }] }).cards[0].picture, "");
 });
 
+test("any card can have a picture; a 'choose' card can go to everyone", () => {
+  const card = { title: "The crest", text: "You know this crest.", to: "choose", picture: "https://x/crest.jpg" };
+  const note = composeMessage(card, { to: ["liu"], id: "m1" }).message;
+  assert.deepEqual([note.kind, note.picture], ["note", "https://x/crest.jpg"]);
+  assert.equal(projectMessages({ messages: [note] }, { slug: "liu" })[0].picture, "https://x/crest.jpg");
+  assert.equal(composeMessage(card, { to: "all", id: "m2" }).message.kind, "moment");
+});
+
 test("sending: a 'choose' card needs recipients, and only party members", () => {
   const card = { title: "Not the whole truth", text: "She's hiding something.", to: "choose" };
   assert.equal(composeMessage(card, { id: "m1", partySlugs: party }).error, "Pick who gets it");

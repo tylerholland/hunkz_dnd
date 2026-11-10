@@ -46,6 +46,7 @@
 .pm-note-head { display: flex; align-items: center; gap: 10px; }
 .pm-seal { width: 34px; height: 34px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 40% 35%, #b4483a, #5a160e); color: #f2d6c8; }
 .pm-seal svg { width: 18px; height: 18px; }
+.pm-note-pic { display: block; width: 100%; max-height: 220px; object-fit: cover; border-radius: 8px; border: 1px solid var(--pal-border); }
 .pm-note-text { margin: 0; white-space: pre-line; font-family: 'Crimson Text', Georgia, serif; font-size: 17px; line-height: 1.5; color: var(--pal-text); }
 @keyframes pm-fade { from { opacity: 0; } }
 @media (prefers-reduced-motion: reduce) { .pm-scrim { animation: none; } }

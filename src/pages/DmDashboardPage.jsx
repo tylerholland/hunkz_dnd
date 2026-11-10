@@ -1460,7 +1460,8 @@ export default function DmDashboardPage() {
     }
     return true;
   }
-  const deckReady = (kind) => prepDeck.filter((c) => !c.usedAt && c.kind === kind).length;
+  // "Choose when sending" cards can go either way, so they count for both.
+  const deckReady = (kind) => prepDeck.filter((c) => !c.usedAt && (c.kind === kind || c.to === "choose")).length;
   const silenceCard = silence && <SilenceCard silence={silence} members={party} onLift={() => silenceAction("lift")} />;
   const rollRequestCards = rollRequests.map((request) => (
     <RollRequestCard key={request.id} request={request} members={party} rules={houseRules} onAction={rollRequestAction} />
@@ -1707,7 +1708,7 @@ export default function DmDashboardPage() {
                   members={party}
                   onSend={sendDeckCard}
                   onEdit={(card) => setComposer({ kind: card.kind, card, editing: true })}
-                  onPrepare={() => setComposer({ kind: "moment", saveOnly: true })}
+                  onPrepare={() => setComposer({ kind: "note", to: "choose", saveOnly: true })}
                 />
               </div>
             </div>

@@ -38,14 +38,18 @@ describe("the prep deck", () => {
     { id: "c3", kind: "moment", title: "Dusk", text: "The inn is loud.", to: "all", usedAt: "2026-11-09T20:31:00Z" },
   ];
 
-  it("reads a moment in one tap; a 'choose' note asks who first; used ones fold away", () => {
+  it("reads a moment in one tap; a 'choose' card asks who first; used ones fold away", () => {
     const onSend = vi.fn();
     render(<PrepDeckPanel cards={cards} members={members} onSend={onSend} onEdit={vi.fn()} onPrepare={vi.fn()} />);
     fireEvent.click(screen.getByRole("button", { name: "Read" }));
     expect(onSend).toHaveBeenCalledWith(cards[0], undefined);
-    fireEvent.click(screen.getByRole("button", { name: "Pass" }));
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
     fireEvent.click(screen.getByRole("button", { name: /Eòghan/ }));
     expect(onSend).toHaveBeenLastCalledWith(cards[1], ["eoghan"]);
+    // A "choose" card can also go to everyone (a moment).
+    fireEvent.click(screen.getByRole("button", { name: "Send" }));
+    fireEvent.click(screen.getByRole("button", { name: "Everyone" }));
+    expect(onSend).toHaveBeenLastCalledWith(cards[1], "all");
     expect(screen.queryByText("Dusk")).not.toBeInTheDocument();
     fireEvent.click(screen.getByRole("button", { name: /Used tonight · 1/ }));
     expect(screen.getByText("Dusk")).toBeInTheDocument();
