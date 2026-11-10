@@ -6,7 +6,7 @@ import EffectLogRow from "./ApplyEffectAction";
 import { PALETTES } from "../features/characterSheet/theme";
 import { postDmRoll } from "../api";
 import { applyCheckAdvantage, DEFAULT_HOUSE_RULES, isCheckDiceGroups } from "../lib/houseRules";
-import { buildLocalRollHistoryEntry, buildRollHistoryPayload, extractRollValues, normalizeRollActionLabel } from "../lib/rollHistory";
+import { buildLocalRollHistoryEntry, buildRollHistoryPayload, extractRollValues, groupHpUnderRolls, normalizeRollActionLabel } from "../lib/rollHistory";
 import { isDealableRoll, isToHitRoll } from "../features/dmDashboard/takeAction/actionOptions";
 import DefenseCheck from "../features/dmDashboard/takeAction/DefenseCheck";
 import { normalizeDefense } from "../features/dmDashboard/npcStats";
@@ -308,14 +308,8 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
     const recent = combinedHistory.filter((entry) => !entry.sortTime || entry.sortTime >= now - LOG_WINDOW_MS);
     const earlier = combinedHistory.length - recent.length;
     const shown = showEarlier ? combinedHistory : recent;
-    // An HP change made from a roll (Deal Damage / Take Action) shows inside
-    // that roll's row instead of as a row of its own.
-    const ids = new Set(shown.map((entry) => entry.id));
-    const outcomes = new Map();
-    for (const entry of shown) {
-      if (entry.type === "hp" && entry.rollId && ids.has(entry.rollId)) outcomes.set(entry.rollId, [...(outcomes.get(entry.rollId) || []), entry]);
-    }
-    const list = shown.filter((entry) => !(entry.type === "hp" && entry.rollId && ids.has(entry.rollId)));
+    // An HP change made from a roll shows inside that roll's row.
+    const { list, outcomes } = groupHpUnderRolls(shown);
     const toggle = earlier > 0 ? (
       <button key="earlier" type="button" className="rh-earlier" onClick={() => setShowEarlier((v) => !v)}>
         {showEarlier ? "Hide events older than a day" : `Show earlier events (${earlier})`}

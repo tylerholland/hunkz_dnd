@@ -109,3 +109,18 @@ export function buildLocalRollHistoryEntry({ id, label, result, timestamp, chara
 
   return entry;
 }
+
+/**
+ * HP changes made from a roll (Deal Damage / Take Action carry its `rollId`)
+ * are shown inside that roll's row instead of as rows of their own.
+ * → { list: entries without the attached HP events, outcomes: Map(rollId → [hp events]) }
+ */
+export function groupHpUnderRolls(entries) {
+  const ids = new Set(entries.map((entry) => entry?.id));
+  const attached = (entry) => entry?.type === "hp" && entry.rollId && ids.has(entry.rollId);
+  const outcomes = new Map();
+  for (const entry of entries) {
+    if (attached(entry)) outcomes.set(entry.rollId, [...(outcomes.get(entry.rollId) || []), entry]);
+  }
+  return { list: entries.filter((entry) => !attached(entry)), outcomes };
+}

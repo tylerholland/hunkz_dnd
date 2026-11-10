@@ -4,7 +4,8 @@ import {
   addChronicleRecollection, deleteChronicleSession, getChronicleSession,
   putChronicleSummary, putRollTag, updateChronicleRecollection, updateChronicleSession,
 } from "../../api";
-import { RollHistoryRow } from "../../components/RollHistoryList";
+import { HpOutcomeLine, RollHistoryRow } from "../../components/RollHistoryList";
+import { groupHpUnderRolls } from "../../lib/rollHistory";
 import { buildHighlights, buildTimeline, dayKey, eventMs, fmtDay, fmtTime, peopleIndex, playerColor, timeAgo } from "./chronicleData";
 import NightAtAGlance from "./NightAtAGlance";
 
@@ -346,12 +347,22 @@ export default function SessionView({ sessionId, viewer, creds, pal }) {
           <details className="chr-log">
             <summary>Activity log · {events.length} events</summary>
             <div className="chr-log-list">
-              {[...events].reverse().map((entry, i, list) => (
-                <div key={entry.id} className="chr-log-row">
-                  <span className="chr-ev-time">{fmtTime(eventMs(entry))}</span>
-                  <RollHistoryRow pal={pal} entry={entry} showDivider={i < list.length - 1} onSaveTag={canTag ? saveTag : undefined} />
-                </div>
-              ))}
+              {(() => {
+                // Damage dealt from a roll shows under that roll (as in the DM's log).
+                const { list, outcomes } = groupHpUnderRolls([...events].reverse());
+                return list.map((entry, i) => (
+                  <div key={entry.id} className="chr-log-row">
+                    <span className="chr-ev-time">{fmtTime(eventMs(entry))}</span>
+                    <RollHistoryRow
+                      pal={pal}
+                      entry={entry}
+                      showDivider={i < list.length - 1}
+                      onSaveTag={canTag ? saveTag : undefined}
+                      below={outcomes.has(entry.id) ? outcomes.get(entry.id).map((hp) => <HpOutcomeLine key={hp.id} pal={pal} entry={hp} />) : null}
+                    />
+                  </div>
+                ));
+              })()}
             </div>
           </details>
         </div>
