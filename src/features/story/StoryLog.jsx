@@ -24,9 +24,10 @@ function Parts({ parts }) {
 /**
  * The session as a story (lib: storyLines.js). Player: viewerSlug set, with
  * "The table / Just me" and "My numbers". DM (viewerSlug null): "Numbers"
- * shows everyone's. Shows the last day; earlier is in the Chronicle.
+ * shows everyone's. Live, it shows the last day, newest first; `chronicle`
+ * shows a whole finished session, in the order it happened.
  */
-export default function StoryLog({ entries, viewerSlug = null, prefKey = "dnd_story" }) {
+export default function StoryLog({ entries, viewerSlug = null, prefKey = "dnd_story", chronicle = false }) {
   const isDm = !viewerSlug;
   const [numbers, setNumbers] = useState(() => readPref(`${prefKey}_numbers`, isDm ? "none" : "mine"));
   const [filter, setFilter] = useState(() => readPref(`${prefKey}_filter`, "all"));
@@ -40,8 +41,8 @@ export default function StoryLog({ entries, viewerSlug = null, prefKey = "dnd_st
   const story = useMemo(() => buildStory(entries, { viewerSlug, numbers }), [entries, viewerSlug, numbers]);
   const mineOnly = !isDm && filter === "me";
   const filtered = mineOnly ? story.filter((i) => i.me || i.kind === "moment") : story;
-  const recent = filtered.filter((i) => !i.at || i.at >= now - DAY_MS);
-  const shown = (showEarlier ? filtered : recent).slice(0, FEED_LIMIT);
+  const recent = chronicle ? filtered : filtered.filter((i) => !i.at || i.at >= now - DAY_MS);
+  const shown = chronicle ? [...filtered].reverse() : (showEarlier ? filtered : recent).slice(0, FEED_LIMIT);
   const earlier = filtered.length - recent.length;
 
   const numbersOn = numbers !== "none";
@@ -67,7 +68,7 @@ export default function StoryLog({ entries, viewerSlug = null, prefKey = "dnd_st
         </label>
       </div>
 
-      {shown.length === 0 && <p className="st-empty">{mineOnly ? "Nothing of yours in the last day." : "Nothing yet tonight. What happens at the table is told here."}</p>}
+      {shown.length === 0 && <p className="st-empty">{chronicle ? (mineOnly ? "Nothing of yours this session." : "Nothing to tell from this session.") : mineOnly ? "Nothing of yours in the last day." : "Nothing yet tonight. What happens at the table is told here."}</p>}
       <div className="st-list">
         {shown.map((item) => {
           if (item.kind === "moment") {
@@ -82,6 +83,9 @@ export default function StoryLog({ entries, viewerSlug = null, prefKey = "dnd_st
                 </div>
               </article>
             );
+          }
+          if (item.kind === "round") {
+            return <div key={item.id} className="st-round"><span>{item.start ? "Combat · " : ""}Round {item.round}</span></div>;
           }
           if (item.kind === "note") {
             return (

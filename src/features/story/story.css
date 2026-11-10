@@ -37,3 +37,5 @@
 .st-note p { margin: 4px 0 0; font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-style: italic; font-size: 16px; color: var(--pal-text); white-space: pre-line; }
 .st-reply { margin-top: 8px; padding-left: 10px; border-left: 2px solid rgba(208, 176, 112, 0.4); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 15px; color: var(--pal-text-body); }
 .st-empty { margin: 16px 0; text-align: center; font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-style: italic; color: var(--pal-text-muted); }
+.st-round { display: flex; align-items: center; gap: 10px; margin: 10px 0 2px; font-family: var(--font-ui, 'IM Fell English', serif); font-size: 12px; letter-spacing: 0.2em; text-transform: uppercase; color: var(--pal-text-muted); }
+.st-round::before, .st-round::after { content: ""; flex: 1; border-top: 1px solid var(--pal-border); }

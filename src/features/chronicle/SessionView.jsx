@@ -8,6 +8,7 @@ import { HpOutcomeLine, RollHistoryRow } from "../../components/RollHistoryList"
 import { groupHpUnderRolls } from "../../lib/rollHistory";
 import { buildHighlights, buildTimeline, dayKey, eventMs, fmtDay, fmtTime, peopleIndex, playerColor, timeAgo } from "./chronicleData";
 import NightAtAGlance from "./NightAtAGlance";
+import StoryLog from "../story/StoryLog";
 
 function Summary({ session, creds, onSaved }) {
   const [editing, setEditing] = useState(false);
@@ -344,6 +345,12 @@ export default function SessionView({ sessionId, viewer, creds, pal }) {
               ))}
             </div>
           </section>
+          <details className="chr-log chr-story" open>
+            <summary>The story</summary>
+            <div className="chr-story-body">
+              <StoryLog entries={events} viewerSlug={viewer.role === "player" ? creds?.asSlug || null : null} prefKey="dnd_story_chronicle" chronicle />
+            </div>
+          </details>
           <details className="chr-log">
             <summary>Activity log · {events.length} events</summary>
             <div className="chr-log-list">

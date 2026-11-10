@@ -5,8 +5,13 @@
 // title attribute where it's shortened.
 const MAX = 14;
 
-export function shortName(name) {
+/** The name without a quoted epithet or a leading "Mr." — never cut short. */
+export function bareName(name) {
   const full = String(name || "").trim();
-  const bare = full.replace(/^["“][^"”]*["”]\s*/, "").replace(/^Mr\.\s+/, "").trim() || full;
+  return full.replace(/^["“][^"”]*["”]\s*/, "").replace(/^Mr\.\s+/, "").trim() || full;
+}
+
+export function shortName(name) {
+  const bare = bareName(name);
   return bare.length > MAX ? bare.split(/\s+/)[0] : bare;
 }

@@ -791,3 +791,7 @@
 }
 
 .chr-signin-row .chr-field { flex: 1 1 160px; }
+
+/* The story — the session told as sentences (features/story). */
+.chr-story { margin-bottom: 14px; }
+.chr-story-body { max-height: 560px; overflow-y: auto; padding: 10px 14px 14px; border-top: 1px solid var(--pal-border); }

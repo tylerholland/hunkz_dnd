@@ -121,8 +121,9 @@ describe("SessionView", () => {
     fireEvent.change(input, { target: { value: "Persuade the goblin king" } });
     fireEvent.keyDown(input, { key: "Enter" });
     await waitFor(() => expect(api.putRollTag).toHaveBeenCalledWith("dm", "r1", "Persuade the goblin king", "s1", undefined));
-    // Shown on the row and in the "Highest roll" highlight, which uses the label.
-    expect((await screen.findAllByText(/Persuade the goblin king/)).length).toBe(2);
+    // Shown on the row, in the "Highest roll" highlight (which uses the label)
+    // and in the story ("rolled for Persuade the goblin king").
+    expect((await screen.findAllByText(/Persuade the goblin king/)).length).toBe(3);
   });
 
   it("lets a signed-in player label events too, as their character", async () => {

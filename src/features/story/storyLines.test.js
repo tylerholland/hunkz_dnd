@@ -73,3 +73,31 @@ describe("buildStory", () => {
     expect(story[1]).toMatchObject({ heading: "The DM, to you only", replies: [{ who: "You", text: "Got it." }] });
   });
 });
+
+describe("buildStory on real-table noise", () => {
+  const npc = { type: "npc", sourceId: "c", name: "Carrion Crawler" };
+  it("keeps monster names whole and tells a spell's attack roll as a cast", () => {
+    const hex = { id: "x", slug: "e", characterName: "Eòghan MacGille Fàth", label: "Hex ATK", total: 9, attack: { kind: "spell", id: "h", name: "Hex" }, target: npc, createdAt: at(1) };
+    expect(lines([hex], { viewerSlug: "z" })).toEqual(["Eòghan cast Hex at Carrion Crawler."]);
+  });
+  it("drops a condition switched on and off within moments, and DM damage undone", () => {
+    const entries = [
+      { id: "a", type: "condition", subject: npc, added: ["Blinded"], removed: [], createdAt: at(1) },
+      { id: "b", type: "condition", subject: npc, added: [], removed: ["Blinded"], createdAt: at(2) },
+      { id: "c", type: "hp", subject: npc, delta: -5, createdAt: at(3) },
+      { id: "d", type: "hp", subject: npc, delta: 5, createdAt: at(3) },
+      { id: "f", type: "condition", subject: npc, added: ["Exhaustion"], removed: [], createdAt: at(10) },
+    ];
+    expect(lines(entries, { viewerSlug: "z" })).toEqual(["Carrion Crawler is now Exhausted."]);
+  });
+  it("tells back-to-back free rolls and repeated heals as one line", () => {
+    const free = (id, min, total) => ({ id, slug: "e", characterName: "Eòghan", label: "Free Roll", total, createdAt: at(min) });
+    const heal = (id) => ({ id, type: "hp", subject: { type: "character", sourceId: "a", name: "Aesop" }, delta: 4, createdAt: at(20) });
+    expect(lines([free("1", 1, 9), free("2", 3, 1), heal("h1"), heal("h2")], { viewerSlug: "e" })).toEqual(["Aesop was healed.", "You rolled the dice twice. [9, 1]"]);
+  });
+  it("marks combat rounds, dropping a start that was straight away restarted", () => {
+    const turn = (id, min, round) => ({ id, type: "turn", round, subject: { name: "A" }, createdAt: at(min) });
+    const story = buildStory([turn("t1", 0, 1), turn("t2", 0, 1), turn("t3", 5, 2)], { viewerSlug: "z" });
+    expect(story.filter((i) => i.kind === "round").map((i) => `${i.start ? "start " : ""}${i.round}`)).toEqual(["2", "start 1"]);
+  });
+});
