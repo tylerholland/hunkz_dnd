@@ -91,6 +91,9 @@ Resources:
               - !Sub "${PortraitsBucket.Arn}/maps/*"
               - !Sub "${PortraitsBucket.Arn}/npc/*"
               - !Sub "${PortraitsBucket.Arn}/npc-portraits/*"
+              # Pictures uploaded for shop items (Item catalog) and prepared moments.
+              - !Sub "${PortraitsBucket.Arn}/shop-items/*"
+              - !Sub "${PortraitsBucket.Arn}/moments/*"
 
   # ── WebSocket nudge channel (Story 36) ──────────────────────────────────────
   # A tiny push channel: clients connect and are told "changed" whenever any
