@@ -376,15 +376,23 @@
 [data-light="true"] .dm-start-combat-icon, [data-light="true"] .dm-start-combat-title { color: #9a2a20; }
 
 /* Party upkeep: a quiet toolbar on top of the party column (Adventure). */
-.dm-party-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; }
-.dm-party-bar .label-ui { margin-bottom: 0; }
-.dm-party-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 11px; border: 1px solid var(--pal-border); border-radius: 999px; background: transparent; color: var(--pal-text-body, var(--pal-text)); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 14px; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
+/* Full width: one even row when there's room, otherwise two by two (or
+   three across when Award XP is hidden), so nothing is left dangling. */
+.dm-prototype-cards-panel { container-type: inline-size; }
+.dm-party-bar { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; margin-bottom: 16px; }
+.dm-party-bar[data-count="3"] { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@container (min-width: 600px) { .dm-party-bar { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+/* Room below for the first card's portrait, which overhangs its top edge. */
+.dm-party-heading { display: block; margin-bottom: 24px; }
+.dm-party-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-width: 0; white-space: nowrap; min-height: 32px; padding: 0 11px; border: 1px solid var(--pal-border); border-radius: 999px; background: transparent; color: var(--pal-text-body, var(--pal-text)); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 14px; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
 .dm-party-btn svg { width: 15px; height: 15px; color: var(--pal-accent-bright); }
 .dm-party-btn:hover { border-color: var(--pal-accent); color: var(--pal-text); }
 .dm-party-btn--coin svg { color: #c8a040; }
 [data-light="true"] .dm-party-btn--coin svg { color: #8a6418; }
-.dm-prototype-shell[data-combat="true"] .dm-party-bar { display: none; }
-.dm-prototype-shell[data-chrome="false"] .dm-party-bar { opacity: 0; pointer-events: none; }
+.dm-prototype-shell[data-combat="true"] .dm-party-bar,
+.dm-prototype-shell[data-combat="true"] .dm-party-heading { display: none; }
+.dm-prototype-shell[data-chrome="false"] .dm-party-bar,
+.dm-prototype-shell[data-chrome="false"] .dm-party-heading { opacity: 0; pointer-events: none; }
 
 /* ─── Action tiles (Adventure) ───────────────────────────────────────────── */
 .dm-action-tiles {

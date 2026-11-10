@@ -1682,15 +1682,14 @@ export default function DmDashboardPage() {
 
             <div className="dm-prototype-cards-panel">
               {/* Party upkeep (Adventure): rests, XP, coin. */}
-              <div className="dm-party-bar" role="toolbar" aria-label="Party">
-                <span className="label-ui">Party</span>
-                <span style={{ flex: 1 }} />
+              <div className="dm-party-bar" role="toolbar" aria-label="Party upkeep" data-count={partyActionButtons.length + (partyHasXp ? 2 : 1)}>
                 {partyActionButtons.map(({ key, label, action, icon }) => (
                   <button key={key} type="button" className="dm-party-btn" onClick={action}>{icon}{label}</button>
                 ))}
                 {partyHasXp && <button type="button" className="dm-party-btn" onClick={() => setShowAwardXpParty(true)}><StarIcon />Award XP</button>}
                 <button type="button" className="dm-party-btn dm-party-btn--coin" onClick={() => setShowDistributeCoinParty(true)}><CoinsIcon />Distribute Coin</button>
               </div>
+              <span className="label-ui dm-party-heading">Party</span>
               <div className="dm-prototype-cards">
                 {partyCardItems}
               </div>
