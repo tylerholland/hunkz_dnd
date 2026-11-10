@@ -1107,6 +1107,27 @@ Resources:
               Action: execute-api:ManageConnections
               Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
 
+  GiveItemFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: src/handlers/giveItem.handler
+      Events:
+        Give:
+          Type: HttpApi
+          Properties:
+            Path: /characters/{slug}/give
+            Method: post
+            ApiId: !Ref CharactersApi
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref CharactersTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref WsConnectionsTable
+        - Statement:
+            - Effect: Allow
+              Action: execute-api:ManageConnections
+              Resource: !Sub "arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${WsApi}/${WsStage}/POST/@connections/*"
+
   NpcPortraitPresignFunction:
     Type: AWS::Serverless::Function
     Properties:

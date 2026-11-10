@@ -25,7 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
 import { fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, buildUnarmedStrike, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
 import CharacterTalents, { InfoBadge } from "./CharacterTalents";
-import { patchSession, postCharacterRoll, moveMapToken, endTurn } from "../../api";
+import { patchSession, postCharacterRoll, moveMapToken, endTurn, postGiveItem } from "../../api";
 import { EndTurnButton, YourTurnBanner } from "./TurnCue";
 import { useYourTurnCue } from "./useYourTurnCue";
 import { useTurnAlertsPref } from "../../lib/turnAlertsPref";
@@ -375,6 +375,30 @@ export default function CharacterSheetSessionMode({
     hpServerRef.current = incoming;
     setLocalHp(incoming);
   }, [initialData?.hpCurrent]);
+
+  // Someone gave this player an item (a "give" log event since the page
+  // opened): a short notice, gone after a few seconds or on ✕.
+  const [pageOpenedAt] = useState(() => Date.now());
+  const [seenGifts, setSeenGifts] = useState(() => new Set());
+  const gift = (rollHistory || []).find((e) => e?.type === "give" && e.to?.slug === slug && Date.parse(e.createdAt || "") > pageOpenedAt && !seenGifts.has(e.id)) || null;
+  const giftId = gift?.id;
+  useEffect(() => {
+    if (!giftId) return undefined;
+    const timer = setTimeout(() => setSeenGifts((seen) => new Set(seen).add(giftId)), 8000);
+    return () => clearTimeout(timer);
+  }, [giftId]);
+
+  // Give an item (or part of a stack) to someone else in the party. The
+  // server moves it between both inventories at once; then this page refreshes.
+  const giveItem = useCallback(async (item, toSlug, qty) => {
+    try {
+      await postGiveItem(slug, sessionPassword, toSlug, item.id, qty);
+      onSessionSync?.();
+      return true;
+    } catch (err) {
+      return err?.status === 409 ? "Busy, try again." : err?.data?.error || "Couldn't give it. Try again.";
+    }
+  }, [slug, sessionPassword, onSessionSync]);
 
   // Healing the player does themselves (drinking a potion). Damage comes
   // from the DM's side (Take Action), so there's no player damage control.
@@ -1077,6 +1101,7 @@ export default function CharacterSheetSessionMode({
         <PlayerVote vote={vote} slug={slug} password={sessionPassword} members={partyCards} serverTime={serverTime} light={!!pal.light} />
         <PlayerRollPrompt requests={rollRequests} char={char} rules={houseRules} slug={slug} password={sessionPassword} members={partyCards} light={!!pal.light} />
         <PlayerSilence silence={silence} slug={slug} password={sessionPassword} light={!!pal.light} />
+        {gift && (<div className="cs-gift-toast" role="status"><span aria-hidden="true">⇄</span><span><b>{gift.from?.name}</b> gave you {gift.qty > 1 ? `${gift.qty} × ` : ""}{gift.item}</span><button type="button" aria-label="Dismiss" onClick={() => setSeenGifts((seen) => new Set(seen).add(gift.id))}>✕</button></div>)}
         <PlayerMessages messages={tableMessages} slug={slug} password={sessionPassword} light={!!pal.light} />
         <TopNav
           backTo="/"
@@ -1220,6 +1245,7 @@ export default function CharacterSheetSessionMode({
       <PlayerVote vote={vote} slug={slug} password={sessionPassword} members={partyCards} serverTime={serverTime} light={!!pal.light} />
       <PlayerRollPrompt requests={rollRequests} char={char} rules={houseRules} slug={slug} password={sessionPassword} members={partyCards} light={!!pal.light} />
       <PlayerSilence silence={silence} slug={slug} password={sessionPassword} light={!!pal.light} />
+      {gift && (<div className="cs-gift-toast" role="status"><span aria-hidden="true">⇄</span><span><b>{gift.from?.name}</b> gave you {gift.qty > 1 ? `${gift.qty} × ` : ""}{gift.item}</span><button type="button" aria-label="Dismiss" onClick={() => setSeenGifts((seen) => new Set(seen).add(gift.id))}>✕</button></div>)}
       <PlayerMessages messages={tableMessages} slug={slug} password={sessionPassword} light={!!pal.light} />
 
       {/* ── Top bar (shared TopNav) ── */}
@@ -1767,7 +1793,7 @@ export default function CharacterSheetSessionMode({
 
           {/* ── LOADOUT sub-tab ── */}
           <div className={`cs-sm-tab-panel${sessionSubTab === "loadout" ? " active" : ""}`}>
-            <InventoryPanel char={char} pal={pal} writeLoadout={writeLoadout} onCommitCoin={commitCoin} onCommitXp={commitXp} onHeal={healBy} hpFull={localHp >= hpMax} />
+            <InventoryPanel char={char} pal={pal} writeLoadout={writeLoadout} onCommitCoin={commitCoin} onCommitXp={commitXp} onHeal={healBy} hpFull={localHp >= hpMax} party={partyMembers} onGiveItem={giveItem} />
           </div>
 
           {/* ── NOTES sub-tab ── */}

@@ -550,3 +550,11 @@ export const presignMomentArt = (filename, contentType, size, dmPassword) =>
     headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
     body: JSON.stringify({ filename, contentType, size, kind: "moment" }),
   });
+
+/** Give an inventory item (or part of a stack) to another party member (the giver's password). */
+export const postGiveItem = (slug, password, toSlug, itemId, qty = 1) =>
+  request(`/characters/${slug}/give`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": password },
+    body: JSON.stringify({ toSlug, itemId, qty }),
+  });

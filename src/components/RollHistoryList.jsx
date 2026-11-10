@@ -386,6 +386,18 @@ export function NoteReplyRow({ pal, entry, opacity = 1, showDivider = false }) {
   );
 }
 
+// One party member gave another an item.
+export function GiveHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  return (
+    <div className="rh-row" style={rowBase(pal, opacity, showDivider)}>
+      <span style={glyph(pal)} aria-hidden="true">⇄</span>
+      <span style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.text }}>
+        <span style={{ color: pal.accentBright }}>{entry.from?.name}</span> gave <span style={{ color: pal.accentBright }}>{entry.to?.name}</span> {entry.qty > 1 ? `${entry.qty} × ` : ""}{entry.item}
+      </span>
+    </div>
+  );
+}
+
 export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null, below = null, onSaveTag }) {
   // Branch on type: "wheel" entries render differently from dice rows
   const rowProps = { pal, entry, opacity, showDivider, onSaveTag };
@@ -400,6 +412,7 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
   if (entry.type === "moment") return <MomentHistoryRow {...rowProps} />;
   if (entry.type === "note") return <NoteHistoryRow {...rowProps} />;
   if (entry.type === "note-reply") return <NoteReplyRow {...rowProps} />;
+  if (entry.type === "give") return <GiveHistoryRow {...rowProps} />;
   // A spell's cast roll reads "casts Hex" rather than "Hex CAST".
   const isCast = entry.attack?.kind === "spell" && /\bCAST\b/.test(String(entry.label || ""));
   const actionLabel = isCast ? null : normalizeRollActionLabel(entry.label);

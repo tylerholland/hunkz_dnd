@@ -34,6 +34,7 @@ function eventTextParts(e) {
   if (e.type === "vote") return { who: "Party vote", what: voteLogText(e) };
   if (e.type === "moment") return { who: "Read aloud", what: `${e.title ? `${e.title}: ` : ""}${e.text}` };
   if (e.type === "note") return { who: "Note", what: e.passed ? `passed to ${(e.toNames || e.to || []).join(", ")}` : `to ${(e.toNames || e.to || []).join(", ")}${e.title ? ` · ${e.title}` : ""}: ${e.text}` };
+  if (e.type === "give") return { who: e.from?.name || "?", what: `gave ${e.to?.name || "someone"} ${e.qty > 1 ? `${e.qty} × ` : ""}${e.item}` };
   if (e.type === "note-reply") return { who: e.name || "?", what: `replied: ${e.text}` };
   if (e.type === "check") return { who: e.label || "Roll", what: `${checkName(e.check)}${e.dc ? ` (DC ${e.dc})` : ""}: ${(e.rows || []).map((r) => `${r.name || r.slug} ${r.total ?? "—"}${r.pass === true ? " ✓" : r.pass === false ? " ✗" : ""}`).join(", ")}` };
   return { who: e.characterName || "DM", what: `${e.label || "Roll"} ${e.exprLabel || ""}${e.target?.name ? ` ◎ ${e.target.name}` : ""}` };

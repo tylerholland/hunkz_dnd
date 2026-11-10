@@ -4,6 +4,7 @@ import SessionQuickAdd from "./SessionQuickAdd";
 import SessionLoadoutRow from "./SessionLoadoutRow";
 import SessionLedger from "./SessionLedger";
 import { healingDice, rollHealing } from "./potions";
+import GiveItemPanel from "./GiveItemPanel";
 
 const ATTUNEMENT_SLOTS = 3;
 const COLUMNS = [
@@ -17,13 +18,16 @@ const COLUMNS = [
 // Use Item, attunement. Writes go through `useInventoryWrites`.
 // onHeal (Session view): healing potions get Drink, which rolls their healing,
 // heals that much (up to max HP) and uses one up.
-export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, onCommitXp, onHeal, hpFull = false }) {
+// onGiveItem (Session view): "Give…" on an item → pick a party member
+// (`party`, everyone else) and how many; onGiveItem(item, toSlug, qty).
+export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, onCommitXp, onHeal, hpFull = false, party = [], onGiveItem }) {
   const [quickAddOpen, setQuickAddOpen] = useState(null); // "weapons" | "equipment" | null
   const [itemDetails, setItemDetails] = useState(null); // { kind, item?, seed? }
   const [recentAdds, setRecentAdds] = useState({}); // id → stagger index (row enter animation)
   const [expanded, setExpanded] = useState(() => new Set());
   const [attuneFlash, setAttuneFlash] = useState(null); // id of a row going over the limit
   const [drinkNote, setDrinkNote] = useState(null); // { id, text } — what a potion just did
+  const [giving, setGiving] = useState(null); // id of the item whose Give panel is open
 
   const lists = { weapons: char?.weapons || [], equipment: char?.equipment || [] };
   const attunedCount = [...lists.weapons, ...lists.equipment].filter((item) => item.requiresAttunement && item.attuned).length;
@@ -134,6 +138,23 @@ export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, 
                 onDrink={onHeal && healingDice(item) && item.qty !== 0 ? () => drink(kind, item, healingDice(item)) : undefined}
                 drinkDisabledReason={hpFull ? "You're at full HP" : ""}
                 note={drinkNote?.id === item.id ? drinkNote.text : ""}
+                onGive={onGiveItem ? () => setGiving((current) => (current === item.id ? null : item.id)) : undefined}
+                below={giving === item.id ? (
+                  <GiveItemPanel
+                    item={item}
+                    party={party}
+                    onClose={() => setGiving(null)}
+                    onGive={async (toSlug, qty) => {
+                      const result = await onGiveItem(item, toSlug, qty);
+                      if (result === true) {
+                        const who = party.find((m) => m.slug === toSlug)?.name || "them";
+                        setDrinkNote({ id: item.id, text: `Given to ${who}.` });
+                        setTimeout(() => setDrinkNote((current) => (current?.id === item.id ? null : current)), 5000);
+                      }
+                      return result;
+                    }}
+                  />
+                ) : null}
                 onAdjustQty={(delta) => adjustQty(kind, item.id, delta)}
                 onToggleEquipped={() => updateItem(kind, item.id, { equipped: item.equipped === false })}
                 onToggleAttuned={() => toggleAttuned(kind, item)}

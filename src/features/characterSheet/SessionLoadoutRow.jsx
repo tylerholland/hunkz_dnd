@@ -7,7 +7,7 @@ import "./sessionLoadout.css";
 // pencil (Edit) appears beside the caret on hover.
 // onDrink (Session view only) turns a healing potion's Use into Drink, on the
 // row itself; `note` shows a line under the row (what the potion did).
-export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse, onAdjustQty, onToggleAttuned, attuneFlash = false, onDrink, drinkDisabledReason = "", note = "" }) {
+export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse, onAdjustQty, onToggleAttuned, attuneFlash = false, onDrink, drinkDisabledReason = "", note = "", onGive, below = null }) {
   const isEquipped = item.equipped !== false;
   const canUse = !!onUse && item.qty != null && item.qty > 0;
   const toggle = () => { if (expandable) onToggleExpand?.(); };
@@ -15,7 +15,7 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
   const hasQty = item.qty != null;
   // Only rows with something behind them expand; the caret's slot stays
   // reserved either way so the edit pencil never shifts position.
-  const expandable = !!item.description || mods.length > 0 || hasQty;
+  const expandable = !!item.description || mods.length > 0 || hasQty || !!onGive;
   const isOpen = expandable && expanded;
   return (
     <div
@@ -102,14 +102,16 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
           {mods.length > 0 && (
             <div className="cs-sm-ld-mods">{mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</div>
           )}
-          {canUse && !onDrink && (
+          {((canUse && !onDrink) || onGive) && (
             <div className="cs-sm-ld-actions">
-              <button type="button" className="cs-sm-ld-action" onClick={onUse} title="Use one">Use Item</button>
+              {canUse && !onDrink && <button type="button" className="cs-sm-ld-action" onClick={onUse} title="Use one">Use Item</button>}
+              {onGive && item.qty !== 0 && <button type="button" className="cs-sm-ld-action" onClick={onGive} title="Give this to someone in the party">Give…</button>}
             </div>
           )}
         </div>
       )}
       {note && <div className="cs-sm-ld-note" role="status">{note}</div>}
+      {below}
     </div>
   );
 }
