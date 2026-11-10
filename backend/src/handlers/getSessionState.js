@@ -44,12 +44,15 @@ const {
   VOTE_SLUG,
   ROLL_REQUESTS_SLUG,
   SILENCE_SLUG,
+  PREP_DECK_SLUG,
+  TABLE_MESSAGES_SLUG,
   CHRONICLE_SLUG,
   isReservedCharacterSlug,
 } = require("../lib/specialItems");
 const { normalizeShop, shopStatus, shopSummary, normalizeCatalog, weaponDiceMap } = require("../lib/shop");
 const { normalizeRollRequests, projectRollRequests, publicCheckEvent } = require("../lib/rollRequests");
 const { normalizeSilence } = require("../lib/silence");
+const { normalizeDeck, normalizeMessages, projectMessages, publicMessageEvent } = require("../lib/tableMessages");
 const { currentVersion } = require("../lib/versioning");
 const {
   normalizeInitiativeRecord,
@@ -99,6 +102,8 @@ const SENTINEL_SLUGS = [
   VOTE_SLUG,
   ROLL_REQUESTS_SLUG,
   SILENCE_SLUG,
+  PREP_DECK_SLUG,
+  TABLE_MESSAGES_SLUG,
   INITIATIVE_SLUG,
   NPC_COMBAT_SLUG,
   ROLL_HISTORY_SLUG,
@@ -185,6 +190,9 @@ exports.handler = async (event) => {
   const rollRequests = projectRollRequests(normalizeRollRequests(sentinelBySlug.get(ROLL_REQUESTS_SLUG)), { isDm, slug: querySlug });
   // The DM asking for quiet (lib/silence.js): the same for everyone.
   const silence = normalizeSilence(sentinelBySlug.get(SILENCE_SLUG));
+  // Moments and notes the DM has sent (lib/tableMessages.js), and their deck (DM only).
+  const tableMessages = projectMessages(normalizeMessages(sentinelBySlug.get(TABLE_MESSAGES_SLUG)), { isDm, slug: querySlug });
+  const prepDeck = isDm ? normalizeDeck(sentinelBySlug.get(PREP_DECK_SLUG)).cards : undefined;
 
   // Round trip 2 — party members (+ optional ?slug target), single BatchGetItem.
   // Keyed off the roster only — if no roster item exists yet, party/partyStatus
@@ -237,6 +245,8 @@ exports.handler = async (event) => {
       vote,
       rollRequests,
       silence,
+      tableMessages,
+      prepDeck,
       serverTime,
       buildVersion: appMeta.buildVersion,
     };
@@ -350,6 +360,7 @@ exports.handler = async (event) => {
     ...rollHistory,
     rolls: (rollHistory.rolls || []).flatMap((event) => {
       if (event?.type === "check") return [publicCheckEvent(event, querySlug)];
+      if (event?.type === "note" || event?.type === "note-reply") { const shown = publicMessageEvent(event, querySlug); return shown ? [shown] : []; }
       if (event?.type !== "hp" && event?.type !== "condition" && event?.type !== "turn") return [event];
       if (shouldStripAttackerRef(event.subject, { getCharacterConditions, getNpcConditions, hiddenSubjectKeys })) return [];
       const out = { ...event };
@@ -373,6 +384,7 @@ exports.handler = async (event) => {
     vote,
     rollRequests,
     silence,
+    tableMessages,
     serverTime,
     buildVersion: appMeta.buildVersion,
   };

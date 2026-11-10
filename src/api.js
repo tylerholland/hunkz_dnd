@@ -511,3 +511,42 @@ export const postSilenceAck = (slug, password, id) =>
     headers: { "Content-Type": "application/json", "x-character-password": password },
     body: JSON.stringify({ asSlug: slug, id }),
   });
+
+// The DM's prep deck, and the moments / notes sent from it
+// (backend/src/handlers/tableMessages.js).
+export const putPrepDeck = (dmPassword, action, payload = {}) =>
+  request("/prep-deck", {
+    method: "PUT",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ ...payload, action }),
+  });
+
+/** Send a card ({ cardId, to? }) or an unsaved one ({ card }); names = slug → name for the log. */
+export const postTableMessage = (dmPassword, payload) =>
+  request("/table-messages", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify(payload),
+  });
+
+export const postMessageSeen = (slug, password, id) =>
+  request("/table-messages/seen", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": password },
+    body: JSON.stringify({ asSlug: slug, id }),
+  });
+
+export const postMessageReply = (slug, password, id, text) =>
+  request("/table-messages/reply", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": password },
+    body: JSON.stringify({ asSlug: slug, id, text }),
+  });
+
+// A prepared moment's picture: the same upload as NPC portraits, in its own folder.
+export const presignMomentArt = (filename, contentType, size, dmPassword) =>
+  request("/npc-library/portraits/presign", {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "x-character-password": dmPassword },
+    body: JSON.stringify({ filename, contentType, size, kind: "moment" }),
+  });

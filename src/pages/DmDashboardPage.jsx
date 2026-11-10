@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useLayoutEffect, useMemo } from "react";
 import { Link } from "react-router-dom";
-import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag, putHouseRules, putVote, putRollRequest, putSilence } from "../api";
+import { getDmParty, patchSession, putInitiative, putNpcCombat, putMapActive, listCharacters, getPartyRoster, putPartyRoster, getNpcLibrary, putNpcLibrary, getSessionState, postDmRoll, putRollTag, putHouseRules, putVote, putRollRequest, putSilence, putPrepDeck, postTableMessage } from "../api";
 import { CustomEffectsCtx } from "../features/dmDashboard/customEffectsContext";
 import { isHelpfulEffect, setCustomEffects, spellEffect } from "../lib/spellEffects";
 import DmDiceRoller from "../components/DmDiceRoller";
@@ -46,7 +46,9 @@ import AskRollModal from "../features/rollRequests/AskRollModal";
 import RollRequestCard from "../features/rollRequests/RollRequestCard";
 import { abilityCheck, initiativeCheck, mergeInitiative, skillCheck } from "../features/rollRequests/rollCheck";
 import SilenceCard from "../features/silence/SilenceCard";
-import { HushIcon, RollIcon, VoteIcon } from "../features/dmDashboard/actionIcons";
+import { HushIcon, NoteIcon, RollIcon, ScrollIcon, VoteIcon } from "../features/dmDashboard/actionIcons";
+import MessageComposer from "../features/prepDeck/MessageComposer";
+import PrepDeckPanel from "../features/prepDeck/PrepDeckPanel";
 import VoteComposer from "../features/vote/VoteComposer";
 
 // Story 55 added lastDamagedAt/lastDamageAmount/lastDamageFrom, stamped
@@ -124,6 +126,12 @@ export default function DmDashboardPage() {
   const [askForm, setAskForm] = useState(null);
   // "Request silence" while it's up: { id, acks }.
   const [silence, setSilence] = useState(null);
+  // The prep deck, the composer ({ kind, card?, editing?, saveOnly? }), and a
+  // moment / note about to go out (it waits a few seconds for Undo).
+  const [prepDeck, setPrepDeck] = useState([]);
+  const [composer, setComposer] = useState(null);
+  const [pendingSend, setPendingSend] = useState(null);
+  const pendingSendRef = useRef(null);
   const [npcLibrary, setNpcLibrary] = useState({ templates: [] });
   const [showEnemiesGallery, setShowEnemiesGallery] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState(null);
@@ -387,6 +395,7 @@ export default function DmDashboardPage() {
       setVote(sessionData.vote || null);
       setRollRequests(Array.isArray(sessionData.rollRequests) ? sessionData.rollRequests : []);
       setSilence(sessionData.silence || null);
+      if (Array.isArray(sessionData.prepDeck)) setPrepDeck(sessionData.prepDeck);
       reportServerBuildVersion(sessionData.buildVersion);
     } catch {
       // Show stale data rather than error on poll failure.
@@ -1383,6 +1392,75 @@ export default function DmDashboardPage() {
     } catch { /* the next poll shows where it stands */ }
     refreshSoon();
   }
+  const partyNames = () => Object.fromEntries(party.map((c) => [c.slug, c.name]));
+  async function saveDeckCard(fields) {
+    try {
+      const res = await putPrepDeck(dmPassword, "save", { card: fields });
+      setPrepDeck(res.prepDeck || []);
+      return true;
+    } catch (err) {
+      return err?.data?.error || "Couldn't save it. Try again.";
+    }
+  }
+  async function deleteDeckCard(id) {
+    try {
+      const res = await putPrepDeck(dmPassword, "delete", { id });
+      setPrepDeck(res.prepDeck || []);
+      return true;
+    } catch {
+      return "Couldn't delete it. Try again.";
+    }
+  }
+  async function deliver(payload) {
+    try {
+      const res = await postTableMessage(dmPassword, { ...payload, names: partyNames() });
+      if (res.prepDeck) setPrepDeck(res.prepDeck);
+    } catch { /* the next poll shows where it stands */ }
+    refreshSoon();
+  }
+  // Sending waits a few seconds so the DM can take it back. Sending another
+  // meanwhile delivers the waiting one straight away (it isn't dropped).
+  function queueSend(payload, label) {
+    const waiting = pendingSendRef.current;
+    if (waiting) {
+      window.clearTimeout(waiting.timer);
+      deliver(waiting.payload);
+    }
+    const entry = { label, payload };
+    entry.timer = window.setTimeout(() => {
+      pendingSendRef.current = null;
+      setPendingSend(null);
+      deliver(payload);
+    }, 5000);
+    pendingSendRef.current = entry;
+    setPendingSend(entry);
+  }
+  function undoSend() {
+    if (pendingSendRef.current) window.clearTimeout(pendingSendRef.current.timer);
+    pendingSendRef.current = null;
+    setPendingSend(null);
+  }
+  const sendLabel = (card, to) => {
+    if ((to || card.to) === "all") return `Reading “${card.title || "a moment"}” to everyone…`;
+    const names = (to || card.to).map((s) => party.find((c) => c.slug === s)?.name || s).join(", ");
+    return `Passing ${card.title ? `“${card.title}”` : "a note"} to ${names}…`;
+  };
+  function sendDeckCard(card, to) {
+    queueSend(to ? { cardId: card.id, to } : { cardId: card.id }, sendLabel(card, to));
+  }
+  async function sendFromComposer(fields) {
+    // A card picked from the deck (maybe edited) goes out as that card, so it
+    // moves to "used tonight"; anything else goes out as written.
+    if (fields.id) {
+      const saved = await saveDeckCard(fields);
+      if (saved !== true) return saved;
+      queueSend({ cardId: fields.id, to: fields.to }, sendLabel(fields));
+    } else {
+      queueSend({ card: fields }, sendLabel(fields));
+    }
+    return true;
+  }
+  const deckReady = (kind) => prepDeck.filter((c) => !c.usedAt && c.kind === kind).length;
   const silenceCard = silence && <SilenceCard silence={silence} members={party} onLift={() => silenceAction("lift")} />;
   const rollRequestCards = rollRequests.map((request) => (
     <RollRequestCard key={request.id} request={request} members={party} rules={houseRules} onAction={rollRequestAction} />
@@ -1391,6 +1469,8 @@ export default function DmDashboardPage() {
   const actionTiles = [
     { key: "ask", icon: <RollIcon />, title: "Ask for a Roll", sub: rollRequests.length ? `${rollRequests.length} out now` : "A check or save, for anyone", onClick: () => setAskForm({ who: [], check: skillCheck("perception") }) },
     { key: "vote", icon: <VoteIcon />, title: "Call a Vote", sub: voteOpen ? "A vote is open" : "Let the party choose", onClick: () => setVoteFormOpen(true), disabled: voteOpen },
+    { key: "moment", icon: <ScrollIcon />, title: "Read a Moment", sub: deckReady("moment") ? `${deckReady("moment")} prepared` : "Read-aloud text, for everyone", onClick: () => setComposer({ kind: "moment" }) },
+    { key: "note", icon: <NoteIcon />, title: "Pass a Note", sub: deckReady("note") ? `${deckReady("note")} prepared` : "Only they see it", onClick: () => setComposer({ kind: "note" }) },
     { key: "silence", icon: <HushIcon />, title: silence ? "Lift Silence" : "Request Silence", sub: silence ? `${(silence.acks || []).length} of ${party.length} listening` : "A big “Silence, please” on every screen", onClick: () => silenceAction(silence ? "lift" : "start"), wide: true },
   ];
   const palVars = {
@@ -1458,6 +1538,24 @@ export default function DmDashboardPage() {
           {voteFormOpen && <VoteComposer onSend={startVote} onClose={() => setVoteFormOpen(false)} />}
           {combatLayoutActive && silenceCard}
           {combatLayoutActive && rollRequestCards}
+          {composer && (
+            <MessageComposer
+              members={party}
+              deck={prepDeck}
+              initial={composer}
+              dmPassword={dmPassword}
+              onSave={saveDeckCard}
+              onSend={sendFromComposer}
+              onDelete={deleteDeckCard}
+              onClose={() => setComposer(null)}
+            />
+          )}
+          {pendingSend && (
+            <div className="dm-send-toast" role="status">
+              <span>{pendingSend.label}</span>
+              <button type="button" onClick={undoSend}>Undo</button>
+            </div>
+          )}
           {askForm && <AskRollModal members={party} rules={houseRules} initial={askForm} onSend={askRoll} onClose={() => setAskForm(null)} />}
           {combatMode && <ShopCombatNotice shop={shopSummary} dmPassword={dmPassword} onChanged={() => fetchDashboardData({ background: true, force: true })} />}
           {restNotice && (
@@ -1601,6 +1699,16 @@ export default function DmDashboardPage() {
                     historyTarget={combatLayoutActive ? null : feedEl}
                   />
                 </div>
+              </div>
+
+              <div className="dm-deck-wrap">
+                <PrepDeckPanel
+                  cards={prepDeck}
+                  members={party}
+                  onSend={sendDeckCard}
+                  onEdit={(card) => setComposer({ kind: card.kind, card, editing: true })}
+                  onPrepare={() => setComposer({ kind: "moment", saveOnly: true })}
+                />
               </div>
             </div>
 

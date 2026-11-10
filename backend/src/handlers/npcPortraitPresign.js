@@ -17,7 +17,8 @@ exports.handler = async (event) => {
   const body = JSON.parse(event.body || "{}");
   const { filename, contentType, size } = body;
   // The same upload serves shop item pictures (Item catalog), in their own folder.
-  const folder = body.kind === "shop-item" ? "shop-items" : "npc-portraits";
+  // …and the pictures on the DM's prepared moments.
+  const folder = body.kind === "shop-item" ? "shop-items" : body.kind === "moment" ? "moments" : "npc-portraits";
 
   if (!filename || typeof filename !== "string") return badRequest("filename required");
   if (!contentType || !contentType.startsWith("image/")) {

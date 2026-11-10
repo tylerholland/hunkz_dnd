@@ -323,6 +323,45 @@ export function CheckHistoryRow({ pal, entry, opacity = 1, showDivider = false }
   );
 }
 
+// The DM's prep deck: a moment read to everyone, a note passed (its words for
+// the DM and its recipients; for others just that it was passed), a reply.
+const rowBase = (pal, opacity, showDivider) => ({ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "2px 8px", padding: "7px 0", borderBottom: showDivider ? `1px solid ${pal.border}` : "none", opacity, transition: "opacity 0.4s" });
+const glyph = (pal) => ({ color: pal.accent, fontFamily: pal.fontUI, fontSize: 13, lineHeight: 1, flexShrink: 0, width: 13, textAlign: "center" });
+const quote = (pal) => ({ flexBasis: "100%", margin: "2px 0 0 21px", paddingLeft: 10, borderLeft: `2px solid ${pal.border}`, fontFamily: pal.fontBody, fontStyle: "italic", fontSize: 14, color: pal.textBody, whiteSpace: "pre-line" });
+
+export function MomentHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  return (
+    <div className="rh-row" style={rowBase(pal, opacity, showDivider)}>
+      <span style={glyph(pal)} aria-hidden="true">❧</span>
+      <span style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.text }}>Read to everyone{entry.title ? ` · ${entry.title}` : ""}</span>
+      <p style={{ ...quote(pal), display: "-webkit-box", WebkitLineClamp: 3, WebkitBoxOrient: "vertical", overflow: "hidden" }}>{entry.text}</p>
+    </div>
+  );
+}
+
+export function NoteHistoryRow({ pal, entry, opacity = 1, showDivider = false }) {
+  const to = (entry.toNames || entry.to || []).join(", ");
+  return (
+    <div className="rh-row" style={rowBase(pal, opacity, showDivider)}>
+      <span style={glyph(pal)} aria-hidden="true">✉</span>
+      <span style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.text }}>
+        {entry.passed ? `The DM passed ${to} a note` : `Note to ${to}${entry.title ? ` · ${entry.title}` : ""}`}
+      </span>
+      {!entry.passed && entry.text && <p style={quote(pal)}>{entry.text}</p>}
+    </div>
+  );
+}
+
+export function NoteReplyRow({ pal, entry, opacity = 1, showDivider = false }) {
+  return (
+    <div className="rh-row" style={rowBase(pal, opacity, showDivider)}>
+      <span style={glyph(pal)} aria-hidden="true">↩</span>
+      <span style={{ fontFamily: pal.fontBody, fontSize: 14, color: pal.text }}>{entry.name} replied{entry.title ? ` to “${entry.title}”` : ""}</span>
+      <p style={quote(pal)}>{entry.text}</p>
+    </div>
+  );
+}
+
 export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null, below = null, onSaveTag }) {
   // Branch on type: "wheel" entries render differently from dice rows
   const rowProps = { pal, entry, opacity, showDivider, onSaveTag };
@@ -334,6 +373,9 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
   if (entry.type === "shop") return <ShopHistoryRow {...rowProps} />;
   if (entry.type === "vote") return <VoteHistoryRow {...rowProps} />;
   if (entry.type === "check") return <CheckHistoryRow {...rowProps} />;
+  if (entry.type === "moment") return <MomentHistoryRow {...rowProps} />;
+  if (entry.type === "note") return <NoteHistoryRow {...rowProps} />;
+  if (entry.type === "note-reply") return <NoteReplyRow {...rowProps} />;
   // A spell's cast roll reads "casts Hex" rather than "Hex CAST".
   const isCast = entry.attack?.kind === "spell" && /\bCAST\b/.test(String(entry.label || ""));
   const actionLabel = isCast ? null : normalizeRollActionLabel(entry.label);

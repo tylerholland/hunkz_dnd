@@ -356,6 +356,15 @@
   color: var(--pal-text-muted);
 }
 
+/* The prep deck sits under the dice in Adventure; Combat leaves it out. */
+.dm-deck-wrap { transition: opacity 0.22s ease-in; }
+.dm-prototype-shell[data-chrome="false"] .dm-deck-wrap { opacity: 0; pointer-events: none; }
+.dm-prototype-shell[data-combat="true"] .dm-deck-wrap { display: none; }
+
+/* "Reading … to everyone… Undo" while a moment / note waits to go out. */
+.dm-send-toast { position: fixed; z-index: 950; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; max-width: calc(100vw - 32px); padding: 10px 14px; border: 1px solid var(--pal-accent); border-radius: 8px; background: var(--pal-surface-solid); color: var(--pal-text); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
+.dm-send-toast button { min-height: 34px; padding: 0 12px; border: 1px solid var(--pal-border); border-radius: 4px; background: transparent; color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; cursor: pointer; }
+
 /* ─── Action tiles (Adventure) ───────────────────────────────────────────── */
 .dm-action-tiles {
   display: grid;

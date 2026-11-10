@@ -126,11 +126,15 @@ function rangesOverlap(a, b) {
 
 // Players see a finished session much as they saw the live log: NPC HP
 // totals stay hidden (only the change shows).
+// Notes stay with the DM and their recipients (lib/tableMessages.js).
+const { publicMessageEvent } = require("./tableMessages");
+
 function publicSessionEvents(events) {
-  return events.map((event) => {
-    if (event?.type !== "hp" || event.subject?.type !== "npc") return event;
+  return events.flatMap((event) => {
+    if (event?.type === "note" || event?.type === "note-reply") { const shown = publicMessageEvent(event); return shown ? [shown] : []; }
+    if (event?.type !== "hp" || event.subject?.type !== "npc") return [event];
     const { from, to, max, ...rest } = event;
-    return rest;
+    return [rest];
   });
 }
 

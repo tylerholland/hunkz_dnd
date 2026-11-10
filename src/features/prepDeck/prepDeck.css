@@ -1,0 +1,51 @@
+/* The DM's prep deck (moments and notes) and the players' pop-ups. Builds on
+   the vote's shared modal/button styles (vote.css) and roll-request chips. */
+
+.pd-modal { width: min(600px, 100%); }
+.pd-text { min-height: 120px; resize: vertical; line-height: 1.45; }
+.pd-to-chip { display: inline-flex; align-items: center; gap: 6px; padding-left: 4px; }
+.pd-picture-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.pd-thumb { width: 96px; height: 60px; object-fit: cover; border-radius: 6px; border: 1px solid var(--pal-border); }
+
+/* The deck panel (DM tools column). */
+.pd-panel { display: grid; gap: 10px; margin-top: 20px; padding: 14px 16px; background: var(--pal-surface); border: 1px solid var(--pal-border); border-radius: 4px; }
+.pd-head { display: flex; align-items: center; gap: 8px; }
+.pd-head .label-ui { margin-bottom: 0; }
+.pd-head .vc-btn { min-height: 34px; }
+.pd-list { display: grid; gap: 8px; }
+.pd-card { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 10px; padding: 10px; border: 1px solid var(--pal-border); border-radius: 6px; background: var(--pal-surface-solid); }
+.pd-card.used { opacity: 0.6; }
+.pd-card-main { min-width: 0; display: grid; gap: 4px; }
+.pd-card-head { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.pd-card-thumb { width: 44px; height: 32px; flex: none; object-fit: cover; border-radius: 4px; border: 1px solid var(--pal-border); }
+.pd-kind { display: inline-flex; flex: none; }
+.pd-kind svg { width: 16px; height: 16px; }
+.pd-kind--moment { color: #d9b45a; }
+.pd-kind--note { color: #c9a45c; }
+[data-light="true"] .pd-kind--moment, [data-light="true"] .pd-kind--note { color: #8a6418; }
+.pd-card-title { font-family: 'Cinzel', serif; font-size: 14px; color: var(--pal-text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pd-card-text { margin: 0; font-family: 'Crimson Text', Georgia, serif; font-size: 14px; color: var(--pal-text-body, var(--pal-text)); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.pd-to { margin-right: 6px; padding: 0 8px; border: 1px solid var(--pal-border); border-radius: 999px; font-family: var(--font-ui, 'IM Fell English', serif); font-size: 12px; letter-spacing: 0.04em; color: var(--pal-text-muted); white-space: nowrap; }
+.pd-card-actions { display: grid; gap: 4px; align-content: start; justify-items: stretch; }
+.pd-card-actions .vc-btn { min-height: 32px; padding: 0 12px; }
+.pd-used-at { font-family: 'Crimson Text', Georgia, serif; font-style: italic; font-size: 13px; color: var(--pal-text-muted); text-align: center; }
+.pd-pick { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding-top: 8px; border-top: 1px dashed var(--pal-border); }
+
+/* Players: a moment (a scroll over the page) and a note (a card near the top). */
+.pm-scrim { position: fixed; inset: 0; z-index: 900; display: flex; align-items: center; justify-content: center; padding: 16px; background: rgba(4, 8, 12, 0.62); animation: pm-fade 300ms ease-out; }
+.pm-scrim--light { background: rgba(60, 40, 20, 0.35); }
+.pm-scroll { width: min(640px, 100%); max-height: calc(100vh - 32px); overflow: auto; background: var(--pal-surface-solid); border: 1px solid #d9b45a; border-radius: 4px; box-shadow: 0 0 0 6px var(--pal-surface-solid), 0 0 0 7px var(--pal-border), 0 24px 60px rgba(0, 0, 0, 0.5); }
+.pm-scrim--light .pm-scroll { border-color: #8a6418; }
+.pm-pic { display: block; width: 100%; max-height: 300px; object-fit: cover; border-bottom: 1px solid var(--pal-border); }
+.pm-body { display: grid; gap: 12px; padding: 20px 26px 22px; }
+.pm-orn { text-align: center; color: #d9b45a; letter-spacing: 0.6em; font-size: 12px; }
+.pm-scroll h2 { margin: 0; text-align: center; font-family: 'Cinzel', serif; font-weight: 400; font-size: 22px; letter-spacing: 0.05em; color: var(--pal-text); }
+.pm-text { margin: 0; white-space: pre-line; font-family: 'Crimson Text', Georgia, serif; font-size: 18px; line-height: 1.55; color: var(--pal-text); }
+.pm-foot { display: grid; justify-items: center; gap: 6px; padding-top: 4px; }
+.pm-note { border-color: #c9a45c; }
+.pm-note-head { display: flex; align-items: center; gap: 10px; }
+.pm-seal { width: 34px; height: 34px; flex: none; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle at 40% 35%, #b4483a, #5a160e); color: #f2d6c8; }
+.pm-seal svg { width: 18px; height: 18px; }
+.pm-note-text { margin: 0; white-space: pre-line; font-family: 'Crimson Text', Georgia, serif; font-size: 17px; line-height: 1.5; color: var(--pal-text); }
+@keyframes pm-fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pm-scrim { animation: none; } }

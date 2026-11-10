@@ -74,6 +74,7 @@ import { combatGuideSeen } from "../combatGuide/combatGuideSteps";
 import PlayerVote from "../vote/PlayerVote";
 import PlayerRollPrompt from "../rollRequests/PlayerRollPrompt";
 import PlayerSilence from "../silence/PlayerSilence";
+import PlayerMessages from "../prepDeck/PlayerMessages";
 
 // Player map band height (drag bar): 240px up to the window height minus the
 // top bar, so the map can never push itself entirely off screen.
@@ -407,6 +408,7 @@ export default function CharacterSheetSessionMode({
   vote = null,
   rollRequests = [],
   silence = null,
+  tableMessages = [],
   initiativeData,
   npcCombat,
   wsConnected,
@@ -1186,6 +1188,7 @@ export default function CharacterSheetSessionMode({
         <PlayerVote vote={vote} slug={slug} password={sessionPassword} members={partyCards} serverTime={serverTime} light={!!pal.light} />
         <PlayerRollPrompt requests={rollRequests} char={char} rules={houseRules} slug={slug} password={sessionPassword} members={partyCards} light={!!pal.light} />
         <PlayerSilence silence={silence} slug={slug} password={sessionPassword} light={!!pal.light} />
+        <PlayerMessages messages={tableMessages} slug={slug} password={sessionPassword} light={!!pal.light} />
         <TopNav
           backTo="/"
           title={char?.name}
@@ -1249,6 +1252,7 @@ export default function CharacterSheetSessionMode({
       <PlayerVote vote={vote} slug={slug} password={sessionPassword} members={partyCards} serverTime={serverTime} light={!!pal.light} />
       <PlayerRollPrompt requests={rollRequests} char={char} rules={houseRules} slug={slug} password={sessionPassword} members={partyCards} light={!!pal.light} />
       <PlayerSilence silence={silence} slug={slug} password={sessionPassword} light={!!pal.light} />
+      <PlayerMessages messages={tableMessages} slug={slug} password={sessionPassword} light={!!pal.light} />
 
       {/* ── Top bar (shared TopNav) ── */}
       <TopNav
