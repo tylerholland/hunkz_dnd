@@ -1,0 +1,1583 @@
+{
+  "partyStatus": {
+    "visible": true,
+    "members": [
+      {
+        "slug": "eoghan",
+        "name": "Eòghan",
+        "palette": "ocean",
+        "hpCurrent": 18,
+        "hpMax": 18,
+        "version": 3,
+        "partyCard": {
+          "race": "",
+          "charClass": "",
+          "subclass": "",
+          "level": null,
+          "armorClass": 10,
+          "abilityMods": {
+            "Strength": 0,
+            "Dexterity": 0,
+            "Constitution": 0,
+            "Intelligence": 0,
+            "Wisdom": 0,
+            "Charisma": 0
+          },
+          "skills": [],
+          "specialAbilities": [],
+          "spellSlots": []
+        },
+        "tempHP": 0,
+        "conditions": [],
+        "concentration": {
+          "active": false,
+          "spell": ""
+        },
+        "inspiration": false,
+        "deathSaves": {
+          "successes": 0,
+          "failures": 0
+        },
+        "exhaustionLevel": 0,
+        "lastDamageFrom": null,
+        "lastHealFrom": null,
+        "lastFx": null
+      },
+      {
+        "slug": "liu-sha",
+        "name": "Liu Sha",
+        "palette": "ocean",
+        "hpCurrent": 18,
+        "hpMax": 18,
+        "version": 4,
+        "partyCard": {
+          "race": "",
+          "charClass": "",
+          "subclass": "",
+          "level": null,
+          "armorClass": 10,
+          "abilityMods": {
+            "Strength": 0,
+            "Dexterity": 0,
+            "Constitution": 0,
+            "Intelligence": 0,
+            "Wisdom": 0,
+            "Charisma": 0
+          },
+          "skills": [],
+          "specialAbilities": [],
+          "spellSlots": []
+        },
+        "tempHP": 0,
+        "conditions": [],
+        "concentration": {
+          "active": false,
+          "spell": ""
+        },
+        "inspiration": false,
+        "deathSaves": {
+          "successes": 0,
+          "failures": 0
+        },
+        "exhaustionLevel": 0,
+        "lastDamageFrom": null,
+        "lastHealFrom": null,
+        "lastFx": null
+      },
+      {
+        "slug": "aesop",
+        "name": "Aesop",
+        "palette": "ocean",
+        "hpCurrent": 18,
+        "hpMax": 18,
+        "version": 5,
+        "partyCard": {
+          "race": "",
+          "charClass": "",
+          "subclass": "",
+          "level": null,
+          "armorClass": 10,
+          "abilityMods": {
+            "Strength": 0,
+            "Dexterity": 0,
+            "Constitution": 0,
+            "Intelligence": 0,
+            "Wisdom": 0,
+            "Charisma": 0
+          },
+          "skills": [],
+          "specialAbilities": [],
+          "spellSlots": []
+        },
+        "tempHP": 0,
+        "conditions": [],
+        "concentration": {
+          "active": false,
+          "spell": ""
+        },
+        "inspiration": false,
+        "deathSaves": {
+          "successes": 0,
+          "failures": 0
+        },
+        "exhaustionLevel": 0,
+        "lastDamageFrom": null,
+        "lastHealFrom": null,
+        "lastFx": null
+      }
+    ]
+  },
+  "initiativePublic": {
+    "round": 2,
+    "activeTurnIndex": 0,
+    "entries": [
+      {
+        "id": "e1",
+        "name": "Eòghan",
+        "slug": "eoghan",
+        "palette": null
+      }
+    ],
+    "turnStartedAt": null,
+    "version": 9
+  },
+  "npcCombatPublic": {
+    "version": 4,
+    "npcs": [
+      {
+        "id": "npc-1",
+        "name": "Carrion Crawler",
+        "portraitUrl": null,
+        "conditions": [],
+        "lastDamagedAt": null,
+        "lastDamageAmount": null,
+        "lastDamageFrom": null,
+        "lastHealedAt": null,
+        "lastHealAmount": null,
+        "lastHealFrom": null,
+        "lastFx": null,
+        "effectNotes": {},
+        "effectSources": {}
+      }
+    ]
+  },
+  "mapLibrary": {
+    "activeMapId": "m1",
+    "adventureMapId": null,
+    "battleMapId": null,
+    "combatMode": false,
+    "activeMapView": null,
+    "maps": [
+      {
+        "id": "m1",
+        "name": "Sewers",
+        "imageUrl": "https://hunkz-dnd-portraits.s3.amazonaws.com/maps/sewers.png",
+        "tokens": [],
+        "contentType": "image/png",
+        "tokenScale": 1,
+        "rotation": 0
+      }
+    ],
+    "version": 12
+  },
+  "rollHistory": {
+    "rolls": [
+      {
+        "id": "roll-0249",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:09:00.000Z"
+      },
+      {
+        "id": "roll-0248",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:08:00.000Z"
+      },
+      {
+        "id": "roll-0247",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:07:00.000Z"
+      },
+      {
+        "id": "roll-0246",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:06:00.000Z"
+      },
+      {
+        "id": "roll-0245",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:05:00.000Z"
+      },
+      {
+        "id": "roll-0244",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:04:00.000Z"
+      },
+      {
+        "id": "roll-0243",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:03:00.000Z"
+      },
+      {
+        "id": "roll-0242",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:02:00.000Z"
+      },
+      {
+        "id": "roll-0241",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:01:00.000Z"
+      },
+      {
+        "id": "roll-0240",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T23:00:00.000Z"
+      },
+      {
+        "id": "roll-0239",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:59:00.000Z"
+      },
+      {
+        "id": "roll-0238",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:58:00.000Z"
+      },
+      {
+        "id": "roll-0237",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:57:00.000Z"
+      },
+      {
+        "id": "roll-0236",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:56:00.000Z"
+      },
+      {
+        "id": "roll-0235",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:55:00.000Z"
+      },
+      {
+        "id": "roll-0234",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:54:00.000Z"
+      },
+      {
+        "id": "roll-0233",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:53:00.000Z"
+      },
+      {
+        "id": "roll-0232",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:52:00.000Z"
+      },
+      {
+        "id": "roll-0231",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:51:00.000Z"
+      },
+      {
+        "id": "roll-0230",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:50:00.000Z"
+      },
+      {
+        "id": "roll-0229",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:49:00.000Z"
+      },
+      {
+        "id": "roll-0228",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:48:00.000Z"
+      },
+      {
+        "id": "roll-0227",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:47:00.000Z"
+      },
+      {
+        "id": "roll-0226",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:46:00.000Z"
+      },
+      {
+        "id": "roll-0225",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:45:00.000Z"
+      },
+      {
+        "id": "roll-0224",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:44:00.000Z"
+      },
+      {
+        "id": "roll-0223",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:43:00.000Z"
+      },
+      {
+        "id": "roll-0222",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:42:00.000Z"
+      },
+      {
+        "id": "roll-0221",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:41:00.000Z"
+      },
+      {
+        "id": "roll-0220",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:40:00.000Z"
+      },
+      {
+        "id": "roll-0219",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:39:00.000Z"
+      },
+      {
+        "id": "roll-0218",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:38:00.000Z"
+      },
+      {
+        "id": "roll-0217",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:37:00.000Z"
+      },
+      {
+        "id": "roll-0216",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:36:00.000Z"
+      },
+      {
+        "id": "roll-0215",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:35:00.000Z"
+      },
+      {
+        "id": "roll-0214",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:34:00.000Z"
+      },
+      {
+        "id": "roll-0213",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:33:00.000Z"
+      },
+      {
+        "id": "roll-0212",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:32:00.000Z"
+      },
+      {
+        "id": "roll-0211",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:31:00.000Z"
+      },
+      {
+        "id": "roll-0210",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:30:00.000Z"
+      },
+      {
+        "id": "roll-0209",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:29:00.000Z"
+      },
+      {
+        "id": "roll-0208",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:28:00.000Z"
+      },
+      {
+        "id": "roll-0207",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:27:00.000Z"
+      },
+      {
+        "id": "roll-0206",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:26:00.000Z"
+      },
+      {
+        "id": "roll-0205",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:25:00.000Z"
+      },
+      {
+        "id": "roll-0204",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:24:00.000Z"
+      },
+      {
+        "id": "roll-0203",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:23:00.000Z"
+      },
+      {
+        "id": "roll-0202",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:22:00.000Z"
+      },
+      {
+        "id": "cond-0201",
+        "type": "condition",
+        "subject": {
+          "type": "character",
+          "sourceId": "aesop",
+          "name": "Aesop"
+        },
+        "added": [
+          "Poisoned"
+        ],
+        "removed": [],
+        "editor": "dm",
+        "createdAt": "2026-10-01T22:21:00.000Z"
+      },
+      {
+        "id": "hp-0200",
+        "type": "hp",
+        "subject": {
+          "type": "npc",
+          "sourceId": "npc-1",
+          "name": "Carrion Crawler"
+        },
+        "delta": -6,
+        "editor": "dm",
+        "createdAt": "2026-10-01T22:20:00.000Z"
+      },
+      {
+        "id": "roll-0199",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:19:00.000Z"
+      },
+      {
+        "id": "roll-0198",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:18:00.000Z"
+      },
+      {
+        "id": "roll-0197",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:17:00.000Z"
+      },
+      {
+        "id": "roll-0196",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:16:00.000Z"
+      },
+      {
+        "id": "roll-0195",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:15:00.000Z"
+      },
+      {
+        "id": "roll-0194",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:14:00.000Z"
+      },
+      {
+        "id": "roll-0193",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:13:00.000Z"
+      },
+      {
+        "id": "roll-0192",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:12:00.000Z"
+      },
+      {
+        "id": "roll-0191",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:11:00.000Z"
+      },
+      {
+        "id": "roll-0190",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:10:00.000Z"
+      },
+      {
+        "id": "roll-0189",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:09:00.000Z"
+      },
+      {
+        "id": "roll-0188",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:08:00.000Z"
+      },
+      {
+        "id": "roll-0187",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:07:00.000Z"
+      },
+      {
+        "id": "roll-0186",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:06:00.000Z"
+      },
+      {
+        "id": "roll-0185",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:05:00.000Z"
+      },
+      {
+        "id": "roll-0184",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:04:00.000Z"
+      },
+      {
+        "id": "roll-0183",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:03:00.000Z"
+      },
+      {
+        "id": "roll-0182",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:02:00.000Z"
+      },
+      {
+        "id": "roll-0181",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:01:00.000Z"
+      },
+      {
+        "id": "roll-0180",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T22:00:00.000Z"
+      },
+      {
+        "id": "roll-0179",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:59:00.000Z"
+      },
+      {
+        "id": "roll-0178",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:58:00.000Z"
+      },
+      {
+        "id": "roll-0177",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:57:00.000Z"
+      },
+      {
+        "id": "roll-0176",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:56:00.000Z"
+      },
+      {
+        "id": "roll-0175",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:55:00.000Z"
+      },
+      {
+        "id": "roll-0174",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:54:00.000Z"
+      },
+      {
+        "id": "roll-0173",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:53:00.000Z"
+      },
+      {
+        "id": "roll-0172",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:52:00.000Z"
+      },
+      {
+        "id": "roll-0171",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:51:00.000Z"
+      },
+      {
+        "id": "roll-0170",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:50:00.000Z"
+      },
+      {
+        "id": "roll-0169",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:49:00.000Z"
+      },
+      {
+        "id": "roll-0168",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:48:00.000Z"
+      },
+      {
+        "id": "roll-0167",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:47:00.000Z"
+      },
+      {
+        "id": "roll-0166",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:46:00.000Z"
+      },
+      {
+        "id": "roll-0165",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:45:00.000Z"
+      },
+      {
+        "id": "roll-0164",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:44:00.000Z"
+      },
+      {
+        "id": "roll-0163",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:43:00.000Z"
+      },
+      {
+        "id": "roll-0162",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:42:00.000Z"
+      },
+      {
+        "id": "roll-0161",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:41:00.000Z"
+      },
+      {
+        "id": "roll-0160",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:40:00.000Z"
+      },
+      {
+        "id": "roll-0159",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:39:00.000Z"
+      },
+      {
+        "id": "roll-0158",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:38:00.000Z"
+      },
+      {
+        "id": "roll-0157",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:37:00.000Z"
+      },
+      {
+        "id": "roll-0156",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:36:00.000Z"
+      },
+      {
+        "id": "roll-0155",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:35:00.000Z"
+      },
+      {
+        "id": "roll-0154",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:34:00.000Z"
+      },
+      {
+        "id": "roll-0153",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:33:00.000Z"
+      },
+      {
+        "id": "roll-0152",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:32:00.000Z"
+      },
+      {
+        "id": "roll-0151",
+        "slug": "eoghan",
+        "characterName": "Eòghan",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:31:00.000Z"
+      },
+      {
+        "id": "roll-0150",
+        "slug": "liu-sha",
+        "characterName": "Liu Sha",
+        "label": "Free Roll",
+        "exprLabel": "2d6",
+        "total": 7,
+        "rollValues": [
+          3,
+          4
+        ],
+        "createdAt": "2026-10-01T21:30:00.000Z"
+      }
+    ],
+    "version": 250
+  },
+  "houseRules": {
+    "abilityCheckDice": "2d6",
+    "featuresEnabled": true,
+    "spellCastDice": "1d20",
+    "playersEndTurn": true,
+    "customEffects": [],
+    "money": {
+      "main": "sp",
+      "coins": {
+        "cp": {
+          "on": false,
+          "rate": 0.1
+        },
+        "sp": {
+          "on": true,
+          "rate": 1
+        },
+        "ep": {
+          "on": false,
+          "rate": 5
+        },
+        "gp": {
+          "on": true,
+          "rate": 10
+        },
+        "pp": {
+          "on": false,
+          "rate": 100
+        }
+      }
+    },
+    "npcAttackDice": "1d20+3",
+    "weaponDamage": "wod",
+    "saveDice": "1d20",
+    "skillBonus": "none",
+    "initiativeDice": "1d20",
+    "autoInitiative": true,
+    "askRollPurpose": true,
+    "version": 3,
+    "weaponDice": {
+      "dagger": "d6",
+      "short-sword": "d6",
+      "club": "d6",
+      "hand-axe": "d6",
+      "mace": "d6",
+      "longsword": "d6+1",
+      "spear": "d6+1",
+      "flail": "d6+1",
+      "warhammer": "d6+1",
+      "rapier": "d6+1",
+      "greatsword": "d6+2",
+      "battle-axe": "d6+2",
+      "halberd": "d6+2",
+      "maul": "d6+2",
+      "sling": "d6",
+      "hand-crossbow": "d6",
+      "crossbow": "d6+1",
+      "heavy-crossbow": "d6+2",
+      "longbow": "d6+2"
+    }
+  },
+  "talentCodexVersion": 1,
+  "shop": {
+    "status": "closed",
+    "opensAt": null,
+    "closesAt": null,
+    "lockupUntil": null,
+    "keeper": "humble",
+    "keeperName": "Mags",
+    "name": "Ironwhistle's Emporium",
+    "openingId": null,
+    "version": 8
+  },
+  "presence": {
+    "eoghan": "<now>"
+  },
+  "vote": null,
+  "rollRequests": [],
+  "silence": null,
+  "tableMessages": [],
+  "buildVersion": "2026-10-01-abc123",
+  "character": {
+    "slug": "eoghan",
+    "name": "Eòghan",
+    "palette": "ocean",
+    "hpCurrent": 18,
+    "hpMax": 18,
+    "weapons": [],
+    "equipment": [],
+    "version": 3,
+    "updatedAt": "2026-10-01T19:00:00.000Z",
+    "tempHP": 0,
+    "isActiveTurn": true
+  }
+}

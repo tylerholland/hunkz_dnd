@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "test": "npm run test:frontend && npm run test:backend",
     "test:frontend": "vitest run",
-    "test:backend": "node --test backend/src/lib/*.test.cjs backend/src/handlers/*.test.cjs"
+    "test:backend": "node --test backend/src/lib/*.test.cjs backend/src/handlers/*.test.cjs",
+    "test:phase0": "node --test backend/test/phase0/*.test.cjs; vitest run --config vitest.phase0.config.js"
   },
   "dependencies": {
     "graphify": "^1.0.0",
