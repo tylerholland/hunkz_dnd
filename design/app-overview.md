@@ -388,7 +388,7 @@ A dedicated DM session-management view accessible at `/dm`.
 - Removing a PC from the roster also removes that PC's initiative entries so campaign state stays coherent
 
 **Layout** (2026-11, `design/prototypes/dm-adventure-layout.html`): the map stays on top. Below it, three columns:
-- Adventure: DM tools (action tiles, e.g. Call a Vote; the party actions row; counter wheels; dice roller) | **At the table** feed (the live vote card, then the session log: `DmDiceRoller` renders its history into the feed via `historyTarget` instead of inside the roller) | party cards.
+- Adventure: DM tools (action tiles; a full-width **Start Combat** bar under them; counter wheels; dice roller; prep deck) | **At the table** feed (the live vote card, then the session log: `DmDiceRoller` renders its history into the feed via `historyTarget` instead of inside the roller) | party cards, topped by a quiet **Party** toolbar (Short Rest, Long Rest, Award XP when anyone tracks XP, Distribute Coin; Adventure only).
 - Combat: party cards | dice roller + counter wheels (history back inside the roller) | initiative + enemies.
 - Switching is staged in `toggleCombatMode()`: tools and feed fade out, the cards slide across columns (FLIP), then dice/counters and the side panel (or tools and feed) come back. Below 1180px Adventure is two columns (tools | feed over cards); below 900px everything stacks (cards first in Combat).
 

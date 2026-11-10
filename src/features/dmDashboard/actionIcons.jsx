@@ -57,3 +57,55 @@ export function NoteIcon() {
     </svg>
   );
 }
+
+/** Start Combat: crossed swords. */
+export function SwordsIcon() {
+  return (
+    <svg {...base}>
+      <path d="M14.5 17.5 3 6V3h3l11.5 11.5" />
+      <path d="m13 19 6-6M16 16l4 4M19 21l2-2" />
+      <path d="M14.5 6.5 18 3h3v3l-3.5 3.5" />
+      <path d="m5 14 4 4M7 17l-3 3M3 19l2 2" />
+    </svg>
+  );
+}
+
+/** Short Rest: an hourglass (an hour's breather). */
+export function HourglassIcon() {
+  return (
+    <svg {...base}>
+      <path d="M6 3h12M6 21h12" />
+      <path d="M7 3c0 5 5 6 5 9s-5 4-5 9M17 3c0 5-5 6-5 9s5 4 5 9" />
+    </svg>
+  );
+}
+
+/** Long Rest: a crescent moon. */
+export function MoonIcon() {
+  return (
+    <svg {...base}>
+      <path d="M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5Z" />
+    </svg>
+  );
+}
+
+/** Award XP: a star. */
+export function StarIcon() {
+  return (
+    <svg {...base}>
+      <path d="m12 3 2.7 5.6 6.1.9-4.4 4.3 1 6.1L12 17l-5.4 2.9 1-6.1-4.4-4.3 6.1-.9Z" />
+    </svg>
+  );
+}
+
+/** Distribute Coin: a stack of coins. */
+export function CoinsIcon() {
+  return (
+    <svg {...base}>
+      <ellipse cx="12" cy="6" rx="7" ry="2.5" />
+      <path d="M5 6v4c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5V6" />
+      <path d="M5 10v4c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-4" />
+      <path d="M5 14v4c0 1.4 3.1 2.5 7 2.5s7-1.1 7-2.5v-4" />
+    </svg>
+  );
+}

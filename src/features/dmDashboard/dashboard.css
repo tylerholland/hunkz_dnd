@@ -365,6 +365,27 @@
 .dm-send-toast { position: fixed; z-index: 950; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; gap: 14px; max-width: calc(100vw - 32px); padding: 10px 14px; border: 1px solid var(--pal-accent); border-radius: 8px; background: var(--pal-surface-solid); color: var(--pal-text); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
 .dm-send-toast button { min-height: 34px; padding: 0 12px; border: 1px solid var(--pal-border); border-radius: 4px; background: transparent; color: var(--pal-accent-bright); font-family: 'Cinzel', serif; font-size: 12px; letter-spacing: 0.06em; cursor: pointer; }
 
+/* Start Combat: a full-width bar under the tiles, in the combat colour. */
+.dm-start-combat { display: grid; grid-template-columns: auto minmax(0, 1fr); column-gap: 10px; align-items: center; width: 100%; min-height: 54px; padding: 8px 12px; text-align: left; border: 1px solid rgba(192, 96, 96, 0.45); border-radius: 4px; background: rgba(192, 96, 96, 0.08); color: var(--pal-text); cursor: pointer; transition: border-color 0.15s ease, background 0.15s ease; }
+.dm-start-combat:hover { border-color: #c06060; background: rgba(192, 96, 96, 0.14); }
+.dm-start-combat:focus-visible { outline: 2px solid #c06060; outline-offset: 2px; }
+.dm-start-combat-icon { grid-row: 1 / span 2; display: flex; color: #d08070; }
+.dm-start-combat-title { font-family: var(--font-display, 'Cinzel', serif); font-size: 15px; letter-spacing: 0.04em; color: #e0a090; }
+.dm-start-combat-sub { font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-style: italic; font-size: 13px; color: var(--pal-text-muted); }
+[data-light="true"] .dm-start-combat { border-color: rgba(154, 42, 32, 0.4); background: rgba(154, 42, 32, 0.05); }
+[data-light="true"] .dm-start-combat-icon, [data-light="true"] .dm-start-combat-title { color: #9a2a20; }
+
+/* Party upkeep: a quiet toolbar on top of the party column (Adventure). */
+.dm-party-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 14px; }
+.dm-party-bar .label-ui { margin-bottom: 0; }
+.dm-party-btn { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 11px; border: 1px solid var(--pal-border); border-radius: 999px; background: transparent; color: var(--pal-text-body, var(--pal-text)); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 14px; cursor: pointer; transition: border-color 0.15s ease, color 0.15s ease; }
+.dm-party-btn svg { width: 15px; height: 15px; color: var(--pal-accent-bright); }
+.dm-party-btn:hover { border-color: var(--pal-accent); color: var(--pal-text); }
+.dm-party-btn--coin svg { color: #c8a040; }
+[data-light="true"] .dm-party-btn--coin svg { color: #8a6418; }
+.dm-prototype-shell[data-combat="true"] .dm-party-bar { display: none; }
+.dm-prototype-shell[data-chrome="false"] .dm-party-bar { opacity: 0; pointer-events: none; }
+
 /* ─── Action tiles (Adventure) ───────────────────────────────────────────── */
 .dm-action-tiles {
   display: grid;

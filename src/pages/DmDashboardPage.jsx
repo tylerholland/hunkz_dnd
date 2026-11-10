@@ -46,7 +46,7 @@ import AskRollModal from "../features/rollRequests/AskRollModal";
 import RollRequestCard from "../features/rollRequests/RollRequestCard";
 import { abilityCheck, initiativeCheck, mergeInitiative, skillCheck } from "../features/rollRequests/rollCheck";
 import SilenceCard from "../features/silence/SilenceCard";
-import { HushIcon, NoteIcon, RollIcon, ScrollIcon, VoteIcon } from "../features/dmDashboard/actionIcons";
+import { CoinsIcon, HourglassIcon, HushIcon, MoonIcon, NoteIcon, RollIcon, ScrollIcon, StarIcon, SwordsIcon, VoteIcon } from "../features/dmDashboard/actionIcons";
 import MessageComposer from "../features/prepDeck/MessageComposer";
 import PrepDeckPanel from "../features/prepDeck/PrepDeckPanel";
 import VoteComposer from "../features/vote/VoteComposer";
@@ -1243,19 +1243,6 @@ export default function DmDashboardPage() {
     );
   }
 
-  const topButtonStyle = {
-    background: "transparent",
-    border: "1px solid rgba(100,130,160,0.32)",
-    borderRadius: 3,
-    color: pal.textMuted,
-    fontFamily: pal.fontUI,
-    fontSize: 11,
-    letterSpacing: "0.18em",
-    textTransform: "uppercase",
-    padding: "7px 14px",
-    cursor: "pointer",
-    transition: "border-color 0.18s, color 0.18s, background 0.18s",
-  };
   const panelStyle = {
     background: pal.surface,
     border: `1px solid ${pal.border}`,
@@ -1339,6 +1326,7 @@ export default function DmDashboardPage() {
     {
       key: "short-rest",
       label: "Short Rest",
+      icon: <HourglassIcon />,
       action: () => setConfirmDialog({
         title: "Short Rest",
         message: "Reset Pact Magic (Warlock) spell slots for all characters. Standard spell slots and HP are not affected.",
@@ -1348,6 +1336,7 @@ export default function DmDashboardPage() {
     {
       key: "long-rest",
       label: "Long Rest",
+      icon: <MoonIcon />,
       action: () => setConfirmDialog({
         title: "Long Rest",
         message: "Reset all spell slots and restore all characters to max HP. This cannot be undone.",
@@ -1631,44 +1620,12 @@ export default function DmDashboardPage() {
                 }}
               >
                 <DmActionTiles tiles={actionTiles}>
-                  <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                    <button
-                      onClick={() => toggleCombatMode()}
-                      style={{ ...topButtonStyle, borderColor: "rgba(90,138,96,0.5)", color: "#88b888" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#88b888"; e.currentTarget.style.color = "#88b888"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(90,138,96,0.5)"; e.currentTarget.style.color = "#88b888"; }}
-                    >Start Combat</button>
-                    <button
-                      onClick={() => toggleCombatMode({ askInitiative: true })}
-                      style={{ ...topButtonStyle, minWidth: 0 }}
-                      title="Start combat and ask everyone to roll initiative"
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
-                    >Roll Initiative</button>
-                    {partyActionButtons.map(({ key, label, action }) => (
-                      <button
-                        key={key}
-                        onClick={action}
-                        style={{ ...topButtonStyle, minWidth: 0 }}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
-                      >{label}</button>
-                    ))}
-                    {partyHasXp && (
-                      <button
-                        onClick={() => setShowAwardXpParty(true)}
-                        style={topButtonStyle}
-                        onMouseEnter={(e) => { e.currentTarget.style.borderColor = pal.accent; e.currentTarget.style.color = pal.accentBright; }}
-                        onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(100,130,160,0.32)"; e.currentTarget.style.color = pal.textMuted; }}
-                      >Award XP</button>
-                    )}
-                    <button
-                      onClick={() => setShowDistributeCoinParty(true)}
-                      style={{ ...topButtonStyle, borderColor: "rgba(200,160,64,0.3)", color: "rgba(200,160,64,0.75)" }}
-                      onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#c8a040"; e.currentTarget.style.color = "#c8a040"; }}
-                      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "rgba(200,160,64,0.3)"; e.currentTarget.style.color = "rgba(200,160,64,0.75)"; }}
-                    >Distribute Coin</button>
-                  </div>
+                  {/* Leaving Adventure: its own bar, in the combat colour. */}
+                  <button type="button" className="dm-start-combat" onClick={() => toggleCombatMode()}>
+                    <span className="dm-start-combat-icon" aria-hidden="true"><SwordsIcon /></span>
+                    <span className="dm-start-combat-title">Start Combat</span>
+                    <span className="dm-start-combat-sub">{houseRules.autoInitiative !== false ? "Asks everyone for initiative" : "Initiative is off in DM Settings (⋯ → Roll Initiative)"}</span>
+                  </button>
                 </DmActionTiles>
               </div>
 
@@ -1724,6 +1681,16 @@ export default function DmDashboardPage() {
             </section>
 
             <div className="dm-prototype-cards-panel">
+              {/* Party upkeep (Adventure): rests, XP, coin. */}
+              <div className="dm-party-bar" role="toolbar" aria-label="Party">
+                <span className="label-ui">Party</span>
+                <span style={{ flex: 1 }} />
+                {partyActionButtons.map(({ key, label, action, icon }) => (
+                  <button key={key} type="button" className="dm-party-btn" onClick={action}>{icon}{label}</button>
+                ))}
+                {partyHasXp && <button type="button" className="dm-party-btn" onClick={() => setShowAwardXpParty(true)}><StarIcon />Award XP</button>}
+                <button type="button" className="dm-party-btn dm-party-btn--coin" onClick={() => setShowDistributeCoinParty(true)}><CoinsIcon />Distribute Coin</button>
+              </div>
               <div className="dm-prototype-cards">
                 {partyCardItems}
               </div>
