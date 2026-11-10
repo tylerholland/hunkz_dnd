@@ -204,3 +204,55 @@ describe("DiceRoller effect riders (Story 70)", () => {
     expect(apiMocks.postCharacterRoll).toHaveBeenCalledWith("eoghan", expect.objectContaining({ riders: [expect.objectContaining({ label: "Hex", total: riderTotal })] }));
   });
 });
+
+describe("DiceRoller \"What was that for?\"", () => {
+  const attacks = [{ kind: "weapon", name: "Longbow", toHit: "+5", damage: "1d8+3" }];
+
+  it("asks after an untagged free roll, guesses from the dice, and saves the pick on the posted roll", async () => {
+    vi.useFakeTimers();
+    apiMocks.postCharacterRoll.mockResolvedValue({ success: true, id: "roll-1" });
+    const onTagRoll = vi.fn(() => Promise.resolve());
+    const { fireEvent, screen } = await import("@testing-library/react");
+    render(<DiceRoller pal={PALETTES.ember} slug="liu" askPurpose onTagRoll={onTagRoll} attacks={attacks} inCombat />);
+    fireEvent.change(screen.getByPlaceholderText(/or type/i), { target: { value: "1d8+3" } });
+    fireEvent.click(screen.getByRole("button", { name: "Roll" }));
+    await act(async () => { vi.advanceTimersByTime(1200); });
+    expect(screen.getByText("What was that for?")).toBeInTheDocument();
+    const best = screen.getByRole("button", { name: "Longbow damage" });
+    expect(best).toHaveClass("best");
+    await act(async () => { fireEvent.click(best); });
+    expect(onTagRoll).toHaveBeenCalledWith("roll-1", "Longbow damage");
+    expect(screen.queryByText("What was that for?")).not.toBeInTheDocument();
+    expect(screen.getByText(/Longbow damage/)).toBeInTheDocument();
+  });
+
+  it("doesn't ask when the rule is off or the roll already says what it's for", async () => {
+    vi.useFakeTimers();
+    const { fireEvent, screen } = await import("@testing-library/react");
+    const { unmount } = render(<DiceRoller pal={PALETTES.ember} slug="liu" askPurpose={false} onTagRoll={vi.fn()} attacks={attacks} />);
+    fireEvent.click(screen.getByText(/^Roll 1d20/i));
+    await act(async () => { vi.advanceTimersByTime(1200); });
+    expect(screen.queryByText("What was that for?")).not.toBeInTheDocument();
+    unmount();
+    render(<DiceRoller pal={PALETTES.ember} slug="liu" askPurpose onTagRoll={vi.fn()} attacks={attacks} />);
+    fireEvent.change(screen.getByLabelText("What's this roll for?"), { target: { value: "Climbing" } });
+    fireEvent.click(screen.getByText(/^Roll 1d20/i));
+    await act(async () => { vi.advanceTimersByTime(1200); });
+    expect(screen.queryByText("What was that for?")).not.toBeInTheDocument();
+  });
+
+  it("fades by itself and leaves a + for link to label it later", async () => {
+    vi.useFakeTimers();
+    apiMocks.postCharacterRoll.mockResolvedValue({ success: true, id: "roll-2" });
+    const { fireEvent, screen } = await import("@testing-library/react");
+    render(<DiceRoller pal={PALETTES.ember} slug="liu" askPurpose onTagRoll={vi.fn(() => Promise.resolve())} attacks={attacks} />);
+    fireEvent.click(screen.getByText(/^Roll 1d20/i));
+    await act(async () => { vi.advanceTimersByTime(1200); });
+    expect(screen.getByText("What was that for?")).toBeInTheDocument();
+    await act(async () => { vi.advanceTimersByTime(12100); }); // fades…
+    await act(async () => { vi.advanceTimersByTime(400); }); // …and goes
+    expect(screen.queryByText("What was that for?")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "+ for" }));
+    expect(screen.getByText("What was that for?")).toBeInTheDocument();
+  });
+});

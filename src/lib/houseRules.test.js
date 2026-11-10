@@ -4,9 +4,9 @@ import { DEFAULT_MONEY } from "./money";
 
 describe("houseRules", () => {
   it("defaults to 2d6 and validates NdS dice", () => {
-    expect(normalizeHouseRules(null)).toEqual({ abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true });
-    expect(normalizeHouseRules({ abilityCheckDice: " 1D20 " })).toEqual({ abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true });
-    expect(normalizeHouseRules({ abilityCheckDice: "2d6+1", featuresEnabled: false })).toEqual({ abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true });
+    expect(normalizeHouseRules(null)).toEqual({ abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true, askRollPurpose: true });
+    expect(normalizeHouseRules({ abilityCheckDice: " 1D20 " })).toEqual({ abilityCheckDice: "1d20", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true, askRollPurpose: true });
+    expect(normalizeHouseRules({ abilityCheckDice: "2d6+1", featuresEnabled: false })).toEqual({ abilityCheckDice: "2d6", featuresEnabled: false, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true, askRollPurpose: true });
     expect(normalizeHouseRules({ spellCastDice: " 2D6 " }).spellCastDice).toBe("2d6");
     expect(normalizeHouseRules({ spellCastDice: "2d6+1" }).spellCastDice).toBe("1d20");
     expect(isValidCheckDice("10d100")).toBe(true);
@@ -32,5 +32,12 @@ describe("houseRules", () => {
     expect(applyCheckAdvantage([2, 5], 6, "disadvantage", fixed(4))).toEqual({ rolls: [2, 4], keptRolls: [2, 4], droppedRoll: 5 });
     expect(applyCheckAdvantage([7], 20, "advantage", fixed(15))).toEqual({ rolls: [15], keptRolls: [15], droppedRoll: 7 });
     expect(applyCheckAdvantage([3, 3], 6, "normal", fixed(6))).toEqual({ rolls: [3, 3], keptRolls: null, droppedRoll: null });
+  });
+});
+
+describe("askRollPurpose", () => {
+  it("is on unless the DM turns it off", () => {
+    expect(normalizeHouseRules({}).askRollPurpose).toBe(true);
+    expect(normalizeHouseRules({ askRollPurpose: false }).askRollPurpose).toBe(false);
   });
 });

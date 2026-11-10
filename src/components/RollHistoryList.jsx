@@ -557,7 +557,9 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
   );
 }
 
-export default function RollHistoryList({ pal, title, entries, opacities }) {
+// rowExtras(entry) → { children, below } adds actions beside a row's result
+// and a line under it (the player's "What was that for?").
+export default function RollHistoryList({ pal, title, entries, opacities, rowExtras }) {
   if (!entries.length) return null;
 
   return (
@@ -578,14 +580,16 @@ export default function RollHistoryList({ pal, title, entries, opacities }) {
         {entries.map((entry, index) => {
           const opacity = opacities[index] ?? 0;
           if (opacity === 0) return null;
+          const extras = rowExtras?.(entry) || {};
           return (
             <RollHistoryRow
               key={entry.id}
               pal={pal}
               entry={entry}
-              opacity={opacity}
+              opacity={extras.below ? 1 : opacity}
               showDivider={index < entries.length - 1}
-            />
+              below={extras.below || null}
+            >{extras.children || null}</RollHistoryRow>
           );
         })}
       </div>

@@ -25,7 +25,7 @@ import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
 import { fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, buildUnarmedStrike, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
 import CharacterTalents, { InfoBadge } from "./CharacterTalents";
-import { patchSession, postCharacterRoll, moveMapToken, endTurn, postGiveItem } from "../../api";
+import { patchSession, postCharacterRoll, moveMapToken, endTurn, postGiveItem, putRollTag } from "../../api";
 import { EndTurnButton, YourTurnBanner } from "./TurnCue";
 import { useYourTurnCue } from "./useYourTurnCue";
 import { useTurnAlertsPref } from "../../lib/turnAlertsPref";
@@ -1828,6 +1828,11 @@ export default function CharacterSheetSessionMode({
             checkDice={checkDice}
             spellDice={houseRules?.spellCastDice || DEFAULT_HOUSE_RULES.spellCastDice}
             abilityMods={abilityModsByName}
+            askPurpose={houseRules?.askRollPurpose !== false && !!sessionPassword}
+            onTagRoll={(rollId, tag) => putRollTag(sessionPassword, rollId, tag, undefined, slug)}
+            attacks={attackEntries.entries}
+            skills={char?.skills || []}
+            inCombat={!!isBattleMode}
           />
 
         </div>

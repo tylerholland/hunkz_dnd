@@ -17,14 +17,15 @@ export default function DmRollRulesCard({ dmPassword, saved, onSaved }) {
   const [skillBonus, setSkillBonus] = useState(saved?.skillBonus || "none");
   const [initiativeDice, setInitiativeDice] = useState(saved?.initiativeDice || DEFAULT_HOUSE_RULES.initiativeDice);
   const [autoInitiative, setAutoInitiative] = useState(saved ? saved.autoInitiative !== false : true);
+  const [askRollPurpose, setAskRollPurpose] = useState(saved ? saved.askRollPurpose !== false : true);
   const [status, setStatus] = useState({ kind: "idle", message: "" });
-  const dirty = !!saved && (saveDice !== saved.saveDice || skillBonus !== saved.skillBonus || initiativeDice !== saved.initiativeDice || autoInitiative !== (saved.autoInitiative !== false));
+  const dirty = !!saved && (saveDice !== saved.saveDice || skillBonus !== saved.skillBonus || initiativeDice !== saved.initiativeDice || autoInitiative !== (saved.autoInitiative !== false) || askRollPurpose !== (saved.askRollPurpose !== false));
 
   async function save() {
     if (!dirty) return;
     setStatus({ kind: "saving", message: "Saving…" });
     try {
-      const res = await putHouseRules(dmPassword, { ...saved, saveDice, skillBonus, initiativeDice, autoInitiative });
+      const res = await putHouseRules(dmPassword, { ...saved, saveDice, skillBonus, initiativeDice, autoInitiative, askRollPurpose });
       onSaved(normalizeHouseRules(res.houseRules));
       setStatus({ kind: "saved", message: "Saved — the next roll you ask for uses it." });
     } catch (err) {
@@ -71,11 +72,17 @@ export default function DmRollRulesCard({ dmPassword, saved, onSaved }) {
             <span className="dm-settings-switch-knob" aria-hidden="true" />
             {autoInitiative ? "Ask for initiative when combat starts" : "Initiative only when you ask"}
           </button>
+          <button type="button" role="switch" aria-checked={askRollPurpose} aria-label="Ask players what a free roll was for"
+            className={`dm-settings-switch${askRollPurpose ? " on" : ""}`} disabled={!saved} style={{ marginTop: 10 }}
+            onClick={() => pick(setAskRollPurpose)(!askRollPurpose)}>
+            <span className="dm-settings-switch-knob" aria-hidden="true" />
+            {askRollPurpose ? "Ask players what a free roll was for" : "Don't ask what free rolls were for"}
+          </button>
         </div>
       </div>
 
       <div className="dm-settings-preview" aria-live="polite">
-        {saved ? <>A save rolls <strong>{saveDice}</strong> plus the ability modifier. {skillRule.eg} Initiative rolls <strong>{initiativeDice}</strong> plus DEX{autoInitiative ? "; starting combat asks every player to roll it, and their results fill the initiative order" : "; use Roll Initiative when you want it"}.</> : "Loading current setting…"}
+        {saved ? <>A save rolls <strong>{saveDice}</strong> plus the ability modifier. {skillRule.eg} Initiative rolls <strong>{initiativeDice}</strong> plus DEX{autoInitiative ? "; starting combat asks every player to roll it, and their results fill the initiative order" : "; use Roll Initiative when you want it"}. {askRollPurpose ? "After a free roll with no label, players see a quiet \u201cWhat was that for?\u201d with a best guess, so the Story can tell it; it fades by itself." : "Free rolls stay unlabelled unless the player fills in For."}</> : "Loading current setting…"}
       </div>
 
       <div className="dm-settings-actions">

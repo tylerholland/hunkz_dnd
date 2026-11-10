@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildStory, hitSeverity } from "./storyLines";
+import { buildStory, hitSeverity, taggedPhrase } from "./storyLines";
 
 const at = (min) => new Date(Date.UTC(2026, 10, 9, 21, min)).toISOString();
 const text = (item) => item.parts.map((p) => (typeof p === "string" ? p : p.t === "num" ? ` [${p.s}]` : p.s)).join("");
@@ -99,5 +99,16 @@ describe("buildStory on real-table noise", () => {
     const turn = (id, min, round) => ({ id, type: "turn", round, subject: { name: "A" }, createdAt: at(min) });
     const story = buildStory([turn("t1", 0, 1), turn("t2", 0, 1), turn("t3", 5, 2)], { viewerSlug: "z" });
     expect(story.filter((i) => i.kind === "round").map((i) => `${i.start ? "start " : ""}${i.round}`)).toEqual(["2", "start 1"]);
+  });
+});
+
+describe("taggedPhrase", () => {
+  it("tells a labelled free roll by what it was for", () => {
+    expect(taggedPhrase("Longbow attack")).toBe(" attacked with a Longbow.");
+    expect(taggedPhrase("Longbow damage")).toBe(" struck with a Longbow.");
+    expect(taggedPhrase("Hex cast")).toBe(" cast Hex.");
+    expect(taggedPhrase("Acrobatics check")).toBe(" made an Acrobatics check.");
+    expect(taggedPhrase("Dexterity save")).toBe(" made a Dexterity save.");
+    expect(taggedPhrase("Grappling hook")).toBe(" rolled for Grappling hook.");
   });
 });

@@ -31,3 +31,8 @@ test("valid dice are kept (normalized), invalid fall back", () => {
 test("house-rules is a reserved (non-character) slug", () => {
   assert.equal(isReservedCharacterSlug(HOUSE_RULES_SLUG), true);
 });
+
+test("askRollPurpose is on unless the DM turns it off", () => {
+  assert.equal(normalizeHouseRulesRecord({}).askRollPurpose, true);
+  assert.equal(normalizeHouseRulesRecord({ askRollPurpose: false }).askRollPurpose, false);
+});

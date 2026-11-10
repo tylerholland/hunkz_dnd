@@ -39,6 +39,19 @@ function checkPhrase(check) {
   return `${article(name)} ${name}`;
 }
 
+// A free roll's label ("What was that for?" picks, or typed): "Longbow
+// attack" → " attacked with a Longbow.", "Stealth check" → " made a Stealth
+// check.", anything else → " rolled for …".
+export function taggedPhrase(tag) {
+  const t = String(tag || "").trim();
+  let m;
+  if ((m = /^(.+) attack$/i.exec(t))) return ` attacked with ${article(m[1])} ${m[1]}.`;
+  if ((m = /^(.+) damage$/i.exec(t))) return ` struck with ${article(m[1])} ${m[1]}.`;
+  if ((m = /^(.+) cast$/i.exec(t))) return ` cast ${m[1]}.`;
+  if ((m = /^(.+) (check|save)$/i.exec(t))) return ` made ${article(m[1])} ${m[1]} ${m[2].toLowerCase()}.`;
+  return ` rolled for ${t}.`;
+}
+
 function rollKind(label) {
   const match = /^(.*)\s(ATK|CAST|DMG)$/.exec(String(label || "").trim());
   if (match) return { step: match[2], name: match[1] };
@@ -200,7 +213,7 @@ export function buildStory(entries, { viewerSlug = null, numbers = "mine" } = {}
       } else if (kind.step === "free") {
         const rolls = runOf.get(e.id) || [e];
         const times = rolls.length === 1 ? "" : rolls.length === 2 ? " twice" : ` ${rolls.length} times`;
-        out.push(line(e, me, [actor, e.tag ? ` rolled for ${e.tag}.` : ` rolled the dice${times}.`, ...num(me, rolls.map((r) => r.total).join(", "))]));
+        out.push(line(e, me, [actor, e.tag ? taggedPhrase(e.tag) : ` rolled the dice${times}.`, ...num(me, rolls.map((r) => r.total).join(", "))]));
       } else {
         out.push(line(e, me, [actor, ` rolled ${kind.name}.`, ...num(me, String(e.total))]));
       }

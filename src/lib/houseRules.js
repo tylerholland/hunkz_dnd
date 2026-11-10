@@ -21,9 +21,11 @@ import { DEFAULT_MONEY, normalizeMoney } from "./money";
 // modifier only) or "proficiency" (D&D 5e: +2 at levels 1–4, rising with level).
 // initiativeDice — what initiative rolls (plus DEX and any initiative bonus).
 // autoInitiative — starting combat asks every player to roll initiative.
+// askRollPurpose — after an untagged free roll, players get a quiet "What was
+// that for?" strip so the Story and the Chronicle can tell it.
 // weaponDamage — what shop weapons roll: "wod" (World of Dungeons classes,
 // d6 to d6+2) or "dnd" (each weapon's D&D 5e die: dagger d4, greatsword 2d6).
-export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true };
+export const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true, askRollPurpose: true };
 export const WEAPON_DAMAGE_RULES = ["wod", "dnd"];
 
 const CHECK_DICE_PATTERN = /^([1-9]|10)d([2-9]|[1-9]\d|100)$/;
@@ -53,6 +55,7 @@ export function normalizeHouseRules(raw) {
     skillBonus: raw?.skillBonus === "proficiency" ? "proficiency" : "none",
     initiativeDice: isValidCheckDice(raw?.initiativeDice) ? raw.initiativeDice.trim().toLowerCase() : DEFAULT_HOUSE_RULES.initiativeDice,
     autoInitiative: raw?.autoInitiative !== false,
+    askRollPurpose: raw?.askRollPurpose !== false,
   };
 }
 

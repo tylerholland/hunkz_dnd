@@ -13,10 +13,12 @@
 // modifier alone) or "proficiency" (D&D 5e: +2 at levels 1–4, rising with level).
 // initiativeDice — what initiative rolls (plus DEX and any initiative bonus).
 // autoInitiative — starting combat asks every player to roll initiative.
+// askRollPurpose — after an untagged free roll, players get a quiet "What was
+// that for?" strip so the Story and the Chronicle can tell it.
 // npcAttackDice — the attack roll for an NPC's quick attacks when the creature
 // has none of its own: a d20 plus a typical low-level monster's +3, by default.
 const { normalizeMoney, DEFAULT_MONEY } = require("./money");
-const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true };
+const DEFAULT_HOUSE_RULES = { abilityCheckDice: "2d6", featuresEnabled: true, spellCastDice: "1d20", playersEndTurn: true, customEffects: [], money: DEFAULT_MONEY, npcAttackDice: "1d20+3", weaponDamage: "wod", saveDice: "1d20", skillBonus: "none", initiativeDice: "1d20", autoInitiative: true, askRollPurpose: true };
 const EFFECT_KINDS = new Set(["curse", "helpful", "neutral"]);
 
 function normalizeCustomEffects(list) {
@@ -66,6 +68,7 @@ function normalizeHouseRulesRecord(item) {
     skillBonus: item?.skillBonus === "proficiency" ? "proficiency" : "none",
     initiativeDice: normalizeDice(item?.initiativeDice, DEFAULT_HOUSE_RULES.initiativeDice),
     autoInitiative: item?.autoInitiative !== false,
+    askRollPurpose: item?.askRollPurpose !== false,
     version: Number.isFinite(item?.version) ? item.version : 0,
   };
 }

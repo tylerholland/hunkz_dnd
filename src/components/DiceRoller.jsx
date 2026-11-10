@@ -5,6 +5,8 @@ import { buildCharacterRollPayload, buildDiceExprLabel, buildLocalRollHistoryEnt
 import { PALETTES } from "../features/characterSheet/theme";
 import { applyCheckAdvantage, DEFAULT_HOUSE_RULES, isCheckDiceGroups, parseCheckDice } from "../lib/houseRules";
 import "./diceRoller.css";
+import WhatForStrip from "../features/rollPurpose/WhatForStrip";
+import { purposeGuesses } from "../features/rollPurpose/rollPurpose";
 
 // ── Pure utility functions ─────────────────────────────────────────────────────
 
@@ -87,7 +89,10 @@ const STAT_SHORT = { Strength: "STR", Dexterity: "DEX", Constitution: "CON", Wis
 // abilityModifier() so checks match the DM card (includes equipped items).
 // `spellDice` — the DM's spell casting dice (DM Settings; default 1d20): a
 // spell's cast roll is these dice plus its to-hit. Weapons always use 1d20.
-const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pal, slug, onAdvModeChange, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice, spellDice = DEFAULT_HOUSE_RULES.spellCastDice, abilityMods }, ref) {
+// askPurpose (house rule) — after an untagged free roll, a quiet "What was
+// that for?" strip under it; onTagRoll(serverRollId, tag) saves the pick.
+// attacks / skills / inCombat feed its best guesses.
+const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pal, slug, onAdvModeChange, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice, spellDice = DEFAULT_HOUSE_RULES.spellCastDice, abilityMods, askPurpose = false, onTagRoll, attacks = [], skills = [], inCombat = false }, ref) {
   const [isOpen, setIsOpen] = useState(() => {
     if (!slug) return true;
     return sessionStorage.getItem(`dnd_dice_open_${slug}`) !== "false";
@@ -114,6 +119,8 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   // What a free roll is for ("Climbing the grate") — sent as the roll's tag
   // so the log, and later the Chronicle, show it. Clears after each roll.
   const [rollTag, setRollTag] = useState("");
+  // "What was that for?" — the local id of the roll whose strip is showing.
+  const [askFor, setAskFor] = useState(null);
   const [exprError, setExprError] = useState("");
 
   // Cycling number during animation
@@ -159,7 +166,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   const executeRoll = useCallback(({
     groups, flat, label, isD20Attack = false, isCheck = false,
     advModeOverride, onComplete, onPosted, suppressOpenPanel = false, target, attack, tag,
-    riders = [],
+    riders = [], localId,
   }) => {
     if (rollState.rolling) { onComplete?.(null); return; }
 
@@ -250,7 +257,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
 
       setHistory(prev => [
         buildLocalRollHistoryEntry({
-          id: Date.now(),
+          id: localId ?? Date.now(),
           label: label + modeTag,
           result: resultObj,
           target,
@@ -403,9 +410,32 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
     } else {
       groups = [{ count: dieCount, sides: selectedSides }]; flat = comboMod;
     }
-    executeRoll({ groups, flat, label: "Free Roll", isD20Attack: false, tag: rollTag.trim() });
-    setRollTag("");
+    freeRoll({ groups, flat });
   };
+
+  // A free roll from the dice panel. Untagged ones ask what they were for
+  // (when the table's rule is on); the server id arrives with the post.
+  function freeRoll({ groups, flat }) {
+    const tag = rollTag.trim();
+    const ask = askPurpose && !!onTagRoll && !!slug && !tag;
+    const localId = Date.now();
+    executeRoll({
+      groups, flat, label: "Free Roll", isD20Attack: false, tag, localId,
+      onPosted: ask ? (serverId) => { if (serverId) setHistory((prev) => prev.map((e) => (e.id === localId ? { ...e, serverId } : e))); } : undefined,
+    });
+    setRollTag("");
+    setAskFor(ask ? localId : null);
+  }
+
+  async function tagRoll(entry, tag) {
+    setAskFor(null);
+    setHistory((prev) => prev.map((e) => (e.id === entry.id ? { ...e, tag } : e)));
+    try {
+      await onTagRoll(entry.serverId, tag);
+    } catch {
+      setHistory((prev) => prev.map((e) => (e.id === entry.id ? { ...e, tag: "" } : e)));
+    }
+  }
 
   const rollExpr = () => {
     if (!exprInput.trim()) { setExprError("Enter an expression first, e.g. 2d6+1d4+3"); return; }
@@ -414,8 +444,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
       setExprError("Could not parse — use NdX or N terms, e.g. 2d6+1d4+3"); return;
     }
     setExprError("");
-    executeRoll({ groups: parsed.groups, flat: parsed.flat, label: "Free Roll", isD20Attack: false, tag: rollTag.trim() });
-    setRollTag("");
+    freeRoll({ groups: parsed.groups, flat: parsed.flat });
   };
 
   // ── Combo builder ────────────────────────────────────────────────────────────
@@ -911,6 +940,23 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
                 title="Recent Rolls"
                 entries={history}
                 opacities={[1.0, 0.45, 0.22, 0, 0]}
+                rowExtras={askPurpose && onTagRoll ? (entry) => {
+                  const askable = /^Free Roll/.test(entry.label || "") && !entry.tag && entry.serverId;
+                  if (askFor === entry.id && !entry.tag) {
+                    return {
+                      below: (
+                        <WhatForStrip
+                          key={entry.id}
+                          guesses={purposeGuesses({ expr: entry.exprLabel, attacks, skills, checkDice, spellDice, inCombat })}
+                          attacks={attacks}
+                          onPick={(tag) => (entry.serverId ? tagRoll(entry, tag) : setAskFor(null))}
+                          onClose={() => setAskFor((current) => (current === entry.id ? null : current))}
+                        />
+                      ),
+                    };
+                  }
+                  return askable ? { children: <button type="button" className="wf-for" onClick={() => setAskFor(entry.id)}>+ for</button> } : null;
+                } : undefined}
               />
             </>
           )}
