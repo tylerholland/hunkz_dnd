@@ -11,7 +11,7 @@
     "test": "npm run test:frontend && npm run test:backend",
     "test:frontend": "vitest run",
     "test:backend": "node --test backend/src/lib/*.test.cjs backend/src/handlers/*.test.cjs",
-    "test:phase0": "node --test backend/test/phase0/*.test.cjs; vitest run --config vitest.phase0.config.js"
+    "test:phase0": "node --test test/phase0/backend/*.test.cjs; vitest run --config vitest.phase0.config.js"
   },
   "dependencies": {
     "graphify": "^1.0.0",
@@ -21,6 +21,9 @@
     "react-router-dom": "^7.14.2"
   },
   "devDependencies": {
+    "@aws-sdk/client-apigatewaymanagementapi": "^3.1166.0",
+    "@aws-sdk/client-dynamodb": "^3.1166.0",
+    "@aws-sdk/lib-dynamodb": "^3.1166.0",
     "@eslint/js": "^10.0.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",

@@ -1,12 +1,12 @@
 // Runs TODAY's getSessionState handler against an old-table fixture, with
 // DynamoDB replaced by a map lookup. Used once to capture the golden
-// responses in ../golden/ (node backend/test/phase0/helpers/captureGolden.cjs);
+// responses in ../golden/ (node test/phase0/backend/helpers/captureGolden.cjs);
 // after the switch, the rebuilt handler is held to them (0.1-session-state).
 const Module = require("node:module");
 const path = require("node:path");
-const bcrypt = require(path.resolve(__dirname, "../../../node_modules/bcryptjs"));
+const bcrypt = require(path.resolve(__dirname, "../../../../backend/node_modules/bcryptjs"));
 
-const SRC = path.resolve(__dirname, "../../../src");
+const SRC = path.resolve(__dirname, "../../../../backend/src");
 const DM_PASSWORD = "dm-pass";
 const DM_HASH = bcrypt.hashSync(DM_PASSWORD, 4);
 

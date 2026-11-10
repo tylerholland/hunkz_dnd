@@ -1,6 +1,6 @@
 // Keeps the golden files honest until phase 0 starts: if someone changes
 // getSessionState's output before then, recapture
-// (node backend/test/phase0/helpers/captureGolden.cjs). Skips itself once the
+// (node test/phase0/backend/helpers/captureGolden.cjs). Skips itself once the
 // store exists, because today's handler is then gone.
 const test = require("node:test");
 const assert = require("node:assert/strict");

@@ -1,6 +1,6 @@
 // Captures today's GET /session-state responses for the fixture, per viewer.
 // Run once, before phase 0 starts changing handlers:
-//   node backend/test/phase0/helpers/captureGolden.cjs
+//   node test/phase0/backend/helpers/captureGolden.cjs
 const fs = require("node:fs");
 const path = require("node:path");
 const { oldTable } = require("./fixtures.cjs");

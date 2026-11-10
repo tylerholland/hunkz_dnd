@@ -23,7 +23,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { need } = require("./helpers/need.cjs");
 const { createFakeDynamo, GAME_TABLE, GAME_TABLE_DEF } = require("./helpers/fakeDynamo.cjs");
-const { VersionConflictError } = require("../../src/lib/versioning");
+const { VersionConflictError } = require("../../../backend/src/lib/versioning");
 
 const T0 = Date.UTC(2026, 10, 10, 19, 0, 0);
 const iso = (min) => new Date(T0 + min * 60000).toISOString();

@@ -28,11 +28,12 @@ class ValidationException extends Error {
   constructor(message) { super(message); this.name = "ValidationException"; }
 }
 
+// The real Document-client command classes (the SDK is a root dev
+// dependency; Lambda's runtime provides its own copy in production).
 function makeCommands() {
-  const make = (name) => class { constructor(input) { this.input = input; this.name = name; } };
-  return Object.fromEntries(["GetCommand", "PutCommand", "DeleteCommand", "BatchGetCommand", "BatchWriteCommand", "QueryCommand", "TransactWriteCommand", "ScanCommand", "UpdateCommand"]
-    .map((n) => [n, make(n)]));
+  return require("@aws-sdk/lib-dynamodb");
 }
+const commandName = (cmd) => cmd?.constructor?.name || "unknown";
 
 const clone = (v) => (v === undefined ? undefined : JSON.parse(JSON.stringify(v)));
 
@@ -124,7 +125,8 @@ function createFakeDynamo({ tables = {} } = {}) {
   }
 
   async function send(cmd) {
-    const { name, input } = cmd;
+    const name = commandName(cmd);
+    const { input } = cmd;
     calls.push({ name, input: clone(input) });
     switch (name) {
       case "GetCommand": {

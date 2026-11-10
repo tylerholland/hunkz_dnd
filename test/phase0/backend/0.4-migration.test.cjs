@@ -10,7 +10,7 @@ const assert = require("node:assert/strict");
 const { need } = require("./helpers/need.cjs");
 const { createFakeDynamo, GAME_TABLE, GAME_TABLE_DEF } = require("./helpers/fakeDynamo.cjs");
 const { oldTable, at, CAMPAIGN_STATES, LIBRARY_RECORDS } = require("./helpers/fixtures.cjs");
-const { gatherSessionEvents } = require("../../src/lib/chronicle");
+const { gatherSessionEvents } = require("../../../backend/src/lib/chronicle");
 
 const OPTS = { campaignId: "hunkz", libraryId: "hunkz", campaignName: "Hunkz Adventures" };
 
