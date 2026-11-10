@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Player Status Section</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  Player Session view: the status section under the map — prototype, no live API.
+
+  Problems with today's section: a full-width HP card whose controls players no
+  longer need (the DM's attacks deal damage; healing comes from potions and
+  spells); one long single column of short rows, each with its own divider;
+  magic split up (Concentration above HP, slots in the middle, Spells collapsed
+  at the bottom).
+
+  Proposal:
+  - HP moves up to the identity block in the left column, as a compact line:
+    18 / 18 with a thin bar, temp HP beside it, and "Unconscious" at 0. No
+    −/+ or Damage/Heal (the DM and Take Action handle HP; potions/spells heal).
+  - The section becomes two columns:
+      Left, "You right now": Conditions (chips, ✎ to change) with Exhaustion
+        and Inspiration as compact inline controls; Skills & Abilities;
+        Features & Traits (with uses), when the DM has them on.
+      Right, "Magic" (spellcasters only): Concentration (Set / Drop, inline),
+        Spell Slots with the rest buttons that refill them, and the spell list
+        shown openly (tap a spell for its description).
+  - No magic: the left column's groups spread across both columns instead.
+  - Phone: everything stacks in one column, HP stays at the top.
+  Data: unchanged (hpCurrent/hpMax/tempHP, conditions, exhaustionLevel,
+  inspiration, concentration, spellSlots, spells, skills, specialAbilities, features).
+  Open: should a player still be able to nudge their own HP somewhere (e.g. in
+  the ⋯ menu) for the odd case the DM misses?
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --surface:#111a24; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
+    --dim:#1e3a4e; --wash:rgba(106,143,168,.12); --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#0a0d12; --gem:#8ab8d0; --gemlow:rgba(138,184,208,.08);
+    --hp:#8ab8d0; --hplow:#d0a050; --hpcrit:#c06060; --temp:#6aa86a;
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --surface:#efe6d4; --solid:#ece4d2; --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
+    --dim:rgba(140,110,70,.16); --wash:rgba(140,110,70,.08); --text:#2a2018; --body:#3c2e1c; --muted:#6f573c; --page:#e9e1d2; --gem:#7a5c30; --gemlow:rgba(140,110,70,.06);
+    --hp:#5a7a90; --hplow:#a8741a; --hpcrit:#9a2a20; --temp:#2f7a44;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button, input { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+
+  .proto { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; padding:8px 16px; background:color-mix(in srgb, var(--page) 90%, transparent); border-bottom:1px solid var(--border); backdrop-filter:blur(6px); }
+  .proto .t { font-family:'Cinzel',serif; color:var(--text); letter-spacing:.08em; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .seg button { border:0; background:transparent; padding:6px 12px; min-height:32px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .seg button.on { background:var(--dim); color:var(--text); }
+
+  .frame { margin:16px auto 60px; padding:0 16px; }
+  .frame.phone { max-width:420px; }
+  .frame.desk { max-width:1240px; }
+  .session { display:grid; grid-template-columns:320px minmax(0,1fr); gap:28px; align-items:start; }
+  .phone .session { grid-template-columns:1fr; }
+
+  .label { display:block; font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:var(--muted); }
+  .rule { border:0; border-top:1px solid var(--border); margin:18px 0; }
+
+  /* Left column (as today, plus HP) */
+  .identity { display:flex; gap:12px; align-items:center; }
+  .portrait { width:64px; height:64px; flex:none; border-radius:50%; display:flex; align-items:center; justify-content:center; font-family:'Cinzel',serif; font-size:26px; color:#f2ead8; background:radial-gradient(circle at 40% 35%, #3d5a70, #14202b); border:2px solid var(--accent); }
+  .name { font-family:'Cinzel',serif; font-size:20px; color:var(--bright); line-height:1.1; }
+  .sub { font-size:14px; color:var(--muted); font-style:italic; }
+  .badges { display:flex; gap:6px; margin-top:6px; }
+  .badge { font-family:'IM Fell English',serif; font-size:10px; letter-spacing:.14em; text-transform:uppercase; padding:2px 7px; border:1px solid var(--border); border-radius:3px; color:var(--muted); }
+
+  .hp { margin-top:14px; display:grid; gap:5px; }
+  .hp-row { display:flex; align-items:baseline; gap:8px; }
+  .hp-row .label { margin-right:auto; }
+  .hp-now { font-family:'Cinzel',serif; font-size:26px; line-height:1; color:var(--hp); }
+  .hp-now.low { color:var(--hplow); }
+  .hp-now.crit { color:var(--hpcrit); }
+  .hp-max { font-family:'Cinzel',serif; font-size:15px; color:var(--muted); }
+  .hp-temp { font-size:13px; color:var(--temp); border:1px solid color-mix(in srgb, var(--temp) 50%, transparent); border-radius:999px; padding:0 8px; }
+  .hp-bar { height:5px; border-radius:3px; background:var(--wash); overflow:hidden; display:flex; }
+  .hp-bar i { display:block; height:100%; background:var(--hp); }
+  .hp-bar i.low { background:var(--hplow); }
+  .hp-bar i.crit { background:var(--hpcrit); }
+  .hp-bar b { display:block; height:100%; background:var(--temp); }
+  .hp-down { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1px solid var(--hpcrit); border-radius:6px; color:var(--hpcrit); font-family:'Cinzel',serif; letter-spacing:.08em; }
+  .hp-down small { font-family:'Crimson Text',serif; font-style:italic; letter-spacing:0; color:var(--muted); }
+
+  .abil-grid { display:grid; grid-template-columns:repeat(3,1fr); gap:6px; margin-top:10px; }
+  .abil { display:grid; justify-items:center; padding:8px 4px 7px; border:1px solid var(--border); border-radius:3px; background:var(--gemlow); }
+  .abil b { font-family:'Cinzel',serif; font-weight:400; font-size:20px; color:var(--gem); }
+  .abil small { font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.14em; color:var(--muted); text-transform:uppercase; }
+  .ghost { height:16px; margin:8px 0; border-radius:4px; background:var(--wash); }
+
+  /* Right column */
+  .mapband { display:flex; align-items:center; gap:10px; padding:10px 14px; border:1px solid var(--border); border-radius:6px; background:var(--surface); color:var(--muted); font-family:'IM Fell English',serif; letter-spacing:.14em; text-transform:uppercase; font-size:12px; }
+
+  .status { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:0 28px; margin-top:20px; }
+  .phone .status { grid-template-columns:1fr; }
+  .col { display:grid; gap:20px; align-content:start; }
+  .col + .col { border-left:1px solid var(--border); padding-left:28px; }
+  .phone .col + .col { border-left:0; padding-left:0; border-top:1px solid var(--border); padding-top:20px; margin-top:20px; }
+  .col-h { display:flex; align-items:center; gap:10px; margin-bottom:-8px; }
+  .col-h .t { font-family:'Cinzel',serif; font-size:14px; letter-spacing:.08em; color:var(--text); }
+  .grp { display:grid; gap:8px; }
+  .grp-h { display:flex; align-items:center; gap:8px; }
+  .grp-h .label { margin-right:auto; }
+  .mini { min-height:30px; padding:0 10px; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--muted); font-size:13px; }
+  .mini:hover { border-color:var(--accent); color:var(--text); }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.1em; text-transform:uppercase; padding:4px 9px; border:1px solid var(--border); border-radius:999px; color:var(--text); }
+  .chip.cond { border-color:var(--accent); color:var(--bright); border-radius:3px; }
+  .chip.ability { cursor:help; }
+  .none { font-style:italic; color:var(--muted); font-size:14px; }
+
+  .inline-ctrls { display:flex; flex-wrap:wrap; gap:10px 18px; align-items:center; }
+  .stepper { display:inline-flex; align-items:center; gap:6px; }
+  .stepper .label { margin:0; }
+  .stepper button { width:28px; height:28px; border:1px solid var(--border); border-radius:4px; background:transparent; color:var(--text); }
+  .stepper button:disabled { opacity:.35; }
+  .stepper b { min-width:14px; text-align:center; font-family:'Cinzel',serif; font-weight:400; color:var(--text); }
+  .stepper.active b { color:var(--hplow); }
+  .inspo { display:inline-flex; align-items:center; gap:8px; min-height:30px; padding:0 12px 0 6px; border:1px solid var(--border); border-radius:999px; background:transparent; color:var(--muted); font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.14em; text-transform:uppercase; }
+  .inspo i { width:16px; height:16px; border-radius:50%; border:1px solid var(--accent); }
+  .inspo.on { color:var(--text); border-color:#d9b45a; }
+  .inspo.on i { background:radial-gradient(circle at 40% 35%, #f2d27a, #b8862a); border-color:#d9b45a; }
+
+  .feat { display:flex; align-items:center; gap:8px; font-size:15px; color:var(--text); }
+  .feat small { color:var(--muted); font-style:italic; margin-right:auto; font-size:13px; }
+  .pips { display:inline-flex; gap:5px; }
+  .pip { width:14px; height:14px; padding:0; border-radius:50%; border:1.5px solid var(--gem); background:var(--gem); }
+  .pip.used { background:transparent; border-color:var(--border); }
+
+  .conc { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+  .conc.on { padding:8px 10px; border:1px solid var(--accent); border-radius:6px; background:var(--wash); }
+  .conc .dot { width:8px; height:8px; border-radius:50%; background:var(--bright); animation:pulse 2s ease-in-out infinite; }
+  .conc .what { color:var(--text); margin-right:auto; }
+  .conc input { flex:1; min-width:120px; min-height:30px; padding:2px 8px; border:1px solid var(--border); border-radius:4px; background:var(--bg); }
+  @keyframes pulse { 50% { opacity:.35; } }
+  @media (prefers-reduced-motion: reduce) { .conc .dot { animation:none; } }
+
+  .slots { display:grid; gap:6px; }
+  .slot { display:flex; align-items:center; gap:8px; }
+  .slot .lv { font-family:'IM Fell English',serif; font-size:12px; color:var(--muted); min-width:22px; }
+  .slot .n { font-size:13px; color:var(--muted); }
+  .spells { display:grid; gap:2px; }
+  .spell { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:4px 8px; width:100%; padding:6px 8px; border:0; border-radius:4px; background:transparent; text-align:left; color:var(--text); }
+  .spell:hover { background:var(--wash); }
+  .spell small { color:var(--muted); font-size:13px; }
+  .spell p { grid-column:1 / -1; margin:0; font-size:14px; font-style:italic; color:var(--body); }
+  .tabs { display:flex; gap:8px; margin-top:24px; padding-top:14px; border-top:1px solid var(--border); }
+  .tabs span { padding:6px 12px; border:1px solid var(--border); border-radius:4px; font-family:'IM Fell English',serif; font-size:12px; letter-spacing:.14em; text-transform:uppercase; color:var(--muted); }
+  .tabs span.on { color:var(--text); border-color:var(--accent); }
+  .note { font-size:13px; font-style:italic; color:var(--muted); margin:6px 0 0; }
+</style>
+</head>
+<body data-pal="ocean">
+<div class="proto">
+  <span class="t">Player status section · prototype</span>
+  <span class="seg" data-ctl="who"><button data-v="eoghan" class="on">Eòghan (spells)</button><button data-v="mj">Meanjeans (no spells)</button></span>
+  <span class="seg" data-ctl="hp"><button data-v="full" class="on">Full HP</button><button data-v="hurt">Hurt</button><button data-v="temp">Temp HP</button><button data-v="down">0 HP</button></span>
+  <span class="seg" data-ctl="pal"><button data-v="ocean" class="on">Ocean</button><button data-v="vellum">Vellum</button></span>
+  <span class="seg" data-ctl="width"><button data-v="desk" class="on">Desktop</button><button data-v="phone">Phone</button></span>
+</div>
+<div id="app"></div>
+
+<script>
+  const CHARS = {
+    eoghan: { name: "Eòghan", cls: "Human · Ranger · Lvl 3", init: "E", ac: 15, spd: 30, max: 18, mods: [["STR","+1"],["DEX","+3"],["CON","+1"],["INT","+0"],["WIS","+2"],["CHA","−1"]],
+      skills: ["Deception", "Survival"], abilities: [["Vision", "Sees in dim light as if bright, 60 ft."], ["Ritual", "Can cast a ritual spell without a slot, taking 10 minutes longer."]],
+      features: [["Favored Foe", "+1d4 once a turn", 2, 1]],
+      slots: [[1, 2]], spells: [["Hunter's Mark", "1st", "Mark a creature: +1d6 damage to it, and advantage to track it. Concentration."], ["Cure Wounds", "1st", "A creature you touch regains 1d8 + your WIS modifier HP."]] },
+    mj: { name: "Meanjeans", cls: "Human · Fighter · Lvl 3", init: "M", ac: 17, spd: 30, max: 31, mods: [["STR","+3"],["DEX","+1"],["CON","+2"],["INT","−1"],["WIS","+0"],["CHA","+0"]],
+      skills: ["Athletics", "Intimidation"], abilities: [["Second Wind", "On your turn, regain 1d10 + level HP. Once per rest."]],
+      features: [["Second Wind", "1d10+3 HP", 1, 1], ["Action Surge", "One more action", 1, 0]], slots: [], spells: [] },
+  };
+  let st = { who: "eoghan", hp: "full", pal: "ocean", width: "desk", conditions: [], exhaustion: 0, inspo: false, conc: null, concEditing: false, used: {}, open: null };
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  function hpBlock(c) {
+    const now = { full: c.max, hurt: Math.round(c.max * 0.28), temp: c.max - 4, down: 0 }[st.hp];
+    const temp = st.hp === "temp" ? 5 : 0;
+    if (now <= 0) return `<div class="hp"><div class="hp-down">Unconscious <small>The DM is tracking your death saves.</small></div></div>`;
+    const pct = now / c.max, tone = pct <= 0.25 ? "crit" : pct <= 0.5 ? "low" : "";
+    const total = c.max + temp;
+    return `<div class="hp">
+      <div class="hp-row"><span class="label">HP</span><span class="hp-now ${tone}">${now}</span><span class="hp-max">/ ${c.max}</span>${temp ? `<span class="hp-temp">+${temp} temp</span>` : ""}</div>
+      <div class="hp-bar" role="img" aria-label="${now} of ${c.max} HP"><i class="${tone}" style="width:${(now / total) * 100}%"></i>${temp ? `<b style="width:${(temp / total) * 100}%"></b>` : ""}</div>
+    </div>`;
+  }
+
+  function youGroups(c) {
+    const cond = `<div class="grp">
+      <div class="grp-h"><span class="label">Conditions</span><button class="mini" data-act="cond">✎ Change</button></div>
+      ${st.conditions.length ? `<div class="chips">${st.conditions.map((x) => `<span class="chip cond">${x}</span>`).join("")}</div>` : `<span class="none">None</span>`}
+      <div class="inline-ctrls">
+        <span class="stepper${st.exhaustion ? " active" : ""}"><span class="label">Exhaustion</span><button data-act="ex" data-d="-1" ${st.exhaustion ? "" : "disabled"} aria-label="Less exhaustion">−</button><b>${st.exhaustion}</b><button data-act="ex" data-d="1" ${st.exhaustion >= 6 ? "disabled" : ""} aria-label="More exhaustion">+</button></span>
+        <button class="inspo${st.inspo ? " on" : ""}" data-act="inspo" aria-pressed="${st.inspo}"><i></i>Inspiration</button>
+      </div>
+    </div>`;
+    const skills = `<div class="grp">
+      <span class="label">Skills &amp; Abilities</span>
+      <div class="chips">${c.skills.map((s) => `<span class="chip">${s}</span>`).join("")}${c.abilities.map(([n, d]) => `<span class="chip ability" title="${esc(d)}">${n}</span>`).join("")}</div>
+    </div>`;
+    const feats = c.features.length ? `<div class="grp">
+      <span class="label">Features &amp; Traits</span>
+      ${c.features.map(([n, d, max], fi) => { const used = st.used["f" + fi] ?? 0; return `<div class="feat">${n}<small>${d}</small><span class="pips">${Array.from({ length: max }, (_, i) => `<button class="pip${i >= max - used ? " used" : ""}" data-act="feat" data-i="${fi}" data-max="${max}" aria-label="Use ${n}"></button>`).join("")}</span></div>`; }).join("")}
+    </div>` : "";
+    return { cond, skills, feats };
+  }
+
+  function magicCol(c) {
+    const conc = st.conc
+      ? `<div class="conc on"><span class="dot"></span><span class="what">Concentrating on <b>${esc(st.conc)}</b></span><button class="mini" data-act="drop">Drop</button></div>`
+      : st.concEditing
+        ? `<div class="conc"><input id="concin" placeholder="Which spell?" value=""><button class="mini" data-act="concset">Set</button><button class="mini" data-act="conccancel">Cancel</button></div>`
+        : `<div class="conc"><span class="none" style="margin-right:auto">Not concentrating</span><button class="mini" data-act="concedit">＋ Concentration</button></div>`;
+    const slots = `<div class="grp">
+      <div class="grp-h"><span class="label">Spell Slots</span><button class="mini">Short Rest</button><button class="mini">Long Rest</button></div>
+      <div class="slots">${c.slots.map(([lv, max]) => { const used = st.used["s" + lv] ?? 0; return `<div class="slot"><span class="lv">L${lv}</span><span class="pips">${Array.from({ length: max }, (_, i) => `<button class="pip${i >= max - used ? " used" : ""}" data-act="slot" data-lv="${lv}" data-max="${max}" aria-label="Spend a level ${lv} slot"></button>`).join("")}</span><span class="n">${max - used}/${max}</span></div>`; }).join("")}</div>
+    </div>`;
+    const spells = `<div class="grp">
+      <span class="label">Spells · ${c.spells.length}</span>
+      <div class="spells">${c.spells.map(([n, lv, d], i) => `<button class="spell" data-act="spell" data-i="${i}" aria-expanded="${st.open === i}"><span>${n}</span><small>${lv}</small>${st.open === i ? `<p>${esc(d)}</p>` : ""}</button>`).join("")}</div>
+    </div>`;
+    return `<div class="col"><div class="col-h"><span class="t">Magic</span></div><div class="grp"><span class="label">Concentration</span>${conc}</div>${slots}${spells}</div>`;
+  }
+
+  function render() {
+    const c = CHARS[st.who];
+    document.body.dataset.pal = st.pal;
+    document.querySelectorAll(".seg").forEach((seg) => seg.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.v === st[seg.dataset.ctl])));
+    const g = youGroups(c);
+    const status = c.spells.length
+      ? `<div class="status"><div class="col"><div class="col-h"><span class="t">You, right now</span></div>${g.cond}${g.skills}${g.feats}</div>${magicCol(c)}</div>`
+      : `<div class="status"><div class="col"><div class="col-h"><span class="t">You, right now</span></div>${g.cond}</div><div class="col">${g.skills}${g.feats}</div></div>`;
+    document.getElementById("app").innerHTML = `<div class="frame ${st.width}"><div class="session">
+      <div>
+        <div class="identity"><span class="portrait">${c.init}</span><div><div class="name">${c.name}</div><div class="sub">${c.cls}</div><div class="badges"><span class="badge">AC ${c.ac}</span><span class="badge">Spd ${c.spd}</span></div></div></div>
+        ${hpBlock(c)}
+        <hr class="rule"><span class="label">Abilities</span>
+        <div class="abil-grid">${c.mods.map(([a, m]) => `<div class="abil"><b>${m}</b><small>${a}</small></div>`).join("")}</div>
+        <hr class="rule"><span class="label">Initiative · Party</span><div class="ghost"></div><div class="ghost" style="width:70%"></div><p class="note">(rest of the left column as today)</p>
+      </div>
+      <div>
+        <div class="mapband">▸ Map · The Green Dragon</div>
+        ${status}
+        <div class="tabs"><span class="on">Combat</span><span>Inventory</span></div>
+        <p class="note">(the Combat / Inventory sub-tabs continue below, as today)</p>
+      </div>
+    </div></div>`;
+  }
+
+  document.addEventListener("click", (e) => {
+    const seg = e.target.closest(".seg button");
+    if (seg) { st[seg.parentElement.dataset.ctl] = seg.dataset.v; render(); return; }
+    const t = e.target.closest("[data-act]"); if (!t) return;
+    const d = t.dataset;
+    if (d.act === "cond") st.conditions = st.conditions.length ? [] : ["Poisoned"];
+    if (d.act === "ex") st.exhaustion = Math.max(0, Math.min(6, st.exhaustion + Number(d.d)));
+    if (d.act === "inspo") st.inspo = !st.inspo;
+    if (d.act === "slot") { const k = "s" + d.lv, u = st.used[k] ?? 0; st.used[k] = u >= Number(d.max) ? 0 : u + 1; }
+    if (d.act === "feat") { const k = "f" + d.i, u = st.used[k] ?? 0; st.used[k] = u >= Number(d.max) ? 0 : u + 1; }
+    if (d.act === "concedit") st.concEditing = true;
+    if (d.act === "conccancel") st.concEditing = false;
+    if (d.act === "concset") { const v = document.getElementById("concin").value.trim(); if (v) { st.conc = v; st.concEditing = false; } }
+    if (d.act === "drop") st.conc = null;
+    if (d.act === "spell") st.open = st.open === Number(d.i) ? null : Number(d.i);
+    render();
+    if (st.concEditing) document.getElementById("concin")?.focus();
+  });
+  render();
+</script>
+</body>
+</html>
