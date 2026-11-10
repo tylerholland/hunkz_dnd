@@ -339,7 +339,7 @@ export function CheckHistoryRow({ pal, entry, opacity = 1, showDivider = false }
       <span style={{ paddingLeft: 21, fontFamily: pal.fontBody, fontSize: 14, color: pal.textBody }}>
         {rows.map((r, i) => (
           <span key={r.slug || i}>
-            {i > 0 && " · "}{r.name || r.slug} <b style={{ fontFamily: pal.fontDisplay, fontWeight: 400, color: r.pass === true ? "#5fbf7f" : r.pass === false ? "#d07a6a" : pal.text }}>{r.total ?? "—"}</b>{r.pass === true ? " ✓" : r.pass === false ? " ✗" : ""}
+            {i > 0 && " · "}{r.name || r.slug}{"total" in r && <> <b style={{ fontFamily: pal.fontDisplay, fontWeight: 400, color: r.pass === true ? "#5fbf7f" : r.pass === false ? "#d07a6a" : pal.text }}>{r.total ?? "—"}</b>{r.pass === true ? " ✓" : r.pass === false ? " ✗" : ""}</>}
           </span>
         ))}
       </span>

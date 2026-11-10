@@ -93,6 +93,9 @@ export default function DmDashboardPage() {
   const [mapCollapsed, setMapCollapsed] = useState(false);
   // The table feed's list, where the dice roller shows the session log in Adventure.
   const [feedEl, setFeedEl] = useState(null);
+  // The table feed as the DM's log (dice and HP sums) or as the players' story.
+  const [feedView, setFeedView] = useState(() => { try { return localStorage.getItem("dnd_dm_feed_view") || "log"; } catch { return "log"; } });
+  const pickFeedView = (view) => { setFeedView(view); try { localStorage.setItem("dnd_dm_feed_view", view); } catch { /* storage unavailable */ } };
   const [combatLayoutActive, setCombatLayoutActive] = useState(initialCombatMode);
   const [diceLayoutActive, setDiceLayoutActive] = useState(initialCombatMode);
   const [diceVisible, setDiceVisible] = useState(true);
@@ -1661,6 +1664,7 @@ export default function DmDashboardPage() {
                     onSaveTag={handleSaveRollTag}
                     appliedRollIds={appliedRollIds}
                     remoteHistory={rollHistory}
+                    storyMode={feedView === "story"}
                     marginTop={0}
                     ref={diceRollerRef}
                     checkDice={houseRules.abilityCheckDice}
@@ -1682,7 +1686,13 @@ export default function DmDashboardPage() {
 
             <section className="dm-feed-col" aria-label="At the table">
               <div className="dm-feed-panel">
-                <div className="dm-feed-head"><span className="label-ui">At the table</span></div>
+                <div className="dm-feed-head">
+                  <span className="label-ui">At the table</span>
+                  <span className="dm-feed-view" role="group" aria-label="Show the feed as">
+                    <button type="button" className={feedView === "log" ? "on" : ""} aria-pressed={feedView === "log"} onClick={() => pickFeedView("log")}>Log</button>
+                    <button type="button" className={feedView === "story" ? "on" : ""} aria-pressed={feedView === "story"} onClick={() => pickFeedView("story")}>Story</button>
+                  </span>
+                </div>
                 {!combatLayoutActive && silenceCard}
                 {vote && !combatLayoutActive && <DmVoteCard vote={vote} members={party} presence={presence} serverTime={serverTime} onAction={voteAction} />}
                 {!combatLayoutActive && rollRequestCards}

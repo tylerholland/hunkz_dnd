@@ -348,6 +348,9 @@
 }
 .dm-feed-head { display: flex; align-items: center; gap: 10px; }
 .dm-feed-head .label-ui { margin-bottom: 0; }
+.dm-feed-view { margin-left: auto; display: inline-flex; border: 1px solid var(--pal-border); border-radius: 999px; overflow: hidden; }
+.dm-feed-view button { min-height: 28px; padding: 0 12px; border: 0; background: transparent; color: var(--pal-text-muted); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 14px; cursor: pointer; }
+.dm-feed-view button.on { background: var(--pal-accent-dim); color: var(--pal-text); }
 .dm-feed-empty {
   margin: 0;
   font-family: var(--font-body, 'Crimson Text', Georgia, serif);

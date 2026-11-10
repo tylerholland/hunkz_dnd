@@ -139,12 +139,18 @@ function rollRequestLogEvent(request, names = {}) {
   };
 }
 
-/** A log event as a player may see it: no label; others' rows only if revealed; no hidden DC. */
-function publicCheckEvent(event, slug) {
+/**
+ * A log event as a player (`slug`; null for the Chronicle) may see it. Until
+ * the DM reveals it: no label, and others' rows say only who rolled. A DC the
+ * DM kept hidden never shows.
+ */
+function publicCheckEvent(event, slug = null) {
   const out = { ...event };
-  delete out.label;
   if (!out.showDc) { delete out.dc; out.rows = (out.rows || []).map(({ pass, ...row }) => row); }
-  if (!out.revealed) out.rows = (out.rows || []).filter((row) => row.slug === slug);
+  if (!out.revealed) {
+    delete out.label;
+    out.rows = (out.rows || []).map((row) => (slug && row.slug === slug ? row : { slug: row.slug, name: row.name }));
+  }
   return out;
 }
 

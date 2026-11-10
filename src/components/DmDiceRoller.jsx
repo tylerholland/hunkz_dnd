@@ -12,6 +12,7 @@ import DefenseCheck from "../features/dmDashboard/takeAction/DefenseCheck";
 import { normalizeDefense } from "../features/dmDashboard/npcStats";
 import "../features/dmDashboard/takeAction/takeAction.css";
 import "./diceRoller.css";
+import StoryLog from "../features/story/StoryLog";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 const ALL_SIDES = [4, 6, 8, 10, 12, 20, 100];
@@ -86,7 +87,7 @@ const FEED_LIMIT = 40;
 // Sessions don't span days: the log shows the last day unless asked for more.
 const LOG_WINDOW_MS = 24 * 60 * 60 * 1000;
 
-export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, onDealDamage, onApplyEffect, onSaveTag, appliedRollIds, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice, historyTarget = null }) {
+export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, onDealDamage, onApplyEffect, onSaveTag, appliedRollIds, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice, historyTarget = null, storyMode = false }) {
   // Collapsed/open — persisted
   const [isOpen, setIsOpen] = useState(() =>
     sessionStorage.getItem("dnd_dice_dm_open") !== "false"
@@ -692,7 +693,9 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
         </div>
       )}
       {historyTarget && createPortal(
-        combinedHistory.length > 0
+        storyMode
+          ? <StoryLog entries={remoteHistory} prefKey="dnd_story_dm" />
+          : combinedHistory.length > 0
           ? renderHistory(true)
           : <p className="dm-feed-empty">Nothing yet tonight. Rolls, votes and what happens at the table show up here.</p>,
         historyTarget,

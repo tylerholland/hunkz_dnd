@@ -38,14 +38,17 @@ test("players see their own result until the DM reveals; never the label", () =>
   assert.equal(projectRollRequests(state, { isDm: true })[0].label, "The study");
 });
 
-test("the log line: pass/fail for the DM; players get theirs only, no label or hidden DC", () => {
+test("the log line: pass/fail for the DM; players see who rolled but only their own result, no label or hidden DC", () => {
   let r = ask({ dc: 10 });
   r = recordResult(r, "eoghan", { total: 11 }).request;
   const event = rollRequestLogEvent(r, { eoghan: "Eòghan" });
   assert.deepEqual(event.rows, [{ slug: "eoghan", name: "Eòghan", total: 11, pass: true }, { slug: "liu", name: "liu", total: null, pass: null }]);
   const pub = publicCheckEvent(event, "eoghan");
-  assert.deepEqual([pub.label, pub.dc, pub.rows], [undefined, undefined, [{ slug: "eoghan", name: "Eòghan", total: 11 }]]);
-  assert.equal(publicCheckEvent({ ...event, revealed: true }, "eoghan").rows.length, 2);
+  assert.deepEqual([pub.label, pub.dc, pub.rows], [undefined, undefined, [{ slug: "eoghan", name: "Eòghan", total: 11 }, { slug: "liu", name: "liu" }]]);
+  const revealed = publicCheckEvent({ ...event, label: "Leap the gap", revealed: true, showDc: true }, "liu");
+  assert.equal(revealed.label, "Leap the gap");
+  assert.deepEqual(revealed.rows[0], { slug: "eoghan", name: "Eòghan", total: 11, pass: true });
+  assert.deepEqual(publicCheckEvent(event).rows, [{ slug: "eoghan", name: "Eòghan" }, { slug: "liu", name: "liu" }]);
 });
 
 test("there's a cap on open requests; junk in the record is dropped", () => {

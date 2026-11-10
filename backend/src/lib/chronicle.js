@@ -128,10 +128,12 @@ function rangesOverlap(a, b) {
 // totals stay hidden (only the change shows).
 // Notes stay with the DM and their recipients (lib/tableMessages.js).
 const { publicMessageEvent } = require("./tableMessages");
+const { publicCheckEvent } = require("./rollRequests");
 
 function publicSessionEvents(events) {
   return events.flatMap((event) => {
     if (event?.type === "note" || event?.type === "note-reply") { const shown = publicMessageEvent(event); return shown ? [shown] : []; }
+    if (event?.type === "check") return [publicCheckEvent(event)];
     if (event?.type !== "hp" || event.subject?.type !== "npc") return [event];
     const { from, to, max, ...rest } = event;
     return [rest];

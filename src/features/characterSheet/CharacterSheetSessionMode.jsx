@@ -78,6 +78,7 @@ import { checkBonus, checkName, diceFor } from "../rollRequests/rollCheck";
 import { RollIcon } from "../dmDashboard/actionIcons";
 import PlayerSilence from "../silence/PlayerSilence";
 import PlayerMessages from "../prepDeck/PlayerMessages";
+import StoryLog from "../story/StoryLog";
 
 // Player map band height (drag bar): 240px up to the window height minus the
 // top bar, so the map can never push itself entirely off screen.
@@ -642,10 +643,19 @@ export default function CharacterSheetSessionMode({
   const rawStoredSubtab = sessionStorage.getItem(`dnd_session_subtab_${slug}`);
   const storedSubtab = rawStoredSubtab && rawStoredSubtab !== "map" ? rawStoredSubtab : "combat";
   const [sessionSubTab, setSessionSubTabState] = useState(storedSubtab);
+  // Story tab: a dot when a Moment or a note to you arrives while you're on
+  // another tab. Opening or leaving the Story counts as having seen it.
+  const [storySeenAt, setStorySeenAt] = useState(() => Date.now());
   const setSessionSubTab = useCallback((tab) => {
+    if (sessionSubTab === "story" || tab === "story") setStorySeenAt(Date.now());
     setSessionSubTabState(tab);
     sessionStorage.setItem(`dnd_session_subtab_${slug}`, tab);
-  }, [slug]);
+  }, [slug, sessionSubTab]);
+  const storyNewAt = (rollHistory || []).reduce((latest, e) => {
+    const forMe = e?.type === "moment" || (e?.type === "note" && !e.passed && Array.isArray(e.to) && e.to.includes(slug));
+    return forMe ? Math.max(latest, Date.parse(e.createdAt || "") || 0) : latest;
+  }, 0);
+  const storyDot = sessionSubTab !== "story" && storyNewAt > storySeenAt;
 
   // ── Story 60 — persistent map band ────────────────────────────────────────
   const mapPrefKey = `dnd_session_map_open_${slug}`;
@@ -1720,12 +1730,13 @@ export default function CharacterSheetSessionMode({
               { key: "combat", label: "Combat" },
               { key: "loadout", label: "Inventory" },
               { key: "notes", label: "Notes" },
-            ].map(({ key, label, disabled }) => (
+              { key: "story", label: "Story", dot: storyDot },
+            ].map(({ key, label, disabled, dot }) => (
               <button
                 key={key}
                 className={`cs-sm-tab${sessionSubTab === key ? " active" : ""}${disabled ? " disabled" : ""}`}
                 onClick={() => !disabled && setSessionSubTab(key)}
-              >{label}</button>
+              >{label}{dot && <span className="cs-sm-tab-dot" aria-label="New" />}</button>
             ))}
           </div>
 
@@ -1799,6 +1810,11 @@ export default function CharacterSheetSessionMode({
           {/* ── NOTES sub-tab ── */}
           <div className={`cs-sm-tab-panel${sessionSubTab === "notes" ? " active" : ""}`}>
             <SessionNotesSection char={char} pal={pal} onSaveNotes={saveNotes} />
+          </div>
+
+          {/* ── STORY sub-tab: the session told as sentences ── */}
+          <div className={`cs-sm-tab-panel${sessionSubTab === "story" ? " active" : ""}`}>
+            {sessionSubTab === "story" && <StoryLog entries={rollHistory} viewerSlug={slug} prefKey="dnd_story_player" />}
           </div>
 
           {/* Dice roller */}

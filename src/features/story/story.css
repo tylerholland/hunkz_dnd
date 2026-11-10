@@ -1,0 +1,39 @@
+/* Story log — the session told as sentences (player Story tab, DM Story view). */
+.st-log { display: grid; gap: 8px; }
+.st-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; justify-content: flex-end; }
+.st-seg { display: inline-flex; border: 1px solid var(--pal-border); border-radius: 999px; overflow: hidden; }
+.st-seg button { min-height: 32px; padding: 0 12px; border: 0; background: transparent; color: var(--pal-text-muted); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 14px; cursor: pointer; }
+.st-seg button.on { background: var(--pal-accent-dim); color: var(--pal-text); }
+.st-check { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 14px; color: var(--pal-text-muted); cursor: pointer; }
+.st-check input { accent-color: var(--pal-accent); }
+
+.st-list { display: grid; }
+.st-line { display: flex; gap: 12px; padding: 7px 2px; border-bottom: 1px solid color-mix(in srgb, var(--pal-border) 55%, transparent); }
+.st-line p { margin: 0; min-width: 0; font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 16px; line-height: 1.4; color: var(--pal-text-body); }
+.st-line.me p { color: var(--pal-text); }
+.st-when { flex: none; min-width: 56px; padding-top: 2px; font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-style: italic; font-size: 13px; color: var(--pal-text-muted); }
+.st-who { font-weight: 600; color: var(--pal-text); }
+.st-you { font-weight: 600; color: var(--pal-accent-bright); }
+.st-ok { font-style: italic; color: #8ac08a; }
+.st-no { font-style: italic; color: #d08a7a; }
+.st-quiet { font-style: italic; color: var(--pal-text-muted); }
+.st-num { margin-left: 6px; font-family: var(--font-display, 'Cinzel', serif); font-size: 13px; color: var(--pal-text-muted); white-space: nowrap; }
+[data-light="true"] .st-ok { color: #2f7a44; }
+[data-light="true"] .st-no { color: #9a3a2a; }
+
+.st-kind { font-family: var(--font-ui, 'IM Fell English', serif); font-size: 12px; letter-spacing: 0.22em; text-transform: uppercase; color: #d0b070; }
+[data-light="true"] .st-kind { color: #8a6420; }
+
+.st-moment { margin: 12px 0 6px; border: 1px solid var(--pal-accent); border-radius: 8px; overflow: hidden; background: var(--pal-surface-solid); }
+.st-moment-pic { display: block; width: 100%; max-height: 220px; object-fit: cover; }
+.st-moment-in { padding: 12px 16px 14px; }
+.st-moment h3 { margin: 2px 0 6px; font-family: var(--font-display, 'Cinzel', serif); font-weight: 400; font-size: 20px; color: var(--pal-accent-bright); }
+.st-moment p { margin: 0; font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 16px; color: var(--pal-text); white-space: pre-line; }
+.st-moment .st-when { display: block; margin-top: 8px; }
+
+.st-note { margin: 8px 0; padding: 10px 14px; border: 1px solid rgba(208, 176, 112, 0.4); border-radius: 6px; background: rgba(208, 176, 112, 0.08); }
+[data-light="true"] .st-note { border-color: rgba(140, 100, 30, 0.4); background: rgba(160, 120, 40, 0.08); }
+.st-note-title { display: block; margin-top: 4px; font-family: var(--font-display, 'Cinzel', serif); font-weight: 400; font-size: 15px; color: var(--pal-text); }
+.st-note p { margin: 4px 0 0; font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-style: italic; font-size: 16px; color: var(--pal-text); white-space: pre-line; }
+.st-reply { margin-top: 8px; padding-left: 10px; border-left: 2px solid rgba(208, 176, 112, 0.4); font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-size: 15px; color: var(--pal-text-body); }
+.st-empty { margin: 16px 0; text-align: center; font-family: var(--font-body, 'Crimson Text', Georgia, serif); font-style: italic; color: var(--pal-text-muted); }

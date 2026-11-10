@@ -4880,3 +4880,6 @@
 .cs-gift-toast > span:first-child { color: var(--pal-accent-bright); }
 .cs-gift-toast button { border: 0; background: transparent; color: var(--pal-text-muted); cursor: pointer; font-size: 14px; min-width: 28px; min-height: 28px; }
 .cs-give-person span { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-sm-tab { position: relative; }
+.cs-sm-tab-dot { position: absolute; top: 6px; right: 6px; width: 8px; height: 8px; border-radius: 50%; background: #d0b070; box-shadow: 0 0 0 2px var(--pal-bg); }
+[data-light="true"] .cs-sm-tab-dot { background: #8a6420; }
