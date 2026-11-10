@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect, useCallback, useImperativeHandle } from "react";
 import { createPortal } from "react-dom";
 import { parseDiceExpr, rollDie, DieShape } from "./DiceRoller";
-import { RollHistoryRow } from "./RollHistoryList";
+import { HpOutcomeLine, RollHistoryRow } from "./RollHistoryList";
 import EffectLogRow from "./ApplyEffectAction";
 import { PALETTES } from "../features/characterSheet/theme";
 import { postDmRoll } from "../api";
@@ -83,6 +83,8 @@ function createClientRollId(timestamp, index) {
 // ── DmDiceRoller ───────────────────────────────────────────────────────────────
 // How many log rows the table feed shows.
 const FEED_LIMIT = 40;
+// Sessions don't span days: the log shows the last day unless asked for more.
+const LOG_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = "", onApplyDamage, onApplyNpcDamage, onDealDamage, onApplyEffect, onSaveTag, appliedRollIds, remoteHistory = [], marginTop = 16, ref, checkDice = DEFAULT_HOUSE_RULES.abilityCheckDice, historyTarget = null }) {
   // Collapsed/open — persisted
@@ -92,6 +94,13 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
 
   // Roll configuration
   const [advMode, setAdvMode] = useState("normal");
+  // The log's 24-hour window: "now" moves on once a minute; earlier events on request.
+  const [now, setNow] = useState(() => Date.now());
+  const [showEarlier, setShowEarlier] = useState(false);
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60000);
+    return () => window.clearInterval(timer);
+  }, []);
   const [repeatCount, setRepeatCount] = useState(1);
   const [selectedSides, setSelectedSides] = useState(20);
   const [dieCount, setDieCount] = useState(1);
@@ -296,7 +305,24 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
 
   // The history rows, inline in the panel or (Adventure) in the table feed.
   function renderHistory(inFeed) {
-    return combinedHistory.map((entry, i) => {
+    const recent = combinedHistory.filter((entry) => !entry.sortTime || entry.sortTime >= now - LOG_WINDOW_MS);
+    const earlier = combinedHistory.length - recent.length;
+    const shown = showEarlier ? combinedHistory : recent;
+    // An HP change made from a roll (Deal Damage / Take Action) shows inside
+    // that roll's row instead of as a row of its own.
+    const ids = new Set(shown.map((entry) => entry.id));
+    const outcomes = new Map();
+    for (const entry of shown) {
+      if (entry.type === "hp" && entry.rollId && ids.has(entry.rollId)) outcomes.set(entry.rollId, [...(outcomes.get(entry.rollId) || []), entry]);
+    }
+    const list = shown.filter((entry) => !(entry.type === "hp" && entry.rollId && ids.has(entry.rollId)));
+    const toggle = earlier > 0 ? (
+      <button key="earlier" type="button" className="rh-earlier" onClick={() => setShowEarlier((v) => !v)}>
+        {showEarlier ? "Hide events older than a day" : `Show earlier events (${earlier})`}
+      </button>
+    ) : null;
+    if (!list.length) return [<p key="none" className="dm-feed-empty">Nothing in the last day.</p>, toggle];
+    return [...list.map((entry, i) => {
       // The newest four stay full; older rows fade. A hovered or
       // focused row comes back to full (rollHistory.css). The feed
       // has room, so it keeps a longer list at full strength.
@@ -327,7 +353,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
             onApplyEffect={onApplyEffect}
             onSaveTag={canTag ? onSaveTag : undefined}
             opacity={opacity}
-            showDivider={i < combinedHistory.length - 1}
+            showDivider={i < list.length - 1}
           />
         );
       }
@@ -338,7 +364,8 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
           entry={shownEntry}
           onSaveTag={canTag ? onSaveTag : undefined}
           opacity={opacity}
-          showDivider={i < combinedHistory.length - 1}
+          showDivider={i < list.length - 1}
+          below={outcomes.has(entry.id) ? outcomes.get(entry.id).map((hp) => <HpOutcomeLine key={hp.id} pal={pal} entry={hp} />) : null}
         >
           {/* A player's to-hit at an NPC, against its defense (AC or a roll). */}
           {isToHitRoll(entry) && entry.target?.type === "npc" && (
@@ -350,7 +377,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
             />
           )}
           {/* ADR-032 — apply a player's targeted damage roll. */}
-          {onDealDamage && isDealableRoll(entry) && (
+          {onDealDamage && isDealableRoll(entry) && !outcomes.has(entry.id) && (
             entry.applied || appliedRollIds?.has(entry.id) ? (
               <span className="ta-applied">
                 {entry.applied?.kind === "miss" ? "Marked as a miss" : `✓ Applied${entry.applied?.amount != null ? ` ${entry.applied.amount}` : ""}`}
@@ -363,7 +390,7 @@ export default function DmDiceRoller({ pal, party = [], npcs = [], dmPassword = 
           )}
         </RollHistoryRow>
       );
-    });
+    }), toggle];
   }
 
   return (

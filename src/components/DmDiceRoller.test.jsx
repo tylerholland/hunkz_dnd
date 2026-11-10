@@ -38,7 +38,7 @@ describe("DmDiceRoller remote history", () => {
             total: 21,
             isCrit: false,
             isFumble: false,
-            createdAt: "2026-05-01T12:00:00.000Z",
+            createdAt: new Date().toISOString(), // within the log's one-day window
           },
         ]}
         onApplyDamage={vi.fn()}
@@ -151,5 +151,44 @@ describe("DmDiceRoller For box", () => {
     fireEvent.click(screen.getByRole("button", { name: /^Roll / }));
     act(() => { vi.advanceTimersByTime(650); });
     expect("tag" in apiMocks.postDmRoll.mock.calls[0][1]).toBe(false);
+  });
+});
+
+describe("DmDiceRoller log window and grouping", () => {
+  const minutesAgo = (m) => new Date(Date.now() - m * 60000).toISOString();
+
+  it("keeps to the last day; earlier events come back on request", () => {
+    render(
+      <DmDiceRoller
+        pal={PALETTES.ocean}
+        remoteHistory={[
+          { id: "new", characterName: "Liu", label: "Stealth", rollValues: [5, 2], total: 11, createdAt: minutesAgo(5) },
+          { id: "old", characterName: "Aesop", label: "Old test roll", rollValues: [1], total: 1, createdAt: minutesAgo(60 * 30) },
+        ]}
+      />,
+    );
+    expect(screen.getByText("Stealth")).toBeInTheDocument();
+    expect(screen.queryByText("Old test roll")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Show earlier events (1)" }));
+    expect(screen.getByText("Old test roll")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Hide events older than a day" }));
+    expect(screen.queryByText("Old test roll")).not.toBeInTheDocument();
+  });
+
+  it("shows the HP change a roll caused inside that roll, not as its own row", () => {
+    const { container } = render(
+      <DmDiceRoller
+        pal={PALETTES.ocean}
+        remoteHistory={[
+          { id: "hp1", type: "hp", subject: { name: "Varn" }, from: 10, to: 7, max: 10, delta: -3, rollId: "dmg1", createdAt: minutesAgo(1) },
+          { id: "dmg1", source: "dm", label: "Gnome · Poisoned shank DMG", rollValues: [3], total: 3, createdAt: minutesAgo(2) },
+          { id: "hp2", type: "hp", subject: { name: "Varn" }, from: 7, to: 10, max: 10, delta: 3, createdAt: minutesAgo(3) },
+        ]}
+      />,
+    );
+    const rows = container.querySelectorAll(".rh-row");
+    expect(rows).toHaveLength(2); // the damage roll (with its outcome) and the heal
+    expect(within(rows[0]).getByText("−3")).toBeInTheDocument();
+    expect(container.querySelectorAll(".rh-outcome")).toHaveLength(1);
   });
 });

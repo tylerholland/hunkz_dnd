@@ -167,6 +167,30 @@ function historyRowStyle(pal, opacity, showDivider) {
 const HP_DAMAGE = "#c06060";
 const HP_HEAL = "#6aa86a";
 
+// An HP change shown inside the roll that caused it (the DM's log groups them):
+// "→ Varn −3  10 → 7 / 10 HP", or "→ Varn: missed".
+export function HpOutcomeLine({ pal, entry }) {
+  const delta = Number.isFinite(entry.delta) ? entry.delta : 0;
+  const color = entry.miss ? pal.textMuted : delta < 0 ? HP_DAMAGE : HP_HEAL;
+  return (
+    <div className="rh-outcome" style={{ display: "flex", alignItems: "baseline", flexWrap: "wrap", gap: "0 8px", marginTop: 2, paddingLeft: 10, borderLeft: `2px solid ${color}`, fontFamily: pal.fontBody, fontSize: 14 }}>
+      <span style={{ color: pal.textMuted }} aria-hidden="true">→</span>
+      <span style={{ color: pal.accentBright }}>{entry.subject?.name || "Someone"}</span>
+      {entry.miss ? (
+        <span style={{ fontStyle: "italic", color: pal.textMuted }}>missed</span>
+      ) : (
+        <>
+          <span style={{ fontFamily: pal.fontDisplay, fontSize: 16, color }}>{delta < 0 ? `−${Math.abs(delta)}` : `+${delta}`}</span>
+          {Number.isFinite(entry.from) && Number.isFinite(entry.to) && (
+            <span style={{ fontFamily: pal.fontUI, fontSize: 12, color: pal.textMuted }}>{entry.from} → {entry.to}{Number.isFinite(entry.max) ? ` / ${entry.max}` : ""} HP</span>
+          )}
+          {entry.action?.crit && <span style={{ fontFamily: pal.fontUI, fontSize: 9, letterSpacing: "0.12em", textTransform: "uppercase", padding: "2px 6px", borderRadius: 2, ...badgeStyle("crit") }}>{badgeStyle("crit").label}</span>}
+        </>
+      )}
+    </div>
+  );
+}
+
 export function HpHistoryRow({ pal, entry, opacity = 1, showDivider = false, children = null, onSaveTag }) {
   const delta = Number.isFinite(entry.delta) ? entry.delta : 0;
   const kind = entry.miss ? "miss" : delta < 0 ? "damage" : "heal";
@@ -514,6 +538,8 @@ export function RollHistoryRow({ pal, entry, opacity = 1, showDivider = false, c
           </span>
         ) : null}
       </div>
+      {/* A line under the whole row (e.g. the HP change this roll caused). */}
+      {below ? <div style={{ flexBasis: "100%" }}>{below}</div> : null}
     </div>
   );
 }

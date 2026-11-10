@@ -1621,7 +1621,17 @@ export default function DmDashboardPage() {
               >
                 <DmActionTiles tiles={actionTiles}>
                   {/* Leaving Adventure: its own bar, in the combat colour. */}
-                  <button type="button" className="dm-start-combat" onClick={() => toggleCombatMode()}>
+                  <button
+                    type="button"
+                    className="dm-start-combat"
+                    onClick={() => setConfirmDialog({
+                      title: "Start Combat?",
+                      message: houseRules.autoInitiative !== false
+                        ? "Switches everyone to Combat and asks every player to roll initiative."
+                        : "Switches everyone to Combat.",
+                      onConfirm: () => { setConfirmDialog(null); toggleCombatMode(); },
+                    })}
+                  >
                     <span className="dm-start-combat-icon" aria-hidden="true"><SwordsIcon /></span>
                     <span className="dm-start-combat-title">Start Combat</span>
                     <span className="dm-start-combat-sub">{houseRules.autoInitiative !== false ? "Asks everyone for initiative" : "Initiative is off in DM Settings (⋯ → Roll Initiative)"}</span>
