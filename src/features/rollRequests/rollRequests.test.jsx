@@ -85,3 +85,17 @@ describe("the player's roll prompt", () => {
     expect(screen.queryByText("The DM asks for a roll")).not.toBeInTheDocument();
   });
 });
+
+describe("the player's own Check", () => {
+  it("lists skills with their bonus and rolls the one tapped; saves are folded", async () => {
+    const { default: PlayerCheckPanel } = await import("./PlayerCheckPanel");
+    const onRoll = vi.fn();
+    render(<PlayerCheckPanel char={eoghan} rules={{ skillBonus: "proficiency" }} onRoll={onRoll} onClose={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: /Perception \+4/ }));
+    expect(onRoll).toHaveBeenCalledWith(skillCheck("perception"));
+    expect(screen.queryByRole("button", { name: /DEX save/ })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: /Saving throw/ }));
+    fireEvent.click(screen.getByRole("button", { name: /DEX save/ }));
+    expect(onRoll).toHaveBeenLastCalledWith(savingThrow("dex"));
+  });
+});

@@ -14,3 +14,12 @@ describe("groupHpUnderRolls", () => {
     expect(outcomes.get("r1").map((e) => e.id)).toEqual(["hp1"]);
   });
 });
+
+describe("buildDiceExprLabel", () => {
+  it("writes a flat bonus with one sign", async () => {
+    const { buildDiceExprLabel } = await import("./rollHistory");
+    expect(buildDiceExprLabel([{ count: 2, sides: 6 }], 2)).toBe("2d6+2");
+    expect(buildDiceExprLabel([{ count: 1, sides: 20 }], -1)).toBe("1d20-1");
+    expect(buildDiceExprLabel([{ count: 1, sides: 4 }, { count: 1, sides: 6 }], 0)).toBe("1d4+1d6");
+  });
+});

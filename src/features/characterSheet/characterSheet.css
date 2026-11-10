@@ -4841,3 +4841,22 @@
 .cs-sm-status .cs-sm-conc-add-btn { justify-self: start; margin-bottom: 0; }
 .cs-sm-status .cs-sm-conc-banner,
 .cs-sm-status .cs-sm-conc-input-row { margin-bottom: 0; }
+
+/* Status groups share one shape: label, action on the right, state below. */
+.cs-sm-grp-btn { min-height: 28px; padding: 0 10px; border: 1px dashed color-mix(in srgb, var(--pal-accent) 45%, transparent); border-radius: 3px; background: transparent; color: var(--pal-accent-bright); font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; cursor: pointer; white-space: nowrap; }
+.cs-sm-grp-btn:hover { border-style: solid; border-color: var(--pal-accent); }
+.cs-sm-grp-btn--quiet { color: var(--pal-text-muted); }
+.cs-sm-grp-state { display: inline-flex; align-items: center; gap: 8px; font-family: var(--font-body); font-size: 15px; color: var(--pal-text); }
+.cs-sm-grp-state .cs-sm-conc-dot { flex: none; }
+.cs-sm-grp-note { font-family: var(--font-body); font-style: italic; font-size: 13px; color: var(--pal-text-muted); }
+.cs-sm-grp-input { flex: 1; min-width: 120px; min-height: 30px; padding: 2px 8px; border: 1px solid var(--pal-border); border-radius: 3px; background: var(--pal-surface-solid); color: var(--pal-text); font-family: var(--font-body); font-size: 15px; }
+.cs-sm-status .cs-sm-conc-input-row { display: flex; align-items: center; gap: 6px; }
+.cs-sm-status .cs-sm-exhaustion { margin-top: 0; gap: 8px; }
+.cs-sm-status .cs-sm-exhaustion-btn { width: 28px; height: 28px; }
+.cs-sm-status .cs-sm-exhaustion .cs-sm-grp-note { margin-left: 4px; }
+
+/* Check: roll a skill or save yourself (under the ability modifiers). */
+.cs-sm-check-btn { display: flex; align-items: center; justify-content: center; gap: 8px; width: 100%; min-height: 36px; margin-top: 8px; border: 1px solid var(--pal-border); border-radius: 3px; background: transparent; color: var(--pal-accent-bright); font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase; cursor: pointer; }
+.cs-sm-check-btn svg { width: 16px; height: 16px; }
+.cs-sm-check-btn:hover, .cs-sm-check-btn.open { border-color: var(--pal-accent); background: var(--pal-gem-low); }
+.rq-playercheck { margin-top: 8px; }

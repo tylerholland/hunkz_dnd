@@ -8,8 +8,10 @@ export function buildDiceExprLabel(groups, flat = 0, { spaced = false } = {}) {
         : 0;
     return `${count}d${group.sides}`;
   });
+  // Unspaced, the flat bonus carries its own sign ("2d6+2", "1d20-1"), not a
+  // joiner as well (which made "2d6++2").
+  if (!spaced) return parts.join(joiner) + (flat > 0 ? `+${flat}` : flat < 0 ? `${flat}` : "");
   if (flat !== 0) parts.push(flat > 0 ? `+${flat}` : `${flat}`);
-  if (!spaced) return parts.join(joiner);
 
   return parts
     .join(joiner)

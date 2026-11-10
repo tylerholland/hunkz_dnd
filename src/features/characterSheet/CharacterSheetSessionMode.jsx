@@ -24,7 +24,7 @@ import { useState, useEffect, useRef, useCallback, useMemo, memo } from "react";
 import { useNavigate } from "react-router-dom";
 import { PALETTES } from "./theme";
 import { fmtMod, CONDITIONS, normalizeSpells, buildAttackEntries, buildUnarmedStrike, spellRoleGlyph, applyLongRest, applyShortRest } from "./constants";
-import CharacterTalents from "./CharacterTalents";
+import CharacterTalents, { InfoBadge } from "./CharacterTalents";
 import { patchSession, postCharacterRoll, moveMapToken, endTurn } from "../../api";
 import { EndTurnButton, YourTurnBanner } from "./TurnCue";
 import { useYourTurnCue } from "./useYourTurnCue";
@@ -73,6 +73,9 @@ import CombatGuide, { CombatGuideOffer } from "../combatGuide/CombatGuide";
 import { combatGuideSeen } from "../combatGuide/combatGuideSteps";
 import PlayerVote from "../vote/PlayerVote";
 import PlayerRollPrompt from "../rollRequests/PlayerRollPrompt";
+import PlayerCheckPanel from "../rollRequests/PlayerCheckPanel";
+import { checkBonus, checkName, diceFor } from "../rollRequests/rollCheck";
+import { RollIcon } from "../dmDashboard/actionIcons";
 import PlayerSilence from "../silence/PlayerSilence";
 import PlayerMessages from "../prepDeck/PlayerMessages";
 
@@ -106,6 +109,26 @@ const STAT_ABBR = {
   Intelligence: "INT",
   Charisma: "CHA",
 };
+
+// A spell's hover box: its level (and damage), then what it does.
+function spellTooltip(spell) {
+  const n = Number(spell.level);
+  const level = spell.level === undefined || spell.level === "" || !Number.isFinite(n) ? "" : n <= 0 ? "Cantrip" : `Level ${n}`;
+  const head = [level, spell.damage].filter(Boolean).join(" · ");
+  const body = spell.description || "No description yet. Add one on your sheet (Profile).";
+  return head ? `${head}. ${body}` : body;
+}
+
+// D&D 5e exhaustion, by level (each level includes the ones before it).
+const EXHAUSTION_EFFECTS = [
+  "None",
+  "Disadvantage on ability checks",
+  "…and speed halved",
+  "…and disadvantage on attacks and saves",
+  "…and HP max halved",
+  "…and speed 0",
+  "…and death",
+];
 
 function hpBarColor(current, max) {
   if (max <= 0) return "cs-sm-hp-bar-healthy";
@@ -344,6 +367,7 @@ export default function CharacterSheetSessionMode({
   const [localHp, setLocalHp] = useState(char?.hpCurrent ?? 0);
   const hpServerRef = useRef(char?.hpCurrent ?? 0);
   const diceRollerRef = useRef(null);
+  const [checkOpen, setCheckOpen] = useState(false); // the Check panel under the abilities
 
   useEffect(() => {
     const incoming = initialData?.hpCurrent ?? 0;
@@ -690,7 +714,10 @@ export default function CharacterSheetSessionMode({
   const pactSlotsSpent = spellSlots.filter((s) => s.isPactMagic).reduce((sum, s) => sum + (s.used || 0), 0);
   const longRestIsNoop = totalSlotsSpent === 0 && featureUsesSpent === 0 && (char?.hitDiceCurrent ?? (char?.level || 1)) >= (char?.level || 1);
   const shortRestIsNoop = pactSlotsSpent === 0 && shortFeatureSpent === 0;
-  const showShortRest = hasPactSlot || hasShortFeature;
+  // Both rests always show; greyed out (with why) when they'd restore nothing.
+  const shortRestNote = hasPactSlot || hasShortFeature
+    ? "Nothing to restore yet"
+    : "Nothing of yours comes back on a short rest (only Warlock slots and short-rest features do)";
   const skills = char?.skills || [];
   const specialAbilities = char?.specialAbilities || [];
   const weapons = char?.weapons || [];
@@ -1114,12 +1141,10 @@ export default function CharacterSheetSessionMode({
                 <span className="cs-sm-label" style={{ marginBottom: 0 }}>Features &amp; Traits</span>
                 {spellSlots.length === 0 && features.some((f) => f.uses) && (
                   <div className="cs-sm-rest-btns">
-                    {showShortRest && (
-                      <button type="button" className="cs-sm-rest-btn" disabled={shortRestIsNoop} onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}>
-                        {restConfirm === "short" ? `Restore ${shortFeatureSpent}?` : "Short Rest"}
-                      </button>
-                    )}
-                    <button type="button" className="cs-sm-rest-btn" disabled={longRestIsNoop} onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}>
+                    <button type="button" className="cs-sm-rest-btn" disabled={shortRestIsNoop} title={shortRestIsNoop ? shortRestNote : undefined} onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}>
+                      {restConfirm === "short" ? `Restore ${shortFeatureSpent}?` : "Short Rest"}
+                    </button>
+                    <button type="button" className="cs-sm-rest-btn" disabled={longRestIsNoop} title={longRestIsNoop ? "Nothing to restore: you haven't used any slots or uses yet" : undefined} onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}>
                       {restConfirm === "long" ? `Restore All ${featureUsesSpent}?` : "Long Rest"}
                     </button>
                   </div>
@@ -1300,6 +1325,21 @@ export default function CharacterSheetSessionMode({
               </div>
             ))}
           </div>
+          {/* Roll a skill or save yourself when the DM calls for one. */}
+          <button type="button" className={`cs-sm-check-btn${checkOpen ? " open" : ""}`} aria-expanded={checkOpen} onClick={() => setCheckOpen((v) => !v)}>
+            <RollIcon />Check
+          </button>
+          {checkOpen && (
+            <PlayerCheckPanel
+              char={char}
+              rules={houseRules}
+              onClose={() => setCheckOpen(false)}
+              onRoll={(check) => {
+                setCheckOpen(false);
+                diceRollerRef.current?.rollCheck({ label: checkName(check), dice: diceFor(check, houseRules), bonus: checkBonus(char, check, houseRules) });
+              }}
+            />
+          )}
 
           {/* Initiative strip */}
           <hr className="cs-sm-rule" />
@@ -1471,10 +1511,11 @@ export default function CharacterSheetSessionMode({
           <div className={`cs-sm-status${hasMagic ? "" : " cs-sm-status--plain"}`}>
             <div className="cs-sm-status-col">
               <span className="cs-sm-status-head">You, right now</span>
+              {/* Each group: its label, any action on the right, its state below. */}
               <div className="cs-sm-status-grp">
                 <div className="cs-sm-status-grp-h">
                   <span className="cs-sm-label" style={{ marginBottom: 0 }}>Conditions</span>
-                  <button className="cs-sm-cond-manage-btn" onClick={() => setCondPickerOpen(true)}>✎ Change</button>
+                  <button type="button" className="cs-sm-grp-btn" onClick={() => setCondPickerOpen(true)}>✎ Change</button>
                 </div>
                 <div className="cs-sm-conditions-row">
                   {activeConditions.length === 0 ? (
@@ -1483,30 +1524,41 @@ export default function CharacterSheetSessionMode({
                     activeConditions.map((c) => <span key={c} className="cs-sm-cond-chip">{c}</span>)
                   )}
                 </div>
-                <div className="cs-sm-status-inline">
-                  <div className={`cs-sm-exhaustion${(char?.exhaustionLevel ?? 0) > 0 ? " active" : ""}`}>
-                    <span className="cs-sm-exhaustion-label">Exhaustion</span>
-                    <button
-                      type="button"
-                      className="cs-sm-exhaustion-btn"
-                      onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) - 1)}
-                      disabled={(char?.exhaustionLevel ?? 0) <= 0}
-                      aria-label="Decrease exhaustion"
-                    >−</button>
-                    <span className="cs-sm-exhaustion-level" aria-live="polite">{char?.exhaustionLevel ?? 0}</span>
-                    <button
-                      type="button"
-                      className="cs-sm-exhaustion-btn"
-                      onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) + 1)}
-                      disabled={(char?.exhaustionLevel ?? 0) >= 6}
-                      aria-label="Increase exhaustion"
-                    >+</button>
-                  </div>
-                  <button className={`cs-sm-inspo-pill${char?.inspiration ? " active" : ""}`} onClick={toggleInspiration} aria-pressed={!!char?.inspiration}>
-                    <span className="cs-sm-inspo-gem" aria-hidden="true" />
-                    Inspiration
-                  </button>
+              </div>
+              <div className="cs-sm-status-grp">
+                <div className="cs-sm-status-grp-h">
+                  <span className="cs-sm-label" style={{ marginBottom: 0 }}>Exhaustion</span>
                 </div>
+                <div className={`cs-sm-exhaustion${(char?.exhaustionLevel ?? 0) > 0 ? " active" : ""}`}>
+                  <button
+                    type="button"
+                    className="cs-sm-exhaustion-btn"
+                    onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) - 1)}
+                    disabled={(char?.exhaustionLevel ?? 0) <= 0}
+                    aria-label="Decrease exhaustion"
+                  >−</button>
+                  <span className="cs-sm-exhaustion-level" aria-live="polite">{char?.exhaustionLevel ?? 0}</span>
+                  <button
+                    type="button"
+                    className="cs-sm-exhaustion-btn"
+                    onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) + 1)}
+                    disabled={(char?.exhaustionLevel ?? 0) >= 6}
+                    aria-label="Increase exhaustion"
+                  >+</button>
+                  <span className="cs-sm-grp-note">{EXHAUSTION_EFFECTS[char?.exhaustionLevel ?? 0]}</span>
+                </div>
+              </div>
+              <div className="cs-sm-status-grp">
+                <div className="cs-sm-status-grp-h">
+                  <span className="cs-sm-label" style={{ marginBottom: 0 }}>Inspiration</span>
+                  <button type="button" className="cs-sm-grp-btn" onClick={toggleInspiration}>{char?.inspiration ? "Spend it" : "＋ Got it"}</button>
+                </div>
+                {char?.inspiration ? (
+                  <span className="cs-sm-grp-state"><span className="cs-sm-inspo-gem active" aria-hidden="true" />Inspired</span>
+                ) : (
+                  <span className="cs-sm-cond-none">None</span>
+                )}
+                <span className="cs-sm-grp-note">The DM awards it for great play. Spend it for advantage on one roll.</span>
               </div>
               {hasMagic && talentsAndFeatures}
             </div>
@@ -1515,75 +1567,37 @@ export default function CharacterSheetSessionMode({
                 <>
                   <span className="cs-sm-status-head">Magic</span>
                   <div className="cs-sm-status-grp">
-                    <span className="cs-sm-label" style={{ marginBottom: 0 }}>Concentration</span>
+                    <div className="cs-sm-status-grp-h">
+                      <span className="cs-sm-label" style={{ marginBottom: 0 }}>Concentration</span>
+                      {concentration.active ? (
+                        <button type="button" className="cs-sm-grp-btn" onClick={dropConcentration}>Drop</button>
+                      ) : !concInputOpen && (
+                        <button type="button" className="cs-sm-grp-btn" onClick={() => setConcInputOpen(true)}>＋ Set</button>
+                      )}
+                    </div>
                     {concentration.active ? (
-                      <div className="cs-sm-conc-banner">
-                        <div className="cs-sm-conc-dot" />
-                        <span className="cs-sm-conc-text">
-                          Concentrating: <strong>{concentration.spell}</strong>
-                        </span>
-                        <button className="cs-sm-conc-drop" onClick={dropConcentration}>Drop</button>
-                      </div>
+                      <span className="cs-sm-grp-state"><span className="cs-sm-conc-dot" aria-hidden="true" />{concentration.spell}</span>
                     ) : concInputOpen ? (
                       <div className="cs-sm-conc-input-row">
                         <input
                           type="text"
+                          className="cs-sm-grp-input"
                           value={concInput}
                           onChange={(e) => setConcInput(e.target.value)}
                           onKeyDown={(e) => {
                             if (e.key === "Enter" && concInput.trim()) setConcentration(concInput.trim());
                             if (e.key === "Escape") { setConcInputOpen(false); setConcInput(""); }
                           }}
-                          placeholder="Spell name…"
-                          style={{
-                            flex: 1,
-                            background: pal.surfaceSolid,
-                            border: `1px solid ${pal.border}`,
-                            borderRadius: 3,
-                            color: pal.text,
-                            fontFamily: pal.fontBody,
-                            fontSize: 15,
-                            padding: "6px 10px",
-                            outline: "none",
-                          }}
+                          placeholder="Which spell?"
+                          aria-label="Spell you're concentrating on"
                           autoFocus
                         />
-                        <button
-                          onClick={() => concInput.trim() && setConcentration(concInput.trim())}
-                          style={{
-                            background: pal.accentDim,
-                            border: `1px solid ${pal.accent}`,
-                            borderRadius: 3,
-                            color: pal.accentBright,
-                            fontFamily: pal.fontUI,
-                            fontSize: 11,
-                            letterSpacing: "0.1em",
-                            padding: "6px 12px",
-                            cursor: "pointer",
-                          }}
-                        >Set</button>
-                        <button
-                          onClick={() => { setConcInputOpen(false); setConcInput(""); }}
-                          style={{
-                            background: "transparent",
-                            border: `1px solid ${pal.border}`,
-                            borderRadius: 3,
-                            color: pal.textMuted,
-                            fontFamily: pal.fontUI,
-                            fontSize: 11,
-                            letterSpacing: "0.1em",
-                            padding: "6px 10px",
-                            cursor: "pointer",
-                          }}
-                        >Cancel</button>
+                        <button type="button" className="cs-sm-grp-btn" onClick={() => concInput.trim() && setConcentration(concInput.trim())}>Set</button>
+                        <button type="button" className="cs-sm-grp-btn cs-sm-grp-btn--quiet" onClick={() => { setConcInputOpen(false); setConcInput(""); }}>Cancel</button>
                       </div>
                     ) : (
-                      <button
-                        className="cs-sm-conc-add-btn"
-                        onClick={() => setConcInputOpen(true)}
-                      >+ Concentration</button>
+                      <span className="cs-sm-cond-none">None</span>
                     )}
-
                   </div>
                 {/* Spell slots — tap a pip to spend/restore; rests in the header row (Story 63) */}
                 {spellSlots.length > 0 && (
@@ -1591,20 +1605,20 @@ export default function CharacterSheetSessionMode({
                     <div className="cs-sm-slots-header">
                       <span className="cs-sm-label" style={{ marginBottom: 0 }}>Spell Slots</span>
                       <div className="cs-sm-rest-btns">
-                        {showShortRest && (
-                          <button
-                            type="button"
-                            className="cs-sm-rest-btn"
-                            disabled={shortRestIsNoop}
-                            onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}
-                          >
-                            {restConfirm === "short" ? `Restore ${pactSlotsSpent + shortFeatureSpent}?` : "Short Rest"}
-                          </button>
-                        )}
+                        <button
+                          type="button"
+                          className="cs-sm-rest-btn"
+                          disabled={shortRestIsNoop}
+                          title={shortRestIsNoop ? shortRestNote : undefined}
+                          onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}
+                        >
+                          {restConfirm === "short" ? `Restore ${pactSlotsSpent + shortFeatureSpent}?` : "Short Rest"}
+                        </button>
                         <button
                           type="button"
                           className="cs-sm-rest-btn"
                           disabled={longRestIsNoop}
+                          title={longRestIsNoop ? "Nothing to restore: you haven't used any slots or uses yet" : undefined}
                           onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}
                         >
                           {restConfirm === "long" ? `Restore All ${totalSlotsSpent + featureUsesSpent}?` : "Long Rest"}
@@ -1652,11 +1666,18 @@ export default function CharacterSheetSessionMode({
                     <div className="cs-sm-status-grp">
                       <span className="cs-sm-label" style={{ marginBottom: 0 }}>Spells · {spells.length}</span>
                       <div className="cs-sm-spells-wrap">
+                        {/* Hover, focus or tap a spell for what it does (like Skills & Abilities). */}
                         {spells.map((spell) => (
-                          <span key={spell.id} className="cs-sm-spell-chip" title={spell.description || spell.name}>
-                            {spell.role && <span className={`cs-spell-glyph${spell.role === "heal" ? " heal" : ""}`}>{spellRoleGlyph(spell.role)}</span>}
-                            {spell.name}
-                          </span>
+                          <InfoBadge
+                            key={spell.id}
+                            pal={pal}
+                            compact
+                            label={<>{spell.role && <span className={`cs-spell-glyph${spell.role === "heal" ? " heal" : ""}`}>{spellRoleGlyph(spell.role)}</span>}{spell.name}</>}
+                            tooltip={spellTooltip(spell)}
+                            color={pal.gem}
+                            background={`${pal.gem}14`}
+                            border={`${pal.gem}55`}
+                          />
                         ))}
                       </div>
                     </div>

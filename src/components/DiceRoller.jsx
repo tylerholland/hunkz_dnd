@@ -302,6 +302,12 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
     executeRoll({ groups: [parseCheckDice(checkDice)], flat: modFor(stat), label: `${stat.name ?? stat.stat} Check`, isD20Attack: false, isCheck: true });
   }, [stats, executeRoll, checkDice, modFor]);
 
+  // Any check or save by name (the Session view's Check panel): its dice
+  // (house rules) plus the bonus the caller worked out.
+  const rollCheck = useCallback(({ label, dice, bonus }) => {
+    executeRoll({ groups: [parseCheckDice(dice || checkDice)], flat: Number(bonus) || 0, label, isD20Attack: false, isCheck: true });
+  }, [executeRoll, checkDice]);
+
   // Story 57 (ADR-027) — the Attack Bar's entry point into this same engine.
   // `attackEntry` is the `{ id, kind, name, toHit, damage }` shape returned
   // by `buildAttackEntries()` (Story 56) — `toHit` is already a bare signed
@@ -381,7 +387,7 @@ const DiceRoller = forwardRef(function DiceRoller({ weapons = [], stats = [], pa
   // Bar's Adv/Dis strip (brief §3.4) drives the SAME state the panel's own
   // strip already shows — one shared source of truth, not a second copy
   // that could disagree with it.
-  useImperativeHandle(ref, () => ({ rollAbility, rollAttack, getAttackExpr, advMode, setAdvMode }), [rollAbility, rollAttack, getAttackExpr, advMode]);
+  useImperativeHandle(ref, () => ({ rollAbility, rollCheck, rollAttack, getAttackExpr, advMode, setAdvMode }), [rollAbility, rollCheck, rollAttack, getAttackExpr, advMode]);
 
   const rollFree = () => {
     let groups, flat;
