@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Player Story Log</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  Player Session view: a "Story" tab beside Combat / Inventory / Notes. Prototype, no live API.
+
+  Idea: the DM's log is a ledger (dice, totals, HP math). The player's is the
+  same events told as a story — sentences, not numbers — newest first.
+  - Moments are the big beats: full cards with their picture, and they head
+    whatever happened after them.
+  - Notes: only ones to you (the server already strips the rest), with your reply.
+  - Other players: what they did and how it went, in words. "Liu Sha shot at
+    the Goblin with a Longbow… and hit." No dice, no damage numbers; a hit on
+    a party member reads as "a scratch / a solid hit / a brutal hit" from how
+    much of their HP it took.
+  - Checks: the DM's label ("barrel-roll under the portcullis") and the outcome
+    only appear once the DM presses Reveal — so the DM controls spoilers, and a
+    revealed roll becomes part of the shared story. Unrevealed: "Meanjeans made
+    an Acrobatics check."
+  - You: same sentences, with your own numbers in small type (toggle in the
+    bar above to compare with no numbers at all).
+  - Left out: turn changes, wheel spins, raw dice expressions, NPC HP.
+  - "Just me" filter. Last 24 hours, then "Earlier is in the Chronicle".
+  - A dot on the Story tab when a Moment or a Note to you arrives.
+  Data: existing public rollHistory (rolls, hp, condition, check, moment,
+  note, note-reply, give, vote, shop, effect) — no backend change except
+  keeping a revealed check's label in the public projection.
+  Open: show your own numbers or not (default: small numbers).
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --surface:#111a24; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
+    --dim:#1e3a4e; --wash:rgba(106,143,168,.12); --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#0a0d12;
+    --good:#8ac08a; --bad:#d08a7a; --gold:#d0b070; --note:rgba(208,176,112,.08); --notebd:rgba(208,176,112,.4);
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --surface:#efe6d4; --solid:#ece4d2; --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
+    --dim:rgba(140,110,70,.16); --wash:rgba(140,110,70,.08); --text:#2a2018; --body:#3c2e1c; --muted:#6f573c; --page:#e9e1d2;
+    --good:#2f7a44; --bad:#9a3a2a; --gold:#8a6420; --note:rgba(160,120,40,.08); --notebd:rgba(140,100,30,.4);
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button { font:inherit; color:inherit; cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+
+  .proto { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; padding:8px 16px; background:color-mix(in srgb, var(--page) 90%, transparent); border-bottom:1px solid var(--border); backdrop-filter:blur(6px); }
+  .proto .t { font-family:'Cinzel',serif; color:var(--text); letter-spacing:.08em; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .seg button { border:0; background:transparent; padding:6px 12px; min-height:32px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .seg button.on { background:var(--dim); color:var(--text); }
+
+  .frame { margin:16px auto 60px; padding:0 16px; max-width:900px; }
+  .frame.phone { max-width:420px; }
+  .tabs { display:flex; gap:8px; margin-bottom:18px; flex-wrap:wrap; }
+  .tab { position:relative; padding:10px 16px; min-height:44px; border:1px solid var(--border); border-radius:4px; background:transparent; font-family:'Cinzel',serif; font-size:12px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted); }
+  .tab.on { background:var(--dim); border-color:var(--accent); color:var(--bright); }
+  .tab .dot { position:absolute; top:6px; right:6px; width:8px; height:8px; border-radius:50%; background:var(--gold); box-shadow:0 0 0 2px var(--page); }
+
+  .story-head { display:flex; align-items:center; gap:12px; margin-bottom:10px; }
+  .label { font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:var(--muted); }
+  .story-head .seg { margin-left:auto; }
+
+  .story { display:grid; gap:2px; }
+  .when { font-family:'IM Fell English',serif; font-size:12px; color:var(--muted); font-style:italic; flex:none; min-width:58px; padding-top:2px; }
+  .line { display:flex; gap:12px; padding:8px 4px; border-bottom:1px solid color-mix(in srgb, var(--border) 50%, transparent); }
+  .line p { margin:0; color:var(--body); }
+  .line b { font-weight:600; color:var(--text); }
+  .line.you p { color:var(--text); }
+  .line.you b.you { color:var(--bright); }
+  .num { font-family:'Cinzel',serif; font-size:13px; color:var(--muted); margin-left:4px; white-space:nowrap; }
+  .ok { color:var(--good); font-style:italic; }
+  .no { color:var(--bad); font-style:italic; }
+  .quiet { color:var(--muted); font-style:italic; }
+
+  .moment { margin:14px 0 8px; border:1px solid var(--accent); border-radius:8px; overflow:hidden; background:var(--solid); }
+  .moment .art { height:150px; background:
+      radial-gradient(ellipse at 70% 30%, rgba(255,200,120,.35), transparent 55%),
+      linear-gradient(160deg, #1b2a38, #3a2a1c 70%, #120d09); }
+  body[data-pal="vellum"] .moment .art { filter:saturate(.8) brightness(1.15); }
+  .moment .in { padding:12px 16px 14px; }
+  .moment .kind { font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:var(--gold); }
+  .moment h3 { margin:2px 0 6px; font-family:'Cinzel',serif; font-weight:400; font-size:20px; color:var(--bright); }
+  .moment p { margin:0; font-size:16px; color:var(--text); }
+  .moment .when { display:block; margin-top:8px; }
+
+  .note { margin:8px 0; padding:10px 14px; border:1px solid var(--notebd); border-radius:6px; background:var(--note); }
+  .note .kind { font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.22em; text-transform:uppercase; color:var(--gold); }
+  .note p { margin:4px 0 0; color:var(--text); font-style:italic; }
+  .note .reply { margin-top:8px; padding-left:10px; border-left:2px solid var(--notebd); color:var(--body); font-style:normal; }
+
+  .earlier { margin-top:14px; text-align:center; }
+  .earlier a { color:var(--accent); font-family:'IM Fell English',serif; font-size:14px; }
+  .empty { padding:30px 10px; text-align:center; color:var(--muted); font-style:italic; }
+</style>
+</head>
+<body data-pal="ocean">
+<div class="proto">
+  <span class="t">Player Story Log</span>
+  <span class="seg" data-ctl="pal"><button class="on" data-v="ocean">Ocean</button><button data-v="vellum">Vellum</button></span>
+  <span class="seg" data-ctl="width"><button class="on" data-v="desk">Desktop</button><button data-v="phone">Phone</button></span>
+  <span class="seg" data-ctl="nums"><button class="on" data-v="small">My numbers: small</button><button data-v="none">No numbers</button></span>
+  <span class="seg" data-ctl="arrive"><button data-v="go">Simulate a new Moment</button></span>
+</div>
+
+<div class="frame" id="frame">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab">Combat</button>
+    <button class="tab" role="tab">Inventory</button>
+    <button class="tab" role="tab">Notes</button>
+    <button class="tab on" role="tab" id="storyTab" aria-selected="true">Story</button>
+  </div>
+  <div class="story-head">
+    <span class="label">Tonight's story</span>
+    <span class="seg" data-ctl="who"><button class="on" data-v="all">The table</button><button data-v="me">Just me</button></span>
+  </div>
+  <div class="story" id="story"></div>
+  <div class="earlier"><a href="#" onclick="return false">Earlier sessions are in the Chronicle →</a></div>
+</div>
+
+<script>
+  // You are Eòghan. Newest first. `me` = involves you.
+  const EVENTS = [
+    { when:"9:41 pm", me:true, html:(n)=>`<b class="you">You</b> shot at the <b>Goblin Boss</b> with a Longbow… <span class="ok">and hit.</span>${n(" 18 to hit · 7 damage")}` },
+    { when:"9:40 pm", html:()=>`<b>Liu Sha</b> cast <b>Bless</b> on Aesop and you.` },
+    { when:"9:40 pm", html:()=>`<b>Aesop</b> took <span class="no">a brutal hit</span> from the Goblin Boss's Scimitar.` },
+    { when:"9:39 pm", html:()=>`<b>Meanjeans</b> tried to barrel-roll under the closing portcullis… <span class="no">and failed.</span> <span class="quiet">(revealed)</span>` },
+    { when:"9:39 pm", html:()=>`<b>Quietclaw</b> made an Athletics check.` },
+    { when:"9:38 pm", me:true, html:(n)=>`<b class="you">You</b> made a Perception check… <span class="ok">and passed.</span>${n(" 17")}` },
+    { kind:"moment", when:"9:36 pm", title:"The Gate Slams Shut", text:"Iron teeth bite into the stone behind you. From the dark ahead, something laughs — and it isn't the goblins." },
+    { when:"9:30 pm", me:true, html:()=>`<b class="you">You</b> gave <b>Liu Sha</b> a Potion of Healing.` },
+    { kind:"note", when:"9:24 pm", text:"You notice the innkeeper slipped something into Meanjeans' ale. Nobody else saw.", reply:"I'll keep an eye on him. Say nothing yet." },
+    { when:"9:20 pm", html:()=>`The party chose: <b>Take the river path</b> <span class="quiet">(3–1)</span>.` },
+    { when:"9:12 pm", html:()=>`<b>Meanjeans</b> bought a Lantern and 50 ft of rope.` },
+    { when:"9:05 pm", html:()=>`<b>Aesop</b> is <span class="no">Poisoned</span>.` },
+    { kind:"moment", when:"8:58 pm", title:"The Drowned Lantern Inn", text:"Rain hammers the shutters. The common room smells of wet wool and fish stew, and every head turns when you come in." },
+  ];
+
+  const state = { nums:"small", who:"all", arrived:false };
+  const story = document.getElementById("story");
+
+  function render() {
+    const n = (s) => state.nums === "small" ? `<span class="num">${s}</span>` : "";
+    let list = EVENTS;
+    if (state.arrived) list = [{ kind:"moment", when:"just now", title:"Footsteps Behind You", text:"Boots on wet stone — many of them — and torchlight swinging around the corner." }, ...list];
+    if (state.who === "me") list = list.filter((e) => e.me || e.kind === "note" || e.kind === "moment");
+    story.innerHTML = list.length ? list.map((e) => {
+      if (e.kind === "moment") return `<article class="moment"><div class="art" role="img" aria-label="Moment picture"></div><div class="in"><span class="kind">Moment</span><h3>${e.title}</h3><p>${e.text}</p><span class="when">${e.when}</span></div></article>`;
+      if (e.kind === "note") return `<div class="note"><span class="kind">The DM, to you only · ${e.when}</span><p>${e.text}</p>${e.reply ? `<div class="reply">You: ${e.reply}</div>` : ""}</div>`;
+      return `<div class="line${e.me ? " you" : ""}"><span class="when">${e.when}</span><p>${e.html(n)}</p></div>`;
+    }).join("") : `<div class="empty">Nothing yet tonight.</div>`;
+  }
+
+  document.querySelectorAll(".seg").forEach((seg) => seg.addEventListener("click", (ev) => {
+    const b = ev.target.closest("button"); if (!b) return;
+    const ctl = seg.dataset.ctl, v = b.dataset.v;
+    if (ctl === "arrive") { state.arrived = true; document.getElementById("storyTab").insertAdjacentHTML("beforeend", '<span class="dot" aria-label="New"></span>'); render(); return; }
+    seg.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+    if (ctl === "pal") document.body.dataset.pal = v;
+    if (ctl === "width") document.getElementById("frame").className = "frame " + v;
+    if (ctl === "nums") state.nums = v;
+    if (ctl === "who") state.who = v;
+    render();
+  }));
+  document.getElementById("storyTab").addEventListener("click", (e) => e.currentTarget.querySelector(".dot")?.remove());
+  render();
+</script>
+</body>
+</html>
