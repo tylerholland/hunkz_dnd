@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>What Was That For</title>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600&family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=IM+Fell+English&display=swap" rel="stylesheet" />
+<!--
+  "What was that for?" — a quiet after-the-fact label for free rolls. Prototype, no live API.
+
+  Why: most of the table's rolls are untagged free rolls ("2d6 + 2"), so the
+  Story and the Chronicle can only say "Aesop rolled the dice 3 times."
+
+  Behaviour:
+  - After an untagged free roll, a slim strip appears under that roll in
+    Recent Rolls: "What was that for?" + 3–5 chips. No modal, no focus
+    change, nothing blocks the next roll.
+  - Best guess first, from the dice: a weapon's damage dice → "Longbow
+    damage"; the table's check dice → skills; a d20 → attacks. In combat
+    weapons/spells lead; out of combat, skills.
+  - "More…" opens the full list in place (weapons, spells, skills, saves,
+    and a short "Something else" text box).
+  - It fades out after ~12 s (a thin line shows the time). Rolling again
+    simply moves it to the new roll. Any untagged roll keeps a small
+    "+ for" link, so it can be labelled later; the DM can still label from the log.
+  - Tapping a chip saves the tag (existing PUT /roll-history/:id/tag, as
+    the player); the row shows it, tap it to change.
+  - Rolls made with the For box, the attack bar or the Check button never
+    ask.
+  Story mapping (storyLines.js): "Longbow attack" → "attacked with a Longbow",
+  "Longbow damage" → "struck with a Longbow", "Stealth check" → "made a
+  Stealth check", "Dexterity save" → "made a Dexterity save", anything else →
+  "rolled for …".
+  Open: should the DM be able to turn the strip off for the table (Settings)?
+-->
+<style>
+  :root {
+    --bg:#0d0f14; --surface:#111a24; --solid:#111e2c; --border:rgba(100,130,160,.24); --accent:#6a8fa8; --bright:#a0c0d0;
+    --dim:#1e3a4e; --text:#c8bfaf; --body:#b0a898; --muted:#8193a0; --page:#0a0d12; --gem:#8ab8d0; --good:#8ac08a;
+  }
+  body[data-pal="vellum"] {
+    --bg:#f5f0e8; --surface:#efe6d4; --solid:#ece4d2; --border:rgba(140,110,70,.3); --accent:#7a5c30; --bright:#4a3418;
+    --dim:rgba(140,110,70,.16); --text:#2a2018; --body:#3c2e1c; --muted:#6f573c; --page:#e9e1d2; --gem:#7a5c30; --good:#2f7a44;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--page); color:var(--body); font-family:'Crimson Text',Georgia,serif; font-size:16px; line-height:1.45; }
+  button, input { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+  :focus-visible { outline:2px solid var(--bright); outline-offset:2px; }
+
+  .proto { position:sticky; top:0; z-index:20; display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center; padding:8px 16px; background:color-mix(in srgb, var(--page) 90%, transparent); border-bottom:1px solid var(--border); backdrop-filter:blur(6px); }
+  .proto .t { font-family:'Cinzel',serif; color:var(--text); letter-spacing:.08em; }
+  .seg { display:inline-flex; border:1px solid var(--border); border-radius:999px; overflow:hidden; }
+  .seg button { border:0; background:transparent; padding:6px 12px; min-height:32px; color:var(--muted); font-family:'IM Fell English',serif; font-size:13px; }
+  .seg button.on { background:var(--dim); color:var(--text); }
+
+  .frame { margin:16px auto 60px; padding:0 16px; max-width:760px; }
+  .frame.phone { max-width:420px; }
+  .panel { border:1px solid var(--border); border-radius:6px; background:var(--surface); padding:14px 18px 18px; }
+  .label { font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.28em; text-transform:uppercase; color:var(--muted); }
+  .rollers { display:flex; flex-wrap:wrap; gap:8px; margin:10px 0 14px; }
+  .rollers button { min-height:44px; padding:0 14px; border:1px solid var(--accent); border-radius:4px; background:var(--dim); color:var(--bright); font-family:'Cinzel',serif; font-size:13px; letter-spacing:.08em; }
+  .rollers small { display:block; font-family:'Crimson Text',serif; font-size:12px; color:var(--muted); letter-spacing:0; }
+  hr { border:0; border-top:1px solid var(--border); margin:14px 0; }
+
+  .row { padding:8px 0; border-bottom:1px solid var(--border); }
+  .row:last-child { border-bottom:0; }
+  .row-main { display:flex; align-items:center; gap:12px; }
+  .row-what { flex:1; min-width:0; }
+  .row-what .lbl { font-size:16px; color:var(--text); }
+  .row-what .expr { font-family:'IM Fell English',serif; font-size:13px; color:var(--muted); margin-left:4px; }
+  .tag { margin-left:6px; padding:1px 8px; border:1px solid var(--border); border-radius:999px; background:transparent; font-size:13px; color:var(--bright); font-style:italic; }
+  .addfor { margin-left:6px; padding:0 4px; border:0; background:transparent; font-size:13px; color:var(--muted); font-style:italic; text-decoration:underline dotted; }
+  .total { font-family:'Cinzel',serif; font-size:24px; color:var(--gem); min-width:28px; text-align:right; }
+
+  .whatfor { position:relative; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:6px; margin:6px 0 2px; padding:7px 10px 9px; border-left:2px solid var(--accent); background:color-mix(in srgb, var(--dim) 55%, transparent); border-radius:0 6px 6px 0; animation:in .2s ease-out; overflow:hidden; }
+  .whatfor .ask { font-style:italic; font-size:14px; color:var(--muted); margin-right:4px; }
+  .chip { min-height:32px; padding:0 11px; border:1px solid var(--border); border-radius:999px; background:var(--solid); font-size:14px; color:var(--text); }
+  .chip.best { border-color:var(--accent); color:var(--bright); }
+  .chip.more { color:var(--muted); font-style:italic; }
+  .wf-chips { display:flex; flex-wrap:wrap; align-items:center; gap:6px; }
+  .dismiss { min-width:32px; min-height:32px; border:0; background:transparent; color:var(--muted); font-size:16px; }
+  .timer { position:absolute; left:0; bottom:0; height:2px; background:var(--accent); opacity:.6; width:100%; transform-origin:left; animation:shrink 12s linear forwards; }
+  .whatfor.paused .timer { animation-play-state:paused; }
+  .whatfor.leaving { animation:out .35s ease-in forwards; }
+  .groups { grid-column:1 / -1; display:grid; gap:6px; margin-top:4px; }
+  .group { display:flex; flex-wrap:wrap; gap:6px; align-items:center; }
+  .group > span { font-family:'IM Fell English',serif; font-size:11px; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); min-width:64px; }
+  .other { min-height:32px; padding:0 10px; border:1px solid var(--border); border-radius:999px; background:var(--solid); font-size:14px; width:200px; }
+  .story { margin-top:4px; font-size:14px; color:var(--muted); font-style:italic; }
+  .story b { color:var(--good); font-weight:400; }
+  @keyframes shrink { to { transform:scaleX(0); } }
+  @keyframes in { from { opacity:0; transform:translateY(-3px); } }
+  @keyframes out { to { opacity:0; max-height:0; padding:0; margin:0; } }
+  @media (prefers-reduced-motion: reduce) { .whatfor, .whatfor.leaving { animation:none; } }
+</style>
+</head>
+<body data-pal="ocean">
+<div class="proto">
+  <span class="t">What was that for?</span>
+  <span class="seg" data-ctl="pal"><button class="on" data-v="ocean">Ocean</button><button data-v="vellum">Vellum</button></span>
+  <span class="seg" data-ctl="width"><button class="on" data-v="desk">Desktop</button><button data-v="phone">Phone</button></span>
+  <span class="seg" data-ctl="mode"><button class="on" data-v="adv">Adventure</button><button data-v="combat">Combat</button></span>
+</div>
+
+<div class="frame" id="frame">
+  <div class="panel">
+    <span class="label">Dice · Free roll (stand-ins for the real roller)</span>
+    <div class="rollers">
+      <button data-expr="1d8+3">Roll 1d8+3<small>matches Longbow damage</small></button>
+      <button data-expr="2d6+2">Roll 2d6+2<small>the table's check dice</small></button>
+      <button data-expr="1d20+5">Roll 1d20+5<small>an attack-ish d20</small></button>
+      <button data-expr="1d6">Roll 1d6<small>no good guess</small></button>
+    </div>
+    <hr />
+    <span class="label">Recent rolls</span>
+    <div id="rows"></div>
+  </div>
+</div>
+
+<script>
+  // Liu Sha: a Rogue with a Longbow (1d8+3, +5 to hit) and a Dagger (1d4+3), no spells.
+  const CH = { name:"Liu Sha", weapons:[{ name:"Longbow", dmg:"1d8+3", hit:5 }, { name:"Dagger", dmg:"1d4+3", hit:5 }], spells:[], skills:["Stealth","Perception","Investigation","Acrobatics"] };
+  const ALL_SKILLS = ["Athletics","Acrobatics","Sleight of Hand","Stealth","Arcana","History","Investigation","Nature","Religion","Animal Handling","Insight","Medicine","Perception","Survival","Deception","Intimidation","Performance","Persuasion"];
+  const SAVES = ["Strength","Dexterity","Constitution","Intelligence","Wisdom","Charisma"];
+  const CHECK_DICE = "2d6";
+  let mode = "adv";
+  const rolls = [];
+  let open = null; // id of the roll whose strip is showing
+  let expanded = false;
+  let timer = null;
+
+  function guesses(expr) {
+    const [dice, plus] = expr.split("+");
+    const out = [];
+    for (const w of CH.weapons) if (w.dmg === expr) out.push(`${w.name} damage`);
+    if (dice === "1d20") CH.weapons.forEach((w) => { if (!plus || +plus === w.hit) out.push(`${w.name} attack`); });
+    if (dice === CHECK_DICE) (mode === "combat" ? ["Athletics","Acrobatics"] : CH.skills).forEach((s) => out.push(`${s} check`));
+    // Not a d20 or the check dice: most likely damage, so damage leads.
+    const damageFirst = dice !== "1d20" && dice !== CHECK_DICE;
+    const attacks = CH.weapons.map((w) => `${w.name} attack`), damage = CH.weapons.map((w) => `${w.name} damage`);
+    const fill = mode === "combat" ? (damageFirst ? [...damage, ...attacks] : [...attacks, ...damage]) : CH.skills.map((s) => `${s} check`);
+    for (const f of fill) if (!out.includes(f)) out.push(f);
+    return out.slice(0, 4);
+  }
+
+  function storyFor(tag) {
+    if (!tag) return `${CH.name} rolled the dice.`;
+    let m;
+    if ((m = /^(.*) attack$/.exec(tag))) return `${CH.name} <b>attacked with a ${m[1]}</b>.`;
+    if ((m = /^(.*) damage$/.exec(tag))) return `${CH.name} <b>struck with a ${m[1]}</b>.`;
+    if ((m = /^(.*) check$/.exec(tag))) return `${CH.name} <b>made ${/^[AEIOU]/.test(m[1]) ? "an" : "a"} ${m[1]} check</b>.`;
+    if ((m = /^(.*) save$/.exec(tag))) return `${CH.name} <b>made a ${m[1]} save</b>.`;
+    return `${CH.name} <b>rolled for ${tag}</b>.`;
+  }
+
+  function roll(expr) {
+    const [dice, plus] = expr.split("+");
+    const [n, s] = dice.split("d").map(Number);
+    let total = +(plus || 0);
+    for (let i = 0; i < n; i++) total += 1 + Math.floor(Math.random() * s);
+    const r = { id: "r" + Date.now(), expr, total, tag: "" };
+    rolls.unshift(r);
+    openFor(r.id);
+  }
+
+  function openFor(id) { open = id; expanded = false; restartTimer(); render(); }
+  function close() {
+    const el = document.querySelector(".whatfor");
+    clearTimeout(timer);
+    if (!el) { open = null; render(); return; }
+    el.classList.add("leaving");
+    setTimeout(() => { open = null; render(); }, 340);
+  }
+  function restartTimer() { clearTimeout(timer); timer = setTimeout(close, 12000); }
+  function setTag(id, tag) { const r = rolls.find((x) => x.id === id); r.tag = tag; clearTimeout(timer); open = null; render(); }
+
+  function chip(id, tag, best, label = tag) { return `<button class="chip${best ? " best" : ""}" data-tag="${tag}" data-id="${id}">${label}</button>`; }
+
+  function strip(r) {
+    const g = guesses(r.expr);
+    const more = expanded ? `<div class="groups">
+        <div class="group"><span>Weapons</span>${CH.weapons.flatMap((w) => [chip(r.id, w.name + " attack"), chip(r.id, w.name + " damage")]).join("")}</div>
+        <div class="group"><span>Skills</span>${ALL_SKILLS.map((s) => chip(r.id, s + " check", false, s)).join("")}</div>
+        <div class="group"><span>Saves</span>${SAVES.map((s) => chip(r.id, s + " save", false, s)).join("")}</div>
+        <div class="group"><span>Else</span><input class="other" data-id="${r.id}" placeholder="Something else… ↵" maxlength="60" /></div>
+      </div>` : "";
+    return `<div class="whatfor${expanded ? " paused" : ""}" role="group" aria-label="What was that roll for?">
+      <div class="wf-chips"><span class="ask">What was that for?</span>
+      ${expanded ? "" : g.map((t, i) => chip(r.id, t, i === 0)).join("")}
+      ${expanded ? "" : `<button class="chip more" data-more="1">More…</button>`}</div>
+      <button class="dismiss" data-close="1" aria-label="Not now">×</button>
+      ${more}
+      ${expanded ? "" : `<span class="timer" aria-hidden="true"></span>`}
+    </div>`;
+  }
+
+  function render() {
+    document.getElementById("rows").innerHTML = rolls.slice(0, 5).map((r) => `
+      <div class="row">
+        <div class="row-main">
+          <div class="row-what"><span class="lbl">Free Roll</span><span class="expr">(${r.expr})</span>
+            ${r.tag ? `<button class="tag" data-reopen="${r.id}" title="Change">${r.tag}</button>` : open === r.id ? "" : `<button class="addfor" data-reopen="${r.id}">+ for</button>`}
+          </div>
+          <span class="total">${r.total}</span>
+        </div>
+        ${open === r.id ? strip(r) : ""}
+        <div class="story">In the story: ${storyFor(r.tag)}</div>
+      </div>`).join("") || `<p class="story">Roll something above.</p>`;
+  }
+
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest("button"); if (!b) return;
+    if (b.dataset.expr) return roll(b.dataset.expr);
+    if (b.dataset.tag) return setTag(b.dataset.id, b.dataset.tag);
+    if (b.dataset.more) { expanded = true; clearTimeout(timer); render(); return; }
+    if (b.dataset.close) return close();
+    if (b.dataset.reopen) return openFor(b.dataset.reopen);
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.target.classList?.contains("other") && e.key === "Enter" && e.target.value.trim()) setTag(e.target.dataset.id, e.target.value.trim());
+  });
+  document.querySelectorAll(".seg").forEach((seg) => seg.addEventListener("click", (ev) => {
+    const b = ev.target.closest("button"); if (!b) return;
+    seg.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b));
+    const v = b.dataset.v, ctl = seg.dataset.ctl;
+    if (ctl === "pal") document.body.dataset.pal = v;
+    if (ctl === "width") document.getElementById("frame").className = "frame " + v;
+    if (ctl === "mode") { mode = v; render(); }
+  }));
+  render();
+</script>
+</body>
+</html>
