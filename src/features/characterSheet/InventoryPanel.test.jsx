@@ -45,3 +45,19 @@ describe("InventoryPanel", () => {
     expect(screen.queryByText(/Attuned/)).not.toBeInTheDocument();
   });
 });
+
+describe("drinking a healing potion", () => {
+  it("heals, uses one up, and says what it did; not at full HP", () => {
+    const writeLoadout = vi.fn(() => Promise.resolve(true));
+    const onHeal = vi.fn();
+    const char = { weapons: [], equipment: [{ id: "p1", name: "Potion of Healing", itemId: "potion-healing", qty: 2 }] };
+    const { rerender } = render(<InventoryPanel char={char} pal={PALETTES.ember} writeLoadout={writeLoadout} onHeal={onHeal} />);
+    fireEvent.click(screen.getByRole("button", { name: "Drink" }));
+    expect(onHeal).toHaveBeenCalledWith(expect.any(Number));
+    expect(onHeal.mock.calls[0][0]).toBeGreaterThanOrEqual(4);
+    expect(writeLoadout).toHaveBeenCalledWith("equipment", expect.any(Function));
+    expect(screen.getByRole("status")).toHaveTextContent(/You drink it: \+\d+ HP/);
+    rerender(<InventoryPanel char={char} pal={PALETTES.ember} writeLoadout={writeLoadout} onHeal={onHeal} hpFull />);
+    expect(screen.getByRole("button", { name: "Drink" })).toBeDisabled();
+  });
+});

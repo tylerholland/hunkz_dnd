@@ -143,113 +143,6 @@ function weaponMeta(weapon) {
   return parts.join(" · ") || "";
 }
 
-// DamageHealModal — simple number input modal
-function DamageHealModal({ type, onConfirm, onClose, pal }) {
-  const [val, setVal] = useState("");
-  const inputRef = useRef(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-    function onKey(e) {
-      if (e.key === "Escape") onClose();
-      if (e.key === "Enter" && val) onConfirm(Number(val));
-    }
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [onClose, onConfirm, val]);
-
-  const isDmg = type === "damage";
-  const accentColor = isDmg ? "#c06060" : (pal?.gem || "#7ec8a4");
-
-  return (
-    <div
-      className="modal-overlay"
-      style={{
-        position: "fixed", inset: 0, zIndex: 300,
-        background: "rgba(0,0,0,0.75)",
-        display: "flex", alignItems: "center", justifyContent: "center",
-        padding: 24,
-      }}
-      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
-    >
-      <div style={{
-        background: pal?.surfaceSolid || "#111e2c",
-        border: `1px solid ${accentColor}44`,
-        borderRadius: 6,
-        padding: "28px 28px 24px",
-        width: "100%",
-        maxWidth: 340,
-      }}>
-        <div style={{
-          fontFamily: pal?.fontUI || "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
-          fontSize: 11,
-          letterSpacing: "0.3em",
-          textTransform: "uppercase",
-          color: accentColor,
-          marginBottom: 16,
-        }}>
-          {isDmg ? "Deal Damage" : "Heal"}
-        </div>
-        <input
-          ref={inputRef}
-          type="number"
-          min="0"
-          value={val}
-          onChange={(e) => setVal(e.target.value)}
-          style={{
-            width: "100%",
-            background: pal?.surfaceSolid || "#111e2c",
-            border: `1px solid ${accentColor}66`,
-            borderRadius: 3,
-            color: pal?.text || "#c8d8e4",
-            fontFamily: pal?.fontDisplay || "Cinzel",
-            fontSize: 32,
-            padding: "8px 12px",
-            textAlign: "center",
-            outline: "none",
-            marginBottom: 16,
-          }}
-        />
-        <div style={{ display: "flex", gap: 10, justifyContent: "flex-end" }}>
-          <button
-            onClick={onClose}
-            style={{
-              background: "transparent",
-              border: `1px solid ${pal?.border || "rgba(106,143,168,0.18)"}`,
-              borderRadius: 3,
-              color: pal?.textMuted || "#3a5a6a",
-              fontFamily: pal?.fontUI || "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
-              fontSize: 11,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              padding: "8px 16px",
-              cursor: "pointer",
-            }}
-          >Cancel</button>
-          <button
-            onClick={() => val && onConfirm(Number(val))}
-            disabled={!val || isNaN(Number(val))}
-            style={{
-              background: "transparent",
-              border: `1px solid ${accentColor}`,
-              borderRadius: 3,
-              color: accentColor,
-              fontFamily: pal?.fontUI || "'Cinzel Numerals', 'IM Fell English', Georgia, serif",
-              fontSize: 11,
-              letterSpacing: "0.15em",
-              textTransform: "uppercase",
-              padding: "8px 16px",
-              cursor: "pointer",
-              opacity: (!val || isNaN(Number(val))) ? 0.5 : 1,
-            }}
-          >{isDmg ? "Apply Damage" : "Apply Heal"}</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ConditionPickerModal — 14-condition grid
 function ConditionPickerModal({ activeConditions, onSave, onClose, pal }) {
   const [selected, setSelected] = useState(new Set(activeConditions || []));
 
@@ -450,8 +343,6 @@ export default function CharacterSheetSessionMode({
   // ── Local HP state for optimistic updates ─────────────────────────────────
   const [localHp, setLocalHp] = useState(char?.hpCurrent ?? 0);
   const hpServerRef = useRef(char?.hpCurrent ?? 0);
-  const hpFlushRef = useRef(null);
-  const [hpFlash, setHpFlash] = useState(null); // "dmg" | "heal" | null
   const diceRollerRef = useRef(null);
 
   useEffect(() => {
@@ -461,39 +352,12 @@ export default function CharacterSheetSessionMode({
     setLocalHp(incoming);
   }, [initialData?.hpCurrent]);
 
-  const flushHp = useCallback(async (targetHp) => {
-    try {
-      await patchLive({ hpCurrent: targetHp });
-      hpServerRef.current = targetHp;
-      onSessionSync?.();
-    } catch {
-      setLocalHp(hpServerRef.current);
-    }
-  }, [onSessionSync, patchLive]);
-
-  const changeHp = useCallback((delta) => {
-    setLocalHp((prev) => {
-      const next = Math.max(0, prev + delta);
-      clearTimeout(hpFlushRef.current);
-      hpFlushRef.current = setTimeout(() => flushHp(next), 300);
-      setHpFlash(delta < 0 ? "dmg" : "heal");
-      setTimeout(() => setHpFlash(null), 400);
-      return next;
-    });
-  }, [flushHp]);
-
-  // ── HP modal ──────────────────────────────────────────────────────────────
-  const [hpModal, setHpModal] = useState(null); // "damage" | "heal" | null
-
-  const applyDamageHeal = useCallback(async (type, amount) => {
+  // Healing the player does themselves (drinking a potion). Damage comes
+  // from the DM's side (Take Action), so there's no player damage control.
+  const healBy = useCallback(async (amount) => {
     const hpMax = char?.hpMax ?? 0;
-    const next = type === "damage"
-      ? Math.max(0, localHp - amount)
-      : Math.min(hpMax, localHp + amount);
+    const next = Math.min(hpMax, localHp + amount);
     setLocalHp(next);
-    setHpFlash(type === "damage" ? "dmg" : "heal");
-    setTimeout(() => setHpFlash(null), 400);
-    setHpModal(null);
     try {
       await patchLive({ hpCurrent: next });
       hpServerRef.current = next;
@@ -807,8 +671,6 @@ export default function CharacterSheetSessionMode({
     return next;
   });
 
-  // Story 56 — collapsed-by-default Spells reference row, below Spell Slots.
-  const [spellsRefOpen, setSpellsRefOpen] = useState(false);
 
   // ── Derived values ────────────────────────────────────────────────────────
   const hpMax = char?.hpMax ?? 0;
@@ -1234,6 +1096,87 @@ export default function CharacterSheetSessionMode({
   }
 
   // ── Session mode ──────────────────────────────────────────────────────────
+  // Skills & abilities, then features with uses: in the "You" column for
+  // spellcasters, or a column of their own for everyone else.
+  const hasMagic = spellSlots.length > 0 || spells.length > 0 || !!concentration.active;
+  const talentsAndFeatures = (
+    <>
+          {(skills.length > 0 || specialAbilities.length > 0) && (
+            <div className="cs-sm-status-grp">
+              <span className="cs-sm-label" style={{ marginBottom: 0 }}>Skills &amp; Abilities</span>
+              <CharacterTalents pal={pal} skills={skills} specialAbilities={specialAbilities} compact />
+            </div>
+          )}
+
+          {features.length > 0 && (
+            <div className="cs-sm-status-grp">
+              <div className="cs-sm-slots-header">
+                <span className="cs-sm-label" style={{ marginBottom: 0 }}>Features &amp; Traits</span>
+                {spellSlots.length === 0 && features.some((f) => f.uses) && (
+                  <div className="cs-sm-rest-btns">
+                    {showShortRest && (
+                      <button type="button" className="cs-sm-rest-btn" disabled={shortRestIsNoop} onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}>
+                        {restConfirm === "short" ? `Restore ${shortFeatureSpent}?` : "Short Rest"}
+                      </button>
+                    )}
+                    <button type="button" className="cs-sm-rest-btn" disabled={longRestIsNoop} onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}>
+                      {restConfirm === "long" ? `Restore All ${featureUsesSpent}?` : "Long Rest"}
+                    </button>
+                  </div>
+                )}
+              </div>
+              <div className="cs-sm-features">
+                {features.map((feature) => {
+                  const max = featureMaxUses(feature, char?.level);
+                  const left = featureUsesLeft(feature, char?.level);
+                  const open = openFeatureId === feature.id;
+                  return (
+                    <div key={feature.id} className="cs-sm-feature">
+                      <div className="cs-sm-feature-row">
+                        <button
+                          type="button"
+                          className="cs-sm-feature-name"
+                          aria-expanded={open}
+                          disabled={!feature.description}
+                          onClick={() => setOpenFeatureId(open ? null : feature.id)}
+                        >
+                          {feature.name}
+                          <span className="cs-sm-feature-kind">{FEATURE_KINDS.find((k) => k.value === feature.kind)?.label}</span>
+                        </button>
+                        {feature.uses && max > 0 && (
+                          <span className="cs-sm-feature-uses">
+                            {Array.from({ length: max }).map((_, pipIdx) => (
+                              <button
+                                key={pipIdx}
+                                type="button"
+                                className="cs-sm-slot-pip-btn"
+                                onClick={() => tapFeatureUse(feature.id, pipIdx < left)}
+                                aria-label={pipIdx < left ? `Use ${feature.name}` : `Restore a use of ${feature.name}`}
+                              >
+                                <span
+                                  className="cs-sm-slot-pip"
+                                  style={{ borderColor: pipIdx < left ? pal.gem : pal.border, background: pipIdx < left ? pal.gem : "transparent" }}
+                                />
+                              </button>
+                            ))}
+                            <span className="cs-sm-slot-count">{left}/{max}</span>
+                          </span>
+                        )}
+                      </div>
+                      {feature.uses && max > 0 && (
+                        <div className="cs-sm-feature-recharge">Recharges on a {rechargeLabel(feature.uses)}</div>
+                      )}
+                      {open && feature.description && <div className="cs-sm-weapon-desc">{feature.description}</div>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+    </>
+  );
+
   return (
     <div
       style={{
@@ -1317,6 +1260,25 @@ export default function CharacterSheetSessionMode({
                 )}
               </div>
             </div>
+          </div>
+
+          {/* HP: the DM's attacks and Take Action change it; potions and spells heal. */}
+          <div className="cs-sm-hp-line">
+            {localHp <= 0 ? (
+              <div className="cs-sm-hp-down">Unconscious <small>The DM is tracking your death saves.</small></div>
+            ) : (
+              <>
+                <div className="cs-sm-hp-line-row">
+                  <span className="cs-sm-label" style={{ marginBottom: 0 }}>HP</span>
+                  <span className={`cs-sm-hp-line-now ${hpNumClass(localHp, hpMax)}`}>{localHp}</span>
+                  <span className="cs-sm-hp-line-max">/ {hpMax}</span>
+                  {(char?.tempHP || 0) > 0 && <span className="cs-sm-hp-line-temp">+{char.tempHP} temp</span>}
+                </div>
+                <div className="cs-sm-hp-line-bar" role="img" aria-label={`${localHp} of ${hpMax} HP`}>
+                  <span className={`cs-sm-hp-bar-fill ${hpBarColor(localHp, hpMax)}`} style={{ width: `${hpPct}%` }} />
+                </div>
+              </>
+            )}
           </div>
 
           {/* Ability modifier chips */}
@@ -1503,332 +1465,205 @@ export default function CharacterSheetSessionMode({
             </section>
           )}
 
-          {/* Concentration banner */}
-          {concentration.active ? (
-            <div className="cs-sm-conc-banner">
-              <div className="cs-sm-conc-dot" />
-              <span className="cs-sm-conc-text">
-                Concentrating: <strong>{concentration.spell}</strong>
-              </span>
-              <button className="cs-sm-conc-drop" onClick={dropConcentration}>Drop</button>
-            </div>
-          ) : concInputOpen ? (
-            <div className="cs-sm-conc-input-row">
-              <input
-                type="text"
-                value={concInput}
-                onChange={(e) => setConcInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && concInput.trim()) setConcentration(concInput.trim());
-                  if (e.key === "Escape") { setConcInputOpen(false); setConcInput(""); }
-                }}
-                placeholder="Spell name…"
-                style={{
-                  flex: 1,
-                  background: pal.surfaceSolid,
-                  border: `1px solid ${pal.border}`,
-                  borderRadius: 3,
-                  color: pal.text,
-                  fontFamily: pal.fontBody,
-                  fontSize: 15,
-                  padding: "6px 10px",
-                  outline: "none",
-                }}
-                autoFocus
-              />
-              <button
-                onClick={() => concInput.trim() && setConcentration(concInput.trim())}
-                style={{
-                  background: pal.accentDim,
-                  border: `1px solid ${pal.accent}`,
-                  borderRadius: 3,
-                  color: pal.accentBright,
-                  fontFamily: pal.fontUI,
-                  fontSize: 11,
-                  letterSpacing: "0.1em",
-                  padding: "6px 12px",
-                  cursor: "pointer",
-                }}
-              >Set</button>
-              <button
-                onClick={() => { setConcInputOpen(false); setConcInput(""); }}
-                style={{
-                  background: "transparent",
-                  border: `1px solid ${pal.border}`,
-                  borderRadius: 3,
-                  color: pal.textMuted,
-                  fontFamily: pal.fontUI,
-                  fontSize: 11,
-                  letterSpacing: "0.1em",
-                  padding: "6px 10px",
-                  cursor: "pointer",
-                }}
-              >Cancel</button>
-            </div>
-          ) : (
-            <button
-              className="cs-sm-conc-add-btn"
-              onClick={() => setConcInputOpen(true)}
-            >+ Concentration</button>
-          )}
-
-          {/* HP hero card */}
-          <div className={`cs-sm-hp-hero${localHp <= 0 ? " death" : hpFlash === "dmg" ? " flash-dmg" : hpFlash === "heal" ? " flash-heal" : ""}`}>
-            <div className="cs-sm-hp-nums-row">
-              {localHp <= 0 ? (
-                <span className="cs-sm-hp-unconscious">Unconscious</span>
-              ) : (
-                <>
-                  <span className={`cs-sm-hp-current ${hpNumClass(localHp, hpMax)}`}>{localHp}</span>
-                  <span className="cs-sm-hp-sep">/</span>
-                  <span className="cs-sm-hp-max">{hpMax}</span>
-                  {(char?.tempHP || 0) > 0 && (
-                    <span className="cs-sm-hp-temp">+{char.tempHP} temp</span>
+          {/* The player's status, in two columns: what's true of them right now,
+              and their magic (design/prototypes/player-session-status.html).
+              HP lives with the identity block in the left column. */}
+          <div className={`cs-sm-status${hasMagic ? "" : " cs-sm-status--plain"}`}>
+            <div className="cs-sm-status-col">
+              <span className="cs-sm-status-head">You, right now</span>
+              <div className="cs-sm-status-grp">
+                <div className="cs-sm-status-grp-h">
+                  <span className="cs-sm-label" style={{ marginBottom: 0 }}>Conditions</span>
+                  <button className="cs-sm-cond-manage-btn" onClick={() => setCondPickerOpen(true)}>✎ Change</button>
+                </div>
+                <div className="cs-sm-conditions-row">
+                  {activeConditions.length === 0 ? (
+                    <span className="cs-sm-cond-none">None</span>
+                  ) : (
+                    activeConditions.map((c) => <span key={c} className="cs-sm-cond-chip">{c}</span>)
                   )}
-                </>
-              )}
-            </div>
-            <div className="cs-sm-hp-bar-wrap">
-              <div
-                className={`cs-sm-hp-bar-fill ${hpBarColor(localHp, hpMax)}`}
-                style={{ width: `${hpPct}%` }}
-              />
-            </div>
-            <div className="cs-sm-hp-controls">
-              <button
-                className="cs-sm-hp-stepper"
-                onClick={() => changeHp(-1)}
-                aria-label="Minus 1 HP"
-              >−</button>
-              <button
-                className="cs-sm-hp-stepper"
-                onClick={() => changeHp(1)}
-                aria-label="Plus 1 HP"
-              >+</button>
-              <span className="cs-sm-hp-spacer" />
-              <button
-                className="cs-sm-hp-action-btn dmg"
-                onClick={() => setHpModal("damage")}
-              >⚔ Damage</button>
-              <button
-                className="cs-sm-hp-action-btn heal"
-                onClick={() => setHpModal("heal")}
-              >✦ Heal</button>
-            </div>
-          </div>
-
-          {/* Conditions */}
-          <hr className="cs-sm-rule" />
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-            <span className="cs-sm-label" style={{ marginBottom: 0 }}>Conditions</span>
-            <button className="cs-sm-cond-manage-btn" onClick={() => setCondPickerOpen(true)}>
-              ✎ Manage
-            </button>
-          </div>
-          <div className="cs-sm-conditions-row">
-            {activeConditions.length === 0 ? (
-              <span className="cs-sm-cond-none">None</span>
-            ) : (
-              activeConditions.map((c) => (
-                <span key={c} className="cs-sm-cond-chip">{c}</span>
-              ))
-            )}
-          </div>
-          <div className={`cs-sm-exhaustion${(char?.exhaustionLevel ?? 0) > 0 ? " active" : ""}`}>
-            <span className="cs-sm-exhaustion-label">Exhaustion</span>
-            <button
-              type="button"
-              className="cs-sm-exhaustion-btn"
-              onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) - 1)}
-              disabled={(char?.exhaustionLevel ?? 0) <= 0}
-              aria-label="Decrease exhaustion"
-            >−</button>
-            <span className="cs-sm-exhaustion-level" aria-live="polite">{char?.exhaustionLevel ?? 0}</span>
-            <button
-              type="button"
-              className="cs-sm-exhaustion-btn"
-              onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) + 1)}
-              disabled={(char?.exhaustionLevel ?? 0) >= 6}
-              aria-label="Increase exhaustion"
-            >+</button>
-          </div>
-
-          {/* Spell slots — tap a pip to spend/restore; rests in the header row (Story 63) */}
-          {spellSlots.length > 0 && (
-            <>
-              <hr className="cs-sm-rule" />
-              <div className="cs-sm-slots-header">
-                <span className="cs-sm-label" style={{ marginBottom: 0 }}>Spell Slots</span>
-                <div className="cs-sm-rest-btns">
-                  {showShortRest && (
+                </div>
+                <div className="cs-sm-status-inline">
+                  <div className={`cs-sm-exhaustion${(char?.exhaustionLevel ?? 0) > 0 ? " active" : ""}`}>
+                    <span className="cs-sm-exhaustion-label">Exhaustion</span>
                     <button
                       type="button"
-                      className="cs-sm-rest-btn"
-                      disabled={shortRestIsNoop}
-                      onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}
-                    >
-                      {restConfirm === "short" ? `Restore ${pactSlotsSpent + shortFeatureSpent}?` : "Short Rest"}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="cs-sm-rest-btn"
-                    disabled={longRestIsNoop}
-                    onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}
-                  >
-                    {restConfirm === "long" ? `Restore All ${totalSlotsSpent + featureUsesSpent}?` : "Long Rest"}
+                      className="cs-sm-exhaustion-btn"
+                      onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) - 1)}
+                      disabled={(char?.exhaustionLevel ?? 0) <= 0}
+                      aria-label="Decrease exhaustion"
+                    >−</button>
+                    <span className="cs-sm-exhaustion-level" aria-live="polite">{char?.exhaustionLevel ?? 0}</span>
+                    <button
+                      type="button"
+                      className="cs-sm-exhaustion-btn"
+                      onClick={() => setExhaustion((char?.exhaustionLevel ?? 0) + 1)}
+                      disabled={(char?.exhaustionLevel ?? 0) >= 6}
+                      aria-label="Increase exhaustion"
+                    >+</button>
+                  </div>
+                  <button className={`cs-sm-inspo-pill${char?.inspiration ? " active" : ""}`} onClick={toggleInspiration} aria-pressed={!!char?.inspiration}>
+                    <span className="cs-sm-inspo-gem" aria-hidden="true" />
+                    Inspiration
                   </button>
                 </div>
               </div>
-              <div className="cs-sm-slots-wrap">
-                {spellSlots.map((slot, i) => {
-                  const available = slot.max - (slot.used || 0);
-                  return (
-                    <div key={i} className="cs-sm-slot-group">
-                      <span className="cs-sm-slot-lbl">L{slot.level}</span>
-                      {Array.from({ length: slot.max }).map((_, pipIdx) => (
+              {hasMagic && talentsAndFeatures}
+            </div>
+            <div className="cs-sm-status-col">
+              {hasMagic ? (
+                <>
+                  <span className="cs-sm-status-head">Magic</span>
+                  <div className="cs-sm-status-grp">
+                    <span className="cs-sm-label" style={{ marginBottom: 0 }}>Concentration</span>
+                    {concentration.active ? (
+                      <div className="cs-sm-conc-banner">
+                        <div className="cs-sm-conc-dot" />
+                        <span className="cs-sm-conc-text">
+                          Concentrating: <strong>{concentration.spell}</strong>
+                        </span>
+                        <button className="cs-sm-conc-drop" onClick={dropConcentration}>Drop</button>
+                      </div>
+                    ) : concInputOpen ? (
+                      <div className="cs-sm-conc-input-row">
+                        <input
+                          type="text"
+                          value={concInput}
+                          onChange={(e) => setConcInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && concInput.trim()) setConcentration(concInput.trim());
+                            if (e.key === "Escape") { setConcInputOpen(false); setConcInput(""); }
+                          }}
+                          placeholder="Spell name…"
+                          style={{
+                            flex: 1,
+                            background: pal.surfaceSolid,
+                            border: `1px solid ${pal.border}`,
+                            borderRadius: 3,
+                            color: pal.text,
+                            fontFamily: pal.fontBody,
+                            fontSize: 15,
+                            padding: "6px 10px",
+                            outline: "none",
+                          }}
+                          autoFocus
+                        />
                         <button
-                          key={pipIdx}
-                          type="button"
-                          className="cs-sm-slot-pip-btn"
-                          onClick={() => tapSlot(slot.level, pipIdx < available)}
-                          aria-label={pipIdx < available ? `Spend a level ${slot.level} slot` : `Restore a level ${slot.level} slot`}
-                        >
-                          <span
-                            className="cs-sm-slot-pip"
-                            style={{
-                              borderColor: pipIdx < available ? pal.gem : pal.border,
-                              background: pipIdx < available ? pal.gem : "transparent",
-                            }}
-                          />
-                        </button>
-                      ))}
-                      <span className="cs-sm-slot-count">
-                        {slotUndo?.level === slot.level ? (
-                          <button type="button" className="cs-sm-slot-undo" onClick={undoSlotTap}>↺ Undo</button>
-                        ) : (
-                          `${available}/${slot.max}`
-                        )}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
-
-          {/* Features & Traits — race/class features with uses (DM Settings can hide it) */}
-          {features.length > 0 && (
-            <>
-              <hr className="cs-sm-rule" />
-              <div className="cs-sm-slots-header">
-                <span className="cs-sm-label" style={{ marginBottom: 0 }}>Features &amp; Traits</span>
-                {spellSlots.length === 0 && features.some((f) => f.uses) && (
-                  <div className="cs-sm-rest-btns">
-                    {showShortRest && (
-                      <button type="button" className="cs-sm-rest-btn" disabled={shortRestIsNoop} onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}>
-                        {restConfirm === "short" ? `Restore ${shortFeatureSpent}?` : "Short Rest"}
-                      </button>
+                          onClick={() => concInput.trim() && setConcentration(concInput.trim())}
+                          style={{
+                            background: pal.accentDim,
+                            border: `1px solid ${pal.accent}`,
+                            borderRadius: 3,
+                            color: pal.accentBright,
+                            fontFamily: pal.fontUI,
+                            fontSize: 11,
+                            letterSpacing: "0.1em",
+                            padding: "6px 12px",
+                            cursor: "pointer",
+                          }}
+                        >Set</button>
+                        <button
+                          onClick={() => { setConcInputOpen(false); setConcInput(""); }}
+                          style={{
+                            background: "transparent",
+                            border: `1px solid ${pal.border}`,
+                            borderRadius: 3,
+                            color: pal.textMuted,
+                            fontFamily: pal.fontUI,
+                            fontSize: 11,
+                            letterSpacing: "0.1em",
+                            padding: "6px 10px",
+                            cursor: "pointer",
+                          }}
+                        >Cancel</button>
+                      </div>
+                    ) : (
+                      <button
+                        className="cs-sm-conc-add-btn"
+                        onClick={() => setConcInputOpen(true)}
+                      >+ Concentration</button>
                     )}
-                    <button type="button" className="cs-sm-rest-btn" disabled={longRestIsNoop} onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}>
-                      {restConfirm === "long" ? `Restore All ${featureUsesSpent}?` : "Long Rest"}
-                    </button>
+
                   </div>
-                )}
-              </div>
-              <div className="cs-sm-features">
-                {features.map((feature) => {
-                  const max = featureMaxUses(feature, char?.level);
-                  const left = featureUsesLeft(feature, char?.level);
-                  const open = openFeatureId === feature.id;
-                  return (
-                    <div key={feature.id} className="cs-sm-feature">
-                      <div className="cs-sm-feature-row">
+                {/* Spell slots — tap a pip to spend/restore; rests in the header row (Story 63) */}
+                {spellSlots.length > 0 && (
+                  <div className="cs-sm-status-grp">
+                    <div className="cs-sm-slots-header">
+                      <span className="cs-sm-label" style={{ marginBottom: 0 }}>Spell Slots</span>
+                      <div className="cs-sm-rest-btns">
+                        {showShortRest && (
+                          <button
+                            type="button"
+                            className="cs-sm-rest-btn"
+                            disabled={shortRestIsNoop}
+                            onClick={() => (restConfirm === "short" ? commitRest("short") : armRestConfirm("short"))}
+                          >
+                            {restConfirm === "short" ? `Restore ${pactSlotsSpent + shortFeatureSpent}?` : "Short Rest"}
+                          </button>
+                        )}
                         <button
                           type="button"
-                          className="cs-sm-feature-name"
-                          aria-expanded={open}
-                          disabled={!feature.description}
-                          onClick={() => setOpenFeatureId(open ? null : feature.id)}
+                          className="cs-sm-rest-btn"
+                          disabled={longRestIsNoop}
+                          onClick={() => (restConfirm === "long" ? commitRest("long") : armRestConfirm("long"))}
                         >
-                          {feature.name}
-                          <span className="cs-sm-feature-kind">{FEATURE_KINDS.find((k) => k.value === feature.kind)?.label}</span>
+                          {restConfirm === "long" ? `Restore All ${totalSlotsSpent + featureUsesSpent}?` : "Long Rest"}
                         </button>
-                        {feature.uses && max > 0 && (
-                          <span className="cs-sm-feature-uses">
-                            {Array.from({ length: max }).map((_, pipIdx) => (
+                      </div>
+                    </div>
+                    <div className="cs-sm-slots-wrap">
+                      {spellSlots.map((slot, i) => {
+                        const available = slot.max - (slot.used || 0);
+                        return (
+                          <div key={i} className="cs-sm-slot-group">
+                            <span className="cs-sm-slot-lbl">L{slot.level}</span>
+                            {Array.from({ length: slot.max }).map((_, pipIdx) => (
                               <button
                                 key={pipIdx}
                                 type="button"
                                 className="cs-sm-slot-pip-btn"
-                                onClick={() => tapFeatureUse(feature.id, pipIdx < left)}
-                                aria-label={pipIdx < left ? `Use ${feature.name}` : `Restore a use of ${feature.name}`}
+                                onClick={() => tapSlot(slot.level, pipIdx < available)}
+                                aria-label={pipIdx < available ? `Spend a level ${slot.level} slot` : `Restore a level ${slot.level} slot`}
                               >
                                 <span
                                   className="cs-sm-slot-pip"
-                                  style={{ borderColor: pipIdx < left ? pal.gem : pal.border, background: pipIdx < left ? pal.gem : "transparent" }}
+                                  style={{
+                                    borderColor: pipIdx < available ? pal.gem : pal.border,
+                                    background: pipIdx < available ? pal.gem : "transparent",
+                                  }}
                                 />
                               </button>
                             ))}
-                            <span className="cs-sm-slot-count">{left}/{max}</span>
-                          </span>
-                        )}
-                      </div>
-                      {feature.uses && max > 0 && (
-                        <div className="cs-sm-feature-recharge">Recharges on a {rechargeLabel(feature.uses)}</div>
-                      )}
-                      {open && feature.description && <div className="cs-sm-weapon-desc">{feature.description}</div>}
+                            <span className="cs-sm-slot-count">
+                              {slotUndo?.level === slot.level ? (
+                                <button type="button" className="cs-sm-slot-undo" onClick={undoSlotTap}>↺ Undo</button>
+                              ) : (
+                                `${available}/${slot.max}`
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
-                  );
-                })}
-              </div>
-            </>
-          )}
+                  </div>
+                )}
 
-          {/* Spells — collapsed-by-default reference row (Story 56) */}
-          {spells.length > 0 && (
-            <>
-              <hr className="cs-sm-rule" />
-              <button
-                type="button"
-                className="cs-sm-spells-toggle"
-                onClick={() => setSpellsRefOpen((v) => !v)}
-                aria-expanded={spellsRefOpen}
-              >
-                <span className="cs-sm-label">Spells · {spells.length}</span>
-                <span className={`cs-sm-weapon-expand${spellsRefOpen ? " open" : ""}`}>▼</span>
-              </button>
-              {spellsRefOpen && (
-                <div className="cs-sm-spells-wrap">
-                  {spells.map((spell) => (
-                    <span key={spell.id} className="cs-sm-spell-chip" title={spell.description || spell.name}>
-                      {spell.role && <span className={`cs-spell-glyph${spell.role === "heal" ? " heal" : ""}`}>{spellRoleGlyph(spell.role)}</span>}
-                      {spell.name}
-                    </span>
-                  ))}
-                </div>
-              )}
-            </>
-          )}
-
-          {/* Skills & Special Abilities */}
-          {(skills.length > 0 || specialAbilities.length > 0) && (
-            <>
-              <hr className="cs-sm-rule" />
-              <span className="cs-sm-label">Skills &amp; Abilities</span>
-              <CharacterTalents pal={pal} skills={skills} specialAbilities={specialAbilities} compact />
-            </>
-          )}
-
-          {/* Inspiration */}
-          <hr className="cs-sm-rule" />
-          <div className="cs-sm-inspo-row">
-            <button className="cs-sm-inspo-toggle" onClick={toggleInspiration}>
-              <div className={`cs-sm-inspo-gem${char?.inspiration ? " active" : ""}`} />
-              <span className={`cs-sm-inspo-label${char?.inspiration ? " active" : ""}`}>
-                Inspiration
-              </span>
-            </button>
+                  {spells.length > 0 && (
+                    <div className="cs-sm-status-grp">
+                      <span className="cs-sm-label" style={{ marginBottom: 0 }}>Spells · {spells.length}</span>
+                      <div className="cs-sm-spells-wrap">
+                        {spells.map((spell) => (
+                          <span key={spell.id} className="cs-sm-spell-chip" title={spell.description || spell.name}>
+                            {spell.role && <span className={`cs-spell-glyph${spell.role === "heal" ? " heal" : ""}`}>{spellRoleGlyph(spell.role)}</span>}
+                            {spell.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              ) : talentsAndFeatures}
+            </div>
           </div>
 
           {/* Session sub-tabs */}
@@ -1911,7 +1746,7 @@ export default function CharacterSheetSessionMode({
 
           {/* ── LOADOUT sub-tab ── */}
           <div className={`cs-sm-tab-panel${sessionSubTab === "loadout" ? " active" : ""}`}>
-            <InventoryPanel char={char} pal={pal} writeLoadout={writeLoadout} onCommitCoin={commitCoin} onCommitXp={commitXp} />
+            <InventoryPanel char={char} pal={pal} writeLoadout={writeLoadout} onCommitCoin={commitCoin} onCommitXp={commitXp} onHeal={healBy} hpFull={localHp >= hpMax} />
           </div>
 
           {/* ── NOTES sub-tab ── */}
@@ -1939,14 +1774,6 @@ export default function CharacterSheetSessionMode({
       {/* ── end two-column shell ── */}
 
       {/* Modals */}
-      {hpModal && (
-        <DamageHealModal
-          type={hpModal}
-          pal={pal}
-          onConfirm={(amount) => applyDamageHeal(hpModal, amount)}
-          onClose={() => setHpModal(null)}
-        />
-      )}
 
       {condPickerOpen && (
         <ConditionPickerModal

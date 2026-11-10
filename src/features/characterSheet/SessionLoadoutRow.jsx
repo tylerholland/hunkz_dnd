@@ -5,7 +5,9 @@ import "./sessionLoadout.css";
 // equip icon on the left, expand caret on the right. Expanding shows the
 // description and modifiers inline, with Use Item for qty-tracked items. A
 // pencil (Edit) appears beside the caret on hover.
-export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse, onAdjustQty, onToggleAttuned, attuneFlash = false }) {
+// onDrink (Session view only) turns a healing potion's Use into Drink, on the
+// row itself; `note` shows a line under the row (what the potion did).
+export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse, onAdjustQty, onToggleAttuned, attuneFlash = false, onDrink, drinkDisabledReason = "", note = "" }) {
   const isEquipped = item.equipped !== false;
   const canUse = !!onUse && item.qty != null && item.qty > 0;
   const toggle = () => { if (expandable) onToggleExpand?.(); };
@@ -51,6 +53,15 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
             <span className={`cs-sm-ld-attune${item.attuned ? " on attuned-gem" : ""}${attuneFlash ? " over-limit-flash" : ""}`} />
           </button>
         )}
+        {onDrink && item.qty !== 0 && (
+          <button
+            type="button"
+            className="cs-sm-ld-drink"
+            onClick={onDrink}
+            disabled={!!drinkDisabledReason}
+            title={drinkDisabledReason || "Drink one and heal"}
+          >Drink</button>
+        )}
         {/* Edit — pencil revealed on row hover/focus (always shown when
             expanded, and on touch screens that can't hover) */}
         <button
@@ -91,13 +102,14 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
           {mods.length > 0 && (
             <div className="cs-sm-ld-mods">{mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</div>
           )}
-          {canUse && (
+          {canUse && !onDrink && (
             <div className="cs-sm-ld-actions">
               <button type="button" className="cs-sm-ld-action" onClick={onUse} title="Use one">Use Item</button>
             </div>
           )}
         </div>
       )}
+      {note && <div className="cs-sm-ld-note" role="status">{note}</div>}
     </div>
   );
 }

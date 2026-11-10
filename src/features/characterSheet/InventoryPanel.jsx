@@ -3,6 +3,7 @@ import ItemEditorModal from "./ItemEditorModal";
 import SessionQuickAdd from "./SessionQuickAdd";
 import SessionLoadoutRow from "./SessionLoadoutRow";
 import SessionLedger from "./SessionLedger";
+import { healingDice, rollHealing } from "./potions";
 
 const ATTUNEMENT_SLOTS = 3;
 const COLUMNS = [
@@ -14,12 +15,15 @@ const COLUMNS = [
 // used by both the Session and Profile views so they look and behave the
 // same: quick add, edit (pencil → item editor), equip/stow, expand, quantity,
 // Use Item, attunement. Writes go through `useInventoryWrites`.
-export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, onCommitXp }) {
+// onHeal (Session view): healing potions get Drink, which rolls their healing,
+// heals that much (up to max HP) and uses one up.
+export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, onCommitXp, onHeal, hpFull = false }) {
   const [quickAddOpen, setQuickAddOpen] = useState(null); // "weapons" | "equipment" | null
   const [itemDetails, setItemDetails] = useState(null); // { kind, item?, seed? }
   const [recentAdds, setRecentAdds] = useState({}); // id → stagger index (row enter animation)
   const [expanded, setExpanded] = useState(() => new Set());
   const [attuneFlash, setAttuneFlash] = useState(null); // id of a row going over the limit
+  const [drinkNote, setDrinkNote] = useState(null); // { id, text } — what a potion just did
 
   const lists = { weapons: char?.weapons || [], equipment: char?.equipment || [] };
   const attunedCount = [...lists.weapons, ...lists.equipment].filter((item) => item.requiresAttunement && item.attuned).length;
@@ -55,6 +59,14 @@ export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, 
   const adjustQty = (kind, id, delta) => writeLoadout(kind, (list) => list.map((item) => (
     item.id === id && item.qty != null ? { ...item, qty: Math.max(0, item.qty + delta) } : item
   )));
+
+  function drink(kind, item, dice) {
+    const { total, rolls, bonus } = rollHealing(dice);
+    onHeal(total);
+    adjustQty(kind, item.id, -1);
+    setDrinkNote({ id: item.id, text: `You drink it: +${total} HP (${dice}: ${rolls.join(" + ")}${bonus ? ` + ${bonus}` : ""})` });
+    setTimeout(() => setDrinkNote((current) => (current?.id === item.id ? null : current)), 6000);
+  }
 
   function toggleAttuned(kind, item) {
     const attuning = !item.attuned;
@@ -119,6 +131,9 @@ export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, 
                 expanded={expanded.has(item.id)}
                 onToggleExpand={() => toggleExpanded(item.id)}
                 onUse={() => adjustQty(kind, item.id, -1)}
+                onDrink={onHeal && healingDice(item) && item.qty !== 0 ? () => drink(kind, item, healingDice(item)) : undefined}
+                drinkDisabledReason={hpFull ? "You're at full HP" : ""}
+                note={drinkNote?.id === item.id ? drinkNote.text : ""}
                 onAdjustQty={(delta) => adjustQty(kind, item.id, delta)}
                 onToggleEquipped={() => updateItem(kind, item.id, { equipped: item.equipped === false })}
                 onToggleAttuned={() => toggleAttuned(kind, item)}

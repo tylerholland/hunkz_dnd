@@ -694,3 +694,11 @@
   outline: 2px solid var(--pal-accent);
   outline-offset: 1px;
 }
+
+/* Drink — a healing potion's own button on its row (Session view). */
+.cs-sm-ld-drink { flex: none; min-height: 28px; padding: 0 10px; border: 1px solid rgba(106, 168, 106, 0.55); border-radius: 999px; background: transparent; color: #8ac08a; font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.12em; text-transform: uppercase; cursor: pointer; }
+.cs-sm-ld-drink:hover:not(:disabled) { background: rgba(106, 168, 106, 0.12); }
+.cs-sm-ld-drink:disabled { opacity: 0.45; cursor: default; }
+[data-light="true"] .cs-sm-ld-drink { color: #2f7a44; border-color: rgba(47, 122, 68, 0.5); }
+.cs-sm-ld-note { margin: 2px 0 6px 34px; font-family: var(--font-body); font-style: italic; font-size: 14px; color: #8ac08a; }
+[data-light="true"] .cs-sm-ld-note { color: #2f7a44; }

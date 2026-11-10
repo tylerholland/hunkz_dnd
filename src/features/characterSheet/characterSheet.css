@@ -4798,3 +4798,46 @@
   text-transform: uppercase;
   margin-bottom: 2px;
 }
+
+/* ── Session view: compact HP with the identity block ─────────────────────
+   (design/prototypes/player-session-status.html). No player HP controls:
+   damage comes from the DM's side; potions and spells heal. */
+.cs-sm-hp-line { display: grid; gap: 5px; margin-top: 14px; }
+.cs-sm-hp-line-row { display: flex; align-items: baseline; gap: 8px; }
+.cs-sm-hp-line-row .cs-sm-label { margin-right: auto; }
+.cs-sm-hp-line-now { font-family: var(--font-display); font-size: 26px; line-height: 1; color: var(--pal-gem); transition: color 0.28s; }
+.cs-sm-hp-line-now.wounded { color: #c8a840; }
+.cs-sm-hp-line-now.critical { color: #c06060; }
+.cs-sm-hp-line-max { font-family: var(--font-display); font-size: 15px; color: var(--pal-text-muted); }
+.cs-sm-hp-line-temp { font-family: var(--font-body); font-size: 13px; color: #6aa86a; border: 1px solid rgba(106, 168, 106, 0.5); border-radius: 999px; padding: 0 8px; }
+.cs-sm-hp-line-bar { height: 5px; border-radius: 3px; background: color-mix(in srgb, var(--pal-border) 60%, transparent); overflow: hidden; }
+.cs-sm-hp-line-bar .cs-sm-hp-bar-fill { display: block; }
+.cs-sm-hp-down { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 8px; padding: 8px 10px; border: 1px solid #c06060; border-radius: 6px; color: #c06060; font-family: var(--font-display); letter-spacing: 0.08em; }
+.cs-sm-hp-down small { font-family: var(--font-body); font-style: italic; letter-spacing: 0; color: var(--pal-text-muted); }
+
+/* ── Session view: status in two columns ─────────────────────────────────
+   "You, right now" (conditions, exhaustion, inspiration, skills, features)
+   and "Magic" (concentration, slots, spells). No magic: the groups spread
+   across both columns. Stacks on narrow screens. */
+.cs-sm-status { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 0 28px; margin-top: 18px; }
+.cs-sm-status-col { display: grid; gap: 20px; align-content: start; min-width: 0; }
+.cs-sm-status-col + .cs-sm-status-col { border-left: 1px solid var(--pal-border); padding-left: 28px; }
+.cs-sm-status-head { font-family: var(--font-display); font-size: 14px; letter-spacing: 0.08em; color: var(--pal-text); margin-bottom: -8px; }
+.cs-sm-status-grp { display: grid; gap: 8px; min-width: 0; }
+.cs-sm-status-grp .cs-sm-slots-header { margin-bottom: 0; }
+.cs-sm-status-grp-h { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.cs-sm-status-inline { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; }
+.cs-sm-status-inline .cs-sm-exhaustion { margin-top: 0; }
+.cs-sm-status-inline .cs-sm-exhaustion-label { flex: none; }
+.cs-sm-status-inline .cs-sm-exhaustion-btn { width: 28px; height: 28px; }
+.cs-sm-inspo-pill { display: inline-flex; align-items: center; gap: 8px; min-height: 30px; padding: 0 12px 0 7px; border: 1px solid var(--pal-border); border-radius: 999px; background: transparent; color: var(--pal-text-muted); font-family: var(--font-ui); font-size: 11px; letter-spacing: 0.16em; text-transform: uppercase; cursor: pointer; }
+.cs-sm-inspo-pill.active { color: var(--pal-text); border-color: var(--pal-gem); }
+.cs-sm-inspo-pill.active .cs-sm-inspo-gem { background: var(--pal-gem); box-shadow: 0 0 6px color-mix(in srgb, var(--pal-gem) 50%, transparent); }
+.cs-sm-status .cs-sm-spells-wrap { margin-top: 0; }
+@media (max-width: 760px) {
+  .cs-sm-status { grid-template-columns: 1fr; }
+  .cs-sm-status-col + .cs-sm-status-col { border-left: 0; padding-left: 0; border-top: 1px solid var(--pal-border); padding-top: 20px; margin-top: 20px; }
+}
+.cs-sm-status .cs-sm-conc-add-btn { justify-self: start; margin-bottom: 0; }
+.cs-sm-status .cs-sm-conc-banner,
+.cs-sm-status .cs-sm-conc-input-row { margin-bottom: 0; }
