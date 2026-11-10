@@ -5,9 +5,9 @@ import "./sessionLoadout.css";
 // equip icon on the left, expand caret on the right. Expanding shows the
 // description and modifiers inline, with Use Item for qty-tracked items. A
 // pencil (Edit) appears beside the caret on hover.
-// onDrink (Session view only) turns a healing potion's Use into Drink, on the
-// row itself; `note` shows a line under the row (what the potion did).
-export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse, onAdjustQty, onToggleAttuned, attuneFlash = false, onDrink, drinkDisabledReason = "", note = "", onGive, below = null }) {
+// useTitle / useDisabledReason describe what Use Item does (e.g. heals 2d4+2)
+// or why it can't now; `note` shows a line under the row (what it did).
+export default function SessionLoadoutRow({ item, kind, enterProps = {}, expanded = false, onToggleExpand, onEdit, onToggleEquipped, onUse, onAdjustQty, onToggleAttuned, attuneFlash = false, useTitle = "Use one", useDisabledReason = "", note = "", onGive, below = null }) {
   const isEquipped = item.equipped !== false;
   const canUse = !!onUse && item.qty != null && item.qty > 0;
   const toggle = () => { if (expandable) onToggleExpand?.(); };
@@ -53,15 +53,6 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
             <span className={`cs-sm-ld-attune${item.attuned ? " on attuned-gem" : ""}${attuneFlash ? " over-limit-flash" : ""}`} />
           </button>
         )}
-        {onDrink && item.qty !== 0 && (
-          <button
-            type="button"
-            className="cs-sm-ld-drink"
-            onClick={onDrink}
-            disabled={!!drinkDisabledReason}
-            title={drinkDisabledReason || "Drink one and heal"}
-          >Drink</button>
-        )}
         {/* Edit — pencil revealed on row hover/focus (always shown when
             expanded, and on touch screens that can't hover) */}
         <button
@@ -102,9 +93,9 @@ export default function SessionLoadoutRow({ item, kind, enterProps = {}, expande
           {mods.length > 0 && (
             <div className="cs-sm-ld-mods">{mods.map((mod) => `${mod.attribute} ${mod.value}`).join(" · ")}</div>
           )}
-          {((canUse && !onDrink) || onGive) && (
+          {(canUse || onGive) && (
             <div className="cs-sm-ld-actions">
-              {canUse && !onDrink && <button type="button" className="cs-sm-ld-action" onClick={onUse} title="Use one">Use Item</button>}
+              {canUse && <button type="button" className="cs-sm-ld-action" onClick={onUse} disabled={!!useDisabledReason} title={useDisabledReason || useTitle}>Use Item</button>}
               {onGive && item.qty !== 0 && <button type="button" className="cs-sm-ld-action" onClick={onGive} title="Give this to someone in the party">Give…</button>}
             </div>
           )}

@@ -6,6 +6,7 @@ import {
 } from "./rollCheck";
 import "../vote/vote.css";
 import "./rollRequests.css";
+import { shortName } from "../../lib/names";
 
 const title = (s) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 
@@ -13,11 +14,11 @@ const title = (s) => s.replace(/\b\w/g, (c) => c.toUpperCase());
 function WhoButton({ member, on, bonus, onToggle }) {
   const pal = PALETTES[member.palette] || PALETTES.ocean;
   return (
-    <button type="button" className={`rq-who${on ? " on" : ""}`} aria-pressed={on} onClick={onToggle}>
+    <button type="button" className={`rq-who${on ? " on" : ""}`} aria-pressed={on} onClick={onToggle} title={member.name}>
       <i style={{ background: `radial-gradient(circle at 40% 35%, ${pal.accent}, ${pal.surfaceSolid || "#14202b"})` }}>
         {member.portraitUrl ? <PortraitImg src={member.portraitUrl} focus={member.portraitFocus} alt="" /> : (member.name || "?").charAt(0).toUpperCase()}
       </i>
-      <span className="rq-who-name">{member.name}</span>
+      <span className="rq-who-name">{shortName(member.name)}</span>
       <span className="rq-who-bonus">{formatBonus(bonus)}</span>
     </button>
   );

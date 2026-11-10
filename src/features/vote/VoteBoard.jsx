@@ -3,6 +3,7 @@ import { PALETTES } from "../characterSheet/theme";
 import { presenceState } from "../../lib/presence";
 import { LETTERS, tally } from "./voteUtil";
 import "./vote.css";
+import { shortName } from "../../lib/names";
 
 // A player's token on the board: their portrait, or their initial in their colour.
 export function VoteToken({ member, small = false, faded = false, dot = null }) {
@@ -13,7 +14,7 @@ export function VoteToken({ member, small = false, faded = false, dot = null }) 
         {member.portraitUrl ? <PortraitImg src={member.portraitUrl} focus={member.portraitFocus} alt="" /> : (member.name || "?").charAt(0).toUpperCase()}
         {dot && <span className={`vb-dot vb-dot--${dot}`} aria-hidden="true" />}
       </i>
-      {!small && <small>{member.name}</small>}
+      {!small && <small>{shortName(member.name)}</small>}
     </span>
   );
 }

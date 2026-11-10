@@ -4,6 +4,7 @@ import { uploadMomentArt } from "./momentArt";
 import "../vote/vote.css";
 import "../rollRequests/rollRequests.css";
 import "./prepDeck.css";
+import { shortName } from "../../lib/names";
 
 const toList = (to) => (Array.isArray(to) ? to : []);
 
@@ -94,7 +95,7 @@ export default function MessageComposer({ members, deck = [], initial = {}, dmPa
               const on = toList(to).includes(m.slug);
               return (
                 <button key={m.slug} type="button" className={`rq-chip pd-to-chip${on ? " on" : ""}`} aria-pressed={on} onClick={() => toggleMember(m.slug)}>
-                  <VoteToken member={m} small />{m.name}
+                  <VoteToken member={m} small />{shortName(m.name)}
                 </button>
               );
             })}

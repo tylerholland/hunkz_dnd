@@ -1,6 +1,7 @@
 import { VoteToken } from "../vote/VoteBoard";
 import "../vote/vote.css";
 import "./silence.css";
+import { shortName } from "../../lib/names";
 
 /** While the DM is asking for quiet: who's said they're listening, and Lift it. */
 export default function SilenceCard({ silence, members, onLift }) {
@@ -16,7 +17,7 @@ export default function SilenceCard({ silence, members, onLift }) {
         {members.map((m) => (
           <span key={m.slug} className={`sl-person${listening.has(m.slug) ? " on" : ""}`}>
             <VoteToken member={m} small faded={!listening.has(m.slug)} />
-            {m.name}{listening.has(m.slug) ? " ✓" : ""}
+            {shortName(m.name)}{listening.has(m.slug) ? " ✓" : ""}
           </span>
         ))}
       </div>

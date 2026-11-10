@@ -16,8 +16,9 @@ const COLUMNS = [
 // used by both the Session and Profile views so they look and behave the
 // same: quick add, edit (pencil → item editor), equip/stow, expand, quantity,
 // Use Item, attunement. Writes go through `useInventoryWrites`.
-// onHeal (Session view): healing potions get Drink, which rolls their healing,
-// heals that much (up to max HP) and uses one up.
+// onHeal (Session view): Use Item on something that heals (a potion, or any
+// item given a "heals" effect in the editor) rolls it, heals that much (up to
+// max HP) and uses one up.
 // onGiveItem (Session view): "Give…" on an item → pick a party member
 // (`party`, everyone else) and how many; onGiveItem(item, toSlug, qty).
 export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, onCommitXp, onHeal, hpFull = false, party = [], onGiveItem }) {
@@ -26,7 +27,7 @@ export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, 
   const [recentAdds, setRecentAdds] = useState({}); // id → stagger index (row enter animation)
   const [expanded, setExpanded] = useState(() => new Set());
   const [attuneFlash, setAttuneFlash] = useState(null); // id of a row going over the limit
-  const [drinkNote, setDrinkNote] = useState(null); // { id, text } — what a potion just did
+  const [drinkNote, setDrinkNote] = useState(null); // { id, text } — what using an item just did
   const [giving, setGiving] = useState(null); // id of the item whose Give panel is open
 
   const lists = { weapons: char?.weapons || [], equipment: char?.equipment || [] };
@@ -64,11 +65,11 @@ export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, 
     item.id === id && item.qty != null ? { ...item, qty: Math.max(0, item.qty + delta) } : item
   )));
 
-  function drink(kind, item, dice) {
+  function applyHealing(kind, item, dice) {
     const { total, rolls, bonus } = rollHealing(dice);
     onHeal(total);
     adjustQty(kind, item.id, -1);
-    setDrinkNote({ id: item.id, text: `You drink it: +${total} HP (${dice}: ${rolls.join(" + ")}${bonus ? ` + ${bonus}` : ""})` });
+    setDrinkNote({ id: item.id, text: rolls.length ? `Used: +${total} HP (${dice}: ${rolls.join(" + ")}${bonus ? ` + ${bonus}` : ""})` : `Used: +${total} HP` });
     setTimeout(() => setDrinkNote((current) => (current?.id === item.id ? null : current)), 6000);
   }
 
@@ -125,7 +126,9 @@ export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, 
               onAdd={(items) => addItems(kind, items)}
               onOpenDetails={(seed) => setItemDetails({ kind, seed })}
             />
-            {lists[kind].map((item) => (
+            {lists[kind].map((item) => {
+              const heals = onHeal ? healingDice(item) : null;
+              return (
               <SessionLoadoutRow
                 key={item.id}
                 item={item}
@@ -134,9 +137,9 @@ export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, 
                 onEdit={() => setItemDetails({ kind, item })}
                 expanded={expanded.has(item.id)}
                 onToggleExpand={() => toggleExpanded(item.id)}
-                onUse={() => adjustQty(kind, item.id, -1)}
-                onDrink={onHeal && healingDice(item) && item.qty !== 0 ? () => drink(kind, item, healingDice(item)) : undefined}
-                drinkDisabledReason={hpFull ? "You're at full HP" : ""}
+                onUse={heals ? () => applyHealing(kind, item, heals) : () => adjustQty(kind, item.id, -1)}
+                useTitle={heals ? `Use one: heals ${heals}` : "Use one"}
+                useDisabledReason={heals && hpFull ? "You're at full HP" : ""}
                 note={drinkNote?.id === item.id ? drinkNote.text : ""}
                 onGive={onGiveItem ? () => setGiving((current) => (current === item.id ? null : item.id)) : undefined}
                 below={giving === item.id ? (
@@ -160,7 +163,8 @@ export default function InventoryPanel({ char, pal, writeLoadout, onCommitCoin, 
                 onToggleAttuned={() => toggleAttuned(kind, item)}
                 attuneFlash={attuneFlash === item.id}
               />
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>

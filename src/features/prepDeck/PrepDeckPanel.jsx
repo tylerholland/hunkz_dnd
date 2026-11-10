@@ -4,6 +4,7 @@ import { NoteIcon, ScrollIcon } from "../dmDashboard/actionIcons";
 import "../vote/vote.css";
 import "../rollRequests/rollRequests.css";
 import "./prepDeck.css";
+import { shortName } from "../../lib/names";
 
 const FILTERS = [["all", "All"], ["moment", "Moments"], ["note", "Notes"]];
 
@@ -37,7 +38,7 @@ function DeckCard({ card, members, picking, onPick, onSend, onEdit, onCancelPick
           <span className="vb-hint">Send it to…</span>
           <button type="button" className="rq-chip" onClick={() => onSend(card, "all")}>Everyone</button>
           {members.map((m) => (
-            <button key={m.slug} type="button" className="rq-chip pd-to-chip" onClick={() => onSend(card, [m.slug])}><VoteToken member={m} small />{m.name}</button>
+            <button key={m.slug} type="button" className="rq-chip pd-to-chip" onClick={() => onSend(card, [m.slug])}><VoteToken member={m} small />{shortName(m.name)}</button>
           ))}
           <button type="button" className="vc-btn vc-btn--quiet" onClick={onCancelPick}>Cancel</button>
         </div>

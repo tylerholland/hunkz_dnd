@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { PALETTES } from "./theme";
 import PortraitImg from "../../components/PortraitImg";
+import { shortName } from "../../lib/names";
 
 /**
  * Give an item to someone else in the party (Session view inventory): pick
@@ -37,11 +38,11 @@ export default function GiveItemPanel({ item, party, onGive, onClose }) {
         {party.map((m) => {
           const pal = PALETTES[m.palette] || PALETTES.ocean;
           return (
-            <button key={m.slug} type="button" className={`cs-give-person${to === m.slug ? " on" : ""}`} aria-pressed={to === m.slug} onClick={() => setTo(m.slug)}>
+            <button key={m.slug} type="button" title={m.name} className={`cs-give-person${to === m.slug ? " on" : ""}`} aria-pressed={to === m.slug} onClick={() => setTo(m.slug)}>
               <i style={{ background: `radial-gradient(circle at 40% 35%, ${pal.accent}, ${pal.surfaceSolid || "#14202b"})` }}>
                 {m.portraitUrl ? <PortraitImg src={m.portraitUrl} focus={m.portraitFocus} alt="" /> : (m.name || "?").charAt(0).toUpperCase()}
               </i>
-              <span>{m.name}</span>
+              <span>{shortName(m.name)}</span>
             </button>
           );
         })}
@@ -60,7 +61,7 @@ export default function GiveItemPanel({ item, party, onGive, onClose }) {
         <button type="button" className="cs-give-btn quiet" onClick={onClose}>Cancel</button>
         <span style={{ flex: 1 }} />
         <button type="button" className="cs-give-btn" onClick={give} disabled={!to || state.busy}>
-          {state.busy ? "Giving…" : who ? `Give ${stack != null && stack > 1 ? `${qty} ` : ""}${item.name} to ${who.name}` : "Pick who"}
+          {state.busy ? "Giving…" : who ? `Give ${stack != null && stack > 1 ? `${qty} ` : ""}${item.name} to ${shortName(who.name)}` : "Pick who"}
         </button>
       </div>
     </div>

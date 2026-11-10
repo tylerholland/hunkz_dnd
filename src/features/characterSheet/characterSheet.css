@@ -4879,3 +4879,4 @@
 .cs-gift-toast { position: fixed; z-index: 820; left: 50%; bottom: 22px; transform: translateX(-50%); display: flex; align-items: center; gap: 10px; max-width: calc(100vw - 32px); padding: 10px 12px 10px 14px; border: 1px solid var(--pal-accent); border-radius: 8px; background: var(--pal-surface-solid); color: var(--pal-text); font-family: var(--font-body); font-size: 15px; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4); }
 .cs-gift-toast > span:first-child { color: var(--pal-accent-bright); }
 .cs-gift-toast button { border: 0; background: transparent; color: var(--pal-text-muted); cursor: pointer; font-size: 14px; min-width: 28px; min-height: 28px; }
+.cs-give-person span { max-width: 96px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

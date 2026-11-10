@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { DESCRIPTION_MAX_LENGTH, MOD_ATTRIBUTES, uid } from "./constants";
 import { ARMOR_DEX_OPTIONS } from "./armorClass";
+import { cleanHealDice, healingDice } from "./potions";
 
 export const ITEM_TYPE_OPTIONS = [
   { value: "", label: "(none)" },
@@ -41,6 +42,12 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
   const [qty, setQty] = useState(item?.qty ?? seed?.qty ?? 1);
   // Existing items keep their state (absent = equipped, legacy); new items start stowed.
   const [equipped, setEquipped] = useState(item ? item.equipped !== false : false);
+  // What Use Item does: heals this much (dice or a flat number). Blank lets a
+  // known potion work it out from its name.
+  const [heals, setHeals] = useState(item?.onUse?.heals ?? "");
+  const healsClean = cleanHealDice(heals);
+  const healsBad = String(heals).trim() !== "" && !healsClean;
+  const autoHeals = healingDice({ ...(item || {}), name, description: desc, onUse: undefined });
 
   const addMod = () => setMods((m) => [...m, { attribute: MOD_ATTRIBUTES[0], value: "" }]);
   const removeMod = (index) => setMods((m) => m.filter((_, idx) => idx !== index));
@@ -49,7 +56,7 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
   };
 
   function handleSave() {
-    if (!name.trim()) return;
+    if (!name.trim() || healsBad) return;
     const saved = {
       // Spread existing item to preserve any fields not managed by this modal,
       // then override with the current editor state.
@@ -91,6 +98,9 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
     } else {
       delete saved.qty;
     }
+    // On use
+    if (healsClean) saved.onUse = { ...(item?.onUse || {}), heals: healsClean };
+    else delete saved.onUse;
     onSave(saved);
   }
 
@@ -230,6 +240,29 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
           </div>
         </div>
 
+        {/* On use — what Use Item does in the Session view */}
+        <div className="em-toggle-row">
+          <div className="flex-row" style={{ gap: 10 }}>
+            <label className="label-ui" style={{ display: "inline", marginBottom: 0 }} htmlFor="em-heals">When used, heals</label>
+            <input
+              id="em-heals"
+              type="text"
+              value={heals}
+              onChange={(e) => setHeals(e.target.value)}
+              placeholder={autoHeals || "e.g. 2d4+2"}
+              aria-invalid={healsBad}
+              style={{ background: pal.surface, border: `1px solid ${healsBad ? "#c0645a" : pal.border}`, borderRadius: 3, color: pal.text, fontFamily: pal.fontDisplay, fontSize: 14, padding: "6px 10px", outline: "none", width: 110 }}
+            />
+          </div>
+          <div className="em-toggle-hint">
+            {healsBad
+              ? "Use dice like 2d4+2, or a number."
+              : autoHeals && !healsClean
+                ? `Use Item heals ${autoHeals} (worked out from the name). Type to change it.`
+                : "Use Item rolls this and heals the character. Leave blank for items that don't heal."}
+          </div>
+        </div>
+
         {/* Equipped */}
         <div className="em-toggle-row">
           <label className="em-toggle-label">
@@ -305,11 +338,11 @@ export default function ItemEditorModal({ item, seed, pal, onSave, onClose, onDe
           <button onClick={onClose} className="btn-ghost" style={{ flex: 1 }}>Cancel</button>
           <button
             onClick={handleSave}
-            disabled={!name.trim()}
+            disabled={!name.trim() || healsBad}
             className="btn-primary"
             style={{
               flex: 2,
-              opacity: !name.trim() ? 0.5 : 1,
+              opacity: !name.trim() || healsBad ? 0.5 : 1,
             }}
           >
             {item ? "Save Changes" : "Add Item"}
